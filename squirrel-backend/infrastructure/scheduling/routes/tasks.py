@@ -18,13 +18,15 @@ def get_scheduled_tasks(
     svc: ScheduledTaskService = Depends(get_scheduled_task_service),
 ):
     """Get scheduled task list."""
-    return response.success(svc.get_task_list(
-        page=page,
-        page_size=page_size,
-        search=search,
-        status=status,
-        task_type=task_type,
-    ))
+    return response.success(
+        svc.get_task_list(
+            page=page,
+            page_size=page_size,
+            search=search,
+            status=status,
+            task_type=task_type,
+        )
+    )
 
 
 @router.post('/tasks')

@@ -24,7 +24,8 @@ def _mock_search_payload(items=None):
     return {
         'data': {
             'total': 1,
-            'lists': items or [
+            'lists': items
+            or [
                 {
                     'AlbumAudioID': 123,
                     'FileHash': 'ABC',
@@ -43,7 +44,8 @@ def _mock_search_payload(items=None):
 def _fm_payload(items=None):
     return {
         'data': {
-            'song_list': items or [
+            'song_list': items
+            or [
                 {
                     'songname': 'FM Artist - FM Song.mp3',
                     'author_name': 'FM Artist',
@@ -329,7 +331,9 @@ async def test_search_discovery_endpoints_normalize_items(mock_redis):
         respx.get(f'{BASE_URL}/everyday/recommend').mock(return_value=httpx.Response(200, json=song_payload))
         respx.get(f'{BASE_URL}/everyday/style/recommend').mock(return_value=httpx.Response(200, json=song_payload))
         respx.get(f'{BASE_URL}/search/hot').mock(return_value=httpx.Response(200, json={'data': {'info': []}}))
-        respx.get(f'{BASE_URL}/search/default').mock(return_value=httpx.Response(200, json={'data': {'keyword': 'hot'}}))
+        respx.get(f'{BASE_URL}/search/default').mock(
+            return_value=httpx.Response(200, json={'data': {'keyword': 'hot'}})
+        )
 
         new_songs = await svc.list_new_songs(1, None, 1, 50)
         await svc.list_ranks(1)
@@ -347,7 +351,14 @@ async def test_search_discovery_endpoints_normalize_items(mock_redis):
 
 async def test_recommend_discovery_cards_normalize_tracks(mock_redis):
     svc = _svc(mock_redis)
-    payload = {'data': {'song_list': [{'FileHash': 'C1', 'SongName': 'C Song', 'SingerName': 'C Artist', 'Duration': 180, 'Image': ''}], 'rec_desc': 'Card 1'}}
+    payload = {
+        'data': {
+            'song_list': [
+                {'FileHash': 'C1', 'SongName': 'C Song', 'SingerName': 'C Artist', 'Duration': 180, 'Image': ''}
+            ],
+            'rec_desc': 'Card 1',
+        }
+    }
     async with respx.mock:
         route = respx.get(f'{BASE_URL}/top/card').mock(
             return_value=httpx.Response(200, json=payload),
@@ -362,7 +373,9 @@ async def test_recommend_discovery_cards_normalize_tracks(mock_redis):
 async def test_playlist_tags_and_similar_playlists_normalize_items(mock_redis):
     svc = _svc(mock_redis)
     tags_payload = {'data': {'info': [{'id': 1, 'name': 'Pop', 'count': 100}]}}
-    similar_payload = {'data': {'info': [{'global_collection_id': '2', 'specialname': 'Similar', 'imgurl': '', 'play_count': 50}]}}
+    similar_payload = {
+        'data': {'info': [{'global_collection_id': '2', 'specialname': 'Similar', 'imgurl': '', 'play_count': 50}]}
+    }
     async with respx.mock:
         tags_route = respx.get(f'{BASE_URL}/playlist/tags').mock(
             return_value=httpx.Response(200, json=tags_payload),
@@ -394,8 +407,12 @@ async def test_get_playlist_tracks_normalizes_items(mock_redis):
 
 async def test_get_artist_detail_and_tracks_normalize_items(mock_redis):
     svc = _svc(mock_redis)
-    detail_payload = {'data': {'author_id': 'A1', 'author_name': 'Artist 1', 'sizable_avatar': '', 'song_count': 10, 'album_count': 2}}
-    track_payload = {'data': [{'FileHash': 'AT1', 'SongName': 'AT Song', 'SingerName': 'Artist 1', 'Duration': 200, 'Image': ''}]}
+    detail_payload = {
+        'data': {'author_id': 'A1', 'author_name': 'Artist 1', 'sizable_avatar': '', 'song_count': 10, 'album_count': 2}
+    }
+    track_payload = {
+        'data': [{'FileHash': 'AT1', 'SongName': 'AT Song', 'SingerName': 'Artist 1', 'Duration': 200, 'Image': ''}]
+    }
     album_payload = {'data': [{'album_id': 'AL1', 'album_name': 'Album 1', 'img': ''}]}
     async with respx.mock:
         detail_route = respx.get(f'{BASE_URL}/artist/detail').mock(
@@ -516,8 +533,11 @@ async def test_track_enrichment_endpoints_normalize_items(mock_redis):
 
 
 async def test_request_requires_configured_base_url(mock_redis):
-    svc = MusicService(redis_client=mock_redis, settings=SimpleNamespace(kugou_music=SimpleNamespace(api_base_url='', cookie='')))
+    svc = MusicService(
+        redis_client=mock_redis, settings=SimpleNamespace(kugou_music=SimpleNamespace(api_base_url='', cookie=''))
+    )
     from domains.music.application.services._client import MusicServiceError
+
     with pytest.raises(MusicServiceError, match='KUGOU_MUSIC_API_BASE_URL is not configured'):
         await svc.search_tracks(1, 'test', 1, 20)
 
@@ -525,6 +545,7 @@ async def test_request_requires_configured_base_url(mock_redis):
 async def test_request_reports_non_json_response(mock_redis):
     svc = _svc(mock_redis)
     from domains.music.application.services._client import MusicServiceError
+
     async with respx.mock:
         respx.get(f'{BASE_URL}/search').mock(
             return_value=httpx.Response(200, text='<html>not json</html>', headers={'content-type': 'text/html'}),
@@ -614,6 +635,7 @@ async def test_get_user_playlist_tracks_includes_file_id(mock_redis):
 async def test_add_track_to_user_playlist_formats_track_data(mock_redis):
     svc = _svc(mock_redis)
     from domains.music.interfaces.dto.music import MusicTrackPayload
+
     track = MusicTrackPayload(title='T', hash='H', album_id='A', album_audio_id='AA')
     async with respx.mock:
         route = respx.get(f'{BASE_URL}/playlist/tracks/add').mock(
@@ -644,7 +666,17 @@ async def test_create_and_delete_user_playlist_use_kugou_endpoints(mock_redis):
 
 async def test_collect_playlist_loads_detail_before_add(mock_redis):
     svc = _svc(mock_redis)
-    detail_payload = {'data': [{'list_create_userid': 'u1', 'list_create_listid': 'l1', 'name': 'Collected', 'source': 1, 'list_create_gid': 'g1'}]}
+    detail_payload = {
+        'data': [
+            {
+                'list_create_userid': 'u1',
+                'list_create_listid': 'l1',
+                'name': 'Collected',
+                'source': 1,
+                'list_create_gid': 'g1',
+            }
+        ]
+    }
     async with respx.mock:
         detail_route = respx.get(f'{BASE_URL}/playlist/detail').mock(
             return_value=httpx.Response(200, json=detail_payload),

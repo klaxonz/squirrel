@@ -9,7 +9,7 @@ from infrastructure.database.mixins import SerializerMixin
 
 
 class User(Base, SerializerMixin):
-    __tablename__ = "user"
+    __tablename__ = 'user'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nickname: Mapped[str] = mapped_column(VARCHAR(50), nullable=False)
@@ -25,11 +25,11 @@ class User(Base, SerializerMixin):
 
 
 class AccountType(StrEnum):
-    EMAIL = "email"
+    EMAIL = 'email'
 
 
 class Account(Base, SerializerMixin):
-    __tablename__ = "account"
+    __tablename__ = 'account'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -48,7 +48,7 @@ class Account(Base, SerializerMixin):
 
 
 class UserConfig(Base, SerializerMixin):
-    __tablename__ = "user_config"
+    __tablename__ = 'user_config'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)

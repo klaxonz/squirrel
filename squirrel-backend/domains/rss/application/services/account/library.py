@@ -95,11 +95,13 @@ class RssLibraryService:
             if existing:
                 existing.viewed_at = datetime.now()
             else:
-                session.add(RssEntryView(
-                    user_id=user_id,
-                    entry_id=entry_id,
-                    viewed_at=datetime.now(),
-                ))
+                session.add(
+                    RssEntryView(
+                        user_id=user_id,
+                        entry_id=entry_id,
+                        viewed_at=datetime.now(),
+                    )
+                )
             session.commit()
 
     def list_recently_viewed(self, user_id: int, limit: int = 30) -> list[dict[str, Any]]:
@@ -113,9 +115,7 @@ class RssLibraryService:
             if not views:
                 return []
             entry_ids = [view.entry_id for view in views]
-            entries = session.scalars(
-                select(RssEntry).where(RssEntry.id.in_(entry_ids))
-            ).all()
+            entries = session.scalars(select(RssEntry).where(RssEntry.id.in_(entry_ids))).all()
             entry_map = {entry.id: serialize_entry(entry) for entry in entries}
             view_map = {view.entry_id: view.viewed_at for view in views}
             items = []

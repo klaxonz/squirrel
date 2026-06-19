@@ -15,16 +15,17 @@ if TYPE_CHECKING:
 
 def _video_join():
     from domains.video.domain.models.video import Video
+
     return Video.id == foreign(VideoHistory.video_id)
 
 
 class VideoHistory(Base, SerializerMixin):
-    __tablename__ = "video_history"
+    __tablename__ = 'video_history'
 
     __table_args__ = (
-        Index("ux_video_history_user_video", "user_id", "video_id", unique=True),
-        Index("ix_video_history_video_id", "video_id"),
-        Index("ix_video_history_user_end_time", "user_id", "end_time"),
+        Index('ux_video_history_user_video', 'user_id', 'video_id', unique=True),
+        Index('ix_video_history_video_id', 'video_id'),
+        Index('ix_video_history_user_end_time', 'user_id', 'end_time'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -42,8 +43,8 @@ class VideoHistory(Base, SerializerMixin):
     )
 
     video: Mapped[Video] = relationship(
-        "Video",
+        'Video',
         primaryjoin=_video_join,
-        back_populates="histories",
+        back_populates='histories',
         viewonly=True,
     )

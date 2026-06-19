@@ -13,7 +13,7 @@ from infrastructure.config.settings import settings as _global_settings
 
 logger = logging.getLogger(__name__)
 
-KUGOU_AUTH_REDIS_KEY_PREFIX = "music:kugou:auth"
+KUGOU_AUTH_REDIS_KEY_PREFIX = 'music:kugou:auth'
 
 
 class MusicServiceError(Exception):
@@ -45,7 +45,7 @@ class MusicClient:
         user_id: int | None = None,
     ) -> dict[str, Any]:
         if not self.settings.kugou_music.api_base_url:
-            raise MusicServiceError("KUGOU_MUSIC_API_BASE_URL is not configured")
+            raise MusicServiceError('KUGOU_MUSIC_API_BASE_URL is not configured')
 
         headers = {}
         if use_auth:
@@ -119,5 +119,5 @@ class MusicClient:
         for item in cookie.split(';'):
             normalized = item.strip()
             if normalized.startswith(prefix):
-                return normalized[len(prefix):]
+                return normalized[len(prefix) :]
         return ''

@@ -35,4 +35,3 @@ def score_candidate(value: str, query: str) -> int:
     if lowered_value.startswith(query):
         return 1
     return 2
-

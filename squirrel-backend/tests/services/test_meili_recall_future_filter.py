@@ -3,6 +3,7 @@
 首页全部标签页(category='all')不应召回未来视频(publish_date > now)。
 只有 category='preview'(预告 tab)才放行未来视频。
 """
+
 from datetime import datetime, timedelta
 
 from domains.video.application.services.search.meili_indexer import (
@@ -17,7 +18,11 @@ def test_build_recall_filter_excludes_future_for_all_category():
     now_ts = int(fixed_now.timestamp())
 
     filters = _build_recall_filter(
-        domains=None, time_range='all', duration='all', category='all', now=fixed_now,
+        domains=None,
+        time_range='all',
+        duration='all',
+        category='all',
+        now=fixed_now,
     )
 
     assert f'publish_ts <= {now_ts}' in filters
@@ -29,7 +34,11 @@ def test_build_recall_filter_excludes_future_for_unread_category():
     now_ts = int(fixed_now.timestamp())
 
     filters = _build_recall_filter(
-        domains=None, time_range='all', duration='all', category='unread', now=fixed_now,
+        domains=None,
+        time_range='all',
+        duration='all',
+        category='unread',
+        now=fixed_now,
     )
 
     assert f'publish_ts <= {now_ts}' in filters
@@ -41,7 +50,11 @@ def test_build_recall_filter_allows_future_for_preview_category():
     now_ts = int(fixed_now.timestamp())
 
     filters = _build_recall_filter(
-        domains=None, time_range='all', duration='all', category='preview', now=fixed_now,
+        domains=None,
+        time_range='all',
+        duration='all',
+        category='preview',
+        now=fixed_now,
     )
 
     assert f'publish_ts <= {now_ts}' not in filters
@@ -50,7 +63,10 @@ def test_build_recall_filter_allows_future_for_preview_category():
 def test_build_recall_filter_future_bound_uses_now_by_default():
     """不传 now 时应使用当前时间(不抛错,且值合理)。"""
     filters = _build_recall_filter(
-        domains=None, time_range='all', duration='all', category='all',
+        domains=None,
+        time_range='all',
+        duration='all',
+        category='all',
     )
     future_bound = [f for f in filters if f.startswith('publish_ts <= ')]
     assert len(future_bound) == 1
@@ -65,12 +81,23 @@ def test_build_recall_filter_combines_time_range_and_future_bound():
     now_ts = int(fixed_now.timestamp())
 
     filters = _build_recall_filter(
-        domains=None, time_range='week', duration='all', category='all', now=fixed_now,
+        domains=None,
+        time_range='week',
+        duration='all',
+        category='all',
+        now=fixed_now,
     )
 
-    week_start_ts = int((fixed_now - timedelta(days=fixed_now.weekday())).replace(
-        hour=0, minute=0, second=0, microsecond=0,
-    ).timestamp())
+    week_start_ts = int(
+        (fixed_now - timedelta(days=fixed_now.weekday()))
+        .replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+        .timestamp()
+    )
     assert f'publish_ts >= {week_start_ts}' in filters
     assert f'publish_ts <= {now_ts}' in filters
 
@@ -91,10 +118,12 @@ class _FakeIndex:
 
     def search(self, query, options):
         self.last_options = dict(options)
-        return _FakeSearchResult([
-            {'id': 1, 'publish_ts': 1000},
-            {'id': 2, 'publish_ts': 2000},
-        ])
+        return _FakeSearchResult(
+            [
+                {'id': 1, 'publish_ts': 1000},
+                {'id': 2, 'publish_ts': 2000},
+            ]
+        )
 
 
 def _make_indexer_with_fake():

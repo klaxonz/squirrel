@@ -1,5 +1,4 @@
-"""Backend-local runtime payload models for subscription-related plugin responses.
-"""
+"""Backend-local runtime payload models for subscription-related plugin responses."""
 
 from __future__ import annotations
 
@@ -27,7 +26,7 @@ class SubscriptionMeta:
     id: str
     name: str
     avatar: str | None = None
-    url: str = ""
+    url: str = ''
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -47,11 +46,11 @@ class SubscriptionImportBatchResult:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "items": [item.to_dict() for item in self.items],
-            "cursor_payload": self.cursor_payload,
-            "has_more": self.has_more,
-            "stop_reason": self.stop_reason,
-            "total_available": self.total_available,
+            'items': [item.to_dict() for item in self.items],
+            'cursor_payload': self.cursor_payload,
+            'has_more': self.has_more,
+            'stop_reason': self.stop_reason,
+            'total_available': self.total_available,
         }
 
     @classmethod
@@ -59,12 +58,12 @@ class SubscriptionImportBatchResult:
         return cls(
             items=[
                 item if isinstance(item, SubscriptionImportItem) else SubscriptionImportItem.from_dict(item)
-                for item in list(data.get("items") or [])
+                for item in list(data.get('items') or [])
             ],
-            cursor_payload=dict(data.get("cursor_payload") or {}) or None,
-            has_more=bool(data.get("has_more", False)),
-            stop_reason=data.get("stop_reason"),
-            total_available=data.get("total_available"),
+            cursor_payload=dict(data.get('cursor_payload') or {}) or None,
+            has_more=bool(data.get('has_more', False)),
+            stop_reason=data.get('stop_reason'),
+            total_available=data.get('total_available'),
         )
 
 

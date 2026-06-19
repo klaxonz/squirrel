@@ -10,7 +10,8 @@ from .schemas import UserConfigUpdate
 
 router = APIRouter()
 
-@router.get("/me/config")
+
+@router.get('/me/config')
 async def get_user_config(
     current_user: User = Depends(get_current_user),
     cfg_svc: UserConfigService = Depends(get_config_service),
@@ -19,7 +20,7 @@ async def get_user_config(
     return response.success(data=settings)
 
 
-@router.put("/me/config")
+@router.put('/me/config')
 async def update_user_config(
     config_data: UserConfigUpdate,
     current_user: User = Depends(get_current_user),
@@ -30,4 +31,4 @@ async def update_user_config(
         new_settings=config_data.settings,
         merge=config_data.merge,
     )
-    return response.success(data=updated, msg="配置更新成功")
+    return response.success(data=updated, msg='配置更新成功')

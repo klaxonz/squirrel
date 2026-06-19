@@ -20,7 +20,7 @@ def _get_session(engine):
 
 @pytest.fixture
 def engine():
-    e = create_engine("sqlite:///:memory:")
+    e = create_engine('sqlite:///:memory:')
     return e
 
 
@@ -32,14 +32,17 @@ def session_factory(engine):
 @pytest.fixture
 def suppress_postgres(monkeypatch):
     from infrastructure.database import session as database
-    monkeypatch.setattr(database, "register_after_commit", lambda session, callback: None)
+
+    monkeypatch.setattr(database, 'register_after_commit', lambda session, callback: None)
 
 
 @pytest.fixture
 def sss_session(session_factory):
     """Redirect module-level services to use test session_factory via direct attribute assignment."""
     from infrastructure.database import session as database
+
     database.get_session = session_factory
 
     from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
+
     crawl_task_service_mod.crawl_task_service.session_factory = session_factory

@@ -56,7 +56,9 @@ class RssService:
     def list_accounts(self, user_id):
         return list_accounts(user_id)
 
-    def list_entries(self, user_id, *, account_id=None, feed_id=None, is_read=None, is_starred=None, page=1, page_size=30):
+    def list_entries(
+        self, user_id, *, account_id=None, feed_id=None, is_read=None, is_starred=None, page=1, page_size=30
+    ):
         return list_entries(
             user_id,
             account_id=account_id,

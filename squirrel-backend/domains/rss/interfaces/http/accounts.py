@@ -39,13 +39,17 @@ class RssAccountTestRequest(BaseModel):
     credential: SecretStr
 
 
-@router.get("/accounts")
+@router.get('/accounts')
 def list_rss_accounts(current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)):
-    return response.success({"data": svc.list_accounts(current_user.id)})
+    return response.success({'data': svc.list_accounts(current_user.id)})
 
 
-@router.post("/accounts")
-def create_rss_account(req: RssAccountCreateRequest, current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)):
+@router.post('/accounts')
+def create_rss_account(
+    req: RssAccountCreateRequest,
+    current_user: User = Depends(get_current_user),
+    svc: RssService = Depends(get_rss_service),
+):
     try:
         account = svc.create_account(
             current_user.id,
@@ -62,7 +66,7 @@ def create_rss_account(req: RssAccountCreateRequest, current_user: User = Depend
     return response.success(account)
 
 
-@router.put("/accounts/{account_id}")
+@router.put('/accounts/{account_id}')
 def update_rss_account(
     account_id: int,
     req: RssAccountUpdateRequest,
@@ -70,27 +74,33 @@ def update_rss_account(
     svc: RssService = Depends(get_rss_service),
 ):
     payload = req.model_dump(exclude_unset=True)
-    credential = payload.pop("credential", None)
+    credential = payload.pop('credential', None)
     if credential is not None:
-        payload["credential"] = credential.get_secret_value()
+        payload['credential'] = credential.get_secret_value()
     try:
         account = svc.update_account(current_user.id, account_id, **payload)
     except RssServiceError as exc:
         return response.param_error(str(exc))
     if account is None:
-        return response.not_found("RSS 账号不存在")
+        return response.not_found('RSS 账号不存在')
     return response.success(account)
 
 
-@router.delete("/accounts/{account_id}")
-def delete_rss_account(account_id: int, current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)):
+@router.delete('/accounts/{account_id}')
+def delete_rss_account(
+    account_id: int, current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)
+):
     if not svc.delete_account(current_user.id, account_id):
-        return response.not_found("RSS 账号不存在")
+        return response.not_found('RSS 账号不存在')
     return response.success()
 
 
-@router.post("/accounts/test")
-def test_rss_account_config(req: RssAccountTestRequest, current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)):
+@router.post('/accounts/test')
+def test_rss_account_config(
+    req: RssAccountTestRequest,
+    current_user: User = Depends(get_current_user),
+    svc: RssService = Depends(get_rss_service),
+):
     try:
         result = svc.test_account_config(
             provider=req.provider,
@@ -102,17 +112,19 @@ def test_rss_account_config(req: RssAccountTestRequest, current_user: User = Dep
         return response.param_error(str(exc))
     except Exception as exc:
         # API boundary -- convert to HTTP error response
-        return response.error(f"RSS 服务连接失败: {exc}")
+        return response.error(f'RSS 服务连接失败: {exc}')
     return response.success(result)
 
 
-@router.post("/accounts/{account_id}/test")
-def test_rss_account(account_id: int, current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)):
+@router.post('/accounts/{account_id}/test')
+def test_rss_account(
+    account_id: int, current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)
+):
     try:
         result = svc.test_account(current_user.id, account_id)
     except Exception as exc:
         # API boundary -- convert to HTTP error response
-        return response.error(f"RSS 服务连接失败: {exc}")
+        return response.error(f'RSS 服务连接失败: {exc}')
     if result is None:
-        return response.not_found("RSS 账号不存在")
+        return response.not_found('RSS 账号不存在')
     return response.success(result)

@@ -1,5 +1,5 @@
-"""PostProcessStage - post-processing (thumbnail download, etc.)
-"""
+"""PostProcessStage - post-processing (thumbnail download, etc.)"""
+
 import logging
 
 from ..base import PipelineStage
@@ -25,20 +25,20 @@ class PostProcessStage(PipelineStage):
 
     @property
     def stage_name(self) -> str:
-        return "post_process"
+        return 'post_process'
 
     def execute(self, context: PipelineContext) -> PipelineContext:
         """Execute post-processing"""
         # Check if should be skipped
         if context.should_skip_post_process:
-            logger.info("Skipping post-process (flag set): url=%s", context.task.url)
+            logger.info('Skipping post-process (flag set): url=%s', context.task.url)
             return context
 
         video_model = context.video_model
         video_dto = context.video_dto
         # Check preconditions
         if video_model is None or video_dto is None:
-            logger.warning("Missing video_model or video_dto, skipping post-process: url=%s", context.task.url)
+            logger.warning('Missing video_model or video_dto, skipping post-process: url=%s', context.task.url)
             return context
 
         # 1. Asynchronously download thumbnail
@@ -50,10 +50,10 @@ class PostProcessStage(PipelineStage):
                     video_dto.site_name,
                     source_url=context.task.url,
                 )
-                logger.info("Thumbnail download enqueued: video_id=%s", video_model.id)
+                logger.info('Thumbnail download enqueued: video_id=%s', video_model.id)
             except (ValueError, TypeError, AttributeError) as e:
                 # Thumbnail download failure should not interrupt the flow
-                logger.warning("Failed to enqueue thumbnail download: video_id=%s, error=%s", video_model.id, e)
+                logger.warning('Failed to enqueue thumbnail download: video_id=%s, error=%s', video_model.id, e)
 
         return context
 

@@ -18,10 +18,12 @@ class SubscriptionCrudService:
 
     def get_subscription_by_url_and_name(self, url: str, name: str) -> Subscription:
         with self.session_factory() as session:
-            subscription = session.scalars(select(Subscription).where(
-                Subscription.url == url,
-                Subscription.name == name,
-            )).first()
+            subscription = session.scalars(
+                select(Subscription).where(
+                    Subscription.url == url,
+                    Subscription.name == name,
+                )
+            ).first()
             return subscription
 
     def get_active_user_subscription_by_url(self, user_id: int, url: str) -> Subscription:
@@ -63,13 +65,13 @@ class SubscriptionCrudService:
                     UserSubscription.is_deleted.is_(True),
                 ),
             ).all()
-            return {url for url, in rows if url}
+            return {url for (url,) in rows if url}
 
     def check_subscription_status(self, user_id: int, url: str) -> dict[str, Any]:
         if not url:
             return {
-                "is_subscribed": False,
-                "subscription_id": None,
+                'is_subscribed': False,
+                'subscription_id': None,
             }
         with self.session_factory() as session:
             subscription = session.scalars(
@@ -79,8 +81,8 @@ class SubscriptionCrudService:
                 ),
             ).first()
             return {
-                "is_subscribed": subscription is not None,
-                "subscription_id": subscription.id if subscription else None,
+                'is_subscribed': subscription is not None,
+                'subscription_id': subscription.id if subscription else None,
             }
 
     def get_user_subscription_nsfw(self, user_id: int, subscription_id: int) -> bool | None:
@@ -113,7 +115,7 @@ class SubscriptionCrudService:
         with self.session_factory() as session:
             subscription = session.get(Subscription, subscription_id)
             if not subscription or subscription.is_deleted:
-                return None, "not_found"
+                return None, 'not_found'
 
             user_subscription = session.scalars(
                 select(UserSubscription).where(
@@ -123,15 +125,15 @@ class SubscriptionCrudService:
                 ),
             ).first()
             if not user_subscription:
-                return None, "forbidden"
+                return None, 'forbidden'
 
             session.expunge(subscription)
-            return subscription, "ok"
+            return subscription, 'ok'
 
     def update_subscription(
-            self,
-            subscription_id: int,
-            update_data: dict[str, Any],
+        self,
+        subscription_id: int,
+        update_data: dict[str, Any],
     ) -> bool:
         with self.session_factory() as session:
             subscription = session.get(Subscription, subscription_id)
@@ -147,6 +149,7 @@ class SubscriptionCrudService:
             updated = True
 
         import user.services.search.suggestion_service as search_suggestion_service
+
         search_suggestion_service.invalidate_users_for_subscription(subscription_id)
         return updated
 

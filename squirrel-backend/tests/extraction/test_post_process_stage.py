@@ -24,16 +24,16 @@ def test_post_process_stage_keeps_thumbnail_work_but_skips_download_task_creatio
     stage = PostProcessStage(thumbnail_service)
     context = PipelineContext(
         task=ExtractionTask(
-            url="https://www.youtube.com/watch?v=demo",
-            site_name="youtube",
-            metadata={"only_extract": False},
+            url='https://www.youtube.com/watch?v=demo',
+            site_name='youtube',
+            metadata={'only_extract': False},
         ),
         video_model=SimpleNamespace(id=42),
         video_dto=VideoDTO(
-            url="https://www.youtube.com/watch?v=demo",
-            title="Runtime video",
-            site_name="youtube",
-            thumbnail="https://img.example.com/thumb.jpg",
+            url='https://www.youtube.com/watch?v=demo',
+            title='Runtime video',
+            site_name='youtube',
+            thumbnail='https://img.example.com/thumb.jpg',
             publish_date=datetime(2024, 1, 1),
         ),
     )
@@ -42,5 +42,5 @@ def test_post_process_stage_keeps_thumbnail_work_but_skips_download_task_creatio
 
     assert result is context
     assert thumbnail_service.calls == [
-        (42, "https://img.example.com/thumb.jpg", "youtube", "https://www.youtube.com/watch?v=demo"),
+        (42, 'https://img.example.com/thumb.jpg', 'youtube', 'https://www.youtube.com/watch?v=demo'),
     ]

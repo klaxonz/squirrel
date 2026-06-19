@@ -1,5 +1,5 @@
-"""Video persistence service - handles video database operations
-"""
+"""Video persistence service - handles video database operations"""
+
 import logging
 from datetime import datetime
 
@@ -73,7 +73,7 @@ class VideoPersistenceService:
             if is_new:
                 # Create new video
                 if publish_date is None:
-                    logger.warning("Missing publish_date when creating video: url=%s", url)
+                    logger.warning('Missing publish_date when creating video: url=%s', url)
 
                 video = VideoModel(
                     url=url,
@@ -90,7 +90,7 @@ class VideoPersistenceService:
                 session.commit()
                 session.refresh(video)
 
-                logger.info("Created new video: id=%s, url=%s", video.id, url)
+                logger.info('Created new video: id=%s, url=%s', video.id, url)
             else:
                 updated = False
 
@@ -106,7 +106,6 @@ class VideoPersistenceService:
                 if thumbnail is not None and thumbnail != video.thumbnail:
                     video.thumbnail = thumbnail
                     updated = True
-
 
                 if duration is not None and duration != video.duration:
                     video.duration = duration
@@ -124,9 +123,9 @@ class VideoPersistenceService:
                     _index_video_after_commit(session, video)
                     session.commit()
                     session.refresh(video)
-                    logger.info("Updated video: id=%s, url=%s", video.id, url)
+                    logger.info('Updated video: id=%s, url=%s', video.id, url)
                 else:
-                    logger.debug("Video already exists: id=%s, url=%s", video.id, url)
+                    logger.debug('Video already exists: id=%s, url=%s', video.id, url)
 
             # Create subscription-video link (if subscription_id provided)
             if subscription_id:
@@ -151,7 +150,7 @@ class VideoPersistenceService:
     ) -> None:
         """Create subscription-video association"""
         try:
-            refresh_feed = subscription_sync_mode == "incremental"
+            refresh_feed = subscription_sync_mode == 'incremental'
             _, created_new_link = subscription_video_service.create_subscription_video(
                 subscription_id,
                 video_id,
@@ -159,10 +158,21 @@ class VideoPersistenceService:
             )
 
             if created_new_link:
-                logger.debug("Created subscription-video link: subscription_id=%s, video_id=%s, is_new_video=%s, sync_mode=%s", subscription_id, video_id, is_new_video, subscription_sync_mode)
+                logger.debug(
+                    'Created subscription-video link: subscription_id=%s, video_id=%s, is_new_video=%s, sync_mode=%s',
+                    subscription_id,
+                    video_id,
+                    is_new_video,
+                    subscription_sync_mode,
+                )
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error("Failed to create subscription-video link: subscription_id=%s, video_id=%s, error=%s", subscription_id, video_id, e)
+            logger.error(
+                'Failed to create subscription-video link: subscription_id=%s, video_id=%s, error=%s',
+                subscription_id,
+                video_id,
+                e,
+            )
             # Do not raise, allow continuation
 
 

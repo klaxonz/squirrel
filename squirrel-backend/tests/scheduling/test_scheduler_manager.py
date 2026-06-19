@@ -32,21 +32,21 @@ class _FakeThread:
 def test_scheduler_start_and_stop_manage_heartbeat_thread(monkeypatch):
     started = []
 
-    monkeypatch.setattr(scheduler_manager, "Scheduler", _FakeScheduler)
-    monkeypatch.setattr(scheduler_manager.dynamic_task_manager, "initialize", lambda scheduler: None)
-    monkeypatch.setattr(scheduler_manager, "ensure_system_tasks", lambda: None)
-    monkeypatch.setattr(scheduler_manager._task_synchronizer, "seed_task_fingerprints", lambda: None)
-    monkeypatch.setattr(scheduler_manager.dynamic_task_manager, "load_and_register_tasks", lambda: None)
-    monkeypatch.setattr(scheduler_manager, "_update_scheduler_status", lambda **kwargs: None)
-    monkeypatch.setattr(scheduler_manager._task_synchronizer, "sync_scheduled_tasks", lambda: None)
-    monkeypatch.setattr(scheduler_manager._task_synchronizer, "consume_manual_triggers", lambda: None)
+    monkeypatch.setattr(scheduler_manager, 'Scheduler', _FakeScheduler)
+    monkeypatch.setattr(scheduler_manager.dynamic_task_manager, 'initialize', lambda scheduler: None)
+    monkeypatch.setattr(scheduler_manager, 'ensure_system_tasks', lambda: None)
+    monkeypatch.setattr(scheduler_manager._task_synchronizer, 'seed_task_fingerprints', lambda: None)
+    monkeypatch.setattr(scheduler_manager.dynamic_task_manager, 'load_and_register_tasks', lambda: None)
+    monkeypatch.setattr(scheduler_manager, '_update_scheduler_status', lambda **kwargs: None)
+    monkeypatch.setattr(scheduler_manager._task_synchronizer, 'sync_scheduled_tasks', lambda: None)
+    monkeypatch.setattr(scheduler_manager._task_synchronizer, 'consume_manual_triggers', lambda: None)
 
     def _fake_thread_factory(target=None, args=None, daemon=None):
         thread = _FakeThread(target=target, args=args, daemon=daemon)
         started.append(thread)
         return thread
 
-    monkeypatch.setattr(scheduler_manager, "Thread", _fake_thread_factory)
+    monkeypatch.setattr(scheduler_manager, 'Thread', _fake_thread_factory)
 
     scheduler_manager.scheduler_start()
 

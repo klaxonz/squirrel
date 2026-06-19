@@ -22,10 +22,7 @@ def load_subscription_extract_counts(session: Session, subscription_ids: list[in
         .where(SubscriptionVideo.subscription_id.in_(subscription_ids))
         .group_by(SubscriptionVideo.subscription_id),
     ).all()
-    return {
-        int(subscription_id): int(total_extract or 0)
-        for subscription_id, total_extract in rows
-    }
+    return {int(subscription_id): int(total_extract or 0) for subscription_id, total_extract in rows}
 
 
 def load_subscription_unread_counts(session: Session, user_id: int, subscription_ids: list[int]) -> dict[int, int]:
@@ -50,13 +47,12 @@ def load_subscription_unread_counts(session: Session, user_id: int, subscription
         )
         .group_by(SubscriptionVideo.subscription_id),
     ).all()
-    return {
-        int(subscription_id): int(unread_count or 0)
-        for subscription_id, unread_count in rows
-    }
+    return {int(subscription_id): int(unread_count or 0) for subscription_id, unread_count in rows}
 
 
-def load_recent_videos(session: Session, subscription_ids: list[int], limit: int = 10) -> dict[int, list[dict[str, Any]]]:
+def load_recent_videos(
+    session: Session, subscription_ids: list[int], limit: int = 10
+) -> dict[int, list[dict[str, Any]]]:
     if not subscription_ids:
         return {}
 
@@ -71,10 +67,12 @@ def load_recent_videos(session: Session, subscription_ids: list[int], limit: int
             Video.thumbnail.label('thumbnail'),
             Video.duration.label('duration'),
             Video.publish_date.label('publish_date'),
-            func.row_number().over(
+            func.row_number()
+            .over(
                 partition_by=SubscriptionVideo.subscription_id,
                 order_by=(Video.publish_date.desc().nullslast(), Video.created_at.desc()),
-            ).label('rank'),
+            )
+            .label('rank'),
         )
         .select_from(SubscriptionVideo)
         .join(Video, Video.id == SubscriptionVideo.video_id)
@@ -103,13 +101,15 @@ def load_recent_videos(session: Session, subscription_ids: list[int], limit: int
     for row in rows:
         sub_id = int(row.subscription_id)
         videos = grouped.setdefault(sub_id, [])
-        videos.append({
-            'id': int(row.id),
-            'title': row.title or '',
-            'url': row.url,
-            'thumbnail': row.thumbnail,
-            'duration': int(row.duration or 0),
-            'publish_date': serialize_datetime(row.publish_date),
-        })
+        videos.append(
+            {
+                'id': int(row.id),
+                'title': row.title or '',
+                'url': row.url,
+                'thumbnail': row.thumbnail,
+                'duration': int(row.duration or 0),
+                'publish_date': serialize_datetime(row.publish_date),
+            }
+        )
 
     return grouped

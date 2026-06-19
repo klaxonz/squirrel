@@ -97,10 +97,10 @@ class VideoListService:
         domains: list[str] | None,
         cursor: str | None,
         page_size: int,
-        time_range: str = "all",
-        duration: str = "all",
-        content_type: str = "all",
-        special: str = "all",
+        time_range: str = 'all',
+        duration: str = 'all',
+        content_type: str = 'all',
+        special: str = 'all',
     ) -> tuple[list[dict], str | None]:
         """列表查询。返回 (videos, next_cursor);next_cursor 为 None 表示无更多。
 
@@ -109,7 +109,7 @@ class VideoListService:
         - 搜索(有搜索词):Meili 召回全集(≤5000) + PG 过滤 + OFFSET 分页
         """
         user_config = self._get_user_config(user_id)
-        show_nsfw = user_config.get("showNsfw", False)
+        show_nsfw = user_config.get('showNsfw', False)
         started_at = perf_counter()
 
         has_query = bool(query and query.strip())
@@ -151,11 +151,18 @@ class VideoListService:
                 )
 
         logger.info(
-            "[Performance] list_videos user_id=%s category=%s query=%s page_size=%s "
-            "video_count=%s recall_ms=%.3f filter_ms=%.3f page_ms=%.3f total_ms=%.3f next_cursor=%s",
-            user_id, category, has_query, page_size, len(videos),
-            timings['recall_ms'], timings['filter_ms'], timings['page_ms'],
-            self._elapsed_ms(started_at), bool(next_cursor),
+            '[Performance] list_videos user_id=%s category=%s query=%s page_size=%s '
+            'video_count=%s recall_ms=%.3f filter_ms=%.3f page_ms=%.3f total_ms=%.3f next_cursor=%s',
+            user_id,
+            category,
+            has_query,
+            page_size,
+            len(videos),
+            timings['recall_ms'],
+            timings['filter_ms'],
+            timings['page_ms'],
+            self._elapsed_ms(started_at),
+            bool(next_cursor),
         )
         return videos, next_cursor
 
@@ -235,7 +242,7 @@ class VideoListService:
         filter_ms = self._elapsed_ms(filter_started)
 
         offset = max((page - 1) * page_size, 0)
-        page_ids = filtered_ids[offset:offset + page_size]
+        page_ids = filtered_ids[offset : offset + page_size]
         has_more = offset + page_size < len(filtered_ids)
         next_cursor = _encode_page_cursor(page + 1) if has_more else None
 
@@ -248,10 +255,22 @@ class VideoListService:
         return page_items.items, next_cursor, _timings(recall_ms, filter_ms, page_ms)
 
     def _list_browse_keyset(
-        self, session: Session, *, user_id: int, show_nsfw: bool, subscription_id: int | None,
-        category: str, sort_by: str, nsfw: str, domains: list[str] | None,
-        cursor: str | None, page_size: int, time_range: str, duration: str,
-        content_type: str, special: str,
+        self,
+        session: Session,
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        subscription_id: int | None,
+        category: str,
+        sort_by: str,
+        nsfw: str,
+        domains: list[str] | None,
+        cursor: str | None,
+        page_size: int,
+        time_range: str,
+        duration: str,
+        content_type: str,
+        special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """浏览 keyset:循环召回 + PG 过滤,补足一页。
 
@@ -262,10 +281,18 @@ class VideoListService:
         if category in ('read', 'liked', 'later'):
             return self._list_user_state_browse(
                 session,
-                user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
-                category=category, nsfw=nsfw, domains=domains, cursor=cursor,
-                page_size=page_size, time_range=time_range, duration=duration,
-                content_type=content_type, special=special,
+                user_id=user_id,
+                show_nsfw=show_nsfw,
+                subscription_id=subscription_id,
+                category=category,
+                nsfw=nsfw,
+                domains=domains,
+                cursor=cursor,
+                page_size=page_size,
+                time_range=time_range,
+                duration=duration,
+                content_type=content_type,
+                special=special,
             )
 
         # special=yes 走 PG 直查(特别关注订阅名下的视频),不走 Meili 全局召回。
@@ -274,10 +301,18 @@ class VideoListService:
         if special == 'yes':
             return self._list_special_follow_browse(
                 session,
-                user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
-                category=category, nsfw=nsfw, domains=domains, cursor=cursor,
-                page_size=page_size, time_range=time_range, duration=duration,
-                content_type=content_type, special=special,
+                user_id=user_id,
+                show_nsfw=show_nsfw,
+                subscription_id=subscription_id,
+                category=category,
+                nsfw=nsfw,
+                domains=domains,
+                cursor=cursor,
+                page_size=page_size,
+                time_range=time_range,
+                duration=duration,
+                content_type=content_type,
+                special=special,
             )
 
         # 指定 subscription_id 走 PG keyset 直查(频道详情页"本地"列表),不走 Meili 全局召回。
@@ -288,10 +323,18 @@ class VideoListService:
         if subscription_id is not None:
             return self._list_subscription_browse(
                 session,
-                user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
-                category=category, nsfw=nsfw, domains=domains, cursor=cursor,
-                page_size=page_size, time_range=time_range, duration=duration,
-                content_type=content_type, special=special,
+                user_id=user_id,
+                show_nsfw=show_nsfw,
+                subscription_id=subscription_id,
+                category=category,
+                nsfw=nsfw,
+                domains=domains,
+                cursor=cursor,
+                page_size=page_size,
+                time_range=time_range,
+                duration=duration,
+                content_type=content_type,
+                special=special,
             )
 
         if not settings.meili.url:
@@ -313,8 +356,12 @@ class VideoListService:
             recall_started = perf_counter()
             try:
                 recalled_ids, next_cursor = indexer.recall_page(
-                    domains=domains, time_range=time_range, duration=duration,
-                    cursor=last_cursor, limit=recall_limit, category=category,
+                    domains=domains,
+                    time_range=time_range,
+                    duration=duration,
+                    cursor=last_cursor,
+                    limit=recall_limit,
+                    category=category,
                 )
             except Exception:
                 logger.warning('meili recall_page failed', exc_info=True)
@@ -369,10 +416,23 @@ class VideoListService:
         return page_items.items, page_cursor, _timings(total_recall_ms, total_filter_ms, page_ms)
 
     def _list_search_offset(
-        self, session: Session, *, user_id: int, show_nsfw: bool, query: str,
-        subscription_id: int | None, category: str, sort_by: str, nsfw: str,
-        domains: list[str] | None, cursor: str | None, page_size: int,
-        time_range: str, duration: str, content_type: str, special: str,
+        self,
+        session: Session,
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        query: str,
+        subscription_id: int | None,
+        category: str,
+        sort_by: str,
+        nsfw: str,
+        domains: list[str] | None,
+        cursor: str | None,
+        page_size: int,
+        time_range: str,
+        duration: str,
+        content_type: str,
+        special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """搜索 OFFSET:Meili 召回全集(≤5000) → PG 过滤 → OFFSET 分页。
 
@@ -382,11 +442,19 @@ class VideoListService:
         if category in ('read', 'liked', 'later'):
             return self._list_user_state_search(
                 session,
-                user_id=user_id, show_nsfw=show_nsfw, query=query,
-                subscription_id=subscription_id, category=category, nsfw=nsfw,
-                domains=domains, cursor=cursor, page_size=page_size,
-                time_range=time_range, duration=duration,
-                content_type=content_type, special=special,
+                user_id=user_id,
+                show_nsfw=show_nsfw,
+                query=query,
+                subscription_id=subscription_id,
+                category=category,
+                nsfw=nsfw,
+                domains=domains,
+                cursor=cursor,
+                page_size=page_size,
+                time_range=time_range,
+                duration=duration,
+                content_type=content_type,
+                special=special,
             )
 
         # special=yes 搜索:PG 取特别关注 id 集合 → Meili filter id IN [...] 反向交集。
@@ -394,11 +462,19 @@ class VideoListService:
         if special == 'yes':
             return self._list_special_follow_search(
                 session,
-                user_id=user_id, show_nsfw=show_nsfw, query=query,
-                subscription_id=subscription_id, category=category, nsfw=nsfw,
-                domains=domains, cursor=cursor, page_size=page_size,
-                time_range=time_range, duration=duration,
-                content_type=content_type, special=special,
+                user_id=user_id,
+                show_nsfw=show_nsfw,
+                query=query,
+                subscription_id=subscription_id,
+                category=category,
+                nsfw=nsfw,
+                domains=domains,
+                cursor=cursor,
+                page_size=page_size,
+                time_range=time_range,
+                duration=duration,
+                content_type=content_type,
+                special=special,
             )
 
         if not settings.meili.url:
@@ -426,16 +502,36 @@ class VideoListService:
             return [], None, _timings(recall_ms, 0.0, 0.0)
 
         return self._filter_and_offset_paginate(
-            session, recalled_ids,
-            user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
-            category=category, nsfw=nsfw, content_type=content_type, special=special,
-            page=page, page_size=page_size, recall_ms=recall_ms,
+            session,
+            recalled_ids,
+            user_id=user_id,
+            show_nsfw=show_nsfw,
+            subscription_id=subscription_id,
+            category=category,
+            nsfw=nsfw,
+            content_type=content_type,
+            special=special,
+            page=page,
+            page_size=page_size,
+            recall_ms=recall_ms,
         )
 
     def _list_user_state_browse(
-        self, session: Session, *, user_id: int, show_nsfw: bool, subscription_id: int | None,
-        category: str, nsfw: str, domains: list[str] | None, cursor: str | None,
-        page_size: int, time_range: str, duration: str, content_type: str, special: str,
+        self,
+        session: Session,
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        subscription_id: int | None,
+        category: str,
+        nsfw: str,
+        domains: list[str] | None,
+        cursor: str | None,
+        page_size: int,
+        time_range: str,
+        duration: str,
+        content_type: str,
+        special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """read/liked/later 浏览:PG per-user 表 keyset 直查 + 权限过滤。
 
@@ -449,8 +545,11 @@ class VideoListService:
         recall_started = perf_counter()
         try:
             video_ids, next_cursor = fetch_user_state_video_ids(
-                session, user_id=user_id, category=category,
-                cursor=cursor, limit=fetch_limit,
+                session,
+                user_id=user_id,
+                category=category,
+                cursor=cursor,
+                limit=fetch_limit,
             )
         except Exception:
             logger.warning('fetch_user_state_video_ids failed', exc_info=True)
@@ -464,16 +563,36 @@ class VideoListService:
         # has_more 看 PG per-user 表是否还有更多(next_cursor 非 None)
         # 注意:即使权限过滤后不足一页,只要 per-user 表还有更多,就允许翻页
         return self._filter_and_paginate(
-            session, video_ids,
-            user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
-            category='all', nsfw=nsfw, content_type=content_type, special=special,
-            page_size=page_size, next_cursor=next_cursor, recall_ms=recall_ms,
+            session,
+            video_ids,
+            user_id=user_id,
+            show_nsfw=show_nsfw,
+            subscription_id=subscription_id,
+            category='all',
+            nsfw=nsfw,
+            content_type=content_type,
+            special=special,
+            page_size=page_size,
+            next_cursor=next_cursor,
+            recall_ms=recall_ms,
         )
 
     def _list_special_follow_browse(
-        self, session: Session, *, user_id: int, show_nsfw: bool, subscription_id: int | None,
-        category: str, nsfw: str, domains: list[str] | None, cursor: str | None,
-        page_size: int, time_range: str, duration: str, content_type: str, special: str,
+        self,
+        session: Session,
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        subscription_id: int | None,
+        category: str,
+        nsfw: str,
+        domains: list[str] | None,
+        cursor: str | None,
+        page_size: int,
+        time_range: str,
+        duration: str,
+        content_type: str,
+        special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """特别关注浏览:PG keyset 直查用户标记为 is_special_followed 的订阅名下的视频。
 
@@ -489,7 +608,10 @@ class VideoListService:
         recall_started = perf_counter()
         try:
             video_ids, next_cursor = fetch_special_follow_video_ids(
-                session, user_id=user_id, cursor=cursor, limit=fetch_limit,
+                session,
+                user_id=user_id,
+                cursor=cursor,
+                limit=fetch_limit,
             )
         except Exception:
             logger.warning('fetch_special_follow_video_ids failed', exc_info=True)
@@ -501,16 +623,36 @@ class VideoListService:
 
         # 权限过滤;category='all' + special='all'(fetch 已保证 special 语义,避免重复 EXISTS)
         return self._filter_and_paginate(
-            session, video_ids,
-            user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
-            category='all', nsfw=nsfw, content_type=content_type, special='all',
-            page_size=page_size, next_cursor=next_cursor, recall_ms=recall_ms,
+            session,
+            video_ids,
+            user_id=user_id,
+            show_nsfw=show_nsfw,
+            subscription_id=subscription_id,
+            category='all',
+            nsfw=nsfw,
+            content_type=content_type,
+            special='all',
+            page_size=page_size,
+            next_cursor=next_cursor,
+            recall_ms=recall_ms,
         )
 
     def _list_subscription_browse(
-        self, session: Session, *, user_id: int, show_nsfw: bool, subscription_id: int,
-        category: str, nsfw: str, domains: list[str] | None, cursor: str | None,
-        page_size: int, time_range: str, duration: str, content_type: str, special: str,
+        self,
+        session: Session,
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        subscription_id: int,
+        category: str,
+        nsfw: str,
+        domains: list[str] | None,
+        cursor: str | None,
+        page_size: int,
+        time_range: str,
+        duration: str,
+        content_type: str,
+        special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """指定订阅浏览:PG keyset 直查该订阅名下的视频(频道详情页"本地"列表)。
 
@@ -527,8 +669,12 @@ class VideoListService:
         recall_started = perf_counter()
         try:
             video_ids, next_cursor = fetch_subscription_video_ids(
-                session, user_id=user_id, subscription_id=subscription_id,
-                cursor=cursor, limit=fetch_limit, category=category,
+                session,
+                user_id=user_id,
+                subscription_id=subscription_id,
+                cursor=cursor,
+                limit=fetch_limit,
+                category=category,
             )
         except Exception:
             logger.warning('fetch_subscription_video_ids failed', exc_info=True)
@@ -540,17 +686,37 @@ class VideoListService:
 
         # 权限过滤;category 透传(unread 仍需 EXISTS,all/preview 不需);special 透传
         return self._filter_and_paginate(
-            session, video_ids,
-            user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
-            category=category, nsfw=nsfw, content_type=content_type, special=special,
-            page_size=page_size, next_cursor=next_cursor, recall_ms=recall_ms,
+            session,
+            video_ids,
+            user_id=user_id,
+            show_nsfw=show_nsfw,
+            subscription_id=subscription_id,
+            category=category,
+            nsfw=nsfw,
+            content_type=content_type,
+            special=special,
+            page_size=page_size,
+            next_cursor=next_cursor,
+            recall_ms=recall_ms,
         )
 
     def _list_user_state_search(
-        self, session: Session, *, user_id: int, show_nsfw: bool, query: str,
-        subscription_id: int | None, category: str, nsfw: str,
-        domains: list[str] | None, cursor: str | None, page_size: int,
-        time_range: str, duration: str, content_type: str, special: str,
+        self,
+        session: Session,
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        query: str,
+        subscription_id: int | None,
+        category: str,
+        nsfw: str,
+        domains: list[str] | None,
+        cursor: str | None,
+        page_size: int,
+        time_range: str,
+        duration: str,
+        content_type: str,
+        special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """read/liked/later 搜索:PG 取 per-user id 集合 → Meili filter id IN [...] 反向交集。
 
@@ -575,8 +741,13 @@ class VideoListService:
         recall_started = perf_counter()
         try:
             recalled_ids = recall_offset_ids(
-                query=query, domains=domains, time_range=time_range, duration=duration,
-                filter_ids=user_ids, limit=_SEARCH_RECALL_LIMIT, category=category,
+                query=query,
+                domains=domains,
+                time_range=time_range,
+                duration=duration,
+                filter_ids=user_ids,
+                limit=_SEARCH_RECALL_LIMIT,
+                category=category,
             )
         except Exception:
             logger.warning('meili recall (reverse-intersection) failed', exc_info=True)
@@ -588,17 +759,37 @@ class VideoListService:
 
         # 3. PG 权限过滤 + 4. OFFSET 分页
         return self._filter_and_offset_paginate(
-            session, recalled_ids,
-            user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
-            category='all', nsfw=nsfw, content_type=content_type, special=special,
-            page=page, page_size=page_size, recall_ms=recall_ms,
+            session,
+            recalled_ids,
+            user_id=user_id,
+            show_nsfw=show_nsfw,
+            subscription_id=subscription_id,
+            category='all',
+            nsfw=nsfw,
+            content_type=content_type,
+            special=special,
+            page=page,
+            page_size=page_size,
+            recall_ms=recall_ms,
         )
 
     def _list_special_follow_search(
-        self, session: Session, *, user_id: int, show_nsfw: bool, query: str,
-        subscription_id: int | None, category: str, nsfw: str,
-        domains: list[str] | None, cursor: str | None, page_size: int,
-        time_range: str, duration: str, content_type: str, special: str,
+        self,
+        session: Session,
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        query: str,
+        subscription_id: int | None,
+        category: str,
+        nsfw: str,
+        domains: list[str] | None,
+        cursor: str | None,
+        page_size: int,
+        time_range: str,
+        duration: str,
+        content_type: str,
+        special: str,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """特别关注搜索:PG 取特别关注 id 集合 → Meili filter id IN [...] 反向交集。
 
@@ -623,8 +814,13 @@ class VideoListService:
         recall_started = perf_counter()
         try:
             recalled_ids = recall_offset_ids(
-                query=query, domains=domains, time_range=time_range, duration=duration,
-                filter_ids=special_ids, limit=_SEARCH_RECALL_LIMIT, category=category,
+                query=query,
+                domains=domains,
+                time_range=time_range,
+                duration=duration,
+                filter_ids=special_ids,
+                limit=_SEARCH_RECALL_LIMIT,
+                category=category,
             )
         except Exception:
             logger.warning('meili recall (special-follow) failed', exc_info=True)
@@ -636,10 +832,18 @@ class VideoListService:
 
         # 3. PG 权限过滤(special 语义已由 fetch_special_follow_id_set 保证,传 'all' 避免重复)+ 4. OFFSET 分页
         return self._filter_and_offset_paginate(
-            session, recalled_ids,
-            user_id=user_id, show_nsfw=show_nsfw, subscription_id=subscription_id,
-            category='all', nsfw=nsfw, content_type=content_type, special='all',
-            page=page, page_size=page_size, recall_ms=recall_ms,
+            session,
+            recalled_ids,
+            user_id=user_id,
+            show_nsfw=show_nsfw,
+            subscription_id=subscription_id,
+            category='all',
+            nsfw=nsfw,
+            content_type=content_type,
+            special='all',
+            page=page,
+            page_size=page_size,
+            recall_ms=recall_ms,
         )
 
     def get_video(self, user_id: int, video_id: int) -> dict[str, Any] | None:

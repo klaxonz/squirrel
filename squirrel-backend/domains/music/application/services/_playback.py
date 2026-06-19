@@ -9,7 +9,11 @@ class MusicPlaybackMixin:
     # --- Playback ---
 
     async def get_track_play_url(
-        self, user_id: int, hash_value: str, album_audio_id: str | None, quality: str,
+        self,
+        user_id: int,
+        hash_value: str,
+        album_audio_id: str | None,
+        quality: str,
     ) -> dict[str, Any]:
         params: dict[str, Any] = {
             'hash': hash_value,
@@ -36,16 +40,26 @@ class MusicPlaybackMixin:
         }
 
     async def get_track_lyric(
-        self, user_id: int, title: str, artist: str, hash_value: str, album_audio_id: str | None, duration: int,
+        self,
+        user_id: int,
+        title: str,
+        artist: str,
+        hash_value: str,
+        album_audio_id: str | None,
+        duration: int,
     ) -> dict[str, Any]:
         keyword = f'{artist} - {title}' if artist else title
-        lyric_search = await self._client.request_kugou('/search/lyric', {
-            'keywords': keyword,
-            'hash': hash_value,
-            'album_audio_id': album_audio_id or 0,
-            'duration': duration,
-            'man': 'no',
-        }, user_id=user_id)
+        lyric_search = await self._client.request_kugou(
+            '/search/lyric',
+            {
+                'keywords': keyword,
+                'hash': hash_value,
+                'album_audio_id': album_audio_id or 0,
+                'duration': duration,
+                'man': 'no',
+            },
+            user_id=user_id,
+        )
         candidates = lyric_search.get('candidates')
         if not isinstance(candidates, list) or not candidates:
             return {'lines': []}
@@ -59,12 +73,16 @@ class MusicPlaybackMixin:
         if not lyric_id or not access_key:
             return {'lines': []}
 
-        lyric_payload = await self._client.request_kugou('/lyric', {
-            'id': lyric_id,
-            'accesskey': access_key,
-            'fmt': 'lrc',
-            'decode': 'true',
-        }, user_id=user_id)
+        lyric_payload = await self._client.request_kugou(
+            '/lyric',
+            {
+                'id': lyric_id,
+                'accesskey': access_key,
+                'fmt': 'lrc',
+                'decode': 'true',
+            },
+            user_id=user_id,
+        )
         content = str(lyric_payload.get('decodeContent') or '')
 
         return {
@@ -72,10 +90,14 @@ class MusicPlaybackMixin:
         }
 
     async def get_track_mv(self, user_id: int, album_audio_id: str) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/kmr/audio/mv', {
-            'album_audio_id': album_audio_id,
-            'fields': 'mkv,tags,h264,h265,authors',
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/kmr/audio/mv',
+            {
+                'album_audio_id': album_audio_id,
+                'fields': 'mkv,tags,h264,h265,authors',
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('info', 'list', 'lists', 'mvs', 'data'))
         return {
@@ -96,4 +118,3 @@ class MusicPlaybackMixin:
                 if isinstance(row, dict)
             ],
         }
-

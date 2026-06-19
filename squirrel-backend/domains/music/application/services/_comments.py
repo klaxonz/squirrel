@@ -8,11 +8,15 @@ class MusicCommentsMixin:
     # --- Comments ---
 
     async def get_song_comments(self, user_id: int, mixsong_id: str, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/comment/music', {
-            'mixsongid': mixsong_id,
-            'p': page,
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/comment/music',
+            {
+                'mixsongid': mixsong_id,
+                'p': page,
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
         total = (
@@ -29,21 +33,26 @@ class MusicCommentsMixin:
         }
 
     async def get_song_comments_classify(
-        self, user_id: int, mixsong_id: str, type_id: str, page: int, page_size: int,
+        self,
+        user_id: int,
+        mixsong_id: str,
+        type_id: str,
+        page: int,
+        page_size: int,
     ) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/comment/music/classify', {
-            'mixsongid': mixsong_id,
-            'type_id': type_id,
-            'page': page,
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/comment/music/classify',
+            {
+                'mixsongid': mixsong_id,
+                'type_id': type_id,
+                'page': page,
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
-        total = (
-            data.get('total') or data.get('count') or len(rows)
-            if isinstance(data, dict)
-            else len(rows)
-        )
+        total = data.get('total') or data.get('count') or len(rows) if isinstance(data, dict) else len(rows)
 
         return {
             'items': [normalize_comment(row) for row in rows],
@@ -53,9 +62,13 @@ class MusicCommentsMixin:
         }
 
     async def get_song_comments_hotword(self, user_id: int, mixsong_id: str) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/comment/music/hotword', {
-            'mixsongid': mixsong_id,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/comment/music/hotword',
+            {
+                'mixsongid': mixsong_id,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
         return {
@@ -69,7 +82,12 @@ class MusicCommentsMixin:
         }
 
     async def get_floor_comments(
-        self, user_id: int, special_id: str, mixsong_id: str | None, page: int, page_size: int,
+        self,
+        user_id: int,
+        special_id: str,
+        mixsong_id: str | None,
+        page: int,
+        page_size: int,
     ) -> dict[str, Any]:
         params: dict[str, Any] = {
             'special_id': special_id,
@@ -81,11 +99,7 @@ class MusicCommentsMixin:
         payload = await self._client.request_kugou('/comment/floor', params, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
-        total = (
-            data.get('total') or data.get('count') or len(rows)
-            if isinstance(data, dict)
-            else len(rows)
-        )
+        total = data.get('total') or data.get('count') or len(rows) if isinstance(data, dict) else len(rows)
 
         return {
             'items': [normalize_comment(row) for row in rows],
@@ -95,18 +109,18 @@ class MusicCommentsMixin:
         }
 
     async def get_playlist_comments(self, user_id: int, playlist_id: str, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/comment/playlist', {
-            'id': playlist_id,
-            'p': page,
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/comment/playlist',
+            {
+                'id': playlist_id,
+                'p': page,
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
-        total = (
-            data.get('total') or data.get('count') or len(rows)
-            if isinstance(data, dict)
-            else len(rows)
-        )
+        total = data.get('total') or data.get('count') or len(rows) if isinstance(data, dict) else len(rows)
 
         return {
             'items': [normalize_comment(row) for row in rows],
@@ -116,18 +130,18 @@ class MusicCommentsMixin:
         }
 
     async def get_album_comments(self, user_id: int, album_id: str, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/comment/album', {
-            'id': album_id,
-            'p': page,
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/comment/album',
+            {
+                'id': album_id,
+                'p': page,
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('cmtlist', 'list', 'lists', 'comments', 'info', 'items', 'data'))
-        total = (
-            data.get('total') or data.get('count') or len(rows)
-            if isinstance(data, dict)
-            else len(rows)
-        )
+        total = data.get('total') or data.get('count') or len(rows) if isinstance(data, dict) else len(rows)
 
         return {
             'items': [normalize_comment(row) for row in rows],
@@ -137,9 +151,14 @@ class MusicCommentsMixin:
         }
 
     async def get_comment_counts(self, user_id: int, hash_value: str) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/comment/count', {
-            'hash': hash_value,
-        }, user_id=user_id, use_auth=False)
+        payload = await self._client.request_kugou(
+            '/comment/count',
+            {
+                'hash': hash_value,
+            },
+            user_id=user_id,
+            use_auth=False,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         count = 0
         if isinstance(data, dict):

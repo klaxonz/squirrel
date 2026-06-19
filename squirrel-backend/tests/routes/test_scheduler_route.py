@@ -10,13 +10,15 @@ class FakeScheduledTaskService:
         self.calls = []
 
     def get_task_list(self, *, page, page_size, search, status, task_type):
-        self.calls.append({
-            'page': page,
-            'page_size': page_size,
-            'search': search,
-            'status': status,
-            'task_type': task_type,
-        })
+        self.calls.append(
+            {
+                'page': page,
+                'page_size': page_size,
+                'search': search,
+                'status': status,
+                'task_type': task_type,
+            }
+        )
         return {
             'page': page,
             'page_size': page_size,
@@ -53,10 +55,12 @@ def test_scheduled_tasks_route_returns_paginated_task_list():
         'total': 1,
         'data': [{'id': 1, 'name': 'Demo Task'}],
     }
-    assert fake_service.calls == [{
-        'page': 2,
-        'page_size': 15,
-        'search': 'demo',
-        'status': 'enabled',
-        'task_type': 'system',
-    }]
+    assert fake_service.calls == [
+        {
+            'page': 2,
+            'page_size': 15,
+            'search': 'demo',
+            'status': 'enabled',
+            'task_type': 'system',
+        }
+    ]

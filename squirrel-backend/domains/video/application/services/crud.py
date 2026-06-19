@@ -33,6 +33,7 @@ def _upsert_video_safe(video_id: int) -> None:
     """Lazy import 避免 crud 与 meili_indexer 之间的潜在循环依赖。"""
     try:
         from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
+
         get_meili_video_indexer().upsert_safe(video_id)
     except Exception:
         logger.warning('meili upsert_safe failed video_id=%s (full reindex will catch up)', video_id, exc_info=True)
@@ -93,29 +94,29 @@ class VideoCrudService:
             return None
 
         try:
-            return datetime.fromisoformat(normalized.replace("Z", "+00:00"))
+            return datetime.fromisoformat(normalized.replace('Z', '+00:00'))
         except ValueError:
             return None
 
     def save_remote_video(self, data: dict) -> Video:
-        url = str(data.get("url") or "").strip()
-        title = str(data.get("title") or "").strip()
+        url = str(data.get('url') or '').strip()
+        title = str(data.get('title') or '').strip()
         if not url:
-            raise ValueError("url is required")
+            raise ValueError('url is required')
         if not title:
-            raise ValueError("title is required")
+            raise ValueError('title is required')
 
         with self._session_factory() as session:
             video = session.scalars(select(Video).where(Video.url == url)).first()
             if video:
                 return video
 
-            publish_date = self._parse_optional_datetime(data.get("publish_date") or data.get("uploaded_at"))
+            publish_date = self._parse_optional_datetime(data.get('publish_date') or data.get('uploaded_at'))
             extra_data = {
-                "source": "remote",
-                "site": data.get("site") or None,
-                "subscriptions": data.get("subscriptions") or [],
-                "actors": data.get("actors") or [],
+                'source': 'remote',
+                'site': data.get('site') or None,
+                'subscriptions': data.get('subscriptions') or [],
+                'actors': data.get('actors') or [],
             }
 
             video = Video(
@@ -123,9 +124,9 @@ class VideoCrudService:
                 domain=url_helper.normalize_domain(url),
                 title=title,
                 publish_date=publish_date,
-                thumbnail=data.get("thumbnail") or None,
-                duration=data.get("duration"),
-                description=data.get("description") or None,
+                thumbnail=data.get('thumbnail') or None,
+                duration=data.get('duration'),
+                description=data.get('description') or None,
                 extra_data=extra_data,
             )
             session.add(video)

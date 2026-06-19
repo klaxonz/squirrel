@@ -42,7 +42,7 @@ def import_classes_from_package(
         return discovered_classes
 
     for _importer, modname, _ispkg in pkgutil.walk_packages(package_path):
-        full_module_name = f"{package}.{modname}"
+        full_module_name = f'{package}.{modname}'
 
         try:
             module = importlib.import_module(full_module_name)

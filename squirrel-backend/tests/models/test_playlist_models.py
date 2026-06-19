@@ -17,7 +17,7 @@ from domains.playlist.domain.models.playlist_item import PlaylistItem
 def test_playlist_items_relationship_configures_without_foreign_keys():
     configure_mappers()
 
-    relationship = Playlist.__mapper__.relationships["items"]
+    relationship = Playlist.__mapper__.relationships['items']
 
     assert relationship.mapper.class_ is PlaylistItem
-    assert str(relationship.primaryjoin) == "playlist.id = playlist_item.playlist_id"
+    assert str(relationship.primaryjoin) == 'playlist.id = playlist_item.playlist_id'

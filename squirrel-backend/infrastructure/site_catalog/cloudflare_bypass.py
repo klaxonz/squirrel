@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 class CloudflareMirrorClient:
     def __init__(self, service_url: str, timeout: int = 120):
         if not service_url:
-            raise ValueError("service_url 不能为空")
-        self.service_url = service_url.rstrip("/")
+            raise ValueError('service_url 不能为空')
+        self.service_url = service_url.rstrip('/')
         self.timeout = timeout
         self._client_factory: Callable[[], httpx.AsyncClient] = lambda: httpx.AsyncClient(
             timeout=self.timeout,
@@ -22,13 +22,13 @@ class CloudflareMirrorClient:
 
     @staticmethod
     async def _close_client(client) -> None:
-        close = getattr(client, "aclose", None)
+        close = getattr(client, 'aclose', None)
         if callable(close):
             await close()
 
     async def _bind_streaming_response(self, response, client):
-        original_aclose = getattr(response, "aclose", None)
-        close = getattr(response, "close", None)
+        original_aclose = getattr(response, 'aclose', None)
+        close = getattr(response, 'close', None)
 
         async def close_with_client():
             try:
@@ -82,9 +82,9 @@ class CloudflareMirrorClient:
         stream: bool = False,
     ):
         return await self._send(
-            "GET",
-            f"{self.service_url}/html",
-            params={"url": url},
+            'GET',
+            f'{self.service_url}/html',
+            params={'url': url},
             headers=headers,
             stream=stream,
         )
@@ -97,38 +97,37 @@ class CloudflareMirrorClient:
     ):
         request_headers = headers.copy() if headers else {}
         parsed_url = urlparse(url)
-        path = parsed_url.path.lstrip("/")
+        path = parsed_url.path.lstrip('/')
 
         host = parsed_url.netloc
-        host = host.split(":")[0]
+        host = host.split(':')[0]
 
-        service_url = f"{self.service_url}/{path}"
+        service_url = f'{self.service_url}/{path}'
         if parsed_url.query:
-            service_url = f"{service_url}?{parsed_url.query}"
+            service_url = f'{service_url}?{parsed_url.query}'
 
         headers = {
-            "x-hostname": host,
+            'x-hostname': host,
         }
         headers.update(request_headers)
 
         return await self._send(
-            "GET",
+            'GET',
             service_url,
             headers=headers,
             stream=stream,
         )
 
-
     async def clear_cache(self):
         return await self._send(
-            "POST",
-            f"{self.service_url}/cache/clear",
+            'POST',
+            f'{self.service_url}/cache/clear',
         )
 
     async def health(self):
         return await self._send(
-            "GET",
-            f"{self.service_url}/health",
+            'GET',
+            f'{self.service_url}/health',
         )
 
 
@@ -140,8 +139,6 @@ def get_default_client() -> CloudflareMirrorClient:
     if _default_client is None:
         service_url = settings.CLOUDFLARE_BYPASS_SERVICE_URL
         if not service_url:
-            raise ValueError("配置项 CLOUDFLARE_BYPASS_SERVICE_URL 未设置")
+            raise ValueError('配置项 CLOUDFLARE_BYPASS_SERVICE_URL 未设置')
         _default_client = CloudflareMirrorClient(service_url)
     return _default_client
-
-

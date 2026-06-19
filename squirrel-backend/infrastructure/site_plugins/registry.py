@@ -80,15 +80,17 @@ class SitePluginRegistry:
         for site_name in _PLUGIN_DEFINITIONS:
             plugin = self._load_plugin(site_name)
             manifest = plugin.manifest()
-            items.append({
-                'plugin_id': manifest.runtime_id,
-                'display_name': manifest.display_name or manifest.runtime_id,
-                'description': manifest.description,
-                'version': manifest.version,
-                'enabled': True,
-                'capabilities': [item.to_dict() for item in manifest.capabilities],
-                'sites': [item.to_dict() for item in manifest.sites],
-            })
+            items.append(
+                {
+                    'plugin_id': manifest.runtime_id,
+                    'display_name': manifest.display_name or manifest.runtime_id,
+                    'description': manifest.description,
+                    'version': manifest.version,
+                    'enabled': True,
+                    'capabilities': [item.to_dict() for item in manifest.capabilities],
+                    'sites': [item.to_dict() for item in manifest.sites],
+                }
+            )
         return items
 
     def build_site_catalog(self) -> dict[str, dict]:
@@ -98,13 +100,16 @@ class SitePluginRegistry:
             for site in manifest.sites:
                 slug = site.site_name.strip().lower()
                 defaults = dict(site.metadata or {})
-                item = catalog.setdefault(slug, {
-                    'label': defaults.get('label') or site.site_name,
-                    'domains': [],
-                    'aliases': [],
-                    'enabled': True,
-                    'features': [],
-                })
+                item = catalog.setdefault(
+                    slug,
+                    {
+                        'label': defaults.get('label') or site.site_name,
+                        'domains': [],
+                        'aliases': [],
+                        'enabled': True,
+                        'features': [],
+                    },
+                )
                 item['label'] = defaults.get('label') or item.get('label') or site.site_name
                 if site.test_url:
                     item['test_url'] = site.test_url
@@ -159,14 +164,18 @@ class SitePluginRegistry:
     ) -> SitePluginResult:
         slug = site_name.strip().lower() if site_name else self.find_site_by_domain(domain)
         if not slug or not self.has_capability(slug, capability):
-            raise ValueError(f'No plugin capability route found: capability={capability}, site={site_name}, domain={domain}')
+            raise ValueError(
+                f'No plugin capability route found: capability={capability}, site={site_name}, domain={domain}'
+            )
 
         response = self._load_plugin(slug).invoke(capability, dict(payload or {}))
         error = getattr(response, 'error', None)
         return SitePluginResult(
             ok=bool(response.ok),
             data=response.data,
-            error=None if error is None else SitePluginError(
+            error=None
+            if error is None
+            else SitePluginError(
                 message=str(error.message),
                 details=dict(error.details or {}),
                 retryable=bool(error.retryable),

@@ -35,8 +35,7 @@ async def test_batch_sites_connectivity(
         return param_error('no valid sites')
 
     tasks = [
-        test_site_connectivity(url=test_url, timeout=timeout, follow_redirects=True)
-        for _, test_url, _ in valid_sites
+        test_site_connectivity(url=test_url, timeout=timeout, follow_redirects=True) for _, test_url, _ in valid_sites
     ]
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -51,28 +50,32 @@ async def test_batch_sites_connectivity(
         site_name, test_url_used, all_domains = valid_sites[i]
 
         if isinstance(result, Exception):
-            processed_results.append({
-                'site_name': site_name,
-                'domains': all_domains,
-                'test_url': test_url_used,
-                'accessible': False,
-                'status': 'error',
-                'error_message': str(result),
-            })
+            processed_results.append(
+                {
+                    'site_name': site_name,
+                    'domains': all_domains,
+                    'test_url': test_url_used,
+                    'accessible': False,
+                    'status': 'error',
+                    'error_message': str(result),
+                }
+            )
             failed_count += 1
         else:
-            processed_results.append({
-                'site_name': site_name,
-                'domains': all_domains,
-                'test_url': result.url,
-                'accessible': result.accessible,
-                'status': result.status,
-                'status_code': result.status_code,
-                'response_time': result.response_time,
-                'dns_resolved': result.dns_resolved,
-                'ip_address': result.ip_address,
-                'error_message': result.error_message,
-            })
+            processed_results.append(
+                {
+                    'site_name': site_name,
+                    'domains': all_domains,
+                    'test_url': result.url,
+                    'accessible': result.accessible,
+                    'status': result.status,
+                    'status_code': result.status_code,
+                    'response_time': result.response_time,
+                    'dns_resolved': result.dns_resolved,
+                    'ip_address': result.ip_address,
+                    'error_message': result.error_message,
+                }
+            )
             if result.accessible:
                 accessible_count += 1
             else:
@@ -84,13 +87,15 @@ async def test_batch_sites_connectivity(
     avg_response_time = round(total_response_time / response_time_count, 2) if response_time_count > 0 else None
     total = len(processed_results)
 
-    return success({
-        'results': processed_results,
-        'summary': {
-            'total': total,
-            'accessible': accessible_count,
-            'failed': failed_count,
-            'success_rate': round(accessible_count / total * 100, 2) if total > 0 else 0,
-            'avg_response_time': avg_response_time,
-        },
-    })
+    return success(
+        {
+            'results': processed_results,
+            'summary': {
+                'total': total,
+                'accessible': accessible_count,
+                'failed': failed_count,
+                'success_rate': round(accessible_count / total * 100, 2) if total > 0 else 0,
+                'avg_response_time': avg_response_time,
+            },
+        }
+    )

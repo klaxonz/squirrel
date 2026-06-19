@@ -1,4 +1,5 @@
 """定时全量重建 Meilisearch 视频索引(兜底增量直写的遗漏 + 首次回填)。"""
+
 import logging
 
 from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
@@ -8,7 +9,7 @@ from infrastructure.scheduling.base import BaseTask, TaskRegistry
 logger = logging.getLogger(__name__)
 
 
-@TaskRegistry.register(interval=24, unit="hours", start_immediately=False)
+@TaskRegistry.register(interval=24, unit='hours', start_immediately=False)
 class MeiliReindexTask(BaseTask):
     """每 24 小时全量重建一次 Meilisearch 索引。
 

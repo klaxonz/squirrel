@@ -19,12 +19,16 @@ class MusicLibraryMixin:
         return '|'.join([track.title, track.hash, track.album_id, track.album_audio_id])
 
     async def list_playlists(self, user_id: int, category_id: int, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/top/playlist', {
-            'category_id': category_id,
-            'page': page,
-            'pagesize': page_size,
-            'withsong': 0,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/top/playlist',
+            {
+                'category_id': category_id,
+                'page': page,
+                'pagesize': page_size,
+                'withsong': 0,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
         rows = data.get('special_list')
         if not isinstance(rows, list):
@@ -54,11 +58,15 @@ class MusicLibraryMixin:
         }
 
     async def get_playlist_tracks(self, user_id: int, playlist_id: str, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/playlist/track/all', {
-            'id': playlist_id,
-            'page': page,
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/playlist/track/all',
+            {
+                'id': playlist_id,
+                'page': page,
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
         rows = data.get('songs')
         if not isinstance(rows, list):
@@ -72,17 +80,17 @@ class MusicLibraryMixin:
         }
 
     async def list_user_playlists(self, user_id: int, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/user/playlist', {
-            'page': page,
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/user/playlist',
+            {
+                'page': page,
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('info', 'lists', 'list', 'data'))
-        total = (
-            data.get('total') or data.get('count') or len(rows)
-            if isinstance(data, dict)
-            else len(rows)
-        )
+        total = data.get('total') or data.get('count') or len(rows) if isinstance(data, dict) else len(rows)
 
         return {
             'items': [normalize_user_playlist(row) for row in rows],
@@ -92,18 +100,18 @@ class MusicLibraryMixin:
         }
 
     async def get_user_playlist_tracks(self, user_id: int, list_id: str, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/playlist/track/all/new', {
-            'listid': list_id,
-            'page': page,
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/playlist/track/all/new',
+            {
+                'listid': list_id,
+                'page': page,
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('info', 'songs', 'list', 'files', 'data'))
-        total = (
-            data.get('total') or data.get('count') or len(rows)
-            if isinstance(data, dict)
-            else len(rows)
-        )
+        total = data.get('total') or data.get('count') or len(rows) if isinstance(data, dict) else len(rows)
 
         return {
             'items': [normalize_track(row) for row in rows],
@@ -113,11 +121,15 @@ class MusicLibraryMixin:
         }
 
     async def create_user_playlist(self, user_id: int, name: str, is_private: bool) -> dict[str, Any]:
-        await self._client.request_kugou('/playlist/add', {
-            'name': name,
-            'type': 0,
-            'is_pri': 1 if is_private else 0,
-        }, user_id=user_id)
+        await self._client.request_kugou(
+            '/playlist/add',
+            {
+                'name': name,
+                'type': 0,
+                'is_pri': 1 if is_private else 0,
+            },
+            user_id=user_id,
+        )
         return {'ok': True}
 
     async def collect_playlist(self, user_id: int, playlist_id: str) -> dict[str, Any]:
@@ -130,14 +142,18 @@ class MusicLibraryMixin:
         if not list_create_userid or not list_create_listid or not name:
             raise MusicServiceError('KuGouMusicApi playlist detail missed collect fields')
 
-        await self._client.request_kugou('/playlist/add', {
-            'name': name,
-            'type': 1,
-            'source': detail.get('source') or 1,
-            'list_create_userid': list_create_userid,
-            'list_create_listid': list_create_listid,
-            'list_create_gid': detail.get('list_create_gid') or playlist_id,
-        }, user_id=user_id)
+        await self._client.request_kugou(
+            '/playlist/add',
+            {
+                'name': name,
+                'type': 1,
+                'source': detail.get('source') or 1,
+                'list_create_userid': list_create_userid,
+                'list_create_listid': list_create_listid,
+                'list_create_gid': detail.get('list_create_gid') or playlist_id,
+            },
+            user_id=user_id,
+        )
         return {'ok': True}
 
     async def delete_user_playlist(self, user_id: int, list_id: str) -> dict[str, Any]:
@@ -145,17 +161,25 @@ class MusicLibraryMixin:
         return {'ok': True}
 
     async def add_track_to_user_playlist(self, user_id: int, list_id: str, track: MusicTrackPayload) -> dict[str, Any]:
-        await self._client.request_kugou('/playlist/tracks/add', {
-            'listid': list_id,
-            'data': self._playlist_track_data(track),
-        }, user_id=user_id)
+        await self._client.request_kugou(
+            '/playlist/tracks/add',
+            {
+                'listid': list_id,
+                'data': self._playlist_track_data(track),
+            },
+            user_id=user_id,
+        )
         return {'ok': True}
 
     async def remove_tracks_from_user_playlist(self, user_id: int, list_id: str, file_ids: str) -> dict[str, Any]:
-        await self._client.request_kugou('/playlist/tracks/del', {
-            'listid': list_id,
-            'fileids': file_ids,
-        }, user_id=user_id)
+        await self._client.request_kugou(
+            '/playlist/tracks/del',
+            {
+                'listid': list_id,
+                'fileids': file_ids,
+            },
+            user_id=user_id,
+        )
         return {'ok': True}
 
     async def get_user_history(self, user_id: int, bp: str | None) -> dict[str, Any]:
@@ -165,11 +189,7 @@ class MusicLibraryMixin:
         payload = await self._client.request_kugou('/user/history', params, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('songs', 'info', 'list', 'data'))
-        next_bp = (
-            data.get('bp') or data.get('next_bp') or ''
-            if isinstance(data, dict)
-            else ''
-        )
+        next_bp = data.get('bp') or data.get('next_bp') or '' if isinstance(data, dict) else ''
 
         return {
             'items': [normalize_track(row) for row in rows],
@@ -195,7 +215,11 @@ class MusicLibraryMixin:
         }
 
     async def upload_play_history(
-        self, user_id: int, album_audio_id: str, played_at: int | None, play_count: int,
+        self,
+        user_id: int,
+        album_audio_id: str,
+        played_at: int | None,
+        play_count: int,
     ) -> dict[str, Any]:
         params: dict[str, Any] = {
             'mxid': album_audio_id,
@@ -208,7 +232,10 @@ class MusicLibraryMixin:
 
     async def get_favorite_counts(self, user_id: int, mixsongids: str) -> dict[str, Any]:
         payload = await self._client.request_kugou(
-            '/favorite/count', {'mixsongids': mixsongids}, user_id=user_id, use_auth=False,
+            '/favorite/count',
+            {'mixsongids': mixsongids},
+            user_id=user_id,
+            use_auth=False,
         )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
         rows = data.get('list') if isinstance(data.get('list'), list) else []
@@ -225,7 +252,13 @@ class MusicLibraryMixin:
         }
 
     async def get_related_tracks(
-        self, user_id: int, album_audio_id: str, page: int, page_size: int, sort: str, type_id: str | None,
+        self,
+        user_id: int,
+        album_audio_id: str,
+        page: int,
+        page_size: int,
+        sort: str,
+        type_id: str | None,
     ) -> dict[str, Any]:
         params: dict[str, Any] = {
             'album_audio_id': album_audio_id,
@@ -236,15 +269,14 @@ class MusicLibraryMixin:
         if type_id:
             params['type'] = type_id
         payload = await self._client.request_kugou(
-            '/audio/related', params, user_id=user_id, use_auth=False,
+            '/audio/related',
+            params,
+            user_id=user_id,
+            use_auth=False,
         )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('info', 'list', 'lists', 'songs', 'data'))
-        total = (
-            data.get('total') or data.get('count') or len(rows)
-            if isinstance(data, dict)
-            else len(rows)
-        )
+        total = data.get('total') or data.get('count') or len(rows) if isinstance(data, dict) else len(rows)
 
         return {
             'items': [normalize_track(row) for row in rows],

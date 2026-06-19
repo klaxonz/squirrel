@@ -17,20 +17,22 @@ if TYPE_CHECKING:
 
 def _video_creator_video_join():
     from domains.video.domain.models.video import Video
+
     return Video.id == foreign(VideoCreator.video_id)
 
 
 def _video_creator_creator_join():
     from domains.video.domain.models.creator import Creator
+
     return Creator.id == foreign(VideoCreator.creator_id)
 
 
 class VideoCreator(Base):
-    __tablename__ = "video_creator"
+    __tablename__ = 'video_creator'
 
     __table_args__ = (
-        Index("ix_video_creator_video_id", "video_id"),
-        Index("ix_video_creator_creator_id", "creator_id"),
+        Index('ix_video_creator_video_id', 'video_id'),
+        Index('ix_video_creator_creator_id', 'creator_id'),
     )
 
     video_id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -38,14 +40,14 @@ class VideoCreator(Base):
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
 
     video: Mapped[Video] = relationship(
-        "Video",
+        'Video',
         primaryjoin=_video_creator_video_join,
-        back_populates="creator_links",
+        back_populates='creator_links',
         viewonly=True,
     )
     creator: Mapped[Creator] = relationship(
-        "Creator",
+        'Creator',
         primaryjoin=_video_creator_creator_join,
-        back_populates="video_links",
+        back_populates='video_links',
         viewonly=True,
     )

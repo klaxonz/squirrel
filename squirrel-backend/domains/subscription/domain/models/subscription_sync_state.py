@@ -9,27 +9,27 @@ from infrastructure.database.mixins import SerializerMixin
 
 
 class SyncMode(StrEnum):
-    INCREMENTAL = "incremental"
-    FULL = "full"
+    INCREMENTAL = 'incremental'
+    FULL = 'full'
 
 
 class SyncStatus(StrEnum):
-    IDLE = "idle"
-    QUEUED = "queued"
-    RUNNING = "running"
-    SUCCESS = "success"
-    FAILED = "failed"
+    IDLE = 'idle'
+    QUEUED = 'queued'
+    RUNNING = 'running'
+    SUCCESS = 'success'
+    FAILED = 'failed'
 
 
 class SubscriptionSyncState(Base, SerializerMixin):
-    __tablename__ = "subscription_sync_state"
+    __tablename__ = 'subscription_sync_state'
 
     __table_args__ = (
-        UniqueConstraint("subscription_id", "sync_mode", name="uix_subscription_sync_state_sub_mode"),
-        Index("ix_subscription_sync_state_subscription_id", "subscription_id"),
-        Index("ix_subscription_sync_state_sync_status", "sync_status"),
-        Index("ix_subscription_sync_state_next_sync_at", "next_sync_at"),
-        Index("ix_subscription_sync_state_due_lookup", "sync_mode", "sync_status", "next_sync_at"),
+        UniqueConstraint('subscription_id', 'sync_mode', name='uix_subscription_sync_state_sub_mode'),
+        Index('ix_subscription_sync_state_subscription_id', 'subscription_id'),
+        Index('ix_subscription_sync_state_sync_status', 'sync_status'),
+        Index('ix_subscription_sync_state_next_sync_at', 'next_sync_at'),
+        Index('ix_subscription_sync_state_due_lookup', 'sync_mode', 'sync_status', 'next_sync_at'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

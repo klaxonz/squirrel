@@ -26,7 +26,7 @@ class SiteCatalog:
     @staticmethod
     def _config_path() -> str:
         repo_root = Path(__file__).resolve().parents[3]
-        return str(repo_root / "config" / "sites.json")
+        return str(repo_root / 'config' / 'sites.json')
 
     @classmethod
     def _get_config_mtime(cls) -> float | None:
@@ -41,15 +41,15 @@ class SiteCatalog:
     @classmethod
     def _normalize_catalog_entry(cls, slug: str, info: dict | None) -> dict:
         info = dict(info or {})
-        domains = list({d.strip().lower() for d in info.get("domains", []) if d})
-        aliases = list({a.strip().lower() for a in info.get("aliases", []) if a})
+        domains = list({d.strip().lower() for d in info.get('domains', []) if d})
+        aliases = list({a.strip().lower() for a in info.get('aliases', []) if a})
         entry: dict = {
-            "label": info.get("label", slug),
-            "domains": domains,
-            "aliases": aliases,
-            "enabled": bool(info.get("enabled", True)),
+            'label': info.get('label', slug),
+            'domains': domains,
+            'aliases': aliases,
+            'enabled': bool(info.get('enabled', True)),
         }
-        extra_keys = {"http", "proxy", "login", "rate_limit", "metadata", "test_url", "icon_url", "cookie", "features"}
+        extra_keys = {'http', 'proxy', 'login', 'rate_limit', 'metadata', 'test_url', 'icon_url', 'cookie', 'features'}
         for key in extra_keys:
             value = info.get(key)
             if value is not None:
@@ -61,21 +61,21 @@ class SiteCatalog:
         info = dict(info or {})
         entry: dict = {}
 
-        if "label" in info:
-            label = str(info.get("label") or "").strip()
+        if 'label' in info:
+            label = str(info.get('label') or '').strip()
             if label:
-                entry["label"] = label
+                entry['label'] = label
 
-        if "domains" in info:
-            entry["domains"] = list({d.strip().lower() for d in info.get("domains", []) if d})
+        if 'domains' in info:
+            entry['domains'] = list({d.strip().lower() for d in info.get('domains', []) if d})
 
-        if "aliases" in info:
-            entry["aliases"] = list({a.strip().lower() for a in info.get("aliases", []) if a})
+        if 'aliases' in info:
+            entry['aliases'] = list({a.strip().lower() for a in info.get('aliases', []) if a})
 
-        if "enabled" in info:
-            entry["enabled"] = bool(info.get("enabled", True))
+        if 'enabled' in info:
+            entry['enabled'] = bool(info.get('enabled', True))
 
-        extra_keys = {"http", "proxy", "login", "rate_limit", "metadata", "test_url", "icon_url", "cookie", "features"}
+        extra_keys = {'http', 'proxy', 'login', 'rate_limit', 'metadata', 'test_url', 'icon_url', 'cookie', 'features'}
         for key in extra_keys:
             if key not in info:
                 continue
@@ -90,7 +90,7 @@ class SiteCatalog:
         config_path = cls._config_path()
         if os.path.exists(config_path):
             try:
-                with open(config_path, encoding="utf-8") as f:
+                with open(config_path, encoding='utf-8') as f:
                     data = json.load(f)
                 catalog: dict[str, dict] = {}
                 for slug, site_info in (data or {}).items():
@@ -105,8 +105,8 @@ class SiteCatalog:
     def build_plugin_site_catalog(cls) -> dict[str, dict]:
         catalog = get_site_plugin_registry().build_site_catalog()
         for slug, item in catalog.items():
-            if not item.get("icon_url") and resolve_site_icon_path(slug):
-                item["icon_url"] = build_site_icon_url(slug)
+            if not item.get('icon_url') and resolve_site_icon_path(slug):
+                item['icon_url'] = build_site_icon_url(slug)
         return catalog
 
     @classmethod
@@ -147,8 +147,8 @@ class SiteCatalog:
     def get_all_domains(cls) -> list[str]:
         domains: list[str] = []
         for info in cls._get_effective_catalog().values():
-            if info.get("enabled", True):
-                domains.extend(info.get("domains", []))
+            if info.get('enabled', True):
+                domains.extend(info.get('domains', []))
         # unique keep order
         seen: set[str] = set()
         ordered = []
@@ -169,15 +169,15 @@ class SiteCatalog:
         k = key.strip().lower()
         catalog = cls._get_effective_catalog()
         # exact slug
-        if k in catalog and catalog[k].get("enabled", True):
-            return catalog[k].get("domains", [])
+        if k in catalog and catalog[k].get('enabled', True):
+            return catalog[k].get('domains', [])
         # alias
         for _slug, site_info in catalog.items():
-            if not site_info.get("enabled", True):
+            if not site_info.get('enabled', True):
                 continue
-            aliases = [a.lower() for a in site_info.get("aliases", [])]
+            aliases = [a.lower() for a in site_info.get('aliases', [])]
             if k in aliases:
-                return site_info.get("domains", [])
+                return site_info.get('domains', [])
         # substring match
         all_domains = cls.get_all_domains()
         matched = [d for d in all_domains if k in d.lower()]
@@ -204,7 +204,7 @@ class SiteCatalog:
         seen: set[str] = set()
 
         def add(value: str | None) -> None:
-            normalized = str(value or "").strip().lower()
+            normalized = str(value or '').strip().lower()
             if not normalized or normalized in seen:
                 return
             seen.add(normalized)
@@ -216,20 +216,20 @@ class SiteCatalog:
             add(domain)
 
         if normalized_key in catalog:
-            for domain in catalog[normalized_key].get("domains", []):
+            for domain in catalog[normalized_key].get('domains', []):
                 add(domain)
 
         for slug, site_info in catalog.items():
-            aliases = [str(alias or "").strip().lower() for alias in site_info.get("aliases", []) if alias]
+            aliases = [str(alias or '').strip().lower() for alias in site_info.get('aliases', []) if alias]
             if normalized_key == slug or normalized_key in aliases:
                 add(slug)
-                for domain in site_info.get("domains", []):
+                for domain in site_info.get('domains', []):
                     add(domain)
 
         site_slug, info = cls.find_site_by_domain(normalized_key)
         if site_slug:
             add(site_slug)
-            for domain in (info or {}).get("domains", []):
+            for domain in (info or {}).get('domains', []):
                 add(domain)
 
         return values
@@ -239,15 +239,15 @@ class SiteCatalog:
         """Find site slug and catalog entry by domain (supports subdomain match)."""
         if not domain:
             return None, None
-        domain_lower = str(domain).split(":")[0].strip().lower()
+        domain_lower = str(domain).split(':')[0].strip().lower()
         catalog = cls._get_effective_catalog() or {}
         for slug, site_info in catalog.items():
-            domains = site_info.get("domains") or []
+            domains = site_info.get('domains') or []
             for d in domains:
                 d_lower = str(d).strip().lower()
                 if not d_lower:
                     continue
-                if domain_lower == d_lower or domain_lower.endswith(f".{d_lower}"):
+                if domain_lower == d_lower or domain_lower.endswith(f'.{d_lower}'):
                     return slug, site_info
         return None, None
 
@@ -257,13 +257,13 @@ class SiteCatalog:
         if domain:
             _, info = cls.find_site_by_domain(domain)
             if info is not None:
-                return info.get("enabled", True)
+                return info.get('enabled', True)
 
         if site:
             catalog = cls._get_effective_catalog() or {}
             info = catalog.get(site.strip().lower())
             if info is not None:
-                return info.get("enabled", True)
+                return info.get('enabled', True)
 
         return True
 
@@ -274,5 +274,5 @@ class SiteCatalog:
         return {
             str(slug).strip().lower()
             for slug, site_info in catalog.items()
-            if str(slug).strip() and site_info.get("enabled", True)
+            if str(slug).strip() and site_info.get('enabled', True)
         }

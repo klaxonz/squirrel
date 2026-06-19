@@ -1,5 +1,5 @@
-"""Gateway-backed extractor factory.
-"""
+"""Gateway-backed extractor factory."""
+
 import logging
 from urllib.parse import urlparse
 
@@ -28,10 +28,10 @@ class SitePluginExtractorAdapter:
 
     def can_handle(self, url: str) -> bool:
         try:
-            domain = urlparse(url).netloc.lower().split(":")[0]
+            domain = urlparse(url).netloc.lower().split(':')[0]
         except (ValueError, TypeError):
             return False
-        return any(domain == item or domain.endswith(f".{item}") for item in self.supported_domains)
+        return any(domain == item or domain.endswith(f'.{item}') for item in self.supported_domains)
 
     def validate_url(self, url: str) -> bool:
         try:
@@ -42,19 +42,19 @@ class SitePluginExtractorAdapter:
 
     def extract(self, task: ExtractionTask) -> ExtractionResult:
         response = self._plugin_registry.invoke(
-            "extract_video",
+            'extract_video',
             site_name=self.site_name,
             payload={
-                "url": task.url,
-                "site_name": task.site_name,
-                "task_id": task.task_id,
-                "retry_count": task.retry_count,
-                "max_retries": task.max_retries,
-                "metadata": dict(task.metadata or {}),
+                'url': task.url,
+                'site_name': task.site_name,
+                'task_id': task.task_id,
+                'retry_count': task.retry_count,
+                'max_retries': task.max_retries,
+                'metadata': dict(task.metadata or {}),
             },
         )
         if not response.ok:
-            message = response.error.message if response.error else f"Extraction failed for site: {self.site_name}"
+            message = response.error.message if response.error else f'Extraction failed for site: {self.site_name}'
             return ExtractionResult(
                 success=False,
                 error=message,
@@ -63,11 +63,11 @@ class SitePluginExtractorAdapter:
             )
 
         payload = response.data
-        if isinstance(payload, dict) and "success" in payload:
+        if isinstance(payload, dict) and 'success' in payload:
             return ExtractionResult.from_dict(payload)
         if isinstance(payload, dict):
             return ExtractionResult.success_result(RuntimeVideoData.from_dict(payload))
-        return ExtractionResult(success=False, error="Plugin extract_video returned an invalid payload")
+        return ExtractionResult(success=False, error='Plugin extract_video returned an invalid payload')
 
 
 class ExtractorFactory:
@@ -78,14 +78,14 @@ class ExtractorFactory:
         self._plugin_registry = plugin_registry or get_site_plugin_registry()
 
     def _create_adapter(self, site_name: str) -> SitePluginExtractorAdapter | None:
-        if not self._plugin_registry.has_capability(site_name, "extract_video"):
-            logger.info("No extract_video capability found for site: %s", site_name)
+        if not self._plugin_registry.has_capability(site_name, 'extract_video'):
+            logger.info('No extract_video capability found for site: %s', site_name)
             return None
 
         site_info = get_effective_site_catalog().get(site_name) or {}
-        domains = list(site_info.get("domains") or [])
+        domains = list(site_info.get('domains') or [])
         if not domains:
-            logger.warning("No site domains configured for extractor site: %s", site_name)
+            logger.warning('No site domains configured for extractor site: %s', site_name)
             return None
 
         return SitePluginExtractorAdapter(
@@ -96,18 +96,18 @@ class ExtractorFactory:
 
     def create_extractor(self, url: str) -> SitePluginExtractorAdapter | None:
         try:
-            domain = urlparse(url).netloc.lower().split(":")[0]
+            domain = urlparse(url).netloc.lower().split(':')[0]
         except (ValueError, TypeError) as exc:
-            logger.error("Failed to parse extractor URL: %s, error: %s", url, exc)
+            logger.error('Failed to parse extractor URL: %s, error: %s', url, exc)
             return None
 
         if not SiteCatalog.is_site_enabled(domain=domain):
-            logger.info("Site disabled, skip extractor creation: %s", domain)
+            logger.info('Site disabled, skip extractor creation: %s', domain)
             return None
 
         site_name, _ = SiteCatalog.find_site_by_domain(domain)
         if not site_name:
-            logger.warning("No supported extractor site found for domain: %s", domain)
+            logger.warning('No supported extractor site found for domain: %s', domain)
             return None
 
         cached = self._instances.get(site_name)

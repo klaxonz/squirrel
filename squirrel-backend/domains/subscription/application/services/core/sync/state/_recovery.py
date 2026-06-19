@@ -42,8 +42,8 @@ def reconcile_pending_video_counts() -> dict[str, int]:
                 .values(pending_video_count=pending_count),
             )
     return {
-        "states": len(counts),
-        "videos": sum(counts.values()),
+        'states': len(counts),
+        'videos': sum(counts.values()),
     }
 
 
@@ -54,17 +54,21 @@ def reconcile_terminal_drained_sync_states() -> dict[str, int]:
     failed = 0
 
     with get_session() as session:
-        states = session.execute(
-            select(SubscriptionSyncState).where(
-                SubscriptionSyncState.sync_status == SyncStatus.RUNNING.value,
-                SubscriptionSyncState.locked_at.is_(None),
-            ),
-        ).scalars().all()
+        states = (
+            session.execute(
+                select(SubscriptionSyncState).where(
+                    SubscriptionSyncState.sync_status == SyncStatus.RUNNING.value,
+                    SubscriptionSyncState.locked_at.is_(None),
+                ),
+            )
+            .scalars()
+            .all()
+        )
 
         for state in states:
             stats = summary.get(state.id, {})
-            active_count = int(stats.get("active_count", 0) or 0)
-            failed_count = int(stats.get("failed_count", 0) or 0)
+            active_count = int(stats.get('active_count', 0) or 0)
+            failed_count = int(stats.get('failed_count', 0) or 0)
 
             if active_count > 0:
                 continue
@@ -75,7 +79,7 @@ def reconcile_terminal_drained_sync_states() -> dict[str, int]:
                 state.failure_count += 1
                 state.sync_status = SyncStatus.FAILED.value
                 state.last_sync_at = now
-                state.last_error = str(stats.get("last_error") or "video_extract_failed")
+                state.last_error = str(stats.get('last_error') or 'video_extract_failed')
                 state.queue_token = None
                 state.queued_at = None
                 state.locked_at = None
@@ -89,9 +93,9 @@ def reconcile_terminal_drained_sync_states() -> dict[str, int]:
             completed += 1
 
     return {
-        "running_states": len(states),
-        "completed": completed,
-        "failed": failed,
+        'running_states': len(states),
+        'completed': completed,
+        'failed': failed,
     }
 
 
@@ -101,20 +105,24 @@ def recover_stale_queued_sync_states(grace: timedelta = QUEUED_RECOVERY_GRACE) -
     recovered = 0
 
     with get_session() as session:
-        queued_states = session.execute(
-            select(SubscriptionSyncState).where(
-                SubscriptionSyncState.sync_status == SyncStatus.QUEUED.value,
-                SubscriptionSyncState.queued_at.is_not(None),
-                SubscriptionSyncState.queued_at <= now - grace,
-            ),
-        ).scalars().all()
+        queued_states = (
+            session.execute(
+                select(SubscriptionSyncState).where(
+                    SubscriptionSyncState.sync_status == SyncStatus.QUEUED.value,
+                    SubscriptionSyncState.queued_at.is_not(None),
+                    SubscriptionSyncState.queued_at <= now - grace,
+                ),
+            )
+            .scalars()
+            .all()
+        )
 
         for state in queued_states:
             if state.id in active_sync_state_ids:
                 continue
             state.sync_status = SyncStatus.FAILED.value
             state.last_sync_at = now
-            state.last_error = "stale_queued_missing_message"
+            state.last_error = 'stale_queued_missing_message'
             state.queue_token = None
             state.queued_at = None
             state.locked_at = None
@@ -123,8 +131,8 @@ def recover_stale_queued_sync_states(grace: timedelta = QUEUED_RECOVERY_GRACE) -
             recovered += 1
 
     return {
-        "queued_states": len(queued_states),
-        "recovered": recovered,
+        'queued_states': len(queued_states),
+        'recovered': recovered,
     }
 
 
@@ -134,21 +142,25 @@ def recover_stale_running_sync_states(timeout: timedelta = RUNNING_TIMEOUT) -> d
 
     with get_session() as session:
         stale_before = now - timeout
-        states = session.execute(
-            select(SubscriptionSyncState).where(
-                SubscriptionSyncState.sync_status == SyncStatus.RUNNING.value,
-                SubscriptionSyncState.locked_at.is_not(None),
-                SubscriptionSyncState.locked_at <= stale_before,
-            ),
-        ).scalars().all()
+        states = (
+            session.execute(
+                select(SubscriptionSyncState).where(
+                    SubscriptionSyncState.sync_status == SyncStatus.RUNNING.value,
+                    SubscriptionSyncState.locked_at.is_not(None),
+                    SubscriptionSyncState.locked_at <= stale_before,
+                ),
+            )
+            .scalars()
+            .all()
+        )
 
         for state in states:
             _recover_stale_running_state(state, now)
             recovered += 1
 
     return {
-        "running_states": len(states),
-        "recovered": recovered,
+        'running_states': len(states),
+        'recovered': recovered,
     }
 
 

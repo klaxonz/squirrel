@@ -17,14 +17,14 @@ class UserService:
 
     @staticmethod
     def hash_password(password: str) -> str:
-        password_bytes = password.encode("utf-8")
+        password_bytes = password.encode('utf-8')
         salt = bcrypt.gensalt()
-        return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
+        return bcrypt.hashpw(password_bytes, salt).decode('utf-8')
 
     @staticmethod
     def verify_password(password: str, hashed_password: str) -> bool:
-        password_bytes = password.encode("utf-8")
-        hashed_bytes = hashed_password.encode("utf-8")
+        password_bytes = password.encode('utf-8')
+        hashed_bytes = hashed_password.encode('utf-8')
         return bcrypt.checkpw(password_bytes, hashed_bytes)
 
     def create_user(self, nickname: str, email: str, password: str) -> tuple[User, Account]:
@@ -37,7 +37,7 @@ class UserService:
             ).first()
 
             if existing_account:
-                raise ValueError("邮箱已被注册")
+                raise ValueError('邮箱已被注册')
 
             user = User(nickname=nickname)
             session.add(user)
@@ -98,17 +98,17 @@ class UserService:
         with self._session_factory() as session:
             user = session.get(User, user_id)
             if not user:
-                raise ValueError("用户不存在")
+                raise ValueError('用户不存在')
 
             account = self._get_email_account_by_user_id(session, user_id)
             if not account:
-                raise ValueError("邮箱账号不存在")
+                raise ValueError('邮箱账号不存在')
 
             if not self.verify_password(current_password, account.credential):
-                raise ValueError("当前密码错误")
+                raise ValueError('当前密码错误')
 
             if self.verify_password(new_password, account.credential):
-                raise ValueError("新密码不能与当前密码相同")
+                raise ValueError('新密码不能与当前密码相同')
 
             account.credential = self.hash_password(new_password)
             account.last_login_at = datetime.now()
@@ -123,7 +123,7 @@ class UserService:
         with self._session_factory() as session:
             user = session.get(User, user_id)
             if not user:
-                raise ValueError("用户不存在")
+                raise ValueError('用户不存在')
 
             user.token_version = int(user.token_version or 0) + 1
             session.commit()

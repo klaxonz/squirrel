@@ -29,10 +29,7 @@ def build_plugin_site_catalog() -> dict[str, dict]:
 
 def get_effective_site_catalog(stored_catalog: dict[str, dict] | None = None) -> dict[str, dict]:
     overrides = stored_catalog if stored_catalog is not None else (SiteCatalog.load_override_catalog() or {})
-    effective: dict[str, dict] = {
-        slug: copy(defaults)
-        for slug, defaults in build_plugin_site_catalog().items()
-    }
+    effective: dict[str, dict] = {slug: copy(defaults) for slug, defaults in build_plugin_site_catalog().items()}
 
     for slug, override in (overrides or {}).items():
         if slug not in effective:
@@ -50,22 +47,22 @@ def _parse_bool(value: Any, default: bool = True) -> bool:
     if isinstance(value, (int, float)):
         return bool(value)
     text = str(value).strip().lower()
-    if text in {"true", "1", "yes", "y", "on"}:
+    if text in {'true', '1', 'yes', 'y', 'on'}:
         return True
-    if text in {"false", "0", "no", "n", "off"}:
+    if text in {'false', '0', 'no', 'n', 'off'}:
         return False
     return default
 
 
 def _iter_rate_limit_entries(effective_catalog: dict[str, dict]):
     for info in effective_catalog.values():
-        rate_limit = info.get("rate_limit") or {}
-        rate_limit_enabled = _parse_bool(rate_limit.get("enabled"), True)
-        min_interval = rate_limit.get("min_interval")
-        max_interval = rate_limit.get("max_interval")
+        rate_limit = info.get('rate_limit') or {}
+        rate_limit_enabled = _parse_bool(rate_limit.get('enabled'), True)
+        min_interval = rate_limit.get('min_interval')
+        max_interval = rate_limit.get('max_interval')
         min_value: float | None = None
         max_value: float | None = None
-        if min_interval not in (None, "") and max_interval not in (None, ""):
+        if min_interval not in (None, '') and max_interval not in (None, ''):
             try:
                 min_value = float(min_interval)
                 max_value = float(max_interval)
@@ -73,7 +70,7 @@ def _iter_rate_limit_entries(effective_catalog: dict[str, dict]):
                 min_value = None
                 max_value = None
 
-        for domain in info.get("domains", []) or []:
+        for domain in info.get('domains', []) or []:
             if domain:
                 yield domain, rate_limit_enabled, min_value, max_value
 

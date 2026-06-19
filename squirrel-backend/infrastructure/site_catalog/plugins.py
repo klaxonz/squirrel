@@ -35,10 +35,7 @@ class SitePluginService:
     def list_site_plugins(self) -> dict[str, Any]:
         catalog = get_effective_site_catalog()
         return {
-            'items': [
-                self._normalize_plugin_item(plugin, catalog)
-                for plugin in self._registry.list_plugins()
-            ],
+            'items': [self._normalize_plugin_item(plugin, catalog) for plugin in self._registry.list_plugins()],
             'errors': [],
         }
 

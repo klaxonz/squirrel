@@ -20,7 +20,9 @@ def get_random_video(
     query: str = Query(None, description='搜索关键字'),
     time_range: TimeRange = Query(TimeRange.ALL, description='时间范围: all|today|week|month|year'),
     duration: DurationFilter = Query(DurationFilter.ALL, description='时长: all|short|medium|long'),
-    content_type: ContentType = Query(ContentType.ALL, description='内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR'),
+    content_type: ContentType = Query(
+        ContentType.ALL, description='内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR'
+    ),
     current_user: User = Depends(get_current_user),
 ):
     domains_list: list[str] | None = None

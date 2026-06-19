@@ -36,8 +36,8 @@ class ScheduledTaskService:
             if search:
                 db_tasks = db_tasks.filter(
                     or_(
-                        ScheduledTask.name.ilike(f"%{escape_ilike(search)}%"),
-                        ScheduledTask.description.ilike(f"%{escape_ilike(search)}%"),
+                        ScheduledTask.name.ilike(f'%{escape_ilike(search)}%'),
+                        ScheduledTask.description.ilike(f'%{escape_ilike(search)}%'),
                     ),
                 )
 
@@ -50,18 +50,17 @@ class ScheduledTaskService:
             total = db_tasks.with_entities(func.count(ScheduledTask.id)).scalar() or 0
             paginated_tasks = [
                 task.to_dict()
-                for task in db_tasks
-                .order_by(desc(ScheduledTask.created_at))
+                for task in db_tasks.order_by(desc(ScheduledTask.created_at))
                 .offset((page - 1) * page_size)
                 .limit(page_size)
                 .all()
             ]
 
         return {
-            "page": page,
-            "page_size": page_size,
-            "total": total,
-            "data": paginated_tasks,
+            'page': page,
+            'page_size': page_size,
+            'total': total,
+            'data': paginated_tasks,
         }
 
     @staticmethod
@@ -71,7 +70,7 @@ class ScheduledTaskService:
         task_type: str = TaskType.USER.value,
         description: str | None = None,
         interval: int = 60,
-        unit: str = "seconds",
+        unit: str = 'seconds',
         start_immediately: bool = True,
         max_retries: int = 3,
         task_params: dict[str, Any] | None = None,
@@ -106,11 +105,11 @@ class ScheduledTaskService:
                 session.commit()
                 session.refresh(task_config)
 
-                logger.info("Created scheduled task: %s (ID: %s)", name, task_config.id)
+                logger.info('Created scheduled task: %s (ID: %s)', name, task_config.id)
                 return task_config
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error("Failed to create task %s: %s", name, e)
+            logger.error('Failed to create task %s: %s', name, e)
             return None
 
     @staticmethod
@@ -157,11 +156,11 @@ class ScheduledTaskService:
 
                 session.commit()
 
-                logger.info("Updated scheduled task: %s (ID: %s)", task_config.name, task_id)
+                logger.info('Updated scheduled task: %s (ID: %s)', task_config.name, task_id)
                 return True
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error("Failed to update task %s: %s", task_id, e)
+            logger.error('Failed to update task %s: %s', task_id, e)
             return False
 
     @staticmethod
@@ -174,18 +173,18 @@ class ScheduledTaskService:
                     return False
 
                 if task_config.task_type == TaskType.SYSTEM.value:
-                    logger.warning("Refuse to delete system task: %s (ID: %s)", task_config.name, task_id)
+                    logger.warning('Refuse to delete system task: %s (ID: %s)', task_config.name, task_id)
                     return False
 
                 # 删除任务记录
                 session.delete(task_config)
                 session.commit()
 
-                logger.info("Deleted scheduled task: %s (ID: %s)", task_config.name, task_id)
+                logger.info('Deleted scheduled task: %s (ID: %s)', task_config.name, task_id)
                 return True
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error("Failed to delete task %s: %s", task_id, e)
+            logger.error('Failed to delete task %s: %s', task_id, e)
             return False
 
     @staticmethod
@@ -221,8 +220,8 @@ class ScheduledTaskService:
                     task_id=task_id,
                     task_name=task_config.name,
                     started_at=datetime.now(),
-                    status="manual_trigger",
-                    executed_by=executed_by or "manual",
+                    status='manual_trigger',
+                    executed_by=executed_by or 'manual',
                 )
                 session.add(execution_log)
                 session.commit()
@@ -230,7 +229,7 @@ class ScheduledTaskService:
             return True
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error("Failed to execute task %s now: %s", task_id, e)
+            logger.error('Failed to execute task %s now: %s', task_id, e)
             return False
 
     @staticmethod
@@ -246,24 +245,40 @@ class ScheduledTaskService:
 
         with get_session() as session:
             db_total_tasks = session.query(ScheduledTask).count()
-            db_active_tasks = session.query(ScheduledTask).filter(
-                and_(ScheduledTask.is_active, ScheduledTask.status == TaskStatus.ENABLED.value),
-            ).count()
-            running_tasks = session.query(ScheduledTask).filter(
-                ScheduledTask.status == TaskStatus.RUNNING.value,
-            ).count()
-            error_tasks = session.query(ScheduledTask).filter(
-                ScheduledTask.status == TaskStatus.ERROR.value,
-            ).count()
+            db_active_tasks = (
+                session.query(ScheduledTask)
+                .filter(
+                    and_(ScheduledTask.is_active, ScheduledTask.status == TaskStatus.ENABLED.value),
+                )
+                .count()
+            )
+            running_tasks = (
+                session.query(ScheduledTask)
+                .filter(
+                    ScheduledTask.status == TaskStatus.RUNNING.value,
+                )
+                .count()
+            )
+            error_tasks = (
+                session.query(ScheduledTask)
+                .filter(
+                    ScheduledTask.status == TaskStatus.ERROR.value,
+                )
+                .count()
+            )
 
-            recent_executions = session.query(TaskExecutionLog).filter(
-                TaskExecutionLog.started_at >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0),
-            ).count()
+            recent_executions = (
+                session.query(TaskExecutionLog)
+                .filter(
+                    TaskExecutionLog.started_at >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0),
+                )
+                .count()
+            )
 
             return {
-                "total_tasks": db_total_tasks,
-                "active_tasks": db_active_tasks,
-                "running_tasks": running_tasks,
-                "error_tasks": error_tasks,
-                "today_executions": recent_executions,
+                'total_tasks': db_total_tasks,
+                'active_tasks': db_active_tasks,
+                'running_tasks': running_tasks,
+                'error_tasks': error_tasks,
+                'today_executions': recent_executions,
             }

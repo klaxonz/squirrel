@@ -19,10 +19,12 @@ async def test_all_sites_connectivity(
     site_names = catalog_svc.merge_site_names(catalog)
 
     if not site_names:
-        return success({
-            'results': [],
-            'summary': {'total': 0, 'accessible': 0, 'failed': 0, 'success_rate': 0, 'avg_response_time': None},
-        })
+        return success(
+            {
+                'results': [],
+                'summary': {'total': 0, 'accessible': 0, 'failed': 0, 'success_rate': 0, 'avg_response_time': None},
+            }
+        )
 
     test_sites = []
     for site_name in site_names:
@@ -62,28 +64,32 @@ async def test_all_sites_connectivity(
         site_name, test_url_used, all_domains, success_result, error_result = result
 
         if error_result:
-            processed_results.append({
-                'site_name': site_name,
-                'domains': all_domains,
-                'test_url': test_url_used,
-                'accessible': False,
-                'status': 'error',
-                'error_message': str(error_result),
-            })
+            processed_results.append(
+                {
+                    'site_name': site_name,
+                    'domains': all_domains,
+                    'test_url': test_url_used,
+                    'accessible': False,
+                    'status': 'error',
+                    'error_message': str(error_result),
+                }
+            )
             failed_count += 1
         else:
-            processed_results.append({
-                'site_name': site_name,
-                'domains': all_domains,
-                'test_url': success_result.url,
-                'accessible': success_result.accessible,
-                'status': success_result.status,
-                'status_code': success_result.status_code,
-                'response_time': success_result.response_time,
-                'dns_resolved': success_result.dns_resolved,
-                'ip_address': success_result.ip_address,
-                'error_message': success_result.error_message,
-            })
+            processed_results.append(
+                {
+                    'site_name': site_name,
+                    'domains': all_domains,
+                    'test_url': success_result.url,
+                    'accessible': success_result.accessible,
+                    'status': success_result.status,
+                    'status_code': success_result.status_code,
+                    'response_time': success_result.response_time,
+                    'dns_resolved': success_result.dns_resolved,
+                    'ip_address': success_result.ip_address,
+                    'error_message': success_result.error_message,
+                }
+            )
             if success_result.accessible:
                 accessible_count += 1
             else:
@@ -95,13 +101,15 @@ async def test_all_sites_connectivity(
     avg_response_time = round(total_response_time / response_time_count, 2) if response_time_count > 0 else None
     total = len(processed_results)
 
-    return success({
-        'results': processed_results,
-        'summary': {
-            'total': total,
-            'accessible': accessible_count,
-            'failed': failed_count,
-            'success_rate': round(accessible_count / total * 100, 2) if total > 0 else 0,
-            'avg_response_time': avg_response_time,
-        },
-    })
+    return success(
+        {
+            'results': processed_results,
+            'summary': {
+                'total': total,
+                'accessible': accessible_count,
+                'failed': failed_count,
+                'success_rate': round(accessible_count / total * 100, 2) if total > 0 else 0,
+                'avg_response_time': avg_response_time,
+            },
+        }
+    )

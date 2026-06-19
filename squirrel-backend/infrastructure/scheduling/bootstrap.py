@@ -28,7 +28,7 @@ class ScheduledTaskBootstrap:
                 return
 
             default_names = [task_cls.__name__[:100] for task_cls in classes]
-            system_names = [f"system_{name}"[:100] for name in default_names]
+            system_names = [f'system_{name}'[:100] for name in default_names]
             candidate_names = default_names + system_names
 
             # Class paths that should be considered "alive" for orphan detection.
@@ -36,20 +36,20 @@ class ScheduledTaskBootstrap:
             # where the caller passes a curated list); otherwise fall back to the
             # factory's discovered builtin registry.
             if task_classes is not None:
-                available_classes = {f"{cls.__module__}.{cls.__name__}" for cls in classes}
+                available_classes = {f'{cls.__module__}.{cls.__name__}' for cls in classes}
             else:
                 available_classes = set(self._available_task_class_paths())
 
             with self.session_factory() as session:
-                existing_system_tasks = session.query(ScheduledTask).filter(
-                    ScheduledTask.task_type == TaskType.SYSTEM.value,
-                ).all()
+                existing_system_tasks = (
+                    session.query(ScheduledTask)
+                    .filter(
+                        ScheduledTask.task_type == TaskType.SYSTEM.value,
+                    )
+                    .all()
+                )
                 existing_by_class = {task.task_class: task for task in existing_system_tasks}
-                existing_by_name = {
-                    task.name: task
-                    for task in existing_system_tasks
-                    if task.name in candidate_names
-                }
+                existing_by_name = {task.name: task for task in existing_system_tasks if task.name in candidate_names}
 
                 existing_names = {
                     name
@@ -62,11 +62,11 @@ class ScheduledTaskBootstrap:
                 updated_count = 0
 
                 for task_cls in classes:
-                    task_class = f"{task_cls.__module__}.{task_cls.__name__}"
+                    task_class = f'{task_cls.__module__}.{task_cls.__name__}'
                     existing_task = (
                         existing_by_class.get(task_class)
                         or existing_by_name.get(task_cls.__name__[:100])
-                        or existing_by_name.get(f"system_{task_cls.__name__[:100]}"[:100])
+                        or existing_by_name.get(f'system_{task_cls.__name__[:100]}'[:100])
                     )
                     if existing_task:
                         if existing_task.task_class != task_class:
@@ -78,15 +78,15 @@ class ScheduledTaskBootstrap:
 
                     name = task_cls.__name__
                     if name in existing_names:
-                        name = f"system_{name}"
+                        name = f'system_{name}'
                         name = name[:100]
 
                     existing_names.add(name)
 
-                    description = (task_cls.__doc__ or "").strip() or None
-                    interval = int(getattr(task_cls, "interval", 60))
-                    unit = str(getattr(task_cls, "unit", "seconds"))
-                    start_immediately = bool(getattr(task_cls, "start_immediately", True))
+                    description = (task_cls.__doc__ or '').strip() or None
+                    interval = int(getattr(task_cls, 'interval', 60))
+                    unit = str(getattr(task_cls, 'unit', 'seconds'))
+                    start_immediately = bool(getattr(task_cls, 'start_immediately', True))
 
                     task = ScheduledTask(
                         name=name,
@@ -100,8 +100,8 @@ class ScheduledTaskBootstrap:
                         is_active=True,
                         task_class=task_class,
                         task_params={},
-                        created_by="system",
-                        updated_by="system",
+                        created_by='system',
+                        updated_by='system',
                     )
                     session.add(task)
                     created_count += 1
@@ -109,20 +109,19 @@ class ScheduledTaskBootstrap:
                 # Drop system tasks whose backing class is gone.
                 # Runs after the update loop so tasks that were merely renamed/module-moved
                 # have already had their task_class refreshed and won't be treated as orphans.
-                orphaned = [
-                    task for task in existing_system_tasks
-                    if task.task_class not in available_classes
-                ]
+                orphaned = [task for task in existing_system_tasks if task.task_class not in available_classes]
                 for task in orphaned:
-                    logger.info('Removing orphaned system task %s (class %s no longer exists)', task.name, task.task_class)
+                    logger.info(
+                        'Removing orphaned system task %s (class %s no longer exists)', task.name, task.task_class
+                    )
                     session.delete(task)
 
                 if created_count:
-                    logger.info("Bootstrap created %s system scheduled tasks", created_count)
+                    logger.info('Bootstrap created %s system scheduled tasks', created_count)
                 if updated_count:
-                    logger.info("Bootstrap updated %s system scheduled task classes", updated_count)
+                    logger.info('Bootstrap updated %s system scheduled task classes', updated_count)
         except Exception as e:
-            logger.error("Failed to ensure system tasks: %s", e, exc_info=True)
+            logger.error('Failed to ensure system tasks: %s', e, exc_info=True)
 
     @staticmethod
     def _available_task_class_paths() -> set[str]:

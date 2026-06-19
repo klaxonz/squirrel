@@ -91,24 +91,24 @@ class RssEntryStore:
             entry = existing.get(key)
 
             common = {
-                "user_id": feed.user_id,
-                "account_id": feed.account_id,
-                "feed_id": feed.id,
-                "external_entry_id": remote_entry.external_entry_id,
-                "canonical_url": remote_entry.canonical_url,
-                "title": remote_entry.title,
-                "summary": remote_entry.summary,
-                "thumbnail": remote_entry.thumbnail,
-                "author": remote_entry.author,
-                "published_at": remote_entry.published_at,
-                "is_read": remote_entry.is_read,
-                "is_starred": remote_entry.is_starred,
-                "raw_data": remote_entry.raw_data,
+                'user_id': feed.user_id,
+                'account_id': feed.account_id,
+                'feed_id': feed.id,
+                'external_entry_id': remote_entry.external_entry_id,
+                'canonical_url': remote_entry.canonical_url,
+                'title': remote_entry.title,
+                'summary': remote_entry.summary,
+                'thumbnail': remote_entry.thumbnail,
+                'author': remote_entry.author,
+                'published_at': remote_entry.published_at,
+                'is_read': remote_entry.is_read,
+                'is_starred': remote_entry.is_starred,
+                'raw_data': remote_entry.raw_data,
             }
 
             if entry is None:
-                common["created_at"] = now
-                common["updated_at"] = now
+                common['created_at'] = now
+                common['updated_at'] = now
                 new_dicts.append(common)
             else:
                 if (
@@ -123,8 +123,8 @@ class RssEntryStore:
                 ):
                     continue
 
-                common["id"] = entry.id
-                common["updated_at"] = now
+                common['id'] = entry.id
+                common['updated_at'] = now
                 update_dicts.append(common)
 
             if feed.id not in touched_feeds:

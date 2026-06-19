@@ -1,5 +1,5 @@
-"""PersistenceStage - persists video data to database
-"""
+"""PersistenceStage - persists video data to database"""
+
 import logging
 
 from ...exceptions import DatabaseError
@@ -30,27 +30,27 @@ class PersistenceStage(PipelineStage):
 
     @property
     def stage_name(self) -> str:
-        return "persistence"
+        return 'persistence'
 
     def execute(self, context: PipelineContext) -> PipelineContext:
         """Execute persistence"""
         # Check preconditions
         if context.video_dto is None:
             raise DatabaseError(
-                "No video DTO found in context",
-                context={"task_id": context.task.task_id},
+                'No video DTO found in context',
+                context={'task_id': context.task.task_id},
             )
 
         # Check if persistence should be skipped
         if context.should_skip_persistence:
-            logger.info("Skipping persistence (flag set): url=%s", context.task.url)
+            logger.info('Skipping persistence (flag set): url=%s', context.task.url)
             return context
 
         dto = context.video_dto
         task = context.task
 
         # 1. Save video
-        logger.info("Persisting video: url=%s, title=%s", dto.url, dto.title)
+        logger.info('Persisting video: url=%s, title=%s', dto.url, dto.title)
 
         try:
             video_model, is_new = self.video_service.create_or_update(
@@ -60,21 +60,21 @@ class PersistenceStage(PipelineStage):
                 duration=dto.duration,
                 publish_date=dto.publish_date,
                 description=dto.description,
-                subscription_id=task.metadata.get("subscription_id"),
-                subscription_sync_mode=task.metadata.get("sync_mode"),
+                subscription_id=task.metadata.get('subscription_id'),
+                subscription_sync_mode=task.metadata.get('sync_mode'),
             )
 
             context.video_model = video_model
-            context.extra["is_new_video"] = is_new
+            context.extra['is_new_video'] = is_new
 
-            logger.info("Video persisted: id=%s, is_new=%s, url=%s", video_model.id, is_new, dto.url)
+            logger.info('Video persisted: id=%s, is_new=%s, url=%s', video_model.id, is_new, dto.url)
 
         except (ConnectionError, OSError, ValueError, TypeError) as e:
             raise DatabaseError(
-                f"Failed to persist video: {e}",
+                f'Failed to persist video: {e}',
                 context={
-                    "url": dto.url,
-                    "title": dto.title,
+                    'url': dto.url,
+                    'title': dto.title,
                 },
             ) from e
 
@@ -85,16 +85,13 @@ class PersistenceStage(PipelineStage):
                     video_model.id,
                     dto.actors,
                 )
-                logger.info("Actors processed: video_id=%s, count=%s", video_model.id, len(dto.actors))
+                logger.info('Actors processed: video_id=%s, count=%s', video_model.id, len(dto.actors))
             except (ValueError, TypeError, AttributeError) as e:
                 # Actor processing failure should not interrupt the flow
-                logger.warning("Failed to process actors: video_id=%s, error=%s", video_model.id, e)
+                logger.warning('Failed to process actors: video_id=%s, error=%s', video_model.id, e)
 
         return context
 
     def can_skip(self, context: PipelineContext) -> bool:
         """Skip if video_model already exists or skip flag is set"""
-        return (
-            context.video_model is not None or
-            context.should_skip_persistence
-        )
+        return context.video_model is not None or context.should_skip_persistence

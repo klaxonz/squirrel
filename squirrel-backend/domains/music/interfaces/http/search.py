@@ -8,52 +8,54 @@ from infrastructure.http import response
 from .dependencies import get_music_service
 
 router = APIRouter()
-@router.get("/search")
+
+
+@router.get('/search')
 async def search_music(
-    query: str = Query(..., min_length=1, max_length=100, description="搜索关键词"),
-    page: int = Query(1, ge=1, le=50, description="页码"),
-    page_size: int = Query(20, ge=1, le=50, description="每页数量"),
+    query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(20, ge=1, le=50, description='每页数量'),
     current_user: User = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
     if not normalized_query:
-        return response.param_error("query cannot be empty")
+        return response.param_error('query cannot be empty')
 
     return response.success(await music_service.search_tracks(current_user.id, normalized_query, page, page_size))
 
 
-@router.get("/search/artists")
+@router.get('/search/artists')
 async def search_music_artists(
-    query: str = Query(..., min_length=1, max_length=100, description="搜索关键词"),
-    page: int = Query(1, ge=1, le=50, description="页码"),
-    page_size: int = Query(10, ge=1, le=30, description="每页数量"),
+    query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(10, ge=1, le=30, description='每页数量'),
     current_user: User = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
     if not normalized_query:
-        return response.param_error("query cannot be empty")
+        return response.param_error('query cannot be empty')
 
     return response.success(await music_service.search_artists(current_user.id, normalized_query, page, page_size))
 
 
-@router.get("/search/albums")
+@router.get('/search/albums')
 async def search_music_albums(
-    query: str = Query(..., min_length=1, max_length=100, description="搜索关键词"),
-    page: int = Query(1, ge=1, le=50, description="页码"),
-    page_size: int = Query(12, ge=1, le=30, description="每页数量"),
+    query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
+    page: int = Query(1, ge=1, le=50, description='页码'),
+    page_size: int = Query(12, ge=1, le=30, description='每页数量'),
     current_user: User = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
     if not normalized_query:
-        return response.param_error("query cannot be empty")
+        return response.param_error('query cannot be empty')
 
     return response.success(await music_service.search_albums(current_user.id, normalized_query, page, page_size))
 
 
-@router.get("/search/default")
+@router.get('/search/default')
 async def get_music_default_search(
     current_user: User = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
@@ -61,7 +63,7 @@ async def get_music_default_search(
     return response.success(await music_service.get_default_search_keyword(current_user.id))
 
 
-@router.get("/search/hot")
+@router.get('/search/hot')
 async def list_music_hot_searches(
     current_user: User = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
@@ -69,26 +71,26 @@ async def list_music_hot_searches(
     return response.success(await music_service.list_hot_searches(current_user.id))
 
 
-@router.get("/search/suggest")
+@router.get('/search/suggest')
 async def suggest_music_search(
-    query: str = Query(..., min_length=1, max_length=100, description="搜索关键词"),
+    query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
     current_user: User = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
     if not normalized_query:
-        return response.param_error("query cannot be empty")
+        return response.param_error('query cannot be empty')
 
     return response.success(await music_service.search_suggestions(current_user.id, normalized_query))
 
 
-@router.get("/search/complex")
+@router.get('/search/complex')
 async def search_music_complex(
-    query: str = Query(..., min_length=1, max_length=100, description="搜索关键词"),
+    query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
     current_user: User = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
     if not normalized_query:
-        return response.param_error("query cannot be empty")
+        return response.param_error('query cannot be empty')
     return response.success(await music_service.get_complex_search(current_user.id, normalized_query))

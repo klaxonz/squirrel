@@ -11,6 +11,7 @@ from .sites_dependencies import get_catalog_service, get_login_service
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
 @router.get('/{site_name}/login-status')
 def get_site_login_status(
     site_name: str,
@@ -27,13 +28,18 @@ def get_site_login_status(
     if site_name.lower() == 'youtube':
         try:
             from infrastructure.site_catalog.youtube_oauth import get_oauth_state
+
             oauth_state = get_oauth_state()
             status['oauth_status'] = oauth_state.status
-            status['oauth_account'] = {
-                'name': oauth_state.account.name if oauth_state.account else None,
-                'email': oauth_state.account.email if oauth_state.account else None,
-                'avatar': oauth_state.account.avatar if oauth_state.account else None,
-            } if oauth_state.account else None
+            status['oauth_account'] = (
+                {
+                    'name': oauth_state.account.name if oauth_state.account else None,
+                    'email': oauth_state.account.email if oauth_state.account else None,
+                    'avatar': oauth_state.account.avatar if oauth_state.account else None,
+                }
+                if oauth_state.account
+                else None
+            )
         except Exception:
             logger.warning('Failed to fetch YouTube OAuth status', exc_info=True)
 

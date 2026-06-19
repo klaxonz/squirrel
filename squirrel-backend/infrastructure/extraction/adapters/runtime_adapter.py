@@ -5,6 +5,7 @@ Core improvements:
 2. Catches all exceptions and standardizes them
 3. Returns pure data objects (VideoDTO)
 """
+
 import logging
 from datetime import datetime
 from typing import Any
@@ -52,32 +53,46 @@ class RuntimeDataAdapter:
             # 2. Handle publish date
             publish_date = self._extract_publish_date(video)
             if publish_date:
-                base_data["publish_date"] = publish_date
+                base_data['publish_date'] = publish_date
 
             # 3. Actively fetch actors (critical!)
             actors = self._extract_actors(video)
             if actors:
-                base_data["actors"] = actors
+                base_data['actors'] = actors
 
             # 4. Preserve raw data
-            base_data["raw_data"] = self._extract_raw_data(video)
+            base_data['raw_data'] = self._extract_raw_data(video)
 
             # 5. Create DTO (with automatic validation)
             video_dto = VideoDTO(**base_data)
 
-            self.logger.debug('Video adapted successfully: %s', video.url, extra={'url': video.url, 'site': site_name, 'actors_count': len(actors)})
+            self.logger.debug(
+                'Video adapted successfully: %s',
+                video.url,
+                extra={'url': video.url, 'site': site_name, 'actors_count': len(actors)},
+            )
 
             return video_dto
 
         except Exception as e:  # data transform boundary — wrap any error as DataTransformError
-            self.logger.error('Failed to adapt Video to VideoDTO: %s', getattr(video, 'url', 'unknown'), exc_info=True, extra={'url': getattr(video, 'url', None), 'site': site_name, 'error': str(e), 'error_type': type(e).__name__})
+            self.logger.error(
+                'Failed to adapt Video to VideoDTO: %s',
+                getattr(video, 'url', 'unknown'),
+                exc_info=True,
+                extra={
+                    'url': getattr(video, 'url', None),
+                    'site': site_name,
+                    'error': str(e),
+                    'error_type': type(e).__name__,
+                },
+            )
 
             raise DataTransformError(
-                f"Failed to transform video data: {e}",
+                f'Failed to transform video data: {e}',
                 context={
-                    "url": getattr(video, "url", None),
-                    "site": site_name,
-                    "original_error": str(e),
+                    'url': getattr(video, 'url', None),
+                    'site': site_name,
+                    'original_error': str(e),
                 },
             ) from e
 
@@ -94,24 +109,24 @@ class RuntimeDataAdapter:
         """
         # VideoMeta base fields
         base_data = {
-            "url": video.url,
-            "title": video.title or "",
-            "site_name": site_name,
+            'url': video.url,
+            'title': video.title or '',
+            'site_name': site_name,
         }
 
         # Optional fields
         if video.thumbnail is not None:
-            base_data["thumbnail"] = video.thumbnail
+            base_data['thumbnail'] = video.thumbnail
 
         if video.duration is not None:
-            base_data["duration"] = video.duration
+            base_data['duration'] = video.duration
 
         # Extract additional fields from extra_data (e.g. description, tags)
         if video.extra_data:
-            if "description" in video.extra_data:
-                base_data["description"] = video.extra_data["description"]
-            if "tags" in video.extra_data:
-                base_data["tags"] = video.extra_data["tags"]
+            if 'description' in video.extra_data:
+                base_data['description'] = video.extra_data['description']
+            if 'tags' in video.extra_data:
+                base_data['tags'] = video.extra_data['tags']
 
         return base_data
 
@@ -147,8 +162,8 @@ class RuntimeDataAdapter:
 
         try:
             # Get actors from extra_data
-            if video.extra_data and "actors" in video.extra_data:
-                raw_actors = video.extra_data["actors"]
+            if video.extra_data and 'actors' in video.extra_data:
+                raw_actors = video.extra_data['actors']
 
                 if raw_actors and isinstance(raw_actors, list):
                     for actor in raw_actors:
@@ -156,21 +171,25 @@ class RuntimeDataAdapter:
                             # Convert dictionary payloads to backend-local actor data.
                             if isinstance(actor, dict):
                                 actor = RuntimeActorData(
-                                    url=actor.get("url", ""),
-                                    name=actor.get("name"),
-                                    avatar=actor.get("avatar"),
-                                    extra_data=actor.get("extra_data"),
+                                    url=actor.get('url', ''),
+                                    name=actor.get('name'),
+                                    avatar=actor.get('avatar'),
+                                    extra_data=actor.get('extra_data'),
                                 )
 
                             actor_dto = self._convert_actor(actor)
                             if actor_dto:
                                 actors.append(actor_dto)
                         except (ValueError, TypeError, AttributeError, KeyError) as e:
-                            self.logger.warning("Failed to convert actor: %s", e, extra={'video_url': video.url, 'actor': str(actor)})
+                            self.logger.warning(
+                                'Failed to convert actor: %s', e, extra={'video_url': video.url, 'actor': str(actor)}
+                            )
 
         except (ValueError, TypeError, KeyError, AttributeError) as e:
             # Actor extraction failure should not abort the entire extraction
-            self.logger.warning("Failed to extract actors: %s, error: %s", video.url, e, extra={'url': video.url, 'error': str(e)})
+            self.logger.warning(
+                'Failed to extract actors: %s, error: %s', video.url, e, extra={'url': video.url, 'error': str(e)}
+            )
 
         return actors
 
@@ -188,16 +207,16 @@ class RuntimeDataAdapter:
             return None
 
         # Ensure url and name are present
-        if not hasattr(actor, "url") or not actor.url:
+        if not hasattr(actor, 'url') or not actor.url:
             return None
 
-        if not hasattr(actor, "name") or not actor.name:
+        if not hasattr(actor, 'name') or not actor.name:
             return None
 
         return ActorDTO(
             url=actor.url,
             name=actor.name,
-            avatar=getattr(actor, "avatar", None),
+            avatar=getattr(actor, 'avatar', None),
         )
 
     def _extract_raw_data(self, video: RuntimeVideoData) -> dict[str, Any]:
@@ -215,8 +234,9 @@ class RuntimeDataAdapter:
         # Save extra_data if present
         if video.extra_data:
             # Only save serializable data
-            raw["extra_data"] = {
-                k: v for k, v in video.extra_data.items()
+            raw['extra_data'] = {
+                k: v
+                for k, v in video.extra_data.items()
                 if isinstance(v, (str, int, float, bool, type(None), list, dict))
             }
 

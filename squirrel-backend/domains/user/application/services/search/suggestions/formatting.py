@@ -33,12 +33,14 @@ def serialize_rows(rows: Iterable[Any], source: str) -> list[dict[str, str]]:
 
         seen.add(dedupe_key)
         meta = normalize_query(getattr(row, 'meta', None))
-        items.append({
-            'type': source,
-            'value': value,
-            'label': value,
-            'meta': meta,
-        })
+        items.append(
+            {
+                'type': source,
+                'value': value,
+                'label': value,
+                'meta': meta,
+            }
+        )
 
     return items
 
@@ -54,14 +56,15 @@ def dedupe_pool_items(items: Iterable[dict[str, str]]) -> list[dict[str, str]]:
         if not value or dedupe_key in seen:
             continue
         seen.add(dedupe_key)
-        deduped.append({
-            'type': item_type,
-            'value': value,
-            'label': normalize_query(item.get('label') or value),
-            'meta': normalize_query(item.get('meta') or ''),
-        })
+        deduped.append(
+            {
+                'type': item_type,
+                'value': value,
+                'label': normalize_query(item.get('label') or value),
+                'meta': normalize_query(item.get('meta') or ''),
+            }
+        )
         if len(deduped) >= SUGGESTION_POOL_MAX_ITEMS:
             break
 
     return deduped
-

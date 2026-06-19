@@ -16,7 +16,7 @@ from infrastructure.database.base import Base
 
 @pytest.fixture
 def engine():
-    _engine = create_engine("sqlite:///:memory:")
+    _engine = create_engine('sqlite:///:memory:')
     Base.metadata.create_all(
         _engine,
         tables=[
@@ -40,6 +40,7 @@ def session_factory(engine):
             raise
         finally:
             session.close()
+
     return _factory
 
 
@@ -56,11 +57,11 @@ def _seed_video(engine, *, video_id=1, duration=120):
         session.add(
             Video(
                 id=video_id,
-                title="Marker video",
-                url="https://www.youtube.com/watch?v=clip-demo",
-                domain="youtube.com",
+                title='Marker video',
+                url='https://www.youtube.com/watch?v=clip-demo',
+                domain='youtube.com',
                 duration=duration,
-                thumbnail="https://img.example.com/clip.jpg",
+                thumbnail='https://img.example.com/clip.jpg',
                 publish_date=datetime(2024, 1, 1, 12, 0, 0),
                 created_at=datetime(2024, 1, 1, 12, 0, 0),
                 updated_at=datetime(2024, 1, 1, 12, 0, 0),
@@ -77,43 +78,43 @@ def test_create_update_list_and_delete_clip_marker(engine, svc):
         user_id=7,
         data=ClipMarkerCreate(
             video_id=1,
-            title="Opening hook",
-            note="Strong opening line",
+            title='Opening hook',
+            note='Strong opening line',
             start_time=12.5,
             end_time=28.25,
         ),
     )
 
-    assert created["video_id"] == 1
-    assert created["title"] == "Opening hook"
-    assert created["note"] == "Strong opening line"
-    assert created["start_time"] == 12.5
-    assert created["end_time"] == 28.25
-    assert created["duration_seconds"] == 15.75
-    assert created["preview_image_url"] is None
+    assert created['video_id'] == 1
+    assert created['title'] == 'Opening hook'
+    assert created['note'] == 'Strong opening line'
+    assert created['start_time'] == 12.5
+    assert created['end_time'] == 28.25
+    assert created['duration_seconds'] == 15.75
+    assert created['preview_image_url'] is None
 
     listed = svc.list_markers(user_id=7, video_id=1)
     assert len(listed) == 1
-    assert listed[0]["id"] == created["id"]
+    assert listed[0]['id'] == created['id']
 
     updated = svc.update_marker(
         user_id=7,
-        marker_id=created["id"],
+        marker_id=created['id'],
         data=ClipMarkerUpdate(
-            title="Cold open",
+            title='Cold open',
             start_time=10,
             end_time=20,
         ),
     )
 
     assert updated is not None
-    assert updated["title"] == "Cold open"
-    assert updated["start_time"] == 10
-    assert updated["end_time"] == 20
-    assert updated["duration_seconds"] == 10
-    assert updated["preview_image_url"] is None
+    assert updated['title'] == 'Cold open'
+    assert updated['start_time'] == 10
+    assert updated['end_time'] == 20
+    assert updated['duration_seconds'] == 10
+    assert updated['preview_image_url'] is None
 
-    deleted_count = svc.delete_marker(user_id=7, marker_id=created["id"])
+    deleted_count = svc.delete_marker(user_id=7, marker_id=created['id'])
     assert deleted_count == 1
     assert svc.list_markers(user_id=7, video_id=1) == []
 
@@ -125,14 +126,14 @@ def test_create_clip_marker_uses_default_duration_and_clamps_to_video_end(engine
         user_id=9,
         data=ClipMarkerCreate(
             video_id=1,
-            title="Ending beat",
+            title='Ending beat',
             start_time=35,
         ),
     )
 
-    assert created["start_time"] == 35
-    assert created["end_time"] == 40
-    assert created["duration_seconds"] == 5
+    assert created['start_time'] == 35
+    assert created['end_time'] == 40
+    assert created['duration_seconds'] == 5
 
 
 def test_create_clip_marker_rejects_inverted_range(engine, svc):
@@ -145,9 +146,9 @@ def test_create_clip_marker_rejects_inverted_range(engine, svc):
             end_time=10,
         )
     except ValidationError as exc:
-        assert "end_time must be greater than or equal to start_time" in str(exc)
+        assert 'end_time must be greater than or equal to start_time' in str(exc)
     else:
-        raise AssertionError("expected ValidationError for inverted clip range")
+        raise AssertionError('expected ValidationError for inverted clip range')
 
 
 def test_save_preview_persists_jpeg_and_returns_cache_busted_url(engine, tmp_path):
@@ -181,12 +182,12 @@ def test_save_preview_persists_jpeg_and_returns_cache_busted_url(engine, tmp_pat
 
     updated = svc.save_preview(
         user_id=7,
-        marker_id=created["id"],
-        image_data_url="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAXAQEBAQEAAAAAAAAAAAAAAAABAAID/9oADAMBAAIQAxAAAAFqgP/EABQQAQAAAAAAAAAAAAAAAAAAACD/2gAIAQEAAQUCX//EABQRAQAAAAAAAAAAAAAAAAAAACD/2gAIAQMBAT8BX//EABQRAQAAAAAAAAAAAAAAAAAAACD/2gAIAQIBAT8BX//Z",
+        marker_id=created['id'],
+        image_data_url='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAXAQEBAQEAAAAAAAAAAAAAAAABAAID/9oADAMBAAIQAxAAAAFqgP/EABQQAQAAAAAAAAAAAAAAAAAAACD/2gAIAQEAAQUCX//EABQRAQAAAAAAAAAAAAAAAAAAACD/2gAIAQMBAT8BX//EABQRAQAAAAAAAAAAAAAAAAAAACD/2gAIAQIBAT8BX//Z',
     )
 
     assert updated is not None
-    assert updated["preview_image_url"] is not None
-    assert updated["preview_image_url"].startswith("/static/clip-markers/user_7/video_1/marker_")
-    assert "?v=" in updated["preview_image_url"]
-    assert (tmp_path / "user_7" / "video_1").exists()
+    assert updated['preview_image_url'] is not None
+    assert updated['preview_image_url'].startswith('/static/clip-markers/user_7/video_1/marker_')
+    assert '?v=' in updated['preview_image_url']
+    assert (tmp_path / 'user_7' / 'video_1').exists()

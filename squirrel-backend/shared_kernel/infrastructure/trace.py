@@ -12,7 +12,7 @@ import uuid
 from contextvars import ContextVar, Token
 
 # Use ContextVar to store trace_id, supports async and thread isolation
-_trace_id_var: ContextVar[str | None] = ContextVar("trace_id", default=None)
+_trace_id_var: ContextVar[str | None] = ContextVar('trace_id', default=None)
 
 
 def generate_trace_id() -> str:
@@ -98,5 +98,4 @@ def format_trace_id(trace_id: str | None) -> str:
         Formatted trace_id, returns "-" if None
 
     """
-    return trace_id or "-"
-
+    return trace_id or '-'

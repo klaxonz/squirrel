@@ -180,9 +180,11 @@ class ThumbnailDownloaderService:
 
     def get_thumbnail_url(self, video_id: int, remote_url: str | None, video_url: str | None = None) -> str | None:
         """Get local static thumbnail URL when available, otherwise the remote URL."""
-        return self.get_thumbnail_url_map([
-            (video_id, remote_url, video_url),
-        ]).get(video_id)
+        return self.get_thumbnail_url_map(
+            [
+                (video_id, remote_url, video_url),
+            ]
+        ).get(video_id)
 
     def _request_thumbnail(
         self,

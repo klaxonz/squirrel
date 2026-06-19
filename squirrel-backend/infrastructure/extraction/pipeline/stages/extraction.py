@@ -1,5 +1,5 @@
-"""ExtractionStage - extracts video data from plugin
-"""
+"""ExtractionStage - extracts video data from plugin"""
+
 import logging
 
 from domains.video.application.services.moderation.blocked import record_blocked_video
@@ -36,7 +36,7 @@ class ExtractionStage(PipelineStage):
 
     @property
     def stage_name(self) -> str:
-        return "extraction"
+        return 'extraction'
 
     def execute(self, context: PipelineContext) -> PipelineContext:
         """Execute extraction"""
@@ -44,32 +44,32 @@ class ExtractionStage(PipelineStage):
 
         if extractor is None:
             raise ExtractionError(
-                f"No extractor found for URL: {context.task.url}",
-                context={"url": context.task.url},
+                f'No extractor found for URL: {context.task.url}',
+                context={'url': context.task.url},
             )
 
-        logger.info("Extracting video: url=%s, site=%s", context.task.url, context.task.site_name)
+        logger.info('Extracting video: url=%s, site=%s', context.task.url, context.task.site_name)
 
         extraction_result = extractor.extract(context.task)
 
         if not extraction_result.success:
             error_context = {
-                "url": context.task.url,
-                "site": context.task.site_name,
-                "error_category": extraction_result.error_category,
-                "retryable": extraction_result.retryable,
+                'url': context.task.url,
+                'site': context.task.site_name,
+                'error_category': extraction_result.error_category,
+                'retryable': extraction_result.retryable,
                 **(extraction_result.error_context or {}),
             }
 
-            error_msg = extraction_result.error or "Extraction failed"
+            error_msg = extraction_result.error or 'Extraction failed'
 
-            if extraction_result.error_category == "network":
+            if extraction_result.error_category == 'network':
                 raise NetworkError(error_msg, context=error_context)
-            if extraction_result.error_category == "auth":
+            if extraction_result.error_category == 'auth':
                 raise PermissionError(error_msg, context=error_context)
-            if extraction_result.error_category == "vip":
+            if extraction_result.error_category == 'vip':
                 raise VipError(error_msg, context=error_context)
-            if extraction_result.error_category == "not_found":
+            if extraction_result.error_category == 'not_found':
                 raise ResourceNotFoundError(error_msg, context=error_context)
             raise ExtractionError(
                 error_msg,
@@ -79,7 +79,9 @@ class ExtractionStage(PipelineStage):
 
         context.plugin_video = extraction_result.data
 
-        logger.info("Extraction completed: url=%s, title=%s", context.task.url, getattr(extraction_result.data, 'title', 'N/A'))
+        logger.info(
+            'Extraction completed: url=%s, title=%s', context.task.url, getattr(extraction_result.data, 'title', 'N/A')
+        )
 
         return context
 
@@ -90,9 +92,9 @@ class ExtractionStage(PipelineStage):
 
         reason_code = None
         if isinstance(error, VipError):
-            reason_code = "vip_required"
-        elif isinstance(getattr(error, "context", None), dict):
-            reason_code = error.context.get("blocked_reason_code")
+            reason_code = 'vip_required'
+        elif isinstance(getattr(error, 'context', None), dict):
+            reason_code = error.context.get('blocked_reason_code')
 
         if not reason_code:
             return
@@ -105,12 +107,12 @@ class ExtractionStage(PipelineStage):
                 error_type=type(error).__name__,
             )
         except (ConnectionError, OSError, ValueError, TypeError) as record_error:
-            logger.warning("Failed to record blocked video: %s", record_error)
+            logger.warning('Failed to record blocked video: %s', record_error)
 
     def _get_extractor(self, url: str) -> Extractor | None:
         """Get extractor for URL"""
         try:
             return self.extractor_factory.create_extractor(url)
         except (ValueError, TypeError, AttributeError) as e:
-            logger.error("Failed to create extractor: %s", e)
+            logger.error('Failed to create extractor: %s', e)
             return None

@@ -48,10 +48,10 @@ class RssAccountService:
         progress = self.progress_store.get_progress(account_id)
         if not progress:
             progress = {
-                "account_id": account_id,
-                "running": False,
-                "phase": "idle",
-                "message": "RSS sync is idle",
+                'account_id': account_id,
+                'running': False,
+                'phase': 'idle',
+                'message': 'RSS sync is idle',
             }
         return progress
 

@@ -21,7 +21,7 @@ class CrawlWorkerRuntime:
         self,
         *,
         dispatcher: CrawlDispatcherService | None = None,
-        worker_id: str = "crawl-worker-1",
+        worker_id: str = 'crawl-worker-1',
         lease_seconds: int | None = None,
         retry_delay_seconds: int = 30,
         poll_interval_seconds: float = 1.0,
@@ -54,7 +54,7 @@ class CrawlWorkerRuntime:
     def run_loop(self, stop_event: threading.Event) -> None:
         with ThreadPoolExecutor(
             max_workers=self.max_concurrency,
-            thread_name_prefix=f"{self.worker_id}-slot",
+            thread_name_prefix=f'{self.worker_id}-slot',
         ) as executor:
             while not stop_event.is_set():
                 self._lease_tracker.reap_completed_futures()

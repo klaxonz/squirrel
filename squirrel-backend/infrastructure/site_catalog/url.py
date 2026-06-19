@@ -21,11 +21,11 @@ def extract_top_level_domain(url):
     :return: Top-level domain string
     """
     parsed_url = urlparse(url)
-    domain_parts = parsed_url.netloc.split(".")
+    domain_parts = parsed_url.netloc.split('.')
 
     if len(domain_parts) == 2:
         return parsed_url.netloc
-    return ".".join(domain_parts[-2:])
+    return '.'.join(domain_parts[-2:])
 
 
 def extract_second_level_domain(domain_or_url: str) -> str:
@@ -33,18 +33,18 @@ def extract_second_level_domain(domain_or_url: str) -> str:
     if not domain_or_url:
         return domain_or_url
 
-    if "://" in domain_or_url:
+    if '://' in domain_or_url:
         parsed = urlparse(domain_or_url)
         domain = parsed.hostname or domain_or_url
     else:
         domain = domain_or_url
 
     # Split domain parts
-    parts = domain.lower().split(".")
+    parts = domain.lower().split('.')
 
     # Return last two parts for second level domain
     if len(parts) >= 2:
-        return ".".join(parts[-2:])
+        return '.'.join(parts[-2:])
 
     return domain
 
@@ -58,12 +58,12 @@ def normalize_domain(domain_or_url: str) -> str | None:
     if not value:
         return value
 
-    if "://" not in value:
-        value = f"http://{value}"
+    if '://' not in value:
+        value = f'http://{value}'
 
     parsed = urlparse(value)
     hostname = parsed.hostname or domain_or_url
-    hostname = hostname.split(":")[0].lower()
+    hostname = hostname.split(':')[0].lower()
 
     try:
         ipaddress.ip_address(hostname)
@@ -71,18 +71,18 @@ def normalize_domain(domain_or_url: str) -> str | None:
     except ValueError:
         pass
 
-    parts = hostname.split(".")
+    parts = hostname.split('.')
     if len(parts) >= 2:
-        return ".".join(parts[-2:])
+        return '.'.join(parts[-2:])
 
     return hostname
 
 
 def _normalize_registration_domain(domain: str) -> str:
-    value = str(domain or "").strip().lower()
+    value = str(domain or '').strip().lower()
     if not value:
-        return ""
-    return value.lstrip(".")
+        return ''
+    return value.lstrip('.')
 
 
 def _build_site_registration_index() -> dict[str, str]:
@@ -116,10 +116,10 @@ def _resolve_site_from_domain(domain: str) -> str | None:
             return site_name
 
     index = _get_site_registration_index()
-    parts = domain.split(".")
+    parts = domain.split('.')
     site_name = None
     for start in range(len(parts)):
-        candidate = ".".join(parts[start:])
+        candidate = '.'.join(parts[start:])
         if candidate in index:
             site_name = index[candidate]
             break
@@ -144,7 +144,6 @@ def reset_site_lookup_cache() -> None:
     _site_registration_index_cached_at = 0.0
 
 
-
 def get_site_from_url(url: str) -> str | None:
     """Get site name from URL using plugin domains.
 
@@ -155,12 +154,11 @@ def get_site_from_url(url: str) -> str | None:
         return None
     try:
         parsed = urlparse(url)
-        domain = (parsed.hostname or "").lower()
+        domain = (parsed.hostname or '').lower()
         if not domain:
             return None
 
         return _resolve_site_from_domain(domain)
     except (ValueError, AttributeError, TypeError) as e:
-        logger.error("get_site_from_url exception occurred: url=%s, error=%s", url, e, exc_info=True)
+        logger.error('get_site_from_url exception occurred: url=%s, error=%s', url, e, exc_info=True)
         return None
-

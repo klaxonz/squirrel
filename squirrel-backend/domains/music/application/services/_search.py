@@ -13,12 +13,16 @@ class MusicSearchMixin:
     # --- Search ---
 
     async def search_tracks(self, user_id: int, query: str, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/search', {
-            'keywords': query,
-            'page': page,
-            'pagesize': page_size,
-            'type': 'song',
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/search',
+            {
+                'keywords': query,
+                'page': page,
+                'pagesize': page_size,
+                'type': 'song',
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
         rows = data.get('lists')
         if not isinstance(rows, list):
@@ -32,12 +36,16 @@ class MusicSearchMixin:
         }
 
     async def search_artists(self, user_id: int, query: str, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/search', {
-            'keywords': query,
-            'page': page,
-            'pagesize': page_size,
-            'type': 'author',
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/search',
+            {
+                'keywords': query,
+                'page': page,
+                'pagesize': page_size,
+                'type': 'author',
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
         rows = data.get('lists')
         if not isinstance(rows, list):
@@ -51,12 +59,16 @@ class MusicSearchMixin:
         }
 
     async def search_albums(self, user_id: int, query: str, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/search', {
-            'keywords': query,
-            'page': page,
-            'pagesize': min(page_size * 3, 50),
-            'type': 'song',
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/search',
+            {
+                'keywords': query,
+                'page': page,
+                'pagesize': min(page_size * 3, 50),
+                'type': 'song',
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
         rows = data.get('lists')
         if not isinstance(rows, list):
@@ -100,13 +112,17 @@ class MusicSearchMixin:
         }
 
     async def search_suggestions(self, user_id: int, query: str) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/search/suggest', {
-            'keywords': query,
-            'albumTipCount': 6,
-            'correctTipCount': 6,
-            'mvTipCount': 6,
-            'musicTipCount': 10,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/search/suggest',
+            {
+                'keywords': query,
+                'albumTipCount': 6,
+                'correctTipCount': 6,
+                'mvTipCount': 6,
+                'musicTipCount': 10,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         return {
             'items': normalize_suggestion_items(data),
@@ -118,21 +134,29 @@ class MusicSearchMixin:
 
         async def load_songs() -> None:
             nonlocal song_payload
-            song_payload = await self._client.request_kugou('/search', {
-                'keywords': query,
-                'page': 1,
-                'pagesize': 50,
-                'type': 'song',
-            }, user_id=user_id)
+            song_payload = await self._client.request_kugou(
+                '/search',
+                {
+                    'keywords': query,
+                    'page': 1,
+                    'pagesize': 50,
+                    'type': 'song',
+                },
+                user_id=user_id,
+            )
 
         async def load_artists() -> None:
             nonlocal artist_payload
-            artist_payload = await self._client.request_kugou('/search', {
-                'keywords': query,
-                'page': 1,
-                'pagesize': 12,
-                'type': 'author',
-            }, user_id=user_id)
+            artist_payload = await self._client.request_kugou(
+                '/search',
+                {
+                    'keywords': query,
+                    'page': 1,
+                    'pagesize': 12,
+                    'type': 'author',
+                },
+                user_id=user_id,
+            )
 
         async with anyio.create_task_group() as task_group:
             task_group.start_soon(load_songs)
@@ -168,4 +192,3 @@ class MusicSearchMixin:
             'artists': artists[:12],
             'albums': albums[:12],
         }
-

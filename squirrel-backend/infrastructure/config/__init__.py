@@ -5,9 +5,10 @@ Settings classes and helpers are re-exported here for convenience. The
 contains a ``settings`` submodule, ``from infrastructure.config import settings``
 resolves to the submodule (Python gives submodules precedence over package
 ``__getattr__``), not the lazy instance. Use the fully-qualified
-``from infrastructure.config.settings import settings`` instead — that path is
-itself lazily resolved via PEP 562 on the submodule.
+``from infrastructure.config.settings import settings`` instead — that name is
+a lazy proxy on the submodule.
 """
+
 from infrastructure.config.settings import (
     CookieCloudSettings,
     CrawlSettings,
@@ -20,12 +21,12 @@ from infrastructure.config.settings import (
 )
 
 __all__ = [
-    "CookieCloudSettings",
-    "CrawlSettings",
-    "KugouMusicSettings",
-    "MeiliSettings",
-    "PostgresSettings",
-    "RedisSettings",
-    "Settings",
-    "get_settings",
+    'CookieCloudSettings',
+    'CrawlSettings',
+    'KugouMusicSettings',
+    'MeiliSettings',
+    'PostgresSettings',
+    'RedisSettings',
+    'Settings',
+    'get_settings',
 ]

@@ -15,15 +15,16 @@ if TYPE_CHECKING:
 
 def _video_join():
     from domains.video.domain.models.video import Video
+
     return Video.id == foreign(VideoClipMarker.video_id)
 
 
 class VideoClipMarker(Base, SerializerMixin):
-    __tablename__ = "video_clip_marker"
+    __tablename__ = 'video_clip_marker'
 
     __table_args__ = (
-        Index("ix_video_clip_marker_user_video", "user_id", "video_id"),
-        Index("ix_video_clip_marker_user_created_at", "user_id", "created_at"),
+        Index('ix_video_clip_marker_user_video', 'user_id', 'video_id'),
+        Index('ix_video_clip_marker_user_created_at', 'user_id', 'created_at'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -41,8 +42,8 @@ class VideoClipMarker(Base, SerializerMixin):
     )
 
     video: Mapped[Video] = relationship(
-        "Video",
+        'Video',
         primaryjoin=_video_join,
-        back_populates="clip_markers",
+        back_populates='clip_markers',
         viewonly=True,
     )

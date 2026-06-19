@@ -50,17 +50,21 @@ def move_item(session: Session, *, item: PlaylistItem, new_position: int, max_po
 
 def find_next_item(session: Session, *, playlist_id: int, current_position: int) -> PlaylistItem | None:
     next_item = session.scalar(
-        select(PlaylistItem).where(
+        select(PlaylistItem)
+        .where(
             PlaylistItem.playlist_id == playlist_id,
             PlaylistItem.position > current_position,
-        ).order_by(PlaylistItem.position.asc()),
+        )
+        .order_by(PlaylistItem.position.asc()),
     )
     if next_item:
         return next_item
 
     return session.scalar(
-        select(PlaylistItem).where(
+        select(PlaylistItem)
+        .where(
             PlaylistItem.playlist_id == playlist_id,
             PlaylistItem.position < current_position,
-        ).order_by(PlaylistItem.position.asc()),
+        )
+        .order_by(PlaylistItem.position.asc()),
     )

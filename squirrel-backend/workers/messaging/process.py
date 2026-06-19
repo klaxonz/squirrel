@@ -20,22 +20,22 @@ def main():
             enabled = config_svc.get_bool(SYS_ENABLE_WORKER, default=True)
 
             if enabled and not is_running:
-                logger.info("[worker] Starting worker threads...")
+                logger.info('[worker] Starting worker threads...')
                 worker_start()
                 is_running = True
             elif not enabled and is_running:
-                logger.info("[worker] Stopping worker threads...")
+                logger.info('[worker] Stopping worker threads...')
                 worker_stop()
                 is_running = False
 
             time.sleep(5)
 
         if is_running:
-            logger.info("[worker] Stopping worker threads before exit...")
+            logger.info('[worker] Stopping worker threads before exit...')
             worker_stop()
 
-    logger.info("[worker] Worker process exited")
+    logger.info('[worker] Worker process exited')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

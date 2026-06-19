@@ -5,6 +5,7 @@ Refactoring improvements:
 2. Uses Pipeline for the entire workflow
 3. Code reduced from 270 lines to < 100 lines
 """
+
 import logging
 
 from ..contracts import ExtractionResult, ExtractionTask
@@ -59,20 +60,26 @@ class VideoExtractionHandler:
             context = self._create_context(task)
 
             # 2. Execute Pipeline
-            logger.info("Processing extraction task: task_id=%s, url=%s", task.task_id, task.url)
+            logger.info('Processing extraction task: task_id=%s, url=%s', task.task_id, task.url)
 
             pipeline_result = self.pipeline.execute(context)
 
             # 3. Log result
             if pipeline_result.success:
-                logger.info("Extraction completed successfully: task_id=%s, duration=%f'.2f's", task.task_id, context.get_duration())
+                logger.info(
+                    "Extraction completed successfully: task_id=%s, duration=%f'.2f's",
+                    task.task_id,
+                    context.get_duration(),
+                )
             else:
-                logger.error("Extraction failed: task_id=%s, error=%s", task.task_id, pipeline_result.error)
+                logger.error('Extraction failed: task_id=%s, error=%s', task.task_id, pipeline_result.error)
 
             return pipeline_result
 
         except Exception as e:  # handler boundary — catch all to return ExtractionResult
-            logger.error("Unexpected error in VideoExtractionHandler: task_id=%s, error=%s", task.task_id, e, exc_info=True)
+            logger.error(
+                'Unexpected error in VideoExtractionHandler: task_id=%s, error=%s', task.task_id, e, exc_info=True
+            )
 
             return ExtractionResult(
                 success=False,
@@ -92,7 +99,7 @@ class VideoExtractionHandler:
         context = PipelineContext(task=task)
 
         # Set control flags based on task metadata
-        context.should_skip_post_process = bool(task.metadata.get("skip_post_process", False))
+        context.should_skip_post_process = bool(task.metadata.get('skip_post_process', False))
 
         # Skip persistence if subscription does not exist
         # (This check can be performed in PersistenceStage)

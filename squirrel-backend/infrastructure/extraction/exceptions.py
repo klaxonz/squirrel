@@ -1,5 +1,5 @@
-"""Unified exception hierarchy for the extraction pipeline
-"""
+"""Unified exception hierarchy for the extraction pipeline"""
+
 from datetime import datetime
 from typing import Any
 
@@ -26,18 +26,16 @@ class ExtractionError(Exception):
         self.timestamp = datetime.now()
 
     def __str__(self):
-        return f"{self.__class__.__name__}: {self.message}"
+        return f'{self.__class__.__name__}: {self.message}'
 
     def __repr__(self):
         return (
-            f"{self.__class__.__name__}("
-            f"message='{self.message}', "
-            f"retryable={self.retryable}, "
-            f"context={self.context})"
+            f"{self.__class__.__name__}(message='{self.message}', retryable={self.retryable}, context={self.context})"
         )
 
 
 # ========== Data transformation errors ==========
+
 
 class DataTransformError(ExtractionError):
     """Data transformation error
@@ -66,6 +64,7 @@ class ValidationError(ExtractionError):
 
 # ========== Network errors (retryable) ==========
 
+
 class NetworkError(ExtractionError):
     """Network error
 
@@ -80,6 +79,7 @@ class NetworkError(ExtractionError):
 
 
 # ========== Business logic errors (non-retryable) ==========
+
 
 class ResourceNotFoundError(ExtractionError):
     """Resource not found
@@ -120,6 +120,7 @@ class VipError(ExtractionError):
 
 # ========== System errors (retryable) ==========
 
+
 class DatabaseError(ExtractionError):
     """Database error
 
@@ -134,6 +135,7 @@ class DatabaseError(ExtractionError):
 
 
 # ========== Pipeline errors ==========
+
 
 class PipelineError(ExtractionError):
     """Pipeline execution error
@@ -154,4 +156,3 @@ class StageExecutionError(PipelineError):
 
     More specific Pipeline Stage error
     """
-

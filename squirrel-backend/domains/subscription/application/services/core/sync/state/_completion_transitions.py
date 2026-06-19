@@ -27,7 +27,9 @@ def complete_success_state(
     state.failure_count = 0
     state.last_error = None
     state.idle_sync_count = 0 if videos_found > 0 else state.idle_sync_count + 1
-    state.next_sync_at = next_sync_at or (now + build_success_delay(state.sync_mode, state.idle_sync_count, videos_found))
+    state.next_sync_at = next_sync_at or (
+        now + build_success_delay(state.sync_mode, state.idle_sync_count, videos_found)
+    )
     state.version += 1
     return started_at
 

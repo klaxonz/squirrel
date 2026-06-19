@@ -21,8 +21,8 @@ class SubscriptionSyncTaskProgressService:
             return
 
         payload = task.payload or {}
-        sync_state_id = payload.get("sync_state_id")
-        if sync_state_id in (None, ""):
+        sync_state_id = payload.get('sync_state_id')
+        if sync_state_id in (None, ''):
             return
 
         try:
@@ -33,14 +33,14 @@ class SubscriptionSyncTaskProgressService:
         retryable = task.status == CrawlTaskStatus.RETRY_WAIT.value
         self._lifecycle.record_task_retry_transition(
             resolved_sync_state_id,
-            payload.get("queue_token"),
+            payload.get('queue_token'),
             now=now,
             retryable=retryable,
             error_message=error_message,
-            run_id=payload.get("run_id"),
-            request_id=payload.get("request_id"),
-            trace_id=payload.get("trace_id"),
-            trigger=payload.get("trigger"),
+            run_id=payload.get('run_id'),
+            request_id=payload.get('request_id'),
+            trace_id=payload.get('trace_id'),
+            trigger=payload.get('trigger'),
         )
 
 

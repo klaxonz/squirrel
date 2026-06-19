@@ -49,8 +49,7 @@ class PlaylistQueryService:
                 repository.count_playlist_items(session, playlist_id=playlist.id),
             )
             payload['items'] = [
-                serialize_item(item)
-                for item in repository.list_playlist_items(session, playlist_id=playlist_id)
+                serialize_item(item) for item in repository.list_playlist_items(session, playlist_id=playlist_id)
             ]
             return payload
 

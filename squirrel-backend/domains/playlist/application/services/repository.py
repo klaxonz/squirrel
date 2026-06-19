@@ -67,8 +67,7 @@ def load_playlist_item_counts(session: Session, playlist_ids: list[int]) -> dict
 def count_playlist_items(session: Session, *, playlist_id: int) -> int:
     return int(
         session.scalar(
-            select(func.count(PlaylistItem.id))
-            .where(PlaylistItem.playlist_id == playlist_id),
+            select(func.count(PlaylistItem.id)).where(PlaylistItem.playlist_id == playlist_id),
         )
         or 0,
     )
@@ -106,8 +105,7 @@ def get_playlist_video_item(session: Session, *, playlist_id: int, video_id: int
 def max_item_position(session: Session, *, playlist_id: int) -> int:
     return int(
         session.scalar(
-            select(func.max(PlaylistItem.position))
-            .where(PlaylistItem.playlist_id == playlist_id),
+            select(func.max(PlaylistItem.position)).where(PlaylistItem.playlist_id == playlist_id),
         )
         or 0,
     )

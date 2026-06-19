@@ -41,25 +41,25 @@ def _merge_headers(base: dict[str, str] | None, overrides: dict[str, str] | None
 
 
 def get_http_headers(slug: str, base: dict[str, str] | None = None) -> dict[str, str]:
-    config = get_site_config(slug).get("http") or {}
-    return _merge_headers(base, config.get("headers"))
+    config = get_site_config(slug).get('http') or {}
+    return _merge_headers(base, config.get('headers'))
 
 
 def get_login_config(slug: str) -> dict:
-    return get_site_config(slug).get("login") or {}
+    return get_site_config(slug).get('login') or {}
 
 
 def get_login_headers(slug: str, base: dict[str, str] | None = None) -> dict[str, str]:
     config = get_login_config(slug)
-    headers_override = config.get("headers") if isinstance(config, dict) else None
+    headers_override = config.get('headers') if isinstance(config, dict) else None
     http_headers = get_http_headers(slug)
     headers = _merge_headers(http_headers, headers_override)
     return _merge_headers(base, headers)
 
 
 def get_proxy_config(slug: str) -> dict:
-    return get_site_config(slug).get("proxy") or {}
+    return get_site_config(slug).get('proxy') or {}
 
 
 def get_rate_limit_config(slug: str) -> dict:
-    return get_site_config(slug).get("rate_limit") or {}
+    return get_site_config(slug).get('rate_limit') or {}

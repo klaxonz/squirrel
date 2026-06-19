@@ -18,7 +18,7 @@ def _build_client(monkeypatch):
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=7)
     monkeypatch.setattr(
-        "domains.subscription.interfaces.http.basic.SiteCatalog.is_site_enabled",
+        'domains.subscription.interfaces.http.basic.SiteCatalog.is_site_enabled',
         classmethod(lambda cls, site=None, domain=None: True),
     )
     return TestClient(app)
@@ -32,71 +32,74 @@ def test_subscribe_route_creates_subscription_synchronously(monkeypatch):
         return SimpleNamespace(id=42)
 
     monkeypatch.setattr(
-        "domains.subscription.interfaces.http.basic.subscription_import_service.handle_subscribe_request",
+        'domains.subscription.interfaces.http.basic.subscription_import_service.handle_subscribe_request',
         _handle_subscribe_request,
     )
     client = _build_client(monkeypatch)
 
-    response = client.post("/api/subscription/subscribe", json={
-        "url": "https://space.bilibili.com/32781024",
-    })
+    response = client.post(
+        '/api/subscription/subscribe',
+        json={
+            'url': 'https://space.bilibili.com/32781024',
+        },
+    )
 
     assert response.status_code == 200
     body = response.json()
-    assert body["code"] == 0
-    assert body["data"] == {
-        "subscription_id": 42,
-        "is_subscribed": True,
+    assert body['code'] == 0
+    assert body['data'] == {
+        'subscription_id': 42,
+        'is_subscribed': True,
     }
-    assert calls == [("https://space.bilibili.com/32781024", 7)]
+    assert calls == [('https://space.bilibili.com/32781024', 7)]
 
 
 def test_refresh_direct_runs_subscription_without_scheduler_queue(monkeypatch):
     calls = []
 
     monkeypatch.setattr(
-        "domains.subscription.interfaces.http.refresh.subscription_crud_service.verify_subscription_access",
+        'domains.subscription.interfaces.http.refresh.subscription_crud_service.verify_subscription_access',
         lambda user_id, subscription_id: (
-            SimpleNamespace(id=subscription_id, url="https://space.bilibili.com/32781024"),
-            "ok",
+            SimpleNamespace(id=subscription_id, url='https://space.bilibili.com/32781024'),
+            'ok',
         ),
     )
 
     def _run_one_inline(**kwargs):
         calls.append(kwargs)
         return SimpleNamespace(
-            subscription_id=kwargs["subscription_id"],
+            subscription_id=kwargs['subscription_id'],
             sync_state_id=12,
-            status="success",
-            request_id="direct:run-1",
-            run_id="run-1",
+            status='success',
+            request_id='direct:run-1',
+            run_id='run-1',
             result=SubscriptionUpdateResult(
-                subscription_id=kwargs["subscription_id"],
+                subscription_id=kwargs['subscription_id'],
                 success=True,
                 videos_found=3,
                 videos_enqueued=2,
             ),
         )
 
-    monkeypatch.setattr(subscription_update_scheduler, "run_one_inline", _run_one_inline)
+    monkeypatch.setattr(subscription_update_scheduler, 'run_one_inline', _run_one_inline)
     monkeypatch.setattr(
         subscription_update_scheduler,
-        "schedule_one",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("direct refresh should not schedule a task")),
+        'schedule_one',
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError('direct refresh should not schedule a task')),
     )
     client = _build_client(monkeypatch)
 
-    response = client.post("/api/subscription/42/refresh/direct?mode=full")
+    response = client.post('/api/subscription/42/refresh/direct?mode=full')
 
     assert response.status_code == 200
     body = response.json()
-    assert body["code"] == 0
-    assert body["data"]["status"] == "success"
-    assert body["data"]["videosFound"] == 3
-    assert body["data"]["videosExtracted"] == 2
-    assert calls[0]["subscription_id"] == 42
-    assert calls[0]["user_id"] == 7
-    assert calls[0]["mode"].value == "full"
+    assert body['code'] == 0
+    assert body['data']['status'] == 'success'
+    assert body['data']['videosFound'] == 3
+    assert body['data']['videosExtracted'] == 2
+    assert calls[0]['subscription_id'] == 42
+    assert calls[0]['user_id'] == 7
+    assert calls[0]['mode'].value == 'full'
 
 
 def test_toggle_special_follow_route_updates_current_user_subscription(monkeypatch):
@@ -107,18 +110,21 @@ def test_toggle_special_follow_route_updates_current_user_subscription(monkeypat
         return True
 
     monkeypatch.setattr(
-        "domains.subscription.interfaces.http.basic.subscription_manage_service.toggle_special_follow_status",
+        'domains.subscription.interfaces.http.basic.subscription_manage_service.toggle_special_follow_status',
         _toggle,
     )
     client = _build_client(monkeypatch)
 
-    response = client.post("/api/subscription/toggle-special-follow", json={
-        "subscription_id": 42,
-        "is_enable": True,
-    })
+    response = client.post(
+        '/api/subscription/toggle-special-follow',
+        json={
+            'subscription_id': 42,
+            'is_enable': True,
+        },
+    )
 
     assert response.status_code == 200
     body = response.json()
-    assert body["code"] == 0
-    assert body["data"] == {"success": True}
+    assert body['code'] == 0
+    assert body['data'] == {'success': True}
     assert calls == [(7, 42, True)]

@@ -13,13 +13,13 @@ class Response(BaseModel):
 
 def _payload(code: int, msg: str, data: Any = None) -> dict:
     return {
-        "code": code,
-        "msg": msg,
-        "data": data,
+        'code': code,
+        'msg': msg,
+        'data': data,
     }
 
 
-def success(data: Any = None, msg: str = "success") -> dict:
+def success(data: Any = None, msg: str = 'success') -> dict:
     """Return a success response
 
     Args:
@@ -69,21 +69,21 @@ def error(msg: str, code: int = ErrorCode.UNKNOWN_ERROR) -> JSONResponse:
 
 
 # Common error responses
-def param_error(msg: str = "Parameter error") -> JSONResponse:
+def param_error(msg: str = 'Parameter error') -> JSONResponse:
     return error(msg, ErrorCode.PARAM_ERROR)
 
 
-def unauthorized(msg: str = "Not logged in or session expired") -> JSONResponse:
+def unauthorized(msg: str = 'Not logged in or session expired') -> JSONResponse:
     return error(msg, ErrorCode.UNAUTHORIZED)
 
 
-def forbidden(msg: str = "No operation permission") -> JSONResponse:
+def forbidden(msg: str = 'No operation permission') -> JSONResponse:
     return error(msg, ErrorCode.FORBIDDEN)
 
 
-def not_found(msg: str = "Resource not found") -> JSONResponse:
+def not_found(msg: str = 'Resource not found') -> JSONResponse:
     return error(msg, ErrorCode.NOT_FOUND)
 
 
-def server_error(msg: str = "Internal server error") -> JSONResponse:
+def server_error(msg: str = 'Internal server error') -> JSONResponse:
     return error(msg, ErrorCode.SERVER_ERROR)

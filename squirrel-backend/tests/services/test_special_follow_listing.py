@@ -10,6 +10,7 @@
 - fan-out 去重(同一视频被多个特别关注订阅关联只算一次)
 - keyset 游标分页正确
 """
+
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 
@@ -58,8 +59,12 @@ def session_factory():
 
 def _make_video(vid, *, publish_date, deleted=False):
     return Video(
-        id=vid, title=f'v{vid}', url=f'http://x/{vid}', domain='x.com',
-        publish_date=publish_date, is_deleted=deleted,
+        id=vid,
+        title=f'v{vid}',
+        url=f'http://x/{vid}',
+        domain='x.com',
+        publish_date=publish_date,
+        is_deleted=deleted,
     )
 
 
@@ -74,38 +79,48 @@ def _seed(session_factory):
     now = datetime.now()
     with session_factory() as s:
         # videos
-        s.add_all([
-            _make_video(1, publish_date=now - timedelta(days=5)),   # sub 10 special
-            _make_video(2, publish_date=now - timedelta(days=4)),   # sub 10 special
-            _make_video(3, publish_date=now - timedelta(days=3)),   # sub 12 special (but unsubscribed)
-            _make_video(4, publish_date=now - timedelta(days=1)),   # sub 11 non-special (newest)
-            _make_video(5, publish_date=now - timedelta(days=2), deleted=True),   # sub 10 special, but deleted
-            _make_video(6, publish_date=now + timedelta(days=1)),   # sub 10 special, FUTURE (excluded)
-            _make_video(7, publish_date=None),                       # sub 10 special, null publish_date (excluded)
-            _make_video(8, publish_date=now - timedelta(days=6)),   # sub 10 special, also linked to sub 11 (fan-out)
-        ])
+        s.add_all(
+            [
+                _make_video(1, publish_date=now - timedelta(days=5)),  # sub 10 special
+                _make_video(2, publish_date=now - timedelta(days=4)),  # sub 10 special
+                _make_video(3, publish_date=now - timedelta(days=3)),  # sub 12 special (but unsubscribed)
+                _make_video(4, publish_date=now - timedelta(days=1)),  # sub 11 non-special (newest)
+                _make_video(5, publish_date=now - timedelta(days=2), deleted=True),  # sub 10 special, but deleted
+                _make_video(6, publish_date=now + timedelta(days=1)),  # sub 10 special, FUTURE (excluded)
+                _make_video(7, publish_date=None),  # sub 10 special, null publish_date (excluded)
+                _make_video(8, publish_date=now - timedelta(days=6)),  # sub 10 special, also linked to sub 11 (fan-out)
+            ]
+        )
         # subscriptions
-        s.add_all([Subscription(id=10, name='specialA', type='CHANNEL'),
-                   Subscription(id=11, name='normalB', type='CHANNEL'),
-                   Subscription(id=12, name='specialUnsub', type='CHANNEL')])
+        s.add_all(
+            [
+                Subscription(id=10, name='specialA', type='CHANNEL'),
+                Subscription(id=11, name='normalB', type='CHANNEL'),
+                Subscription(id=12, name='specialUnsub', type='CHANNEL'),
+            ]
+        )
         # user_subscriptions
-        s.add_all([
-            UserSubscription(user_id=1, subscription_id=10, is_special_followed=True, is_deleted=False),
-            UserSubscription(user_id=1, subscription_id=11, is_special_followed=False, is_deleted=False),
-            UserSubscription(user_id=1, subscription_id=12, is_special_followed=True, is_deleted=True),
-        ])
+        s.add_all(
+            [
+                UserSubscription(user_id=1, subscription_id=10, is_special_followed=True, is_deleted=False),
+                UserSubscription(user_id=1, subscription_id=11, is_special_followed=False, is_deleted=False),
+                UserSubscription(user_id=1, subscription_id=12, is_special_followed=True, is_deleted=True),
+            ]
+        )
         # subscription_video links
-        s.add_all([
-            SubscriptionVideo(subscription_id=10, video_id=1),
-            SubscriptionVideo(subscription_id=10, video_id=2),
-            SubscriptionVideo(subscription_id=12, video_id=3),
-            SubscriptionVideo(subscription_id=11, video_id=4),
-            SubscriptionVideo(subscription_id=10, video_id=5),
-            SubscriptionVideo(subscription_id=10, video_id=6),
-            SubscriptionVideo(subscription_id=10, video_id=7),
-            SubscriptionVideo(subscription_id=10, video_id=8),
-            SubscriptionVideo(subscription_id=11, video_id=8),  # fan-out: video 8 in both sub10 & sub11
-        ])
+        s.add_all(
+            [
+                SubscriptionVideo(subscription_id=10, video_id=1),
+                SubscriptionVideo(subscription_id=10, video_id=2),
+                SubscriptionVideo(subscription_id=12, video_id=3),
+                SubscriptionVideo(subscription_id=11, video_id=4),
+                SubscriptionVideo(subscription_id=10, video_id=5),
+                SubscriptionVideo(subscription_id=10, video_id=6),
+                SubscriptionVideo(subscription_id=10, video_id=7),
+                SubscriptionVideo(subscription_id=10, video_id=8),
+                SubscriptionVideo(subscription_id=11, video_id=8),  # fan-out: video 8 in both sub10 & sub11
+            ]
+        )
 
 
 def test_fetch_special_follow_video_ids_returns_only_special_published_videos(session_factory):
@@ -146,9 +161,9 @@ def test_fetch_special_follow_video_ids_keyset_pagination(session_factory):
         page1, cursor1 = fetch_special_follow_video_ids(s, user_id=1, cursor=None, limit=1)
         page2, cursor2 = fetch_special_follow_video_ids(s, user_id=1, cursor=cursor1, limit=1)
         page3, cursor3 = fetch_special_follow_video_ids(s, user_id=1, cursor=cursor2, limit=1)
-    assert page1 == [2]   # newest (4d ago)
-    assert page2 == [1]   # 5d ago
-    assert page3 == [8]   # 6d ago
+    assert page1 == [2]  # newest (4d ago)
+    assert page2 == [1]  # 5d ago
+    assert page3 == [8]  # 6d ago
     # cursor1/cursor2 non-None (had more), cursor3 None (exhausted)
     assert cursor1 is not None
     assert cursor2 is not None

@@ -25,15 +25,17 @@ class ThumbnailLocalIndexRepository:
                 select(VideoThumbnailLocalIndex).where(VideoThumbnailLocalIndex.video_id == video_id),
             ).first()
             if record is None:
-                session.add(VideoThumbnailLocalIndex(
-                    video_id=video_id,
-                    batch_name=batch_name,
-                    filename=filename,
-                    exists=exists,
-                    indexed_at=now,
-                    created_at=now,
-                    updated_at=now,
-                ))
+                session.add(
+                    VideoThumbnailLocalIndex(
+                        video_id=video_id,
+                        batch_name=batch_name,
+                        filename=filename,
+                        exists=exists,
+                        indexed_at=now,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
                 return
 
             record.batch_name = batch_name
@@ -72,4 +74,3 @@ class ThumbnailLocalIndexRepository:
             self.upsert(row.video_id, row.batch_name, row.filename, exists=False)
 
         return results
-

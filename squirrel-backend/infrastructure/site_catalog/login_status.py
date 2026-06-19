@@ -47,11 +47,13 @@ class SiteLoginStatusService:
                 'logged_in': bool(payload_raw),
             }
 
-        payload.update({
-            'site_name': payload.get('site_name', site_name),
-            'supported': True,
-            'checked_at': timestamp,
-        })
+        payload.update(
+            {
+                'site_name': payload.get('site_name', site_name),
+                'supported': True,
+                'checked_at': timestamp,
+            }
+        )
         payload.setdefault('message', '')
         payload.setdefault('logged_in', False)
         payload.setdefault('extra', {})

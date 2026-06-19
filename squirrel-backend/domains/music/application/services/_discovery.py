@@ -106,7 +106,12 @@ class MusicDiscoveryMixin:
         }
 
     async def get_rank_tracks(
-        self, user_id: int, rank_id: str, rank_cid: str | None, page: int, page_size: int,
+        self,
+        user_id: int,
+        rank_id: str,
+        rank_cid: str | None,
+        page: int,
+        page_size: int,
     ) -> dict[str, Any]:
         params: dict[str, Any] = {
             'rankid': rank_id,
@@ -128,7 +133,11 @@ class MusicDiscoveryMixin:
         }
 
     async def list_new_songs(
-        self, user_id: int, category_type: int | None, page: int, page_size: int,
+        self,
+        user_id: int,
+        category_type: int | None,
+        page: int,
+        page_size: int,
     ) -> dict[str, Any]:
         params: dict[str, Any] = {
             'page': page,
@@ -139,11 +148,7 @@ class MusicDiscoveryMixin:
         payload = await self._client.request_kugou('/top/song', params, user_id=user_id)
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('songs', 'songlist', 'info', 'list', 'data'))
-        total = (
-            data.get('total') or data.get('count') or len(rows)
-            if isinstance(data, dict)
-            else len(rows)
-        )
+        total = data.get('total') or data.get('count') or len(rows) if isinstance(data, dict) else len(rows)
 
         return {
             'items': [normalize_track(row) for row in rows],
@@ -163,11 +168,7 @@ class MusicDiscoveryMixin:
         start = (page - 1) * page_size
         end = start + page_size
         page_rows = rows[start:end]
-        total = (
-            data.get('total') or data.get('count') or len(rows)
-            if isinstance(data, dict)
-            else len(rows)
-        )
+        total = data.get('total') or data.get('count') or len(rows) if isinstance(data, dict) else len(rows)
 
         return {
             'items': [normalize_album(row) for row in page_rows],
@@ -177,9 +178,13 @@ class MusicDiscoveryMixin:
         }
 
     async def get_ai_recommend_tracks(self, user_id: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/ai/recommend', {
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/ai/recommend',
+            {
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('songs', 'song_list', 'info', 'list', 'data'))
         return {
@@ -187,9 +192,13 @@ class MusicDiscoveryMixin:
         }
 
     async def get_brush_feed(self, user_id: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/brush', {
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/brush',
+            {
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('songs', 'song_list', 'info', 'list', 'data'))
         return {
@@ -232,11 +241,13 @@ class MusicDiscoveryMixin:
         for row in rows:
             if not isinstance(row, dict):
                 continue
-            items.append({
-                'id': str(row.get('id') or row.get('banner_id') or ''),
-                'title': str(row.get('title') or row.get('name') or ''),
-                'cover': format_image_url(str(row.get('img') or row.get('image') or row.get('cover') or '')),
-                'type': str(row.get('type') or row.get('action_type') or ''),
-                'target_id': str(row.get('target_id') or row.get('id_extra') or ''),
-            })
+            items.append(
+                {
+                    'id': str(row.get('id') or row.get('banner_id') or ''),
+                    'title': str(row.get('title') or row.get('name') or ''),
+                    'cover': format_image_url(str(row.get('img') or row.get('image') or row.get('cover') or '')),
+                    'type': str(row.get('type') or row.get('action_type') or ''),
+                    'target_id': str(row.get('target_id') or row.get('id_extra') or ''),
+                }
+            )
         return {'items': items}

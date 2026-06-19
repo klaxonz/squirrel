@@ -1,5 +1,5 @@
-"""VideoDTO - Video data transfer object
-"""
+"""VideoDTO - Video data transfer object"""
+
 from datetime import datetime
 from typing import Any, ClassVar
 
@@ -30,24 +30,24 @@ class VideoDTO(BaseModel):
     """
 
     # ========== Required fields ==========
-    url: str = Field(..., description="Video URL")
-    title: str = Field(..., description="Video title")
-    site_name: str = Field(..., description="Site name, e.g. bilibili, youtube")
+    url: str = Field(..., description='Video URL')
+    title: str = Field(..., description='Video title')
+    site_name: str = Field(..., description='Site name, e.g. bilibili, youtube')
 
     # ========== Optional basic fields ==========
-    thumbnail: str | None = Field(None, description="Thumbnail URL")
-    duration: int | None = Field(None, ge=0, description="Video duration in seconds")
-    publish_date: datetime | None = Field(None, description="Publish date")
-    description: str | None = Field(None, description="Video description")
-    tags: list[str] | None = Field(None, description="Tag list")
+    thumbnail: str | None = Field(None, description='Thumbnail URL')
+    duration: int | None = Field(None, ge=0, description='Video duration in seconds')
+    publish_date: datetime | None = Field(None, description='Publish date')
+    description: str | None = Field(None, description='Video description')
+    tags: list[str] | None = Field(None, description='Tag list')
 
     # ========== Related data ==========
-    actors: list[ActorDTO] = Field(default_factory=list, description="Actor/Creator list")
+    actors: list[ActorDTO] = Field(default_factory=list, description='Actor/Creator list')
 
     # ========== Metadata ==========
     raw_data: dict[str, Any] | None = Field(
         None,
-        description="Raw data (for debugging and auditing)",
+        description='Raw data (for debugging and auditing)',
     )
 
     class Config:
@@ -58,25 +58,25 @@ class VideoDTO(BaseModel):
 
     # ========== Validators ==========
 
-    @validator("url")
+    @validator('url')
     def validate_url_field(cls, v):
         """Validate URL format"""
         return validate_url(v)
 
-    @validator("title")
+    @validator('title')
     def validate_title(cls, v):
         """Validate title is not empty"""
-        return validate_not_empty(v, "Title")
+        return validate_not_empty(v, 'Title')
 
-    @validator("site_name")
+    @validator('site_name')
     def validate_site_name(cls, v):
         """Validate site name"""
-        return validate_not_empty(v, "Site name")
+        return validate_not_empty(v, 'Site name')
 
-    @validator("thumbnail")
+    @validator('thumbnail')
     def validate_thumbnail_url(cls, v):
         """Validate thumbnail URL (optional)"""
-        if v is None or v == "":
+        if v is None or v == '':
             return None
 
         v = v.strip()
@@ -85,25 +85,25 @@ class VideoDTO(BaseModel):
             return None
 
         # Thumbnail URL can be a relative path or absolute URL
-        if v.startswith(("http://", "https://", "/")):
+        if v.startswith(('http://', 'https://', '/')):
             return v
 
-        raise ValueError("Thumbnail URL must be absolute or relative path")
+        raise ValueError('Thumbnail URL must be absolute or relative path')
 
-    @validator("duration")
+    @validator('duration')
     def validate_duration_field(cls, v):
         """Validate duration"""
         return validate_duration(v)
 
-    @validator("publish_date", pre=True)
+    @validator('publish_date', pre=True)
     def parse_and_validate_publish_date(cls, v):
         """Parse and validate publish date"""
         return parse_publish_date(v)
 
-    @validator("description")
+    @validator('description')
     def clean_description(cls, v):
         """Clean description text"""
-        if v is None or v == "":
+        if v is None or v == '':
             return None
 
         # Strip leading/trailing whitespace
@@ -115,18 +115,18 @@ class VideoDTO(BaseModel):
         # Limit length to avoid overly long descriptions
         max_length = 10000
         if len(v) > max_length:
-            v = v[:max_length] + "..."
+            v = v[:max_length] + '...'
 
         return v
 
-    @validator("tags")
+    @validator('tags')
     def validate_tags(cls, v):
         """Validate tag list"""
         if v is None or v == []:
             return None
 
         if not isinstance(v, list):
-            raise ValueError("Tags must be a list")
+            raise ValueError('Tags must be a list')
 
         # Clean tags
         cleaned_tags = []
@@ -138,19 +138,19 @@ class VideoDTO(BaseModel):
 
         return cleaned_tags or None
 
-    @validator("actors")
+    @validator('actors')
     def validate_actors_list(cls, v):
         """Validate actor list"""
         if v is None:
             return []
 
         if not isinstance(v, list):
-            raise ValueError("Actors must be a list")
+            raise ValueError('Actors must be a list')
 
         # Ensure all elements are ActorDTO instances
         for actor in v:
             if not isinstance(actor, ActorDTO):
-                raise ValueError(f"Actor must be ActorDTO instance, got {type(actor)}")
+                raise ValueError(f'Actor must be ActorDTO instance, got {type(actor)}')
 
         return v
 
@@ -169,17 +169,17 @@ class VideoDTO(BaseModel):
         data = self.dict(exclude_none=exclude_none)
 
         # Convert actors to list of dicts
-        if data.get("actors"):
-            data["actors"] = [actor.to_dict() for actor in self.actors]
+        if data.get('actors'):
+            data['actors'] = [actor.to_dict() for actor in self.actors]
 
         # Convert datetime to ISO format string
-        if data.get("publish_date"):
-            data["publish_date"] = self.publish_date.isoformat()
+        if data.get('publish_date'):
+            data['publish_date'] = self.publish_date.isoformat()
 
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "VideoDTO":
+    def from_dict(cls, data: dict[str, Any]) -> 'VideoDTO':
         """Create from dictionary
 
         Args:
@@ -190,11 +190,8 @@ class VideoDTO(BaseModel):
 
         """
         # Convert actors
-        if data.get("actors") and isinstance(data["actors"], list):
-            data["actors"] = [
-                ActorDTO(**actor) if isinstance(actor, dict) else actor
-                for actor in data["actors"]
-            ]
+        if data.get('actors') and isinstance(data['actors'], list):
+            data['actors'] = [ActorDTO(**actor) if isinstance(actor, dict) else actor for actor in data['actors']]
 
         return cls(**data)
 

@@ -15,7 +15,7 @@ from infrastructure.database.base import Base
 
 @pytest.fixture
 def engine():
-    _engine = create_engine("sqlite:///:memory:")
+    _engine = create_engine('sqlite:///:memory:')
     Base.metadata.create_all(
         _engine,
         tables=[
@@ -40,6 +40,7 @@ def session_factory(engine):
             raise
         finally:
             session.close()
+
     return _factory
 
 
@@ -54,13 +55,13 @@ def svc(session_factory):
 
 def test_enqueue_writes_crawl_task_when_site_enabled(engine, svc):
     params = VideoExtractDto(
-        url="https://www.youtube.com/watch?v=demo",
+        url='https://www.youtube.com/watch?v=demo',
         subscribed=True,
         only_extract=True,
         subscription_id=1,
         sync_state_id=2,
-        run_id="run-1",
-        trigger="manual",
+        run_id='run-1',
+        trigger='manual',
         is_manual=True,
         is_extract_all=False,
     )
@@ -74,23 +75,23 @@ def test_enqueue_writes_crawl_task_when_site_enabled(engine, svc):
         tasks = session.query(CrawlTask).all()
 
     assert len(jobs) == 1
-    assert jobs[0].job_type == "video_extract"
-    assert jobs[0].site == "youtube.com"
+    assert jobs[0].job_type == 'video_extract'
+    assert jobs[0].site == 'youtube.com'
     assert len(tasks) == 1
-    assert tasks[0].task_type == "video_extract"
-    assert tasks[0].video_url == "https://www.youtube.com/watch?v=demo"
-    assert tasks[0].payload["run_id"] == "run-1"
+    assert tasks[0].task_type == 'video_extract'
+    assert tasks[0].video_url == 'https://www.youtube.com/watch?v=demo'
+    assert tasks[0].payload['run_id'] == 'run-1'
 
 
 def test_enqueue_uses_task_dedupe_for_scheduled_extraction(engine, svc):
     params = VideoExtractDto(
-        url="https://www.youtube.com/watch?v=demo",
+        url='https://www.youtube.com/watch?v=demo',
         subscribed=True,
         only_extract=True,
         subscription_id=1,
         sync_state_id=2,
-        run_id="run-1",
-        trigger="scheduled",
+        run_id='run-1',
+        trigger='scheduled',
         is_manual=False,
         is_extract_all=False,
     )
@@ -107,29 +108,29 @@ def test_enqueue_uses_task_dedupe_for_scheduled_extraction(engine, svc):
 
     assert len(jobs) == 1
     assert len(tasks) == 1
-    assert tasks[0].dedupe_key == "dedupe:video_extract:https://www.youtube.com/watch?v=demo"
+    assert tasks[0].dedupe_key == 'dedupe:video_extract:https://www.youtube.com/watch?v=demo'
 
 
 def test_enqueue_deduplicates_same_url_across_full_and_incremental(engine, svc):
     full_params = VideoExtractDto(
-        url="https://www.youtube.com/watch?v=demo",
+        url='https://www.youtube.com/watch?v=demo',
         subscribed=True,
         only_extract=True,
         subscription_id=1,
         sync_state_id=2,
-        run_id="run-full",
-        trigger="scheduled",
+        run_id='run-full',
+        trigger='scheduled',
         is_manual=False,
         is_extract_all=True,
     )
     incr_params = VideoExtractDto(
-        url="https://www.youtube.com/watch?v=demo",
+        url='https://www.youtube.com/watch?v=demo',
         subscribed=True,
         only_extract=True,
         subscription_id=1,
         sync_state_id=3,
-        run_id="run-incr",
-        trigger="scheduled",
+        run_id='run-incr',
+        trigger='scheduled',
         is_manual=False,
         is_extract_all=False,
     )
@@ -144,5 +145,5 @@ def test_enqueue_deduplicates_same_url_across_full_and_incremental(engine, svc):
         tasks = session.query(CrawlTask).all()
 
     assert len(tasks) == 1
-    assert tasks[0].priority == "full"
-    assert tasks[0].dedupe_key == "dedupe:video_extract:https://www.youtube.com/watch?v=demo"
+    assert tasks[0].priority == 'full'
+    assert tasks[0].dedupe_key == 'dedupe:video_extract:https://www.youtube.com/watch?v=demo'

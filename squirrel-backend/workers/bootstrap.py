@@ -6,6 +6,7 @@ lifespan in ``main.py`` — both initialize the same shared runtime (logging, db
 site config, http, site plugins), but worker processes are plain Python scripts
 without a FastAPI app, so they use a sync context manager instead.
 """
+
 import logging
 import os
 import signal
@@ -34,21 +35,21 @@ def bootstrap_runtime(component: str):
     ``component`` is a short label (e.g. 'worker', 'scheduler') used in log lines.
     """
     init_logging()
-    logger.info("[%s] Bootstrapping runtime...", component)
+    logger.info('[%s] Bootstrapping runtime...', component)
 
     for notice in settings.optional_feature_warnings():
-        logger.warning("[%s] %s", component, notice)
+        logger.warning('[%s] %s', component, notice)
 
     try:
         upgrade_database()
     except Exception:
-        logger.exception("[%s] Database upgrade failed", component)
+        logger.exception('[%s] Database upgrade failed', component)
         raise
 
     try:
         apply_site_config_overrides()
     except Exception:
-        logger.exception("[%s] Failed to apply site config overrides", component)
+        logger.exception('[%s] Failed to apply site config overrides', component)
         raise
 
     # Cloudflare bypass is optional; cookie resolver is required.
@@ -57,12 +58,12 @@ def bootstrap_runtime(component: str):
 
         set_cloudflare_bypass_client(get_default_client())
     except Exception as exc:
-        logger.warning("[%s] Failed to configure Cloudflare bypass client: %s", component, exc)
+        logger.warning('[%s] Failed to configure Cloudflare bypass client: %s', component, exc)
     try:
         set_cookie_file_resolver(resolve_cookie_file_for_url)
         set_cookie_domain_resolver(resolve_cookie_match_domain_for_url)
     except Exception:
-        logger.exception("[%s] Failed to configure cookie resolver", component)
+        logger.exception('[%s] Failed to configure cookie resolver', component)
         raise
 
     try:
@@ -70,10 +71,10 @@ def bootstrap_runtime(component: str):
 
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
-            os.environ["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
+            os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_file
         get_site_plugin_registry().start_all()
     except Exception:
-        logger.exception("[%s] Site plugin bootstrap failed", component)
+        logger.exception('[%s] Site plugin bootstrap failed', component)
         raise
 
     try:
@@ -82,7 +83,7 @@ def bootstrap_runtime(component: str):
         try:
             get_site_plugin_registry().stop_all()
         except Exception:
-            logger.warning("[%s] Site plugin shutdown failed", component, exc_info=True)
+            logger.warning('[%s] Site plugin shutdown failed', component, exc_info=True)
 
 
 def create_shutdown_event(component: str) -> threading.Event:
@@ -90,7 +91,7 @@ def create_shutdown_event(component: str) -> threading.Event:
     event = threading.Event()
 
     def _handle(sig, _frame):
-        logger.info("[%s] Received signal %s, shutting down...", component, sig)
+        logger.info('[%s] Received signal %s, shutting down...', component, sig)
         event.set()
 
     for sig in (signal.SIGINT, signal.SIGTERM):

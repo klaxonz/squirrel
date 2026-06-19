@@ -33,7 +33,9 @@ class VideoRandomService:
 
     @staticmethod
     def _has_structural_filter(
-        domains: list[str] | None, time_range: str, duration: str,
+        domains: list[str] | None,
+        time_range: str,
+        duration: str,
     ) -> bool:
         if time_range != 'all' or duration != 'all':
             return True
@@ -64,19 +66,19 @@ class VideoRandomService:
             return [] if has_query else None
 
     def get_random_video(
-            self,
-            user_id: int,
-            category: str | None = None,
-            subscription_id: int | None = None,
-            nsfw: str = "all",
-            domains: list[str] | None = None,
-            query: str | None = None,
-            time_range: str = "all",
-            duration: str = "all",
-            content_type: str = "all",
+        self,
+        user_id: int,
+        category: str | None = None,
+        subscription_id: int | None = None,
+        nsfw: str = 'all',
+        domains: list[str] | None = None,
+        query: str | None = None,
+        time_range: str = 'all',
+        duration: str = 'all',
+        content_type: str = 'all',
     ) -> Video | None:
         user_config = self._get_user_config(user_id)
-        show_nsfw = user_config.get("showNsfw", False)
+        show_nsfw = user_config.get('showNsfw', False)
         effective_nsfw = resolve_effective_nsfw_filter(nsfw, show_nsfw)
 
         recalled_ids = self._recall_video_ids(query, domains, time_range, duration)
@@ -129,9 +131,7 @@ class VideoRandomService:
                     )
                 )
 
-            random_row = session.execute(
-                base_query.order_by(func.random()).limit(1)
-            ).first()
+            random_row = session.execute(base_query.order_by(func.random()).limit(1)).first()
             return random_row[0] if random_row else None
 
 

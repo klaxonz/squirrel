@@ -11,34 +11,33 @@ from .schemas import UserPasswordUpdateRequest, UserUpdateRequest
 
 router = APIRouter()
 
-@router.get("/me")
+
+@router.get('/me')
 async def get_current_user_info(current_user=Depends(get_current_user)):
-    """Get current user info
-    """
+    """Get current user info"""
     return response.success(
         data=serialize_user(current_user),
     )
 
 
-@router.put("/me")
+@router.put('/me')
 async def update_user(
-        request: UserUpdateRequest,
-        current_user=Depends(get_current_user),
-        user_svc: UserService = Depends(get_user_service),
+    request: UserUpdateRequest,
+    current_user=Depends(get_current_user),
+    user_svc: UserService = Depends(get_user_service),
 ):
-    """Update current user info
-    """
+    """Update current user info"""
     try:
         updated_user = user_svc.update_user(current_user.id, **request.model_dump())
         return response.success(
             data=serialize_user(updated_user),
-            msg="更新成功",
+            msg='更新成功',
         )
     except ValueError as e:
         return response.param_error(str(e))
 
 
-@router.put("/me/password")
+@router.put('/me/password')
 async def update_password(
     request: UserPasswordUpdateRequest,
     http_request: Request,
@@ -60,13 +59,13 @@ async def update_password(
         )
         return response.success(
             data=serialize_user(updated_user),
-            msg="密码修改成功,旧会话已失效",
+            msg='密码修改成功,旧会话已失效',
         )
     except ValueError as e:
         return response.param_error(str(e))
 
 
-@router.post("/me/revoke-sessions")
+@router.post('/me/revoke-sessions')
 async def revoke_sessions(
     http_request: Request,
     http_response: Response,
@@ -83,22 +82,21 @@ async def revoke_sessions(
         )
         return response.success(
             data=serialize_user(updated_user),
-            msg="已撤销其他会话",
+            msg='已撤销其他会话',
         )
     except ValueError as e:
         return response.param_error(str(e))
 
 
-@router.get("/{user_id}")
+@router.get('/{user_id}')
 async def get_user(
     user_id: int,
     user_svc: UserService = Depends(get_user_service),
 ):
-    """Get user by ID
-    """
+    """Get user by ID"""
     user = user_svc.get_user_by_id(user_id)
     if not user:
-        return response.not_found(f"用户 {user_id} 不存在")
+        return response.not_found(f'用户 {user_id} 不存在')
     return response.success(
         data=serialize_user(user),
     )

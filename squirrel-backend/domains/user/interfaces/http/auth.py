@@ -10,13 +10,13 @@ from .schemas import UserLoginRequest, UserRegisterRequest
 
 router = APIRouter()
 
-@router.post("/register")
+
+@router.post('/register')
 async def register(
     request: UserRegisterRequest,
     user_svc: UserService = Depends(get_user_service),
 ):
-    """Register a new user
-    """
+    """Register a new user"""
     try:
         user, _ = user_svc.create_user(
             nickname=request.nickname,
@@ -25,24 +25,23 @@ async def register(
         )
         return response.success(
             data=serialize_user(user),
-            msg="注册成功",
+            msg='注册成功',
         )
     except ValueError as e:
         return response.param_error(str(e))
 
 
-@router.post("/login")
+@router.post('/login')
 async def login(
     request: UserLoginRequest,
     http_request: Request,
     http_response: Response,
     user_svc: UserService = Depends(get_user_service),
 ):
-    """User login
-    """
+    """User login"""
     result = user_svc.authenticate(str(request.email), request.password)
     if not result:
-        return response.error("邮箱或密码错误")
+        return response.error('邮箱或密码错误')
 
     user, _account = result
     _ = _account
@@ -50,11 +49,11 @@ async def login(
 
     return response.success(
         data=serialize_user(user),
-        msg="登录成功",
+        msg='登录成功',
     )
 
 
-@router.post("/logout")
+@router.post('/logout')
 async def logout(http_request: Request, http_response: Response):
     clear_auth_cookie(http_response, http_request)
-    return response.success(msg="退出成功")
+    return response.success(msg='退出成功')

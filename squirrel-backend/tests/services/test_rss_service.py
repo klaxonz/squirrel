@@ -648,9 +648,7 @@ def test_sync_progress_reports_completed_state(engine, session_factory, account_
     assert progress['entries_synced'] == 1
 
 
-def test_greader_incremental_sync_stops_when_page_has_no_changes(
-    engine, session_factory, account_svc, sync_svc
-):
+def test_greader_incremental_sync_stops_when_page_has_no_changes(engine, session_factory, account_svc, sync_svc):
     _create_tables(engine)
     account = account_svc.create_account(
         1,
@@ -744,9 +742,7 @@ def test_greader_incremental_sync_stops_when_page_has_no_changes(
     assert progress['sync_mode'] == 'incremental'
 
 
-def test_greader_full_sync_reconciles_read_and_starred_state(
-    engine, session_factory, account_svc, sync_svc
-):
+def test_greader_full_sync_reconciles_read_and_starred_state(engine, session_factory, account_svc, sync_svc):
     _create_tables(engine)
     account = account_svc.create_account(
         1,

@@ -13,7 +13,9 @@ class MusicAuthMixin:
         user_cookie = await self._client._get_user_cookie(user_id)
         cookie = user_cookie or self._client.settings.kugou_music.cookie
         return {
-            'logged_in': bool(self._client._cookie_value(cookie, 'token') and self._client._cookie_value(cookie, 'userid')),
+            'logged_in': bool(
+                self._client._cookie_value(cookie, 'token') and self._client._cookie_value(cookie, 'userid')
+            ),
             'source': 'redis' if user_cookie else ('env' if self._client.settings.kugou_music.cookie else ''),
             'userid': self._client._cookie_value(cookie, 'userid'),
         }
@@ -57,7 +59,8 @@ class MusicAuthMixin:
 
     async def check_qr_login(self, user_id: int, key: str) -> dict[str, Any]:
         payload = await self._client.request_kugou(
-            '/login/qr/check', {'key': key, 'timestamp': self._client._timestamp_ms()},
+            '/login/qr/check',
+            {'key': key, 'timestamp': self._client._timestamp_ms()},
         )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
         status = int(data.get('status') or 0)
@@ -109,10 +112,14 @@ class MusicAuthMixin:
         }
 
     async def login_cellphone(self, user_id: int, phone: str, captcha: str) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/login/cellphone', {
-            'phone': phone,
-            'captcha': captcha,
-        }, use_auth=False)
+        payload = await self._client.request_kugou(
+            '/login/cellphone',
+            {
+                'phone': phone,
+                'captcha': captcha,
+            },
+            use_auth=False,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
 
         if payload.get('ok') or data.get('token'):
@@ -124,4 +131,3 @@ class MusicAuthMixin:
             }
 
         raise MusicServiceError(payload.get('message') or payload.get('msg') or 'Login failed')
-

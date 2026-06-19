@@ -17,11 +17,15 @@ class MusicCatalogMixin:
         return normalize_album(row)
 
     async def get_album_tracks(self, user_id: int, album_id: str, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/album/songs', {
-            'id': album_id,
-            'page': page,
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/album/songs',
+            {
+                'id': album_id,
+                'page': page,
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
         rows = data.get('songs') if isinstance(data.get('songs'), list) else []
         return {
@@ -39,11 +43,15 @@ class MusicCatalogMixin:
         return normalize_artist(data)
 
     async def get_artist_tracks(self, user_id: int, artist_id: str, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/artist/audios', {
-            'id': artist_id,
-            'page': page,
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/artist/audios',
+            {
+                'id': artist_id,
+                'page': page,
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         rows = payload.get('data') if isinstance(payload.get('data'), list) else []
         return {
             'items': [normalize_track(row) for row in rows],
@@ -53,11 +61,15 @@ class MusicCatalogMixin:
         }
 
     async def get_artist_albums(self, user_id: int, artist_id: str, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/artist/albums', {
-            'id': artist_id,
-            'page': page,
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/artist/albums',
+            {
+                'id': artist_id,
+                'page': page,
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         rows = payload.get('data') if isinstance(payload.get('data'), list) else []
         return {
             'items': [normalize_album(row) for row in rows],
@@ -91,17 +103,17 @@ class MusicCatalogMixin:
         }
 
     async def list_artist_directory(self, user_id: int, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/artist/lists', {
-            'page': page,
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/artist/lists',
+            {
+                'page': page,
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('info', 'list', 'lists', 'data'))
-        total = (
-            data.get('total') or data.get('count') or len(rows)
-            if isinstance(data, dict)
-            else len(rows)
-        )
+        total = data.get('total') or data.get('count') or len(rows) if isinstance(data, dict) else len(rows)
 
         return {
             'items': [normalize_artist(row) for row in rows],
@@ -111,18 +123,18 @@ class MusicCatalogMixin:
         }
 
     async def get_artist_videos(self, user_id: int, artist_id: str, page: int, page_size: int) -> dict[str, Any]:
-        payload = await self._client.request_kugou('/artist/videos', {
-            'id': artist_id,
-            'page': page,
-            'pagesize': page_size,
-        }, user_id=user_id)
+        payload = await self._client.request_kugou(
+            '/artist/videos',
+            {
+                'id': artist_id,
+                'page': page,
+                'pagesize': page_size,
+            },
+            user_id=user_id,
+        )
         data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
         rows = first_list(data, ('info', 'list', 'lists', 'videos', 'data'))
-        total = (
-            data.get('total') or data.get('count') or len(rows)
-            if isinstance(data, dict)
-            else len(rows)
-        )
+        total = data.get('total') or data.get('count') or len(rows) if isinstance(data, dict) else len(rows)
 
         return {
             'items': [normalize_video(row) for row in rows],

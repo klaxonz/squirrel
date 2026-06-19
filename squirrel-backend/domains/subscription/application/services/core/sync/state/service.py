@@ -14,7 +14,10 @@ from domains.subscription.application.services.core.sync.state._crud import (
     increment_pending_video_count,
     list_due_sync_states,
 )
-from domains.subscription.application.services.core.sync.state._gap import record_gap_observation
+from domains.subscription.application.services.core.sync.state._gap import (
+    mark_full_sync_requested,
+    record_gap_observation,
+)
 from domains.subscription.application.services.core.sync.state._intervals import SYNC_BATCH_SIZE
 from domains.subscription.application.services.core.sync.state._queue import (
     claim_sync_state,
@@ -52,6 +55,7 @@ __all__ = [
     'mark_sync_failed',
     'mark_sync_skipped',
     'mark_sync_success',
+    'mark_full_sync_requested',
     'prepare_sync_state_for_enqueue',
     'queue_sync_state',
     'reconcile_pending_video_counts',

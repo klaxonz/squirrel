@@ -32,15 +32,15 @@ class SubscriptionListService:
         self.get_user_config = get_user_config or user_config_service.get_config
 
     def list_subscriptions(
-            self,
-            user_id: int,
-            query: str | None,
-            type: str | None,
-            nsfw: str,
-            page: int,
-            page_size: int,
-            domains: list[str] | None = None,
-            special: str = 'all',
+        self,
+        user_id: int,
+        query: str | None,
+        type: str | None,
+        nsfw: str,
+        page: int,
+        page_size: int,
+        domains: list[str] | None = None,
+        special: str = 'all',
     ) -> tuple[list[dict[str, Any]], int]:
         user_config = self.get_user_config(user_id)
         show_nsfw = user_config.get('showNsfw', False)
@@ -136,7 +136,9 @@ class SubscriptionListService:
                 total_extract = extract_count_map.get(sub_id, 0)
                 unread_count = unread_count_map.get(sub_id, 0)
                 recent_videos = recent_videos_map.get(sub_id, [])
-                subscriptions.append(serialize_subscription_list_item(row_mapping, total_extract, recent_videos, unread_count))
+                subscriptions.append(
+                    serialize_subscription_list_item(row_mapping, total_extract, recent_videos, unread_count)
+                )
 
             return subscriptions, total_count
 
@@ -154,38 +156,42 @@ class SubscriptionListService:
                 (func.coalesce(video_count_subq, 0) > Subscription.total_videos, func.coalesce(video_count_subq, 0)),
                 else_=Subscription.total_videos,
             )
-            row = session.execute(
-                select(
-                    Subscription.id,
-                    Subscription.type,
-                    Subscription.name,
-                    Subscription.url,
-                    Subscription.avatar,
-                    Subscription.description,
-                    effective_total.label('total_videos'),
-                    Subscription.is_deleted,
-                    Subscription.extra_data,
-                    Subscription.created_at,
-                    Subscription.updated_at,
-                    literal(0).label('is_nsfw'),
-                    literal(0).label('is_special_followed'),
-                    func.coalesce(video_count_subq, 0).label('total_extract'),
-                    func.coalesce(SubscriptionSyncState.sync_status, SyncStatus.IDLE.value).label('sync_status'),
-                    SubscriptionSyncState.last_sync_at.label('last_sync_at'),
-                    SubscriptionSyncState.last_success_at.label('last_success_at'),
-                    SubscriptionSyncState.next_sync_at.label('next_sync_at'),
-                    SubscriptionSyncState.last_error.label('last_error'),
-                    func.coalesce(SubscriptionSyncState.pending_video_count, 0).label('pending_video_count'),
+            row = (
+                session.execute(
+                    select(
+                        Subscription.id,
+                        Subscription.type,
+                        Subscription.name,
+                        Subscription.url,
+                        Subscription.avatar,
+                        Subscription.description,
+                        effective_total.label('total_videos'),
+                        Subscription.is_deleted,
+                        Subscription.extra_data,
+                        Subscription.created_at,
+                        Subscription.updated_at,
+                        literal(0).label('is_nsfw'),
+                        literal(0).label('is_special_followed'),
+                        func.coalesce(video_count_subq, 0).label('total_extract'),
+                        func.coalesce(SubscriptionSyncState.sync_status, SyncStatus.IDLE.value).label('sync_status'),
+                        SubscriptionSyncState.last_sync_at.label('last_sync_at'),
+                        SubscriptionSyncState.last_success_at.label('last_success_at'),
+                        SubscriptionSyncState.next_sync_at.label('next_sync_at'),
+                        SubscriptionSyncState.last_error.label('last_error'),
+                        func.coalesce(SubscriptionSyncState.pending_video_count, 0).label('pending_video_count'),
+                    )
+                    .outerjoin(
+                        SubscriptionSyncState,
+                        and_(
+                            SubscriptionSyncState.subscription_id == Subscription.id,
+                            SubscriptionSyncState.sync_mode == SyncMode.INCREMENTAL.value,
+                        ),
+                    )
+                    .where(Subscription.id == subscription_id)
                 )
-                .outerjoin(
-                    SubscriptionSyncState,
-                    and_(
-                        SubscriptionSyncState.subscription_id == Subscription.id,
-                        SubscriptionSyncState.sync_mode == SyncMode.INCREMENTAL.value,
-                    ),
-                )
-                .where(Subscription.id == subscription_id)
-            ).mappings().first()
+                .mappings()
+                .first()
+            )
             if not row:
                 return None
             dto = SubscriptionDto.model_validate(row)

@@ -5,6 +5,7 @@ Stages are wired with their concrete services; there is no configurable
 stage list (the old PipelineConfig/StageConfig indirection was removed — only
 one caller, one pipeline, no disabled/parametrized stages ever existed).
 """
+
 import logging
 
 from domains.video.application.services.extraction.actor_processor import actor_processor_service
@@ -31,11 +32,13 @@ def create_video_extraction_pipeline(extractor_factory) -> ExtractionPipeline:
         ExtractionPipeline ready to ``execute(context)``.
 
     """
-    pipeline = ExtractionPipeline([
-        ExtractionStage(extractor_factory),
-        ValidationStage(RuntimeDataAdapter()),
-        PersistenceStage(video_persistence_service, actor_processor_service),
-        PostProcessStage(thumbnail_downloader_service),
-    ])
-    logger.debug("Created pipeline with stages: %s", pipeline.get_stage_names())
+    pipeline = ExtractionPipeline(
+        [
+            ExtractionStage(extractor_factory),
+            ValidationStage(RuntimeDataAdapter()),
+            PersistenceStage(video_persistence_service, actor_processor_service),
+            PostProcessStage(thumbnail_downloader_service),
+        ]
+    )
+    logger.debug('Created pipeline with stages: %s', pipeline.get_stage_names())
     return pipeline

@@ -21,56 +21,64 @@ if TYPE_CHECKING:
 
 def _subscription_links_join():
     from domains.video.domain.junctions.subscription_video import SubscriptionVideo
+
     return Video.id == foreign(SubscriptionVideo.video_id)
 
 
 def _subscriptions_secondary_join():
     from domains.subscription.domain.models.subscription import Subscription
     from domains.video.domain.junctions.subscription_video import SubscriptionVideo
+
     return Subscription.id == foreign(SubscriptionVideo.subscription_id)
 
 
 def _creator_links_join():
     from domains.video.domain.junctions.video_creator import VideoCreator
+
     return Video.id == foreign(VideoCreator.video_id)
 
 
 def _creators_secondary_join():
     from domains.video.domain.junctions.video_creator import VideoCreator
     from domains.video.domain.models.creator import Creator
+
     return Creator.id == foreign(VideoCreator.creator_id)
 
 
 def _histories_join():
     from domains.video.domain.models.video_history import VideoHistory
+
     return Video.id == foreign(VideoHistory.video_id)
 
 
 def _interactions_join():
     from domains.video.domain.models.video_interaction import VideoInteraction
+
     return Video.id == foreign(VideoInteraction.video_id)
 
 
 def _clip_markers_join():
     from domains.video.domain.models.video_clip_marker import VideoClipMarker
+
     return Video.id == foreign(VideoClipMarker.video_id)
 
 
 def _playlist_items_join():
     from domains.playlist.domain.models.playlist_item import PlaylistItem
+
     return Video.id == foreign(PlaylistItem.video_id)
 
 
 class Video(Base, SerializerMixin):
-    __tablename__ = "video"
+    __tablename__ = 'video'
 
     __table_args__ = (
-        Index("ix_video_title", "title"),
-        Index("ix_video_deleted_publish_date", "is_deleted", "publish_date"),
-        Index("ix_video_deleted_created_at", "is_deleted", "created_at"),
-        Index("ix_video_active_id_publish_date", "id", "publish_date", postgresql_where=text("is_deleted = false")),
-        Index("ux_video_url", "url", unique=True),
-        Index("ix_video_domain", "domain"),
+        Index('ix_video_title', 'title'),
+        Index('ix_video_deleted_publish_date', 'is_deleted', 'publish_date'),
+        Index('ix_video_deleted_created_at', 'is_deleted', 'created_at'),
+        Index('ix_video_active_id_publish_date', 'id', 'publish_date', postgresql_where=text('is_deleted = false')),
+        Index('ux_video_url', 'url', unique=True),
+        Index('ix_video_domain', 'domain'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -90,52 +98,52 @@ class Video(Base, SerializerMixin):
     )
 
     subscription_links: Mapped[list[SubscriptionVideo]] = relationship(
-        "SubscriptionVideo",
+        'SubscriptionVideo',
         primaryjoin=_subscription_links_join,
-        back_populates="video",
+        back_populates='video',
         viewonly=True,
     )
     subscriptions: Mapped[list[Subscription]] = relationship(
-        "Subscription",
-        secondary="subscription_video",
+        'Subscription',
+        secondary='subscription_video',
         primaryjoin=_subscription_links_join,
         secondaryjoin=_subscriptions_secondary_join,
         viewonly=True,
     )
     creator_links: Mapped[list[VideoCreator]] = relationship(
-        "VideoCreator",
+        'VideoCreator',
         primaryjoin=_creator_links_join,
-        back_populates="video",
+        back_populates='video',
         viewonly=True,
     )
     creators: Mapped[list[Creator]] = relationship(
-        "Creator",
-        secondary="video_creator",
+        'Creator',
+        secondary='video_creator',
         primaryjoin=_creator_links_join,
         secondaryjoin=_creators_secondary_join,
         viewonly=True,
     )
     histories: Mapped[list[VideoHistory]] = relationship(
-        "VideoHistory",
+        'VideoHistory',
         primaryjoin=_histories_join,
-        back_populates="video",
+        back_populates='video',
         viewonly=True,
     )
     interactions: Mapped[list[VideoInteraction]] = relationship(
-        "VideoInteraction",
+        'VideoInteraction',
         primaryjoin=_interactions_join,
-        back_populates="video",
+        back_populates='video',
         viewonly=True,
     )
     clip_markers: Mapped[list[VideoClipMarker]] = relationship(
-        "VideoClipMarker",
+        'VideoClipMarker',
         primaryjoin=_clip_markers_join,
-        back_populates="video",
+        back_populates='video',
         viewonly=True,
     )
     playlist_items: Mapped[list[PlaylistItem]] = relationship(
-        "PlaylistItem",
+        'PlaylistItem',
         primaryjoin=_playlist_items_join,
-        back_populates="video",
+        back_populates='video',
         viewonly=True,
     )

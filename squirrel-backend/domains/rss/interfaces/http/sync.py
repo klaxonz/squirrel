@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/accounts/{account_id}/sync")
+@router.post('/accounts/{account_id}/sync')
 def sync_rss_account(
     account_id: int,
-    entry_limit: int | None = Query(None, ge=1, alias="entryLimit"),
+    entry_limit: int | None = Query(None, ge=1, alias='entryLimit'),
     current_user: User = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
@@ -28,23 +28,23 @@ def sync_rss_account(
         return response.param_error(str(exc))
     except Exception as exc:
         # API boundary -- convert to HTTP error response
-        return response.error(f"RSS 同步失败: {exc}")
+        return response.error(f'RSS 同步失败: {exc}')
     return response.success(None)
 
 
-@router.post("/accounts/{account_id}/sync/start")
+@router.post('/accounts/{account_id}/sync/start')
 def start_rss_sync(
     account_id: int,
-    entry_limit: int | None = Query(None, ge=1, alias="entryLimit"),
-    force_full_sync: bool = Query(False, alias="forceFullSync"),
+    entry_limit: int | None = Query(None, ge=1, alias='entryLimit'),
+    force_full_sync: bool = Query(False, alias='forceFullSync'),
     current_user: User = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     progress = svc.get_sync_progress(current_user.id, account_id)
     if progress is None:
-        return response.not_found("RSS 账号不存在")
-    if progress.get("running"):
-        return response.param_error("RSS account sync is already running")
+        return response.not_found('RSS 账号不存在')
+    if progress.get('running'):
+        return response.param_error('RSS account sync is already running')
 
     user_id = current_user.id
 
@@ -55,25 +55,27 @@ def start_rss_sync(
             pass
         except Exception:
             # task boundary -- prevent single failure from crashing request
-            logger.exception("Background RSS sync failed for account_id=%s", account_id)
+            logger.exception('Background RSS sync failed for account_id=%s', account_id)
 
     thread = Thread(target=_bg_sync, daemon=True)
     thread.start()
-    return response.success({"started": True, "account_id": account_id})
+    return response.success({'started': True, 'account_id': account_id})
 
 
-@router.get("/accounts/{account_id}/sync/status")
-def get_rss_sync_status(account_id: int, current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)):
+@router.get('/accounts/{account_id}/sync/status')
+def get_rss_sync_status(
+    account_id: int, current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)
+):
     progress = svc.get_sync_progress(current_user.id, account_id)
     if progress is None:
-        return response.not_found("RSS 账号不存在")
+        return response.not_found('RSS 账号不存在')
     return response.success(progress)
 
 
-@router.post("/feeds/{feed_id}/sync")
+@router.post('/feeds/{feed_id}/sync')
 def sync_rss_feed(
     feed_id: int,
-    entry_limit: int = Query(50, ge=1, le=500, alias="entryLimit"),
+    entry_limit: int = Query(50, ge=1, le=500, alias='entryLimit'),
     current_user: User = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
@@ -83,5 +85,5 @@ def sync_rss_feed(
         return response.param_error(str(exc))
     except Exception as exc:
         # API boundary -- convert to HTTP error response
-        return response.error(f"RSS 同步失败: {exc}")
+        return response.error(f'RSS 同步失败: {exc}')
     return response.success(result)

@@ -21,7 +21,12 @@ logger = logging.getLogger(__name__)
 
 
 class RssSyncService:
-    def __init__(self, session_factory=None, account_service: RssAccountService | None = None, greader_sync: GReaderSync | None = None):
+    def __init__(
+        self,
+        session_factory=None,
+        account_service: RssAccountService | None = None,
+        greader_sync: GReaderSync | None = None,
+    ):
         self.session_factory = session_factory or get_session
         self.account_service = account_service or rss_account_service
         self.greader_sync = greader_sync or GReaderSync(
@@ -29,17 +34,19 @@ class RssSyncService:
             account_service=self.account_service,
         )
 
-    def sync_account(self, user_id: int, account_id: int, *, entry_limit: int | None = None, force_full_sync: bool = False) -> dict[str, Any] | None:
+    def sync_account(
+        self, user_id: int, account_id: int, *, entry_limit: int | None = None, force_full_sync: bool = False
+    ) -> dict[str, Any] | None:
         sync_lock = self.account_service.sync_lock_for_account(account_id)
         if not sync_lock.acquire(blocking=False):
-            raise RssServiceError("RSS account sync is already running")
+            raise RssServiceError('RSS account sync is already running')
 
         self.account_service.set_sync_progress(
             account_id,
             running=True,
-            phase="starting",
-            message="Starting RSS sync",
-            sync_mode="full" if force_full_sync else "incremental",
+            phase='starting',
+            message='Starting RSS sync',
+            sync_mode='full' if force_full_sync else 'incremental',
             feeds_total=None,
             feeds_synced=0,
             entries_fetched=0,
@@ -63,25 +70,29 @@ class RssSyncService:
             client = create_client(config)
             synced_feeds, feed_refs = self._sync_feeds(user_id, account_id, client)
             synced_entries = self._sync_entries(
-                user_id, account_id, client, feed_refs,
+                user_id,
+                account_id,
+                client,
+                feed_refs,
                 feeds_synced=synced_feeds,
-                entry_limit=effective_entry_limit, force_full_sync=force_full_sync,
+                entry_limit=effective_entry_limit,
+                force_full_sync=force_full_sync,
             )
             self._finalize_success(user_id, account_id, synced_feeds, synced_entries)
         except Exception as exc:
             error_message = str(exc)
-            provider = config.provider if config else "unknown"
-            logger.warning("RSS account sync failed: account_id=%s provider=%s error=%s", account_id, provider, exc)
+            provider = config.provider if config else 'unknown'
+            logger.warning('RSS account sync failed: account_id=%s provider=%s error=%s', account_id, provider, exc)
             self._record_failure(user_id, account_id, synced_feeds, synced_entries, error_message)
             raise
         finally:
             sync_lock.release()
 
         return {
-            "account_id": account_id,
-            "feeds": synced_feeds,
-            "entries": synced_entries,
-            "error": error_message,
+            'account_id': account_id,
+            'feeds': synced_feeds,
+            'entries': synced_entries,
+            'error': error_message,
         }
 
     def _load_account_and_config(self, user_id: int, account_id: int):
@@ -99,12 +110,12 @@ class RssSyncService:
 
     def _sync_feeds(self, user_id: int, account_id: int, client) -> tuple[int, list[tuple[int, str, bool]]]:
         """Fetch remote feeds, persist them, and report progress. Returns ``(feed_count, feed_refs)``."""
-        self.account_service.set_sync_progress(account_id, phase="feeds_fetching", message="Fetching RSS feeds")
+        self.account_service.set_sync_progress(account_id, phase='feeds_fetching', message='Fetching RSS feeds')
         remote_feeds = client.list_feeds()
         self.account_service.set_sync_progress(
             account_id,
-            phase="feeds_saving",
-            message="Saving RSS feeds",
+            phase='feeds_saving',
+            message='Saving RSS feeds',
             feeds_total=len(remote_feeds),
         )
         feed_refs: list[tuple[int, str, bool]] = []
@@ -144,7 +155,7 @@ class RssSyncService:
             )
 
         if entry_limit is None:
-            raise RssServiceError("Sync entry limit is required for this RSS provider")
+            raise RssServiceError('Sync entry limit is required for this RSS provider')
 
         synced_entries = 0
         with self.session_factory() as session:
@@ -153,8 +164,8 @@ class RssSyncService:
                     continue
                 self.account_service.set_sync_progress(
                     account_id,
-                    phase="entries_fetching",
-                    message="Fetching RSS entries",
+                    phase='entries_fetching',
+                    message='Fetching RSS entries',
                     current_feed_id=feed_id,
                     feeds_synced=feeds_synced,
                 )
@@ -170,13 +181,17 @@ class RssSyncService:
                     continue
                 feeds_by_external_id = {external_feed_id: feed}
                 if remote_entries:
-                    remote_entries = [replace(re, external_feed_id=re.external_feed_id or external_feed_id) for re in remote_entries]
-                batch_entries = rss_entry_store.upsert_remote_entries_batch(session, feeds_by_external_id, remote_entries)
+                    remote_entries = [
+                        replace(re, external_feed_id=re.external_feed_id or external_feed_id) for re in remote_entries
+                    ]
+                batch_entries = rss_entry_store.upsert_remote_entries_batch(
+                    session, feeds_by_external_id, remote_entries
+                )
                 synced_entries += batch_entries
                 feed.last_entry_sync_at = datetime.now()
                 self.account_service.set_sync_progress(
                     account_id,
-                    phase="entries_saving",
+                    phase='entries_saving',
                     entries_synced=synced_entries,
                 )
                 session.commit()
@@ -192,8 +207,8 @@ class RssSyncService:
         self.account_service.set_sync_progress(
             account_id,
             running=False,
-            phase="completed",
-            message="RSS sync completed",
+            phase='completed',
+            message='RSS sync completed',
             feeds_synced=feeds,
             entries_synced=entries,
             error=None,
@@ -210,8 +225,8 @@ class RssSyncService:
         self.account_service.set_sync_progress(
             account_id,
             running=False,
-            phase="failed",
-            message="RSS sync failed",
+            phase='failed',
+            message='RSS sync failed',
             feeds_synced=feeds,
             entries_synced=entries,
             error=error_message,
@@ -225,17 +240,17 @@ class RssSyncService:
         feed_url: str,
         category: str | None = None,
     ) -> dict[str, Any]:
-        feed_url = str(feed_url or "").strip()
+        feed_url = str(feed_url or '').strip()
         if not feed_url:
-            raise RssServiceError("Feed URL is required")
+            raise RssServiceError('Feed URL is required')
         parsed = urllib.parse.urlparse(feed_url)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            raise RssServiceError("Feed URL must be an HTTP or HTTPS URL")
+        if parsed.scheme not in {'http', 'https'} or not parsed.netloc:
+            raise RssServiceError('Feed URL must be an HTTP or HTTPS URL')
 
         with self.session_factory() as session:
             account = self.account_service.get_account(session, user_id, account_id)
             if not account:
-                raise RssServiceError("RSS account not found")
+                raise RssServiceError('RSS account not found')
 
             config = self.account_service.config_from_account(account)
 
@@ -291,11 +306,11 @@ class RssSyncService:
                 ),
             ).first()
             if not feed:
-                raise RssServiceError("RSS 订阅源不存在")
+                raise RssServiceError('RSS 订阅源不存在')
 
             account = self.account_service.get_account(session, user_id, feed.account_id)
             if not account or not account.enabled:
-                raise RssServiceError("RSS 账号不可用")
+                raise RssServiceError('RSS 账号不可用')
 
             config = self.account_service.config_from_account(account)
             client = create_client(config)
@@ -304,8 +319,7 @@ class RssSyncService:
             remote_entries = client.list_entries(external_feed_id, entry_limit)
             if remote_entries:
                 remote_entries = [
-                    replace(re, external_feed_id=re.external_feed_id or external_feed_id)
-                    for re in remote_entries
+                    replace(re, external_feed_id=re.external_feed_id or external_feed_id) for re in remote_entries
                 ]
 
             feeds_by_external_id = {external_feed_id: feed}
@@ -315,7 +329,7 @@ class RssSyncService:
             account.last_error = None
             session.commit()
 
-        return {"feed_id": feed_id, "entries": synced}
+        return {'feed_id': feed_id, 'entries': synced}
 
     def unsubscribe_feed(self, user_id: int, account_id: int, feed_id: int) -> bool:
         with self.session_factory() as session:
@@ -343,10 +357,12 @@ class RssSyncService:
                 raise
             except (OSError, ValueError, TypeError) as e:
                 logger.warning(
-                    "Failed to sync unsubscribe to remote RSS service: account_id=%s feed_id=%s error=%s",
-                    account_id, feed_id, e,
+                    'Failed to sync unsubscribe to remote RSS service: account_id=%s feed_id=%s error=%s',
+                    account_id,
+                    feed_id,
+                    e,
                 )
-                raise RssServiceError(f"Failed to unsubscribe from remote RSS service: {e}") from e
+                raise RssServiceError(f'Failed to unsubscribe from remote RSS service: {e}') from e
 
         with self.session_factory() as session:
             feed = session.scalars(
@@ -374,6 +390,7 @@ class RssSyncService:
             session.commit()
 
         return True
+
 
 rss_sync_service = RssSyncService()
 sync_account = rss_sync_service.sync_account

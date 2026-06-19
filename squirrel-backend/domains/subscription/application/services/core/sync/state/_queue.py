@@ -12,16 +12,20 @@ from ._stale import _recover_stale_running_state
 from .session import get_session
 
 
-def deactivate_sync_states(subscription_id: int, *, reason: str = "deactivated") -> int:
+def deactivate_sync_states(subscription_id: int, *, reason: str = 'deactivated') -> int:
     now = datetime.now()
     updated_count = 0
 
     with get_session() as session:
-        states = session.execute(
-            select(SubscriptionSyncState).where(
-                SubscriptionSyncState.subscription_id == subscription_id,
-            ),
-        ).scalars().all()
+        states = (
+            session.execute(
+                select(SubscriptionSyncState).where(
+                    SubscriptionSyncState.subscription_id == subscription_id,
+                ),
+            )
+            .scalars()
+            .all()
+        )
 
         for state in states:
             state.sync_status = SyncStatus.IDLE.value
@@ -50,22 +54,22 @@ def prepare_sync_state_for_enqueue(
         _recover_stale_running_state(state, now)
 
         if state.sync_status == SyncStatus.RUNNING.value:
-            return state, "in_progress"
+            return state, 'in_progress'
         if state.sync_status == SyncStatus.QUEUED.value:
-            return state, "queued"
+            return state, 'queued'
 
         if scheduled and has_incremental_backpressure(state):
             state.sync_status = SyncStatus.SUCCESS.value
             state.last_sync_at = now
-            state.last_error = "queue_backpressure"
+            state.last_error = 'queue_backpressure'
             state.queue_token = None
             state.queued_at = None
             state.locked_at = None
             state.next_sync_at = now + get_mode_interval(state.sync_mode)
             state.version += 1
-            return state, "deferred"
+            return state, 'deferred'
 
-        return state, "ready"
+        return state, 'ready'
 
 
 def queue_sync_state(sync_state_id: int, queue_token: str) -> SubscriptionSyncState | None:
@@ -141,14 +145,14 @@ def reconcile_task_retry_state(
         return None
 
     now = now or datetime.now()
-    expected_token = str(queue_token or "").strip() or None
+    expected_token = str(queue_token or '').strip() or None
 
     with get_session() as session:
         state = session.get(SubscriptionSyncState, sync_state_id)
         if not state:
             return None
 
-        current_token = str(state.queue_token or "").strip() or None
+        current_token = str(state.queue_token or '').strip() or None
         if expected_token and current_token and current_token != expected_token:
             return state
 
@@ -169,7 +173,7 @@ def reconcile_task_retry_state(
         state.failure_count += 1
         state.sync_status = SyncStatus.FAILED.value
         state.last_sync_at = now
-        state.last_error = error_message or "task_retry_exhausted"
+        state.last_error = error_message or 'task_retry_exhausted'
         state.queue_token = None
         state.queued_at = None
         state.locked_at = None
@@ -180,4 +184,7 @@ def reconcile_task_retry_state(
 
 
 def has_incremental_backpressure(sync_state: SubscriptionSyncState) -> bool:
-    return sync_state.sync_mode == SyncMode.INCREMENTAL.value and sync_state.pending_video_count >= INCREMENTAL_PENDING_THRESHOLD
+    return (
+        sync_state.sync_mode == SyncMode.INCREMENTAL.value
+        and sync_state.pending_video_count >= INCREMENTAL_PENDING_THRESHOLD
+    )

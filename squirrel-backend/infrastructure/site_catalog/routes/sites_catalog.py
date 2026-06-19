@@ -14,6 +14,7 @@ from .sites_dependencies import get_catalog_service, get_login_service
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
 def get_supported_sites(
     catalog_svc: SiteCatalogService = Depends(get_catalog_service),
     login_svc: SiteLoginStatusService = Depends(get_login_service),
@@ -31,10 +32,12 @@ def get_supported_sites(
         site_cfg['supports_login_status'] = site_name.lower() in login_supported_sites_lower
         sites_info.append(site_cfg)
 
-    return success({
-        'sites': sites_info,
-        'total': len(sites_info),
-    })
+    return success(
+        {
+            'sites': sites_info,
+            'total': len(sites_info),
+        }
+    )
 
 
 @router.get('/catalog')

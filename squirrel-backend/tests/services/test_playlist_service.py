@@ -64,11 +64,15 @@ def playback_svc(session_factory):
 def _seed_videos(engine):
     now = datetime(2026, 6, 1, 12, 0, 0)
     with Session(engine, expire_on_commit=False) as session:
-        session.add_all([
-            Video(id=1, title='One', url='https://example.com/1', is_deleted=False, created_at=now, updated_at=now),
-            Video(id=2, title='Two', url='https://example.com/2', is_deleted=False, created_at=now, updated_at=now),
-            Video(id=3, title='Three', url='https://example.com/3', is_deleted=False, created_at=now, updated_at=now),
-        ])
+        session.add_all(
+            [
+                Video(id=1, title='One', url='https://example.com/1', is_deleted=False, created_at=now, updated_at=now),
+                Video(id=2, title='Two', url='https://example.com/2', is_deleted=False, created_at=now, updated_at=now),
+                Video(
+                    id=3, title='Three', url='https://example.com/3', is_deleted=False, created_at=now, updated_at=now
+                ),
+            ]
+        )
         session.commit()
 
 

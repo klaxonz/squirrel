@@ -1,5 +1,5 @@
-"""Task manager
-"""
+"""Task manager"""
+
 import logging
 from typing import Any
 
@@ -12,11 +12,13 @@ logger = logging.getLogger(__name__)
 class TaskManager:
     """Task manager"""
 
-    def create_task(self,
-                    url: str,
-                    site_name: str | None = None,
-                    priority: TaskPriority = TaskPriority.NORMAL,
-                    metadata: dict[str, Any] | None = None) -> ExtractionTask:
+    def create_task(
+        self,
+        url: str,
+        site_name: str | None = None,
+        priority: TaskPriority = TaskPriority.NORMAL,
+        metadata: dict[str, Any] | None = None,
+    ) -> ExtractionTask:
         """Create extraction task"""
         # Infer site name from URL if not provided
         if not site_name:
@@ -26,7 +28,7 @@ class TaskManager:
 
         return ExtractionTask(
             url=url,
-            site_name=site_name or "unknown",
+            site_name=site_name or 'unknown',
             priority=priority,
             metadata=metadata or {},
         )

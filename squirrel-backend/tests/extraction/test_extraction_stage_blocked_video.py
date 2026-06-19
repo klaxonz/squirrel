@@ -13,7 +13,7 @@ def _build_context(url: str) -> PipelineContext:
     return PipelineContext(
         task=ExtractionTask(
             url=url,
-            site_name="pornhub",
+            site_name='pornhub',
             metadata={},
         ),
     )
@@ -22,43 +22,47 @@ def _build_context(url: str) -> PipelineContext:
 def test_extraction_stage_records_blocked_video_for_short_redirect(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        "infrastructure.extraction.pipeline.stages.extraction.record_blocked_video",
+        'infrastructure.extraction.pipeline.stages.extraction.record_blocked_video',
         lambda **kwargs: calls.append(kwargs),
     )
 
     stage = ExtractionStage(extractor_factory=None)
-    context = _build_context("https://www.pornhub.com/view_video.php?viewkey=698e147975244")
+    context = _build_context('https://www.pornhub.com/view_video.php?viewkey=698e147975244')
     error = ExtractionError(
-        "unsupported short video",
-        context={"blocked_reason_code": "unsupported_short_redirect"},
+        'unsupported short video',
+        context={'blocked_reason_code': 'unsupported_short_redirect'},
     )
 
     stage.on_error(context, error)
 
-    assert calls == [{
-        "url": "https://www.pornhub.com/view_video.php?viewkey=698e147975244",
-        "reason_code": "unsupported_short_redirect",
-        "error_message": str(error),
-        "error_type": "ExtractionError",
-    }]
+    assert calls == [
+        {
+            'url': 'https://www.pornhub.com/view_video.php?viewkey=698e147975244',
+            'reason_code': 'unsupported_short_redirect',
+            'error_message': str(error),
+            'error_type': 'ExtractionError',
+        }
+    ]
 
 
 def test_extraction_stage_records_blocked_video_for_vip(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        "infrastructure.extraction.pipeline.stages.extraction.record_blocked_video",
+        'infrastructure.extraction.pipeline.stages.extraction.record_blocked_video',
         lambda **kwargs: calls.append(kwargs),
     )
 
     stage = ExtractionStage(extractor_factory=None)
-    context = _build_context("https://www.pornhub.com/view_video.php?viewkey=vip-demo")
-    error = VipError("vip required")
+    context = _build_context('https://www.pornhub.com/view_video.php?viewkey=vip-demo')
+    error = VipError('vip required')
 
     stage.on_error(context, error)
 
-    assert calls == [{
-        "url": "https://www.pornhub.com/view_video.php?viewkey=vip-demo",
-        "reason_code": "vip_required",
-        "error_message": str(error),
-        "error_type": "VipError",
-    }]
+    assert calls == [
+        {
+            'url': 'https://www.pornhub.com/view_video.php?viewkey=vip-demo',
+            'reason_code': 'vip_required',
+            'error_message': str(error),
+            'error_type': 'VipError',
+        }
+    ]

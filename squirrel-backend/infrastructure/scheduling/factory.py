@@ -20,7 +20,9 @@ class TaskFactory:
         """Discover and register built-in tasks."""
         try:
             task_classes = module_discovery.import_classes_from_package(
-                'workers.scheduling.tasks', base_class=BaseTask, recursive=True,
+                'workers.scheduling.tasks',
+                base_class=BaseTask,
+                recursive=True,
             )
 
             with self._lock:

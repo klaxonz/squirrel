@@ -1,5 +1,4 @@
-"""Backend-local payload models for plugin extraction responses.
-"""
+"""Backend-local payload models for plugin extraction responses."""
 
 from __future__ import annotations
 
@@ -20,10 +19,10 @@ class RuntimeActorData:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> RuntimeActorData:
         return cls(
-            url=str(data.get("url", "")),
-            name=data.get("name"),
-            avatar=data.get("avatar"),
-            extra_data=data.get("extra_data"),
+            url=str(data.get('url', '')),
+            name=data.get('name'),
+            avatar=data.get('avatar'),
+            extra_data=data.get('extra_data'),
         )
 
 
@@ -42,10 +41,10 @@ class RuntimeVideoData:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> RuntimeVideoData:
         return cls(
-            title=str(data.get("title", "")),
-            url=str(data.get("url", "")),
-            thumbnail=data.get("thumbnail"),
-            duration=data.get("duration"),
-            publish_date=data.get("publish_date"),
-            extra_data=data.get("extra_data"),
+            title=str(data.get('title', '')),
+            url=str(data.get('url', '')),
+            thumbnail=data.get('thumbnail'),
+            duration=data.get('duration'),
+            publish_date=data.get('publish_date'),
+            extra_data=data.get('extra_data'),
         )

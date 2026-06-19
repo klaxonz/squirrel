@@ -18,36 +18,39 @@ from domains.subscription.domain.junctions.user_subscription import UserSubscrip
 
 def _video_links_join():
     from domains.video.domain.junctions.subscription_video import SubscriptionVideo
+
     return Subscription.id == foreign(SubscriptionVideo.subscription_id)
 
 
 def _videos_secondary_join():
     from domains.video.domain.junctions.subscription_video import SubscriptionVideo
     from domains.video.domain.models.video import Video
+
     return Video.id == foreign(SubscriptionVideo.video_id)
 
 
 def _user_subscriptions_join():
     from domains.subscription.domain.junctions.user_subscription import UserSubscription
+
     return Subscription.id == foreign(UserSubscription.subscription_id)
 
 
 class ContentType:
-    CHANNEL = "CHANNEL"
-    PLAYLIST = "PLAYLIST"
-    ACTRESS = "ACTRESS"
-    MOVIE = "MOVIE"
-    TV_SERIES = "TV_SERIES"
-    ACTOR = "ACTOR"
+    CHANNEL = 'CHANNEL'
+    PLAYLIST = 'PLAYLIST'
+    ACTRESS = 'ACTRESS'
+    MOVIE = 'MOVIE'
+    TV_SERIES = 'TV_SERIES'
+    ACTOR = 'ACTOR'
 
 
 class Subscription(Base, SerializerMixin):
-    __tablename__ = "subscription"
+    __tablename__ = 'subscription'
 
     __table_args__ = (
-        Index("ix_subscription_is_deleted", "is_deleted"),
-        Index("ix_subscription_type", "type"),
-        Index("ix_subscription_deleted_id", "is_deleted", "id"),
+        Index('ix_subscription_is_deleted', 'is_deleted'),
+        Index('ix_subscription_type', 'type'),
+        Index('ix_subscription_deleted_id', 'is_deleted', 'id'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -66,21 +69,21 @@ class Subscription(Base, SerializerMixin):
     )
 
     video_links: Mapped[list[SubscriptionVideo]] = relationship(
-        "SubscriptionVideo",
+        'SubscriptionVideo',
         primaryjoin=_video_links_join,
-        back_populates="subscription",
+        back_populates='subscription',
         viewonly=True,
     )
     videos: Mapped[list[Video]] = relationship(
-        "Video",
-        secondary="subscription_video",
+        'Video',
+        secondary='subscription_video',
         primaryjoin=_video_links_join,
         secondaryjoin=_videos_secondary_join,
         viewonly=True,
     )
     user_subscriptions: Mapped[list[UserSubscription]] = relationship(
-        "UserSubscription",
+        'UserSubscription',
         primaryjoin=_user_subscriptions_join,
-        back_populates="subscription",
+        back_populates='subscription',
         viewonly=True,
     )

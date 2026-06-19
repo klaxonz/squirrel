@@ -1,5 +1,5 @@
-"""Subscription update domain models
-"""
+"""Subscription update domain models"""
+
 from dataclasses import dataclass
 from enum import Enum
 
@@ -7,9 +7,9 @@ from enum import Enum
 class UpdateTrigger(Enum):
     """Update trigger type"""
 
-    SCHEDULED = "scheduled"  # Scheduled automatic
-    MANUAL = "manual"        # Manual refresh
-    API = "api"              # API triggered
+    SCHEDULED = 'scheduled'  # Scheduled automatic
+    MANUAL = 'manual'  # Manual refresh
+    API = 'api'  # API triggered
 
 
 def parse_trigger(raw: str | None) -> UpdateTrigger:
@@ -25,9 +25,9 @@ def parse_trigger(raw: str | None) -> UpdateTrigger:
 class UpdateMode(Enum):
     """Update mode"""
 
-    INCREMENTAL = "incremental"  # Incremental update
-    FULL = "full"                # Full update
-    SMART = "smart"              # Smart detection
+    INCREMENTAL = 'incremental'  # Incremental update
+    FULL = 'full'  # Full update
+    SMART = 'smart'  # Smart detection
 
 
 @dataclass(frozen=True)
@@ -115,4 +115,3 @@ class SubscriptionDirectRunResult:
     request_id: str | None = None
     run_id: str | None = None
     result: SubscriptionUpdateResult | None = None
-

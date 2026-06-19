@@ -16,17 +16,19 @@ if TYPE_CHECKING:
 
 def _video_links_join():
     from domains.video.domain.junctions.video_creator import VideoCreator
+
     return Creator.id == foreign(VideoCreator.creator_id)
 
 
 def _videos_secondary_join():
     from domains.video.domain.junctions.video_creator import VideoCreator
     from domains.video.domain.models.video import Video
+
     return Video.id == foreign(VideoCreator.video_id)
 
 
 class Creator(Base, SerializerMixin):
-    __tablename__ = "creator"
+    __tablename__ = 'creator'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str | None] = mapped_column(VARCHAR(128), nullable=True)
@@ -42,14 +44,14 @@ class Creator(Base, SerializerMixin):
     )
 
     video_links: Mapped[list[VideoCreator]] = relationship(
-        "VideoCreator",
+        'VideoCreator',
         primaryjoin=_video_links_join,
-        back_populates="creator",
+        back_populates='creator',
         viewonly=True,
     )
     videos: Mapped[list[Video]] = relationship(
-        "Video",
-        secondary="video_creator",
+        'Video',
+        secondary='video_creator',
         primaryjoin=_video_links_join,
         secondaryjoin=_videos_secondary_join,
         viewonly=True,

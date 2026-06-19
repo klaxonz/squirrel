@@ -41,7 +41,9 @@ class SearchSuggestionService:
             base_limit = 160 if scope == 'home' else 120
             pool_parts = {
                 'video': build_video_pool(session, user_id=user_id, effective_nsfw=effective_nsfw, limit=base_limit),
-                'subscription': build_subscription_pool(session, user_id=user_id, effective_nsfw=effective_nsfw, limit=80),
+                'subscription': build_subscription_pool(
+                    session, user_id=user_id, effective_nsfw=effective_nsfw, limit=80
+                ),
                 'creator': build_creator_pool(session, user_id=user_id, effective_nsfw=effective_nsfw, limit=80),
                 'history': build_history_pool(session, user_id=user_id, effective_nsfw=effective_nsfw, limit=80),
             }
@@ -72,24 +74,24 @@ class SearchSuggestionService:
         normalized_user_id = int(user_id)
         with self._suggestion_pool_cache_lock:
             self._suggestion_pool_cache = {
-                key: value
-                for key, value in self._suggestion_pool_cache.items()
-                if key[0] != normalized_user_id
+                key: value for key, value in self._suggestion_pool_cache.items() if key[0] != normalized_user_id
             }
             self._suggestion_result_cache = {
-                key: value
-                for key, value in self._suggestion_result_cache.items()
-                if key[0] != normalized_user_id
+                key: value for key, value in self._suggestion_result_cache.items() if key[0] != normalized_user_id
             }
 
     def invalidate_users_for_subscription(self, subscription_id: int) -> None:
         with self._session_factory() as session:
-            user_ids = session.execute(
-                select(UserSubscription.user_id).where(
-                    UserSubscription.subscription_id == subscription_id,
-                    UserSubscription.is_deleted.is_(False),
-                ),
-            ).scalars().all()
+            user_ids = (
+                session.execute(
+                    select(UserSubscription.user_id).where(
+                        UserSubscription.subscription_id == subscription_id,
+                        UserSubscription.is_deleted.is_(False),
+                    ),
+                )
+                .scalars()
+                .all()
+            )
 
         for user_id in user_ids:
             self.invalidate_user(int(user_id))

@@ -22,28 +22,45 @@ class _DummySessionContext:
 def test_enqueue_discovered_videos_skips_blocked_video_urls():
     enqueue_calls = []
 
-    with patch("domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls", return_value={}), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.get_session", return_value=_DummySessionContext()), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video", side_effect=lambda url, session: url.endswith("blocked")), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction", side_effect=lambda params: enqueue_calls.append(params.url) or True), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued"):
-
+    with (
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls',
+            return_value={},
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.get_session',
+            return_value=_DummySessionContext(),
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video',
+            side_effect=lambda url, session: url.endswith('blocked'),
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction',
+            side_effect=lambda params: enqueue_calls.append(params.url) or True,
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued'
+        ),
+    ):
         request = SubscriptionUpdateRequest(
             subscription_id=1,
             sync_state_id=2,
-            url="https://www.pornhub.com/model/demo",
+            url='https://www.pornhub.com/model/demo',
             trigger=UpdateTrigger.MANUAL,
             mode=UpdateMode.INCREMENTAL,
         )
-        fetch_result = SimpleNamespace(video_urls=[
-            "https://www.pornhub.com/view_video.php?viewkey=blocked",
-            "https://www.pornhub.com/view_video.php?viewkey=normal",
-        ])
+        fetch_result = SimpleNamespace(
+            video_urls=[
+                'https://www.pornhub.com/view_video.php?viewkey=blocked',
+                'https://www.pornhub.com/view_video.php?viewkey=normal',
+            ]
+        )
 
         enqueued = VideoExtractionCoordinator().enqueue_discovered_videos(fetch_result, request)
 
     assert enqueued == 1
-    assert enqueue_calls == ["https://www.pornhub.com/view_video.php?viewkey=normal"]
+    assert enqueue_calls == ['https://www.pornhub.com/view_video.php?viewkey=normal']
 
 
 def test_enqueue_discovered_videos_reserves_pending_count_before_dispatching_video_task():
@@ -59,23 +76,42 @@ def test_enqueue_discovered_videos_reserves_pending_count_before_dispatching_vid
         _decrement_pending(params.sync_state_id)
         return True
 
-    with patch("domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls", return_value={}), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.get_session", return_value=_DummySessionContext()), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video", return_value=False), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued", side_effect=_record_enqueued), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_dispatch_failed", side_effect=_decrement_pending), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction", side_effect=_enqueue_video):
-
+    with (
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls',
+            return_value={},
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.get_session',
+            return_value=_DummySessionContext(),
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video',
+            return_value=False,
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued',
+            side_effect=_record_enqueued,
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_dispatch_failed',
+            side_effect=_decrement_pending,
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction',
+            side_effect=_enqueue_video,
+        ),
+    ):
         request = SubscriptionUpdateRequest(
             subscription_id=1,
             sync_state_id=2,
-            url="https://www.youtube.com/channel/demo",
+            url='https://www.youtube.com/channel/demo',
             trigger=UpdateTrigger.MANUAL,
             mode=UpdateMode.INCREMENTAL,
         )
         fetch_result = SimpleNamespace(
-            video_urls=["https://www.youtube.com/watch?v=demo"],
-            latest_video_url="https://www.youtube.com/watch?v=demo",
+            video_urls=['https://www.youtube.com/watch?v=demo'],
+            latest_video_url='https://www.youtube.com/watch?v=demo',
             source_video_count=1,
         )
 
@@ -88,26 +124,46 @@ def test_enqueue_discovered_videos_reserves_pending_count_before_dispatching_vid
 def test_enqueue_discovered_videos_extracts_inline_without_creating_video_task():
     extract_calls = []
 
-    with patch("domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls", return_value={}), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.get_session", return_value=_DummySessionContext()), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video", return_value=False), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued"), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction", side_effect=lambda params: (_ for _ in ()).throw(AssertionError("inline extraction should not enqueue video task"))), \
-         patch("domains.subscription.application.services.core.update.video_extraction_coordinator.extract_video", side_effect=lambda params: extract_calls.append(params) or SimpleNamespace(success=True)):
-
+    with (
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls',
+            return_value={},
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.get_session',
+            return_value=_DummySessionContext(),
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video',
+            return_value=False,
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued'
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction',
+            side_effect=lambda params: (_ for _ in ()).throw(
+                AssertionError('inline extraction should not enqueue video task')
+            ),
+        ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.extract_video',
+            side_effect=lambda params: extract_calls.append(params) or SimpleNamespace(success=True),
+        ),
+    ):
         request = SubscriptionUpdateRequest(
             subscription_id=1,
             sync_state_id=2,
-            url="https://www.youtube.com/channel/demo",
+            url='https://www.youtube.com/channel/demo',
             trigger=UpdateTrigger.MANUAL,
             mode=UpdateMode.INCREMENTAL,
             inline_video_extraction=True,
         )
-        fetch_result = SimpleNamespace(video_urls=["https://www.youtube.com/watch?v=demo"])
+        fetch_result = SimpleNamespace(video_urls=['https://www.youtube.com/watch?v=demo'])
 
         enqueued = VideoExtractionCoordinator().enqueue_discovered_videos(fetch_result, request)
 
     assert enqueued == 1
     assert len(extract_calls) == 1
-    assert extract_calls[0].url == "https://www.youtube.com/watch?v=demo"
+    assert extract_calls[0].url == 'https://www.youtube.com/watch?v=demo'
     assert extract_calls[0].is_manual is True

@@ -15,15 +15,16 @@ if TYPE_CHECKING:
 
 def _items_join():
     from domains.playlist.domain.models.playlist_item import PlaylistItem
+
     return Playlist.id == foreign(PlaylistItem.playlist_id)
 
 
 class Playlist(Base, SerializerMixin):
-    __tablename__ = "playlist"
+    __tablename__ = 'playlist'
 
     __table_args__ = (
-        Index("ix_playlist_user_created_at", "user_id", "created_at"),
-        Index("ix_playlist_user_name", "user_id", "name"),
+        Index('ix_playlist_user_created_at', 'user_id', 'created_at'),
+        Index('ix_playlist_user_name', 'user_id', 'name'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -38,8 +39,8 @@ class Playlist(Base, SerializerMixin):
     )
 
     items: Mapped[list[PlaylistItem]] = relationship(
-        "PlaylistItem",
+        'PlaylistItem',
         primaryjoin=_items_join,
-        back_populates="playlist",
+        back_populates='playlist',
         viewonly=True,
     )

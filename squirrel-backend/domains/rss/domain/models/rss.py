@@ -8,11 +8,11 @@ from infrastructure.database.mixins import SerializerMixin
 
 
 class RssAccount(Base, SerializerMixin):
-    __tablename__ = "rss_account"
+    __tablename__ = 'rss_account'
 
     __table_args__ = (
-        UniqueConstraint("user_id", "provider", "base_url", "name", name="uix_rss_account_user_provider_url_name"),
-        Index("ix_rss_account_user_provider", "user_id", "provider"),
+        UniqueConstraint('user_id', 'provider', 'base_url', 'name', name='uix_rss_account_user_provider_url_name'),
+        Index('ix_rss_account_user_provider', 'user_id', 'provider'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -32,12 +32,12 @@ class RssAccount(Base, SerializerMixin):
 
 
 class RssFeed(Base, SerializerMixin):
-    __tablename__ = "rss_feed"
+    __tablename__ = 'rss_feed'
 
     __table_args__ = (
-        UniqueConstraint("account_id", "external_feed_id", name="uix_rss_feed_account_external"),
-        Index("ix_rss_feed_account_enabled", "account_id", "enabled"),
-        Index("ix_rss_feed_user_title", "user_id", "title"),
+        UniqueConstraint('account_id', 'external_feed_id', name='uix_rss_feed_account_external'),
+        Index('ix_rss_feed_account_enabled', 'account_id', 'enabled'),
+        Index('ix_rss_feed_user_title', 'user_id', 'title'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -58,13 +58,13 @@ class RssFeed(Base, SerializerMixin):
 
 
 class RssEntry(Base, SerializerMixin):
-    __tablename__ = "rss_entry"
+    __tablename__ = 'rss_entry'
 
     __table_args__ = (
-        UniqueConstraint("feed_id", "external_entry_id", name="uix_rss_entry_feed_external"),
-        Index("ix_rss_entry_feed_published", "feed_id", "published_at"),
-        Index("ix_rss_entry_user_published", "user_id", "published_at"),
-        Index("ix_rss_entry_user_read", "user_id", "is_read", "published_at"),
+        UniqueConstraint('feed_id', 'external_entry_id', name='uix_rss_entry_feed_external'),
+        Index('ix_rss_entry_feed_published', 'feed_id', 'published_at'),
+        Index('ix_rss_entry_user_published', 'user_id', 'published_at'),
+        Index('ix_rss_entry_user_read', 'user_id', 'is_read', 'published_at'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -86,11 +86,11 @@ class RssEntry(Base, SerializerMixin):
 
 
 class RssEntryView(Base, SerializerMixin):
-    __tablename__ = "rss_entry_view"
+    __tablename__ = 'rss_entry_view'
 
     __table_args__ = (
-        UniqueConstraint("user_id", "entry_id", name="uix_rss_entry_view_user_entry"),
-        Index("ix_rss_entry_view_user_viewed", "user_id", "viewed_at"),
+        UniqueConstraint('user_id', 'entry_id', name='uix_rss_entry_view_user_entry'),
+        Index('ix_rss_entry_view_user_viewed', 'user_id', 'viewed_at'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -99,5 +99,3 @@ class RssEntryView(Base, SerializerMixin):
     viewed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now())
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(), onupdate=lambda: datetime.now())
-
-

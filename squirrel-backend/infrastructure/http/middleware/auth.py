@@ -10,27 +10,27 @@ from infrastructure.http import response
 logger = logging.getLogger(__name__)
 
 PUBLIC_EXACT_PATHS = {
-    "/api/users/login",
-    "/api/users/register",
-    "/docs",
-    "/redoc",
-    "/openapi.json",
-    "/api/video/thumbnail",
+    '/api/users/login',
+    '/api/users/register',
+    '/docs',
+    '/redoc',
+    '/openapi.json',
+    '/api/video/thumbnail',
 }
 
 PUBLIC_PATH_PREFIXES = [
-    "/health",
-    "/health/ready",
-    "/health/live",
+    '/health',
+    '/health/ready',
+    '/health/live',
 ]
 
 
 def is_public_api_path(path: str) -> bool:
     if path in PUBLIC_EXACT_PATHS:
         return True
-    if any(path == prefix or path.startswith(prefix + "/") for prefix in PUBLIC_PATH_PREFIXES):
+    if any(path == prefix or path.startswith(prefix + '/') for prefix in PUBLIC_PATH_PREFIXES):
         return True
-    return path.startswith("/api/sites/") and path.endswith("/icon")
+    return path.startswith('/api/sites/') and path.endswith('/icon')
 
 
 class AuthenticationError(Exception):
@@ -45,14 +45,14 @@ class TokenMissingError(AuthenticationError):
     """Raised when authentication token is missing"""
 
     def __init__(self):
-        super().__init__(detail="请先登录")
+        super().__init__(detail='请先登录')
 
 
 class TokenExpiredError(AuthenticationError):
     """Raised when authentication token has expired"""
 
     def __init__(self):
-        super().__init__(detail="登录已过期,请重新登录")
+        super().__init__(detail='登录已过期,请重新登录')
 
 
 class AuthenticationMiddleware:
@@ -62,12 +62,12 @@ class AuthenticationMiddleware:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
+        if scope['type'] != 'http':
             await self.app(scope, receive, send)
             return
 
-        path = scope["path"]
-        if not path.startswith("/api") or is_public_api_path(path):
+        path = scope['path']
+        if not path.startswith('/api') or is_public_api_path(path):
             await self.app(scope, receive, send)
             return
 
@@ -82,7 +82,7 @@ class AuthenticationMiddleware:
             validate_auth_token(token)
         except Exception:
             # API boundary -- convert to HTTP error response
-            logger.error("Invalid token", exc_info=True)
+            logger.error('Invalid token', exc_info=True)
             await self._reject(scope, receive, send, TokenExpiredError(), request, clear_cookie=True)
             return
 

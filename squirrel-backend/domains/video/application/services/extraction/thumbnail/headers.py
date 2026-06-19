@@ -115,4 +115,3 @@ def build_request_headers(
             headers['Cookie'] = '; '.join(f'{name}={value}' for name, value in cookies.items())
 
     return headers
-

@@ -15,6 +15,7 @@
 - category='preview' 只取未来视频
 - keyset 游标分页正确
 """
+
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 
@@ -60,8 +61,12 @@ def session_factory():
 
 def _make_video(vid, *, publish_date, deleted=False):
     return Video(
-        id=vid, title=f'v{vid}', url=f'http://x/{vid}', domain='x.com',
-        publish_date=publish_date, is_deleted=deleted,
+        id=vid,
+        title=f'v{vid}',
+        url=f'http://x/{vid}',
+        domain='x.com',
+        publish_date=publish_date,
+        is_deleted=deleted,
     )
 
 
@@ -77,39 +82,49 @@ def _seed(session_factory):
     """
     now = datetime.now()
     with session_factory() as s:
-        s.add_all([
-            _make_video(1, publish_date=now - timedelta(days=5)),   # sub 10
-            _make_video(2, publish_date=now - timedelta(days=4)),   # sub 10
-            _make_video(3, publish_date=now - timedelta(days=3)),   # sub 12 (unsubscribed)
-            _make_video(4, publish_date=now - timedelta(days=1)),   # sub 11 (newest globally, not sub 10)
-            _make_video(5, publish_date=now - timedelta(days=2), deleted=True),   # sub 10 deleted
-            _make_video(6, publish_date=now + timedelta(days=1)),   # sub 10 future
-            _make_video(7, publish_date=None),                       # sub 10 null publish_date
-            _make_video(8, publish_date=now - timedelta(days=6)),   # sub 10 + sub 11 (fan-out)
-            _make_video(9, publish_date=now - timedelta(days=7)),   # sub 20 (user 2)
-        ])
-        s.add_all([Subscription(id=10, name='chanA', type='CHANNEL'),
-                   Subscription(id=11, name='chanB', type='CHANNEL'),
-                   Subscription(id=12, name='unsub', type='CHANNEL'),
-                   Subscription(id=20, name='user2chan', type='CHANNEL')])
-        s.add_all([
-            UserSubscription(user_id=1, subscription_id=10, is_deleted=False),
-            UserSubscription(user_id=1, subscription_id=11, is_deleted=False),
-            UserSubscription(user_id=1, subscription_id=12, is_deleted=True),
-            UserSubscription(user_id=2, subscription_id=20, is_deleted=False),
-        ])
-        s.add_all([
-            SubscriptionVideo(subscription_id=10, video_id=1),
-            SubscriptionVideo(subscription_id=10, video_id=2),
-            SubscriptionVideo(subscription_id=12, video_id=3),
-            SubscriptionVideo(subscription_id=11, video_id=4),
-            SubscriptionVideo(subscription_id=10, video_id=5),
-            SubscriptionVideo(subscription_id=10, video_id=6),
-            SubscriptionVideo(subscription_id=10, video_id=7),
-            SubscriptionVideo(subscription_id=10, video_id=8),
-            SubscriptionVideo(subscription_id=11, video_id=8),  # fan-out: video 8 in both sub10 & sub11
-            SubscriptionVideo(subscription_id=20, video_id=9),
-        ])
+        s.add_all(
+            [
+                _make_video(1, publish_date=now - timedelta(days=5)),  # sub 10
+                _make_video(2, publish_date=now - timedelta(days=4)),  # sub 10
+                _make_video(3, publish_date=now - timedelta(days=3)),  # sub 12 (unsubscribed)
+                _make_video(4, publish_date=now - timedelta(days=1)),  # sub 11 (newest globally, not sub 10)
+                _make_video(5, publish_date=now - timedelta(days=2), deleted=True),  # sub 10 deleted
+                _make_video(6, publish_date=now + timedelta(days=1)),  # sub 10 future
+                _make_video(7, publish_date=None),  # sub 10 null publish_date
+                _make_video(8, publish_date=now - timedelta(days=6)),  # sub 10 + sub 11 (fan-out)
+                _make_video(9, publish_date=now - timedelta(days=7)),  # sub 20 (user 2)
+            ]
+        )
+        s.add_all(
+            [
+                Subscription(id=10, name='chanA', type='CHANNEL'),
+                Subscription(id=11, name='chanB', type='CHANNEL'),
+                Subscription(id=12, name='unsub', type='CHANNEL'),
+                Subscription(id=20, name='user2chan', type='CHANNEL'),
+            ]
+        )
+        s.add_all(
+            [
+                UserSubscription(user_id=1, subscription_id=10, is_deleted=False),
+                UserSubscription(user_id=1, subscription_id=11, is_deleted=False),
+                UserSubscription(user_id=1, subscription_id=12, is_deleted=True),
+                UserSubscription(user_id=2, subscription_id=20, is_deleted=False),
+            ]
+        )
+        s.add_all(
+            [
+                SubscriptionVideo(subscription_id=10, video_id=1),
+                SubscriptionVideo(subscription_id=10, video_id=2),
+                SubscriptionVideo(subscription_id=12, video_id=3),
+                SubscriptionVideo(subscription_id=11, video_id=4),
+                SubscriptionVideo(subscription_id=10, video_id=5),
+                SubscriptionVideo(subscription_id=10, video_id=6),
+                SubscriptionVideo(subscription_id=10, video_id=7),
+                SubscriptionVideo(subscription_id=10, video_id=8),
+                SubscriptionVideo(subscription_id=11, video_id=8),  # fan-out: video 8 in both sub10 & sub11
+                SubscriptionVideo(subscription_id=20, video_id=9),
+            ]
+        )
 
 
 def test_fetch_returns_only_specified_subscription_published_videos(session_factory):
@@ -117,7 +132,11 @@ def test_fetch_returns_only_specified_subscription_published_videos(session_fact
     _seed(session_factory)
     with session_factory() as s:
         ids, next_cursor = fetch_subscription_video_ids(
-            s, user_id=1, subscription_id=10, cursor=None, limit=50,
+            s,
+            user_id=1,
+            subscription_id=10,
+            cursor=None,
+            limit=50,
         )
     # sub 10 eligible (not deleted, published): v2 (4d), v1 (5d), v8 (6d).
     # v3 (sub 12), v4 (sub 11), v5 (deleted), v6 (future), v7 (null), v9 (user 2) excluded.
@@ -129,7 +148,11 @@ def test_fetch_excludes_future_and_null_and_deleted(session_factory):
     _seed(session_factory)
     with session_factory() as s:
         ids, _ = fetch_subscription_video_ids(
-            s, user_id=1, subscription_id=10, cursor=None, limit=50,
+            s,
+            user_id=1,
+            subscription_id=10,
+            cursor=None,
+            limit=50,
         )
     assert 6 not in ids  # future
     assert 7 not in ids  # null publish_date
@@ -144,7 +167,11 @@ def test_fetch_enforces_ownership(session_factory):
     _seed(session_factory)
     with session_factory() as s:
         ids, next_cursor = fetch_subscription_video_ids(
-            s, user_id=2, subscription_id=10, cursor=None, limit=50,
+            s,
+            user_id=2,
+            subscription_id=10,
+            cursor=None,
+            limit=50,
         )
     assert ids == []
     assert next_cursor is None
@@ -155,7 +182,11 @@ def test_fetch_dedupes_fan_out(session_factory):
     _seed(session_factory)
     with session_factory() as s:
         ids, _ = fetch_subscription_video_ids(
-            s, user_id=1, subscription_id=10, cursor=None, limit=50,
+            s,
+            user_id=1,
+            subscription_id=10,
+            cursor=None,
+            limit=50,
         )
     assert ids.count(8) == 1
 
@@ -165,17 +196,29 @@ def test_fetch_keyset_pagination(session_factory):
     _seed(session_factory)
     with session_factory() as s:
         page1, cursor1 = fetch_subscription_video_ids(
-            s, user_id=1, subscription_id=10, cursor=None, limit=1,
+            s,
+            user_id=1,
+            subscription_id=10,
+            cursor=None,
+            limit=1,
         )
         page2, cursor2 = fetch_subscription_video_ids(
-            s, user_id=1, subscription_id=10, cursor=cursor1, limit=1,
+            s,
+            user_id=1,
+            subscription_id=10,
+            cursor=cursor1,
+            limit=1,
         )
         page3, cursor3 = fetch_subscription_video_ids(
-            s, user_id=1, subscription_id=10, cursor=cursor2, limit=1,
+            s,
+            user_id=1,
+            subscription_id=10,
+            cursor=cursor2,
+            limit=1,
         )
-    assert page1 == [2]   # newest (4d ago)
-    assert page2 == [1]   # 5d ago
-    assert page3 == [8]   # 6d ago
+    assert page1 == [2]  # newest (4d ago)
+    assert page2 == [1]  # 5d ago
+    assert page3 == [8]  # 6d ago
     assert cursor1 is not None
     assert cursor2 is not None
     assert cursor3 is None  # exhausted
@@ -188,7 +231,11 @@ def test_fetch_empty_when_subscription_has_no_videos(session_factory):
         s.add(UserSubscription(user_id=1, subscription_id=99, is_deleted=False))
     with session_factory() as s:
         ids, next_cursor = fetch_subscription_video_ids(
-            s, user_id=1, subscription_id=99, cursor=None, limit=50,
+            s,
+            user_id=1,
+            subscription_id=99,
+            cursor=None,
+            limit=50,
         )
     assert ids == []
     assert next_cursor is None
@@ -199,7 +246,12 @@ def test_fetch_preview_category_returns_only_future_videos(session_factory):
     _seed(session_factory)
     with session_factory() as s:
         ids, next_cursor = fetch_subscription_video_ids(
-            s, user_id=1, subscription_id=10, cursor=None, limit=50, category='preview',
+            s,
+            user_id=1,
+            subscription_id=10,
+            cursor=None,
+            limit=50,
+            category='preview',
         )
     # sub 10 future videos: only v6
     assert ids == [6]

@@ -12,12 +12,12 @@ from infrastructure.scheduling.base import BaseTask, TaskRegistry
 logger = logging.getLogger(__name__)
 
 _SUPPORTED_SITE_PATTERNS = {
-    "pornhub": "%pornhub.com%",
-    "youporn": "%youporn.com%",
+    'pornhub': '%pornhub.com%',
+    'youporn': '%youporn.com%',
 }
 
 
-@TaskRegistry.register(interval=60 * 24, unit="minutes", start_immediately=True)
+@TaskRegistry.register(interval=60 * 24, unit='minutes', start_immediately=True)
 class ThumbnailRefreshTask(BaseTask):
     """Periodically backfill thumbnail cache for sites supporting offline thumbnails."""
 
@@ -52,10 +52,10 @@ class ThumbnailRefreshTask(BaseTask):
 
         for site_name, url_pattern in _SUPPORTED_SITE_PATTERNS.items():
             site_info = catalog.get(site_name, {})
-            metadata = site_info.get("metadata") or {}
-            if not site_info.get("enabled", True):
+            metadata = site_info.get('metadata') or {}
+            if not site_info.get('enabled', True):
                 continue
-            if not metadata.get("offline_thumbnails_download", False):
+            if not metadata.get('offline_thumbnails_download', False):
                 continue
             targets.append((site_name, url_pattern))
 
@@ -63,13 +63,13 @@ class ThumbnailRefreshTask(BaseTask):
 
     @staticmethod
     def _get_site_max_workers(site_name: str) -> int:
-        if str(site_name).lower() == "pornhub":
+        if str(site_name).lower() == 'pornhub':
             return 4
         return 8
 
     @classmethod
     def _get_stored_thumbnail_url(cls, video: Video) -> str | None:
-        stored_thumbnail = str(video.thumbnail or "").strip()
+        stored_thumbnail = str(video.thumbnail or '').strip()
         return stored_thumbnail or None
 
     @classmethod
@@ -81,12 +81,14 @@ class ThumbnailRefreshTask(BaseTask):
         # ponytail: delegates to thumbnail_downloader_service (shared httpx client +
         # JSON-LD/meta parsing) instead of re-implementing page fetch + retry here.
         return thumbnail_downloader_service.fetch_thumbnail_url_from_page(
-            video.id, video.url, site_name,
+            video.id,
+            video.url,
+            site_name,
         )
 
     @classmethod
     def run(cls):
-        logger.info("[ThumbnailRefreshTask] Start refreshing video thumbnails")
+        logger.info('[ThumbnailRefreshTask] Start refreshing video thumbnails')
 
         batch_size = 100
         processed_count = 0
@@ -94,7 +96,7 @@ class ThumbnailRefreshTask(BaseTask):
         refresh_targets = cls._get_refresh_targets()
 
         if not refresh_targets:
-            logger.info("[ThumbnailRefreshTask] No enabled sites require thumbnail refresh")
+            logger.info('[ThumbnailRefreshTask] No enabled sites require thumbnail refresh')
             return
 
         for site_name, url_pattern in refresh_targets:
@@ -109,7 +111,7 @@ class ThumbnailRefreshTask(BaseTask):
                     )
 
                 logger.info(
-                    "[ThumbnailRefreshTask] Total %s videos to check: %d",
+                    '[ThumbnailRefreshTask] Total %s videos to check: %d',
                     site_name,
                     total_site_videos,
                 )
@@ -136,8 +138,7 @@ class ThumbnailRefreshTask(BaseTask):
 
                     if videos_to_process:
                         futures = [
-                            executor.submit(cls._process_single_video, video, site_name)
-                            for video in videos_to_process
+                            executor.submit(cls._process_single_video, video, site_name) for video in videos_to_process
                         ]
 
                         for future in as_completed(futures):
@@ -146,13 +147,14 @@ class ThumbnailRefreshTask(BaseTask):
                                 processed_count += 1
                             except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
                                 logger.exception(
-                                    "[ThumbnailRefreshTask] error processing video: %s", e,
+                                    '[ThumbnailRefreshTask] error processing video: %s',
+                                    e,
                                 )
 
                     if total_site_videos > 0:
-                        progress_pct = (site_checked / total_site_videos * 100)
+                        progress_pct = site_checked / total_site_videos * 100
                         logger.info(
-                            "[ThumbnailRefreshTask] Site %s batch checked %d/%d videos (%.1f%%), processed %d thumbnails",
+                            '[ThumbnailRefreshTask] Site %s batch checked %d/%d videos (%.1f%%), processed %d thumbnails',
                             site_name,
                             min(total_site_videos, site_checked),
                             total_site_videos,
@@ -163,7 +165,7 @@ class ThumbnailRefreshTask(BaseTask):
                     last_id = rows[-1].id
 
         logger.info(
-            "[ThumbnailRefreshTask] Finished: checked %d videos, processed %d thumbnails",
+            '[ThumbnailRefreshTask] Finished: checked %d videos, processed %d thumbnails',
             total_checked,
             processed_count,
         )
@@ -175,7 +177,7 @@ class ThumbnailRefreshTask(BaseTask):
             thumbnail_url = stored_thumbnail_url or cls._fetch_thumbnail_url_from_page(video, site_name)
             if not thumbnail_url:
                 logger.warning(
-                    "[ThumbnailRefreshTask] No thumbnail found for site=%s video id=%s",
+                    '[ThumbnailRefreshTask] No thumbnail found for site=%s video id=%s',
                     site_name,
                     video.id,
                 )
@@ -189,7 +191,7 @@ class ThumbnailRefreshTask(BaseTask):
             )
             if downloaded_path:
                 logger.info(
-                    "[ThumbnailRefreshTask] Downloaded thumbnail for site=%s video id=%s",
+                    '[ThumbnailRefreshTask] Downloaded thumbnail for site=%s video id=%s',
                     site_name,
                     video.id,
                 )
@@ -206,21 +208,21 @@ class ThumbnailRefreshTask(BaseTask):
                     )
                     if downloaded_path:
                         logger.info(
-                            "[ThumbnailRefreshTask] Downloaded thumbnail from page fallback for site=%s video id=%s",
+                            '[ThumbnailRefreshTask] Downloaded thumbnail from page fallback for site=%s video id=%s',
                             site_name,
                             video.id,
                         )
                         return
 
             logger.warning(
-                "[ThumbnailRefreshTask] Failed to cache thumbnail for site=%s video id=%s",
+                '[ThumbnailRefreshTask] Failed to cache thumbnail for site=%s video id=%s',
                 site_name,
                 video.id,
             )
 
         except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
             logger.warning(
-                "[ThumbnailRefreshTask] Failed to process site=%s video id=%s url=%s: %s",
+                '[ThumbnailRefreshTask] Failed to process site=%s video id=%s url=%s: %s',
                 site_name,
                 video.id,
                 video.url,

@@ -50,10 +50,16 @@ def ensure_sync_states(subscription_id: int, url: str | None) -> dict[str, Subsc
     with get_session() as session:
         states = {
             SyncMode.INCREMENTAL.value: _get_or_create_sync_state_in_session(
-                session, subscription_id, SyncMode.INCREMENTAL.value, url,
+                session,
+                subscription_id,
+                SyncMode.INCREMENTAL.value,
+                url,
             ),
             SyncMode.FULL.value: _get_or_create_sync_state_in_session(
-                session, subscription_id, SyncMode.FULL.value, url,
+                session,
+                subscription_id,
+                SyncMode.FULL.value,
+                url,
             ),
         }
         return states
@@ -87,6 +93,7 @@ def list_due_sync_states(
 ) -> list[tuple[SubscriptionSyncState, str]]:
     now = now or datetime.now()
     from ._stale import _recover_stale_running_states_in_session
+
     with get_session() as session:
         _recover_stale_running_states_in_session(session, now)
         rows = session.execute(
@@ -104,7 +111,9 @@ def list_due_sync_states(
                     ],
                 ),
                 exists(
-                    select(1).select_from(UserSubscription).where(
+                    select(1)
+                    .select_from(UserSubscription)
+                    .where(
                         UserSubscription.subscription_id == Subscription.id,
                         UserSubscription.is_deleted.is_(False),
                     ),

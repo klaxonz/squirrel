@@ -14,20 +14,24 @@ from ._intervals import RUNNING_TIMEOUT
 
 def _recover_stale_running_states_in_session(session: Session, now: datetime) -> None:
     stale_before = now - RUNNING_TIMEOUT
-    states = session.execute(
-        select(SubscriptionSyncState).where(
-            SubscriptionSyncState.sync_status == SyncStatus.RUNNING.value,
-            SubscriptionSyncState.locked_at.is_not(None),
-            SubscriptionSyncState.locked_at <= stale_before,
-        ),
-    ).scalars().all()
+    states = (
+        session.execute(
+            select(SubscriptionSyncState).where(
+                SubscriptionSyncState.sync_status == SyncStatus.RUNNING.value,
+                SubscriptionSyncState.locked_at.is_not(None),
+                SubscriptionSyncState.locked_at <= stale_before,
+            ),
+        )
+        .scalars()
+        .all()
+    )
     for state in states:
         _recover_stale_running_state(state, now)
 
 
 def _recover_stale_running_state(state: SubscriptionSyncState, now: datetime) -> None:
     state.sync_status = SyncStatus.FAILED.value
-    state.last_error = "stale_running_timeout"
+    state.last_error = 'stale_running_timeout'
     state.queue_token = None
     state.queued_at = None
     state.locked_at = None
@@ -43,6 +47,6 @@ def _can_complete_drained_state(sync_state_id: int) -> bool:
         return True
 
     stats = summary.get(sync_state_id, {})
-    active_count = int(stats.get("active_count", 0) or 0)
-    failed_count = int(stats.get("failed_count", 0) or 0)
+    active_count = int(stats.get('active_count', 0) or 0)
+    failed_count = int(stats.get('failed_count', 0) or 0)
     return failed_count == 0 and active_count <= 1

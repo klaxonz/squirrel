@@ -55,7 +55,10 @@ class ThumbnailHttpClient:
             if response.status_code == 200:
                 return response
 
-            if response.status_code in THUMBNAIL_DOWNLOAD_RETRYABLE_STATUS_CODES and attempt < THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS:
+            if (
+                response.status_code in THUMBNAIL_DOWNLOAD_RETRYABLE_STATUS_CODES
+                and attempt < THUMBNAIL_DOWNLOAD_MAX_ATTEMPTS
+            ):
                 logger.info(
                     'Retrying thumbnail download after HTTP %s: video_id=%s, attempt=%s/%s, url=%s',
                     response.status_code,
@@ -122,4 +125,3 @@ class ThumbnailHttpClient:
     @staticmethod
     def _page_retry_delay(attempt: int) -> float:
         return min(5.0, 0.8 * attempt)
-

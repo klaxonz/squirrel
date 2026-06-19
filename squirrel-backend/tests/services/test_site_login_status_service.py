@@ -37,12 +37,14 @@ def test_test_site_login_status_normalizes_runtime_payload():
             return True
 
         def invoke(self, capability, payload=None, site_name=None, domain=None):
-            calls.append({
-                'capability': capability,
-                'payload': payload,
-                'site_name': site_name,
-                'domain': domain,
-            })
+            calls.append(
+                {
+                    'capability': capability,
+                    'payload': payload,
+                    'site_name': site_name,
+                    'domain': domain,
+                }
+            )
             return SitePluginResult(
                 ok=True,
                 data={
@@ -55,12 +57,14 @@ def test_test_site_login_status_normalizes_runtime_payload():
     svc = SiteLoginStatusService(_Registry())
     payload = svc.test_site_login_status('youtube')
 
-    assert calls == [{
-        'capability': 'check_login_status',
-        'payload': None,
-        'site_name': 'youtube',
-        'domain': None,
-    }]
+    assert calls == [
+        {
+            'capability': 'check_login_status',
+            'payload': None,
+            'site_name': 'youtube',
+            'domain': None,
+        }
+    ]
     assert payload['site_name'] == 'youtube'
     assert payload['supported'] is True
     assert payload['logged_in'] is True

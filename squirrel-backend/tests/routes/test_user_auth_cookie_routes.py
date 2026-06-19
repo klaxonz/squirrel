@@ -12,22 +12,22 @@ from domains.user.interfaces.http.dependencies import get_user_service
 from infrastructure.auth.jwt import AUTH_COOKIE_NAME
 
 
-def _make_user(user_id=7, email="demo@example.com", token_version=0):
+def _make_user(user_id=7, email='demo@example.com', token_version=0):
     def _to_dict(self, exclude=None, **kwargs):
         _ = kwargs
-        data = {"id": user_id, "email": email, "token_version": token_version}
+        data = {'id': user_id, 'email': email, 'token_version': token_version}
         for key in exclude or set():
             data.pop(key, None)
         return data
 
     return type(
-        "UserStub",
+        'UserStub',
         (),
         {
-            "id": user_id,
-            "email": email,
-            "token_version": token_version,
-            "to_dict": _to_dict,
+            'id': user_id,
+            'email': email,
+            'token_version': token_version,
+            'to_dict': _to_dict,
         },
     )()
 
@@ -64,10 +64,10 @@ def _build_app(
         rotate_token_version_impl=rotate_token_version_impl,
     )
     monkeypatch.setattr(
-        "domains.user.interfaces.http.auth_cookie.create_access_token",
-        create_access_token_impl or (lambda data, expires_delta=None: "cookie-token"),
+        'domains.user.interfaces.http.auth_cookie.create_access_token',
+        create_access_token_impl or (lambda data, expires_delta=None: 'cookie-token'),
     )
-    monkeypatch.setattr("domains.user.interfaces.http.auth_cookie.should_persist_auth_cookie", lambda token: False)
+    monkeypatch.setattr('domains.user.interfaces.http.auth_cookie.should_persist_auth_cookie', lambda token: False)
     if current_user is not None:
         app.dependency_overrides[get_current_user] = lambda: current_user
     return app
@@ -77,46 +77,46 @@ def test_login_sets_session_auth_cookie_without_remember_me(monkeypatch):
     client = TestClient(_build_app(monkeypatch))
 
     response = client.post(
-        "/api/users/login",
-        json={"email": "demo@example.com", "password": "secret"},
-        headers={"x-forwarded-proto": "https"},
+        '/api/users/login',
+        json={'email': 'demo@example.com', 'password': 'secret'},
+        headers={'x-forwarded-proto': 'https'},
     )
 
     assert response.status_code == 200
-    assert response.json()["data"] == {"id": 7, "email": "demo@example.com"}
-    assert response.cookies.get(AUTH_COOKIE_NAME) == "cookie-token"
-    set_cookie_header = response.headers["set-cookie"].lower()
-    assert f"{AUTH_COOKIE_NAME}=cookie-token" in set_cookie_header
-    assert "httponly" in set_cookie_header
-    assert "secure" in set_cookie_header
-    assert "samesite=lax" in set_cookie_header
-    assert "max-age=" not in set_cookie_header
+    assert response.json()['data'] == {'id': 7, 'email': 'demo@example.com'}
+    assert response.cookies.get(AUTH_COOKIE_NAME) == 'cookie-token'
+    set_cookie_header = response.headers['set-cookie'].lower()
+    assert f'{AUTH_COOKIE_NAME}=cookie-token' in set_cookie_header
+    assert 'httponly' in set_cookie_header
+    assert 'secure' in set_cookie_header
+    assert 'samesite=lax' in set_cookie_header
+    assert 'max-age=' not in set_cookie_header
 
 
 def test_login_sets_persistent_auth_cookie_when_remember_me_enabled(monkeypatch):
     client = TestClient(_build_app(monkeypatch))
 
     response = client.post(
-        "/api/users/login",
-        json={"email": "demo@example.com", "password": "secret", "remember_me": True},
+        '/api/users/login',
+        json={'email': 'demo@example.com', 'password': 'secret', 'remember_me': True},
     )
 
     assert response.status_code == 200
-    set_cookie_header = response.headers["set-cookie"].lower()
-    assert f"{AUTH_COOKIE_NAME}=cookie-token" in set_cookie_header
-    assert "max-age=2592000" in set_cookie_header
+    set_cookie_header = response.headers['set-cookie'].lower()
+    assert f'{AUTH_COOKIE_NAME}=cookie-token' in set_cookie_header
+    assert 'max-age=2592000' in set_cookie_header
 
 
 def test_logout_clears_auth_cookie(monkeypatch):
     client = TestClient(_build_app(monkeypatch))
 
-    response = client.post("/api/users/logout")
+    response = client.post('/api/users/logout')
 
     assert response.status_code == 200
-    assert response.json()["msg"] == "退出成功"
-    cleared_cookie = response.headers["set-cookie"].lower()
-    assert f"{AUTH_COOKIE_NAME}=" in cleared_cookie
-    assert "max-age=0" in cleared_cookie or "expires=" in cleared_cookie
+    assert response.json()['msg'] == '退出成功'
+    cleared_cookie = response.headers['set-cookie'].lower()
+    assert f'{AUTH_COOKIE_NAME}=' in cleared_cookie
+    assert 'max-age=0' in cleared_cookie or 'expires=' in cleared_cookie
 
 
 def test_login_embeds_current_token_version_and_remember_flag_in_cookie(monkeypatch):
@@ -124,21 +124,23 @@ def test_login_embeds_current_token_version_and_remember_flag_in_cookie(monkeypa
 
     def _capture_token(data, expires_delta=None):
         _ = expires_delta
-        captured["data"] = data
-        return "cookie-token"
+        captured['data'] = data
+        return 'cookie-token'
 
-    client = TestClient(_build_app(
-        monkeypatch,
-        authenticate_impl=lambda email, password: (_make_user(email=email, token_version=3), object()),
-        create_access_token_impl=_capture_token,
-    ))
+    client = TestClient(
+        _build_app(
+            monkeypatch,
+            authenticate_impl=lambda email, password: (_make_user(email=email, token_version=3), object()),
+            create_access_token_impl=_capture_token,
+        )
+    )
     response = client.post(
-        "/api/users/login",
-        json={"email": "demo@example.com", "password": "secret", "remember_me": True},
+        '/api/users/login',
+        json={'email': 'demo@example.com', 'password': 'secret', 'remember_me': True},
     )
 
     assert response.status_code == 200
-    assert captured["data"] == {"sub": "7", "tv": 3, "rm": True}
+    assert captured['data'] == {'sub': '7', 'tv': 3, 'rm': True}
 
 
 def test_update_password_rotates_cookie_for_current_session(monkeypatch):
@@ -148,8 +150,8 @@ def test_update_password_rotates_cookie_for_current_session(monkeypatch):
 
     def _capture_token(data, expires_delta=None):
         _ = expires_delta
-        captured["data"] = data
-        return "rotated-token"
+        captured['data'] = data
+        return 'rotated-token'
 
     app = _build_app(
         monkeypatch,
@@ -157,18 +159,18 @@ def test_update_password_rotates_cookie_for_current_session(monkeypatch):
         create_access_token_impl=_capture_token,
         update_password_impl=lambda user_id, current_password, new_password: (updated_user, object()),
     )
-    monkeypatch.setattr("domains.user.interfaces.http.auth_cookie.should_persist_auth_cookie", lambda token: True)
+    monkeypatch.setattr('domains.user.interfaces.http.auth_cookie.should_persist_auth_cookie', lambda token: True)
     client = TestClient(app)
     response = client.put(
-        "/api/users/me/password",
-        json={"current_password": "secret123", "new_password": "secret456"},
+        '/api/users/me/password',
+        json={'current_password': 'secret123', 'new_password': 'secret456'},
     )
 
     assert response.status_code == 200
-    assert response.json()["msg"] == "密码修改成功,旧会话已失效"
-    assert response.cookies.get(AUTH_COOKIE_NAME) == "rotated-token"
-    assert captured["data"] == {"sub": "7", "tv": 2, "rm": True}
-    assert "max-age=2592000" in response.headers["set-cookie"].lower()
+    assert response.json()['msg'] == '密码修改成功,旧会话已失效'
+    assert response.cookies.get(AUTH_COOKIE_NAME) == 'rotated-token'
+    assert captured['data'] == {'sub': '7', 'tv': 2, 'rm': True}
+    assert 'max-age=2592000' in response.headers['set-cookie'].lower()
 
 
 def test_revoke_sessions_rotates_cookie_for_current_session(monkeypatch):
@@ -178,8 +180,8 @@ def test_revoke_sessions_rotates_cookie_for_current_session(monkeypatch):
 
     def _capture_token(data, expires_delta=None):
         _ = expires_delta
-        captured["data"] = data
-        return "rotated-token"
+        captured['data'] = data
+        return 'rotated-token'
 
     app = _build_app(
         monkeypatch,
@@ -187,12 +189,12 @@ def test_revoke_sessions_rotates_cookie_for_current_session(monkeypatch):
         create_access_token_impl=_capture_token,
         rotate_token_version_impl=lambda user_id: updated_user,
     )
-    monkeypatch.setattr("domains.user.interfaces.http.auth_cookie.should_persist_auth_cookie", lambda token: False)
+    monkeypatch.setattr('domains.user.interfaces.http.auth_cookie.should_persist_auth_cookie', lambda token: False)
     client = TestClient(app)
-    response = client.post("/api/users/me/revoke-sessions")
+    response = client.post('/api/users/me/revoke-sessions')
 
     assert response.status_code == 200
-    assert response.json()["msg"] == "已撤销其他会话"
-    assert response.cookies.get(AUTH_COOKIE_NAME) == "rotated-token"
-    assert captured["data"] == {"sub": "7", "tv": 5, "rm": False}
-    assert "max-age=" not in response.headers["set-cookie"].lower()
+    assert response.json()['msg'] == '已撤销其他会话'
+    assert response.cookies.get(AUTH_COOKIE_NAME) == 'rotated-token'
+    assert captured['data'] == {'sub': '7', 'tv': 5, 'rm': False}
+    assert 'max-age=' not in response.headers['set-cookie'].lower()

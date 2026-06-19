@@ -5,48 +5,48 @@ from pydantic import BaseModel, Field
 
 
 class SortBy(StrEnum):
-    UPLOADED_AT = "publish_date"
-    CREATED_AT = "created_at"
+    UPLOADED_AT = 'publish_date'
+    CREATED_AT = 'created_at'
 
 
 class VideoCategory(StrEnum):
-    ALL = "all"
-    READ = "read"
-    UNREAD = "unread"
-    PREVIEW = "preview"
-    LIKED = "liked"
-    LATER = "later"
+    ALL = 'all'
+    READ = 'read'
+    UNREAD = 'unread'
+    PREVIEW = 'preview'
+    LIKED = 'liked'
+    LATER = 'later'
 
 
 class YesNoAll(StrEnum):
-    ALL = "all"
-    YES = "yes"
-    NO = "no"
+    ALL = 'all'
+    YES = 'yes'
+    NO = 'no'
 
 
 class TimeRange(StrEnum):
-    ALL = "all"
-    TODAY = "today"
-    WEEK = "week"
-    MONTH = "month"
-    YEAR = "year"
+    ALL = 'all'
+    TODAY = 'today'
+    WEEK = 'week'
+    MONTH = 'month'
+    YEAR = 'year'
 
 
 class DurationFilter(StrEnum):
-    ALL = "all"
-    SHORT = "short"
-    MEDIUM = "medium"
-    LONG = "long"
+    ALL = 'all'
+    SHORT = 'short'
+    MEDIUM = 'medium'
+    LONG = 'long'
 
 
 class ContentType(StrEnum):
-    ALL = "all"
-    CHANNEL = "CHANNEL"
-    PLAYLIST = "PLAYLIST"
-    ACTRESS = "ACTRESS"
-    MOVIE = "MOVIE"
-    TV_SERIES = "TV_SERIES"
-    ACTOR = "ACTOR"
+    ALL = 'all'
+    CHANNEL = 'CHANNEL'
+    PLAYLIST = 'PLAYLIST'
+    ACTRESS = 'ACTRESS'
+    MOVIE = 'MOVIE'
+    TV_SERIES = 'TV_SERIES'
+    ACTOR = 'ACTOR'
 
 
 class RemoteVideoSaveRequest(BaseModel):

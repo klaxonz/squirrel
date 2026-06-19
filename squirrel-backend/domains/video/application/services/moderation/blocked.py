@@ -44,9 +44,13 @@ class BlockedVideoService:
             with self._session_factory() as session:
                 site = extract_top_level_domain(url)
 
-                existing = session.query(BlockedVideoRecord).filter(
-                    BlockedVideoRecord.url == url,
-                ).first()
+                existing = (
+                    session.query(BlockedVideoRecord)
+                    .filter(
+                        BlockedVideoRecord.url == url,
+                    )
+                    .first()
+                )
 
                 if existing:
                     existing.reason_code = reason_code
@@ -57,7 +61,7 @@ class BlockedVideoService:
                     session.commit()
 
                     logger.info(
-                        "Updated blocked video record: url=%s, reason=%s, retry_count=%s",
+                        'Updated blocked video record: url=%s, reason=%s, retry_count=%s',
                         url,
                         reason_code,
                         existing.retry_count,
@@ -75,14 +79,14 @@ class BlockedVideoService:
                 session.add(record)
                 session.commit()
 
-                logger.info("Created blocked video record: url=%s, site=%s, reason=%s", url, site, reason_code)
+                logger.info('Created blocked video record: url=%s, site=%s, reason=%s', url, site, reason_code)
                 return record
 
         except IntegrityError:
-            logger.warning("Blocked video record already exists: url=%s, reason=%s", url, reason_code)
+            logger.warning('Blocked video record already exists: url=%s, reason=%s', url, reason_code)
             return None
         except (ConnectionError, OSError, ValueError, TypeError) as exc:
-            logger.error("Failed to record blocked video: url=%s, reason=%s, error=%s", url, reason_code, exc)
+            logger.error('Failed to record blocked video: url=%s, reason=%s, error=%s', url, reason_code, exc)
             return None
 
 

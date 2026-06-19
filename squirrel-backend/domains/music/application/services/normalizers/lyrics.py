@@ -8,8 +8,8 @@ def parse_lrc(content: str) -> list[dict[str, Any]]:
     for raw_line in content.splitlines():
         if not raw_line.startswith('[') or ']' not in raw_line:
             continue
-        text = raw_line[raw_line.rfind(']') + 1:].strip()
-        for timestamp in raw_line[:raw_line.rfind(']') + 1].split(']'):
+        text = raw_line[raw_line.rfind(']') + 1 :].strip()
+        for timestamp in raw_line[: raw_line.rfind(']') + 1].split(']'):
             if not timestamp.startswith('['):
                 continue
             seconds = parse_lrc_timestamp(timestamp[1:])

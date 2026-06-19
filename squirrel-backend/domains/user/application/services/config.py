@@ -42,22 +42,22 @@ class UserConfigService:
             return config.settings
 
     def update_config(
-            self,
-            user_id: int,
-            new_settings: dict,
-            merge: bool = False,
+        self,
+        user_id: int,
+        new_settings: dict,
+        merge: bool = False,
     ) -> dict:
         sanitized_settings = new_settings
 
         # 添加类型验证
-        if "showNsfw" in sanitized_settings and not isinstance(sanitized_settings["showNsfw"], bool):
-            raise ValueError("showNsfw must be a boolean")
-        if "autoplay" in sanitized_settings and not isinstance(sanitized_settings["autoplay"], bool):
-            raise ValueError("autoplay must be a boolean")
-        if "autoplayNext" in sanitized_settings and not isinstance(sanitized_settings["autoplayNext"], bool):
-            raise ValueError("autoplayNext must be a boolean")
-        if "loop" in sanitized_settings and not isinstance(sanitized_settings["loop"], bool):
-            raise ValueError("loop must be a boolean")
+        if 'showNsfw' in sanitized_settings and not isinstance(sanitized_settings['showNsfw'], bool):
+            raise ValueError('showNsfw must be a boolean')
+        if 'autoplay' in sanitized_settings and not isinstance(sanitized_settings['autoplay'], bool):
+            raise ValueError('autoplay must be a boolean')
+        if 'autoplayNext' in sanitized_settings and not isinstance(sanitized_settings['autoplayNext'], bool):
+            raise ValueError('autoplayNext must be a boolean')
+        if 'loop' in sanitized_settings and not isinstance(sanitized_settings['loop'], bool):
+            raise ValueError('loop must be a boolean')
 
         with self._session_factory() as session:
             config = session.query(UserConfig).filter(UserConfig.user_id == user_id).first()

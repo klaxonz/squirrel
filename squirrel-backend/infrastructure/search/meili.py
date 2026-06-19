@@ -1,4 +1,5 @@
 """Meilisearch 客户端与索引管理。"""
+
 from __future__ import annotations
 
 import logging

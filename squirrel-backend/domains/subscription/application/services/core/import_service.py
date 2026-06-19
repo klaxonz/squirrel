@@ -55,6 +55,7 @@ class SubscriptionImportService:
         url: str,
     ) -> SubscriptionMeta:
         from urllib.parse import urlparse
+
         domain = extract_top_level_domain(url)
         parsed_url = urlparse(url)
         payload = {
@@ -63,7 +64,9 @@ class SubscriptionImportService:
         }
         response = self._registry.invoke('resolve_subscription', payload=payload, domain=domain or None)
         if not response.ok:
-            message = response.error.message if response.error else f'Plugin subscription resolution failed for url: {url}'
+            message = (
+                response.error.message if response.error else f'Plugin subscription resolution failed for url: {url}'
+            )
             raise ValueError(message)
 
         if not isinstance(response.data, dict):
@@ -173,7 +176,9 @@ class SubscriptionImportService:
 
             return {
                 'site': site_name,
-                'total': import_batch.total_available if import_batch.total_available is not None else len(subscriptions),
+                'total': import_batch.total_available
+                if import_batch.total_available is not None
+                else len(subscriptions),
                 'loaded': len(subscriptions),
                 'imported': imported_count,
                 'not_imported': len(subscriptions) - imported_count,
@@ -231,11 +236,9 @@ class SubscriptionImportService:
     ) -> dict[str, Any]:
         try:
             if selected_urls is not None:
-                subscriptions = self._dedupe_import_items([
-                    SubscriptionImportItem(url=url)
-                    for url in selected_urls
-                    if url
-                ])
+                subscriptions = self._dedupe_import_items(
+                    [SubscriptionImportItem(url=url) for url in selected_urls if url]
+                )
                 found_total = None
             else:
                 subscriptions = self._load_plugin_import_items(site_name)
@@ -246,13 +249,10 @@ class SubscriptionImportService:
             imported_url_map = self.crud_service.get_active_user_subscription_url_map(user_id)
             imported_urls = set(imported_url_map.keys())
             manually_unsubscribed_urls = (
-                self.crud_service.get_deleted_user_subscription_urls(user_id)
-                if respect_manual_unsubscribe
-                else set()
+                self.crud_service.get_deleted_user_subscription_urls(user_id) if respect_manual_unsubscribe else set()
             )
             to_import = [
-                s for s in subscriptions
-                if s.url not in imported_urls and s.url not in manually_unsubscribed_urls
+                s for s in subscriptions if s.url not in imported_urls and s.url not in manually_unsubscribed_urls
             ]
 
             if to_import:

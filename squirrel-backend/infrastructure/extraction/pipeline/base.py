@@ -1,5 +1,5 @@
-"""Pipeline base class definitions
-"""
+"""Pipeline base class definitions"""
+
 import logging
 from abc import ABC, abstractmethod
 
@@ -62,10 +62,10 @@ class PipelineStage(ABC):
             error_msg,
             exc_info=True,
             extra={
-                "task_id": context.task.task_id,
-                "url": context.task.url,
-                "stage": self.stage_name,
-                "error_type": type(error).__name__,
+                'task_id': context.task.task_id,
+                'url': context.task.url,
+                'stage': self.stage_name,
+                'error_type': type(error).__name__,
             },
         )
 
@@ -99,7 +99,7 @@ class ExtractionPipeline:
 
         """
         try:
-            self.logger.info("Pipeline started: task_id=%s, url=%s", context.task.task_id, context.task.url)
+            self.logger.info('Pipeline started: task_id=%s, url=%s', context.task.task_id, context.task.url)
 
             # Execute Stages in sequence
             for stage in self.stages:
@@ -128,16 +128,18 @@ class ExtractionPipeline:
                             f"Critical stage '{stage.stage_name}' failed",
                             stage_name=stage.stage_name,
                             context={
-                                "task_id": context.task.task_id,
-                                "url": context.task.url,
-                                "error": str(e),
+                                'task_id': context.task.task_id,
+                                'url': context.task.url,
+                                'error': str(e),
                             },
                         ) from e
 
             # All Stages completed
             duration = context.get_duration()
 
-            self.logger.info("Pipeline completed successfully: task_id=%s, duration=%f'.2f's", context.task.task_id, duration)
+            self.logger.info(
+                "Pipeline completed successfully: task_id=%s, duration=%f'.2f's", context.task.task_id, duration
+            )
 
             return ExtractionResult(
                 success=True,
@@ -147,7 +149,13 @@ class ExtractionPipeline:
         except Exception as e:  # pipeline execution boundary — catch all to return ExtractionResult
             duration = context.get_duration()
 
-            self.logger.error("Pipeline failed: task_id=%s, duration=%f'.2f's, error=%s", context.task.task_id, duration, e, exc_info=True)
+            self.logger.error(
+                "Pipeline failed: task_id=%s, duration=%f'.2f's, error=%s",
+                context.task.task_id,
+                duration,
+                e,
+                exc_info=True,
+            )
 
             return ExtractionResult(
                 success=False,
@@ -171,9 +179,9 @@ class ExtractionPipeline:
         """
         # Define critical stages (failure must abort)
         critical_stages = {
-            "extraction",      # Extraction failed, cannot continue
-            "validation",      # Validation failed, data is incomplete
-            "persistence",     # Persistence failed, cannot save
+            'extraction',  # Extraction failed, cannot continue
+            'validation',  # Validation failed, data is incomplete
+            'persistence',  # Persistence failed, cannot save
         }
 
         return stage.stage_name not in critical_stages
@@ -183,5 +191,5 @@ class ExtractionPipeline:
         return [stage.stage_name for stage in self.stages]
 
     def __repr__(self):
-        stage_names = ", ".join(self.get_stage_names())
-        return f"ExtractionPipeline(stages=[{stage_names}])"
+        stage_names = ', '.join(self.get_stage_names())
+        return f'ExtractionPipeline(stages=[{stage_names}])'

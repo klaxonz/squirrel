@@ -7,6 +7,7 @@ keeps its public methods (``should_update``/``fetch_videos``/
 ``enqueue_extraction``/``execute``) because they are exercised directly by
 tests and read cleanly as the update flow's phases.
 """
+
 import logging
 from urllib.parse import urlparse
 
@@ -34,7 +35,7 @@ class DefaultUpdateStrategy:
 
     @property
     def site_name(self) -> str:
-        return "default"
+        return 'default'
 
     def execute(self, request: SubscriptionUpdateRequest) -> SubscriptionUpdateResult:
         """Run the full update flow: gate, fetch, enqueue."""
@@ -56,52 +57,52 @@ class DefaultUpdateStrategy:
             success=True,
             videos_found=len(fetch_result.video_urls),
             videos_enqueued=enqueued,
-            has_more=bool(getattr(fetch_result, "has_more", False)),
+            has_more=bool(getattr(fetch_result, 'has_more', False)),
             cursor_payload=fetch_result.cursor_payload,
             latest_video_url=fetch_result.latest_video_url,
             source_video_count=fetch_result.source_video_count,
             total_available=fetch_result.total_available,
-            head_sample_urls=getattr(fetch_result, "head_sample_urls", None),
-            anchor_found=getattr(fetch_result, "anchor_found", None),
-            oldest_scanned_url=getattr(fetch_result, "oldest_scanned_url", None),
-            cursor_invalid=bool(getattr(fetch_result, "cursor_invalid", False)),
-            cursor_loop_detected=bool(getattr(fetch_result, "cursor_loop_detected", False)),
-            scan_depth=getattr(fetch_result, "scan_depth", None),
+            head_sample_urls=getattr(fetch_result, 'head_sample_urls', None),
+            anchor_found=getattr(fetch_result, 'anchor_found', None),
+            oldest_scanned_url=getattr(fetch_result, 'oldest_scanned_url', None),
+            cursor_invalid=bool(getattr(fetch_result, 'cursor_invalid', False)),
+            cursor_loop_detected=bool(getattr(fetch_result, 'cursor_loop_detected', False)),
+            scan_depth=getattr(fetch_result, 'scan_depth', None),
         )
 
     def should_update(self, request: SubscriptionUpdateRequest) -> tuple[bool, str | None]:
         """Check whether an update is needed"""
         sub = get_subscription_detail(request.subscription_id)
         if not sub or sub.is_deleted:
-            return False, "subscription_not_found"
+            return False, 'subscription_not_found'
         return True, None
 
     def fetch_videos(self, request: SubscriptionUpdateRequest) -> SubscriptionSyncResult:
         """Fetch video list"""
         parsed_url = urlparse(request.url)
-        domain = parsed_url.netloc.lower().split(":")[0]
+        domain = parsed_url.netloc.lower().split(':')[0]
         site_name, _ = SiteCatalog.find_site_by_domain(domain)
         if not site_name:
-            raise ValueError(f"No subscription route found for domain: {domain}")
+            raise ValueError(f'No subscription route found for domain: {domain}')
 
         sync_mode = UpdateMode.FULL if request.mode == UpdateMode.FULL else UpdateMode.INCREMENTAL
         response = self._plugin_registry.invoke(
-            "sync_subscription",
+            'sync_subscription',
             site_name=site_name,
             domain=domain,
             payload={
-                "url": request.url,
-                "mode": sync_mode.value,
-                "cursor_payload": request.cursor_payload or {},
-                "last_seen_video_url": request.last_seen_video_url,
-                "limit": None if sync_mode == UpdateMode.FULL else settings.CHANNEL_UPDATE_DEFAULT_SIZE,
+                'url': request.url,
+                'mode': sync_mode.value,
+                'cursor_payload': request.cursor_payload or {},
+                'last_seen_video_url': request.last_seen_video_url,
+                'limit': None if sync_mode == UpdateMode.FULL else settings.CHANNEL_UPDATE_DEFAULT_SIZE,
             },
         )
         if not response.ok:
-            message = response.error.message if response.error else f"Subscription sync failed for domain: {domain}"
+            message = response.error.message if response.error else f'Subscription sync failed for domain: {domain}'
             raise ValueError(message)
         if not isinstance(response.data, dict):
-            raise ValueError(f"Subscription sync payload must be an object for domain: {domain}")
+            raise ValueError(f'Subscription sync payload must be an object for domain: {domain}')
 
         sync_result = SubscriptionSyncResult.from_dict(response.data)
 
@@ -119,7 +120,5 @@ class DefaultUpdateStrategy:
         """Update subscription total video count"""
         with get_session() as session:
             session.execute(
-                update(SubscriptionModel)
-                .where(SubscriptionModel.id == subscription_id)
-                .values(total_videos=total),
+                update(SubscriptionModel).where(SubscriptionModel.id == subscription_id).values(total_videos=total),
             )

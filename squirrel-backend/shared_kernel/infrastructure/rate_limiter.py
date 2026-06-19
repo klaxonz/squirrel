@@ -27,7 +27,7 @@ class RateLimiter:
     """
 
     # Global default rate limit config (used for unknown domains)
-    DEFAULT_RATE_LIMIT = RateLimit(3, 5, "*")
+    DEFAULT_RATE_LIMIT = RateLimit(3, 5, '*')
 
     def __init__(self):
         # key: second-level domain, value: last request timestamp
@@ -68,7 +68,7 @@ class RateLimiter:
 
     def wait(self, domain: str | None = None):
         """Wait according to rate limit per second-level domain"""
-        sld = extract_second_level_domain(domain) if domain else "*"
+        sld = extract_second_level_domain(domain) if domain else '*'
         if sld in self._disabled_domains:
             return
 
@@ -76,7 +76,7 @@ class RateLimiter:
         rate_limit = self._rate_limits.get(sld, self.DEFAULT_RATE_LIMIT)
 
         # unknown domains should still have independent buckets keyed by sld
-        bucket_key = sld if sld and sld != "" else "*"
+        bucket_key = sld if sld and sld != '' else '*'
         lock = self._get_lock(bucket_key)
 
         with lock:

@@ -50,9 +50,15 @@ class SchedulerTaskSynchronizer:
 
         pending: list[tuple[int, int, str]] = []
         with get_session() as session:
-            logs = session.query(TaskExecutionLog).filter(
-                TaskExecutionLog.status == 'manual_trigger',
-            ).order_by(TaskExecutionLog.started_at).limit(20).all()
+            logs = (
+                session.query(TaskExecutionLog)
+                .filter(
+                    TaskExecutionLog.status == 'manual_trigger',
+                )
+                .order_by(TaskExecutionLog.started_at)
+                .limit(20)
+                .all()
+            )
 
             for log in logs:
                 executed_by = log.executed_by or 'manual'

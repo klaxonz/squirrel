@@ -9,8 +9,17 @@ from infrastructure.site_catalog.site_constants import (
 )
 
 ALLOWED_OVERRIDE_KEYS = {
-    'enabled', 'aliases', 'http', 'proxy', 'login',
-    'rate_limit', 'metadata', 'cookie', 'test_url', 'icon_url', 'label',
+    'enabled',
+    'aliases',
+    'http',
+    'proxy',
+    'login',
+    'rate_limit',
+    'metadata',
+    'cookie',
+    'test_url',
+    'icon_url',
+    'label',
 }
 
 

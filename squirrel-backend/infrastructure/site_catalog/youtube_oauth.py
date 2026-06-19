@@ -11,9 +11,9 @@ from infrastructure.config.settings import settings
 
 @dataclass(slots=True)
 class YouTubeOAuthAccount:
-    name: str = ""
-    email: str = ""
-    avatar: str = ""
+    name: str = ''
+    email: str = ''
+    avatar: str = ''
 
 
 @dataclass(slots=True)
@@ -28,7 +28,7 @@ class YouTubeOAuthState:
 
 class YouTubeOauthService:
     def __init__(self):
-        self._oauth_file = settings.config_dir / "youtube_oauth.json"
+        self._oauth_file = settings.config_dir / 'youtube_oauth.json'
 
     def _get_oauth_state_file(self) -> Path:
         return self._oauth_file
@@ -38,7 +38,7 @@ class YouTubeOauthService:
         if not path.exists():
             return None
         try:
-            return json.loads(path.read_text(encoding="utf-8"))
+            return json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError, TypeError):
             return None
 
@@ -47,9 +47,9 @@ class YouTubeOauthService:
         if not raw:
             return None
         return YouTubeOAuthAccount(
-            name=str(raw.get("name") or ""),
-            email=str(raw.get("email") or ""),
-            avatar=str(raw.get("avatar") or ""),
+            name=str(raw.get('name') or ''),
+            email=str(raw.get('email') or ''),
+            avatar=str(raw.get('avatar') or ''),
         )
 
     def get_oauth_credentials_for_daemon(self) -> str:
@@ -60,8 +60,8 @@ class YouTubeOauthService:
         try:
             payload = path.read_bytes()
         except OSError:
-            return "oauth:none"
-        return f"oauth:{hashlib.sha256(payload).hexdigest()[:16]}"
+            return 'oauth:none'
+        return f'oauth:{hashlib.sha256(payload).hexdigest()[:16]}'
 
     def get_oauth_state(self, timeout_seconds: float = 5.0) -> YouTubeOAuthState:
         return self.poll_oauth_status_via_daemon(timeout_seconds=timeout_seconds)
@@ -91,36 +91,36 @@ class YouTubeOauthService:
             oauth_state_file=self.get_oauth_credentials_for_daemon(),
             timeout_seconds=timeout_seconds,
         )
-        return oauth_result.get("status") == "done"
+        return oauth_result.get('status') == 'done'
 
     def _parse_daemon_oauth_response(self, result: dict[str, Any]) -> YouTubeOAuthState:
-        status = str(result.get("status") or "not_configured")
+        status = str(result.get('status') or 'not_configured')
 
-        if status == "not_configured":
-            return YouTubeOAuthState(status="not_configured")
+        if status == 'not_configured':
+            return YouTubeOAuthState(status='not_configured')
 
-        if status == "error":
-            return YouTubeOAuthState(status="error", error=str(result.get("error", "Unknown error")))
+        if status == 'error':
+            return YouTubeOAuthState(status='error', error=str(result.get('error', 'Unknown error')))
 
-        if status == "pending":
+        if status == 'pending':
             return YouTubeOAuthState(
-                status="pending",
+                status='pending',
                 pending=True,
-                verification_url=str(result.get("verification_url") or ""),
-                user_code=str(result.get("user_code") or ""),
+                verification_url=str(result.get('verification_url') or ''),
+                user_code=str(result.get('user_code') or ''),
             )
 
-        if status in {"authenticated", "already_authenticated"}:
+        if status in {'authenticated', 'already_authenticated'}:
             return YouTubeOAuthState(
-                status="authenticated",
-                account=self._extract_account(result.get("account")),
+                status='authenticated',
+                account=self._extract_account(result.get('account')),
             )
 
-        if status == "expired":
-            return YouTubeOAuthState(status="expired")
+        if status == 'expired':
+            return YouTubeOAuthState(status='expired')
 
-        if status == "done":
-            return YouTubeOAuthState(status="not_configured")
+        if status == 'done':
+            return YouTubeOAuthState(status='not_configured')
 
         return YouTubeOAuthState(status=status)
 

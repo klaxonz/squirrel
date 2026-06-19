@@ -27,7 +27,7 @@ class CrawlTaskService:
         source_type: str,
         site: str | None,
         subscription_id: int | None = None,
-        priority: str = "normal",
+        priority: str = 'normal',
         status: str = CrawlJobStatus.PENDING.value,
         trace_id: str | None = None,
         payload: dict | None = None,
@@ -53,7 +53,7 @@ class CrawlTaskService:
         job_id: int,
         task_type: str,
         site: str,
-        priority: str = "normal",
+        priority: str = 'normal',
         payload: dict | None = None,
         dedupe_key: str | None = None,
         parent_task_id: int | None = None,
@@ -65,8 +65,8 @@ class CrawlTaskService:
         next_run_at: datetime | None = None,
     ) -> CrawlTask:
         with self.session_factory() as session:
-            ensure_dispatch_scope(session, scope_type="site", scope_key=site)
-            ensure_dispatch_scope(session, scope_type="task_type", scope_key=task_type)
+            ensure_dispatch_scope(session, scope_type='site', scope_key=site)
+            ensure_dispatch_scope(session, scope_type='task_type', scope_key=task_type)
             task = CrawlTask(
                 job_id=job_id,
                 parent_task_id=parent_task_id,
@@ -95,7 +95,7 @@ class CrawlTaskService:
         task_type: str,
         payload: dict,
         subscription_id: int | None = None,
-        priority: str = "normal",
+        priority: str = 'normal',
         dedupe_key: str | None = None,
         parent_task_id: int | None = None,
         video_id: int | None = None,
@@ -105,8 +105,8 @@ class CrawlTaskService:
         next_run_at: datetime | None = None,
     ) -> tuple[CrawlJob, CrawlTask]:
         with self.session_factory() as session:
-            ensure_dispatch_scope(session, scope_type="site", scope_key=site)
-            ensure_dispatch_scope(session, scope_type="task_type", scope_key=task_type)
+            ensure_dispatch_scope(session, scope_type='site', scope_key=site)
+            ensure_dispatch_scope(session, scope_type='task_type', scope_key=task_type)
             job = CrawlJob(
                 job_type=job_type,
                 source_type=source_type,
@@ -240,7 +240,7 @@ class CrawlTaskService:
         *,
         task_id: int,
         now: datetime | None = None,
-        reason: str = "cancelled",
+        reason: str = 'cancelled',
     ) -> CrawlTask:
         now = now or datetime.now()
 
@@ -298,9 +298,13 @@ class CrawlTaskService:
 
     def clear_task_dedupe_key(self, dedupe_key: str) -> int:
         with self.session_factory() as session:
-            tasks = session.execute(
-                select(CrawlTask).where(CrawlTask.dedupe_key == dedupe_key),
-            ).scalars().all()
+            tasks = (
+                session.execute(
+                    select(CrawlTask).where(CrawlTask.dedupe_key == dedupe_key),
+                )
+                .scalars()
+                .all()
+            )
             for task in tasks:
                 task.dedupe_key = None
             session.flush()

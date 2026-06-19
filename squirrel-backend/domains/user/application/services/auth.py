@@ -1,5 +1,5 @@
-"""Authentication service - handles JWT validation and user lookup
-"""
+"""Authentication service - handles JWT validation and user lookup"""
+
 import logging
 
 from fastapi import Cookie, HTTPException, status
@@ -21,14 +21,13 @@ logger = logging.getLogger(__name__)
 def _credentials_exception() -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
+        detail='Could not validate credentials',
+        headers={'WWW-Authenticate': 'Bearer'},
     )
 
 
 async def get_current_user(token: str | None = Cookie(default=None, alias=AUTH_COOKIE_NAME)) -> User | None:
-    """Validate token and return current user with config preloaded
-    """
+    """Validate token and return current user with config preloaded"""
     _, user = validate_auth_token(token)
 
     user._cached_config = user_config_service.get_config(user.id)
@@ -43,7 +42,7 @@ def validate_auth_token(token: str | None) -> tuple[dict, User]:
 
     try:
         payload = jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])
-        subject = payload.get("sub")
+        subject = payload.get('sub')
         if subject is None:
             raise credentials_exception
 
@@ -53,7 +52,7 @@ def validate_auth_token(token: str | None) -> tuple[dict, User]:
             raise credentials_exception
 
         token_version = int(payload.get(TOKEN_VERSION_CLAIM, 0))
-        current_version = int(getattr(user, "token_version", 0) or 0)
+        current_version = int(getattr(user, 'token_version', 0) or 0)
         if token_version != current_version:
             raise credentials_exception
 

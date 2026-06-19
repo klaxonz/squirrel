@@ -4,18 +4,18 @@ from typing import Any, TypeVar
 
 from sqlalchemy.orm import class_mapper
 
-T = TypeVar("T", bound="SerializerMixin")
+T = TypeVar('T', bound='SerializerMixin')
 
 
 class SerializerMixin:
     """Mixin for SQLAlchemy model serialization and deserialization"""
 
     def to_dict(
-            self,
-            exclude: set[str] | None = None,
-            include: set[str] | None = None,
-            nested: bool = False,
-            nested_depth: int = 1,
+        self,
+        exclude: set[str] | None = None,
+        include: set[str] | None = None,
+        nested: bool = False,
+        nested_depth: int = 1,
     ) -> dict[str, Any]:
         """Convert SQLAlchemy model instance to dictionary
 
@@ -54,25 +54,31 @@ class SerializerMixin:
                         item.to_dict(
                             nested=True,
                             nested_depth=nested_depth - 1,
-                        ) if hasattr(item, "to_dict") else item
+                        )
+                        if hasattr(item, 'to_dict')
+                        else item
                         for item in value
                     ]
                 else:
-                    data[relation.key] = value.to_dict(
-                        nested=True,
-                        nested_depth=nested_depth - 1,
-                    ) if hasattr(value, "to_dict") else value
+                    data[relation.key] = (
+                        value.to_dict(
+                            nested=True,
+                            nested_depth=nested_depth - 1,
+                        )
+                        if hasattr(value, 'to_dict')
+                        else value
+                    )
 
         return data
 
     def _serialize_value(self, value: Any) -> Any:
         """Serialize a value based on its type"""
         if isinstance(value, (datetime, date)):
-            return value.strftime("%Y-%m-%d %H:%M:%S") if value else None
+            return value.strftime('%Y-%m-%d %H:%M:%S') if value else None
         if isinstance(value, Decimal):
             return str(value)
         if isinstance(value, bytes):
-            return value.decode("utf-8")
+            return value.decode('utf-8')
         return value
 
     @classmethod
@@ -110,7 +116,7 @@ class SerializerMixin:
         try:
             if target_type == datetime:
                 if isinstance(value, str):
-                    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
                 return value
             return target_type(value)
         except (ValueError, TypeError):

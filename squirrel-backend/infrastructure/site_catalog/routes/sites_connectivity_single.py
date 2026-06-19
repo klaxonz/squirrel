@@ -34,15 +34,17 @@ async def test_site_connectivity_endpoint(
         follow_redirects=True,
     )
 
-    return success({
-        'site_name': site_name,
-        'domains': site_domains,
-        'test_url': connectivity_result.url,
-        'accessible': connectivity_result.accessible,
-        'status': connectivity_result.status,
-        'status_code': connectivity_result.status_code,
-        'response_time': connectivity_result.response_time,
-        'dns_resolved': connectivity_result.dns_resolved,
-        'ip_address': connectivity_result.ip_address,
-        'error_message': connectivity_result.error_message,
-    })
+    return success(
+        {
+            'site_name': site_name,
+            'domains': site_domains,
+            'test_url': connectivity_result.url,
+            'accessible': connectivity_result.accessible,
+            'status': connectivity_result.status,
+            'status_code': connectivity_result.status_code,
+            'response_time': connectivity_result.response_time,
+            'dns_resolved': connectivity_result.dns_resolved,
+            'ip_address': connectivity_result.ip_address,
+            'error_message': connectivity_result.error_message,
+        }
+    )

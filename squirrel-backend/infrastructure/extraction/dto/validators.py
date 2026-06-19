@@ -1,5 +1,5 @@
-"""Data validation utility functions
-"""
+"""Data validation utility functions"""
+
 from datetime import datetime
 from typing import Any
 
@@ -18,20 +18,20 @@ def validate_url(url: str) -> str:
 
     """
     if not url or not isinstance(url, str):
-        raise ValueError("URL must be a non-empty string")
+        raise ValueError('URL must be a non-empty string')
 
     url = url.strip()
 
     if not url:
-        raise ValueError("URL cannot be empty or whitespace")
+        raise ValueError('URL cannot be empty or whitespace')
 
-    if not url.startswith(("http://", "https://")):
-        raise ValueError("URL must start with http:// or https://")
+    if not url.startswith(('http://', 'https://')):
+        raise ValueError('URL must start with http:// or https://')
 
     return url
 
 
-def validate_not_empty(value: str, field_name: str = "Field") -> str:
+def validate_not_empty(value: str, field_name: str = 'Field') -> str:
     """Validate string is not empty
 
     Args:
@@ -46,12 +46,12 @@ def validate_not_empty(value: str, field_name: str = "Field") -> str:
 
     """
     if not value or not isinstance(value, str):
-        raise ValueError(f"{field_name} must be a non-empty string")
+        raise ValueError(f'{field_name} must be a non-empty string')
 
     value = value.strip()
 
     if not value:
-        raise ValueError(f"{field_name} cannot be empty or whitespace")
+        raise ValueError(f'{field_name} cannot be empty or whitespace')
 
     return value
 
@@ -86,7 +86,7 @@ def parse_publish_date(value: Any) -> datetime | None:
         try:
             return datetime.fromtimestamp(value)
         except (ValueError, OSError) as e:
-            raise ValueError(f"Invalid timestamp: {value}") from e
+            raise ValueError(f'Invalid timestamp: {value}') from e
 
     # String format
     if isinstance(value, str):
@@ -96,8 +96,8 @@ def parse_publish_date(value: Any) -> datetime | None:
             return None
 
         iso_value = value
-        if iso_value.endswith("Z"):
-            iso_value = f"{iso_value[:-1]}+00:00"
+        if iso_value.endswith('Z'):
+            iso_value = f'{iso_value[:-1]}+00:00'
 
         try:
             return datetime.fromisoformat(iso_value)
@@ -106,12 +106,12 @@ def parse_publish_date(value: Any) -> datetime | None:
 
         # Try multiple date formats
         date_formats = [
-            "%Y%m%d",           # 20231207
-            "%Y-%m-%d",         # 2023-12-07
-            "%Y/%m/%d",         # 2023/12/07
-            "%Y.%m.%d",         # 2023.12.07
-            "%Y-%m-%d %H:%M:%S",  # 2023-12-07 15:30:45
-            "%Y/%m/%d %H:%M:%S",  # 2023/12/07 15:30:45
+            '%Y%m%d',  # 20231207
+            '%Y-%m-%d',  # 2023-12-07
+            '%Y/%m/%d',  # 2023/12/07
+            '%Y.%m.%d',  # 2023.12.07
+            '%Y-%m-%d %H:%M:%S',  # 2023-12-07 15:30:45
+            '%Y/%m/%d %H:%M:%S',  # 2023/12/07 15:30:45
         ]
 
         for fmt in date_formats:
@@ -122,11 +122,10 @@ def parse_publish_date(value: Any) -> datetime | None:
 
         # All formats failed
         raise ValueError(
-            f"Cannot parse publish_date: {value}. "
-            f"Supported formats: YYYYMMDD, YYYY-MM-DD, YYYY/MM/DD, etc.",
+            f'Cannot parse publish_date: {value}. Supported formats: YYYYMMDD, YYYY-MM-DD, YYYY/MM/DD, etc.',
         )
 
-    raise ValueError(f"Unsupported publish_date type: {type(value)}")
+    raise ValueError(f'Unsupported publish_date type: {type(value)}')
 
 
 def validate_duration(duration: int | None) -> int | None:
@@ -146,9 +145,9 @@ def validate_duration(duration: int | None) -> int | None:
         return None
 
     if not isinstance(duration, int):
-        raise ValueError(f"Duration must be an integer, got {type(duration)}")
+        raise ValueError(f'Duration must be an integer, got {type(duration)}')
 
     if duration < 0:
-        raise ValueError(f"Duration must be non-negative, got {duration}")
+        raise ValueError(f'Duration must be non-negative, got {duration}')
 
     return duration

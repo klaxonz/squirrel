@@ -7,6 +7,7 @@ A plain in-memory container for failures of *optional* bootstrap steps
 module-level singleton — that way it is explicit, injectable, and naturally
 isolated per test.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

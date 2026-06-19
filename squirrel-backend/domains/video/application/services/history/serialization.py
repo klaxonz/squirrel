@@ -77,19 +77,21 @@ def serialize_history_items(session: Session, user_id: int, histories: list[Vide
                     if video_site:
                         break
 
-        items.append({
-            'id': video.id,
-            'history_id': history.id,
-            'title': video.title,
-            'url': video.url,
-            'thumbnail': thumbnail_downloader_service.get_thumbnail_url(video.id, video.thumbnail, video.url),
-            'duration': video.duration,
-            'last_position': history.last_position or 0,
-            'played_at': history.end_time.strftime('%Y-%m-%d %H:%M:%S') if history.end_time else None,
-            'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
-            'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S') if video.created_at else None,
-            'subscriptions': subs_for_video,
-            'actors': video_extra_profiles(video, 'actors'),
-            'site': video_site,
-        })
+        items.append(
+            {
+                'id': video.id,
+                'history_id': history.id,
+                'title': video.title,
+                'url': video.url,
+                'thumbnail': thumbnail_downloader_service.get_thumbnail_url(video.id, video.thumbnail, video.url),
+                'duration': video.duration,
+                'last_position': history.last_position or 0,
+                'played_at': history.end_time.strftime('%Y-%m-%d %H:%M:%S') if history.end_time else None,
+                'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
+                'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S') if video.created_at else None,
+                'subscriptions': subs_for_video,
+                'actors': video_extra_profiles(video, 'actors'),
+                'site': video_site,
+            }
+        )
     return items

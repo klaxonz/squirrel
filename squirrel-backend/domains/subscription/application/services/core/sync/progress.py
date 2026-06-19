@@ -29,7 +29,11 @@ class SubscriptionSyncProgress:
         normalized_status = str(status or '').strip().lower()
         normalized_phase = str(current_phase or '').strip().lower()
         enqueued_total = max(int(videos_enqueued or 0), int(videos_extracted or 0) + int(pending_video_count or 0))
-        extracted_total = min(max(int(videos_extracted or 0), 0), enqueued_total) if enqueued_total else max(int(videos_extracted or 0), 0)
+        extracted_total = (
+            min(max(int(videos_extracted or 0), 0), enqueued_total)
+            if enqueued_total
+            else max(int(videos_extracted or 0), 0)
+        )
         feed_completed = SubscriptionSyncProgress.is_feed_completed(normalized_phase, normalized_status)
 
         if normalized_status == 'queued':

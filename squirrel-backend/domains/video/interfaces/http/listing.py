@@ -43,7 +43,9 @@ def get_videos(
     page_size: int = Query(20, ge=1, le=100, alias='pageSize', description='每页数量'),
     time_range: TimeRange = Query(TimeRange.ALL, description='时间范围: all|today|week|month|year'),
     duration: DurationFilter = Query(DurationFilter.ALL, description='时长: all|short|medium|long'),
-    content_type: ContentType = Query(ContentType.ALL, description='内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR'),
+    content_type: ContentType = Query(
+        ContentType.ALL, description='内容类型: all|CHANNEL|PLAYLIST|ACTRESS|MOVIE|TV_SERIES|ACTOR'
+    ),
     current_user: User = Depends(get_current_user),
 ):
     domains_list: list[str] | None = None
@@ -55,13 +57,25 @@ def get_videos(
         logger.info('[Performance] Route: Using cached user config')
 
     videos, next_cursor = list_videos(
-        current_user.id, query, subscription_id, category.value, sort_by.value, nsfw.value, domains_list,
-        cursor, page_size,
-        time_range=time_range.value, duration=duration.value, content_type=content_type.value, special=special.value,
+        current_user.id,
+        query,
+        subscription_id,
+        category.value,
+        sort_by.value,
+        nsfw.value,
+        domains_list,
+        cursor,
+        page_size,
+        time_range=time_range.value,
+        duration=duration.value,
+        content_type=content_type.value,
+        special=special.value,
     )
 
-    return response.success({
-        'data': videos,
-        'next_cursor': next_cursor,
-        'has_more': next_cursor is not None,
-    })
+    return response.success(
+        {
+            'data': videos,
+            'next_cursor': next_cursor,
+            'has_more': next_cursor is not None,
+        }
+    )

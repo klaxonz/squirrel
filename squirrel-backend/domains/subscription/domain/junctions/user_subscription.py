@@ -17,11 +17,12 @@ if TYPE_CHECKING:
 
 def _user_subscription_subscription_join():
     from domains.subscription.domain.models.subscription import Subscription
+
     return Subscription.id == foreign(UserSubscription.subscription_id)
 
 
 class UserSubscription(Base, SerializerMixin):
-    __tablename__ = "user_subscription"
+    __tablename__ = 'user_subscription'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -36,18 +37,18 @@ class UserSubscription(Base, SerializerMixin):
     )
 
     subscription: Mapped[Subscription] = relationship(
-        "Subscription",
+        'Subscription',
         primaryjoin=_user_subscription_subscription_join,
-        back_populates="user_subscriptions",
+        back_populates='user_subscriptions',
         viewonly=True,
     )
 
     __table_args__ = (
-        UniqueConstraint("user_id", "subscription_id", name="uix_user_subscription"),
-        Index("ix_user_subscription_user_id", "user_id"),
-        Index("ix_user_subscription_subscription_id", "subscription_id"),
-        Index("ix_user_subscription_is_deleted", "is_deleted"),
-        Index("ix_user_subscription_user_deleted_nsfw", "user_id", "is_deleted", "is_nsfw"),
-        Index("ix_user_subscription_user_deleted_special", "user_id", "is_deleted", "is_special_followed"),
-        Index("ix_user_subscription_sub_user_deleted", "subscription_id", "user_id", "is_deleted"),
+        UniqueConstraint('user_id', 'subscription_id', name='uix_user_subscription'),
+        Index('ix_user_subscription_user_id', 'user_id'),
+        Index('ix_user_subscription_subscription_id', 'subscription_id'),
+        Index('ix_user_subscription_is_deleted', 'is_deleted'),
+        Index('ix_user_subscription_user_deleted_nsfw', 'user_id', 'is_deleted', 'is_nsfw'),
+        Index('ix_user_subscription_user_deleted_special', 'user_id', 'is_deleted', 'is_special_followed'),
+        Index('ix_user_subscription_sub_user_deleted', 'subscription_id', 'user_id', 'is_deleted'),
     )

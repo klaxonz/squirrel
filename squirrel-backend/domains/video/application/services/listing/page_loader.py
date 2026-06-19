@@ -59,24 +59,26 @@ class VideoListPageLoader:
             video = video_map.get(video_id)
             if not video:
                 continue
-            video_list.append({
-                'id': video.id,
-                'title': video.title,
-                'url': video.url,
-                'thumbnail': thumbnail_map.get(video.id),
-                'duration': video.duration,
-                'last_position': history_map.get(video.id, 0),
-                'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
-                'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'subscriptions': merge_profiles(
-                    subscriptions_map.get(video.id, []),
-                    video_extra_profiles(video, 'subscriptions'),
-                ),
-                'actors': merge_profiles(
-                    actors_map.get(video.id, []),
-                    video_extra_profiles(video, 'actors'),
-                ),
-            })
+            video_list.append(
+                {
+                    'id': video.id,
+                    'title': video.title,
+                    'url': video.url,
+                    'thumbnail': thumbnail_map.get(video.id),
+                    'duration': video.duration,
+                    'last_position': history_map.get(video.id, 0),
+                    'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
+                    'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'subscriptions': merge_profiles(
+                        subscriptions_map.get(video.id, []),
+                        video_extra_profiles(video, 'subscriptions'),
+                    ),
+                    'actors': merge_profiles(
+                        actors_map.get(video.id, []),
+                        video_extra_profiles(video, 'actors'),
+                    ),
+                }
+            )
 
         return VideoListPage(items=video_list)
 

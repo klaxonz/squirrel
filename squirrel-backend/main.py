@@ -2,7 +2,6 @@ import logging
 
 import uvicorn
 
-from application.app import app
 from infrastructure.config.settings import settings
 from infrastructure.database.migrations import upgrade_database
 from shared_kernel.infrastructure.log import init_logging
@@ -15,21 +14,24 @@ def main() -> None:
     upgrade_database()
     init_logging()
 
+    from application.app import create_app
+
+    app = create_app()
     logger.info(
-        "Launching FastAPI server host=%s port=%s mode=%s",
-        "0.0.0.0",
+        'Launching FastAPI server host=%s port=%s mode=%s',
+        '0.0.0.0',
         settings.PORT,
-        "development" if settings.is_dev else "production",
+        'development' if settings.is_dev else 'production',
     )
 
     uvicorn.run(
         app,
-        host="0.0.0.0",
+        host='0.0.0.0',
         port=settings.PORT,
         log_config=None,
         access_log=False,
     )
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

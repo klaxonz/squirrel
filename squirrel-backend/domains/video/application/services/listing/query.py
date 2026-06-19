@@ -26,11 +26,9 @@ _CATEGORY_INTERACTION_TYPE: dict[str, int] = {
 class VideoListQueryService:
     def __init__(self, resolve_effective_nsfw_filter=None):
         resolve_nsfw_filter = resolve_effective_nsfw_filter or _default_resolve_effective_nsfw_filter
-        self._build_active_subscriptions_query = (
-            lambda **kwargs: build_active_subscriptions_query(
-                **kwargs,
-                resolve_effective_nsfw_filter_func=resolve_nsfw_filter,
-            )
+        self._build_active_subscriptions_query = lambda **kwargs: build_active_subscriptions_query(
+            **kwargs,
+            resolve_effective_nsfw_filter_func=resolve_nsfw_filter,
         )
 
     def filter_recalled_ids(
@@ -156,8 +154,7 @@ def fetch_special_follow_video_ids(
             cur_ts, cur_id = decoded
             cur_ts_dt = datetime.fromtimestamp(cur_ts)
             base = base.where(
-                (Video.publish_date < cur_ts_dt)
-                | and_(Video.publish_date == cur_ts_dt, Video.id < cur_id),
+                (Video.publish_date < cur_ts_dt) | and_(Video.publish_date == cur_ts_dt, Video.id < cur_id),
             )
 
     rows = session.execute(base).all()
@@ -243,8 +240,7 @@ def fetch_subscription_video_ids(
             cur_ts, cur_id = decoded
             cur_ts_dt = datetime.fromtimestamp(cur_ts)
             base = base.where(
-                (Video.publish_date < cur_ts_dt)
-                | and_(Video.publish_date == cur_ts_dt, Video.id < cur_id),
+                (Video.publish_date < cur_ts_dt) | and_(Video.publish_date == cur_ts_dt, Video.id < cur_id),
             )
 
     rows = session.execute(base).all()
@@ -424,6 +420,7 @@ def recall_offset_ids(
     category='preview' 时放行未来视频;其余 category 一律排除未发布视频。
     """
     from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
+
     return get_meili_video_indexer().recall(
         query,
         domains=domains,

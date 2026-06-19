@@ -30,4 +30,3 @@ def ensure_dispatch_scope(session: Session, *, scope_type: str, scope_key: str) 
             CrawlDispatchScope.scope_key == scope_key,
         ),
     ).scalar_one()
-

@@ -26,7 +26,7 @@ def _convert_config_types(config_dict: dict) -> dict:
 
 @router.get('/')
 def get_system_config(
-        svc: SystemConfigService = Depends(get_system_config_service),
+    svc: SystemConfigService = Depends(get_system_config_service),
 ):
     config_dict = svc.get_all_configs()
     return _convert_config_types(config_dict)
@@ -34,8 +34,8 @@ def get_system_config(
 
 @router.post('/')
 async def update_system_config(
-        payload: dict = Body(...),
-        svc: SystemConfigService = Depends(get_system_config_service),
+    payload: dict = Body(...),
+    svc: SystemConfigService = Depends(get_system_config_service),
 ):
     for k, v in payload.items():
         svc.set_value(k, str(v))

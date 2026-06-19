@@ -12,16 +12,16 @@ logger = logging.getLogger(__name__)
 def get_redis_connection_kwargs() -> dict[str, Any]:
     redis_cfg = settings.redis
     return {
-        "host": redis_cfg.host,
-        "port": redis_cfg.port,
-        "db": redis_cfg.db,
-        "password": redis_cfg.password or None,
-        "decode_responses": True,
-        "retry_on_timeout": True,
-        "socket_keepalive": True,
-        "socket_keepalive_options": {},
-        "socket_connect_timeout": 5,
-        "health_check_interval": 30,
+        'host': redis_cfg.host,
+        'port': redis_cfg.port,
+        'db': redis_cfg.db,
+        'password': redis_cfg.password or None,
+        'decode_responses': True,
+        'retry_on_timeout': True,
+        'socket_keepalive': True,
+        'socket_keepalive_options': {},
+        'socket_connect_timeout': 5,
+        'health_check_interval': 30,
     }
 
 
@@ -44,4 +44,4 @@ def create_redis_client(*, connection_pool: BlockingConnectionPool | None = None
 
 _redis_pool = create_redis_pool()
 redis_client = create_redis_client(connection_pool=_redis_pool)
-logger.info("Redis client initialized")
+logger.info('Redis client initialized')

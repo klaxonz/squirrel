@@ -58,10 +58,12 @@ def test_bulk_thumbnail_lookup_uses_direct_local_file_check(monkeypatch):
     )
     monkeypatch.setattr(thumbnail_downloader, 'get_site_from_url', lambda video_url: 'pornhub')
 
-    results = service.get_thumbnail_url_map([
-        (11, 'https://img.example.com/11.jpg', 'https://www.pornhub.com/view_video.php?viewkey=11'),
-        (12, 'https://img.example.com/12.jpg', 'https://www.pornhub.com/view_video.php?viewkey=12'),
-    ])
+    results = service.get_thumbnail_url_map(
+        [
+            (11, 'https://img.example.com/11.jpg', 'https://www.pornhub.com/view_video.php?viewkey=11'),
+            (12, 'https://img.example.com/12.jpg', 'https://www.pornhub.com/view_video.php?viewkey=12'),
+        ]
+    )
 
     assert results == {
         11: '/static/thumbnails/batch-1/11.jpg',
@@ -74,9 +76,12 @@ def test_bulk_thumbnail_lookup_prefers_local_index(monkeypatch):
     service = ThumbnailDownloaderService(
         site_config=SimpleNamespace(should_use_offline=lambda site_name: True),
         storage=SimpleNamespace(
-            get_local_thumbnail_path=lambda video_id, remote_url=None: fallback_calls.append(
-                (video_id, remote_url),
-            ) or None,
+            get_local_thumbnail_path=lambda video_id, remote_url=None: (
+                fallback_calls.append(
+                    (video_id, remote_url),
+                )
+                or None
+            ),
         ),
         local_index=SimpleNamespace(
             get_local_thumbnail_path_map=lambda indexed_items: {
@@ -86,10 +91,12 @@ def test_bulk_thumbnail_lookup_prefers_local_index(monkeypatch):
     )
     monkeypatch.setattr(thumbnail_downloader, 'get_site_from_url', lambda video_url: 'pornhub')
 
-    results = service.get_thumbnail_url_map([
-        (21, 'https://img.example.com/21.webp', 'https://www.pornhub.com/view_video.php?viewkey=21'),
-        (22, 'https://img.example.com/22.webp', 'https://www.pornhub.com/view_video.php?viewkey=22'),
-    ])
+    results = service.get_thumbnail_url_map(
+        [
+            (21, 'https://img.example.com/21.webp', 'https://www.pornhub.com/view_video.php?viewkey=21'),
+            (22, 'https://img.example.com/22.webp', 'https://www.pornhub.com/view_video.php?viewkey=22'),
+        ]
+    )
 
     assert results == {
         21: '/static/thumbnails/batch_001/21.webp',
@@ -135,10 +142,12 @@ def test_local_thumbnail_path_map_skips_stale_index_entries(monkeypatch):
         raising=False,
     )
 
-    results = repository.get_local_thumbnail_path_map([
-        (31, 'https://img.example.com/31.jpg', 'https://www.youtube.com/watch?v=31'),
-        (32, 'https://img.example.com/32.jpg', 'https://www.youtube.com/watch?v=32'),
-    ])
+    results = repository.get_local_thumbnail_path_map(
+        [
+            (31, 'https://img.example.com/31.jpg', 'https://www.youtube.com/watch?v=31'),
+            (32, 'https://img.example.com/32.jpg', 'https://www.youtube.com/watch?v=32'),
+        ]
+    )
 
     assert results == {
         32: '/static/thumbnails/batch_001/32.jpg',
@@ -224,63 +233,58 @@ def test_download_thumbnail_retries_transport_error(monkeypatch, tmp_path):
 
 def test_extract_thumbnail_url_prefers_long_lived_preview():
     short_url = (
-        "https://pix-fl.phncdn.com/c6251/videos/demo/original.jpg/plain/"
-        "rs:fit:640:360?hdnea=st=1777096861~exp=1777183261~hdl=-1~hmac=short"
+        'https://pix-fl.phncdn.com/c6251/videos/demo/original.jpg/plain/'
+        'rs:fit:640:360?hdnea=st=1777096861~exp=1777183261~hdl=-1~hmac=short'
     )
     long_url = (
-        "https://pix-egi.phncdn.com/c6251/videos/demo/original.jpg/plain/"
-        "rs:fit:350:196?validfrom=1751342400&validto=4891363200&hash=long"
+        'https://pix-egi.phncdn.com/c6251/videos/demo/original.jpg/plain/'
+        'rs:fit:350:196?validfrom=1751342400&validto=4891363200&hash=long'
     )
-    html = (
-        f'<meta property="og:image" content="{short_url}">'
-        f'<meta name="twitter:image" content="{long_url}">'
-    )
+    html = f'<meta property="og:image" content="{short_url}"><meta name="twitter:image" content="{long_url}">'
 
     assert thumbnail_html.extract_thumbnail_url_from_html(html) == long_url
 
 
 def test_download_thumbnail_refreshes_expiring_preview_after_410(monkeypatch, tmp_path):
     stale_thumbnail_url = (
-        "https://pix-cdn77.ypncdn.com/c6251/videos/demo/video.mp4/plain/"
-        "rs:fit:1280:720/vts:354?hash=stale&validto=1"
+        'https://pix-cdn77.ypncdn.com/c6251/videos/demo/video.mp4/plain/rs:fit:1280:720/vts:354?hash=stale&validto=1'
     )
     fresh_thumbnail_url = (
-        "https://pix-cdn77.ypncdn.com/c6251/videos/demo/video.mp4/plain/"
-        "rs:fit:1280:720/vts:354?hash=fresh&validto=2"
+        'https://pix-cdn77.ypncdn.com/c6251/videos/demo/video.mp4/plain/rs:fit:1280:720/vts:354?hash=fresh&validto=2'
     )
-    source_url = "https://www.youporn.com/watch/42/demo-video/"
+    source_url = 'https://www.youporn.com/watch/42/demo-video/'
     requests = []
 
     def fake_get(url, headers=None):
         requests.append((url, headers))
         if url == stale_thumbnail_url:
-            return SimpleNamespace(status_code=410, headers={"content-type": "text/plain"}, content=b"", text="")
+            return SimpleNamespace(status_code=410, headers={'content-type': 'text/plain'}, content=b'', text='')
         if url == source_url:
             return SimpleNamespace(
                 status_code=200,
-                headers={"content-type": "text/html"},
-                content=b"",
+                headers={'content-type': 'text/html'},
+                content=b'',
                 text=f'<meta property="og:image" content="{fresh_thumbnail_url}">',
             )
         if url == fresh_thumbnail_url:
             return SimpleNamespace(
                 status_code=200,
-                headers={"content-type": "image/jpeg"},
-                content=b"image-bytes",
-                text="",
+                headers={'content-type': 'image/jpeg'},
+                content=b'image-bytes',
+                text='',
             )
-        raise AssertionError(f"unexpected url: {url}")
+        raise AssertionError(f'unexpected url: {url}')
 
     service = _thumbnail_service_with_fake_http(monkeypatch, tmp_path, fake_get)
 
     file_path = service.download_thumbnail(
         video_id=42,
         thumbnail_url=stale_thumbnail_url,
-        site_name="youporn",
+        site_name='youporn',
         source_url=source_url,
     )
 
-    assert file_path == str(tmp_path / "batch_001" / "42.jpg")
+    assert file_path == str(tmp_path / 'batch_001' / '42.jpg')
     assert [item[0] for item in requests] == [
         stale_thumbnail_url,
         source_url,
@@ -290,45 +294,42 @@ def test_download_thumbnail_refreshes_expiring_preview_after_410(monkeypatch, tm
 
 def test_download_thumbnail_refreshes_expiring_preview_after_410_for_pornhub(monkeypatch, tmp_path):
     stale_thumbnail_url = (
-        "https://pix-cdn77.ypncdn.com/c6251/videos/demo/video.mp4/plain/"
-        "rs:fit:1280:720/vts:354?hash=stale&validto=1"
+        'https://pix-cdn77.ypncdn.com/c6251/videos/demo/video.mp4/plain/rs:fit:1280:720/vts:354?hash=stale&validto=1'
     )
-    fresh_thumbnail_url = (
-        "https://ei.phncdn.com/videos/demo/fresh-thumb.jpg?validto=2"
-    )
-    source_url = "https://www.pornhub.com/view_video.php?viewkey=demo"
+    fresh_thumbnail_url = 'https://ei.phncdn.com/videos/demo/fresh-thumb.jpg?validto=2'
+    source_url = 'https://www.pornhub.com/view_video.php?viewkey=demo'
     requests = []
 
     def fake_get(url, headers=None):
         requests.append((url, headers))
         if url == stale_thumbnail_url:
-            return SimpleNamespace(status_code=410, headers={"content-type": "text/plain"}, content=b"", text="")
+            return SimpleNamespace(status_code=410, headers={'content-type': 'text/plain'}, content=b'', text='')
         if url == source_url:
             return SimpleNamespace(
                 status_code=200,
-                headers={"content-type": "text/html"},
-                content=b"",
+                headers={'content-type': 'text/html'},
+                content=b'',
                 text=f'<meta property="og:image" content="{fresh_thumbnail_url}">',
             )
         if url == fresh_thumbnail_url:
             return SimpleNamespace(
                 status_code=200,
-                headers={"content-type": "image/jpeg"},
-                content=b"image-bytes",
-                text="",
+                headers={'content-type': 'image/jpeg'},
+                content=b'image-bytes',
+                text='',
             )
-        raise AssertionError(f"unexpected url: {url}")
+        raise AssertionError(f'unexpected url: {url}')
 
     service = _thumbnail_service_with_fake_http(monkeypatch, tmp_path, fake_get)
 
     file_path = service.download_thumbnail(
         video_id=88,
         thumbnail_url=stale_thumbnail_url,
-        site_name="pornhub",
+        site_name='pornhub',
         source_url=source_url,
     )
 
-    assert file_path == str(tmp_path / "batch_001" / "88.jpg")
+    assert file_path == str(tmp_path / 'batch_001' / '88.jpg')
     assert [item[0] for item in requests] == [
         stale_thumbnail_url,
         source_url,
@@ -337,44 +338,46 @@ def test_download_thumbnail_refreshes_expiring_preview_after_410_for_pornhub(mon
 
 
 def test_download_thumbnail_refreshes_pornhub_ei_video_thumb_after_410(monkeypatch, tmp_path):
-    stale_thumbnail_url = "https://ei.phncdn.com/videos/202506/07/469932995/original/(m=qO7TGL0beaAaGwObaaaa)(mh=demo)0.jpg"
-    fresh_thumbnail_url = (
-        "https://pix-egi.phncdn.com/c6251/videos/demo/original.jpg/plain/"
-        "rs:fit:350:196?validfrom=1751342400&validto=4891363200&hash=fresh"
+    stale_thumbnail_url = (
+        'https://ei.phncdn.com/videos/202506/07/469932995/original/(m=qO7TGL0beaAaGwObaaaa)(mh=demo)0.jpg'
     )
-    source_url = "https://www.pornhub.com/view_video.php?viewkey=demo"
+    fresh_thumbnail_url = (
+        'https://pix-egi.phncdn.com/c6251/videos/demo/original.jpg/plain/'
+        'rs:fit:350:196?validfrom=1751342400&validto=4891363200&hash=fresh'
+    )
+    source_url = 'https://www.pornhub.com/view_video.php?viewkey=demo'
     requests = []
 
     def fake_get(url, headers=None):
         requests.append((url, headers))
         if url == stale_thumbnail_url:
-            return SimpleNamespace(status_code=410, headers={"content-type": "text/plain"}, content=b"", text="")
+            return SimpleNamespace(status_code=410, headers={'content-type': 'text/plain'}, content=b'', text='')
         if url == source_url:
             return SimpleNamespace(
                 status_code=200,
-                headers={"content-type": "text/html"},
-                content=b"",
+                headers={'content-type': 'text/html'},
+                content=b'',
                 text=f'<meta name="twitter:image" content="{fresh_thumbnail_url}">',
             )
         if url == fresh_thumbnail_url:
             return SimpleNamespace(
                 status_code=200,
-                headers={"content-type": "image/jpeg"},
-                content=b"image-bytes",
-                text="",
+                headers={'content-type': 'image/jpeg'},
+                content=b'image-bytes',
+                text='',
             )
-        raise AssertionError(f"unexpected url: {url}")
+        raise AssertionError(f'unexpected url: {url}')
 
     service = _thumbnail_service_with_fake_http(monkeypatch, tmp_path, fake_get)
 
     file_path = service.download_thumbnail(
         video_id=90,
         thumbnail_url=stale_thumbnail_url,
-        site_name="pornhub",
+        site_name='pornhub',
         source_url=source_url,
     )
 
-    assert file_path == str(tmp_path / "batch_001" / "90.jpg")
+    assert file_path == str(tmp_path / 'batch_001' / '90.jpg')
     assert [item[0] for item in requests] == [
         stale_thumbnail_url,
         source_url,
@@ -383,44 +386,41 @@ def test_download_thumbnail_refreshes_pornhub_ei_video_thumb_after_410(monkeypat
 
 
 def test_download_thumbnail_refreshes_pornhub_hdnea_preview_after_472(monkeypatch, tmp_path):
-    stale_thumbnail_url = (
-        "https://pix-fl.phncdn.com/videos/demo/plain/"
-        "rs:fit:640:360?hdnea=expired"
-    )
-    fresh_thumbnail_url = "https://ei.phncdn.com/videos/demo/fresh-thumb.jpg"
-    source_url = "https://www.pornhub.com/view_video.php?viewkey=demo"
+    stale_thumbnail_url = 'https://pix-fl.phncdn.com/videos/demo/plain/rs:fit:640:360?hdnea=expired'
+    fresh_thumbnail_url = 'https://ei.phncdn.com/videos/demo/fresh-thumb.jpg'
+    source_url = 'https://www.pornhub.com/view_video.php?viewkey=demo'
     requests = []
 
     def fake_get(url, headers=None):
         requests.append((url, headers))
         if url == stale_thumbnail_url:
-            return SimpleNamespace(status_code=472, headers={"content-type": "text/plain"}, content=b"", text="")
+            return SimpleNamespace(status_code=472, headers={'content-type': 'text/plain'}, content=b'', text='')
         if url == source_url:
             return SimpleNamespace(
                 status_code=200,
-                headers={"content-type": "text/html"},
-                content=b"",
+                headers={'content-type': 'text/html'},
+                content=b'',
                 text=f'<meta property="og:image" content="{fresh_thumbnail_url}">',
             )
         if url == fresh_thumbnail_url:
             return SimpleNamespace(
                 status_code=200,
-                headers={"content-type": "image/jpeg"},
-                content=b"image-bytes",
-                text="",
+                headers={'content-type': 'image/jpeg'},
+                content=b'image-bytes',
+                text='',
             )
-        raise AssertionError(f"unexpected url: {url}")
+        raise AssertionError(f'unexpected url: {url}')
 
     service = _thumbnail_service_with_fake_http(monkeypatch, tmp_path, fake_get)
 
     file_path = service.download_thumbnail(
         video_id=89,
         thumbnail_url=stale_thumbnail_url,
-        site_name="pornhub",
+        site_name='pornhub',
         source_url=source_url,
     )
 
-    assert file_path == str(tmp_path / "batch_001" / "89.jpg")
+    assert file_path == str(tmp_path / 'batch_001' / '89.jpg')
     assert [item[0] for item in requests] == [
         stale_thumbnail_url,
         source_url,
@@ -434,17 +434,17 @@ def test_build_request_headers_uses_source_url_cookies_and_age_gate_defaults(mon
 
     monkeypatch.setattr(
         site_config,
-        "get_effective_catalog",
+        'get_effective_catalog',
         lambda: {
-            "pornhub": {
-                "http": {
-                    "headers": {
-                        "User-Agent": "UA",
-                        "Referer": "https://www.pornhub.com",
+            'pornhub': {
+                'http': {
+                    'headers': {
+                        'User-Agent': 'UA',
+                        'Referer': 'https://www.pornhub.com',
                     },
                 },
-                "metadata": {
-                    "requires_cookies": True,
+                'metadata': {
+                    'requires_cookies': True,
                 },
             },
         },
@@ -452,20 +452,19 @@ def test_build_request_headers_uses_source_url_cookies_and_age_gate_defaults(mon
     )
     monkeypatch.setattr(
         thumbnail_headers,
-        "filter_cookies_to_query_string",
-        lambda url: "sessid=abc123",
+        'filter_cookies_to_query_string',
+        lambda url: 'sessid=abc123',
     )
 
     headers = service.build_request_headers(
-        "pornhub",
-        source_url="https://www.pornhub.com/view_video.php?viewkey=demo",
-        target_url="https://ei.phncdn.com/videos/demo.jpg",
+        'pornhub',
+        source_url='https://www.pornhub.com/view_video.php?viewkey=demo',
+        target_url='https://ei.phncdn.com/videos/demo.jpg',
     )
 
-    assert headers["Referer"] == "https://www.pornhub.com/view_video.php?viewkey=demo"
-    assert headers["Origin"] == "https://www.pornhub.com"
-    assert headers["User-Agent"] == "UA"
-    assert headers["Cookie"] == (
-        "sessid=abc123; age_verified=1; accessAgeDisclaimerPH=1; "
-        "accessAgeDisclaimerUK=1; accessPH=1"
+    assert headers['Referer'] == 'https://www.pornhub.com/view_video.php?viewkey=demo'
+    assert headers['Origin'] == 'https://www.pornhub.com'
+    assert headers['User-Agent'] == 'UA'
+    assert headers['Cookie'] == (
+        'sessid=abc123; age_verified=1; accessAgeDisclaimerPH=1; accessAgeDisclaimerUK=1; accessPH=1'
     )

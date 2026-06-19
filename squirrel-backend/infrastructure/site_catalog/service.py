@@ -92,10 +92,7 @@ class SiteCatalogService:
             seen.add(d)
             deduped_domains.append(d)
         primary_domain = SiteCatalogService.select_primary_domain(deduped_domains)
-        test_url = (
-            catalog_entry.get('test_url')
-            or (f'https://{primary_domain}' if primary_domain else None)
-        )
+        test_url = catalog_entry.get('test_url') or (f'https://{primary_domain}' if primary_domain else None)
         icon_url = catalog_entry.get('icon_url')
         if not icon_url and resolve_site_icon_path(site_name):
             icon_url = build_site_icon_url(site_name)
@@ -131,7 +128,8 @@ class SiteCatalogService:
                 raise ValueError(f'unknown site: {slug}')
             normalized_patch = normalize_override_entry(slug, raw)
             desired_effective = deep_merge_dicts(
-                current_effective.get(slug, plugin_catalog[slug]), normalized_patch,
+                current_effective.get(slug, plugin_catalog[slug]),
+                normalized_patch,
             )
             normalized_entry = compute_override_diff(plugin_catalog[slug], desired_effective)
             if normalized_entry:

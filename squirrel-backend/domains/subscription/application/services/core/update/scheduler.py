@@ -83,8 +83,7 @@ class SubscriptionScheduler:
 
         with self.session_factory() as session:
             rows = session.execute(
-                select(UserSubscription.subscription_id)
-                .where(
+                select(UserSubscription.subscription_id).where(
                     UserSubscription.subscription_id.in_(subscription_ids),
                     UserSubscription.is_deleted.is_(False),
                 ),
@@ -100,9 +99,9 @@ class SubscriptionScheduler:
         for subscription_id in ids:
             url = url_map.get(subscription_id, '')
             scheduled = self.schedule_one(subscription_id, url, trigger)
-            if scheduled.status == "queued":
+            if scheduled.status == 'queued':
                 success_count += 1
-            elif scheduled.status == "failed":
+            elif scheduled.status == 'failed':
                 error_count += 1
 
         return success_count, error_count
@@ -120,7 +119,7 @@ class SubscriptionScheduler:
         return self._dispatch_due_targets(
             targets=targets,
             mode=resolved_mode,
-            action_name="enqueue",
+            action_name='enqueue',
             action=lambda target: self._schedule_due_target(target=target, trigger=trigger, mode=resolved_mode),
         )
 
@@ -142,7 +141,7 @@ class SubscriptionScheduler:
         return self._dispatch_due_targets(
             targets=targets,
             mode=resolved_mode,
-            action_name="emit",
+            action_name='emit',
             action=lambda target: self._emit_due_sync_event(
                 target=target,
                 trigger=trigger,
@@ -164,14 +163,14 @@ class SubscriptionScheduler:
         for target in targets:
             try:
                 action_result = action(target)
-                if action_result == "success":
+                if action_result == 'success':
                     success_count += 1
-                elif action_result == "failed":
+                elif action_result == 'failed':
                     error_count += 1
             except Exception:  # dispatch boundary — count error and continue
                 error_count += 1
                 logger.exception(
-                    "Failed to %s due sync target subscription_id=%s sync_state_id=%s mode=%s",
+                    'Failed to %s due sync target subscription_id=%s sync_state_id=%s mode=%s',
                     action_name,
                     target.subscription_id,
                     target.sync_state_id,
@@ -179,7 +178,7 @@ class SubscriptionScheduler:
                 )
 
         logger.info(
-            "Due sync %s completed: success=%s failed=%s mode=%s",
+            'Due sync %s completed: success=%s failed=%s mode=%s',
             action_name,
             success_count,
             error_count,
@@ -200,11 +199,11 @@ class SubscriptionScheduler:
             trigger=trigger,
             mode=mode,
         )
-        if scheduled.status == "queued":
-            return "success"
-        if scheduled.status == "failed":
-            return "failed"
-        return "skipped"
+        if scheduled.status == 'queued':
+            return 'success'
+        if scheduled.status == 'failed':
+            return 'failed'
+        return 'skipped'
 
     def _emit_due_sync_event(
         self,
@@ -214,7 +213,7 @@ class SubscriptionScheduler:
         mode: UpdateMode,
     ) -> str:
         if target.sync_state_id is None:
-            return "skipped"
+            return 'skipped'
 
         scheduled = self.lifecycle.request_sync(
             subscription_id=target.subscription_id,
@@ -222,11 +221,11 @@ class SubscriptionScheduler:
             trigger=trigger,
             mode=mode,
         )
-        if scheduled.status == "queued":
-            return "success"
-        if scheduled.status == "failed":
-            return "failed"
-        return "skipped"
+        if scheduled.status == 'queued':
+            return 'success'
+        if scheduled.status == 'failed':
+            return 'failed'
+        return 'skipped'
 
     def _list_due_active_subscriptions(self, mode: UpdateMode) -> list[tuple[int, str]]:
         now = datetime.now()
@@ -258,13 +257,16 @@ class SubscriptionScheduler:
         from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
 
         with self.session_factory() as session:
-            state_rows = session.execute(
-                select(SubscriptionSyncState)
-                .where(
-                    SubscriptionSyncState.subscription_id.in_(sub_ids),
-                    SubscriptionSyncState.sync_mode == mode.value,
-                ),
-            ).scalars().all()
+            state_rows = (
+                session.execute(
+                    select(SubscriptionSyncState).where(
+                        SubscriptionSyncState.subscription_id.in_(sub_ids),
+                        SubscriptionSyncState.sync_mode == mode.value,
+                    ),
+                )
+                .scalars()
+                .all()
+            )
 
         state_map: dict[int, SubscriptionSyncState] = {s.subscription_id: s for s in state_rows}
 
@@ -275,11 +277,11 @@ class SubscriptionScheduler:
                 due_subscriptions.append((subscription_id, url_map[subscription_id]))
                 continue
 
-            sync_status = getattr(sync_state, "sync_status", None)
-            if sync_status in {"queued", "running"}:
+            sync_status = getattr(sync_state, 'sync_status', None)
+            if sync_status in {'queued', 'running'}:
                 continue
 
-            next_sync_at = getattr(sync_state, "next_sync_at", None)
+            next_sync_at = getattr(sync_state, 'next_sync_at', None)
             if next_sync_at is None or next_sync_at <= now:
                 due_subscriptions.append((subscription_id, url_map[subscription_id]))
 
@@ -298,8 +300,7 @@ class SubscriptionScheduler:
 
         with self.session_factory() as session:
             rows = session.execute(
-                select(Subscription.id, Subscription.url)
-                .where(Subscription.id.in_(subscription_ids)),
+                select(Subscription.id, Subscription.url).where(Subscription.id.in_(subscription_ids)),
             ).all()
             return [(row[0], row[1] or '') for row in rows]
 

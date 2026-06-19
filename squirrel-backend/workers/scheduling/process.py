@@ -21,10 +21,11 @@ def main():
             recovered = subscription_sync_lifecycle.recover_on_startup()
             if any(recovered.values()):
                 logger.info(
-                    "[scheduler] Recovered stale sync states on startup: %s", recovered,
+                    '[scheduler] Recovered stale sync states on startup: %s',
+                    recovered,
                 )
         except Exception:
-            logger.warning("[scheduler] Failed to recover stale sync states", exc_info=True)
+            logger.warning('[scheduler] Failed to recover stale sync states', exc_info=True)
 
         is_running = False
 
@@ -32,22 +33,22 @@ def main():
             enabled = config_svc.get_bool(SYS_ENABLE_SCHEDULER, default=True)
 
             if enabled and not is_running:
-                logger.info("[scheduler] Starting scheduler...")
+                logger.info('[scheduler] Starting scheduler...')
                 scheduler_start()
                 is_running = True
             elif not enabled and is_running:
-                logger.info("[scheduler] Stopping scheduler...")
+                logger.info('[scheduler] Stopping scheduler...')
                 scheduler_stop()
                 is_running = False
 
             time.sleep(5)
 
         if is_running:
-            logger.info("[scheduler] Stopping scheduler before exit...")
+            logger.info('[scheduler] Stopping scheduler before exit...')
             scheduler_stop()
 
-    logger.info("[scheduler] Scheduler process exited")
+    logger.info('[scheduler] Scheduler process exited')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

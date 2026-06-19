@@ -32,12 +32,16 @@ def count_pending_video_tasks_for_subscription(session_factory, subscription_id:
 
 def count_pending_video_tasks_by_sync_state(session_factory) -> dict[int, int]:
     with session_factory() as session:
-        tasks = session.execute(
-            select(CrawlTask).where(
-                CrawlTask.task_type == 'video_extract',
-                CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
-            ),
-        ).scalars().all()
+        tasks = (
+            session.execute(
+                select(CrawlTask).where(
+                    CrawlTask.task_type == 'video_extract',
+                    CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
+                ),
+            )
+            .scalars()
+            .all()
+        )
     counts: dict[int, int] = {}
     for task in tasks:
         sync_state_id = (task.payload or {}).get('sync_state_id')
@@ -49,9 +53,13 @@ def count_pending_video_tasks_by_sync_state(session_factory) -> dict[int, int]:
 
 def summarize_video_task_states_by_sync_state(session_factory) -> dict[int, dict[str, object]]:
     with session_factory() as session:
-        tasks = session.execute(
-            select(CrawlTask).where(CrawlTask.task_type == 'video_extract'),
-        ).scalars().all()
+        tasks = (
+            session.execute(
+                select(CrawlTask).where(CrawlTask.task_type == 'video_extract'),
+            )
+            .scalars()
+            .all()
+        )
 
     summary: dict[int, dict[str, object]] = {}
     for task in tasks:
@@ -91,12 +99,16 @@ def summarize_video_task_states_by_sync_state(session_factory) -> dict[int, dict
 
 def list_active_subscription_sync_state_ids(session_factory) -> set[int]:
     with session_factory() as session:
-        tasks = session.execute(
-            select(CrawlTask).where(
-                CrawlTask.task_type.in_(subscription_sync_task_types()),
-                CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
-            ),
-        ).scalars().all()
+        tasks = (
+            session.execute(
+                select(CrawlTask).where(
+                    CrawlTask.task_type.in_(subscription_sync_task_types()),
+                    CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
+                ),
+            )
+            .scalars()
+            .all()
+        )
     state_ids: set[int] = set()
     for task in tasks:
         sync_state_id = (task.payload or {}).get('sync_state_id')
@@ -104,4 +116,3 @@ def list_active_subscription_sync_state_ids(session_factory) -> set[int]:
             continue
         state_ids.add(int(sync_state_id))
     return state_ids
-

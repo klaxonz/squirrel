@@ -18,7 +18,7 @@ class CrawlExecutorService:
         params = VideoExtractDto.model_validate(payload)
         result = self._extract_video(params)
         if not result.success:
-            raise ValueError(result.error or "video_extract_failed")
+            raise ValueError(result.error or 'video_extract_failed')
         return result
 
     def execute_video_extract_task(self, task: CrawlTask):

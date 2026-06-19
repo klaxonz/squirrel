@@ -1,5 +1,5 @@
-"""ValidationStage - validates and converts data to DTO
-"""
+"""ValidationStage - validates and converts data to DTO"""
+
 import logging
 
 from ...adapters.runtime_adapter import RuntimeDataAdapter
@@ -28,19 +28,19 @@ class ValidationStage(PipelineStage):
 
     @property
     def stage_name(self) -> str:
-        return "validation"
+        return 'validation'
 
     def execute(self, context: PipelineContext) -> PipelineContext:
         """Execute validation and conversion"""
         # Check preconditions
         if context.plugin_video is None:
             raise ExtValidationError(
-                "No plugin video data found in context",
-                context={"task_id": context.task.task_id},
+                'No plugin video data found in context',
+                context={'task_id': context.task.task_id},
             )
 
         # Convert to DTO (automatically validates)
-        logger.info("Validating video data: url=%s", context.task.url)
+        logger.info('Validating video data: url=%s', context.task.url)
 
         video_dto = self.adapter.adapt(
             context.plugin_video,
@@ -50,7 +50,12 @@ class ValidationStage(PipelineStage):
         # Save to context
         context.video_dto = video_dto
 
-        logger.info("Validation completed: url=%s, title=%s, actors=%s", context.task.url, video_dto.title, len(video_dto.actors))
+        logger.info(
+            'Validation completed: url=%s, title=%s, actors=%s',
+            context.task.url,
+            video_dto.title,
+            len(video_dto.actors),
+        )
 
         return context
 

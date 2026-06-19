@@ -11,10 +11,12 @@ def test_heartbeat_checks_health_instead_of_clearing_cache(monkeypatch):
 
     class _BypassClient:
         async def health(self):
-            calls.append("health")
+            calls.append('health')
 
-    monkeypatch.setattr("workers.scheduling.tasks.cloudflare_heartbeat_task.get_default_client", lambda: _BypassClient())
+    monkeypatch.setattr(
+        'workers.scheduling.tasks.cloudflare_heartbeat_task.get_default_client', lambda: _BypassClient()
+    )
 
     CloudflareHeartbeatTask.run()
 
-    assert calls == ["health"]
+    assert calls == ['health']

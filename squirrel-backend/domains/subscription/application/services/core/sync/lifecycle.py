@@ -235,16 +235,18 @@ class SubscriptionSyncLifecycle:
         )
 
         try:
-            sync_result = execute_subscription_sync_payload({
-                **build_task_payload(
-                    command,
-                    queued.sync_state_id,
-                    queued.queue_token,
-                    request_id=request_id,
-                    run_id=queued.run_context.run_id,
-                ),
-                'inline_video_extraction': True,
-            })
+            sync_result = execute_subscription_sync_payload(
+                {
+                    **build_task_payload(
+                        command,
+                        queued.sync_state_id,
+                        queued.queue_token,
+                        request_id=request_id,
+                        run_id=queued.run_context.run_id,
+                    ),
+                    'inline_video_extraction': True,
+                }
+            )
         except (ValueError, TypeError, AttributeError, KeyError) as exc:
             self._sync_state_service.mark_sync_failed(
                 queued.sync_state_id,
@@ -382,13 +384,16 @@ class SubscriptionSyncLifecycle:
             return
 
         try:
-            self.request_sync(
+            scheduled = self.request_sync(
                 subscription_id=request.subscription_id,
                 url=request.url,
                 trigger=request.trigger,
                 mode=UpdateMode.FULL,
                 trace_id=request.trace_id,
             )
+            if scheduled.status != 'queued':
+                return
+            self._sync_state_service.mark_full_sync_requested(request.sync_state_id)
             logger.info(
                 'Gap detection enqueued full backfill subscription_id=%s site=%s sync_state_id=%s gap_score=%s',
                 request.subscription_id,
@@ -532,23 +537,29 @@ class SubscriptionSyncLifecycle:
         site_limit = max(1, int(settings.FULL_SYNC_SITE_MAX_INFLIGHT))
 
         with self.session_factory() as session:
-            global_inflight = int(session.execute(
-                select(func.count(SubscriptionSyncState.id)).where(
-                    SubscriptionSyncState.sync_mode == SyncMode.FULL.value,
-                    SubscriptionSyncState.sync_status.in_([SyncStatus.QUEUED.value, SyncStatus.RUNNING.value]),
-                ),
-            ).scalar_one() or 0)
+            global_inflight = int(
+                session.execute(
+                    select(func.count(SubscriptionSyncState.id)).where(
+                        SubscriptionSyncState.sync_mode == SyncMode.FULL.value,
+                        SubscriptionSyncState.sync_status.in_([SyncStatus.QUEUED.value, SyncStatus.RUNNING.value]),
+                    ),
+                ).scalar_one()
+                or 0
+            )
             if global_inflight >= global_limit:
                 return False
 
             if site:
-                site_inflight = int(session.execute(
-                    select(func.count(SubscriptionSyncState.id)).where(
-                        SubscriptionSyncState.sync_mode == SyncMode.FULL.value,
-                        SubscriptionSyncState.sync_status.in_([SyncStatus.QUEUED.value, SyncStatus.RUNNING.value]),
-                        SubscriptionSyncState.site == site,
-                    ),
-                ).scalar_one() or 0)
+                site_inflight = int(
+                    session.execute(
+                        select(func.count(SubscriptionSyncState.id)).where(
+                            SubscriptionSyncState.sync_mode == SyncMode.FULL.value,
+                            SubscriptionSyncState.sync_status.in_([SyncStatus.QUEUED.value, SyncStatus.RUNNING.value]),
+                            SubscriptionSyncState.site == site,
+                        ),
+                    ).scalar_one()
+                    or 0
+                )
                 if site_inflight >= site_limit:
                     return False
 
@@ -566,10 +577,12 @@ class SubscriptionSyncLifecycle:
     def _has_active_subscribers(self, subscription_id: int) -> bool:
         with self.session_factory() as session:
             row = session.execute(
-                select(UserSubscription.id).where(
+                select(UserSubscription.id)
+                .where(
                     UserSubscription.subscription_id == subscription_id,
                     UserSubscription.is_deleted.is_(False),
-                ).limit(1),
+                )
+                .limit(1),
             ).first()
             return row is not None
 

@@ -13,9 +13,13 @@ def refresh_job_status(session: Session, *, job_id: int, now: datetime) -> None:
     if not job:
         return
 
-    tasks = session.execute(
-        select(CrawlTask).where(CrawlTask.job_id == job_id).order_by(CrawlTask.id.asc()),
-    ).scalars().all()
+    tasks = (
+        session.execute(
+            select(CrawlTask).where(CrawlTask.job_id == job_id).order_by(CrawlTask.id.asc()),
+        )
+        .scalars()
+        .all()
+    )
     if not tasks:
         return
 
@@ -31,7 +35,8 @@ def refresh_job_status(session: Session, *, job_id: int, now: datetime) -> None:
     active_tasks = [task for task in tasks if task.status in active_statuses]
     if active_tasks:
         has_started_work = any(
-            task.status in {
+            task.status
+            in {
                 CrawlTaskStatus.LEASED.value,
                 CrawlTaskStatus.RUNNING.value,
                 CrawlTaskStatus.RETRY_WAIT.value,
@@ -67,4 +72,3 @@ def refresh_job_status(session: Session, *, job_id: int, now: datetime) -> None:
 
     finished_at_values = [task.finished_at for task in tasks if task.finished_at]
     job.finished_at = max(finished_at_values) if finished_at_values else now
-

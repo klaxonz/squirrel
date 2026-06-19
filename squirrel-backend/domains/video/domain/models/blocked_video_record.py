@@ -8,14 +8,14 @@ from infrastructure.database.mixins import SerializerMixin
 
 
 class BlockedVideoRecord(Base, SerializerMixin):
-    __tablename__ = "blocked_video_record"
+    __tablename__ = 'blocked_video_record'
 
     __table_args__ = (
-        Index("ix_blocked_video_url", "url"),
-        Index("ix_blocked_video_site", "site"),
-        Index("ix_blocked_video_reason_code", "reason_code"),
-        Index("ix_blocked_video_created_at", "created_at"),
-        Index("ux_blocked_video_url_unique", "url", unique=True),
+        Index('ix_blocked_video_url', 'url'),
+        Index('ix_blocked_video_site', 'site'),
+        Index('ix_blocked_video_reason_code', 'reason_code'),
+        Index('ix_blocked_video_created_at', 'created_at'),
+        Index('ux_blocked_video_url_unique', 'url', unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

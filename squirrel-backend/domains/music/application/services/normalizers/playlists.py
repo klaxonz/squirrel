@@ -37,12 +37,14 @@ def normalize_playlist_tags(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             tag_id = str(row.get('tag_id') or row.get('id') or row.get('category_id') or '')
             name = str(row.get('tag_name') or row.get('name') or row.get('category_name') or '')
             if tag_id and name:
-                tags.append({
-                    'id': tag_id,
-                    'name': name,
-                    'parent_id': str(group.get('tag_id') or group.get('id') or ''),
-                    'parent_name': str(group.get('tag_name') or group.get('name') or ''),
-                })
+                tags.append(
+                    {
+                        'id': tag_id,
+                        'name': name,
+                        'parent_id': str(group.get('tag_id') or group.get('id') or ''),
+                        'parent_name': str(group.get('tag_name') or group.get('name') or ''),
+                    }
+                )
     return tags
 
 

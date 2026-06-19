@@ -7,7 +7,6 @@ from shared_kernel.infrastructure.log import LOG_DIR
 
 
 class LogService:
-
     @staticmethod
     def get_log_files() -> list[dict[str, any]]:
         """Get all log file list"""
@@ -16,21 +15,23 @@ class LogService:
 
         log_files = []
         for filename in os.listdir(LOG_DIR):
-            if filename.endswith(".log"):
+            if filename.endswith('.log'):
                 filepath = os.path.join(LOG_DIR, filename)
                 stat = os.stat(filepath)
-                log_files.append({
-                    "name": filename,
-                    "size": stat.st_size,
-                    "modified_time": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
-                })
+                log_files.append(
+                    {
+                        'name': filename,
+                        'size': stat.st_size,
+                        'modified_time': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
+                    }
+                )
 
-        log_files.sort(key=lambda x: x["name"], reverse=True)
+        log_files.sort(key=lambda x: x['name'], reverse=True)
         return log_files
 
     @staticmethod
     def read_log_lines(
-        filename: str = "app.log",
+        filename: str = 'app.log',
         keyword: str | None = None,
         level: str | None = None,
         start_line: int = 0,
@@ -62,19 +63,19 @@ class LogService:
         # 新格式: 2025-10-03 10:30:45,123 [trace_id] INFO logger_name: message
         # 旧格式: 2025-10-03 10:30:45,123 INFO logger_name: message
         log_pattern_new = re.compile(
-            r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) \[([^\]]+)\] (DEBUG|INFO|WARNING|ERROR|CRITICAL) (.+?): (.+)$",
+            r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) \[([^\]]+)\] (DEBUG|INFO|WARNING|ERROR|CRITICAL) (.+?): (.+)$',
         )
         log_pattern_old = re.compile(
-            r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) (DEBUG|INFO|WARNING|ERROR|CRITICAL) (.+?): (.+)$",
+            r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) (DEBUG|INFO|WARNING|ERROR|CRITICAL) (.+?): (.+)$',
         )
 
         filtered_lines = []
 
-        with open(filepath, encoding="utf-8", errors="ignore") as f:
+        with open(filepath, encoding='utf-8', errors='ignore') as f:
             current_log_entry = None
 
             for line_num, line in enumerate(f, start=1):
-                line = line.rstrip("\n")
+                line = line.rstrip('\n')
 
                 # 先尝试匹配新格式(带 trace_id)
                 match = log_pattern_new.match(line)
@@ -87,13 +88,13 @@ class LogService:
                     # 开始新的日志条目(新格式)
                     timestamp, trace_id, log_level, logger_name, message = match.groups()
                     current_log_entry = {
-                        "line_num": line_num,
-                        "timestamp": timestamp,
-                        "trace_id": trace_id if trace_id != "-" else None,
-                        "level": log_level,
-                        "logger": logger_name,
-                        "message": message,
-                        "raw_lines": [line],
+                        'line_num': line_num,
+                        'timestamp': timestamp,
+                        'trace_id': trace_id if trace_id != '-' else None,
+                        'level': log_level,
+                        'logger': logger_name,
+                        'message': message,
+                        'raw_lines': [line],
                     }
                 else:
                     # 尝试匹配旧格式(不带 trace_id)
@@ -106,18 +107,18 @@ class LogService:
                         # 开始新的日志条目(旧格式)
                         timestamp, log_level, logger_name, message = match.groups()
                         current_log_entry = {
-                            "line_num": line_num,
-                            "timestamp": timestamp,
-                            "trace_id": None,
-                            "level": log_level,
-                            "logger": logger_name,
-                            "message": message,
-                            "raw_lines": [line],
+                            'line_num': line_num,
+                            'timestamp': timestamp,
+                            'trace_id': None,
+                            'level': log_level,
+                            'logger': logger_name,
+                            'message': message,
+                            'raw_lines': [line],
                         }
                     # 多行日志的后续行(如堆栈信息)
                     elif current_log_entry:
-                        current_log_entry["message"] += "\n" + line
-                        current_log_entry["raw_lines"].append(line)
+                        current_log_entry['message'] += '\n' + line
+                        current_log_entry['raw_lines'].append(line)
 
             # 处理最后一条日志
             if current_log_entry and LogService._should_include_log(current_log_entry, keyword, level):
@@ -130,7 +131,7 @@ class LogService:
         filtered_lines.reverse()
 
         # 分页
-        result_lines = filtered_lines[start_line:start_line + limit]
+        result_lines = filtered_lines[start_line : start_line + limit]
 
         return result_lines, total_count, has_more
 
@@ -138,21 +139,17 @@ class LogService:
     def _should_include_log(log_entry: dict, keyword: str | None, level: str | None) -> bool:
         """Determine whether a log entry should be included in results"""
         # 级别过滤
-        if level and log_entry["level"] != level:
+        if level and log_entry['level'] != level:
             return False
 
         # 关键词过滤
         if keyword:
             keyword_lower = keyword.lower()
-            searchable_text = (
-                log_entry["message"] + " " +
-                log_entry["logger"] + " " +
-                log_entry["level"]
-            ).lower()
+            searchable_text = (log_entry['message'] + ' ' + log_entry['logger'] + ' ' + log_entry['level']).lower()
 
             # 如果有 trace_id,也包含在搜索范围内
-            if log_entry.get("trace_id"):
-                searchable_text += " " + log_entry["trace_id"].lower()
+            if log_entry.get('trace_id'):
+                searchable_text += ' ' + log_entry['trace_id'].lower()
 
             if keyword_lower not in searchable_text:
                 return False

@@ -28,4 +28,3 @@ class MusicVideoMixin:
             'downloadable': bool(data.get('downloadable') or data.get('can_download')),
             'quality': str(data.get('quality') or data.get('bitrate') or ''),
         }
-

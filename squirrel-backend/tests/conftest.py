@@ -33,4 +33,3 @@ class _FakeRedis:
 @pytest.fixture
 def mock_redis():
     return _FakeRedis()
-

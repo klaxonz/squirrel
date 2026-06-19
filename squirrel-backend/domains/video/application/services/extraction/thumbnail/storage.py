@@ -118,4 +118,3 @@ class ThumbnailStorage:
     def _evict_batch_index_cache(self) -> None:
         while len(self._batch_index_cache) > BATCH_INDEX_CACHE_MAX_BATCHES:
             self._batch_index_cache.popitem(last=False)
-

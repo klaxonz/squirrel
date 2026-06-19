@@ -10,14 +10,14 @@ from shared_kernel.infrastructure.log import init_logging
 
 init_logging()
 logger = logging.getLogger(__name__)
-AFTER_COMMIT_CALLBACKS_KEY = "after_commit_callbacks"
+AFTER_COMMIT_CALLBACKS_KEY = 'after_commit_callbacks'
 
 db_config = {
-    "host": settings.postgres.host,
-    "port": settings.postgres.port,
-    "user": settings.postgres.user,
-    "password": settings.postgres.password,
-    "database": settings.postgres.database,
+    'host': settings.postgres.host,
+    'port': settings.postgres.port,
+    'user': settings.postgres.user,
+    'password': settings.postgres.password,
+    'database': settings.postgres.database,
 }
 
 engine = create_engine(
@@ -29,8 +29,8 @@ engine = create_engine(
     pool_use_lifo=True,  # LIFO 池,提高连接复用
     echo=False,
     connect_args={
-        "connect_timeout": 10,
-        "options": "-c statement_timeout=30000",  # 30秒超时
+        'connect_timeout': 10,
+        'options': '-c statement_timeout=30000',  # 30秒超时
     },
 )
 
@@ -50,20 +50,20 @@ def get_session() -> Generator[Session, None, None]:
 
 
 def register_after_commit(session, callback) -> None:
-    if not hasattr(session, "info"):
+    if not hasattr(session, 'info'):
         callback()
         return
     session.info.setdefault(AFTER_COMMIT_CALLBACKS_KEY, []).append(callback)
 
 
-@event.listens_for(Session, "after_commit")
+@event.listens_for(Session, 'after_commit')
 def _run_after_commit_callbacks(session: Session) -> None:
     callbacks = session.info.pop(AFTER_COMMIT_CALLBACKS_KEY, [])
     for callback in callbacks:
         callback()
 
 
-@event.listens_for(Session, "after_rollback")
+@event.listens_for(Session, 'after_rollback')
 def _clear_after_commit_callbacks(session: Session) -> None:
     session.info.pop(AFTER_COMMIT_CALLBACKS_KEY, None)
 

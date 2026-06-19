@@ -4,6 +4,7 @@ Covers the ORM query (formerly a raw-SQL string in sql/subscription_sql.py):
 subscription columns + per-subscription video count + incremental sync-state
 projection + synthetic is_nsfw/is_special_followed columns fed into SubscriptionDto.
 """
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -34,14 +35,19 @@ def _make_service():
 def test_get_subscription_detail_returns_dto_with_sync_state_and_counts():
     svc = _make_service()
     with svc.session_factory() as session:
-        session.add_all([
-            Subscription(id=1, type='CHANNEL', name='demo', url='https://www.youtube.com/c/demo', total_videos=3),
-            SubscriptionVideo(subscription_id=1, video_id=10),
-            SubscriptionSyncState(
-                subscription_id=1, site='youtube.com', sync_mode='incremental',
-                sync_status='success', pending_video_count=2,
-            ),
-        ])
+        session.add_all(
+            [
+                Subscription(id=1, type='CHANNEL', name='demo', url='https://www.youtube.com/c/demo', total_videos=3),
+                SubscriptionVideo(subscription_id=1, video_id=10),
+                SubscriptionSyncState(
+                    subscription_id=1,
+                    site='youtube.com',
+                    sync_mode='incremental',
+                    sync_status='success',
+                    pending_video_count=2,
+                ),
+            ]
+        )
         session.commit()
 
     dto = svc.get_subscription_detail(1)

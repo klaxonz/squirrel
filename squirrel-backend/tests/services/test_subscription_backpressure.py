@@ -29,11 +29,11 @@ def svc(session_factory):
     return CrawlTaskService(session_factory=session_factory)
 
 
-def _seed_job(engine, *, site: str = "youtube.com") -> int:
+def _seed_job(engine, *, site: str = 'youtube.com') -> int:
     with Session(engine, expire_on_commit=False) as session:
         job = CrawlJob(
-            job_type="subscription_sync",
-            source_type="scheduled",
+            job_type='subscription_sync',
+            source_type='scheduled',
             site=site,
             subscription_id=1,
             payload={},
@@ -54,37 +54,39 @@ def test_reconcile_pending_video_counts_uses_task_store(engine, session_factory,
             SubscriptionSyncState(
                 id=10,
                 subscription_id=1,
-                site="youtube.com",
-                sync_mode="incremental",
-                sync_status="queued",
+                site='youtube.com',
+                sync_mode='incremental',
+                sync_status='queued',
                 cursor_payload={},
                 next_sync_at=datetime(2026, 4, 1, 12, 0, 0),
                 pending_video_count=99,
             ),
         )
-        session.add_all([
-            CrawlTask(
-                job_id=job_id,
-                task_type="video_extract",
-                site="youtube.com",
-                subscription_id=1,
-                status="pending",
-                payload={"sync_state_id": 10},
-            ),
-            CrawlTask(
-                job_id=job_id,
-                task_type="video_extract",
-                site="youtube.com",
-                subscription_id=1,
-                status="retry_wait",
-                payload={"sync_state_id": 10},
-            ),
-        ])
+        session.add_all(
+            [
+                CrawlTask(
+                    job_id=job_id,
+                    task_type='video_extract',
+                    site='youtube.com',
+                    subscription_id=1,
+                    status='pending',
+                    payload={'sync_state_id': 10},
+                ),
+                CrawlTask(
+                    job_id=job_id,
+                    task_type='video_extract',
+                    site='youtube.com',
+                    subscription_id=1,
+                    status='retry_wait',
+                    payload={'sync_state_id': 10},
+                ),
+            ]
+        )
         session.commit()
 
     result = sss_svc.reconcile_pending_video_counts()
 
-    assert result == {"states": 1, "videos": 2}
+    assert result == {'states': 1, 'videos': 2}
     with Session(engine, expire_on_commit=False) as session:
         state = session.get(SubscriptionSyncState, 10)
     assert state.pending_video_count == 2
@@ -97,9 +99,9 @@ def test_recover_stale_queued_sync_states_uses_task_store(engine, session_factor
             SubscriptionSyncState(
                 id=10,
                 subscription_id=1,
-                site="youtube.com",
-                sync_mode="incremental",
-                sync_status="queued",
+                site='youtube.com',
+                sync_mode='incremental',
+                sync_status='queued',
                 cursor_payload={},
                 next_sync_at=datetime(2026, 4, 1, 12, 0, 0),
                 queued_at=datetime.now() - timedelta(minutes=10),
@@ -108,11 +110,11 @@ def test_recover_stale_queued_sync_states_uses_task_store(engine, session_factor
         session.add(
             CrawlTask(
                 job_id=job_id,
-                task_type="subscription_sync",
-                site="youtube.com",
+                task_type='subscription_sync',
+                site='youtube.com',
                 subscription_id=1,
-                status="pending",
-                payload={"sync_state_id": 10},
+                status='pending',
+                payload={'sync_state_id': 10},
             ),
         )
         session.commit()
@@ -120,13 +122,15 @@ def test_recover_stale_queued_sync_states_uses_task_store(engine, session_factor
     sss_svc = subscription_sync_state_service
     result = sss_svc.recover_stale_queued_sync_states()
 
-    assert result["recovered"] == 0
+    assert result['recovered'] == 0
     with Session(engine, expire_on_commit=False) as session:
         state = session.get(SubscriptionSyncState, 10)
-    assert state.sync_status == "queued"
+    assert state.sync_status == 'queued'
 
 
-def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_phase(engine, session_factory, svc, sss_session):
+def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_phase(
+    engine, session_factory, svc, sss_session
+):
     sss_svc = subscription_sync_state_service
 
     with Session(engine, expire_on_commit=False) as session:
@@ -134,11 +138,11 @@ def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_p
             SubscriptionSyncState(
                 id=10,
                 subscription_id=1,
-                site="youtube.com",
-                sync_mode="incremental",
-                sync_status="running",
+                site='youtube.com',
+                sync_mode='incremental',
+                sync_status='running',
                 cursor_payload={},
-                last_seen_video_url="https://example.com/video/1",
+                last_seen_video_url='https://example.com/video/1',
                 next_sync_at=datetime(2026, 4, 1, 12, 0, 0),
                 last_sync_at=datetime(2026, 4, 1, 11, 50, 0),
                 pending_video_count=3,
@@ -149,17 +153,19 @@ def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_p
 
     result = sss_svc.reconcile_terminal_drained_sync_states()
 
-    assert result == {"running_states": 1, "completed": 1, "failed": 0}
+    assert result == {'running_states': 1, 'completed': 1, 'failed': 0}
 
     with Session(engine, expire_on_commit=False) as session:
         state = session.get(SubscriptionSyncState, 10)
 
-    assert state.sync_status == "success"
+    assert state.sync_status == 'success'
     assert state.pending_video_count == 0
     assert state.last_success_at is not None
 
 
-def test_reconcile_terminal_drained_sync_states_auto_fails_when_extract_tasks_are_dead(engine, session_factory, svc, sss_session):
+def test_reconcile_terminal_drained_sync_states_auto_fails_when_extract_tasks_are_dead(
+    engine, session_factory, svc, sss_session
+):
     sss_svc = subscription_sync_state_service
 
     with Session(engine, expire_on_commit=False) as session:
@@ -168,9 +174,9 @@ def test_reconcile_terminal_drained_sync_states_auto_fails_when_extract_tasks_ar
             SubscriptionSyncState(
                 id=10,
                 subscription_id=1,
-                site="youtube.com",
-                sync_mode="incremental",
-                sync_status="running",
+                site='youtube.com',
+                sync_mode='incremental',
+                sync_status='running',
                 cursor_payload={},
                 next_sync_at=datetime(2026, 4, 1, 12, 0, 0),
                 last_sync_at=datetime(2026, 4, 1, 11, 50, 0),
@@ -181,23 +187,23 @@ def test_reconcile_terminal_drained_sync_states_auto_fails_when_extract_tasks_ar
         session.add(
             CrawlTask(
                 job_id=job_id,
-                task_type="video_extract",
-                site="youtube.com",
+                task_type='video_extract',
+                site='youtube.com',
                 subscription_id=1,
-                status="dead",
-                last_error="extract_failed",
-                payload={"sync_state_id": 10},
+                status='dead',
+                last_error='extract_failed',
+                payload={'sync_state_id': 10},
             ),
         )
         session.commit()
 
     result = sss_svc.reconcile_terminal_drained_sync_states()
 
-    assert result == {"running_states": 1, "completed": 0, "failed": 1}
+    assert result == {'running_states': 1, 'completed': 0, 'failed': 1}
 
     with Session(engine, expire_on_commit=False) as session:
         state = session.get(SubscriptionSyncState, 10)
 
-    assert state.sync_status == "failed"
+    assert state.sync_status == 'failed'
     assert state.pending_video_count == 0
-    assert state.last_error == "extract_failed"
+    assert state.last_error == 'extract_failed'

@@ -22,7 +22,7 @@ class RssRemoteStatusSyncer:
         def update_remote() -> None:
             try:
                 client = create_client(config)
-                if hasattr(client, "update_entry"):
+                if hasattr(client, 'update_entry'):
                     client.update_entry(external_entry_id, is_read=is_read, is_starred=is_starred)
             except (OSError, ValueError, TypeError) as exc:
                 logger.warning('Failed to sync RSS status to remote in background: %s', exc)

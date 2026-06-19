@@ -1,2 +1,1 @@
 """Search suggestion query helpers."""
-

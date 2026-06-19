@@ -23,17 +23,17 @@ class CrawlExecutorService:
         self._subscription_service = subscription_svc or subscription_crud_service
 
     def execute_subscription_sync_payload(self, payload: dict):
-        subscription_id = int(payload["subscription_id"])
-        url = payload.get("url") or self._resolve_subscription_url(subscription_id)
-        trigger = parse_trigger(payload.get("trigger"))
-        mode = self._parse_mode(payload.get("mode"))
-        sync_state_id = payload.get("sync_state_id")
-        queue_token = payload.get("queue_token")
-        request_id = payload.get("request_id")
-        run_id = payload.get("run_id")
-        trace_id = payload.get("trace_id")
-        cursor_payload = payload.get("cursor_payload")
-        last_seen_video_url = payload.get("last_seen_video_url")
+        subscription_id = int(payload['subscription_id'])
+        url = payload.get('url') or self._resolve_subscription_url(subscription_id)
+        trigger = parse_trigger(payload.get('trigger'))
+        mode = self._parse_mode(payload.get('mode'))
+        sync_state_id = payload.get('sync_state_id')
+        queue_token = payload.get('queue_token')
+        request_id = payload.get('request_id')
+        run_id = payload.get('run_id')
+        trace_id = payload.get('trace_id')
+        cursor_payload = payload.get('cursor_payload')
+        last_seen_video_url = payload.get('last_seen_video_url')
 
         if sync_state_id and queue_token:
             claimed_state = self._lifecycle.claim_sync(
@@ -45,7 +45,7 @@ class CrawlExecutorService:
                 trigger=trigger.value,
             )
             if not claimed_state:
-                raise ValueError(f"Failed to claim sync state: sync_state_id={sync_state_id}")
+                raise ValueError(f'Failed to claim sync state: sync_state_id={sync_state_id}')
             cursor_payload = cursor_payload if cursor_payload is not None else claimed_state.cursor_payload
             last_seen_video_url = (
                 last_seen_video_url if last_seen_video_url is not None else claimed_state.last_seen_video_url
@@ -56,8 +56,8 @@ class CrawlExecutorService:
             url=url,
             trigger=trigger,
             mode=mode,
-            user_id=payload.get("user_id"),
-            force=bool(payload.get("force", False)),
+            user_id=payload.get('user_id'),
+            force=bool(payload.get('force', False)),
             trace_id=trace_id,
             request_id=request_id,
             run_id=run_id,
@@ -65,7 +65,7 @@ class CrawlExecutorService:
             queue_token=queue_token,
             cursor_payload=cursor_payload,
             last_seen_video_url=last_seen_video_url,
-            inline_video_extraction=bool(payload.get("inline_video_extraction", False)),
+            inline_video_extraction=bool(payload.get('inline_video_extraction', False)),
         )
         return self._orchestrator.update(request)
 
@@ -75,7 +75,7 @@ class CrawlExecutorService:
     def _resolve_subscription_url(self, subscription_id: int) -> str:
         subscription = self._subscription_service.get_subscription_by_id(subscription_id)
         if not subscription or not subscription.url:
-            raise ValueError(f"Subscription URL not found: {subscription_id}")
+            raise ValueError(f'Subscription URL not found: {subscription_id}')
         return subscription.url
 
     @staticmethod

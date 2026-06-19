@@ -4,13 +4,13 @@ from domains.video.interfaces.dto.video_dto import VideoExtractDto
 
 def _params():
     return VideoExtractDto(
-        url="https://www.youtube.com/watch?v=demo",
+        url='https://www.youtube.com/watch?v=demo',
         subscribed=True,
         only_extract=True,
         subscription_id=1,
         sync_state_id=2,
-        run_id="run-1",
-        trigger="scheduled",
+        run_id='run-1',
+        trigger='scheduled',
         is_manual=False,
         is_extract_all=False,
     )
@@ -21,22 +21,22 @@ def test_record_finished_clears_dedupe_and_completes_pending_on_success(monkeypa
     decrement_calls = []
 
     monkeypatch.setattr(
-        "domains.video.application.services.extraction.progress_service.video_extraction_task_service.clear_video_extraction_dedupe",
+        'domains.video.application.services.extraction.progress_service.video_extraction_task_service.clear_video_extraction_dedupe',
         lambda params: clear_calls.append(params.url),
     )
     monkeypatch.setattr(
-        "domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_finished",
+        'domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_finished',
         lambda *args, **kwargs: decrement_calls.append((args, kwargs)),
     )
 
-    VideoExtractionProgressService().record_finished(_params(), succeeded=True, site="youtube.com")
+    VideoExtractionProgressService().record_finished(_params(), succeeded=True, site='youtube.com')
 
-    assert clear_calls == ["https://www.youtube.com/watch?v=demo"]
+    assert clear_calls == ['https://www.youtube.com/watch?v=demo']
     assert decrement_calls == [
         (
             (2,),
             {
-                "succeeded": True,
+                'succeeded': True,
             },
         ),
     ]
@@ -47,22 +47,22 @@ def test_record_finished_clears_dedupe_without_completing_pending_on_failure(mon
     decrement_calls = []
 
     monkeypatch.setattr(
-        "domains.video.application.services.extraction.progress_service.video_extraction_task_service.clear_video_extraction_dedupe",
+        'domains.video.application.services.extraction.progress_service.video_extraction_task_service.clear_video_extraction_dedupe',
         lambda params: clear_calls.append(params.url),
     )
     monkeypatch.setattr(
-        "domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_finished",
+        'domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_finished',
         lambda *args, **kwargs: decrement_calls.append((args, kwargs)),
     )
 
-    VideoExtractionProgressService().record_finished(_params(), succeeded=False, site="youtube.com")
+    VideoExtractionProgressService().record_finished(_params(), succeeded=False, site='youtube.com')
 
-    assert clear_calls == ["https://www.youtube.com/watch?v=demo"]
+    assert clear_calls == ['https://www.youtube.com/watch?v=demo']
     assert decrement_calls == [
         (
             (2,),
             {
-                "succeeded": False,
+                'succeeded': False,
             },
         ),
     ]

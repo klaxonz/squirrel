@@ -29,7 +29,7 @@ class VideoExtractionCoordinator:
         video_urls = fetch_result.video_urls
         total = len(video_urls)
         existing_videos = get_videos_by_urls(video_urls)
-        domain = resolve_site(request.url) or "unknown"
+        domain = resolve_site(request.url) or 'unknown'
 
         blocked_video_urls = set()
         with get_session() as session:
@@ -67,7 +67,7 @@ class VideoExtractionCoordinator:
                         enqueued += 1
                     else:
                         failed_count += 1
-                        logger.warning("Failed to extract video %s: %s", video_url, extracted.error)
+                        logger.warning('Failed to extract video %s: %s', video_url, extracted.error)
                 elif video_extraction_task_service.enqueue_video_extraction(params):
                     enqueued += 1
                 else:
@@ -76,10 +76,10 @@ class VideoExtractionCoordinator:
                 if reserved_pending:
                     subscription_sync_lifecycle.record_video_extraction_dispatch_failed(request.sync_state_id)
                 failed_count += 1
-                logger.warning("Failed to enqueue video %s: %s", video_url, exc)
+                logger.warning('Failed to enqueue video %s: %s', video_url, exc)
 
         logger.debug(
-            "Enqueue summary subscription_id=%s domain=%s trigger=%s mode=%s total=%s queued=%s existed=%s blocked=%s failed=%s",
+            'Enqueue summary subscription_id=%s domain=%s trigger=%s mode=%s total=%s queued=%s existed=%s blocked=%s failed=%s',
             request.subscription_id,
             domain,
             request.trigger.value,

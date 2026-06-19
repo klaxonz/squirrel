@@ -17,11 +17,11 @@ from .runtime_payloads import RuntimeVideoData
 class TaskStatus(StrEnum):
     """Execution status of an extraction task."""
 
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
+    PENDING = 'pending'
+    PROCESSING = 'processing'
+    COMPLETED = 'completed'
+    FAILED = 'failed'
+    CANCELLED = 'cancelled'
 
 
 class TaskPriority(int, Enum):
@@ -44,17 +44,17 @@ class ExtractionResult:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ExtractionResult:
-        data_payload = data.get("data")
+        data_payload = data.get('data')
         if data_payload and isinstance(data_payload, dict):
             data_payload = RuntimeVideoData.from_dict(data_payload)
 
         return cls(
-            success=bool(data.get("success", False)),
+            success=bool(data.get('success', False)),
             data=data_payload,
-            error=data.get("error"),
-            error_category=data.get("error_category"),
-            retryable=bool(data.get("retryable", False)),
-            error_context=data.get("error_context"),
+            error=data.get('error'),
+            error_category=data.get('error_category'),
+            retryable=bool(data.get('retryable', False)),
+            error_context=data.get('error_context'),
         )
 
     @classmethod
@@ -75,7 +75,7 @@ class ExtractionTask:
     metadata: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
-        self.task_id = uuid.uuid5(uuid.NAMESPACE_URL, f"{self.site_name}:{self.url}").hex
+        self.task_id = uuid.uuid5(uuid.NAMESPACE_URL, f'{self.site_name}:{self.url}').hex
 
 
 @runtime_checkable
@@ -85,11 +85,8 @@ class Extractor(Protocol):
     site_name: str
     supported_domains: list[str]
 
-    def can_handle(self, url: str) -> bool:
-        ...
+    def can_handle(self, url: str) -> bool: ...
 
-    def extract(self, task: ExtractionTask) -> ExtractionResult:
-        ...
+    def extract(self, task: ExtractionTask) -> ExtractionResult: ...
 
-    def validate_url(self, url: str) -> bool:
-        ...
+    def validate_url(self, url: str) -> bool: ...

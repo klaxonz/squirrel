@@ -9,6 +9,7 @@
 - recall_page() 支持 keyset 游标分页:浏览场景按 publish_ts:desc, id:desc 全序召回一页,
   PG 在该页上做权限/category 过滤;不足一页时由 service 层循环召回补足。
 """
+
 from __future__ import annotations
 
 import base64
@@ -133,12 +134,16 @@ class MeiliVideoIndexer:
             return []
 
         # 1. 批量取 video 基础字段
-        videos = session.execute(
-            select(Video).where(
-                Video.id.in_(video_ids),
-                Video.is_deleted.is_(False),
+        videos = (
+            session.execute(
+                select(Video).where(
+                    Video.id.in_(video_ids),
+                    Video.is_deleted.is_(False),
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         if not videos:
             return []
         video_map = {v.id: v for v in videos}
@@ -177,17 +182,19 @@ class MeiliVideoIndexer:
             video = video_map.get(vid)
             if video is None:
                 continue  # 已删除
-            docs.append({
-                'id': video.id,
-                'title': video.title or '',
-                'description': video.description or '',
-                'domain': video.domain or '',
-                'url': video.url or '',
-                'subscription_names': sub_map.get(vid, []),
-                'creator_names': creator_map.get(vid, []),
-                'duration': int(video.duration or 0),
-                'publish_ts': int(video.publish_date.timestamp()) if video.publish_date is not None else 0,
-            })
+            docs.append(
+                {
+                    'id': video.id,
+                    'title': video.title or '',
+                    'description': video.description or '',
+                    'domain': video.domain or '',
+                    'url': video.url or '',
+                    'subscription_names': sub_map.get(vid, []),
+                    'creator_names': creator_map.get(vid, []),
+                    'duration': int(video.duration or 0),
+                    'publish_ts': int(video.publish_date.timestamp()) if video.publish_date is not None else 0,
+                }
+            )
         return docs
 
     def _build_document(self, session: Session, video_id: int) -> dict[str, Any] | None:
@@ -195,22 +202,30 @@ class MeiliVideoIndexer:
         video = session.get(Video, video_id)
         if video is None or video.is_deleted:
             return None
-        sub_names = session.execute(
-            select(Subscription.name)
-            .join(SubscriptionVideo, SubscriptionVideo.subscription_id == Subscription.id)
-            .where(
-                SubscriptionVideo.video_id == video_id,
-                Subscription.is_deleted.is_(False),
-            ),
-        ).scalars().all()
-        creator_names = session.execute(
-            select(Creator.name)
-            .join(VideoCreator, VideoCreator.creator_id == Creator.id)
-            .where(
-                VideoCreator.video_id == video_id,
-                Creator.is_deleted.is_(False),
-            ),
-        ).scalars().all()
+        sub_names = (
+            session.execute(
+                select(Subscription.name)
+                .join(SubscriptionVideo, SubscriptionVideo.subscription_id == Subscription.id)
+                .where(
+                    SubscriptionVideo.video_id == video_id,
+                    Subscription.is_deleted.is_(False),
+                ),
+            )
+            .scalars()
+            .all()
+        )
+        creator_names = (
+            session.execute(
+                select(Creator.name)
+                .join(VideoCreator, VideoCreator.creator_id == Creator.id)
+                .where(
+                    VideoCreator.video_id == video_id,
+                    Creator.is_deleted.is_(False),
+                ),
+            )
+            .scalars()
+            .all()
+        )
         doc: dict[str, Any] = {
             'id': video.id,
             'title': video.title or '',
@@ -253,13 +268,17 @@ class MeiliVideoIndexer:
     def reindex_all(self, batch_size: int = 500) -> int:
         """全量重建:遍历所有未删除视频,分批推送。用于首次回填和定期兜底。"""
         with self._session_factory() as session:
-            video_ids = session.execute(
-                select(Video.id).where(Video.is_deleted.is_(False)).order_by(Video.id),
-            ).scalars().all()
+            video_ids = (
+                session.execute(
+                    select(Video.id).where(Video.is_deleted.is_(False)).order_by(Video.id),
+                )
+                .scalars()
+                .all()
+            )
         total = len(video_ids)
         total_batches = (total + batch_size - 1) // batch_size
         for offset in range(0, total, batch_size):
-            batch_ids = video_ids[offset:offset + batch_size]
+            batch_ids = video_ids[offset : offset + batch_size]
             with self._session_factory() as session:
                 docs = self._build_documents_batch(session, batch_ids)
             if docs:
@@ -323,7 +342,10 @@ class MeiliVideoIndexer:
         - 失败抛出,由调用方决定降级(通常 fallback 到纯 PG 浏览路径或返回空)
         """
         filters = _build_recall_filter(
-            domains=domains, time_range=time_range, duration=duration, category=category,
+            domains=domains,
+            time_range=time_range,
+            duration=duration,
+            category=category,
         )
         if filter_ids:
             # id IN [列表]:Meili 数字无需引号。列表过大时 Meili 会自行优化,但建议上游控制规模。
@@ -372,7 +394,10 @@ class MeiliVideoIndexer:
         由 service 层循环补足到 page_size。
         """
         filters = _build_recall_filter(
-            domains=domains, time_range=time_range, duration=duration, category=category,
+            domains=domains,
+            time_range=time_range,
+            duration=duration,
+            category=category,
         )
         if cursor:
             decoded = decode_cursor(cursor)

@@ -33,9 +33,13 @@ class DynamicTaskManager:
             return
 
         with get_session() as session:
-            active_tasks = session.query(ScheduledTask).filter(
-                ScheduledTask.is_active,
-            ).all()
+            active_tasks = (
+                session.query(ScheduledTask)
+                .filter(
+                    ScheduledTask.is_active,
+                )
+                .all()
+            )
 
             logger.info('Loading %s active tasks from database', len(active_tasks))
 
@@ -105,7 +109,9 @@ class DynamicTaskManager:
                 task_snapshot = task_config
 
                 if execution_log_id is not None:
-                    existing_log = session.query(TaskExecutionLog).filter(TaskExecutionLog.id == execution_log_id).first()
+                    existing_log = (
+                        session.query(TaskExecutionLog).filter(TaskExecutionLog.id == execution_log_id).first()
+                    )
                     if not existing_log or existing_log.task_id != task_id:
                         execution_log_id = None
                     else:
@@ -150,7 +156,9 @@ class DynamicTaskManager:
                         persisted_task.next_run_at = next_run_at
 
                 if execution_log_id:
-                    persisted_log = session.query(TaskExecutionLog).filter(TaskExecutionLog.id == execution_log_id).first()
+                    persisted_log = (
+                        session.query(TaskExecutionLog).filter(TaskExecutionLog.id == execution_log_id).first()
+                    )
                     if persisted_log:
                         persisted_log.finished_at = end_time
                         persisted_log.duration = duration
@@ -178,7 +186,9 @@ class DynamicTaskManager:
                         persisted_task.next_run_at = next_run_at
 
                 if execution_log_id:
-                    persisted_log = session.query(TaskExecutionLog).filter(TaskExecutionLog.id == execution_log_id).first()
+                    persisted_log = (
+                        session.query(TaskExecutionLog).filter(TaskExecutionLog.id == execution_log_id).first()
+                    )
                     if persisted_log:
                         persisted_log.finished_at = end_time
                         persisted_log.duration = duration
@@ -245,6 +255,7 @@ class DynamicTaskManager:
                     return False
 
                 from threading import Thread
+
                 thread = Thread(
                     target=self._execute_task_with_logging,
                     kwargs={

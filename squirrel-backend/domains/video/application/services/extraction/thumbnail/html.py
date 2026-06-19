@@ -93,4 +93,3 @@ def extract_thumbnail_url_from_html(html_text: str) -> str | None:
                 thumbnail_urls.append(thumbnail_url)
 
     return pick_best_thumbnail_url(thumbnail_urls)
-
