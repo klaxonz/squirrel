@@ -25,7 +25,7 @@ PLUGIN_SPECS = {
     },
     'pornhub': {
         'package': 'squirrel_pornhub',
-        'expected_dependencies': {'beautifulsoup4', 'yt-dlp', 'phub', 'httpx', 'fastapi', 'starlette'},
+        'expected_dependencies': {'beautifulsoup4', 'curl-cffi', 'yt-dlp', 'phub', 'httpx', 'fastapi', 'starlette'},
     },
     'youporn': {
         'package': 'squirrel_youporn',
@@ -216,6 +216,13 @@ class RuntimeV2PackageTests(unittest.TestCase):
                     spec['expected_dependencies'].issubset(dependency_names),
                     f'{plugin_name} dependencies missing: {sorted(spec["expected_dependencies"] - dependency_names)}',
                 )
+
+    def test_pornhub_curl_cffi_stays_in_ytdlp_supported_range(self):
+        dependencies = tomllib.loads(
+            (PLUGINS_ROOT / 'pornhub' / 'pyproject.toml').read_text(encoding='utf-8')
+        )['project']['dependencies']
+
+        self.assertIn('curl-cffi<0.15', dependencies)
 
     def test_runtime_manifest_matches_site_runtime_json(self):
         for plugin_name, spec in PLUGIN_SPECS.items():
