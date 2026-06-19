@@ -215,14 +215,14 @@
       </main>
 
       <Transition name="toast">
-        <div v-if="saveToastVisible" class="fixed bottom-6 right-6 z-50">
+        <div v-if="saveToast.visible" class="fixed bottom-6 right-6 z-50">
           <div :class="[
             'flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium shadow-lg',
-            saveToastError ? 'border-destructive/20 bg-background text-destructive' : 'border-border/50 bg-foreground text-background'
+            saveToast.error ? 'border-destructive/20 bg-background text-destructive' : 'border-border/50 bg-foreground text-background'
           ]">
-            <AppIcon v-if="!saveToastError" name="statusSuccess" class="h-4 w-4" />
+            <AppIcon v-if="!saveToast.error" name="statusSuccess" class="h-4 w-4" />
             <AppIcon v-else name="warning" class="h-4 w-4" />
-            {{ saveToastMessage }}
+            {{ saveToast.message }}
           </div>
         </div>
       </Transition>
@@ -250,6 +250,7 @@ import type { AppIconName } from '@/icons/app-icons'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import { useServerConfig } from '@/composables/useServerConfig'
+import { useToast } from '@/composables/useToast'
 import type { AppThemeMode } from '@/lib/theme'
 import { Logger } from '@/utils/logger'
 import { useSystemConfig } from '../composables/useSystemConfig'
@@ -312,20 +313,8 @@ const serverTestResult = ref<boolean | null>(null)
 const serverTestMessage = ref('')
 
 // Save toast
-const saveToastVisible = ref(false)
-const saveToastMessage = ref('')
-const saveToastError = ref(false)
+const { toast: saveToast, show: showSaveToast } = useToast()
 const hasUnsavedChanges = ref(false)
-
-let saveToastTimer: ReturnType<typeof setTimeout> | null = null
-
-const showSaveToast = (message: string, isError = false) => {
-  if (saveToastTimer) clearTimeout(saveToastTimer)
-  saveToastMessage.value = message
-  saveToastError.value = isError
-  saveToastVisible.value = true
-  saveToastTimer = setTimeout(() => { saveToastVisible.value = false }, 3000)
-}
 
 const navigateToTab = (path: string) => {
   if (route.path !== path) router.push(path)

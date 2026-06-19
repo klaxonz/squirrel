@@ -239,9 +239,9 @@
 
     <!-- Toast -->
     <Transition name="toast">
-      <div v-if="toastVisible" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 bg-foreground text-background text-sm font-medium rounded-full shadow-premium">
-        <AppIcon :name="toastError ? 'xCircle' : 'check'" class="w-4 h-4" />
-        {{ toastMessage }}
+      <div v-if="toast.visible" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 bg-foreground text-background text-sm font-medium rounded-full shadow-premium">
+        <AppIcon :name="toast.error ? 'xCircle' : 'check'" class="w-4 h-4" />
+        {{ toast.message }}
       </div>
     </Transition>
   </div>
@@ -259,6 +259,7 @@ import useVideoPlaybackShell from '../composables/useVideoPlaybackShell'
 import useVideoPageNavigation from '../composables/useVideoPageNavigation'
 import { consumeVideoPlaybackSeed, peekVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { useGlobalVideoPlayer } from '@/composables/useGlobalVideoPlayer'
+import { useToast } from '@/composables/useToast'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
@@ -394,21 +395,7 @@ watch(() => {
 
 const moreMenuOpen = ref(false)
 const moreMenuRef = ref<HTMLElement | null>(null)
-const toastVisible = ref(false)
-const toastMessage = ref('')
-const toastError = ref(false)
-let toastTimer: ReturnType<typeof setTimeout> | null = null
-
-const showToast = (message: string, isError = false) => {
-  if (toastTimer) clearTimeout(toastTimer)
-  toastMessage.value = message
-  toastError.value = isError
-  toastVisible.value = true
-  toastTimer = setTimeout(() => {
-    toastVisible.value = false
-    toastTimer = null
-  }, 2500)
-}
+const { toast, show: showToast } = useToast({ duration: 2500 })
 
 const handleShare = async () => {
   const url = `${window.location.origin}/video/${route.params.videoId}`
@@ -435,7 +422,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
   descriptionResizeObserver?.disconnect()
-  if (toastTimer) clearTimeout(toastTimer)
 })
 
 const { videoActions, videoOverflowActions, handleVideoAction } = useVideoActionBar({

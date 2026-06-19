@@ -284,6 +284,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useDebounceFn } from '@vueuse/core'
 import { Logger } from '@/utils/logger'
+import { useToast } from '@/composables/useToast'
 import {
   createTask as apiCreateTask,
   deleteTask as apiDeleteTask,
@@ -316,14 +317,7 @@ const showDeleteDialog = ref(false)
 const deletingTask = ref(null)
 const showExecuteDialog = ref(false)
 const executingTask = ref(null)
-const toast = ref({ visible: false, message: '', error: false })
-let toastTimer = null
-
-const showToast = (message, isError = false) => {
-  if (toastTimer) clearTimeout(toastTimer)
-  toast.value = { visible: true, message, error: isError }
-  toastTimer = setTimeout(() => { toast.value.visible = false }, 3000)
-}
+const { toast, show: showToast } = useToast()
 
 const hasTaskFilters = computed(() => Boolean(searchQuery.value || statusFilter.value !== 'all'))
 

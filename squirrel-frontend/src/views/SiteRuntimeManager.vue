@@ -393,6 +393,7 @@ import { Logger } from '@/utils/logger'
 import { mergeLoginStatusResult, shouldRefreshLoginStatusesAfterCookieImport } from '@/utils/site-runtime-login-status'
 import { useSiteCatalog } from '@/composables/useSites'
 import { useYouTubeOAuth } from '@/composables/useYouTubeOAuth'
+import { useToast } from '@/composables/useToast'
 import {
   disableSiteRuntime,
   enableSiteRuntime,
@@ -509,8 +510,7 @@ const loadResultsFromCache = () => {
 const selectedCookiesFile = ref(null)
 const cookiesFileName = ref('')
 const importingCookies = ref(false)
-const toast = ref({ visible: false, message: '', error: false })
-let toastTimer = null
+const { toast, show: showToast } = useToast()
 
 const editingSite = ref(null)
 const siteEditorVisible = ref(false)
@@ -519,12 +519,6 @@ const siteEditorError = ref('')
 
 const siteCatalogMap = computed(() => siteCatalog.value || {})
 const searchQuery = ref('')
-
-const showToast = (message, isError = false) => {
-  if (toastTimer) clearTimeout(toastTimer)
-  toast.value = { visible: true, message, error: isError }
-  toastTimer = setTimeout(() => { toast.value.visible = false }, 3000)
-}
 
 const enrichedSiteRuntimes = computed(() => {
   const resultsMap = new Map()

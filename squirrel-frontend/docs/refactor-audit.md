@@ -192,6 +192,31 @@ differ.
   Dropped the unused `DialogDescription` import (the remaining editor dialog
   has no description).
 
+### Cross-file — toast logic consolidation
+
+Four views each hand-rolled the same transient-toast state machine: a `toast`
+ref (or three flat refs), a `toastTimer` let, and a `show(message, isError)`
+helper that clears the prior timer, sets state, arms a fresh auto-hide timer.
+The **markup** varied across three visual variants (bottom-right card,
+inverted card, centered pill), so a shared `AppToast` component would need a
+variant prop and risk visual regression — not worth it. The **logic** was
+byte-identical, so that's what got consolidated.
+
+- `composables/useToast.ts` (new, 58 lines, TS): owns the `toast` ref
+  (`{visible, message, error}`) + `show()` (clear/reset/arming) + `hide()`.
+  `duration` option (default 3000ms; VideoPlay passes 2500 to preserve its
+  prior timing). Timer lifecycle is internal and left un-cleared on unmount —
+  the timers are short-lived (≤3s) and the prior hand-rolled code did the same,
+  so this matches existing behavior (documented in the composable).
+- `ScheduledTasks.vue` / `SiteRuntimeManager.vue`: each dropped its `toast` ref
+  + `toastTimer` + `showToast` body (-6 lines each); templates unchanged
+  (`toast.value.*` shape matched).
+- `Settings.vue`: dropped its three flat `saveToast*` refs + `saveToastTimer`
+  + `showSaveToast` body (-11); template retargeted to `saveToast.value.*`.
+- `VideoPlay.vue`: dropped its three flat `toast*` refs + `toastTimer` +
+  `showToast` body + the `toastTimer` clear in `onBeforeUnmount` (-14);
+  template retargeted to `toast.value.*`.
+
 ## Deliberate decisions (defend the choice, don't hide it)
 
 ### Why `createPlayerEngine.ts` stays a single 991-line module
@@ -257,6 +282,13 @@ instantiated with a typed Events map (`EventEmitter<PlayerEvents>`), so the
 | `createPlayerEngine.ts` | 1050 | 991 | Types extracted; core kept cohesive. |
 | `Music.vue` | ~795 | 752 | Dead QR logic removed. |
 | `GlobalMusicPlayerBar.vue` | ~540 | 505 | Dead comment logic removed. |
+| `SiteRuntimeManager.vue` | 1067 | 923 | YouTube OAuth extracted + toast consolidated. |
+| `RssSources.vue` | 1519 | 1362 | Add/Edit Account dialog extracted. |
+| `Settings.vue` | 617 | 484 | Security tab extracted + toast consolidated. |
+| `ScheduledTasks.vue` | 572 | 553 | 2 confirm dialogs → ConfirmDialog + toast consolidated. |
+| `LogViewer.vue` | 546 | 463 | Clipboard extracted + dead code dropped. |
+| `PlaylistView.vue` | 509 | 507 | Delete confirm → ConfirmDialog. |
+| `VideoPlay.vue` | 724 | 710 | Toast consolidated. |
 | `engine-types.ts` | — | 106 | New (extracted types). |
 | `composables/useVideoRotation.ts` | — | 79 | New (extracted from VideoPlayer). |
 | `composables/useProgressScrub.ts` | — | 150 | New (progress-rail scrub). |
@@ -264,17 +296,12 @@ instantiated with a typed Events map (`EventEmitter<PlayerEvents>`), so the
 | `composables/useSourceSync.ts` | — | 176 | New (source/initialTime/resume sync). |
 | `LoadingOverlay.vue` | — | 73 | New (load/buffering overlay). |
 | `ErrorOverlay.vue` | — | 109 | New (fatal-error overlay). |
-| `SiteRuntimeManager.vue` | 1067 | 929 | YouTube OAuth extracted. |
 | `composables/useYouTubeOAuth.ts` | — | 198 | New (YouTube TV-code OAuth flow). |
-| `RssSources.vue` | 1519 | 1362 | Add/Edit Account dialog extracted. |
 | `components/rss/AccountEditDialog.vue` | — | 230 | New (RSS account add/edit dialog). |
-| `Settings.vue` | 617 | 495 | Security tab extracted. |
 | `components/settings/SecuritySettings.vue` | — | 138 | New (password + session-revoke tab). |
-| `LogViewer.vue` | 546 | 463 | Clipboard extracted + dead code dropped. |
 | `composables/useLogClipboard.ts` | — | 95 | New (log clipboard export). |
-| `ScheduledTasks.vue` | 572 | 559 | 2 confirm dialogs → ConfirmDialog. |
-| `PlaylistView.vue` | 509 | 507 | Delete confirm → ConfirmDialog. |
 | `components/dialogs/ConfirmDialog.vue` | — | 54 | New (generic confirm modal). |
+| `composables/useToast.ts` | — | 58 | New (transient toast state machine). |
 
 ¹ The earlier draft of this table listed `2750 → 2407`; that was aspirational.
 `git show 8c7ef66d:squirrel-frontend/.../VideoPlayer.vue` is 2708 lines. The
