@@ -113,6 +113,27 @@ leave the rest.
   extracted into a TS composable (new files are TS from the start), not as a
   standalone annotation flood.
 
+### Phase 4 (partial) — `RssSources.vue` Add/Edit Account dialog extraction
+
+`RssSources.vue` (was 1519 lines) is already well-composed at the script level
+(five composables: accounts / feeds / entries / reader / sync) and already
+typed. The bulk is the **871-line template** — a three-pane reader app plus
+three dialogs plus a lightbox.
+
+- `components/rss/AccountEditDialog.vue` (new, 230 lines, TS): the Add/Edit RSS
+  Account dialog (provider switcher, name/base-url/username/credential fields,
+  enabled toggle, test/save footer). Uses `defineModel` for both `open` and
+  `form` — the form is the parent composable's reactive `accountForm`, and
+  `defineModel` lets the child `v-model` its fields lint-clean (mutating a
+  model ref, not a prop) while Vue's reactivity propagates back. Read-only
+  computeds + the two handlers come in as plain props/emits.
+- `RssSources.vue`: 1519 → **1362** lines (-157).
+- Other dialogs deferred: the Delete-confirm dialog (17 lines — too small to
+  beat its own prop/emit overhead) and the Subscribe-feed dialog (133 lines —
+  its two template refs, `categoryDropdownRef` / `customCategoryInputRef`, are
+  read by `useRssFeeds` for click-outside / autofocus, so extraction needs ref
+  bridging like the context menus; same forced-seam calculus).
+
 ## Deliberate decisions (defend the choice, don't hide it)
 
 ### Why `createPlayerEngine.ts` stays a single 991-line module
@@ -187,6 +208,8 @@ instantiated with a typed Events map (`EventEmitter<PlayerEvents>`), so the
 | `ErrorOverlay.vue` | — | 109 | New (fatal-error overlay). |
 | `SiteRuntimeManager.vue` | 1067 | 929 | YouTube OAuth extracted. |
 | `composables/useYouTubeOAuth.ts` | — | 198 | New (YouTube TV-code OAuth flow). |
+| `RssSources.vue` | 1519 | 1362 | Add/Edit Account dialog extracted. |
+| `components/rss/AccountEditDialog.vue` | — | 230 | New (RSS account add/edit dialog). |
 
 ¹ The earlier draft of this table listed `2750 → 2407`; that was aspirational.
 `git show 8c7ef66d:squirrel-frontend/.../VideoPlayer.vue` is 2708 lines. The
@@ -209,8 +232,9 @@ corrected baseline is used here.
 - Phase 3 remainder: `SiteRuntimeManager.vue` connectivity / login-status /
   cookie-import / site-editor clusters (mutually coupled — see note above) +
   the `lang='ts'` conversion (best done per-cluster as each is extracted).
-- Phase 4: `RssSources` (1519) / `Settings` (617) / `ScheduledTasks` (572) /
-  `PlaylistView` (509) / `LogViewer` (546) splits.
+- Phase 4 remainder: `RssSources.vue` Subscribe-feed dialog (needs ref
+  bridging) + `Settings` (617) / `ScheduledTasks` (572) / `PlaylistView` (509)
+  / `LogViewer` (546) splits.
 - Phase 5: `Music` (843) / `VideoPlay` (724) / `Subscribed` (755) splits +
   remote-seed dedup.
 
