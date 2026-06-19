@@ -77,7 +77,7 @@ const appendUniqueVideos = (currentVideos: VideoListItem[], nextVideos: VideoLis
   return currentVideos.concat(uniqueVideos)
 }
 
-export default function useLatestVideos(initial: InitialState = {}) {
+export function useLatestVideos(initial: InitialState = {}) {
   const videos = shallowRef<VideoListItem[]>([])
   const loading = ref(false)
   const allLoaded = ref(false)

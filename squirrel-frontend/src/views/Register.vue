@@ -144,31 +144,19 @@ onMounted(async () => {
 
 const currentServerLabel = computed(() => currentServerUrl.value || '未配置服务器')
 
-const getErrorMessage = (error) => {
-  if (!error) return '注册失败，请稍后再试。'
-  if (typeof error === 'string') return error
-  if (typeof error?.message === 'string') return error.message
-  if (typeof error?.detail === 'string') return error.detail
-  if (typeof error?.response?.data?.detail === 'string') return error.response.data.detail
-  return '注册失败，请检查输入内容后重试。'
-}
-
+// ponytail: userStore.register never throws (handleRequest swallows axios errors
+// into RequestResult.error), so there's no catch — error surfaces via result.error.
 const handleSubmit = async () => {
   loading.value = true
   errorMessage.value = ''
 
-  try {
-    const result = await userStore.register(form.value)
-    if (result.error) {
-      errorMessage.value = getErrorMessage(result.error)
-      return
-    }
-
-    await router.push('/login')
-  } catch (error) {
-    errorMessage.value = getErrorMessage(error)
-  } finally {
-    loading.value = false
+  const result = await userStore.register(form.value)
+  loading.value = false
+  if (result.error) {
+    errorMessage.value = result.error.message
+    return
   }
+
+  await router.push('/login')
 }
 </script>

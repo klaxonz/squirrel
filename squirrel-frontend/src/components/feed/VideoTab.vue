@@ -15,7 +15,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import VideoList from './VideoList.vue'
-import useLatestVideos from '@/composables/useLatestVideos'
+import { useLatestVideos } from '@/composables/useLatestVideos'
 import type { FeedFilters } from '@/composables/useFeedFilters'
 
 const emit = defineEmits(['openModal', 'goToSubscription', 'loading-change', 'error', 'loaded'])

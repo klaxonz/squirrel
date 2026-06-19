@@ -265,11 +265,11 @@ import { useThemeStore } from '@/stores/theme'
 import SubscriptionAvatar from '@/components/common/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/components/feed/VideoThumbnail.vue'
 import { LocalStorageAdapter } from '@/components/video-player/core'
-import useVideoHistory from "../composables/useVideoHistory"
+import { useVideoHistory } from '../composables/useVideoHistory'
 import { formatDate, formatDuration } from '../utils/dateFormat'
 import { Logger } from '@/utils/logger'
 import useVideoInteraction from '../composables/useVideoInteraction'
-import usePlaylist from '../composables/usePlaylist'
+import { usePlaylist } from '../composables/usePlaylist'
 import { getSubscriptionStatus, saveRemoteVideo, subscribe, unsubscribe } from '@/api'
 import type { VideoPageVideo, VideoProfile } from '@/types/videoPlayback'
 

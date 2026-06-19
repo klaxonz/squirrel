@@ -302,7 +302,8 @@ const loadPage = async (page: number) => {
     allLoaded.value = result.has_more === false
   } catch (error: unknown) {
     if (currentToken !== requestToken) return
-    errorMessage.value = (error as { message?: string })?.message || '远端频道加载失败'
+    // ponytail: desktop bridge path bypasses handleRequest; reject is plain Error
+    errorMessage.value = error instanceof Error ? error.message : '远端频道加载失败'
   } finally {
     clearTimeout(timer)
     if (currentToken === requestToken) loading.value = false

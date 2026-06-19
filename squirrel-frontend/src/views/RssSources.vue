@@ -741,7 +741,7 @@ const statusError = ref(false)
 
 let statusTimeout: ReturnType<typeof setTimeout> | null = null
 
-const setStatus = (message: string, isError = false) => {
+const onStatus = (message: string, isError = false) => {
   statusMessage.value = message
   statusError.value = isError
   if (statusTimeout) clearTimeout(statusTimeout)
@@ -793,7 +793,7 @@ const {
   handleDeleteAccount,
 } = useRssAccounts({
   onRefresh: () => loadAllImpl(),
-  onStatus: setStatus,
+  onStatus,
 })
 
 const {
@@ -839,7 +839,7 @@ const {
 } = useRssFeeds({
   selectedAccountId,
   onRefreshEntries: (isReset) => loadEntries(isReset ?? true),
-  onStatus: setStatus,
+  onStatus,
 })
 
 const {
@@ -879,7 +879,7 @@ const {
   getFeedTitle,
   getFeedCategory,
   getFeedIconUrl,
-  onStatus: setStatus,
+  onStatus,
   onRefreshFeeds: loadFeeds,
   onRefreshEntries: (isReset) => loadEntries(isReset ?? true),
 })
@@ -918,11 +918,11 @@ const {
   feeds,
   getFeedTitle,
   readingEntry,
-  onStatus: setStatus,
+  onStatus,
 })
 
 // ponytail: sync polling owns its own state + onClickOutside + timer cleanup;
-// injects selectedAccountId, setStatus, and the three completion loaders.
+// injects selectedAccountId, onStatus, and the three completion loaders.
 const {
   syncing,
   showSyncMenu,
@@ -932,7 +932,7 @@ const {
   stopSyncPolling,
 } = useRssSync({
   selectedAccountId,
-  setStatus,
+  onStatus,
   loadAccounts,
   loadFeeds,
   loadEntries,
@@ -1032,7 +1032,7 @@ const resetIframeState = () => {
 const unsubscribeCurrentFeed = async (entry: RssEntry) => {
   const feed = findFeedByEntry(entry.feed_id)
   if (!feed) {
-    setStatus('未找到对应的订阅源', true)
+    onStatus('未找到对应的订阅源', true)
     return
   }
   entriesCloseContextMenu()

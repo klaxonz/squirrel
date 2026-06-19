@@ -58,49 +58,41 @@ const createPlaylistStore = () => {
   const fetchPlaylists = async () => {
     loading.value = true
     error.value = null
-    try {
-      const { data, error: err } = await listPlaylists()
-      if (err) throw err
-      playlists.value = data || []
-    } catch (e: unknown) {
-      error.value = (e as { message?: string })?.message || '加载播放列表失败'
-      Logger.error('[usePlaylist] fetchPlaylists error', e)
-    } finally {
-      loading.value = false
+    const { data, error: err } = await listPlaylists()
+    loading.value = false
+    if (err) {
+      error.value = err.message
+      Logger.error('[usePlaylist] fetchPlaylists error', err)
+      return
     }
+    playlists.value = data || []
   }
 
   const fetchPlaylistDetail = async (playlistId: PlaylistId) => {
     loading.value = true
     error.value = null
-    try {
-      const { data, error: err } = await getPlaylistDetail(playlistId)
-      if (err) throw err
-      activePlaylist.value = data || null
-      return data || null
-    } catch (e: unknown) {
-      error.value = (e as { message?: string })?.message || '加载播放列表详情失败'
-      Logger.error('[usePlaylist] fetchPlaylistDetail error', e)
+    const { data, error: err } = await getPlaylistDetail(playlistId)
+    loading.value = false
+    if (err) {
+      error.value = err.message
+      Logger.error('[usePlaylist] fetchPlaylistDetail error', err)
       return null
-    } finally {
-      loading.value = false
     }
+    activePlaylist.value = data || null
+    return data || null
   }
 
   const fetchPlaylistItems = async (playlistId: PlaylistId) => {
     loadingItems.value = true
-    try {
-      const { data, error: err } = await getPlaylistItems(playlistId)
-      if (err) throw err
-      activePlaylistItems.value = data || []
-      setCurrentVideo(currentVideoId.value)
-      return data || []
-    } catch (e: unknown) {
-      Logger.error('[usePlaylist] fetchPlaylistItems error', e)
+    const { data, error: err } = await getPlaylistItems(playlistId)
+    loadingItems.value = false
+    if (err) {
+      Logger.error('[usePlaylist] fetchPlaylistItems error', err)
       return []
-    } finally {
-      loadingItems.value = false
     }
+    activePlaylistItems.value = data || []
+    setCurrentVideo(currentVideoId.value)
+    return data || []
   }
 
   const loadAndSetPlaylist = async (playlistId: PlaylistId) => {
@@ -287,6 +279,6 @@ const createPlaylistStore = () => {
 
 const playlistStore = createPlaylistStore()
 
-export default function usePlaylist() {
+export function usePlaylist() {
   return playlistStore
 }

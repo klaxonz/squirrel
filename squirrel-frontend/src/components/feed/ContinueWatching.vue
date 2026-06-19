@@ -58,7 +58,7 @@ import { ref, onMounted, nextTick } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import RecommendationCard from '@/components/feed/RecommendationCard.vue'
 import RecommendationSkeleton from '@/components/feed/RecommendationSkeleton.vue'
-import useVideoHistory from '@/composables/useVideoHistory'
+import { useVideoHistory } from '@/composables/useVideoHistory'
 import { Logger } from '@/utils/logger'
 import type { VideoHistoryEntry, VideoListItem } from '@/types/video'
 

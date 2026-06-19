@@ -85,7 +85,7 @@ export function useRssFeeds(options: {
       options.selectedAccountId.value ? { accountId: options.selectedAccountId.value } : {}
     )
     if (response.error) {
-      options?.onStatus?.(response.error.message || '加载 Feed 失败', true)
+      options?.onStatus?.(response.error.message, true)
       return
     }
     feeds.value = response.data?.data || []
@@ -125,7 +125,7 @@ export function useRssFeeds(options: {
 
     if (response.error) {
       subscribeError.value = true
-      subscribeMessage.value = response.error.message || '订阅失败'
+      subscribeMessage.value = response.error.message
       return
     }
 
@@ -170,7 +170,7 @@ export function useRssFeeds(options: {
     if (!options.selectedAccountId.value) return
     const response = await unsubscribeRssFeed(feed.id, options.selectedAccountId.value)
     if (response.error) {
-      options?.onStatus?.(response.error.message || '取消订阅失败', true)
+      options?.onStatus?.(response.error.message, true)
       return
     }
     if (selectedFeedId.value === feed.id) {
@@ -209,7 +209,7 @@ export function useRssFeeds(options: {
   const setFeedOpenMethod = async (feed: RssFeed, method: string | null) => {
     const response = await updateRssFeed(feed.id, { open_method: method })
     if (response.error) {
-      options?.onStatus?.(response.error.message || '更新失败', true)
+      options?.onStatus?.(response.error.message, true)
       return
     }
     feed.open_method = method
@@ -227,7 +227,7 @@ export function useRssFeeds(options: {
     closeFeedContextMenu()
     const response = await syncRssFeed(feed.id)
     if (response.error) {
-      options?.onStatus?.(response.error.message || '同步失败', true)
+      options?.onStatus?.(response.error.message, true)
       return
     }
     const count = (response.data as { entries?: number } | null)?.entries ?? 0
@@ -239,7 +239,7 @@ export function useRssFeeds(options: {
     closeFeedContextMenu()
     const response = await markRssFeedAsRead(feed.id)
     if (response.error) {
-      options?.onStatus?.(response.error.message || '标记已读失败', true)
+      options?.onStatus?.(response.error.message, true)
       return
     }
     options?.onStatus?.(`已将「${feed.title}」全部文章标记为已读`)

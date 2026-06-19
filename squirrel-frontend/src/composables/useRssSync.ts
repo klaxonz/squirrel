@@ -8,7 +8,7 @@ export type { RssSyncStatus }
 
 export interface UseRssSyncOptions {
   selectedAccountId: Ref<string | number | null>
-  setStatus: (message: string, isError?: boolean) => void
+  onStatus: (message: string, isError?: boolean) => void
   // completion loaders — called in order when a sync finishes
   loadAccounts: () => Promise<unknown>
   loadFeeds: () => Promise<unknown>
@@ -31,7 +31,7 @@ const getRssSyncModeLabel = (syncMode?: string) => {
 }
 
 export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
-  const { selectedAccountId, setStatus, loadAccounts, loadFeeds, loadEntries } = options
+  const { selectedAccountId, onStatus, loadAccounts, loadFeeds, loadEntries } = options
 
   const syncing = ref(false)
   const showSyncMenu = ref(false)
@@ -58,7 +58,7 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
         clearInterval(syncPollTimer!)
         syncPollTimer = null
         syncing.value = false
-        setStatus(result.error.message || '获取同步状态失败', true)
+        onStatus(result.error.message, true)
         return
       }
       const data = result.data
@@ -81,7 +81,7 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
         } else if (data.feeds_synced != null) {
           progress = `${data.feeds_synced} 个`
         }
-        setStatus(`${modeLabel}中 [${label}] ${progress}`, false)
+        onStatus(`${modeLabel}中 [${label}] ${progress}`, false)
       } else {
         clearInterval(syncPollTimer!)
         syncPollTimer = null
@@ -89,9 +89,9 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
         if (data.phase === 'completed') {
           const changedEntries = data.entries_synced || 0
           const entryText = changedEntries > 0 ? `已更新 ${changedEntries} 篇文章` : '所有内容已是最新'
-          setStatus(`${modeLabel}完成：${entryText}`)
+          onStatus(`${modeLabel}完成：${entryText}`)
         } else {
-          setStatus(data.message || data.error || '同步失败', true)
+          onStatus(data.message || data.error || '同步失败', true)
         }
         await loadAccounts()
         await loadFeeds()
@@ -103,11 +103,11 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
   const syncSelectedAccount = async (forceFullSync = false) => {
     if (!selectedAccountId.value) return
     syncing.value = true
-    setStatus('')
+    onStatus('')
     const result = await syncRssAccount(selectedAccountId.value, undefined, forceFullSync)
     if (result.error) {
       syncing.value = false
-      setStatus(result.error.message || '启动同步失败', true)
+      onStatus(result.error.message, true)
       return
     }
     pollSyncProgress()

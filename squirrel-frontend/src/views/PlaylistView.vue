@@ -294,7 +294,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { rememberVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
-import usePlaylist from '@/composables/usePlaylist'
+import { usePlaylist } from '@/composables/usePlaylist'
 import { formatDate, formatDuration } from '@/utils/dateFormat'
 import type { Playlist, PlaylistItem } from '@/types/playlist'
 

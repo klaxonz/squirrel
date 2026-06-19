@@ -145,35 +145,23 @@ onMounted(async () => {
 
 const currentServerLabel = computed(() => currentServerUrl.value || '未配置服务器')
 
-const getErrorMessage = (error) => {
-  if (!error) return '登录失败，请稍后再试。'
-  if (typeof error === 'string') return error
-  if (typeof error?.message === 'string') return error.message
-  if (typeof error?.detail === 'string') return error.detail
-  if (typeof error?.response?.data?.detail === 'string') return error.response.data.detail
-  return '登录失败，请检查邮箱和密码后重试。'
-}
-
+// ponytail: userStore.login never throws (handleRequest swallows axios errors into
+// RequestResult.error), so there's no catch to write — error surfaces via result.error.
 const handleSubmit = async () => {
   loading.value = true
   errorMessage.value = ''
 
-  try {
-    const result = await userStore.login({
-      email: form.value.email,
-      password: form.value.password,
-      remember_me: form.value.rememberMe,
-    })
-    if (result.error) {
-      errorMessage.value = getErrorMessage(result.error)
-      return
-    }
-
-    await router.push('/')
-  } catch (error) {
-    errorMessage.value = getErrorMessage(error)
-  } finally {
-    loading.value = false
+  const result = await userStore.login({
+    email: form.value.email,
+    password: form.value.password,
+    remember_me: form.value.rememberMe,
+  })
+  loading.value = false
+  if (result.error) {
+    errorMessage.value = result.error.message
+    return
   }
+
+  await router.push('/')
 }
 </script>

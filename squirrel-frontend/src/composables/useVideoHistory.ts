@@ -22,7 +22,7 @@ type WatchHistoryFilters = {
   query?: string
 }
 
-export default function useVideoHistory() {
+export function useVideoHistory() {
   const sync = useVideoHistorySync()
 
   const sendReport = async (video_id: VideoId, currentTime: number, options: SendReportOptions = {}) => {
@@ -155,63 +155,44 @@ export default function useVideoHistory() {
   }
 
   const getWatchHistory = async (page = 1, filters: WatchHistoryFilters = {}) => {
-    try {
-      const { nsfw, site, pageSize = 20, query } = filters
-      const params: Record<string, unknown> = { page, page_size: pageSize }
-      
-      if (nsfw && nsfw !== 'all') {
-        params.nsfw = nsfw
-      }
-      if (site && site !== 'all') {
-        params.site = site
-      }
-      if (query) {
-        params.query = query
-      }
-      
-      const { data, error } = await listVideoHistory(params)
-      if (error) {
-        throw new Error(error.message || '加载历史失败')
-      }
+    const { nsfw, site, pageSize = 20, query } = filters
+    const params: Record<string, unknown> = { page, page_size: pageSize }
 
-      const payload = data || { items: [], total: 0, page, page_size: pageSize }
-      const items = Array.isArray(payload.items) ? payload.items : []
-      return {
-        items,
-        total: payload.total ?? 0,
-        page: payload.page ?? page,
-        page_size: payload.page_size ?? pageSize
-      }
-    } catch (error: unknown) {
-      const message = typeof (error as { message?: string })?.message === 'string' ? (error as { message?: string }).message : '加载历史失败'
-      throw new Error(message)
+    if (nsfw && nsfw !== 'all') {
+      params.nsfw = nsfw
+    }
+    if (site && site !== 'all') {
+      params.site = site
+    }
+    if (query) {
+      params.query = query
+    }
+
+    const { data, error } = await listVideoHistory(params)
+    // ponytail: callers (History.vue) don't catch — rejecting with the already-
+    // shaped ApiError carries the same message the old try/catch/throw re-wrap did.
+    if (error) throw error
+
+    const payload = data || { items: [], total: 0, page, page_size: pageSize }
+    const items = Array.isArray(payload.items) ? payload.items : []
+    return {
+      items,
+      total: payload.total ?? 0,
+      page: payload.page ?? page,
+      page_size: payload.page_size ?? pageSize
     }
   }
 
   const clearHistory = async (videoIds: VideoId[] | null = null) => {
-    try {
-      const { error } = await clearVideoHistory(videoIds)
-      if (error) {
-        throw new Error(error.message || '清空历史失败')
-      }
-      return true;
-    } catch (error: unknown) {
-      const message = typeof (error as { message?: string })?.message === 'string' ? (error as { message?: string }).message : '清空历史失败'
-      throw new Error(message)
-    }
+    const { error } = await clearVideoHistory(videoIds)
+    if (error) throw error
+    return true
   }
 
   const deleteHistoryEntry = async (historyId: VideoId) => {
-    try {
-      const { error } = await deleteVideoHistory(historyId)
-      if (error) {
-        throw new Error(error.message || '删除历史失败')
-      }
-      return true
-    } catch (error: unknown) {
-      const message = typeof (error as { message?: string })?.message === 'string' ? (error as { message?: string }).message : '删除历史失败'
-      throw new Error(message)
-    }
+    const { error } = await deleteVideoHistory(historyId)
+    if (error) throw error
+    return true
   }
 
   return {

@@ -118,7 +118,7 @@ export function useRssAccounts(options?: {
   const loadAccounts = async () => {
     const response = await getRssAccounts()
     if (response.error) {
-      options?.onStatus?.(response.error.message || '加载 RSS 账号失败', true)
+      options?.onStatus?.(response.error.message, true)
       return
     }
     accounts.value = response.data?.data || []
@@ -175,7 +175,7 @@ export function useRssAccounts(options?: {
     if (!accountToDelete.value) return
     const response = await deleteRssAccount(accountToDelete.value.id)
     if (response.error) {
-      options?.onStatus?.(response.error.message || '删除账号失败', true)
+      options?.onStatus?.(response.error.message, true)
       showDeleteConfirmModal.value = false
       return
     }

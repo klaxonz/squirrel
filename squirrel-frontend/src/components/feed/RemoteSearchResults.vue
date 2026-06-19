@@ -354,7 +354,8 @@ const loadPage = async (page: number) => {
     }
   } catch (error: unknown) {
     if (currentToken !== requestToken) return
-    errorMessage.value = (error as { message?: string })?.message || '远端搜索失败'
+    // ponytail: desktop bridge path bypasses handleRequest; reject is plain Error
+    errorMessage.value = error instanceof Error ? error.message : '远端搜索失败'
     emit('error', error instanceof Error ? error : new Error(errorMessage.value))
   } finally {
     clearTimeout(timer)

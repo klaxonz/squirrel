@@ -117,7 +117,9 @@ export function useRemoteChannel() {
       return true
     } catch (err: unknown) {
       if (token !== requestToken) return false
-      error.value = (err as { message?: string })?.message || '远端频道加载失败'
+      // ponytail: bridge IPC + the timeout race reject plain Error, not ApiError
+      // (this path bypasses handleRequest), so narrow once at the catch site.
+      error.value = err instanceof Error ? err.message : '远端频道加载失败'
       return false
     } finally {
       clearTimeout(timer)

@@ -84,6 +84,29 @@ export function useRssEntries(options: {
     }
   }
 
+  // Shared query builder + fetch for loadEntries/loadMore. Returns null on
+  // error (already reported via onStatus) so callers can early-return.
+  const buildEntriesParams = (): Record<string, unknown> => {
+    const params: Record<string, unknown> = { page: page.value, pageSize: pageSize.value }
+    if (options.selectedAccountId.value) params.accountId = options.selectedAccountId.value
+    if (options.selectedFeedId.value) params.feedId = options.selectedFeedId.value
+    if (activeFilter.value === 'unread') {
+      params.isRead = false
+    } else if (activeFilter.value === 'starred') {
+      params.isStarred = true
+    }
+    return params
+  }
+
+  const fetchEntriesPage = async (): Promise<{ fetched: RssEntry[]; total: number } | null> => {
+    const response = await getRssEntries(buildEntriesParams())
+    if (response.error) {
+      options?.onStatus?.(response.error.message, true)
+      return null
+    }
+    return { fetched: response.data?.data || [], total: response.data?.total || 0 }
+  }
+
   const loadEntries = async (isReset = false) => {
     if (activeFilter.value === 'recent') {
       await loadRecentlyViewed()
@@ -95,54 +118,26 @@ export function useRssEntries(options: {
       entries.value = []
       resetScroll()
     }
-    const params: Record<string, unknown> = { page: page.value, pageSize: pageSize.value }
-    if (options.selectedAccountId.value) params.accountId = options.selectedAccountId.value
-    if (options.selectedFeedId.value) params.feedId = options.selectedFeedId.value
-    if (activeFilter.value === 'unread') {
-      params.isRead = false
-    } else if (activeFilter.value === 'starred') {
-      params.isStarred = true
-    }
 
-    const response = await getRssEntries(params)
-    if (response.error) {
-      options?.onStatus?.(response.error.message || '加载条目失败', true)
-      return
-    }
+    const result = await fetchEntriesPage()
+    if (!result) return
 
-    const fetched = response.data?.data || []
-    totalEntries.value = response.data?.total || 0
-
-    if (isReset) {
-      entries.value = fetched
-    } else {
-      entries.value.push(...fetched)
-    }
+    totalEntries.value = result.total
+    entries.value = isReset ? result.fetched : [...entries.value, ...result.fetched]
   }
 
   const loadMore = async () => {
     if (loadingMoreEntries.value || !hasMoreEntries.value) return
     page.value += 1
     loadingMoreEntries.value = true
-    const params: Record<string, unknown> = { page: page.value, pageSize: pageSize.value }
-    if (options.selectedAccountId.value) params.accountId = options.selectedAccountId.value
-    if (options.selectedFeedId.value) params.feedId = options.selectedFeedId.value
-    if (activeFilter.value === 'unread') {
-      params.isRead = false
-    } else if (activeFilter.value === 'starred') {
-      params.isStarred = true
-    }
 
-    const response = await getRssEntries(params)
+    const result = await fetchEntriesPage()
     loadingMoreEntries.value = false
-    if (response.error) {
-      options?.onStatus?.(response.error.message || '加载条目失败', true)
-      return
-    }
-    const fetched = response.data?.data || []
-    totalEntries.value = response.data?.total || 0
+    if (!result) return
+
+    totalEntries.value = result.total
     const existingIds = new Set(entries.value.map((entry) => String(entry.id)))
-    entries.value.push(...fetched.filter((entry) => !existingIds.has(String(entry.id))))
+    entries.value.push(...result.fetched.filter((entry) => !existingIds.has(String(entry.id))))
   }
 
   const recordRecentlyViewed = (entry: RssEntry) => {
@@ -213,7 +208,7 @@ export function useRssEntries(options: {
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
         options.readingEntry.value.is_read = !newStatus
       }
-      options?.onStatus?.(response.error.message || '更新已读状态失败', true)
+      options?.onStatus?.(response.error.message, true)
       return
     }
     if (reloadFilteredList && shouldReloadAfterEntryUpdate(entry)) {
@@ -255,7 +250,7 @@ export function useRssEntries(options: {
           options.readingEntry.value.is_read = previousIsRead
         }
       })
-      options?.onStatus?.(response.error.message || '批量更新已读状态失败', true)
+      options?.onStatus?.(response.error.message, true)
       return
     }
     options?.onStatus?.(`已更新 ${response.data?.updated ?? targets.length} 篇文章`)
@@ -277,7 +272,7 @@ export function useRssEntries(options: {
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
         options.readingEntry.value.is_starred = !newStatus
       }
-      options?.onStatus?.(response.error.message || '更新星标状态失败', true)
+      options?.onStatus?.(response.error.message, true)
       return
     }
     options?.onStatus?.(newStatus ? '已收藏' : '已取消收藏')
