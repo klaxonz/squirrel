@@ -257,7 +257,7 @@ import useVideoActionBar from '../composables/useVideoActionBar'
 import useVideoClipMarkers from '../composables/useVideoClipMarkers'
 import useVideoPlaybackShell from '../composables/useVideoPlaybackShell'
 import useVideoPageNavigation from '../composables/useVideoPageNavigation'
-import { consumeVideoPlaybackSeed, peekVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
+import { consumeVideoPlaybackSeed } from '@/composables/videoPlaybackSeed'
 import { useGlobalVideoPlayer } from '@/composables/useGlobalVideoPlayer'
 import { useToast } from '@/composables/useToast'
 import { storeToRefs } from 'pinia'
@@ -283,27 +283,27 @@ const playerAdapter = new LocalStorageAdapter()
 const {
   seekGlobalVideoPlayer,
   playGlobalVideoPlayer,
-  activateGlobalVideoPlayerSession,
-  clearGlobalVideoPlayerSession,
   registerGlobalVideoPlayerTarget,
   unregisterGlobalVideoPlayerTarget,
   focusGlobalVideoPlayer,
-  globalVideoPlayerSession,
+  publishGlobalVideoPlayerWiring,
+  session,
 } = useGlobalVideoPlayer()
 
-const initialPlaybackSeed = peekVideoPlaybackSeed(route.params.videoId as string)
+// ADR-0002 PR2 — usePlaybackOrchestrator now returns read-only
+// projections of PlaybackSession.facts (no local refs, no hydratePlaybackState).
+// The initial seed is no longer passed here; the shell hands it to
+// session.beginNewVideo(id, seed) at mount. `video` is a computed projection —
+// mutations go through session.update({ video }). The other projections
+// (playbackSource / subtitleTracks / externalError / isResolvingPlayback /
+// startTime) were only ever forwarded into the shell's watcher; with the
+// watcher gone, VideoPlay no longer reads them, so they're not destructured.
 const {
   video,
-  startTime,
   relatedVideos,
   loadingRelated,
-  playbackSource,
-  subtitleTracks,
   loadAndPlayById,
-  externalError,
-  isResolvingPlayback,
-  hydratePlaybackState,
-} = usePlaybackOrchestrator(initialPlaybackSeed)
+} = usePlaybackOrchestrator()
 
 const { sendReport } = useVideoHistory()
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction()
@@ -365,17 +365,22 @@ const ensureLocalVideo = async (targetVideo: VideoPageVideo | null): Promise<Vid
   const savedVideo = await savePromise
   if (!savedVideo?.id) return null
 
-  if (video.value && String(video.value.url || '') === url) {
-    video.value = {
-      ...video.value,
+  const currentVideo = video.value
+  if (currentVideo && String(currentVideo.url || '') === url) {
+    // ADR-0002 PR2 — `video` is a read-only projection of
+    // session.facts.video, so the remote→local id rewrite routes through
+    // session.update instead of mutating the ref in place.
+    const nextVideo: VideoPageVideo = {
+      ...currentVideo,
       id: String(savedVideo.id),
-      interaction_type: savedVideo.interaction_type ?? video.value.interaction_type ?? undefined,
-      last_position: savedVideo.last_position ?? video.value.last_position,
-      clip_markers: savedVideo.clip_markers ?? video.value.clip_markers,
+      interaction_type: savedVideo.interaction_type ?? currentVideo.interaction_type ?? undefined,
+      last_position: savedVideo.last_position ?? currentVideo.last_position,
+      clip_markers: savedVideo.clip_markers ?? currentVideo.clip_markers,
       source: 'local',
-      site: video.value.site || savedVideo.site,
+      site: currentVideo.site || savedVideo.site,
       url,
     }
+    session.update({ video: nextVideo })
     if (String(route.params.videoId || '') !== String(savedVideo.id)) {
       await router.replace({ name: 'VideoPlay', params: { videoId: savedVideo.id } })
     }
@@ -438,6 +443,7 @@ const { videoActions, videoOverflowActions, handleVideoAction } = useVideoAction
 
 const { handlePlaybackTimeUpdate, handleClipMarkerSeek, handleClipMarkersUpdated } = useVideoClipMarkers({
   video,
+  session,
   seekToTime: async (t: number) => {
     if (await seekGlobalVideoPlayer(t)) await playGlobalVideoPlayer()
     focusGlobalVideoPlayer()
@@ -511,7 +517,9 @@ watch(shouldResolveJavdbMetadata, async (shouldResolve) => {
     if (!current || String(current.url || '') !== url) return
     const mergedVideo = mergeVideoMetadata(current, metadata as Record<string, unknown>, url)
     if (mergedVideo) {
-      video.value = mergedVideo
+      // ADR-0002 PR2 — `video` is a read-only projection; enrichment
+      // routes through session.update.
+      session.update({ video: mergedVideo })
     }
   } catch (err) {
     Logger.warn('[VideoPlay] Metadata enrichment failed', err)
@@ -611,21 +619,18 @@ const {
   videoPlayerHostRef,
   isWidescreen,
 } = useVideoPlaybackShell({
-  route, playerAdapter, video, playbackSource, subtitleTracks,
-  resolvedInitialTime: computed(() => startTime.value),
-  clipMarkers: ref([]),
-  hasPrevVideo: ref(false), hasNextVideo: ref(false),
-  externalError, isResolvingPlayback, effectiveTheme, relatedVideos, loadingRelated,
-  hasPrev: ref(false), hasNext: ref(false),
-  globalVideoPlayerSession,
-  activateGlobalVideoPlayerSession,
-  clearGlobalVideoPlayerSession,
+  route,
+  effectiveTheme,
+  consumePlaybackSeed: (id: unknown) => consumeVideoPlaybackSeed(String(id || '')),
+  loadAndPlayById,
   registerGlobalVideoPlayerTarget,
   unregisterGlobalVideoPlayerTarget,
-  focusGlobalVideoPlayer, hydratePlaybackState,
-  loadAndPlayById,
-  consumePlaybackSeed: (id: unknown) => consumeVideoPlaybackSeed(String(id || '')),
-  onVideoPlay, onVideoPause, handleAutoplayNext,
+  focusGlobalVideoPlayer,
+  publishWiring: (handlers) => publishGlobalVideoPlayerWiring(handlers, playerAdapter),
+  flushPendingReport,
+  onVideoPlay,
+  onVideoPause,
+  handleAutoplayNext,
   handlePlaybackTimeUpdate: handleVideoTimeUpdate,
   handlePrevVideoFromPlaylist,
   handleNextVideoFromPlaylist,
@@ -634,7 +639,8 @@ const {
   },
   handleClipMarkerSeek,
   handleClipMarkersUpdated,
-  flushPendingReport
+  hasPrev: ref(false),
+  hasNext: ref(false),
 })
 
 const resolveRemoteChannelSite = (url: string) => {

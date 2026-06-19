@@ -1,47 +1,33 @@
 import { nextTick } from 'vue'
 import { usePlayerStore } from '@/stores/player'
-import { usePlaybackSession } from './usePlaybackSession'
-import type { PlaybackSessionFacts } from './usePlaybackSession'
+import { usePlaybackSession } from '@/composables/usePlaybackSession'
 import type { IPlayerAdapter } from '@/components/video-player/core'
 import type { PlayerHandlers, VideoPlayerHandle } from '@/types/playerSession'
 import { Logger } from '@/utils/logger'
 
-// ponytail: this composable used to be a thin shim over the old
-// `playerStore.session` reactive bag. Per ADR-0002 the facts layer moved to
-// PlaybackSession. The public surface (the names VideoPlay /
-// useVideoPlaybackShell call) is preserved so PR1 is a structural swap; the
-// implementations route to the new owner. The two dead wrappers
-// (setGlobalVideoPlayerPictureInPicture / setGlobalVideoPlayerCurrentVideoId)
-// were deleted — they had zero callers.
-
-// Payload shape the shell still passes to activate/update. `target` /
-// `adapter` / `handlers` are wiring state (PR1 keeps them on the Pinia store,
-// PR2 relocates them); the rest are facts routed to PlaybackSession.
-export type PlayerSessionPayload = Partial<PlaybackSessionFacts> & {
-  target?: HTMLElement | null
-  adapter?: IPlayerAdapter | null
-  handlers?: PlayerHandlers
-}
+// ADR-0002 PR2 — the facts-layer facade verbs
+// (`activateGlobalVideoPlayerSession` / `updateGlobalVideoPlayerSession` /
+// `clearGlobalVideoPlayerSession` / `globalVideoPlayerSession`) are gone. With
+// the shell's 16-source watcher deleted, there is nothing for them to route:
+// the orchestrator writes facts directly via `session.update()` /
+// `session.beginNewVideo()`, and the shell calls `session.release()` on unmount.
+// What remains here are the wiring + utility helpers GlobalVideoPlayerHost and
+// the shell still need: target registration, player focus/seek/play, and a
+// `publishWiring` helper that publishes the adapter + handler bag onto the
+// slimmed Pinia store (which the host reads). ponytail: PR3 relocates the
+// adapter/handler wiring into the host itself.
 
 export function useGlobalVideoPlayer() {
   const playerStore = usePlayerStore()
   const session = usePlaybackSession()
 
-  const applyPayload = (payload: PlayerSessionPayload) => {
-    if (payload.target !== undefined) playerStore.target = payload.target ?? null
-    if (payload.adapter !== undefined) playerStore.adapter = payload.adapter ?? null
-    if (payload.handlers !== undefined) playerStore.handlers = payload.handlers ?? ({} as PlayerHandlers)
-
-    const { target: _t, adapter: _a, handlers: _h, ...facts } = payload
-    if (Object.keys(facts).length > 0) session.update(facts)
-  }
-
-  const activateGlobalVideoPlayerSession = (payload: PlayerSessionPayload) => {
-    applyPayload(payload)
-  }
-
-  const updateGlobalVideoPlayerSession = (payload: PlayerSessionPayload) => {
-    applyPayload(payload)
+  // Wiring publication. The host reads `playerStore.adapter` / `handlers` to
+  // mount VideoPlayer; the shell assembles them from view callbacks + the
+  // LocalStorageAdapter. This is the seam between the two. ponytail: PR3 folds
+  // it into the host (the orchestrator becomes the direct emit target).
+  const publishWiring = (handlers: PlayerHandlers, adapter?: IPlayerAdapter | null) => {
+    if (adapter !== undefined) playerStore.adapter = adapter ?? null
+    playerStore.handlers = handlers
   }
 
   const registerGlobalVideoPlayerTarget = (element: HTMLElement | null) => {
@@ -52,18 +38,6 @@ export function useGlobalVideoPlayer() {
     if (!element || playerStore.target === element) {
       playerStore.target = null
     }
-  }
-
-  const clearGlobalVideoPlayerSession = () => {
-    // PR1 keeps the PiP-aware semantics on the clear path too, so behavior is
-    // byte-identical to the old clearSession (which was only called from the
-    // shell's onUnmounted after the PiP check). PR2 collapses this to
-    // session.release() at the call site and drops the wiring reset.
-    session.release()
-    playerStore.playerRef = null
-    playerStore.target = null
-    playerStore.adapter = null
-    playerStore.handlers = {} as PlayerHandlers
   }
 
   const focusPlayer = async () => {
@@ -108,16 +82,13 @@ export function useGlobalVideoPlayer() {
   }
 
   return {
-    globalVideoPlayerSession: session.facts,
-    activateGlobalVideoPlayerSession,
-    updateGlobalVideoPlayerSession,
-    clearGlobalVideoPlayerSession,
+    session,
     registerGlobalVideoPlayerTarget,
     unregisterGlobalVideoPlayerTarget,
     registerGlobalVideoPlayerInstance: (instance: VideoPlayerHandle | null) => { playerStore.playerRef = instance },
     focusGlobalVideoPlayer: focusPlayer,
     seekGlobalVideoPlayer: seekPlayer,
     playGlobalVideoPlayer: playPlayer,
+    publishGlobalVideoPlayerWiring: publishWiring,
   }
 }
-

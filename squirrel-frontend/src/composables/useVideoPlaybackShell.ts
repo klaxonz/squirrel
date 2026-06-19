@@ -2,47 +2,42 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 
 import { Logger } from '@/utils/logger'
-import type { ClipMarker, VideoId, VideoPageVideo, VideoProfile } from '@/types/videoPlayback'
-import type { MediaSource, IPlayerAdapter } from '@/components/video-player/core'
-import type { SubtitleTrack } from '@/components/video-player/plugins/subtitles'
-import type { ExternalErrorState } from '@/types/playerSession'
-import type { PlayerSessionPayload } from './useGlobalVideoPlayer'
+import type { ClipMarker, VideoId, VideoPageVideo } from '@/types/videoPlayback'
+import type { PlayerHandlers } from '@/types/playerSession'
+import { usePlaybackSession } from '@/composables/usePlaybackSession'
 
-type PlaybackSourceLike = MediaSource | null
+import { useUIStore } from '@/stores/ui'
+
 type VideoSeedGetter = (videoId: unknown) => VideoPageVideo | null
 
 type RouteLike = {
   params: Record<string, unknown>
 }
 
-import { useUIStore } from '@/stores/ui'
-
+// ADR-0002 PR2 — the data-flow inversion. The 16-source reconciliation
+// `watch([...])` that used to pump orchestrator refs into the session is GONE.
+// PlaybackSession.facts is now the single source of truth, written by the
+// orchestrator's fetch sites + a few honest 1-source forwards below
+// (widescreen / theme / hasPrev / hasNext). Cross-route reuse collapses to
+// session.isReusableFor(id), and the no-op-else-beginNewVideo branch below
+// replaces the hydrate path.
+//
+// What this shell still owns:
+//   - view-local element refs (host / page / section / meta)
+//   - the isWidescreen UI ref + its class/sidebar side effects (fact forwarded)
+//   - the global player target lifecycle (register/unregister on the Pinia store)
+//   - threading the player event handlers + adapter (ponytail: PR3 relocates
+//     these wiring handles into the host)
 export default function useVideoPlaybackShell({
   route,
-  playerAdapter,
-  video,
-  playbackSource,
-  subtitleTracks,
-  resolvedInitialTime,
-  clipMarkers,
-  hasPrevVideo,
-  hasNextVideo,
-  externalError,
-  isResolvingPlayback,
   effectiveTheme,
-  relatedVideos,
-  loadingRelated,
-  hasPrev,
-  hasNext,
-  globalVideoPlayerSession,
-  activateGlobalVideoPlayerSession,
-  clearGlobalVideoPlayerSession,
+  consumePlaybackSeed,
+  loadAndPlayById,
   registerGlobalVideoPlayerTarget,
   unregisterGlobalVideoPlayerTarget,
   focusGlobalVideoPlayer,
-  hydratePlaybackState,
-  loadAndPlayById,
-  consumePlaybackSeed,
+  publishWiring,
+  flushPendingReport,
   onVideoPlay,
   onVideoPause,
   handleAutoplayNext,
@@ -52,52 +47,18 @@ export default function useVideoPlaybackShell({
   handlePlayerRetry,
   handleClipMarkerSeek,
   handleClipMarkersUpdated,
-  flushPendingReport,
+  hasPrev,
+  hasNext,
 }: {
   route: RouteLike
-  playerAdapter: IPlayerAdapter
-  video: Ref<VideoPageVideo | null>
-  playbackSource: Ref<PlaybackSourceLike>
-  subtitleTracks: Ref<SubtitleTrack[]>
-  resolvedInitialTime: Ref<number | null | undefined>
-  clipMarkers: Ref<ClipMarker[]>
-  hasPrevVideo: Ref<boolean>
-  hasNextVideo: Ref<boolean>
-  externalError: Ref<ExternalErrorState | null>
-  isResolvingPlayback: Ref<boolean>
   effectiveTheme: Ref<string>
-  relatedVideos: Ref<VideoPageVideo[]>
-  loadingRelated: Ref<boolean>
-  hasPrev: Ref<boolean>
-  hasNext: Ref<boolean>
-  globalVideoPlayerSession: {
-    videoId?: string | number | null
-    source?: MediaSource | null
-    uploader?: string
-    externalError?: ExternalErrorState | null
-    externalLoading?: boolean
-    video?: VideoPageVideo | null
-    subtitles?: SubtitleTrack[]
-    relatedVideos?: VideoPageVideo[]
-    loadingRelated?: boolean
-    pictureInPicture?: boolean
-  }
-  activateGlobalVideoPlayerSession: (payload: PlayerSessionPayload) => void
-  clearGlobalVideoPlayerSession: () => void
+  consumePlaybackSeed: VideoSeedGetter
+  loadAndPlayById: (videoId: VideoId, initialVideoData?: VideoPageVideo | null, options?: Record<string, unknown>) => Promise<void>
   registerGlobalVideoPlayerTarget: (target: HTMLElement) => void
   unregisterGlobalVideoPlayerTarget: () => void
   focusGlobalVideoPlayer: () => Promise<void>
-  hydratePlaybackState: (payload: {
-    videoSnapshot: VideoPageVideo | null
-    nextPlaybackSource: PlaybackSourceLike
-    nextSubtitleTracks: SubtitleTrack[]
-    nextExternalError: ExternalErrorState | null
-    nextIsResolvingPlayback: boolean | undefined
-    nextRelatedVideos: VideoPageVideo[]
-    nextLoadingRelated: boolean | undefined
-  }) => void
-  loadAndPlayById: (videoId: VideoId, initialVideoData?: VideoPageVideo | null, options?: Record<string, unknown>) => Promise<void>
-  consumePlaybackSeed: VideoSeedGetter
+  publishWiring: (handlers: PlayerHandlers) => void
+  flushPendingReport: () => Promise<void>
   onVideoPlay: () => void
   onVideoPause: () => void
   handleAutoplayNext: (event?: { autoplay?: boolean; autoplayNext?: boolean; loop?: boolean }) => void | Promise<void>
@@ -107,9 +68,11 @@ export default function useVideoPlaybackShell({
   handlePlayerRetry: () => void | Promise<void>
   handleClipMarkerSeek: (time: number) => void | Promise<void>
   handleClipMarkersUpdated: (markers: ClipMarker[]) => void
-  flushPendingReport: () => Promise<void>
+  hasPrev: Ref<boolean>
+  hasNext: Ref<boolean>
 }) {
   const uiStore = useUIStore()
+  const session = usePlaybackSession()
   const videoPlayerHostRef = ref<HTMLElement | null>(null)
   const videoPageRef = ref<HTMLElement | null>(null)
   const videoSectionRef = ref<HTMLElement | null>(null)
@@ -128,6 +91,10 @@ export default function useVideoPlaybackShell({
     isWidescreen.value = value
     setWidescreenClass(isWidescreen.value)
     syncWidescreenSidebarState(isWidescreen.value)
+    // Fact forward: the host renders the widescreen flag from facts, so the
+    // view-local toggle must reach the owner. (One honest 1-source write — not
+    // a reconciliation pump: there is a single writer, toggled on user action.)
+    session.update({ widescreen: !!value })
   }
 
   const focusVideoPlayer = async () => {
@@ -138,55 +105,25 @@ export default function useVideoPlaybackShell({
     }
   }
 
-  const isSameGlobalPlaybackSession = (videoId = route.params.videoId) => {
-    return String(globalVideoPlayerSession.videoId || '') === String(videoId || '')
-  }
+  // Assembles the player handler bag from the view-supplied callbacks. The host
+  // reads it from `playerStore.handlers`; PR2 keeps that Pinia wiring in place.
+  // ponytail: PR3 relocates this into the host once the orchestrator becomes
+  // the direct emit target (no VideoPlayer emit → host → handlers round-trip).
+  const buildPlayerHandlers = (): PlayerHandlers => ({
+    onPlay: onVideoPlay,
+    onPause: onVideoPause,
+    onEnded: handleAutoplayNext,
+    onTimeUpdate: handlePlaybackTimeUpdate,
+    onPrev: hasPrev.value ? handlePrevVideoFromPlaylist : null,
+    onNext: hasNext.value ? handleNextVideoFromPlaylist : null,
+    onRetry: handlePlayerRetry,
+    onWidescreenChange: toggleWidescreen,
+    onClipMarkerSelect: handleClipMarkerSeek,
+    onClipMarkersUpdated: handleClipMarkersUpdated,
+  })
 
-  const hasJavdbActors = (videoSnapshot: VideoPageVideo | null | undefined) => {
-    const actors = videoSnapshot?.actors
-    return Array.isArray(actors) && actors.some((actor) => String(actor?.name || '').trim())
-  }
-
-  const shouldRefreshJavdbSession = () => {
-    const videoSnapshot = globalVideoPlayerSession.video || null
-    const videoUrl = String(videoSnapshot?.url || '')
-    if (!videoUrl.includes('javdb.com/')) return false
-    return !hasJavdbActors(videoSnapshot)
-  }
-
-  const hasReusableGlobalPlaybackSession = (videoId = route.params.videoId) => {
-    if (!isSameGlobalPlaybackSession(videoId)) return false
-    if (shouldRefreshJavdbSession()) return false
-
-    return !!(
-      globalVideoPlayerSession.source
-      || globalVideoPlayerSession.externalError
-      || globalVideoPlayerSession.externalLoading
-    )
-  }
-
-  const hydrateFromGlobalPlaybackSession = () => {
-    hydratePlaybackState({
-      videoSnapshot: globalVideoPlayerSession.video || null,
-      nextPlaybackSource: globalVideoPlayerSession.source || null,
-      nextSubtitleTracks: globalVideoPlayerSession.subtitles || [],
-      nextExternalError: globalVideoPlayerSession.externalError || null,
-      nextIsResolvingPlayback: globalVideoPlayerSession.externalLoading,
-      nextRelatedVideos: globalVideoPlayerSession.relatedVideos || [],
-      nextLoadingRelated: globalVideoPlayerSession.loadingRelated,
-    })
-  }
-
-  const hasActivePictureInPictureSession = () => {
-    if (globalVideoPlayerSession.pictureInPicture) {
-      return true
-    }
-
-    if (typeof document === 'undefined') {
-      return false
-    }
-
-    return !!document.pictureInPictureElement
+  const syncWiring = () => {
+    publishWiring(buildPlayerHandlers())
   }
 
   watch(videoPlayerHostRef, (element) => {
@@ -198,135 +135,65 @@ export default function useVideoPlaybackShell({
     unregisterGlobalVideoPlayerTarget()
   }, { immediate: true })
 
-  watch(
-    [
-      video,
-      playbackSource,
-      subtitleTracks,
-      () => video.value?.title,
-      resolvedInitialTime,
-      clipMarkers,
-      hasPrevVideo,
-      hasNextVideo,
-      externalError,
-      isWidescreen,
-      isResolvingPlayback,
-      effectiveTheme,
-      relatedVideos,
-      loadingRelated,
-      hasPrev,
-      hasNext,
-    ],
-    ([
-      nextVideo,
-      nextSource,
-      nextSubtitles,
-      nextTitle,
-      nextInitialTime,
-      nextClipMarkers,
-      nextHasPrev,
-      nextHasNext,
-      nextExternalError,
-      nextWidescreen,
-      nextExternalLoading,
-      nextTheme,
-      nextRelatedVideos,
-      nextLoadingRelated,
-      nextPlaylistPrev,
-      nextPlaylistNext,
-    ]) => {
-      const primaryProfile: VideoProfile | null = Array.isArray(nextVideo?.subscriptions)
-        ? nextVideo.subscriptions[0] || null
-        : (Array.isArray(nextVideo?.actors) ? nextVideo.actors[0] || null : null)
-      const nextUploader = String(
-        primaryProfile?.name
-        || nextVideo?.uploader
-        || nextVideo?.uploader_name
-        || ''
-      )
+  // Honest 1-source forward: theme comes from the theme store (not from a fetch
+  // site), so the orchestrator never writes it. The shell — the only consumer
+  // that knows about the theme store — forwards store changes into facts.
+  watch(effectiveTheme, (theme) => {
+    session.update({ theme })
+  }, { immediate: true })
 
-      const hasLocalPlaybackState = !!(
-        nextVideo
-        || nextSource
-        || nextExternalError
-        || nextExternalLoading
-      )
-
-      if (!hasLocalPlaybackState && hasReusableGlobalPlaybackSession()) {
-        return
-      }
-
-      activateGlobalVideoPlayerSession({
-        target: videoPlayerHostRef.value,
-        source: nextSource,
-        subtitles: nextSubtitles || [],
-        clipMarkers: nextClipMarkers || [],
-        title: String(nextTitle || ''),
-        uploader: nextUploader,
-        initialTime: nextInitialTime ?? undefined,
-        hasPrev: !!nextHasPrev,
-        hasNext: !!nextHasNext,
-        externalError: nextExternalError,
-        widescreen: !!nextWidescreen,
-        externalLoading: !!nextExternalLoading,
-        adapter: playerAdapter,
-        theme: nextTheme,
-        videoId: String(nextVideo?.id ?? route.params.videoId ?? ''),
-        video: nextVideo || null,
-        relatedVideos: nextRelatedVideos || [],
-        loadingRelated: !!nextLoadingRelated,
-        handlers: {
-          onPlay: onVideoPlay,
-          onPause: onVideoPause,
-          onEnded: handleAutoplayNext,
-          onTimeUpdate: handlePlaybackTimeUpdate,
-          onPrev: nextPlaylistPrev ? handlePrevVideoFromPlaylist : null,
-          onNext: nextPlaylistNext ? handleNextVideoFromPlaylist : null,
-          onRetry: handlePlayerRetry,
-          onWidescreenChange: toggleWidescreen,
-          onClipMarkerSelect: handleClipMarkerSeek,
-          onClipMarkersUpdated: handleClipMarkersUpdated,
-        },
-      })
-    },
-    { immediate: true },
-  )
+  // hasPrev / hasNext feed the host's prev/next buttons via facts. PR1 left
+  // them as dead stubs (always false); PR2 still leaves the caller to supply
+  // refs, but forwards them so the moment a real caller wires navigation flags
+  // in, they reach the host without a pump. The handler bag also depends on
+  // these (onPrev/onNext gating), so we republish wiring here too.
+  watch([hasPrev, hasNext], ([prev, next]) => {
+    session.update({ hasPrev: !!prev, hasNext: !!next })
+    syncWiring()
+  }, { immediate: true })
 
   onMounted(async () => {
-    if (hasReusableGlobalPlaybackSession()) {
-      hydrateFromGlobalPlaybackSession()
+    const videoId = String(route.params.videoId || '')
+    if (session.isReusableFor(videoId)) {
+      // No-op: the surviving session already represents this video, and the
+      // orchestrator's computed projections reflect it. Nothing to fetch.
     } else {
-        const videoId = String(route.params.videoId || '')
-        await loadAndPlayById(videoId, consumePlaybackSeed(videoId))
+      // loadAndPlayById owns session.beginNewVideo(videoId, seed) — it clears
+      // stale facts, seeds facts.video, and marks externalLoading. Calling
+      // beginNewVideo here too would null the seed (begin sets facts.video =
+      // seed, and the inner call passes null).
+      await loadAndPlayById(videoId, consumePlaybackSeed(videoId))
     }
     await focusVideoPlayer()
 
     setWidescreenClass(isWidescreen.value)
     syncWidescreenSidebarState(isWidescreen.value)
+    syncWiring()
   })
 
   watch(() => route.params.videoId, async (newId, oldId) => {
-    if (newId && newId !== oldId && video.value?.id !== newId) {
-      void flushPendingReport()
-      if (hasReusableGlobalPlaybackSession(newId)) {
-        hydrateFromGlobalPlaybackSession()
-      } else {
-        const videoId = String(newId || '')
-        await loadAndPlayById(videoId, consumePlaybackSeed(videoId))
-      }
-      await focusVideoPlayer()
+    if (!newId || newId === oldId) return
+    if (session.facts.videoId === String(newId)) return
+    void flushPendingReport()
+    const videoId = String(newId || '')
+    if (session.isReusableFor(videoId)) {
+      // Reuse — see onMounted.
+    } else {
+      await loadAndPlayById(videoId, consumePlaybackSeed(videoId))
     }
+    await focusVideoPlayer()
+    syncWiring()
   })
 
   onUnmounted(() => {
     setWidescreenClass(false)
     syncWidescreenSidebarState(false)
-  unregisterGlobalVideoPlayerTarget()
-    if (hasActivePictureInPictureSession()) {
+    unregisterGlobalVideoPlayerTarget()
+    if (session.facts.pictureInPicture || (typeof document !== 'undefined' && document.pictureInPictureElement)) {
       return
     }
     void flushPendingReport()
-    clearGlobalVideoPlayerSession()
+    session.release()
   })
 
   return {
@@ -337,7 +204,5 @@ export default function useVideoPlaybackShell({
     isWidescreen,
     toggleWidescreen,
     focusVideoPlayer,
-    hasReusableGlobalPlaybackSession,
-    hydrateFromGlobalPlaybackSession,
   }
 }

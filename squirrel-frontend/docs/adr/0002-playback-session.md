@@ -1,6 +1,8 @@
 # ADR-0002: PlaybackSession — single owner for "what's playing now"
 
-- **Status:** Accepted (design complete; implementation pending — two PRs)
+- **Status:** Implemented (PR1 structural + PR2 data-flow inversion both landed
+  on `fix/bug`). See _Implementation outcome (PR2)_ below for the one place the
+  shipped code diverged from the plan below, and why.
 - **Date:** 2026-06-19
 - **Scope:** `squirrel-frontend/src/composables/`, `src/stores/player.ts`,
   `src/components/video-player/GlobalVideoPlayerHost.vue`,
@@ -273,3 +275,55 @@ will land with the runtime-layer follow-up that also removes Home B's
   become projections (PR2), `hydratePlaybackState` in the orchestrator
   either shrinks to a `session.update(...)` forward or is deleted entirely.
   That judgement is made in PR2, not here.
+
+## Implementation outcome (PR2)
+
+PR2 landed the data-flow inversion: the 16-source reconciliation `watch()` in
+`useVideoPlaybackShell` is deleted; the orchestrator's seven fact refs are now
+`computed` projections of `PlaybackSession.facts`; fetch sites write through
+`session.update()` / `session.beginNewVideo()`; cross-route reuse collapses to
+`session.isReusableFor(id)` + a no-op-else-begin branch. Verification bar met:
+`test` (12/12, the PR1 contract test unchanged) + `typecheck` + `lint` (only the
+two pre-existing EventEmitter warnings) + `build:check` all green.
+
+The decisions made during implementation, where the shipped code either refined
+or diverged from the plan above:
+
+- **`video` is a computed projection (ADR-pure), and all five of its in-place
+  mutation callers were redirected through `session.update({ video })`.** This
+  is the one place the plan (item 1 of _PR2 — data-flow inversion_) said "make
+  refs projections" but the blast radius forced a choice: `video` had three
+  clip-marker writers (`useVideoClipMarkers`), two subtitle-injection writers
+  (`useVideoDetail`), a javdb-enrichment writer, and a remote→local save writer
+  (`VideoPlay`), all doing `video.value.x = …`. A read-only projection would
+  have no-oped all of them. The chosen path (Full ADR-pure) reroutes every one
+  of those through `session.update({ video: { ...current, …patch } })`, keeping
+  `facts.video` as the single mutable home and every consumer a view. The other
+  six facts had no in-place callers and inverted cleanly.
+- **`hydratePlaybackState` was deleted** (not shrunk). Its only caller was the
+  shell's `hydrateFromGlobalPlaybackSession`, which itself deleted — with the
+  orchestrator's refs now projecting from `session.facts`, there is nothing to
+  hydrate.
+- **`theme` / `widescreen` / `hasPrev` / `hasNext` / `initialTime` / `title` /
+  `uploader` are written by honest single-source forwards**, not a
+  reconciliation pump. `theme` is forwarded from the theme store; `widescreen`
+  from the shell's view-local toggle; `initialTime` / `title` / `uploader` from
+  the orchestrator (derived from `facts.video`); `hasPrev` / `hasNext` from the
+  shell's caller-supplied refs. Each has exactly one writer — the defining
+  property that distinguished these from the deleted 16-source pump.
+- **`clipMarkers` / `hasPrev` / `hasNext` were dead stubs in PR1** (always `[]`
+  / `false`); PR2 leaves them at their defaults. The real
+  `useVideoPageNavigation` `hasPrevVideo` / `hasNextVideo` computeds remain
+  unwired into VideoPlay — a pre-existing gap, not a regression, noted here so
+  it is not silently forgotten.
+- **`adapter` / `handlers` wiring stays on the Pinia store** (the host reads
+  `playerStore.adapter` / `playerStore.handlers`); PR2 publishes them via a new
+  `publishGlobalVideoPlayerWiring` helper on `useGlobalVideoPlayer`. The full
+  relocation into the host (where the orchestrator becomes the direct emit
+  target) is the optional PR3 the handoff flagged as deferred.
+- **`useGlobalVideoPlayer` shrank further than PR1 planned.** With the
+  shell watcher gone, `activateGlobalVideoPlayerSession` /
+  `updateGlobalVideoPlayerSession` / `clearGlobalVideoPlayerSession` /
+  `globalVideoPlayerSession` all lost their callers and were deleted; the
+  shell calls `session.release()` directly on unmount. The 12-symbol audit
+  the ADR deferred is now partially closed by this PR.

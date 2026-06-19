@@ -1,7 +1,9 @@
-import { ref, watch } from 'vue'
+import { computed, watch } from 'vue'
+
 import useVideoDetail from './useVideoDetail'
 import useRelatedVideos from './useRelatedVideos'
 import useVideoOperations from './useVideoOperations'
+import { usePlaybackSession } from './usePlaybackSession'
 import { Logger } from '@/utils/logger'
 import type { MediaSource } from '@/components/video-player/core'
 import type { SubtitleTrack } from '@/components/video-player/plugins/subtitles'
@@ -96,6 +98,17 @@ const mergePlaybackMetadata = (currentVideo: VideoPageVideo | null, playbackMeta
   return mergeVideoMetadata(currentVideo, toRecord(playbackMetadata.video), String(playbackMetadata.source_url || ''))
 }
 
+// ADR-0002 PR2 — the data-flow inversion. The 7 local refs that used
+// to duplicate session facts (video / playbackSource / subtitleTracks /
+// externalError / isResolvingPlayback / relatedVideos / loadingRelated) are now
+// read-only `computed` projections of PlaybackSession.facts. There is no second
+// copy of the facts for the shell's watcher to reconcile — that watcher is
+// deleted in PR2. Mutation happens once, at the fetch/mutation sites, through
+// session.update() / session.beginNewVideo().
+//
+// The `title` / `uploader` presentation facts, previously derived inside the
+// shell's watcher body, are derived here from the session video and forwarded
+// to facts whenever the video identity changes.
 type DesktopWindow = Window & {
   desktopApp?: { isDesktop?: boolean }
 }
@@ -108,15 +121,45 @@ const isDesktopPlaybackClient = () => {
   return /electron|tauri/i.test(String(navigator.userAgent || ''))
 }
 
-export default function usePlaybackOrchestrator(initialVideo: VideoPageVideo | null = null) {
-  const { video, startTime, fetchVideoDetails, maybeInjectSubtitles, setVideoSnapshot } = useVideoDetail(initialVideo)
-  const { relatedVideos, loadingRelated, fetchRelatedVideos, setRelatedVideosSnapshot } = useRelatedVideos(video)
+// Derive the presentation facts (title / uploader) from a video. Mirrors the
+// derivation the shell's 16-source watcher used to do inline; now it lives next
+// to the owner so the watcher doesn't have to.
+const firstProfile = (video: VideoPageVideo | null): VideoProfile | null => {
+  const subs = video?.subscriptions
+  if (Array.isArray(subs) && subs.length) return subs[0] || null
+  const actors = video?.actors
+  if (Array.isArray(actors) && actors.length) return actors[0] || null
+  return null
+}
+
+const derivePresentation = (video: VideoPageVideo | null) => {
+  const primaryProfile = firstProfile(video)
+  const uploader = String(
+    primaryProfile?.name
+    || video?.uploader
+    || video?.uploader_name
+    || ''
+  )
+  const title = String(video?.title || '')
+  return { title, uploader }
+}
+
+export default function usePlaybackOrchestrator() {
+  const session = usePlaybackSession()
+  const { video, startTime, fetchVideoDetails, maybeInjectSubtitles, setVideoSnapshot } = useVideoDetail(session)
+  const { relatedVideos, loadingRelated, fetchRelatedVideos } = useRelatedVideos(session, video)
   const { getPlaybackSource } = useVideoOperations()
-  const playbackSource = ref<MediaSource | null>(null)
-  const subtitleTracks = ref<SubtitleTrack[]>([])
-  const externalError = ref<ExternalErrorState | null>(null)
-  const isResolvingPlayback = ref(false)
-  const requestSeq = ref(0)
+
+  // Projections — read-only views of the single owner. There are no local refs
+  // for these facts anymore.
+  const playbackSource = computed(() => session.facts.source)
+  const subtitleTracks = computed(() => session.facts.subtitles)
+  const externalError = computed(() => session.facts.externalError)
+  const isResolvingPlayback = computed(() => session.facts.externalLoading)
+  // Stale-closure guard for superseded fetches. Plain counter (not a ref): it
+  // is never read reactively — only compared inside loadAndPlayById's async
+  // branches. Matches the idiom in useRelatedVideos.
+  let requestSeq = 0
 
   const loadAndPlayById = async (
     videoId: VideoId,
@@ -125,17 +168,18 @@ export default function usePlaybackOrchestrator(initialVideo: VideoPageVideo | n
   ) => {
     if (!videoId) return
 
-    requestSeq.value += 1
-    const seq = requestSeq.value
+    requestSeq += 1
+    const seq = requestSeq
 
     Logger.debug('[usePlaybackOrchestrator] loadAndPlayById start', { videoId, seq })
 
-    externalError.value = null
-    isResolvingPlayback.value = true
-    playbackSource.value = null
-    subtitleTracks.value = []
+    // Begin a fresh session for this video. This clears stale source / video /
+    // externalError and marks externalLoading. `initialVideoData` seeds the
+    // video fact so subsequent reads (uploader / title / detail dedupe) resolve
+    // synchronously.
+    session.beginNewVideo(String(videoId), initialVideoData)
 
-    const currentVideoId = video.value?.id != null ? String(video.value.id) : ''
+    const currentVideoId = session.facts.video?.id != null ? String(session.facts.video.id) : ''
     const targetVideoId = String(videoId)
 
     if (initialVideoData && initialVideoData.id === videoId) {
@@ -145,7 +189,7 @@ export default function usePlaybackOrchestrator(initialVideo: VideoPageVideo | n
       setVideoSnapshot(null)
     }
 
-    const hasInitialData = !!video.value && video.value.id === videoId
+    const hasInitialData = !!session.facts.video && session.facts.video.id === videoId
     const detailPromise = !hasInitialData
       ? fetchVideoDetails(videoId).catch((e) => {
           Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e)
@@ -160,8 +204,8 @@ export default function usePlaybackOrchestrator(initialVideo: VideoPageVideo | n
         if (initialVideoData && typeof initialVideoData.url === 'string') {
           return initialVideoData
         }
-        if (hasInitialData && typeof video.value?.url === 'string') {
-          return video.value
+        if (hasInitialData && typeof session.facts.video?.url === 'string') {
+          return session.facts.video
         }
         return null
       })()
@@ -182,9 +226,9 @@ export default function usePlaybackOrchestrator(initialVideo: VideoPageVideo | n
 
     Promise.resolve(detailPromise).then(() => {
       Logger.debug('[usePlaybackOrchestrator] after fetchVideoDetails', {
-        hasVideo: !!video.value,
+        hasVideo: !!session.facts.video,
       })
-      if (seq !== requestSeq.value) return
+      if (seq !== requestSeq) return
 
       maybeInjectSubtitles(videoId).catch((e) =>
         Logger.error('[usePlaybackOrchestrator] maybeInjectSubtitles error', e)
@@ -197,38 +241,48 @@ export default function usePlaybackOrchestrator(initialVideo: VideoPageVideo | n
     try {
       const source = await playbackPromise
       await detailPromise
-      if (seq !== requestSeq.value) return
+      if (seq !== requestSeq) return
 
-      const v = video.value || initialVideoData || null
+      const v = session.facts.video || initialVideoData || null
       const sourceMetadata = 'metadata' in source ? source.metadata : undefined
       const mergedVideo = mergePlaybackMetadata(v, toRecord(sourceMetadata))
-      if (mergedVideo && mergedVideo !== video.value) {
+      if (mergedVideo && mergedVideo !== session.facts.video) {
         setVideoSnapshot(mergedVideo)
       }
-      playbackSource.value = {
+      const resolvedSource: MediaSource = {
         ...source,
         title: source.title || mergedVideo?.title || v?.title || '',
       }
 
+      // Forward the resolved source + presentation projection in a single
+      // update. externalLoading is flipped false by the `finally` below (single
+      // point), matching the old orchestrator's success path.
+      session.update({
+        source: resolvedSource,
+        ...derivePresentation(session.facts.video),
+      })
+
       Logger.debug('[usePlaybackOrchestrator] playbackSource ready', {
         videoId,
-        src: playbackSource.value?.src,
+        src: session.facts.source?.src,
       })
     } catch (err) {
-      if (seq !== requestSeq.value) return
+      if (seq !== requestSeq) return
 
       const e = toRecord(err)
       const code = String(e.code || 'FAILED')
       const message = String(e.message || '播放链接获取失败')
-      externalError.value = {
-        code,
-        title: '播放失败',
-        message,
-        canRetry: true,
-      }
+      session.update({
+        externalError: {
+          code,
+          title: '播放失败',
+          message,
+          canRetry: true,
+        },
+      })
     } finally {
-      if (seq === requestSeq.value) {
-        isResolvingPlayback.value = false
+      if (seq === requestSeq) {
+        session.update({ externalLoading: false })
       }
     }
   }
@@ -258,42 +312,33 @@ export default function usePlaybackOrchestrator(initialVideo: VideoPageVideo | n
     })
   }
 
-  const hydratePlaybackState = ({
-    videoSnapshot = null,
-    nextPlaybackSource = null,
-    nextSubtitleTracks = [],
-    nextExternalError = null,
-    nextIsResolvingPlayback = false,
-    nextRelatedVideos = [],
-    nextLoadingRelated = false,
-  }: {
-    videoSnapshot?: VideoPageVideo | null
-    nextPlaybackSource?: MediaSource | null
-    nextSubtitleTracks?: SubtitleTrack[]
-    nextExternalError?: ExternalErrorState | null
-    nextIsResolvingPlayback?: boolean
-    nextRelatedVideos?: VideoPageVideo[]
-    nextLoadingRelated?: boolean
-  } = {}) => {
-    requestSeq.value += 1
-    setVideoSnapshot(videoSnapshot)
-    playbackSource.value = nextPlaybackSource
-    subtitleTracks.value = Array.isArray(nextSubtitleTracks) ? [...nextSubtitleTracks] : []
-    externalError.value = nextExternalError
-    isResolvingPlayback.value = !!nextIsResolvingPlayback
-    setRelatedVideosSnapshot(nextRelatedVideos, nextLoadingRelated)
-  }
-
+  // When the session video gains subtitle candidates (either from the detail
+  // fetch or from useVideoDetail's desktop subtitle injection), project them
+  // into facts.subtitles. This replaces the old local ref that the shell's
+  // watcher reconciled.
   watch(
-    () => video.value?.subtitles,
+    () => session.facts.video?.subtitles,
     (subtitles) => {
-      subtitleTracks.value = toSubtitleTracks(subtitles)
+      session.update({ subtitles: toSubtitleTracks(subtitles) })
     },
     { immediate: true, deep: true }
   )
 
+  // Forward initialTime whenever the video identity (and thus startTime)
+  // changes. The shell used to read startTime via resolvedInitialTime and pump
+  // it through the watcher; now the orchestrator writes it directly.
+  watch(startTime, (t) => {
+    session.update({ initialTime: t })
+  }, { immediate: true })
+
+  // Keep the presentation projection (title / uploader) in sync with the video
+  // fact. This is the derivation the shell's watcher used to inline.
+  watch(() => session.facts.video, (videoFact) => {
+    session.update(derivePresentation(videoFact))
+  }, { immediate: true })
+
   return {
-    // state
+    // state — all read-only projections of session.facts
     video,
     startTime,
     relatedVideos,
@@ -302,7 +347,6 @@ export default function usePlaybackOrchestrator(initialVideo: VideoPageVideo | n
     subtitleTracks,
     externalError,
     isResolvingPlayback,
-    hydratePlaybackState,
 
     // actions
     loadAndPlayById,

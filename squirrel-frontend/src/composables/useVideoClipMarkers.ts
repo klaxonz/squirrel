@@ -3,14 +3,22 @@ import type { ComputedRef, Ref } from 'vue'
 
 import { deleteVideoClipMarker, updateVideoClipMarker } from '@/api/videoClipMarkers'
 import type { ClipMarker, VideoId, VideoPageVideo } from '@/types/videoPlayback'
+import type { PlaybackSession } from '@/composables/usePlaybackSession'
 
 const MARKER_COLORS = ['#f87171', '#fb923c', '#facc15', '#4ade80', '#34d399', '#22d3ee', '#60a5fa', '#a78bfa', '#f472b6']
 
+// ADR-0002 PR2 — clip-marker mutations used to write
+// `video.value.clip_markers = ...` in place. Since `video` is now a read-only
+// projection of PlaybackSession.facts.video, those writes route through
+// session.update({ video: { ...video, clip_markers: [...] } }) instead. The
+// session is injected; reads still go through the `video` projection.
 export default function useVideoClipMarkers({
   video,
+  session,
   seekToTime,
 }: {
   video: Ref<VideoPageVideo | null>
+  session: PlaybackSession
   seekToTime: (time: number) => Promise<void>
 }) {
   const currentPlaybackTime = ref(0)
@@ -27,8 +35,9 @@ export default function useVideoClipMarkers({
   }
 
   const handleClipMarkersUpdated = (markers: ClipMarker[]) => {
-    if (!video.value) return
-    video.value.clip_markers = markers
+    const current = video.value
+    if (!current) return
+    session.update({ video: { ...current, clip_markers: markers } })
   }
 
   const handleClipMarkerSeek = async (time: number) => {
@@ -44,9 +53,12 @@ export default function useVideoClipMarkers({
 
   const handleDeleteMarker = async (markerId: VideoId) => {
     const { error } = await deleteVideoClipMarker(markerId)
-    if (error || !video.value) return
+    if (error) return
+    const current = video.value
+    if (!current) return
 
-    video.value.clip_markers = (video.value.clip_markers || []).filter((marker) => marker.id !== markerId)
+    const nextMarkers = (current.clip_markers || []).filter((marker) => marker.id !== markerId)
+    session.update({ video: { ...current, clip_markers: nextMarkers } })
     if (String(editingClipMarkerId.value || '') === String(markerId || '')) {
       cancelClipMarkerTitleEdit()
     }
@@ -90,9 +102,12 @@ export default function useVideoClipMarkers({
       return
     }
 
-    video.value.clip_markers = (video.value.clip_markers || []).map((item) => (
+    const current = video.value
+    if (!current) return
+    const nextMarkers = (current.clip_markers || []).map((item) => (
       String(item.id) === String(marker.id) ? data : item
     ))
+    session.update({ video: { ...current, clip_markers: nextMarkers } })
     cancelClipMarkerTitleEdit()
   }
 

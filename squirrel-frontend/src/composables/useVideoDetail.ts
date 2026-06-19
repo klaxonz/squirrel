@@ -1,8 +1,10 @@
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
+
 import { getVideoDetail } from '@/api'
 import type { VideoId, VideoPageVideo, VideoSubtitle } from '@/types/videoPlayback'
 import { Logger } from '@/utils/logger'
 import { useDesktopBridge } from '@/composables/useDesktopBridge'
+import type { PlaybackSession } from '@/composables/usePlaybackSession'
 
 type SubtitleCandidate = {
   id: string
@@ -104,24 +106,27 @@ const buildDesktopBilibiliSubtitleTracks = async (
   return tracks
 }
 
-export default function useVideoDetail(initialVideo: VideoPageVideo | null = null) {
-  const video = ref<VideoPageVideo | null>(initialVideo)
+// ADR-0002 PR2 — `video` used to be a local ref() owned here. It is
+// now a read-only projection of PlaybackSession.facts.video (the single owner).
+// All mutations route through session.update({ video }) so the reactive object
+// identity stays stable for consumers that read nested fields (clip markers,
+// subtitles). The seed that used to be the constructor arg is gone — the shell
+// hands the seed to session.beginNewVideo(id, seed), which seeds facts.video
+// before fetchVideoDetails runs.
+export default function useVideoDetail(session: PlaybackSession) {
+  const video = computed(() => session.facts.video)
   let detailRequestSeq = 0
-
-  const replaceVideo = (nextVideo: VideoPageVideo | null) => {
-    video.value = nextVideo
-  }
 
   const setVideoSnapshot = (nextVideo: VideoPageVideo | null) => {
     detailRequestSeq += 1
-    replaceVideo(nextVideo)
+    session.update({ video: nextVideo })
   }
 
   const startTime = computed(() => {
-    const lastPosition = video.value?.last_position
+    const lastPosition = session.facts.video?.last_position
     if (!lastPosition) return 0
 
-    const total = Number(video.value?.duration) || 0
+    const total = Number(session.facts.video?.duration) || 0
     if (!total || total <= 0 || lastPosition <= 0) return 0
 
     const progress = (lastPosition / total) * 100
@@ -142,13 +147,13 @@ export default function useVideoDetail(initialVideo: VideoPageVideo | null = nul
     const seq = ++detailRequestSeq
     const { data, error } = (await getVideoDetail(videoId)) as { data?: VideoPageVideo | null; error?: unknown | null }
     if (!error && seq === detailRequestSeq) {
-      replaceVideo(data || null)
+      session.update({ video: data || null })
     }
-    return video.value
+    return session.facts.video
   }
 
   const maybeInjectSubtitles = async (videoId: VideoId) => {
-    const snapshot = video.value
+    const snapshot = session.facts.video
     if (!snapshot || String(snapshot.id) !== String(videoId)) return
 
     const snapshotUrl = snapshot.url || undefined
@@ -159,19 +164,25 @@ export default function useVideoDetail(initialVideo: VideoPageVideo | null = nul
     const missingCandidates = candidates
       .filter((candidate) => !existingSubtitles.some((subtitle) => subtitle.id === candidate.id))
 
+    let nextTracks: VideoSubtitle[] | null = null
+
     if (isYouTubeUrl(snapshotUrl) && canResolveDesktopYouTubeSubtitles()) {
       const desktopTracks = await buildDesktopYouTubeSubtitleTracks(snapshotUrl || '', missingCandidates)
       if (!desktopTracks.length) return
-      snapshot.subtitles = [...existingSubtitles, ...desktopTracks]
-      return
-    }
-
-    if (canResolveDesktopBilibiliSubtitles()) {
+      nextTracks = [...existingSubtitles, ...desktopTracks]
+    } else if (canResolveDesktopBilibiliSubtitles()) {
       const desktopTracks = await buildDesktopBilibiliSubtitleTracks(snapshotUrl || '', missingCandidates)
       if (!desktopTracks.length) return
-      snapshot.subtitles = [...existingSubtitles, ...desktopTracks]
-      return
+      nextTracks = [...existingSubtitles, ...desktopTracks]
     }
+
+    if (!nextTracks) return
+
+    // Re-check after the awaits: the session video may have switched underneath us.
+    const current = session.facts.video
+    if (!current || String(current.id) !== String(videoId)) return
+
+    session.update({ video: { ...current, subtitles: nextTracks } })
   }
 
   return {

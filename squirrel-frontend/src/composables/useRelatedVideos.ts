@@ -1,14 +1,19 @@
-import { ref } from 'vue'
-import type { Ref } from 'vue'
+import { computed } from 'vue'
+import type { ComputedRef } from 'vue'
+
 import { getVideoList } from '@/api'
 import type { ApiResult, VideoId, VideoPageVideo } from '@/types/videoPlayback'
+import type { PlaybackSession } from '@/composables/usePlaybackSession'
 
 type VideoListResponse = { data?: unknown[] }
 
-export default function useRelatedVideos(sourceVideo: Ref<VideoPageVideo | null>) {
-  const relatedVideos = ref<VideoPageVideo[]>([])
-  const loadingRelated = ref(false)
-  const requestSeq = ref(0)
+// ADR-0002 PR2 — `relatedVideos` / `loadingRelated` were local refs.
+// They are now computed projections of PlaybackSession.facts (single owner);
+// fetch results call session.update instead of mutating local refs.
+export default function useRelatedVideos(session: PlaybackSession, sourceVideo: ComputedRef<VideoPageVideo | null>) {
+  const relatedVideos = computed(() => session.facts.relatedVideos)
+  const loadingRelated = computed(() => session.facts.loadingRelated)
+  let requestSeq = 0
 
   const extractItems = (videos: VideoListResponse | null | undefined) => (Array.isArray(videos?.data) ? videos!.data! : [])
 
@@ -59,27 +64,28 @@ export default function useRelatedVideos(sourceVideo: Ref<VideoPageVideo | null>
     const expectedId = expectedVideoId !== undefined ? String(expectedVideoId) : String(snapshot.id)
     if (String(snapshot.id) !== expectedId) return
 
-    requestSeq.value += 1
-    const seq = requestSeq.value
+    requestSeq += 1
+    const seq = requestSeq
 
-    relatedVideos.value = []
-    loadingRelated.value = true
+    session.update({ relatedVideos: [], loadingRelated: true })
     try {
       const { data, error } = await getRelatedVideos(snapshot, { pageSize: 20 })
-      if (seq !== requestSeq.value) return
+      if (seq !== requestSeq) return
       if (String(sourceVideo.value?.id) !== expectedId) return
-      relatedVideos.value = !error ? data || [] : []
+      session.update({ relatedVideos: !error ? data || [] : [] })
     } finally {
-      if (seq === requestSeq.value) {
-        loadingRelated.value = false
+      if (seq === requestSeq) {
+        session.update({ loadingRelated: false })
       }
     }
   }
 
   const setRelatedVideosSnapshot = (items: VideoPageVideo[] = [], loading = false) => {
-    requestSeq.value += 1
-    relatedVideos.value = Array.isArray(items) ? [...items] : []
-    loadingRelated.value = !!loading
+    requestSeq += 1
+    session.update({
+      relatedVideos: Array.isArray(items) ? [...items] : [],
+      loadingRelated: !!loading,
+    })
   }
 
   return {
@@ -89,5 +95,3 @@ export default function useRelatedVideos(sourceVideo: Ref<VideoPageVideo | null>
     setRelatedVideosSnapshot,
   }
 }
-
-
