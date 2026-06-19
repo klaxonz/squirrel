@@ -1,9 +1,9 @@
 <template>
   <div ref="detachedHostRef" class="fixed -top-[9999px] -left-[9999px] w-px h-px overflow-hidden pointer-events-none" aria-hidden="true" />
 
-  <Teleport v-if="playerStore.session.active && teleportTarget" :to="teleportTarget">
+  <Teleport v-if="isSessionActive && teleportTarget" :to="teleportTarget">
     <VideoPlayer
-      v-if="playerStore.session.source || playerStore.session.externalLoading || playerStore.session.externalError"
+      v-if="session.facts.source || session.facts.externalLoading || session.facts.externalError"
       ref="playerRef"
       v-bind="playerProps"
       :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
@@ -20,7 +20,7 @@
       @retry="handleRetry"
       @clipmarkerselect="handleClipMarkerSelect"
       @clipmarkersupdated="handleClipMarkersUpdated"
-      @enterpictureinpicture="playerStore.session.pictureInPicture = true"
+      @enterpictureinpicture="session.setPictureInPicture(true)"
       @leavepictureinpicture="handleLeavePiP"
     />
   </Teleport>
@@ -30,13 +30,20 @@
 import { computed, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/player'
+import { usePlaybackSession } from '@/composables/usePlaybackSession'
 import VideoPlayer from './VideoPlayer.vue'
 import { BackendPlayerAdapter } from './core/BackendPlayerAdapter'
 import type { ThemeName } from './themes'
 import type { VideoClipMarker } from '@/types/videoClipMarker'
 import type { VideoPlayerHandle, VideoEndedEvent } from '@/types/playerSession'
 
+// ponytail: ADR-0002 — the 22-field `playerStore.session` bag moved to
+// PlaybackSession (`session.facts`). The host reads facts from the session
+// singleton and wiring state (target / adapter / handlers) from the slimmed
+// Pinia store. The `active` flag is gone: the session is always app-scoped, so
+// "is there a user-facing video?" is now `facts.videoId !== ''`.
 const playerStore = usePlayerStore()
+const session = usePlaybackSession()
 const detachedHostRef = ref<HTMLElement | null>(null)
 const playerRef = ref<VideoPlayerHandle | null>(null)
 const route = useRoute()
@@ -44,29 +51,30 @@ const router = useRouter()
 
 const backendAdapter = shallowRef<BackendPlayerAdapter | null>(null)
 
-const teleportTarget = computed(() => playerStore.session.target || detachedHostRef.value)
+const teleportTarget = computed(() => playerStore.target || detachedHostRef.value)
+const isSessionActive = computed(() => !!session.facts.videoId)
 
 const playerProps = computed(() => ({
-  source: playerStore.session.source,
-  subtitles: playerStore.session.subtitles,
-  clipMarkers: playerStore.session.clipMarkers as unknown as VideoClipMarker[],
-  videoId: playerStore.session.currentVideoId || null,
-  title: playerStore.session.title,
-  uploader: playerStore.session.uploader,
-  initialTime: playerStore.session.initialTime,
-  hasPrev: playerStore.session.hasPrev,
-  hasNext: playerStore.session.hasNext,
-  externalError: playerStore.session.externalError,
-  widescreen: playerStore.session.widescreen,
-  externalLoading: playerStore.session.externalLoading,
-  adapter: playerStore.session.adapter || backendAdapter.value,
-  theme: (playerStore.session.theme || 'dark') as ThemeName,
-  playlistEntries: playerStore.session.playlist || [],
-  playlistIndex: playerStore.session.playlistIndex ?? -1,
+  source: session.facts.source,
+  subtitles: session.facts.subtitles,
+  clipMarkers: session.facts.clipMarkers as unknown as VideoClipMarker[],
+  videoId: session.facts.videoId || null,
+  title: session.facts.title,
+  uploader: session.facts.uploader,
+  initialTime: session.facts.initialTime,
+  hasPrev: session.facts.hasPrev,
+  hasNext: session.facts.hasNext,
+  externalError: session.facts.externalError,
+  widescreen: session.facts.widescreen,
+  externalLoading: session.facts.externalLoading,
+  adapter: playerStore.adapter || backendAdapter.value,
+  theme: (session.facts.theme || 'dark') as ThemeName,
+  playlistEntries: session.facts.playlist || [],
+  playlistIndex: session.facts.playlistIndex ?? -1,
 }))
 
-watch(playerStore.session, (session) => {
-  if (session.active && !session.adapter && !backendAdapter.value) {
+watch(() => session.facts.videoId, (videoId) => {
+  if (videoId && !playerStore.adapter && !backendAdapter.value) {
     backendAdapter.value = new BackendPlayerAdapter()
   }
 }, { immediate: true })
@@ -76,25 +84,25 @@ onUnmounted(() => {
 })
 
 // Event Handlers with safety checks
-const handlePlay = () => playerStore.session.handlers.onPlay?.()
-const handlePause = () => playerStore.session.handlers.onPause?.()
-const handleEnded = (e: VideoEndedEvent) => playerStore.session.handlers.onEnded?.(e)
-const handleTimeUpdate = (t: number) => playerStore.session.handlers.onTimeUpdate?.(t)
-const handlePrev = () => playerStore.session.handlers.onPrev?.()
-const handleNext = () => playerStore.session.handlers.onNext?.()
-const handleWidescreenChange = (v: boolean) => playerStore.session.handlers.onWidescreenChange?.(v)
-const handleRetry = () => playerStore.session.handlers.onRetry?.()
-const handleClipMarkerSelect = (t: number) => playerStore.session.handlers.onClipMarkerSelect?.(t)
-const handleClipMarkersUpdated = (m: VideoClipMarker[]) => playerStore.session.handlers.onClipMarkersUpdated?.(m)
+const handlePlay = () => playerStore.handlers.onPlay?.()
+const handlePause = () => playerStore.handlers.onPause?.()
+const handleEnded = (e: VideoEndedEvent) => playerStore.handlers.onEnded?.(e)
+const handleTimeUpdate = (t: number) => playerStore.handlers.onTimeUpdate?.(t)
+const handlePrev = () => playerStore.handlers.onPrev?.()
+const handleNext = () => playerStore.handlers.onNext?.()
+const handleWidescreenChange = (v: boolean) => playerStore.handlers.onWidescreenChange?.(v)
+const handleRetry = () => playerStore.handlers.onRetry?.()
+const handleClipMarkerSelect = (t: number) => playerStore.handlers.onClipMarkerSelect?.(t)
+const handleClipMarkersUpdated = (m: VideoClipMarker[]) => playerStore.handlers.onClipMarkersUpdated?.(m)
 
 watch(playerRef, (instance) => {
   playerStore.playerRef = instance
 }, { immediate: true })
 
 async function handleLeavePiP() {
-  playerStore.session.pictureInPicture = false
-  const vid = playerStore.session.currentVideoId
-  if (vid && !playerStore.session.target && route.name !== 'VideoPlay') {
+  session.setPictureInPicture(false)
+  const vid = session.facts.videoId
+  if (vid && !playerStore.target && route.name !== 'VideoPlay') {
     router.push({ name: 'VideoPlay', params: { videoId: vid } })
   }
 }

@@ -365,7 +365,7 @@ import { usePlayer, type PlayerOptions } from './runtime/usePlayer'
 import type { Chapter, MediaSource, SubtitleTrack } from './core'
 import type { ThemeName } from './themes'
 import type { VideoClipMarker } from '@/types/videoClipMarker'
-import { usePlayerStore } from '@/stores/player'
+import { usePlaybackSession } from '@/composables/usePlaybackSession'
 import PlayerIcon from './PlayerIcon.vue'
 import StatsOverlay from './StatsOverlay.vue'
 import LoadingOverlay from './LoadingOverlay.vue'
@@ -482,9 +482,9 @@ const {
   onTimeUpdate: (time) => emit('timeupdate', time)
 })
 
-const playerStore = usePlayerStore()
-const playlistEntries = computed(() => playerStore.session.playlist || [])
-const playlistIndex = computed(() => playerStore.session.playlistIndex ?? -1)
+const playbackSession = usePlaybackSession()
+const playlistEntries = computed(() => playbackSession.facts.playlist || [])
+const playlistIndex = computed(() => playbackSession.facts.playlistIndex ?? -1)
 const hasPlaylist = computed(() => playlistEntries.value.length > 1)
 
 const handlePlaylistSelect = (index: number) => {

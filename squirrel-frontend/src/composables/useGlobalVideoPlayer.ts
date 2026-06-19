@@ -1,35 +1,69 @@
 import { nextTick } from 'vue'
 import { usePlayerStore } from '@/stores/player'
-import type { PlayerSessionState, VideoPlayerHandle } from '@/types/playerSession'
+import { usePlaybackSession } from './usePlaybackSession'
+import type { PlaybackSessionFacts } from './usePlaybackSession'
+import type { IPlayerAdapter } from '@/components/video-player/core'
+import type { PlayerHandlers, VideoPlayerHandle } from '@/types/playerSession'
 import { Logger } from '@/utils/logger'
+
+// ponytail: this composable used to be a thin shim over the old
+// `playerStore.session` reactive bag. Per ADR-0002 the facts layer moved to
+// PlaybackSession. The public surface (the names VideoPlay /
+// useVideoPlaybackShell call) is preserved so PR1 is a structural swap; the
+// implementations route to the new owner. The two dead wrappers
+// (setGlobalVideoPlayerPictureInPicture / setGlobalVideoPlayerCurrentVideoId)
+// were deleted — they had zero callers.
+
+// Payload shape the shell still passes to activate/update. `target` /
+// `adapter` / `handlers` are wiring state (PR1 keeps them on the Pinia store,
+// PR2 relocates them); the rest are facts routed to PlaybackSession.
+export type PlayerSessionPayload = Partial<PlaybackSessionFacts> & {
+  target?: HTMLElement | null
+  adapter?: IPlayerAdapter | null
+  handlers?: PlayerHandlers
+}
 
 export function useGlobalVideoPlayer() {
   const playerStore = usePlayerStore()
+  const session = usePlaybackSession()
 
-  const activateGlobalVideoPlayerSession = (payload: Partial<PlayerSessionState>) => {
-    playerStore.activateSession(payload)
+  const applyPayload = (payload: PlayerSessionPayload) => {
+    if (payload.target !== undefined) playerStore.target = payload.target ?? null
+    if (payload.adapter !== undefined) playerStore.adapter = payload.adapter ?? null
+    if (payload.handlers !== undefined) playerStore.handlers = payload.handlers ?? ({} as PlayerHandlers)
+
+    const { target: _t, adapter: _a, handlers: _h, ...facts } = payload
+    if (Object.keys(facts).length > 0) session.update(facts)
   }
 
-  const updateGlobalVideoPlayerSession = (payload: Partial<PlayerSessionState>) => {
-    Object.assign(playerStore.session, payload)
+  const activateGlobalVideoPlayerSession = (payload: PlayerSessionPayload) => {
+    applyPayload(payload)
+  }
+
+  const updateGlobalVideoPlayerSession = (payload: PlayerSessionPayload) => {
+    applyPayload(payload)
   }
 
   const registerGlobalVideoPlayerTarget = (element: HTMLElement | null) => {
-    playerStore.session.target = element
+    playerStore.target = element
   }
 
   const unregisterGlobalVideoPlayerTarget = (element: HTMLElement | null = null) => {
-    if (!element || playerStore.session.target === element) {
-      playerStore.session.target = null
+    if (!element || playerStore.target === element) {
+      playerStore.target = null
     }
   }
 
-  const setGlobalVideoPlayerPictureInPicture = (value: unknown) => {
-    playerStore.session.pictureInPicture = !!value
-  }
-
-  const setGlobalVideoPlayerCurrentVideoId = (videoId: string | number) => {
-    playerStore.session.currentVideoId = String(videoId || '')
+  const clearGlobalVideoPlayerSession = () => {
+    // PR1 keeps the PiP-aware semantics on the clear path too, so behavior is
+    // byte-identical to the old clearSession (which was only called from the
+    // shell's onUnmounted after the PiP check). PR2 collapses this to
+    // session.release() at the call site and drops the wiring reset.
+    session.release()
+    playerStore.playerRef = null
+    playerStore.target = null
+    playerStore.adapter = null
+    playerStore.handlers = {} as PlayerHandlers
   }
 
   const focusPlayer = async () => {
@@ -74,17 +108,16 @@ export function useGlobalVideoPlayer() {
   }
 
   return {
-    globalVideoPlayerSession: playerStore.session,
+    globalVideoPlayerSession: session.facts,
     activateGlobalVideoPlayerSession,
     updateGlobalVideoPlayerSession,
-    clearGlobalVideoPlayerSession: playerStore.clearSession,
+    clearGlobalVideoPlayerSession,
     registerGlobalVideoPlayerTarget,
     unregisterGlobalVideoPlayerTarget,
     registerGlobalVideoPlayerInstance: (instance: VideoPlayerHandle | null) => { playerStore.playerRef = instance },
     focusGlobalVideoPlayer: focusPlayer,
     seekGlobalVideoPlayer: seekPlayer,
     playGlobalVideoPlayer: playPlayer,
-    setGlobalVideoPlayerPictureInPicture,
-    setGlobalVideoPlayerCurrentVideoId,
   }
 }
+

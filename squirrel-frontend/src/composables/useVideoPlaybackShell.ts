@@ -5,7 +5,8 @@ import { Logger } from '@/utils/logger'
 import type { ClipMarker, VideoId, VideoPageVideo, VideoProfile } from '@/types/videoPlayback'
 import type { MediaSource, IPlayerAdapter } from '@/components/video-player/core'
 import type { SubtitleTrack } from '@/components/video-player/plugins/subtitles'
-import type { ExternalErrorState, PlayerSessionState } from '@/types/playerSession'
+import type { ExternalErrorState } from '@/types/playerSession'
+import type { PlayerSessionPayload } from './useGlobalVideoPlayer'
 
 type PlaybackSourceLike = MediaSource | null
 type VideoSeedGetter = (videoId: unknown) => VideoPageVideo | null
@@ -70,18 +71,18 @@ export default function useVideoPlaybackShell({
   hasPrev: Ref<boolean>
   hasNext: Ref<boolean>
   globalVideoPlayerSession: {
-    currentVideoId?: string | number | null
+    videoId?: string | number | null
     source?: MediaSource | null
     uploader?: string
     externalError?: ExternalErrorState | null
     externalLoading?: boolean
-    videoSnapshot?: VideoPageVideo | null
+    video?: VideoPageVideo | null
     subtitles?: SubtitleTrack[]
     relatedVideos?: VideoPageVideo[]
     loadingRelated?: boolean
     pictureInPicture?: boolean
   }
-  activateGlobalVideoPlayerSession: (payload: Partial<PlayerSessionState>) => void
+  activateGlobalVideoPlayerSession: (payload: PlayerSessionPayload) => void
   clearGlobalVideoPlayerSession: () => void
   registerGlobalVideoPlayerTarget: (target: HTMLElement) => void
   unregisterGlobalVideoPlayerTarget: () => void
@@ -138,7 +139,7 @@ export default function useVideoPlaybackShell({
   }
 
   const isSameGlobalPlaybackSession = (videoId = route.params.videoId) => {
-    return String(globalVideoPlayerSession.currentVideoId || '') === String(videoId || '')
+    return String(globalVideoPlayerSession.videoId || '') === String(videoId || '')
   }
 
   const hasJavdbActors = (videoSnapshot: VideoPageVideo | null | undefined) => {
@@ -147,7 +148,7 @@ export default function useVideoPlaybackShell({
   }
 
   const shouldRefreshJavdbSession = () => {
-    const videoSnapshot = globalVideoPlayerSession.videoSnapshot || null
+    const videoSnapshot = globalVideoPlayerSession.video || null
     const videoUrl = String(videoSnapshot?.url || '')
     if (!videoUrl.includes('javdb.com/')) return false
     return !hasJavdbActors(videoSnapshot)
@@ -166,7 +167,7 @@ export default function useVideoPlaybackShell({
 
   const hydrateFromGlobalPlaybackSession = () => {
     hydratePlaybackState({
-      videoSnapshot: globalVideoPlayerSession.videoSnapshot || null,
+      videoSnapshot: globalVideoPlayerSession.video || null,
       nextPlaybackSource: globalVideoPlayerSession.source || null,
       nextSubtitleTracks: globalVideoPlayerSession.subtitles || [],
       nextExternalError: globalVideoPlayerSession.externalError || null,
@@ -270,8 +271,8 @@ export default function useVideoPlaybackShell({
         externalLoading: !!nextExternalLoading,
         adapter: playerAdapter,
         theme: nextTheme,
-        currentVideoId: String(nextVideo?.id ?? route.params.videoId ?? ''),
-        videoSnapshot: nextVideo || null,
+        videoId: String(nextVideo?.id ?? route.params.videoId ?? ''),
+        video: nextVideo || null,
         relatedVideos: nextRelatedVideos || [],
         loadingRelated: !!nextLoadingRelated,
         handlers: {

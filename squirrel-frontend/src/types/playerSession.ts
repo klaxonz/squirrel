@@ -1,5 +1,5 @@
-import type { MediaSource, SubtitleTrack, IPlayerAdapter } from '@/components/video-player/core'
-import type { ClipMarker, VideoPageVideo } from './videoPlayback'
+import type { MediaSource, SubtitleTrack } from '@/components/video-player/core'
+import type { ClipMarker } from './videoPlayback'
 
 export type ExternalErrorState = {
   code: string
@@ -48,28 +48,11 @@ export interface PlaylistEntry {
   duration?: number
 }
 
-export interface PlayerSessionState {
-  active: boolean
-  target: HTMLElement | null
-  source: MediaSource | null
-  subtitles: SubtitleTrack[]
-  clipMarkers: ClipMarker[]
-  title: string
-  uploader: string
-  initialTime: number
-  hasPrev: boolean
-  hasNext: boolean
-  externalError: ExternalErrorState | null
-  externalLoading: boolean
-  adapter: IPlayerAdapter | null
-  theme: string
-  widescreen: boolean
-  currentVideoId: string
-  videoSnapshot: VideoPageVideo | null
-  relatedVideos: VideoPageVideo[]
-  loadingRelated: boolean
-  pictureInPicture: boolean
-  handlers: PlayerHandlers
-  playlist: PlaylistEntry[]
-  playlistIndex: number
-}
+// ponytail: ADR-0002 — the 22-field PlayerSessionState interface used to live
+// here and was the shape of `playerStore.session`. It moved (renamed to
+// PlaybackSessionFacts, with `currentVideoId`→`videoId` and
+// `videoSnapshot`→`video`) to `composables/usePlaybackSession.ts`. `active` /
+// `target` / `adapter` / `handlers` were never facts — they are wiring state
+// now on the slimmed Pinia store (`stores/player.ts`), passed alongside facts
+// via the facade's PlayerSessionPayload.
+

@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 import { formatTime } from '@/utils/dateFormat'
-import type { PlaylistEntry } from '@/stores/player'
+import type { PlaylistEntry } from '@/types/playerSession'
 
 defineProps<{
   visible: boolean

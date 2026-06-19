@@ -19,6 +19,15 @@ type PlayerRuntimeStoreData = {
   bufferedProgress: number
   playbackRate: number
   subtitlesEnabled: boolean
+  // ponytail: ADR-0002 moved pictureInPicture's source of truth to
+  // PlaybackSession.facts.pictureInPicture. This runtime field is now a
+  // *projection* kept for the PiP button icon + the VideoPlayer
+  // enterpictureinpicture/leavepictureinpicture emit chain. A runtime-layer
+  // follow-up (the a2 work deferred in ADR-0002) deletes this field and
+  // short-circuits the emit chain so the engine event writes the session
+  // directly. Until then, setPictureInPicture on this store mirrors the
+  // engine event; GlobalVideoPlayerHost no longer reads it for the PiP-aware
+  // release decision (it reads PlaybackSession).
   pictureInPicture: boolean
   hasStartedPlayback: boolean
   currentQuality: string | null

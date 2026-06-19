@@ -1,56 +1,36 @@
 import { defineStore } from 'pinia'
-import { reactive, shallowRef } from 'vue'
-import type { PlayerSessionState, PlaylistEntry, PlayerHandlers, VideoPlayerHandle } from '@/types/playerSession'
+import { shallowRef } from 'vue'
+import type { IPlayerAdapter } from '@/components/video-player/core'
+import type { PlayerHandlers, VideoPlayerHandle } from '@/types/playerSession'
 
-export type { PlaylistEntry, PlayerHandlers }
+// ponytail: this store used to also own a 22-field `session` reactive bag
+// (source / videoSnapshot / title / handlers / active / target / ...). That
+// bag was the "facts layer" of "what's playing now"; per ADR-0002 it moved to
+// PlaybackSession (`composables/usePlaybackSession.ts`), which is the single
+// owner. What remains here are assembly handles GlobalVideoPlayerHost needs to
+// mount the VideoPlayer — they are wiring state, not playback state.
+//
+//   playerRef — VideoPlayer component instance (structural handle, avoids a
+//               circular import on VideoPlayer.vue)
+//   target    — Teleport anchor element
+//   adapter   — IPlayerAdapter the shell injects (LocalStorageAdapter from
+//               VideoPlay); falls back to BackendPlayerAdapter in the host.
+//               ponytail: moves into the host / orchestrator in PR2.
+//   handlers  — callbacks the shell wires through VideoPlayer emits.
+//               ponytail: deleted in PR2 once the data-flow inversion makes
+//               the orchestrator the direct emit target.
 
 export const usePlayerStore = defineStore('player', () => {
-  const session: PlayerSessionState = reactive({
-    active: false,
-    target: null,
-    source: null,
-    subtitles: [],
-    clipMarkers: [],
-    title: '',
-    uploader: '',
-    initialTime: 0,
-    hasPrev: false,
-    hasNext: false,
-    externalError: null,
-    externalLoading: false,
-    adapter: null,
-    theme: 'dark',
-    widescreen: false,
-    currentVideoId: '',
-    videoSnapshot: null,
-    relatedVideos: [],
-    loadingRelated: false,
-    pictureInPicture: false,
-    handlers: {} as PlayerHandlers,
-    playlist: [],
-    playlistIndex: -1,
-  })
-
-  // ponytail: video player component instance accessed via the global host;
-  // typed structurally to avoid a circular import on VideoPlayer.vue.
   const playerRef = shallowRef<VideoPlayerHandle | null>(null)
-
-  const activateSession = (payload: Partial<PlayerSessionState>) => {
-    Object.assign(session, payload)
-    session.active = true
-  }
-
-  const clearSession = () => {
-    session.active = false
-    session.target = null
-    playerRef.value = null
-    session.handlers = {} as PlayerHandlers
-  }
+  const target = shallowRef<HTMLElement | null>(null)
+  const adapter = shallowRef<IPlayerAdapter | null>(null)
+  const handlers = shallowRef<PlayerHandlers>({} as PlayerHandlers)
 
   return {
-    session,
     playerRef,
-    activateSession,
-    clearSession
+    target,
+    adapter,
+    handlers,
   }
 })
+
