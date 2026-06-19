@@ -134,6 +134,27 @@ three dialogs plus a lightbox.
   read by `useRssFeeds` for click-outside / autofocus, so extraction needs ref
   bridging like the context menus; same forced-seam calculus).
 
+### Phase 4 (cont.) — `Settings.vue` Security tab extraction
+
+`Settings.vue` (was 617 lines) is a six-tab settings page. The **security**
+tab is the one tab with zero cross-tab dependencies: it owns all of its state
+(`securityForm`, submit flags, error/success messages) and talks directly to
+its own two API endpoints (`updateUserPassword`, `revokeUserSessions`). That
+makes it a clean extraction with **no props and no emits** — the rare
+win-win of smaller parent + self-contained child.
+
+- `components/settings/SecuritySettings.vue` (new, 138 lines, TS): password
+  change form (current/new/confirm with length + match validation) + revoke
+  other sessions. Extracted verbatim; the parent dropped its `passwordFields`
+  array, `SecurityForm` interface, four refs, three handlers, and the two API
+  imports.
+- `Settings.vue`: 617 → **495** lines (-122).
+- Other tabs deferred: appearance / content / playback are tightly bound to the
+  shared `useUserSettings` / `useThemeStore` reactive state (toggles that fire
+  `onUserSettingChange` on every flip), and system/server each own a composable
+  already. Extracting them would thread the shared `showSaveToast` + the
+  composable refs back in — net-neutral until the toast is also extracted.
+
 ## Deliberate decisions (defend the choice, don't hide it)
 
 ### Why `createPlayerEngine.ts` stays a single 991-line module
@@ -210,6 +231,8 @@ instantiated with a typed Events map (`EventEmitter<PlayerEvents>`), so the
 | `composables/useYouTubeOAuth.ts` | — | 198 | New (YouTube TV-code OAuth flow). |
 | `RssSources.vue` | 1519 | 1362 | Add/Edit Account dialog extracted. |
 | `components/rss/AccountEditDialog.vue` | — | 230 | New (RSS account add/edit dialog). |
+| `Settings.vue` | 617 | 495 | Security tab extracted. |
+| `components/settings/SecuritySettings.vue` | — | 138 | New (password + session-revoke tab). |
 
 ¹ The earlier draft of this table listed `2750 → 2407`; that was aspirational.
 `git show 8c7ef66d:squirrel-frontend/.../VideoPlayer.vue` is 2708 lines. The
@@ -233,8 +256,9 @@ corrected baseline is used here.
   cookie-import / site-editor clusters (mutually coupled — see note above) +
   the `lang='ts'` conversion (best done per-cluster as each is extracted).
 - Phase 4 remainder: `RssSources.vue` Subscribe-feed dialog (needs ref
-  bridging) + `Settings` (617) / `ScheduledTasks` (572) / `PlaylistView` (509)
-  / `LogViewer` (546) splits.
+  bridging) + `Settings.vue` appearance/content/playback/system/server tabs
+  (bound to shared user-settings/theme/server composables) /
+  `ScheduledTasks` (572) / `PlaylistView` (509) / `LogViewer` (546) splits.
 - Phase 5: `Music` (843) / `VideoPlay` (724) / `Subscribed` (755) splits +
   remote-seed dedup.
 
