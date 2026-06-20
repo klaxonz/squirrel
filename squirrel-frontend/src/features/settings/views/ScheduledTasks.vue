@@ -249,7 +249,6 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onUnmounted } from 'vue'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
@@ -267,23 +266,17 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
 import { refDebounced } from '@vueuse/core'
-import { useToast } from '@/shared/components/toast/useToast'
-import { queryKeys } from '@/shared/lib/queryClient'
-import type { ScheduledTask, ScheduledTaskListResponse, SchedulerStatistics } from '@/features/settings/types/scheduler'
+import type { ScheduledTask } from '@/features/settings/types/scheduler'
 import {
-  createTask as apiCreateTask,
-  deleteTask as apiDeleteTask,
-  disableTask as apiDisableTask,
-  enableTask as apiEnableTask,
-  executeTaskNow as apiExecuteTaskNow,
-  getAvailableTaskClasses,
-  getScheduledTasks,
-  getTaskStatistics,
-  updateTask as apiUpdateTask,
-} from '@/shared/api'
+  getUnitFull,
+  getStatusText,
+  getStatusCount as getStatusCountFor,
+  getStatusBadgeClass,
+  formatDateTime,
+} from '@/features/settings/lib/scheduledTaskPresenters'
+import { useScheduledTaskQueries } from '@/features/settings/composables/useScheduledTaskQueries'
+import { useScheduledTaskMutations } from '@/features/settings/composables/useScheduledTaskMutations'
 
-const queryClient = useQueryClient()
-const toast = useToast()
 
 const currentPage = ref(1)
 const searchQuery = ref('')
@@ -324,172 +317,84 @@ const setStatusFilter = (val: string) => {
   // statusFilter/page/searchQueryDebounced, so vue-query refetches automatically.
 }
 
-// ponytail: loaders use vue-query as the single source of truth. The template
-// reads derived computeds (tasks/totalPages/statistics/taskClasses) off the
-// query results — no parallel mutable refs, so there's no stale-data window
-// between the query cache and a local copy. Error handling is implicit: a
-// failed load doesn't toast (loaders failing is routine); the list stays empty
-// and the empty state renders. The tasks list refetches reactively when
-// page/status/debounced-search change.
-const statsQuery = useQuery({
-  queryKey: queryKeys.tasks.statistics,
-  queryFn: () => getTaskStatistics(),
+// ponytail: the three vue-query loaders + derived projections + the
+// invalidate/refresh entry points live in useScheduledTaskQueries. The list
+// queryKey is reactive on page/search/status so vue-query refetches on its own
+// — no manual refetch, no stale-data window between cache and a local copy.
+const {
+  statistics,
+  taskClasses,
+  tasks,
+  totalPages,
+  loading,
+  refreshData,
+  invalidateTasks,
+} = useScheduledTaskQueries({
+  page: currentPage,
+  search: searchQueryDebounced,
+  status: statusFilter,
 })
-
-const classesQuery = useQuery({
-  queryKey: queryKeys.tasks.classes,
-  queryFn: () => getAvailableTaskClasses(),
-})
-
-const tasksQuery = useQuery({
-  queryKey: computed(() => queryKeys.tasks.list({
-    page: currentPage.value,
-    search: searchQueryDebounced.value || '',
-    status: statusFilter.value,
-  })),
-  queryFn: () => getScheduledTasks({
-    page: currentPage.value,
-    page_size: 15,
-    search: searchQueryDebounced.value || undefined,
-    status: statusFilter.value === 'all' ? undefined : statusFilter.value,
-  }) as Promise<ScheduledTaskListResponse>,
-})
-
-// Derived projections of the query cache — these replace the old mutable refs.
-const statistics = computed<SchedulerStatistics>(() => statsQuery.data.value ?? {
-  total_tasks: 0, active_tasks: 0, running_tasks: 0, error_tasks: 0, today_executions: 0,
-})
-const taskClasses = computed(() => classesQuery.data.value ?? {})
-const tasks = computed<ScheduledTask[]>(() => tasksQuery.data.value?.data ?? [])
-const totalPages = computed(() => {
-  const total = tasksQuery.data.value?.total ?? 0
-  return Math.max(1, Math.ceil(total / 15))
-})
-
-// Skeletons show on the first load only (isLoading); background refetches
-// (isFetching) don't flash the skeleton — the prior list stays visible.
-const loading = computed(() => tasksQuery.isLoading.value)
-
-// Full reload (refresh button). refetch (not invalidate) so the button always
-// forces fresh data regardless of staleTime.
-const refreshData = async () => {
-  await Promise.all([
-    statsQuery.refetch(),
-    classesQuery.refetch(),
-    tasksQuery.refetch(),
-  ])
-}
-
-// After a mutation, mark all task queries stale so the list/stats/classes
-// re-fetch on next read. Preferred over refetch — concurrent invalidations
-// dedupe and respect staleTime.
-const invalidateTasks = () => {
-  void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
-}
-
-const executeTask = (task: ScheduledTask) => {
-  executingTask.value = task
-  showExecuteDialog.value = true
-}
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
 onUnmounted(() => {
   if (refreshTimer) clearTimeout(refreshTimer)
 })
 
-// execute is a special case: the backend needs a beat to flip the task row to
-// "running", so onSuccess only toasts + schedules a single delayed invalidation
-// (no immediate refetch — that would show stale state briefly).
-const executeMutation = useMutation({
-  mutationFn: (task: ScheduledTask) => apiExecuteTaskNow(task.id),
-  onSuccess: (_data, task) => {
-    toast.success(`任务「${task.name}」已开始执行`)
+// ponytail: the six task mutations + their toast/invalidate contract live in
+// useScheduledTaskMutations. Dialog-state toggles are injected callbacks
+// (onCreated/onUpdated) so the composable doesn't own dialog visibility; the
+// delayed-invalidation timer for execute is also injected so the host owns it.
+const {
+  handleCreateTask: doCreateTask,
+  handleUpdateTask: doUpdateTask,
+  doDeleteTask: doDelete,
+  enableTask,
+  disableTask,
+  executeTask: doExecute,
+} = useScheduledTaskMutations({
+  invalidateTasks,
+  scheduleInvalidate: (delayMs) => {
     if (refreshTimer) clearTimeout(refreshTimer)
-    refreshTimer = setTimeout(() => invalidateTasks(), 800)
+    refreshTimer = setTimeout(() => invalidateTasks(), delayMs)
   },
+  onCreated: () => { showCreateDialog.value = false },
+  onUpdated: () => { editingTask.value = null },
 })
 
+// Dialog flows: the row action opens the relevant confirm dialog (stashing the
+// target task); the dialog's @confirm resolves the stashed task and fires the
+// mutation. Save flows pass taskData straight through.
+const executeTask = (task: ScheduledTask) => {
+  executingTask.value = task
+  showExecuteDialog.value = true
+}
 const doExecuteTask = async () => {
   if (!executingTask.value) return
   showExecuteDialog.value = false
-  await executeMutation.mutateAsync(executingTask.value).catch(() => { /* toast handled by MutationCache */ })
+  const task = executingTask.value
+  executingTask.value = null
+  await doExecute(task)
 }
 
 const editTask = (task: ScheduledTask) => {
   editingTask.value = task
 }
-
-const createMutation = useMutation({
-  mutationFn: (taskData: Record<string, unknown>) => apiCreateTask(taskData),
-  onSuccess: () => {
-    toast.success('任务创建成功')
-    showCreateDialog.value = false
-    invalidateTasks()
-  },
-})
-
-const handleCreateTask = async (taskData: Record<string, unknown>) => {
-  await createMutation.mutateAsync(taskData).catch(() => {})
-}
-
-const updateMutation = useMutation({
-  mutationFn: ({ task, taskData }: { task: ScheduledTask, taskData: Record<string, unknown> }) =>
-    apiUpdateTask(task.id, taskData),
-  onSuccess: () => {
-    toast.success('任务已更新')
-    editingTask.value = null
-    invalidateTasks()
-  },
-})
-
-const handleUpdateTask = async (taskData: Record<string, unknown>) => {
+const handleCreateTask = (taskData: Record<string, unknown>) => doCreateTask(taskData)
+const handleUpdateTask = (taskData: Record<string, unknown>) => {
   if (!editingTask.value) return
-  await updateMutation.mutateAsync({ task: editingTask.value, taskData }).catch(() => {})
+  doUpdateTask(editingTask.value, taskData)
 }
 
 const confirmDeleteTask = (task: ScheduledTask) => {
   deletingTask.value = task
   showDeleteDialog.value = true
 }
-
-const deleteMutation = useMutation({
-  mutationFn: (task: ScheduledTask) => apiDeleteTask(task.id),
-  onSuccess: () => {
-    toast.success('任务已删除')
-    invalidateTasks()
-  },
-})
-
 const doDeleteTask = async () => {
   if (!deletingTask.value) return
   showDeleteDialog.value = false
   const task = deletingTask.value
   deletingTask.value = null
-  await deleteMutation.mutateAsync(task).catch(() => {})
-}
-
-const enableMutation = useMutation({
-  mutationFn: (id: string | number) => apiEnableTask(id),
-  onSuccess: () => {
-    toast.success('任务已恢复')
-    invalidateTasks()
-  },
-})
-
-const disableMutation = useMutation({
-  mutationFn: (id: string | number) => apiDisableTask(id),
-  onSuccess: () => {
-    toast.success('任务已暂停')
-    invalidateTasks()
-  },
-})
-
-const enableTask = (id: string | number) => {
-  void enableMutation.mutateAsync(id).catch(() => {})
-}
-
-const disableTask = (id: string | number) => {
-  void disableMutation.mutateAsync(id).catch(() => {})
+  await doDelete(task)
 }
 
 const goToPage = (page: number) => {
@@ -511,41 +416,11 @@ const clearSearch = () => {
   // queryKey changes → vue-query refetches. Nothing to call manually.
 }
 
-const getUnitFull = (unit: string) => {
-  return ({ seconds: '秒', minutes: '分钟', hours: '小时', days: '天' } as Record<string, string>)[unit] || unit
-}
+// ponytail: status/unit/badge/datetime formatters live in the shared
+// scheduledTaskPresenters lib. getStatusCount needs the live statistics snapshot,
+// so bind it here rather than passing statistics through the template.
+const getStatusCount = (status: string) => getStatusCountFor(status, statistics.value)
 
-const getStatusText = (status: string) => {
-  return ({ enabled: '就绪', disabled: '暂停', running: '运行中', error: '异常' } as Record<string, string>)[status] || status
-}
-
-const getStatusCount = (status: string) => {
-  const stats = statistics.value
-  return ({
-    all: stats.total_tasks,
-    enabled: stats.active_tasks,
-    disabled: Math.max(stats.total_tasks - stats.active_tasks, 0),
-    running: stats.running_tasks,
-    error: stats.error_tasks
-  } as Record<string, number>)[status] || 0
-}
-
-const getStatusBadgeClass = (status: string) => {
-  return ({
-    enabled: 'border-border/50 bg-background text-foreground',
-    disabled: 'border-border/50 bg-muted text-muted-foreground',
-    running: 'border-primary/20 bg-primary/10 text-primary',
-    error: 'border-destructive/20 bg-destructive/10 text-destructive'
-  } as Record<string, string>)[status] || 'border-border/50 bg-muted text-muted-foreground'
-}
-
-const formatDateTime = (val: string | null | undefined) => {
-  if (!val) return null
-  const date = new Date(val)
-  return date.toLocaleString('zh-CN', {
-    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-  })
-}
 </script>
 
 <style scoped>
