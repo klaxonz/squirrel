@@ -161,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
@@ -172,23 +172,40 @@ import MusicBarControls from './player/MusicBarControls.vue'
 import MusicBarActions from './player/MusicBarActions.vue'
 import MusicQueuePanel from './player/MusicQueuePanel.vue'
 import MusicImmersivePlayer from './player/MusicImmersivePlayer.vue'
-import {
-  addMusicFavorite,
-  removeMusicFavorite,
-} from '@/shared/api/music'
-import { Logger } from '@/shared/lib/logger'
 import { useMusicComments } from '@/features/music/composables/useMusicComments'
+import { useMusicFavorites } from '@/features/music/composables/useMusicFavorites'
+import { useImmersivePlayer } from '@/features/music/composables/useImmersivePlayer'
+import { useAudioElementBridge } from '@/features/music/composables/useAudioElementBridge'
+import { useQueueReorder } from '@/features/music/composables/useQueueReorder'
 
 const store = useMusicPlayerStore()
 const route = useRoute()
 
-const audioEl = ref<HTMLAudioElement | null>(null)
+// ponytail: the <audio> element <-> store bridge (ref registration + the
+// imperative src/volume/play/error lifecycle on audioSrc change) lives in
+// useAudioElementBridge. Isolating the imperative element lifecycle keeps the
+// riskiest part of the player (forgotten load() / unhandled play() rejection)
+// auditable in one place.
+const { audioEl } = useAudioElementBridge({ store })
+
 const isBuffering = ref(false)
 const showQueue = ref(false)
-const showImmersive = ref(false)
-const dragIndex = ref<number | null>(null)
-const likedTracks = ref<Set<string>>(new Set())
-const likeLoading = ref(false)
+
+// ponytail: HTML5 drag-and-drop queue reorder (drag source index + drop guard)
+// lives in useQueueReorder. Any queue surface that wants drag-to-reorder can
+// reuse it.
+const { onDragStart, onDrop } = useQueueReorder({ store })
+
+// ponytail: immersive overlay toggle + body-scroll-lock live in
+// useImmersivePlayer. The lock is always released on close and on unmount.
+const { showImmersive, openImmersive, closeImmersive } = useImmersivePlayer()
+
+// ponytail: track-favorite (like) state + optimistic toggle + loading guard
+// live in useMusicFavorites, keyed by album_audio_id. Any track surface that
+// renders a heart can reuse it.
+const { isTrackLiked, toggleLike } = useMusicFavorites({
+  currentTrack: computed(() => store.currentTrack),
+})
 
 // ponytail: comments logic used to be hand-rolled inline (~50 lines mirroring
 // useMusicComments). The composable now owns load/loadMore/count/switch/
@@ -197,12 +214,6 @@ const commentsState = useMusicComments()
 
 const isMusicPage = computed(() => route.name === 'Music')
 const canStep = computed(() => store.queue.length > 1)
-
-const isTrackLiked = computed(() => {
-  const track = store.currentTrack
-  if (!track?.album_audio_id) return false
-  return likedTracks.value.has(track.album_audio_id)
-})
 
 // ponytail: formatDuration is the player-surface variant (zero-padded mm:ss)
 // from the shared musicFormatters lib, deduped from 5 components.
@@ -233,25 +244,6 @@ function toggleMute() {
   } else {
     previousVolume = store.volume
     store.setVolume(0)
-  }
-}
-
-async function toggleLike() {
-  const track = store.currentTrack
-  if (!track?.album_audio_id || likeLoading.value) return
-  likeLoading.value = true
-  try {
-    if (isTrackLiked.value) {
-      await removeMusicFavorite(track.album_audio_id)
-      likedTracks.value.delete(track.album_audio_id)
-    } else {
-      await addMusicFavorite(track.album_audio_id)
-      likedTracks.value.add(track.album_audio_id)
-    }
-  } catch {
-    // silent — failed like toggle leaves the heart state unchanged
-  } finally {
-    likeLoading.value = false
   }
 }
 
@@ -293,55 +285,6 @@ function removeQueueItem(index: number) {
     store.removeFromQueue(track.hash)
   }
 }
-
-function onDragStart(index: number, _event: DragEvent) {
-  dragIndex.value = index
-}
-
-function onDrop(targetIndex: number, _event: DragEvent) {
-  if (dragIndex.value === null || dragIndex.value === targetIndex) return
-  store.reorderQueue(dragIndex.value, targetIndex)
-  dragIndex.value = null
-}
-
-function openImmersive() {
-  showImmersive.value = true
-  document.body.style.overflow = 'hidden'
-}
-
-function closeImmersive() {
-  showImmersive.value = false
-  document.body.style.overflow = ''
-}
-
-onMounted(() => {
-  store.setAudioRef(audioEl.value)
-})
-
-watch(audioEl, (el) => {
-  store.setAudioRef(el)
-})
-
-watch(() => store.audioSrc, (src) => {
-  if (!audioEl.value) return
-  if (src) {
-    audioEl.value.src = src
-    audioEl.value.volume = store.volume
-    audioEl.value.play().catch((err) => {
-      store.markPlaybackError('播放失败，当前歌曲可能不可播放')
-      Logger.error('Failed to play music audio', err)
-    })
-  } else {
-    audioEl.value.removeAttribute('src')
-    audioEl.value.load()
-    store.syncPlayState()
-  }
-})
-
-onUnmounted(() => {
-  store.setAudioRef(null)
-  document.body.style.overflow = ''
-})
 </script>
 
 <style scoped>
