@@ -40,20 +40,6 @@
         </div>
       </template>
 
-        <div class="shrink-0 border-b border-border/50 p-2 lg:hidden">
-          <div class="flex overflow-x-auto rounded-md bg-muted p-0.5 custom-scrollbar">
-            <button
-              v-for="tab in tabs"
-              :key="tab.key"
-              @click="navigateToTab(tab.path)"
-              class="h-8 shrink-0 rounded px-3 text-sm font-medium transition-colors"
-              :class="currentTab === tab.key ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-            >
-              {{ tab.label }}
-            </button>
-          </div>
-        </div>
-
         <div class="flex-1 overflow-y-auto custom-scrollbar">
           <main class="mx-auto w-full max-w-[960px] p-4 lg:p-6">
             <div v-if="pageLoading" class="space-y-3">

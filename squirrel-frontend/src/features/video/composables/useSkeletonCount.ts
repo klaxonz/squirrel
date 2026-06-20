@@ -1,22 +1,28 @@
 import { computed, onMounted, onUnmounted, ref, shallowRef, toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue'
 
 /**
- * A breakpoint entry: `[minWidthPx, columnCount]`. Descending order expected.
- * Mirror the `grid-cols-*` classes used in the component template.
+ * Options for sizing a loading skeleton grid to the visible viewport.
+ *
+ * The column count is derived from the SAME formula the CSS auto-fill grid
+ * uses (`repeat(auto-fill, minmax(min(100%, minCardWidth), 1fr))`), so the
+ * skeleton grid and the real card grid always agree on column count without
+ * any hand-mirrored breakpoint table. This was the root cause of the previous
+ * drift: 5 call-sites each declared a `GridBreakpoint[]` that had to "mirror"
+ * the `grid-cols-*` classes, and they desynced every time the classes changed.
  */
-export type GridBreakpoint = [number, number]
-
 export interface SkeletonCountOptions {
   /**
-   * Breakpoints used to derive the grid column count from container width.
-   * Must be sorted descending by width, e.g. `[[1920, 6], [1536, 5], [0, 1]]`.
-   * Accepts a ref/getter so the layout can change reactively (e.g. list/grid).
+   * Minimum card width in px — MUST match the `--app-grid-min` the grid is
+   * rendered with (defaults to `--app-video-grid-min`, 280px). Used to compute
+   * the auto-fill column count: `cols = floor((width + gap) / (min + gap))`.
+   * Set to a very large number (e.g. Number.MAX_SAFE_INTEGER) for single-column
+   * layouts (list view).
    */
-  breakpoints: MaybeRefOrGetter<GridBreakpoint[]>
+  minCardWidth?: MaybeRefOrGetter<number>
+  /** Horizontal+vertical gap between cells in px (matches the grid `gap`). */
+  gap?: MaybeRefOrGetter<number>
   /** Approximate card height in px. */
   cardHeight?: MaybeRefOrGetter<number>
-  /** Vertical gap between rows in px (matches Tailwind `gap-*`). */
-  rowGap?: MaybeRefOrGetter<number>
   /** Hard floor so very short viewports still look populated. */
   min?: MaybeRefOrGetter<number>
   /** Hard ceiling so huge viewports don't render absurd skeletons. */
@@ -26,8 +32,9 @@ export interface SkeletonCountOptions {
 }
 
 const DEFAULTS = {
+  minCardWidth: 280,
+  gap: 24,
   cardHeight: 220,
-  rowGap: 24,
   min: 4,
   max: 30,
   overscanRows: 1,
@@ -37,15 +44,15 @@ const clamp = (value: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, value))
 
 /**
- * Returns a reactive skeleton count sized to fill the visible viewport for the
- * given responsive grid. Pass the returned `attachRef` to the grid's root so the
- * column count tracks the actual container width (not the full window).
+ * Returns a reactive skeleton count sized to fill the visible viewport for a
+ * CSS `auto-fill` card grid. Pass the returned `attachRef` to the grid's root
+ * so the column count tracks the actual container width (not the full window).
  */
-export function useSkeletonCount(options: SkeletonCountOptions) {
+export function useSkeletonCount(options: SkeletonCountOptions = {}) {
   const {
-    breakpoints,
+    minCardWidth = DEFAULTS.minCardWidth,
+    gap = DEFAULTS.gap,
     cardHeight = DEFAULTS.cardHeight,
-    rowGap = DEFAULTS.rowGap,
     min = DEFAULTS.min,
     max = DEFAULTS.max,
     overscanRows = DEFAULTS.overscanRows,
@@ -59,22 +66,24 @@ export function useSkeletonCount(options: SkeletonCountOptions) {
     typeof window !== 'undefined' ? window.innerHeight : 800,
   )
 
+  // Mirror CSS `repeat(auto-fill, minmax(min(100%, minCardWidth), 1fr))`:
+  // the browser lays out N columns where N is the largest integer satisfying
+  // N*min + (N-1)*gap <= width, i.e. N = floor((width + gap) / (min + gap)).
   const columns = computed(() => {
     const w = containerWidth.value
-    const bps = toValue(breakpoints)
-    for (const [bp, cols] of bps) {
-      if (w >= bp) return Math.max(1, cols)
-    }
-    return 1
+    const minW = toValue(minCardWidth)
+    const g = toValue(gap)
+    if (w <= 0 || minW <= 0) return 1
+    return Math.max(1, Math.floor((w + g) / (minW + g)))
   })
 
   const count = computed(() => {
     const cols = columns.value
     const h = toValue(cardHeight)
-    const gap = toValue(rowGap)
+    const gapPx = toValue(gap)
     const overscan = toValue(overscanRows)
     const rows = Math.ceil(
-      (viewportHeight.value + overscan * (h + gap)) / (h + gap),
+      (viewportHeight.value + overscan * (h + gapPx)) / (h + gapPx),
     )
     return clamp(cols * rows, toValue(min), toValue(max))
   })
@@ -136,5 +145,4 @@ export type SkeletonCountReturn = {
   columns: Ref<number>
   attachRef: Ref<HTMLElement | null>
 }
-
 

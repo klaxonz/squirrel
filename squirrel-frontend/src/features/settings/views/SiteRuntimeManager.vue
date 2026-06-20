@@ -77,9 +77,6 @@
               <AppIcon name="close" class="h-4 w-4" />
             </button>
           </div>
-          <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md lg:hidden" :disabled="reloading || loading" @click="handleReload">
-            <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': reloading }" />
-          </Button>
         </div>
       </template>
 

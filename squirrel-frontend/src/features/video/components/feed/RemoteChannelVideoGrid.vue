@@ -8,7 +8,7 @@
       <AppEmptyState variant="plain" icon="inbox" title="暂无远端内容" copy="源站频道暂时没有返回视频。" />
     </div>
 
-    <div v-if="items.length" class="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5">
+    <div v-if="items.length" class="app-video-grid app-video-grid--feed">
       <button
         v-for="item in items"
         :key="item.site + ':' + item.url"
@@ -34,7 +34,7 @@
       </button>
     </div>
 
-    <div v-if="loading" class="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5">
+    <div v-if="loading" class="app-video-grid app-video-grid--feed">
       <VideoSkeleton v-for="i in skeletonCount" :key="i" />
     </div>
 
@@ -54,7 +54,7 @@ import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
 import VideoSkeleton from '@/features/video/components/feed/VideoSkeleton.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
-import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
+import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 
@@ -86,19 +86,12 @@ const emit = defineEmits<{
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
-// --- Adaptive skeleton count ----------------------------------------------
-// Mirrors `grid-cols-1 sm:2 xl:3 2xl:4 3xl:5` on the grid container.
-const GRID_BREAKPOINTS: GridBreakpoint[] = [
-  [1920, 5], // 3xl
-  [1536, 4], // 2xl
-  [1280, 3], // xl
-  [640, 2],  // sm
-  [0, 1],    // base
-]
+// Skeleton count mirrors the auto-fill grid via the same minCardWidth/gap
+// formula — no breakpoint table to keep in sync with the CSS class.
 const { count: skeletonCount, attachRef: root } = useSkeletonCount({
-  breakpoints: GRID_BREAKPOINTS,
-  cardHeight: 200, // thumbnail + 2-line title + date
-  rowGap: 32,      // matches `gap-y-8` (2rem ≈ 32px)
+  minCardWidth: 280,   // matches --app-video-grid-min
+  gap: 32,             // matches --app-video-grid-gap-y (2rem)
+  cardHeight: 200,     // thumbnail + 2-line title + date
 })
 
 const displayDate = (item: RemoteSearchItem) => {

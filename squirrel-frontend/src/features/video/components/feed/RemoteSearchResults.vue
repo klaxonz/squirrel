@@ -18,7 +18,7 @@
         </div>
       </div>
 
-      <div v-if="items.length > 0" class="grid grid-cols-1 gap-x-5 gap-y-10 p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6">
+      <div v-if="items.length > 0" class="app-video-grid app-video-grid--feed p-6">
         <article
           v-for="item in items"
           :key="item.site + ':' + item.url"
@@ -79,7 +79,7 @@
         </article>
       </div>
 
-      <div v-if="loading" class="grid grid-cols-1 gap-x-5 gap-y-10 p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6">
+      <div v-if="loading" class="app-video-grid app-video-grid--feed p-6">
         <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" />
       </div>
 
@@ -103,7 +103,7 @@ import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.v
 import VideoSkeleton from './VideoSkeleton.vue'
 import VideoThumbnail from './VideoThumbnail.vue'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
-import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
+import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useInfiniteScrollSentinel } from '@/shared/composables/useInfiniteScrollSentinel'
@@ -167,20 +167,13 @@ const trimmedQuery = computed(() => String(props.query || '').trim())
 const searchKey = computed(() => `${trimmedQuery.value}::${props.site || 'all'}::${props.limit}`)
 
 // --- Adaptive skeleton count ----------------------------------------------
-// Mirrors `grid-cols-1 sm:2 md:3 lg:3 xl:4 2xl:5 3xl:6` on the grid container.
-const SEARCH_BREAKPOINTS: GridBreakpoint[] = [
-  [1920, 6], // 3xl
-  [1536, 5], // 2xl
-  [1280, 4], // xl
-  [1024, 3], // lg
-  [768, 3],  // md
-  [640, 2],  // sm
-  [0, 1],    // base
-]
+// Derived from the same auto-fill formula as `.app-video-grid--feed`, so the
+// skeleton grid and the real grid agree on column count without a breakpoint
+// table.
 const { count: skeletonCount, attachRef: root } = useSkeletonCount({
-  breakpoints: SEARCH_BREAKPOINTS,
-  cardHeight: 260, // thumbnail + 2-line title + meta + actor + date
-  rowGap: 40,      // matches `gap-y-10` (2.5rem ≈ 40px)
+  minCardWidth: 280,   // matches --app-video-grid-min
+  gap: 40,             // matches --app-video-grid-gap-y (2.5rem)
+  cardHeight: 260,     // thumbnail + 2-line title + meta + actor + date
 })
 
 let requestToken = 0

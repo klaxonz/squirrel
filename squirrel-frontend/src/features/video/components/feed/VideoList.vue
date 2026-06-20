@@ -3,7 +3,7 @@
     <!-- List/Grid Container -->
     <div v-if="videos.length > 0"
          :class="uiStore.viewMode === 'grid'
-           ? 'grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6 p-6'
+           ? 'app-video-grid p-6'
            : 'flex flex-col gap-4 p-6 max-w-4xl mx-auto'">
       <VideoItem
         v-for="video in videos"
@@ -23,7 +23,7 @@
          skeleton block alongside the stale items. -->
     <div v-if="loading && !refreshing"
          :class="uiStore.viewMode === 'grid'
-           ? 'grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6 p-6'
+           ? 'app-video-grid p-6'
            : 'flex flex-col gap-4 p-6 max-w-4xl mx-auto'">
       <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" :layout="uiStore.viewMode" />
     </div>
@@ -45,7 +45,7 @@ import VideoItem from './VideoItem.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
 import { useUIStore } from '@/shared/stores/ui'
 import { useInfiniteScrollSentinel } from '@/shared/composables/useInfiniteScrollSentinel'
-import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
+import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
 import type { VideoListItem } from '@/features/video/types/video'
 
 const uiStore = useUIStore()
@@ -63,26 +63,14 @@ const emit = defineEmits(['goToSubscription', 'openModal', 'loadMore'])
 
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 
-// --- Adaptive skeleton count ----------------------------------------------
-// Breakpoints must mirror the grid classes below:
-// `grid-cols-1 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6`
-const GRID_BREAKPOINTS: GridBreakpoint[] = [
-  [1920, 6], // 3xl
-  [1536, 5], // 2xl
-  [1024, 4], // lg
-  [768, 3],  // md
-  [0, 1],    // base
-]
-// List mode is always a single column.
-const LIST_BREAKPOINTS: GridBreakpoint[] = [[0, 1]]
-
+// Skeleton column count is derived from the same auto-fill formula the CSS grid
+// uses (minCardWidth + gap → column count), so it stays in sync with the real
+// `.app-video-grid` without a hand-mirrored breakpoint table. List mode forces
+// a single column by setting an impossibly large min card width.
 const { count: skeletonCount, attachRef: root } = useSkeletonCount({
-  // Layout swaps between grid and list depending on the toolbar view mode.
-  breakpoints: computed(() =>
-    uiStore.viewMode === 'grid' ? GRID_BREAKPOINTS : LIST_BREAKPOINTS,
-  ),
+  minCardWidth: computed(() => (uiStore.viewMode === 'grid' ? 280 : Number.MAX_SAFE_INTEGER)),
+  gap: 24, // matches --app-video-grid-gap (1.5rem)
   cardHeight: computed(() => (uiStore.viewMode === 'grid' ? 220 : 140)),
-  rowGap: 24, // matches `gap-6` (1.5rem ≈ 24px)
 })
 
 // ponytail: the sentinel IntersectionObserver + mount/unmount lifecycle lives

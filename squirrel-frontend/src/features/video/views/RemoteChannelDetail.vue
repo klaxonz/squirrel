@@ -57,7 +57,7 @@
         </div>
       </section>
 
-      <div v-if="items.length > 0" class="grid grid-cols-1 gap-x-5 gap-y-10 p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6">
+      <div v-if="items.length > 0" class="app-video-grid app-video-grid--feed p-6">
         <button
           v-for="item in items"
           :key="item.site + ':' + item.url"
@@ -83,7 +83,7 @@
         </button>
       </div>
 
-      <div v-if="loading" class="grid grid-cols-1 gap-x-5 gap-y-10 p-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6">
+      <div v-if="loading" class="app-video-grid app-video-grid--feed p-6">
         <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" />
       </div>
 
@@ -119,7 +119,7 @@ import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import { Button } from '@/shared/ui/button'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
-import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
+import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
@@ -191,20 +191,12 @@ let scrollRoot: HTMLElement | null = null
 let loadedChannelKey = ''
 
 // --- Adaptive skeleton count ----------------------------------------------
-// Mirrors `grid-cols-1 sm:2 md:3 lg:3 xl:4 2xl:5 3xl:6` on the grid container.
-const CHANNEL_BREAKPOINTS: GridBreakpoint[] = [
-  [1920, 6], // 3xl
-  [1536, 5], // 2xl
-  [1280, 4], // xl
-  [1024, 3], // lg
-  [768, 3],  // md
-  [640, 2],  // sm
-  [0, 1],    // base
-]
+// Mirrors the auto-fill `.app-video-grid--feed` via the same minCardWidth/gap
+// formula — no breakpoint table to keep in sync with the CSS class.
 const { count: skeletonCount, attachRef: root } = useSkeletonCount({
-  breakpoints: CHANNEL_BREAKPOINTS,
-  cardHeight: 220, // thumbnail + 2-line title + date
-  rowGap: 40,      // matches `gap-y-10` (2.5rem ≈ 40px)
+  minCardWidth: 280,   // matches --app-video-grid-min
+  gap: 40,             // matches --app-video-grid-gap-y (2.5rem)
+  cardHeight: 220,     // thumbnail + 2-line title + date
 })
 
 const queryValue = (key: string) => {

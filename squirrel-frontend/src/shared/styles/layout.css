@@ -31,6 +31,19 @@
   --app-page-max-width: 1400px;
   --app-page-readable-width: 48rem;
 
+  /* Responsive card grids — auto-fill + minmax so column count follows the
+     container width instead of hardcoded breakpoints. This is the desktop-first
+     replacement for the 13 hand-rolled `grid-cols-1 sm:grid-cols-2 ...
+     3xl:grid-cols-6` declarations across the video feed. Callers can override
+     --app-grid-min to control density (smaller min = more columns on wide
+     screens; e.g. a 4K viewport with --app-grid-min:280px yields ~9 columns
+     instead of the old 6-column cap). */
+  --app-video-grid-min: 280px;
+  --app-video-grid-gap: 1.5rem;
+  --app-video-grid-gap-x: 1.25rem;  /* remote/feed variant */
+  --app-video-grid-gap-y: 2.5rem;   /* remote/feed variant */
+  --app-music-grid-min: 180px;
+
   --app-toolbar-padding-block: 0.75rem;
   --app-content-padding-top: 0.75rem;
   --app-content-padding-bottom: 3rem;
@@ -135,6 +148,22 @@
   max-width: var(--app-page-max-width);
   margin: 0 auto;
   padding: 1.5rem var(--app-page-gutter) var(--app-content-padding-bottom);
+}
+
+/* Responsive card grids — desktop-first auto-fill layout. Replaces the 13
+   duplicated `grid-cols-1 sm:grid-cols-2 ... 3xl:grid-cols-6` declarations.
+   Column count is derived from container width via minmax, so a 2K/4K viewport
+   fills naturally instead of capping at the old 5–6 column breakpoint.
+   - .app-video-grid:    uniform gap (local feed / VideoList)
+   - .app-video-grid--feed: looser column/row gap (remote search / channel grids)
+   Override --app-grid-min per-call-site for density control. */
+.app-video-grid {
+  display: grid;
+  gap: var(--app-video-grid-gap);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--app-grid-min, var(--app-video-grid-min))), 1fr));
+}
+.app-video-grid--feed {
+  gap: var(--app-video-grid-gap-y) var(--app-video-grid-gap-x);
 }
 
 .app-page-content--narrow {
@@ -330,9 +359,6 @@
   }
 }
 
-@media (max-width: 767px) {
-  .app-page-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-}
+/* No <768px / mobile breakpoints: this is a desktop-only product (Electron +
+   large-screen web). The old `@media (max-width: 767px)` toolbar stack branch
+   was dead code — removed per the desktop-only positioning. */

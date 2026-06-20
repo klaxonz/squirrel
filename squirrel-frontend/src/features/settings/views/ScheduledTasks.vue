@@ -70,10 +70,6 @@
           <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="refreshData">
             <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading }" />
           </Button>
-          <Button class="h-9 rounded-md px-3 lg:hidden" @click="showCreateDialog = true">
-            <AppIcon name="plus" class="h-4 w-4" />
-            新建
-          </Button>
         </div>
       </template>
 

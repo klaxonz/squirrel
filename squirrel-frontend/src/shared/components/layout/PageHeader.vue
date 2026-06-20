@@ -67,15 +67,6 @@ defineProps<{
   flex-shrink: 0;
 }
 
-@media (max-width: 767px) {
-  .page-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-  }
-
-  .page-header__actions {
-    justify-content: flex-start;
-  }
-}
+/* No mobile breakpoint: desktop-only product. The old <768px stack variant
+   was dead code. */
 </style>

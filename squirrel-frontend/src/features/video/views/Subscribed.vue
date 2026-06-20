@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-full overflow-hidden bg-background text-foreground selection:bg-primary/10">
-    <aside class="hidden w-[320px] shrink-0 flex-col border-r border-border/20 bg-muted/10 lg:flex">
+    <aside class="flex w-[320px] shrink-0 flex-col border-r border-border/20 bg-muted/10">
       <div class="flex h-20 shrink-0 items-center justify-between border-b border-border/20 px-5 bg-background/50 backdrop-blur-sm">
         <div class="min-w-0 flex flex-col justify-center">
           <h1 class="app-h2 truncate">订阅频道</h1>
@@ -274,19 +274,19 @@
                 <h3 class="app-h2">{{ group.title }}</h3>
                 <span class="text-xs font-semibold text-muted-foreground/60">{{ group.videos.length }} 视频</span>
               </div>
-              <div class="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5">
+              <div class="app-video-grid app-video-grid--feed">
                 <VideoItem v-for="video in group.videos" :key="video.id" :video="video" show-avatar @openModal="handleOpenVideo" />
               </div>
             </div>
 
-            <div v-if="loadingMoreFeed" class="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 pt-6">
+            <div v-if="loadingMoreFeed" class="app-video-grid app-video-grid--feed pt-6">
               <VideoSkeleton v-for="i in videoSkeletonCount" :key="i" />
             </div>
             <div ref="feedTrigger" class="h-20" />
           </div>
 
           <div v-else class="space-y-8 pb-12">
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div class="app-video-grid" style="--app-grid-min: 320px;">
               <SubscriptionCard
                 v-for="sub in filteredChannels"
                 :key="sub.id"
@@ -295,7 +295,7 @@
                 @toggleSpecial="toggleSpecialFollow"
               />
             </div>
-            <div v-if="loadingChannels && !list.length" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div v-if="loadingChannels && !list.length" class="app-video-grid" style="--app-grid-min: 320px;">
               <SubscriptionCardSkeleton v-for="i in channelSkeletonCount" :key="i" />
             </div>
             <div v-if="!channelsFinished" ref="gridMoreTrigger" class="h-20" />
@@ -337,7 +337,7 @@ import { useFeedGrouping } from '@/features/video/composables/useFeedGrouping'
 import { sortSubscriptions } from '@/features/video/lib/subscriptionSort'
 import { getSubscriptions, getVideoList, updateSpecialFollowStatus } from '@/shared/api'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
-import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
+import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
 import type { SubscriptionListItem } from '@/features/video/types/subscription'
 import type { VideoListItem } from '@/features/video/types/video'
 
@@ -367,33 +367,21 @@ const channelsContainer = ref<HTMLElement | null>(null)
 // one per branch (feed videos vs subscription channel cards).
 const gridWrapper = ref<HTMLElement | null>(null)
 
-// Feed video grid: `grid-cols-1 sm:2 xl:3 2xl:4 3xl:5`, gap-y-10 (40px).
-const VIDEO_BREAKPOINTS: GridBreakpoint[] = [
-  [1920, 5], // 3xl
-  [1536, 4], // 2xl
-  [1280, 3], // xl
-  [640, 2],  // sm
-  [0, 1],    // base
-]
+// Skeleton counts mirror the auto-fill grids via the same minCardWidth/gap
+// formula (no breakpoint tables to keep in sync with the CSS classes).
+// Feed grid: `.app-video-grid--feed` (min 280px, gap-y 40px).
 const { count: videoSkeletonCount, attachRef: videoGridRef } = useSkeletonCount({
-  breakpoints: VIDEO_BREAKPOINTS,
+  minCardWidth: 280,
+  gap: 40,
   cardHeight: 220,
-  rowGap: 40,
 })
 
-// Subscription card grid: `grid-cols-1 sm:2 lg:3 xl:4 2xl:5`, gap-5 (20px).
+// Subscription card grid: `.app-video-grid` with --app-grid-min: 320px, gap 24px.
 // Cards are taller (avatar header + 3 thumbs + footer ≈ 280px).
-const CHANNEL_BREAKPOINTS: GridBreakpoint[] = [
-  [1536, 5], // 2xl
-  [1280, 4], // xl
-  [1024, 3], // lg
-  [640, 2],  // sm
-  [0, 1],    // base
-]
 const { count: channelSkeletonCount, attachRef: channelGridRef } = useSkeletonCount({
-  breakpoints: CHANNEL_BREAKPOINTS,
+  minCardWidth: 320,
+  gap: 24,
   cardHeight: 280,
-  rowGap: 20,
 })
 
 // Both branches render inside the same centered wrapper; point each composable's

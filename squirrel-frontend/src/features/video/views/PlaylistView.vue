@@ -88,30 +88,8 @@
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <button
-              class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
-              title="新建播放列表"
-              aria-label="新建播放列表"
-              @click="openCreateModal"
-            >
-              <AppIcon name="plus" class="h-4 w-4" />
-            </button>
           </div>
         </header>
-
-        <div v-if="playlists.length" class="border-b border-border/50 p-2 lg:hidden">
-          <div class="flex gap-1.5 overflow-x-auto custom-scrollbar">
-            <button
-              v-for="playlist in playlists"
-              :key="playlist.id"
-              class="h-8 shrink-0 rounded-full px-3.5 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="String(activePlaylist?.id) === String(playlist.id) ? 'bg-accent text-foreground' : 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground'"
-              @click="selectPlaylist(playlist.id)"
-            >
-              {{ playlist.name }}
-            </button>
-          </div>
-        </div>
 
         <div class="flex-1 overflow-y-auto custom-scrollbar">
           <div class="mx-auto w-full max-w-[1200px] p-4 lg:p-6">
