@@ -277,6 +277,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted, onMounted, nextTick } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { useRouter } from 'vue-router'
 import { onClickOutside } from '@vueuse/core'
 import AppIcon from '@/shared/icons/AppIcon.vue'
@@ -564,7 +565,7 @@ const fetchFeed = async (isReset = false) => {
     if (items.length < FEED_PAGE_SIZE || !data?.next_cursor) feedFinished.value = true
   } catch (err) {
     if (requestToken !== feedRequestToken) return
-    fetchError.value = err instanceof Error ? err.message : '内容加载失败'
+    fetchError.value = errorMessage(err, '内容加载失败')
     feedFinished.value = true
   } finally {
     if (requestToken === feedRequestToken) {

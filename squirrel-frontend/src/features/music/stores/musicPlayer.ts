@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { computed, nextTick, ref, shallowRef, watch } from 'vue'
 import { getMusicLyric, getMusicPlayUrl, uploadMusicPlayHistory, type MusicLyricLine, type MusicTrack } from '@/shared/api/music'
 import { Logger } from '@/shared/lib/logger'
@@ -286,7 +287,7 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
       lyricLines.value = data?.lines || []
     } catch (err) {
       if (requestId !== lyricRequestId) return
-      lyricError.value = err instanceof Error ? err.message : '歌词加载失败'
+      lyricError.value = errorMessage(err, '歌词加载失败')
       Logger.error('Failed to load music lyric', err)
     } finally {
       if (requestId === lyricRequestId) lyricLoading.value = false
@@ -338,7 +339,7 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
       void _prefetchNextTrack()
       await nextTick()
     } catch (err) {
-      markPlaybackError(err instanceof Error ? err.message : '播放地址获取失败')
+      markPlaybackError(errorMessage(err, '播放地址获取失败'))
       Logger.error('Failed to resolve music play url', err)
     } finally {
       resolvingUrl.value = false

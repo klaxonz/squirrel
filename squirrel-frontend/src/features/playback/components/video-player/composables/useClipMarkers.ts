@@ -1,4 +1,5 @@
 import { ref, computed, watch, type ComputedRef, type Ref } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { formatTime } from '@/shared/lib/dateFormat'
 import type { IconName } from '../core/useIcons'
 import {
@@ -200,7 +201,7 @@ export function useClipMarkers(options: UseClipMarkersOptions): UseClipMarkersRe
       syncLocalClipMarkers([...localClipMarkers.value, data])
       showCentralHud('marker', `标记 ${formatTime(currentTime.value)}`, 'play')
     } catch (err) {
-      showCentralHud('error', err instanceof Error ? err.message : '标记失败', 'play')
+      showCentralHud('error', errorMessage(err, '标记失败'), 'play')
     } finally {
       isSavingMarker.value = false
     }
@@ -244,7 +245,7 @@ export function useClipMarkers(options: UseClipMarkersOptions): UseClipMarkersRe
       syncLocalClipMarkers([...localClipMarkers.value, markerWithPreview])
       showCentralHud('segment', `片段 ${formatTime(draft.startTime)}`, 'skipForward')
     } catch (err) {
-      showCentralHud('error', err instanceof Error ? err.message : '保存失败', 'play')
+      showCentralHud('error', errorMessage(err, '保存失败'), 'play')
     } finally {
       isSavingMarker.value = false
     }
@@ -263,7 +264,7 @@ export function useClipMarkers(options: UseClipMarkersOptions): UseClipMarkersRe
       syncLocalClipMarkers(localClipMarkers.value.filter((item) => item.id !== marker.id))
       hoveredMarkerId.value = null
     } catch (err) {
-      showCentralHud('error', err instanceof Error ? err.message : '删除失败', 'play')
+      showCentralHud('error', errorMessage(err, '删除失败'), 'play')
     }
   }
 
@@ -400,7 +401,7 @@ export function useClipMarkers(options: UseClipMarkersOptions): UseClipMarkersRe
         syncLocalClipMarkers(localClipMarkers.value.map((m) => m.id === d.markerId ? data : m))
         showCentralHud('marker', `标记 ${formatTime(newStart)}`, 'skipForward')
       }).catch((err: unknown) => {
-        showCentralHud('error', err instanceof Error ? err.message : '更新失败', 'play')
+        showCentralHud('error', errorMessage(err, '更新失败'), 'play')
       })
       return
     }
@@ -410,7 +411,7 @@ export function useClipMarkers(options: UseClipMarkersOptions): UseClipMarkersRe
       syncLocalClipMarkers(localClipMarkers.value.map((m) => m.id === d.markerId ? data : m))
       showCentralHud('segment', `${formatTime(newStart)} → ${formatTime(newEnd)}`, 'skipForward')
     }).catch((err: unknown) => {
-      showCentralHud('error', err instanceof Error ? err.message : '更新失败', 'play')
+      showCentralHud('error', errorMessage(err, '更新失败'), 'play')
     })
   }
 

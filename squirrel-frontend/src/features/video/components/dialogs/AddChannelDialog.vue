@@ -42,6 +42,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { subscribe } from '@/shared/api'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
@@ -89,7 +90,7 @@ const handleSubmit = async () => {
     emit('added')
     emit('close')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '添加频道失败，请检查地址是否正确'
+    error.value = errorMessage(err, '添加频道失败，请检查地址是否正确')
   } finally {
     loading.value = false
   }

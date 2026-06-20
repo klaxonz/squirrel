@@ -1,4 +1,5 @@
 import { ref, type Ref } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { searchMusicComplex, type MusicAlbum, type MusicArtist, type MusicTrack } from '@/shared/api/music'
 import { Logger } from '@/shared/lib/logger'
 
@@ -59,7 +60,7 @@ export function useMusicSearch(options: UseMusicSearchOptions): UseMusicSearchRe
       complexResult.value = data || { songs: [], artists: [], albums: [] }
     } catch (err) {
       Logger.warn('handleSearch failed', err)
-      searchError.value = err instanceof Error ? err.message : '搜索失败，请稍后重试'
+      searchError.value = errorMessage(err, '搜索失败，请稍后重试')
       complexResult.value = null
     } finally {
       searchLoading.value = false

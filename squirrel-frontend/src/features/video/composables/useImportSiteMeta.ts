@@ -1,4 +1,5 @@
 import { ref, type Ref } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { getSupportedImportSites } from '@/shared/api'
 import { useSiteCatalog } from '@/features/video/composables/useSites'
 
@@ -67,7 +68,7 @@ export function useImportSiteMeta(options: UseImportSiteMetaOptions): UseImportS
       requestError.value = ''
       supportedSites.value = data
     } catch (err) {
-      requestError.value = err instanceof Error ? err.message : '加载可导入站点失败'
+      requestError.value = errorMessage(err, '加载可导入站点失败')
       supportedSites.value = []
     }
   }

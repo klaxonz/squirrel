@@ -1,4 +1,5 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { previewImportSubscriptions } from '@/shared/api'
 
 /**
@@ -102,7 +103,7 @@ export function useImportPreview(options: UseImportPreviewOptions): UseImportPre
       }
       return true
     } catch (err) {
-      requestError.value = err instanceof Error ? err.message : '预览订阅失败'
+      requestError.value = errorMessage(err, '预览订阅失败')
       return false
     } finally {
       loadingState.value = false

@@ -190,6 +190,7 @@
 
 <script setup>
 import { computed, onUnmounted, ref, watch } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import {
   importSubscriptions,
@@ -294,7 +295,7 @@ const handleImport = async () => {
     importResult.value = data
     step.value = 3
   } catch (err) {
-    requestError.value = err instanceof Error ? err.message : '导入订阅失败'
+    requestError.value = errorMessage(err, '导入订阅失败')
   } finally {
     importing.value = false
   }

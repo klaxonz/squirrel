@@ -1,4 +1,5 @@
 import { ref, shallowRef } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { getDesktopBridge } from '@/shared/composables/useDesktopBridge'
 
 type RemoteChannelProfile = {
@@ -119,7 +120,7 @@ export function useRemoteChannel() {
       if (token !== requestToken) return false
       // ponytail: bridge IPC + the timeout race reject plain Error, not ApiError
       // (this path bypasses handleRequest), so narrow once at the catch site.
-      error.value = err instanceof Error ? err.message : '远端频道加载失败'
+      error.value = errorMessage(err, '远端频道加载失败')
       return false
     } finally {
       clearTimeout(timer)

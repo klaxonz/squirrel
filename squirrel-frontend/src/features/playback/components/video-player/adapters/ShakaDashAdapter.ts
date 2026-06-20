@@ -8,6 +8,7 @@
  */
 
 import shaka from 'shaka-player'
+import { errorMessage } from '@/shared/lib/errorMessage'
 
 // ponytail: shaka-player's TypedEvent<->detail surface and track.allowedByApplication
 // field are runtime-only or loosely declared. The few `as any` reads below are
@@ -134,7 +135,7 @@ export class ShakaDashAdapter implements StreamAdapter {
     } catch (error) {
       this.sink?.error({
         code: 'SHAKA_LOAD_FAILED',
-        message: error instanceof Error ? error.message : 'Shaka failed to load DASH source',
+        message: errorMessage(error, 'Shaka failed to load DASH source'),
         fatal: false,
         details: error,
       })

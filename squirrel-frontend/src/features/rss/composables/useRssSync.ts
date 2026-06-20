@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import type { Ref } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import { getRssSyncStatus, syncRssAccount } from '@/shared/api'
@@ -94,7 +95,7 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
         clearInterval(syncPollTimer!)
         syncPollTimer = null
         syncing.value = false
-        onStatus(err instanceof Error ? err.message : '同步状态查询失败', true)
+        onStatus(errorMessage(err, '同步状态查询失败'), true)
       }
     }, 1000)
   }
@@ -108,7 +109,7 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
       pollSyncProgress()
     } catch (err) {
       syncing.value = false
-      onStatus(err instanceof Error ? err.message : '启动同步失败', true)
+      onStatus(errorMessage(err, '启动同步失败'), true)
     }
   }
 

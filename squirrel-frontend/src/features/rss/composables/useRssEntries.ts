@@ -1,4 +1,5 @@
 import { computed, ref, watch, type Ref } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { useContextMenuPosition } from '@/shared/composables/useContextMenuPosition'
 import {
   getRssEntries,
@@ -106,7 +107,7 @@ export function useRssEntries(options: {
       const data = await getRssEntries(buildEntriesParams())
       return { fetched: data?.data || [], total: data?.total || 0 }
     } catch (err) {
-      options?.onStatus?.(err instanceof Error ? err.message : '加载文章失败', true)
+      options?.onStatus?.(errorMessage(err, '加载文章失败'), true)
       return null
     }
   }
@@ -217,7 +218,7 @@ export function useRssEntries(options: {
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
         options.readingEntry.value.is_read = !newStatus
       }
-      options?.onStatus?.(err instanceof Error ? err.message : '更新失败', true)
+      options?.onStatus?.(errorMessage(err, '更新失败'), true)
     }
   }
 
@@ -261,7 +262,7 @@ export function useRssEntries(options: {
           options.readingEntry.value.is_read = previousIsRead
         }
       })
-      options?.onStatus?.(err instanceof Error ? err.message : '批量更新失败', true)
+      options?.onStatus?.(errorMessage(err, '批量更新失败'), true)
     }
   }
 
@@ -279,7 +280,7 @@ export function useRssEntries(options: {
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
         options.readingEntry.value.is_starred = !newStatus
       }
-      options?.onStatus?.(err instanceof Error ? err.message : '收藏失败', true)
+      options?.onStatus?.(errorMessage(err, '收藏失败'), true)
     }
   }
 

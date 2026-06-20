@@ -109,6 +109,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { errorMessage as resolveError } from '@/shared/lib/errorMessage'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
@@ -305,7 +306,7 @@ const loadPage = async (page: number) => {
   } catch (error: unknown) {
     if (currentToken !== requestToken) return
     // ponytail: desktop bridge path bypasses handleRequest; reject is plain Error
-    errorMessage.value = error instanceof Error ? error.message : '远端频道加载失败'
+    errorMessage.value = resolveError(error, '远端频道加载失败')
   } finally {
     clearTimeout(timer)
     if (currentToken === requestToken) loading.value = false

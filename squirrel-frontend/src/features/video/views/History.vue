@@ -97,6 +97,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
@@ -144,7 +145,7 @@ const loadData = async () => {
     const data = await getWatchHistory(1, { pageSize: 100 })
     videos.value = data.items || []
   } catch (err) {
-    loadError.value = err instanceof Error ? err.message : '加载历史记录失败'
+    loadError.value = errorMessage(err, '加载历史记录失败')
   } finally {
     loading.value = false
   }

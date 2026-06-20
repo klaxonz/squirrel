@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import {
   listPlaylists,
   getPlaylistDetail,
@@ -62,7 +63,7 @@ const createPlaylistStore = () => {
       const data = await listPlaylists()
       playlists.value = data || []
     } catch (err) {
-      error.value = err instanceof Error ? err.message : '加载失败'
+      error.value = errorMessage(err, '加载失败')
       Logger.error('[usePlaylist] fetchPlaylists error', err)
     } finally {
       loading.value = false
@@ -77,7 +78,7 @@ const createPlaylistStore = () => {
       activePlaylist.value = data || null
       return data || null
     } catch (err) {
-      error.value = err instanceof Error ? err.message : '加载失败'
+      error.value = errorMessage(err, '加载失败')
       Logger.error('[usePlaylist] fetchPlaylistDetail error', err)
       return null
     } finally {

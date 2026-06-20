@@ -361,6 +361,7 @@
 
 <script setup>
 import { onMounted, ref, computed } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
@@ -660,7 +661,7 @@ const handleTestLoginBySite = async (siteName) => {
       upsertLoginStatus(siteName, {
         site_name: siteName,
         logged_in: false,
-        message: err instanceof Error ? err.message : '检测失败',
+        message: errorMessage(err, '检测失败'),
         checked_at: new Date().toISOString(),
       })
     }

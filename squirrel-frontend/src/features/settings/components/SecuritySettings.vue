@@ -54,6 +54,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { revokeUserSessions, updateUserPassword } from '@/shared/api'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
@@ -113,7 +114,7 @@ const handlePasswordUpdate = async () => {
     securitySuccess.value = '密码更新成功'
     securityForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
   } catch (err) {
-    securityError.value = err instanceof Error ? err.message : '更新失败'
+    securityError.value = errorMessage(err, '更新失败')
   } finally {
     passwordSubmitting.value = false
   }

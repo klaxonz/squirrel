@@ -1,4 +1,5 @@
 import { computed, nextTick, ref, watch, type Ref } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { onClickOutside } from '@vueuse/core'
 import { unsubscribeRssFeed } from '@/shared/api'
 import { formatDate } from '@/shared/lib/dateFormat'
@@ -220,7 +221,7 @@ export function useRssReader(options: {
       await options?.onRefreshFeeds?.()
       await options?.onRefreshEntries?.(true)
     } catch (err) {
-      options?.onStatus?.(err instanceof Error ? err.message : '取消订阅失败', true)
+      options?.onStatus?.(errorMessage(err, '取消订阅失败'), true)
     }
   }
 

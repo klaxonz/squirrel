@@ -1,4 +1,5 @@
 import { computed, ref, type Ref } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { onClickOutside } from '@vueuse/core'
 import { useContextMenuPosition } from '@/shared/composables/useContextMenuPosition'
 import {
@@ -88,7 +89,7 @@ export function useRssFeeds(options: {
       )
       feeds.value = data?.data || []
     } catch (err) {
-      options?.onStatus?.(err instanceof Error ? err.message : '加载订阅源失败', true)
+      options?.onStatus?.(errorMessage(err, '加载订阅源失败'), true)
     }
   }
 
@@ -131,7 +132,7 @@ export function useRssFeeds(options: {
       }, 1000)
     } catch (err) {
       subscribeError.value = true
-      subscribeMessage.value = err instanceof Error ? err.message : '订阅失败'
+      subscribeMessage.value = errorMessage(err, '订阅失败')
     } finally {
       subscribingFeed.value = false
     }
@@ -177,7 +178,7 @@ export function useRssFeeds(options: {
       await loadFeeds()
       await options?.onRefreshEntries?.(true)
     } catch (err) {
-      options?.onStatus?.(err instanceof Error ? err.message : '取消订阅失败', true)
+      options?.onStatus?.(errorMessage(err, '取消订阅失败'), true)
     }
   }
 
@@ -205,7 +206,7 @@ export function useRssFeeds(options: {
             : '已设为内嵌阅读'
       )
     } catch (err) {
-      options?.onStatus?.(err instanceof Error ? err.message : '更新失败', true)
+      options?.onStatus?.(errorMessage(err, '更新失败'), true)
     }
   }
 
@@ -217,7 +218,7 @@ export function useRssFeeds(options: {
       options?.onStatus?.(`已同步「${feed.title}」，更新 ${count} 篇文章`)
       await options?.onRefreshEntries?.(true)
     } catch (err) {
-      options?.onStatus?.(err instanceof Error ? err.message : '同步失败', true)
+      options?.onStatus?.(errorMessage(err, '同步失败'), true)
     }
   }
 
@@ -228,7 +229,7 @@ export function useRssFeeds(options: {
       options?.onStatus?.(`已将「${feed.title}」全部文章标记为已读`)
       await options?.onRefreshEntries?.(true)
     } catch (err) {
-      options?.onStatus?.(err instanceof Error ? err.message : '标记失败', true)
+      options?.onStatus?.(errorMessage(err, '标记失败'), true)
     }
   }
 

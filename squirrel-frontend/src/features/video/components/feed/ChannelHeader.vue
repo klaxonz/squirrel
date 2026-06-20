@@ -148,6 +148,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import {
@@ -213,7 +214,7 @@ const handleUnsubscribe = async () => {
     notifySubscriptionRemoved(props.subscriptionId)
     await wait(DISMISS_MS)
   } catch (err) {
-    unsubscribeError.value = err instanceof Error ? err.message : '取消订阅失败'
+    unsubscribeError.value = errorMessage(err, '取消订阅失败')
   } finally {
     isUnsubscribing.value = false
   }
@@ -258,7 +259,7 @@ const handleDirectSync = async (mode = 'incremental') => {
     await fetchDetail()
     emit('synced', data)
   } catch (err) {
-    syncError.value = err instanceof Error ? err.message : '同步失败'
+    syncError.value = errorMessage(err, '同步失败')
     syncMessage.value = syncError.value
   } finally {
     isSyncing.value = false

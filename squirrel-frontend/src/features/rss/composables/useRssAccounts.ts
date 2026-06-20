@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { onClickOutside } from '@vueuse/core'
 import {
   createRssAccount,
@@ -124,7 +125,7 @@ export function useRssAccounts(options?: {
         selectedAccountId.value = accounts.value[0].id
       }
     } catch (err) {
-      options?.onStatus?.(err instanceof Error ? err.message : '加载账号失败', true)
+      options?.onStatus?.(errorMessage(err, '加载账号失败'), true)
     }
   }
 
@@ -154,7 +155,7 @@ export function useRssAccounts(options?: {
       await options?.onRefresh?.()
     } catch (err) {
       formError.value = true
-      formMessage.value = err instanceof Error ? err.message : '保存失败'
+      formMessage.value = errorMessage(err, '保存失败')
     } finally {
       saving.value = false
     }
@@ -193,7 +194,7 @@ export function useRssAccounts(options?: {
       accountToDelete.value = null
       await options?.onRefresh?.()
     } catch (err) {
-      options?.onStatus?.(err instanceof Error ? err.message : '删除失败', true)
+      options?.onStatus?.(errorMessage(err, '删除失败'), true)
       showDeleteConfirmModal.value = false
     }
   }
