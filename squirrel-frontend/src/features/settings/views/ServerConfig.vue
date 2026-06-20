@@ -2,14 +2,12 @@
   <div class="min-h-full flex flex-col justify-center items-center bg-muted dark:bg-background p-4 sm:p-8 relative">
     
     <!-- Main Content Container -->
-    <main class="w-full max-w-[400px] bg-white dark:bg-zinc-900 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] border border-border relative z-10 animate-in fade-in zoom-in-95 duration-300">
+    <main class="w-full max-w-[400px] bg-card rounded-xl shadow-lg border border-border relative z-10 animate-in fade-in zoom-in-95 duration-300">
       
       <div class="p-6 sm:p-8">
         <!-- Header Area -->
         <header class="flex flex-col items-center text-center mb-8">
-          <div class="h-12 w-12 text-primary-foreground rounded-xl flex items-center justify-center mb-5 shadow-[0_8px_24px_hsl(var(--primary)/0.35)]" style="background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(28 80% 46%));">
-            <AppIcon name="server" class="h-6 w-6" />
-          </div>
+          <BrandLogo size="md" class="mb-5" />
           <h1 class="app-h1 mb-1.5">归仓核心配置</h1>
           <p class="text-sm text-muted-foreground">连接至您的后端服务引擎</p>
         </header>
@@ -137,6 +135,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Logger } from '@/shared/lib/logger'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import BrandLogo from '@/shared/components/BrandLogo.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Alert, AlertDescription } from '@/shared/ui/alert'

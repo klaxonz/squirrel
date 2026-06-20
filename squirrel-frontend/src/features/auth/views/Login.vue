@@ -3,9 +3,9 @@
     
     <!-- Server Config Pill -->
     <div class="absolute top-4 right-4 sm:top-8 sm:right-8 z-20">
-      <router-link 
-        to="/server-config" 
-        class="inline-flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm rounded-full bg-white dark:bg-zinc-900 border border-border hover:border-primary/50 hover:text-primary transition-colors shadow-sm"
+      <router-link
+        to="/server-config"
+        class="inline-flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm rounded-full bg-card border border-border hover:border-primary/50 hover:text-primary transition-colors shadow-sm"
       >
         <AppIcon name="server" class="h-4 w-4 opacity-70" />
         <span class="opacity-70 hidden sm:inline">服务器:</span>
@@ -14,14 +14,12 @@
     </div>
 
     <!-- Main Content Container -->
-    <main class="w-full max-w-[400px] bg-white dark:bg-zinc-900 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] border border-border relative z-10 animate-in fade-in zoom-in-95 duration-300">
+    <main class="w-full max-w-[400px] bg-card rounded-xl shadow-lg border border-border relative z-10 animate-in fade-in zoom-in-95 duration-300">
       
       <div class="p-6 sm:p-8">
         <!-- Header Area -->
         <header class="flex flex-col items-center text-center mb-8">
-          <div class="h-12 w-12 text-primary-foreground rounded-xl flex items-center justify-center mb-5 shadow-[0_8px_24px_hsl(var(--primary)/0.35)]" style="background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(28 80% 46%));">
-            <AppIcon name="brand" class="h-6 w-6" />
-          </div>
+          <BrandLogo size="md" class="mb-5" />
           <h1 class="app-h1 mb-1.5">欢迎回来</h1>
           <p class="text-sm text-muted-foreground">登录您的账户以继续使用归仓</p>
         </header>
@@ -121,6 +119,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import BrandLogo from '@/shared/components/BrandLogo.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Alert, AlertDescription } from '@/shared/ui/alert'

@@ -4,9 +4,7 @@
          with the top-bar content row. -->
     <div class="h-14 flex items-center px-4 mb-2 shrink-0">
       <router-link to="/" class="flex items-center gap-2.5 px-2 group w-full rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
-        <div class="w-8 h-8 text-primary-foreground rounded-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-105 group-active:scale-95 bg-gradient-to-br shadow-[0_2px_10px_hsl(var(--primary)/0.35)]" style="background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(28 80% 46%));">
-          <AppIcon name="brand" class="w-4 h-4" />
-        </div>
+        <BrandLogo size="sm" class="transition-transform duration-300 group-hover:scale-105 group-active:scale-95" />
         <span class="text-base font-bold tracking-tight text-foreground font-display">归仓</span>
       </router-link>
     </div>
@@ -38,7 +36,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import AppIcon from '@/shared/icons/AppIcon.vue'
+import BrandLogo from '@/shared/components/BrandLogo.vue'
 import SidebarMenuItem from './SidebarMenuItem.vue'
 import { NAV_GROUPS, isNavigationItemActive } from '@/shared/constants/sidebar'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
