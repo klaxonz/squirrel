@@ -92,16 +92,11 @@ import { Button } from '@/shared/ui/button'
 import { VIDEO_TABS } from '@/features/video/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { onSubscriptionRemoved } from '@/shared/lib/subscriptionEvents'
-import { useRemoteChannel, type RemoteVideoItem } from '@/features/video/composables/useRemoteChannel'
+import { useRemoteChannel } from '@/features/video/composables/useRemoteChannel'
+import { useRemoteVideoMapping } from '@/features/video/composables/useRemoteVideoMapping'
+import type { SubscriptionListItem } from '@/features/video/types/subscription'
 
 defineOptions({ name: 'ChannelDetailView' })
-
-const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
-  bilibili: /(?:bilibili\.com\/video\/|b23\.tv\/)/i,
-  pornhub: /pornhub\.com\/(?:view_video\.php|video\/|embed\/)/i,
-  youtube: /(?:youtube\.com\/|youtu\.be\/)/i,
-  youporn: /youporn\.com\/watch\//i,
-}
 
 const router = useRouter()
 const route = useRoute()
@@ -134,6 +129,14 @@ const loadMoreRemote = () => {
   return remoteChannel.loadMore({ site: channel.site, url: channel.url, profile: channel })
 }
 let loadedRemoteChannelKey = ''
+
+// ponytail: remote-video → playback-seed mapping + playability gating live in
+// useRemoteVideoMapping (shared with Subscribed.vue). channelDetail is read as
+// the active channel; its opaque shape carries the id/name/url/avatar/is_nsfw
+// fields the seed synthesiser needs.
+const { openRemoteResult } = useRemoteVideoMapping({
+  activeChannel: computed(() => channelDetail.value as unknown as SubscriptionListItem | null),
+})
 
 const childFilters = computed(() => filters.value)
 const remoteChannelKey = computed(() => {
@@ -193,54 +196,6 @@ const fetchRemoteChannel = async (isReset = false) => {
   isRefreshing.value = true
   await remoteChannel.fetchRemote({ site: channel.site, url: channel.url, profile: channel }, isReset)
   isRefreshing.value = false
-}
-
-const hashRemoteUrl = (url: string) => {
-  let hash = 0
-  for (let index = 0; index < url.length; index += 1) {
-    hash = Math.imul(31, hash) + url.charCodeAt(index)
-    hash |= 0
-  }
-  return Math.abs(hash).toString(36)
-}
-
-const buildRemoteVideoSeed = (item: RemoteVideoItem) => {
-  const channel = channelDetail.value
-  const url = String(item.url || '').trim()
-  return {
-    id: `remote-${item.site}-${hashRemoteUrl(url)}`,
-    source: 'remote',
-    site: item.site,
-    title: item.title,
-    url,
-    thumbnail: item.thumbnail || '',
-    duration: item.duration || null,
-    publish_date: item.publish_date || null,
-    uploaded_at: item.publish_date || null,
-    description: item.description || '',
-    subscriptions: item.subscriptions?.length ? item.subscriptions : [{
-      id: channel?.id ?? null,
-      type: 'CHANNEL',
-      name: channel?.name || '',
-      url: channel?.url || '',
-      avatar: channel?.avatar || '',
-      is_nsfw: channel?.is_nsfw === true,
-    }],
-    actors: item.actors || [],
-  }
-}
-
-const canPlayRemoteResult = (item: RemoteVideoItem) => {
-  const pattern = REMOTE_PLAYABLE_SITE_PATTERNS[item.site]
-  return !!pattern && pattern.test(String(item.url || ''))
-}
-
-const openRemoteResult = async (item: RemoteVideoItem) => {
-  if (!item.url || !canPlayRemoteResult(item)) return
-
-  const videoSeed = buildRemoteVideoSeed(item)
-  rememberVideoPlaybackSeed(videoSeed)
-  await router.push({ name: 'VideoPlay', params: { videoId: videoSeed.id } })
 }
 
 watch(remoteChannelKey, () => {
