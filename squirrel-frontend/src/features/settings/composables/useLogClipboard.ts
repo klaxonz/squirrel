@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue'
-import { Logger } from '@/shared/lib/logger'
+import { copyToClipboard } from '@/shared/lib/clipboard'
 import { useToast } from '@/shared/components/toast/useToast'
 
 /** A single log entry as returned by the logs API (only the copied fields). */
@@ -44,7 +44,7 @@ export function useLogClipboard(options: UseLogClipboardOptions) {
     }, 2000)
   }
 
-  const copyLog = (logItem: LogEntry) => {
+  const copyLog = async (logItem: LogEntry) => {
     let logText = ''
     logText += `时间: ${logItem.timestamp}\n`
     if (logItem.trace_id) {
@@ -55,13 +55,11 @@ export function useLogClipboard(options: UseLogClipboardOptions) {
     logText += `行号: ${logItem.line_num}\n`
     logText += `\n内容:\n${logItem.message}\n`
 
-    navigator.clipboard.writeText(logText).catch(err => {
-      Logger.error('Failed to copy log', err)
-      toast.error('复制失败，请手动复制')
-    })
+    const copied = await copyToClipboard(logText)
+    if (!copied) toast.error('复制失败，请手动复制')
   }
 
-  const copyAllLogs = () => {
+  const copyAllLogs = async () => {
     if (logs.value.length === 0) return
 
     let allLogsText = `日志导出 - 共 ${logs.value.length} 条\n`
@@ -87,10 +85,9 @@ export function useLogClipboard(options: UseLogClipboardOptions) {
       allLogsText += `${'-'.repeat(80)}\n`
     })
 
-    navigator.clipboard.writeText(allLogsText).then(flashAllCopied).catch(err => {
-      Logger.error('Failed to copy logs', err)
-      toast.error('复制失败，请手动复制')
-    })
+    const copied = await copyToClipboard(allLogsText)
+    if (copied) flashAllCopied()
+    else toast.error('复制失败，请手动复制')
   }
 
   return { allCopied, copyLog, copyAllLogs }

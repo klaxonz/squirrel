@@ -1,5 +1,6 @@
 import { computed, ref, type Ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
+import { copyToClipboard } from '@/shared/lib/clipboard'
 import { onClickOutside } from '@vueuse/core'
 import { useContextMenuPosition } from '@/shared/composables/useContextMenuPosition'
 import {
@@ -239,12 +240,8 @@ export function useRssFeeds(options: {
       options?.onStatus?.('订阅源地址为空', true)
       return
     }
-    try {
-      await navigator.clipboard.writeText(feed.feed_url)
-      options?.onStatus?.('已成功复制订阅源地址到剪贴板')
-    } catch {
-      options?.onStatus?.('复制链接失败', true)
-    }
+    const ok = await copyToClipboard(feed.feed_url)
+    options?.onStatus?.(ok ? '已成功复制订阅源地址到剪贴板' : '复制链接失败', !ok)
   }
 
   const openFeedSiteInExternalBrowser = (feed: RssFeed) => {

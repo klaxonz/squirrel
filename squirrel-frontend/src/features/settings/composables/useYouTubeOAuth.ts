@@ -5,6 +5,7 @@ import {
   setupYouTubeOAuth,
 } from '@/shared/api'
 import { getDesktopBridge } from '@/shared/composables/useDesktopBridge'
+import { copyToClipboard } from '@/shared/lib/clipboard'
 
 /** Shape of the YouTube OAuth UI prompt (verification code + dismiss tracking). */
 export interface YouTubeOAuthPromptState {
@@ -71,7 +72,8 @@ export function useYouTubeOAuth(options: UseYouTubeOAuthOptions) {
   const copyYouTubeOAuthCode = async () => {
     const code = String(youtubeOAuthPrompt.value.userCode || '').trim()
     if (!code) return
-    await navigator.clipboard.writeText(code)
+    const ok = await copyToClipboard(code)
+    if (!ok) return
     youtubeOAuthPrompt.value.copied = true
     if (youtubeOAuthCopyTimer) clearTimeout(youtubeOAuthCopyTimer)
     youtubeOAuthCopyTimer = setTimeout(() => {

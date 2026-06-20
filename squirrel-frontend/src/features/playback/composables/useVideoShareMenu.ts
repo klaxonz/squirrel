@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted, ref, type Ref } from 'vue'
 import { useToast } from '@/shared/components/toast/useToast'
-import { Logger } from '@/shared/lib/logger'
+import { copyToClipboard } from '@/shared/lib/clipboard'
 
 /**
  * "More" dropdown menu + share action for the video play view.
@@ -32,13 +32,9 @@ export function useVideoShareMenu(options: UseVideoShareMenuOptions): UseVideoSh
 
   const handleShare = async () => {
     const url = `${window.location.origin}/video/${videoId.value}`
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.success('链接已复制到剪贴板')
-    } catch (err) {
-      Logger.warn('[VideoPlay] Failed to copy share link', err)
-      toast.error('复制失败，请手动复制链接')
-    }
+    const ok = await copyToClipboard(url)
+    if (ok) toast.success('链接已复制到剪贴板')
+    else toast.error('复制失败，请手动复制链接')
   }
 
   const handleClickOutside = (e: MouseEvent) => {

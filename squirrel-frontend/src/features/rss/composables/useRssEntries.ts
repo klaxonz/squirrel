@@ -1,5 +1,6 @@
 import { computed, ref, watch, type Ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
+import { copyToClipboard } from '@/shared/lib/clipboard'
 import { useContextMenuPosition } from '@/shared/composables/useContextMenuPosition'
 import {
   getRssEntries,
@@ -296,12 +297,8 @@ export function useRssEntries(options: {
   }
 
   const copyArticleLink = async (entry: RssEntry) => {
-    try {
-      await navigator.clipboard.writeText(entry.canonical_url)
-      options?.onStatus?.('已成功复制链接到剪贴板')
-    } catch {
-      options?.onStatus?.('复制链接失败', true)
-    }
+    const ok = await copyToClipboard(entry.canonical_url)
+    options?.onStatus?.(ok ? '已成功复制链接到剪贴板' : '复制链接失败', !ok)
   }
 
   const openInExternalBrowser = (entry: RssEntry) => {
