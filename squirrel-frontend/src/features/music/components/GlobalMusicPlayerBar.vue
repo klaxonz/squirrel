@@ -100,7 +100,7 @@
             :aria-pressed="store.playing"
             @click="store.togglePlayback()"
           >
-            <AppIcon v-if="store.resolvingUrl || isBuffering" name="loadingSpinner" class="h-4 w-4 animate-spin" />
+            <AppSpinner v-if="store.resolvingUrl || isBuffering" size="sm" />
             <AppIcon v-else-if="store.playing" name="pause" class="h-4 w-4" />
             <AppIcon v-else name="play" class="h-4 w-4" />
           </button>
@@ -166,6 +166,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { formatPlaybackTime as formatDuration } from '@/features/music/lib/musicFormatters'
 import MusicProgressBar from './player/MusicProgressBar.vue'

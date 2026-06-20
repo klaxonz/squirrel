@@ -109,7 +109,7 @@
       </div>
 
       <div v-if="loading" class="space-y-2 p-2">
-        <div v-for="i in 5" :key="i" class="h-12 w-full animate-pulse rounded-xl bg-accent/40" />
+        <AppSkeleton v-for="i in 5" :key="i" height="3rem" rounded="var(--radius-xl)" shimmer />
       </div>
 
       <div ref="loadMoreRef" class="flex h-12 w-full items-center justify-center">
@@ -147,6 +147,7 @@ import { ref } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'

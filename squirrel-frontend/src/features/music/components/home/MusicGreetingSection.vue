@@ -66,7 +66,7 @@
           :title="fmButtonTitle"
           @click="$emit('fm-play')"
         >
-          <AppIcon v-if="fmLoading" name="loadingSpinner" class="h-4 w-4 animate-spin" />
+          <AppSpinner v-if="fmLoading" size="sm" />
           <AppIcon v-else-if="fmPlaying" name="pause" class="h-4 w-4" />
           <AppIcon v-else name="play" class="h-4 w-4" />
         </button>
@@ -92,6 +92,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 import MusicActionButton from './MusicActionButton.vue'
 import type { MusicUserProfile, MusicTrack } from '@/shared/api/music'
 

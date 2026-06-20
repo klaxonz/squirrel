@@ -32,10 +32,11 @@
 
       <!-- Error -->
       <div v-if="loadError" class="px-6 pt-2 pb-4">
-        <div class="rounded-md border border-destructive/20 bg-destructive/10 p-4 flex items-center justify-between gap-4">
-          <p class="text-sm text-destructive font-medium">{{ loadError }}</p>
-          <Button variant="destructive" size="sm" @click="refreshCurrentList">重试</Button>
-        </div>
+        <AppEmptyState variant="error" title="加载失败" :copy="loadError">
+          <template #actions>
+            <Button variant="outline" size="sm" @click="refreshCurrentList">重试</Button>
+          </template>
+        </AppEmptyState>
       </div>
 
       <!-- Remote search header (replaces nothing above; only an inline section header) -->
@@ -96,6 +97,7 @@ import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '@/features/video/components/feed/FeedToolbar.vue'
 import RemoteSearchResults from '@/features/video/components/feed/RemoteSearchResults.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { VIDEO_TABS } from '@/features/video/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import AppIcon from '@/shared/icons/AppIcon.vue'

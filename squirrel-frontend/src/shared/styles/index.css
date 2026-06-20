@@ -67,6 +67,24 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  /* Shimmer sweep — single global source for the placeholder highlight animation.
+     Used by `AppSkeleton[shimmer]` (via the `::after` in AppSkeleton.vue) and by
+     the video-feed skeletons (VideoSkeleton / RecommendationSkeleton) which
+     previously each re-declared an identical `@keyframes shimmer`. Defining the
+     keyframes + a reusable `.app-shimmer` overlay here collapses three copies
+     into one. The `.app-shimmer` element is an absolutely-positioned gradient
+     bar the caller drops inside an `overflow-hidden` container. */
+  @keyframes app-shimmer {
+    100% { transform: translateX(100%); }
+  }
+  .app-shimmer {
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.05), transparent);
+    animation: app-shimmer 1.5s ease-in-out infinite;
+  }
   .overflow-anchor-none {
     overflow-anchor: none;
   }

@@ -9,7 +9,7 @@
       class="relative aspect-video overflow-hidden bg-muted"
       :style="{ borderRadius: 'var(--app-card-radius)' }"
     >
-      <div class="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-foreground/5 to-transparent" />
+      <span class="app-shimmer" />
     </div>
     <div class="mt-2 space-y-2">
       <div class="h-4 w-full rounded-md bg-muted" />
@@ -29,9 +29,3 @@ withDefaults(defineProps<{
   count: 4,
 })
 </script>
-
-<style scoped>
-@keyframes shimmer {
-  100% { transform: translateX(100%); }
-}
-</style>

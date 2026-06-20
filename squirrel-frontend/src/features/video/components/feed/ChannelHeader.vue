@@ -107,7 +107,8 @@
                 :disabled="isSyncing"
                 @click="handleDirectSync('incremental')"
               >
-                <AppIcon name="refresh" class="h-3.5 w-3.5" :class="{ 'animate-spin': isSyncing }" />
+                <AppSpinner v-if="isSyncing" size="sm" />
+                <AppIcon v-else name="refresh" class="h-3.5 w-3.5" />
                 {{ isSyncing ? '同步中' : '同步' }}
               </button>
               <DropdownMenu>
@@ -153,6 +154,7 @@
 import { computed, ref, watch } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import {
   DropdownMenu,

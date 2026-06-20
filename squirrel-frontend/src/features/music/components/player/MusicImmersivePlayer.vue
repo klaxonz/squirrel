@@ -90,7 +90,7 @@
                   <AppIcon name="previous" class="h-5 w-5" />
                 </button>
                 <button class="immersive-btn immersive-btn--play" :disabled="loading" :title="playing ? '暂停' : '播放'" :aria-label="playing ? '暂停' : '播放'" :aria-pressed="playing" @click="$emit('toggle')">
-                  <AppIcon v-if="loading" name="loadingSpinner" class="h-6 w-6 animate-spin" />
+                  <AppSpinner v-if="loading" size="lg" />
                   <AppIcon v-else-if="playing" name="pause" class="h-6 w-6" />
                   <AppIcon v-else name="play" class="h-6 w-6" />
                 </button>
@@ -144,6 +144,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 import { formatPlaybackTime as formatDuration } from '@/features/music/lib/musicFormatters'
 import MusicLyricsPanel from './MusicLyricsPanel.vue'
 import MusicCommentsPanel from './MusicCommentsPanel.vue'

@@ -168,25 +168,25 @@
           </div>
           
           <!-- Skeleton -->
-          <div v-else class="space-y-6 animate-pulse">
+          <div v-else class="space-y-6">
             <div class="space-y-2">
-              <div class="h-7 bg-muted rounded-lg w-3/4" />
-              <div class="h-4 bg-muted rounded w-36" />
+              <AppSkeleton width="75%" height="1.75rem" rounded="var(--radius-lg)" shimmer />
+              <AppSkeleton width="9rem" height="1rem" rounded="var(--radius)" shimmer />
             </div>
             <div class="flex items-center gap-4">
-              <div class="h-12 w-12 rounded-full bg-muted shrink-0" />
+              <AppSkeleton width="3rem" height="3rem" rounded="9999px" shimmer />
               <div class="space-y-2 flex-1">
-                <div class="h-4 bg-muted rounded w-28" />
-                <div class="h-3 bg-muted rounded w-16" />
+                <AppSkeleton width="7rem" height="1rem" rounded="var(--radius)" shimmer />
+                <AppSkeleton width="4rem" height="0.75rem" rounded="var(--radius)" shimmer />
               </div>
-              <div class="h-7 w-16 rounded-full bg-muted" />
+              <AppSkeleton width="4rem" height="1.75rem" rounded="9999px" shimmer />
             </div>
             <div class="flex gap-2">
-              <div class="h-8 w-16 rounded-full bg-muted" />
-              <div class="h-8 w-20 rounded-full bg-muted" />
-              <div class="h-8 w-14 rounded-full bg-muted" />
+              <AppSkeleton width="4rem" height="2rem" rounded="9999px" shimmer />
+              <AppSkeleton width="5rem" height="2rem" rounded="9999px" shimmer />
+              <AppSkeleton width="3.5rem" height="2rem" rounded="9999px" shimmer />
             </div>
-            <div class="h-20 bg-muted rounded-xl" />
+            <AppSkeleton height="5rem" rounded="var(--radius-xl)" shimmer />
           </div>
         </div>
       </div>
@@ -211,13 +211,13 @@
         <div class="min-h-[400px]">
           <Transition name="fade" mode="out-in">
             <div v-if="asideTab === 'related'" key="related">
-              <div v-if="loadingRelated" class="space-y-3 animate-pulse">
+              <div v-if="loadingRelated" class="space-y-3">
                 <div v-for="n in 4" :key="n" class="flex gap-3">
-                  <div class="w-40 aspect-video rounded-md bg-muted shrink-0" />
+                  <AppSkeleton width="10rem" height="5.625rem" rounded="var(--radius-md)" class="shrink-0" shimmer />
                   <div class="flex-1 space-y-1.5 py-0.5">
-                    <div class="h-3.5 bg-muted rounded w-full" />
-                    <div class="h-3.5 bg-muted rounded w-3/4" />
-                    <div class="h-3 bg-muted rounded w-16" />
+                    <AppSkeleton width="100%" height="0.875rem" rounded="var(--radius)" shimmer />
+                    <AppSkeleton width="75%" height="0.875rem" rounded="var(--radius)" shimmer />
+                    <AppSkeleton width="4rem" height="0.75rem" rounded="var(--radius)" shimmer />
                   </div>
                 </div>
               </div>
@@ -258,6 +258,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import usePlaybackOrchestrator, { mergeVideoMetadata } from '../composables/usePlaybackOrchestrator'
 import usePlaybackReporting from '../composables/usePlaybackReporting'

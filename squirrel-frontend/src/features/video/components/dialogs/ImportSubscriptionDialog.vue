@@ -60,7 +60,7 @@
           </div>
 
           <div v-if="loadingPreview && !loadedCount" class="import-dialog__loader">
-            <AppIcon name="loadingSpinner" class="h-6 w-6 animate-spin text-primary" />
+            <AppSpinner size="lg" class="text-primary" />
             <span class="text-sm text-muted-foreground">正在读取订阅列表...</span>
           </div>
 
@@ -192,6 +192,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 import {
   importSubscriptions,
 } from '@/shared/api'

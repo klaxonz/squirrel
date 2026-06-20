@@ -143,11 +143,11 @@
           type="button"
           variant="outline"
           class="h-9 rounded-lg text-xs font-semibold px-3 border border-border/40 hover:bg-accent/40 transition-colors cursor-pointer shrink-0"
-          :disabled="testing || !canTestForm"
+          :disabled="!canTestForm"
+          :loading="testing"
           @click="$emit('test')"
         >
-          <AppIcon v-if="testing" name="refresh" class="h-3.5 w-3.5 mr-1.5 animate-spin text-foreground" />
-          <AppIcon v-else name="sync" class="h-3.5 w-3.5 mr-1.5 opacity-70" />
+          <AppIcon v-if="!testing" name="sync" class="h-3.5 w-3.5 mr-1.5 opacity-70" />
           测试连接
         </Button>
         <div class="flex gap-2 justify-end">
@@ -162,10 +162,10 @@
           <Button
             type="button"
             class="h-9 rounded-lg text-xs font-semibold px-4 transition-all duration-150 cursor-pointer hover:opacity-90 active:scale-[0.98]"
-            :disabled="saving || !canSaveForm"
+            :disabled="!canSaveForm"
+            :loading="saving"
             @click="$emit('save')"
           >
-            <AppIcon v-if="saving" name="refresh" class="h-3.5 w-3.5 mr-1.5 animate-spin" />
             {{ form.id ? '保存修改' : '确认添加' }}
           </Button>
         </div>

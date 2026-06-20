@@ -32,7 +32,7 @@
         :aria-pressed="playing"
         @click="$emit('toggle')"
       >
-        <AppIcon v-if="loading" name="loadingSpinner" class="h-5 w-5 animate-spin" />
+        <AppSpinner v-if="loading" size="md" />
         <AppIcon v-else-if="playing" name="pause" class="h-5 w-5" />
         <AppIcon v-else name="play" class="h-5 w-5" />
       </button>
@@ -65,6 +65,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 
 const props = withDefaults(defineProps<{
   playing?: boolean

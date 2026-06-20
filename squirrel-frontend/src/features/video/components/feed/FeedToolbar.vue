@@ -119,10 +119,11 @@
         title="刷新内容"
         aria-label="刷新内容"
       >
+        <AppSpinner v-if="isRefreshing" size="sm" />
         <AppIcon
+          v-else
           name="refresh"
           class="w-4 h-4 shrink-0"
-          :class="{ 'animate-spin': isRefreshing }"
         />
       </button>
     </div>
@@ -153,6 +154,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 import FilterModal from './FilterModal.vue'
 import type { TimeRange, Duration, ContentType } from '@/features/video/composables/useFeedFilters'
 import { useSites } from '@/features/video/composables/useSites'

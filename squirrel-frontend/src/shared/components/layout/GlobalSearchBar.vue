@@ -36,7 +36,7 @@
 
       <div class="flex items-center gap-1.5 pr-1">
         <!-- Loading Spinner -->
-        <div v-if="isTyping" class="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        <AppSpinner v-if="isTyping" size="sm" />
         
         <!-- Clear Button -->
         <button v-if="inputValue" @click="clearSearch" class="p-1 rounded-md hover:bg-muted text-muted-foreground/60 transition-colors">
@@ -101,6 +101,7 @@
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 import { getSearchSuggestions } from '@/shared/api/search'
 import type { SearchSuggestionItem } from '@/shared/api/search'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'

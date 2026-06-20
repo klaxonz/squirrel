@@ -43,9 +43,9 @@
         <div class="flex-1 overflow-y-auto custom-scrollbar">
           <main class="mx-auto w-full max-w-[960px] p-4 lg:p-6">
             <div v-if="pageLoading" class="space-y-3">
-              <div class="h-12 animate-pulse rounded-lg bg-accent/30" />
-              <div class="h-48 animate-pulse rounded-lg bg-accent/25" />
-              <div class="h-36 animate-pulse rounded-lg bg-accent/20" />
+              <AppSkeleton height="3rem" rounded="var(--radius-lg)" shimmer />
+              <AppSkeleton height="12rem" rounded="var(--radius-lg)" shimmer />
+              <AppSkeleton height="9rem" rounded="var(--radius-lg)" shimmer />
             </div>
 
             <div v-else class="space-y-6">
@@ -182,12 +182,10 @@
                         :disabled="serverSaving"
                         class="h-9 rounded-md border-border/50 text-sm shadow-none"
                       />
-                      <Button variant="outline" class="h-9 rounded-md px-3" :disabled="serverTesting || !serverForm.url.trim()" @click="handleTestServer">
-                        <AppIcon v-if="serverTesting" name="refresh" class="h-4 w-4 animate-spin" />
+                      <Button variant="outline" class="h-9 rounded-md px-3" :loading="serverTesting" :disabled="!serverForm.url.trim()" @click="handleTestServer">
                         {{ serverTesting ? '测试中' : '测试' }}
                       </Button>
-                      <Button class="h-9 rounded-md px-3" :disabled="serverSaving || !serverForm.url.trim()" @click="handleSaveServer">
-                        <AppIcon v-if="serverSaving" name="refresh" class="h-4 w-4 animate-spin" />
+                      <Button class="h-9 rounded-md px-3" :loading="serverSaving" :disabled="!serverForm.url.trim()" @click="handleSaveServer">
                         {{ serverSaving ? '保存中' : '保存' }}
                       </Button>
                     </div>
@@ -205,6 +203,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import { Button } from '@/shared/ui/button'

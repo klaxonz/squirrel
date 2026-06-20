@@ -68,7 +68,8 @@
             </button>
           </div>
           <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="refreshData">
-            <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+            <AppSpinner v-if="loading" size="sm" />
+            <AppIcon v-else name="refresh" class="h-4 w-4" />
           </Button>
         </div>
       </template>
@@ -108,7 +109,7 @@
           </div>
 
           <div v-if="loading && tasks.length === 0" class="min-w-[760px] space-y-2 p-4">
-            <div v-for="i in 5" :key="i" class="h-14 animate-pulse rounded-lg bg-accent/30" />
+            <AppSkeleton v-for="i in 5" :key="i" height="3.5rem" rounded="var(--radius-lg)" shimmer />
           </div>
 
           <div v-else-if="tasks.length === 0" class="min-h-[20rem]">
@@ -246,6 +247,8 @@
 <script setup lang="ts">
 import { computed, ref, watch, onUnmounted } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'

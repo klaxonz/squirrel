@@ -127,7 +127,8 @@
             aria-label="刷新内容"
             @click="handleRefresh"
           >
-            <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': headerLoading }" />
+            <AppSpinner v-if="headerLoading" size="sm" />
+            <AppIcon v-else name="refresh" class="h-4 w-4" />
           </button>
         </div>
       </header>
@@ -203,6 +204,7 @@ import { ref, computed, watch, onUnmounted, onMounted, nextTick } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppBounceDots from '@/shared/components/AppBounceDots.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'

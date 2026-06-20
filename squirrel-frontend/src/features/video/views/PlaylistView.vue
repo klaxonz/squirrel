@@ -65,7 +65,8 @@
               aria-label="刷新"
               @click="reloadPlaylists"
             >
-              <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading || isHydratingSelection }" />
+              <AppSpinner v-if="loading || isHydratingSelection" size="sm" />
+              <AppIcon v-else name="refresh" class="h-4 w-4" />
             </button>
             <DropdownMenu v-if="activePlaylist && !activePlaylist.is_default">
               <DropdownMenuTrigger as-child>
@@ -94,9 +95,9 @@
         <div class="flex-1 overflow-y-auto custom-scrollbar">
           <div class="mx-auto w-full max-w-[1200px] p-4 lg:p-6">
             <div v-if="loading && !playlists.length" class="space-y-4">
-              <div class="h-28 animate-pulse rounded-lg bg-accent/30" />
+              <AppSkeleton height="7rem" rounded="var(--radius-lg)" shimmer />
               <div class="space-y-2">
-                <div v-for="i in 6" :key="i" class="h-16 animate-pulse rounded-lg bg-accent/25" />
+                <AppSkeleton v-for="i in 6" :key="i" height="4rem" rounded="var(--radius-lg)" shimmer />
               </div>
             </div>
 
@@ -155,7 +156,7 @@
               </section>
 
               <div v-if="loadingItems || isHydratingSelection" class="space-y-2">
-                <div v-for="i in 6" :key="i" class="h-16 animate-pulse rounded-lg bg-accent/25" />
+                <AppSkeleton v-for="i in 6" :key="i" height="4rem" rounded="var(--radius-lg)" shimmer />
               </div>
 
               <div v-else-if="!activePlaylistItems.length" class="flex min-h-[24rem] items-center justify-center">
@@ -277,6 +278,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'

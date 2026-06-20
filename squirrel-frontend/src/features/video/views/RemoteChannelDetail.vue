@@ -2,12 +2,11 @@
   <AppPageShell variant="compact" :fill="false">
     <div ref="root" class="app-page-content">
       <div v-if="errorMessage" class="px-6 pt-6">
-        <div class="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-4">
-          <p class="text-sm font-medium text-destructive">{{ errorMessage }}</p>
-          <Button variant="destructive" size="sm" @click="refresh">
-            重试
-          </Button>
-        </div>
+        <AppEmptyState variant="error" title="加载失败" :copy="errorMessage">
+          <template #actions>
+            <Button variant="outline" size="sm" @click="refresh">重试</Button>
+          </template>
+        </AppEmptyState>
       </div>
 
       <section class="px-6 pt-6">

@@ -51,7 +51,8 @@
                 class="flex items-center gap-1 font-semibold text-primary hover:text-primary/80 transition-all shrink-0" 
                 :disabled="syncing"
               >
-                <AppIcon name="refresh" class="h-3 w-3" :class="{ 'animate-spin': syncing }" />
+                <AppSpinner v-if="syncing" size="sm" />
+                <AppIcon v-else name="refresh" class="h-3 w-3" />
                 <span>轻量</span>
               </button>
               <button 
@@ -139,7 +140,8 @@
               aria-label="刷新文章"
               @click="loadAll"
             >
-              <AppIcon name="refresh" class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" />
+              <AppSpinner v-if="loading" size="sm" />
+              <AppIcon v-else name="refresh" class="h-3.5 w-3.5" />
             </button>
           </div>
 
@@ -448,7 +450,8 @@
                   class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
                   title="重新加载"
                 >
-                  <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': iframeLoading }" />
+                  <AppSpinner v-if="iframeLoading" size="sm" muted />
+                  <AppIcon v-else name="refresh" class="h-4 w-4" />
                 </button>
 
                 <!-- 在系统浏览器打开 -->
@@ -645,10 +648,10 @@
           <Button
             type="button"
             class="h-9 rounded-lg text-xs font-semibold px-4 transition-all duration-150 cursor-pointer hover:opacity-90 active:scale-[0.98]"
-            :disabled="subscribingFeed || !subscribeForm.feedUrl.trim()"
+            :disabled="!subscribeForm.feedUrl.trim()"
+            :loading="subscribingFeed"
             @click="handleSubscribeFeed"
           >
-            <AppIcon v-if="subscribingFeed" name="refresh" class="h-3.5 w-3.5 mr-1.5 animate-spin" />
             添加订阅
           </Button>
         </DialogFooter>

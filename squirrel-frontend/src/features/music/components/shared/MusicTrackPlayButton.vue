@@ -4,7 +4,7 @@
     :class="{ 'music-track-play-btn--playing': isPlaying }"
     @click="$emit('click')"
   >
-    <AppIcon v-if="loading" name="loadingSpinner" class="h-4 w-4 animate-spin" />
+    <AppSpinner v-if="loading" size="sm" />
     <AppIcon v-else-if="isPlaying" name="pause" class="h-4 w-4" />
     <AppIcon v-else name="play" class="h-4 w-4" />
   </button>
@@ -12,6 +12,7 @@
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 
 withDefaults(defineProps<{
   isPlaying?: boolean

@@ -17,7 +17,7 @@
         </div>
 
         <div v-if="loading" class="min-w-[980px] space-y-2 p-4">
-          <div v-for="i in 5" :key="i" class="h-16 animate-pulse rounded-lg bg-accent/30" />
+          <AppSkeleton v-for="i in 5" :key="i" height="4rem" rounded="var(--radius-lg)" shimmer />
         </div>
 
         <div v-else-if="!runtimes.length" class="min-h-[20rem]">
@@ -74,7 +74,7 @@
 
             <div class="text-sm text-muted-foreground">
               <span v-if="runtime.siteTesting" class="inline-flex items-center gap-1">
-                <AppIcon name="refresh" class="h-3.5 w-3.5 animate-spin" />
+                <AppSpinner size="sm" />
                 检测中
               </span>
               <span v-else>{{ getNetworkText(runtime) }}</span>
@@ -82,7 +82,7 @@
 
             <div class="text-sm text-muted-foreground">
               <span v-if="runtime.siteLoginTesting" class="inline-flex items-center gap-1">
-                <AppIcon name="refresh" class="h-3.5 w-3.5 animate-spin" />
+                <AppSpinner size="sm" />
                 检测中
               </span>
               <span v-else>{{ getLoginText(runtime) }}</span>
@@ -200,6 +200,8 @@
  */
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Button } from '@/shared/ui/button'

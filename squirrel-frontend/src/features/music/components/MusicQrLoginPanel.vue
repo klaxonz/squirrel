@@ -40,14 +40,15 @@
             </div>
 
             <button class="music-login-qr-refresh" @click="$emit('refresh')" :disabled="qrLoading" title="刷新二维码">
-              <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': qrLoading }" />
+              <AppSpinner v-if="qrLoading" size="sm" />
+              <AppIcon v-else name="refresh" class="h-4 w-4" />
             </button>
           </div>
 
           <div class="music-login-qr-body">
             <div class="music-qr-card" :class="{ 'qr-expired': qrStatus === 0 }" @click="qrStatus === 0 && $emit('refresh')">
               <img v-if="qrLogin?.base64" :src="qrLogin.base64" alt="KuGou login QR code" class="music-qr-img" :style="{ opacity: qrStatus === 0 ? 0.15 : 1, filter: qrStatus === 0 ? 'blur(3px)' : 'none' }" />
-              <AppIcon v-else name="loadingSpinner" class="h-6 w-6 animate-spin text-primary" />
+              <AppSpinner v-else size="lg" class="text-primary" />
               
               <div v-if="qrStatus === 0" class="music-qr-expired-overlay">
                 <AppIcon name="refresh" class="h-5 w-5 text-primary mb-1 animate-pulse" />
@@ -68,6 +69,7 @@
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 import { Button } from '@/shared/ui/button'
 import type { MusicQrLogin } from '@/shared/api/music'
 

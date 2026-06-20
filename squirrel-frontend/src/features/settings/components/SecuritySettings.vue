@@ -30,8 +30,7 @@
             class="h-9 rounded-md border-border/50 text-sm shadow-none"
           />
         </div>
-        <Button type="submit" :disabled="passwordSubmitting" class="h-9 rounded-md px-3">
-          <AppIcon v-if="passwordSubmitting" name="refresh" class="h-4 w-4 animate-spin" />
+        <Button type="submit" :loading="passwordSubmitting" class="h-9 rounded-md px-3">
           {{ passwordSubmitting ? '更新中' : '更新密码' }}
         </Button>
       </form>

@@ -11,7 +11,8 @@
           <AppBounceDots />
         </div>
         <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="loadData">
-          <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+          <AppSpinner v-if="loading" size="sm" />
+          <AppIcon v-else name="refresh" class="h-4 w-4" />
         </Button>
         <Button v-if="isContinueMode" variant="ghost" class="h-9 rounded-md px-3 text-sm" @click="router.push({ name: 'History' })">
           全部历史
@@ -31,9 +32,9 @@
       <main class="mx-auto w-full max-w-[1200px] p-4 lg:p-6">
         <div v-if="loading && videos.length === 0" class="space-y-8">
           <div v-for="i in 2" :key="i" class="space-y-3">
-            <div class="h-7 w-20 animate-pulse rounded-md bg-accent/40" />
+            <AppSkeleton width="5rem" height="1.75rem" rounded="var(--radius)" shimmer />
             <div class="space-y-2">
-              <div v-for="j in 3" :key="j" class="h-28 animate-pulse rounded-lg bg-accent/30" />
+              <AppSkeleton v-for="j in 3" :key="j" height="7rem" rounded="var(--radius-lg)" shimmer />
             </div>
           </div>
         </div>
@@ -101,6 +102,7 @@ import { errorMessage } from '@/shared/lib/errorMessage'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppBounceDots from '@/shared/components/AppBounceDots.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'

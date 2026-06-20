@@ -6,7 +6,7 @@
     <div :class="[
       layout === 'list' ? 'w-48 shrink-0 md:w-64 relative aspect-video rounded-xl bg-muted overflow-hidden' : 'relative aspect-video rounded-xl bg-muted overflow-hidden'
     ]">
-      <div class="absolute inset-0 bg-gradient-to-r from-transparent via-foreground/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+      <span class="app-shimmer" />
     </div>
     <div :class="[
       layout === 'list' ? 'flex-1 py-1 flex flex-col justify-center' : 'flex gap-3 px-1'
@@ -30,9 +30,3 @@ defineProps<{
   layout?: 'grid' | 'list'
 }>()
 </script>
-
-<style scoped>
-@keyframes shimmer {
-  100% { transform: translateX(100%); }
-}
-</style>

@@ -8,7 +8,8 @@
             <p class="mt-0.5 text-xs text-muted-foreground">{{ siteRuntimeSummary.total }} 个已安装</p>
           </div>
           <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md" :disabled="reloading || loading" @click="handleReload">
-            <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': reloading }" />
+            <AppSpinner v-if="reloading" size="sm" />
+            <AppIcon v-else name="refresh" class="h-4 w-4" />
           </Button>
         </div>
 
@@ -41,7 +42,8 @@
               </label>
             </Button>
             <Button v-if="selectedCookiesFile" class="h-9 w-full rounded-md" :disabled="importingCookies" @click="handleImportAllCookies">
-              <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': importingCookies }" />
+              <AppSpinner v-if="importingCookies" size="sm" />
+              <AppIcon v-else name="refresh" class="h-4 w-4" />
               导入凭据
             </Button>
           </div>
@@ -49,7 +51,8 @@
 
         <div class="space-y-2 p-3">
           <Button variant="outline" class="h-9 w-full justify-start rounded-md" :disabled="testingAll" @click="handleTestAll">
-            <AppIcon name="sync" class="h-4 w-4" :class="{ 'animate-spin': testingAll }" />
+            <AppSpinner v-if="testingAll" size="sm" />
+            <AppIcon v-else name="sync" class="h-4 w-4" />
             测试全部
           </Button>
         </div>
@@ -122,6 +125,7 @@ import { onMounted, ref, computed } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import SiteConfigEditorDialog from '@/features/settings/components/SiteConfigEditorDialog.vue'
 import SiteRuntimeTable from '@/features/settings/components/SiteRuntimeTable.vue'
