@@ -176,7 +176,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Logger } from '@/shared/lib/logger'
 import AppIcon from '@/shared/icons/AppIcon.vue'
@@ -184,22 +184,15 @@ import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { useUserStore } from '@/shared/stores/user'
+import { useProfileEditForm } from '@/features/profile/composables/useProfileEditForm'
 
 const router = useRouter()
 const userStore = useUserStore()
 
-const form = reactive({
-  nickname: '',
-  avatar: '',
-})
+// ponytail: profile-edit form (save state machine + diff-only payload + the
+// 3s "saved" banner auto-dismiss) lives in useProfileEditForm.
+const { form, saving, saved, saveError, hasChanges, hydrate, handleSave } = useProfileEditForm({ userStore })
 
-const saving = ref(false)
-const saved = ref(false)
-const saveError = ref('')
-let savedTimer: ReturnType<typeof setTimeout> | null = null
-onUnmounted(() => {
-  if (savedTimer) clearTimeout(savedTimer)
-})
 const avatarError = ref(false)
 // ponytail: shadcn Input wrapper exposes its inner <input> via $el.querySelector;
 // minimal structural type avoids importing the generated ui component type.
@@ -225,52 +218,14 @@ const createdAt = computed(() => {
   }
 })
 
-const hasChanges = computed(() => {
-  if (!userStore.currentUser) return false
-  return form.nickname !== (userStore.currentUser.nickname || '')
-    || form.avatar !== (userStore.currentUser.avatar || '')
-})
-
 onMounted(() => {
-  if (userStore.currentUser) {
-    form.nickname = userStore.currentUser.nickname || ''
-    form.avatar = userStore.currentUser.avatar || ''
-  }
+  hydrate()
 })
 
 const focusAvatarInput = () => {
   if (avatarInput.value) {
     const inputEl = (avatarInput.value.$el?.querySelector?.('input') as HTMLElement | null) ?? avatarInput.value.$el;
     inputEl?.focus?.();
-  }
-}
-
-const handleSave = async () => {
-  saving.value = true
-  saved.value = false
-  saveError.value = ''
-
-  const payload: Record<string, string> = {}
-  if (form.nickname !== (userStore.currentUser?.nickname || '')) {
-    payload.nickname = form.nickname
-  }
-  if (form.avatar !== (userStore.currentUser?.avatar || '')) {
-    payload.avatar = form.avatar
-  }
-
-  if (!Object.keys(payload).length) {
-    saving.value = false
-    return
-  }
-
-  const result = await userStore.updateProfile(payload)
-  saving.value = false
-  if (result.error) {
-    saveError.value = (result.error instanceof Error ? result.error.message : null) || '保存失败'
-  } else {
-    saved.value = true
-    if (savedTimer) clearTimeout(savedTimer)
-    savedTimer = setTimeout(() => { saved.value = false }, 3000)
   }
 }
 
