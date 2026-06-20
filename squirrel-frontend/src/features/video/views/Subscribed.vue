@@ -295,8 +295,11 @@ import AddChannelDialog from '@/features/video/components/dialogs/AddChannelDial
 import ImportSubscriptionDialog from '@/features/video/components/dialogs/ImportSubscriptionDialog.vue'
 import { useFeedFilters } from '../composables/useFeedFilters'
 import { useSites } from '../composables/useSites'
-import { useRemoteChannel, type RemoteVideoItem } from '@/features/video/composables/useRemoteChannel'
+import { useRemoteChannel } from '@/features/video/composables/useRemoteChannel'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
+import { useRemoteVideoMapping } from '@/features/video/composables/useRemoteVideoMapping'
+import { useFeedGrouping } from '@/features/video/composables/useFeedGrouping'
+import { sortSubscriptions } from '@/features/video/lib/subscriptionSort'
 import { getSubscriptions, getVideoList, updateSpecialFollowStatus } from '@/shared/api'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
@@ -304,13 +307,6 @@ import type { SubscriptionListItem } from '@/features/video/types/subscription'
 import type { VideoListItem } from '@/features/video/types/video'
 
 defineOptions({ name: 'Subscribed' })
-
-const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
-  bilibili: /(?:bilibili\.com\/video\/|b23\.tv\/)/i,
-  pornhub: /pornhub\.com\/(?:view_video\.php|video\/|embed\/)/i,
-  youtube: /(?:youtube\.com\/|youtu\.be\/)/i,
-  youporn: /youporn\.com\/watch\//i,
-}
 
 const router = useRouter()
 const { nsfw, site } = useFeedFilters()
@@ -425,6 +421,12 @@ const activeChannel = computed(() => {
   if (!activeChannelId.value) return null
   return list.value.find(c => c.id === activeChannelId.value) || null
 })
+
+// ponytail: remote-video → playback-seed mapping + playability gating live in
+// useRemoteVideoMapping. The url-hash id scheme + the playability pattern table
+// are reusable by any surface that renders remote videos (search, detail, feed).
+const { openRemoteResult } = useRemoteVideoMapping({ activeChannel })
+
 const canOpenRemoteChannel = computed(() => {
   return desktopBridge.isDesktop() && !!activeChannel.value?.site && !!activeChannel.value?.url
 })
@@ -450,12 +452,9 @@ const filteredChannels = computed(() => {
   return list.value
 })
 
-const sortChannels = (items: SubscriptionListItem[]) => {
-  return [...items].sort((a, b) => {
-    if (a.is_special_followed !== b.is_special_followed) return a.is_special_followed ? -1 : 1
-    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-  })
-}
+// ponytail: the "special-followed first, then recency" ordering lives in the
+// shared sortSubscriptions util (reusable by any subscription-list surface).
+const sortChannels = sortSubscriptions
 
 const applySpecialFollowState = (subscriptionId: string | number, isSpecialFollowed: boolean) => {
   const updated = list.value.map((item) => (
@@ -493,30 +492,10 @@ const toggleSpecialFollow = async (subscription: SubscriptionListItem) => {
   }
 }
 
-const videoGroups = computed(() => {
-  const groups: Record<string, VideoListItem[]> = {}
-  feedItems.value.forEach(video => {
-    const publishDate = video.uploaded_at || video.created_at
-    if (!publishDate) return
-    const date = new Date(publishDate)
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1)
-    let title = ''
-    const videoDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-    if (videoDate.getTime() === today.getTime()) title = '今天'
-    else if (videoDate.getTime() === yesterday.getTime()) title = '昨天'
-    else {
-      const diffDays = Math.floor((today.getTime() - videoDate.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays < 7) title = '本周'
-      else if (diffDays < 30) title = '本月'
-      else title = `${date.getFullYear()}年${date.getMonth() + 1}月`
-    }
-    if (!groups[title]) groups[title] = []
-    groups[title].push(video)
-  })
-  return Object.entries(groups).map(([title, videos]) => ({ title, videos }))
-})
+// ponytail: date-bucket grouping (今天/昨天/本周/本月/年月) lives in
+// useFeedGrouping. The bucket order is now explicit (the original relied on
+// Object.entries insertion order, which is fragile for the year-month buckets).
+const { videoGroups } = useFeedGrouping({ feedItems })
 
 const fetchChannels = async (isReset = false) => {
   if (!isReset && (loadingChannels.value || loadingMoreChannels.value || channelsFinished.value)) return
@@ -658,54 +637,6 @@ const fetchRemoteChannel = async (isReset = false) => {
     { site: channel.site ?? '', url: channel.url, profile: channel },
     isReset,
   )
-}
-
-const hashRemoteUrl = (url: string) => {
-  let hash = 0
-  for (let index = 0; index < url.length; index += 1) {
-    hash = Math.imul(31, hash) + url.charCodeAt(index)
-    hash |= 0
-  }
-  return Math.abs(hash).toString(36)
-}
-
-const buildRemoteVideoSeed = (item: RemoteVideoItem) => {
-  const channel = activeChannel.value
-  const url = String(item.url || '').trim()
-  return {
-    id: `remote-${item.site}-${hashRemoteUrl(url)}`,
-    source: 'remote',
-    site: item.site,
-    title: item.title,
-    url,
-    thumbnail: item.thumbnail || '',
-    duration: item.duration || null,
-    publish_date: item.publish_date || null,
-    uploaded_at: item.publish_date || null,
-    description: item.description || '',
-    subscriptions: item.subscriptions?.length ? item.subscriptions : [{
-      id: channel?.id ?? null,
-      type: 'CHANNEL',
-      name: channel?.name || '',
-      url: channel?.url || '',
-      avatar: channel?.avatar || '',
-      is_nsfw: channel?.is_nsfw === true,
-    }],
-    actors: item.actors || [],
-  }
-}
-
-const canPlayRemoteResult = (item: RemoteVideoItem) => {
-  const pattern = REMOTE_PLAYABLE_SITE_PATTERNS[item.site]
-  return !!pattern && pattern.test(String(item.url || ''))
-}
-
-const openRemoteResult = async (item: RemoteVideoItem) => {
-  if (!item.url || !canPlayRemoteResult(item)) return
-
-  const videoSeed = buildRemoteVideoSeed(item)
-  rememberVideoPlaybackSeed(videoSeed)
-  await router.push({ name: 'VideoPlay', params: { videoId: videoSeed.id } })
 }
 
 const initObservers = () => {
