@@ -27,9 +27,14 @@ def _credentials_exception() -> HTTPException:
     )
 
 
-def create_access_token(payload: dict, expires_delta: timedelta | None = None):
-    """Create JWT access token"""
-    to_encode = payload.copy()
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    """Create JWT access token.
+
+    ``data`` is the JWT claims dict (``sub``, ``tv``, ``rm``, ...); ``exp`` is
+    added here. Mirrors the FastAPI OAuth2 + JWT tutorial signature so callers
+    can pass claims positionally or as ``data=...``.
+    """
+    to_encode = data.copy()
     expire = datetime.now() + expires_delta if expires_delta else datetime.now() + timedelta(minutes=15)
 
     to_encode.update({'exp': expire})
