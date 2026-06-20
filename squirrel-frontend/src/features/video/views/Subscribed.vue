@@ -1,138 +1,27 @@
 <template>
   <div class="flex h-full overflow-hidden bg-background text-foreground selection:bg-primary/10">
-    <aside class="flex w-[320px] shrink-0 flex-col border-r border-border/20 bg-muted/10">
-      <div class="flex h-20 shrink-0 items-center justify-between border-b border-border/20 px-5 bg-background/50 backdrop-blur-sm">
-        <div class="min-w-0 flex flex-col justify-center">
-          <h1 class="app-h2 truncate">订阅频道</h1>
-          <p class="mt-0.5 text-xs font-medium text-muted-foreground/70">{{ list.length }} 个频道</p>
-        </div>
-        <Button variant="ghost" size="icon" class="h-9 w-9 rounded-full bg-primary/5 hover:bg-primary/10 text-primary transition-colors" @click="showAddDialog = true">
-          <AppIcon name="plus" class="w-5 h-5" />
-        </Button>
-      </div>
-
-      <div class="shrink-0 space-y-2.5 border-b border-border/10 p-3 bg-background/20 backdrop-blur-sm z-10">
-        <div class="relative group">
-          <AppIcon name="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
-          <input
-            v-model="sidebarSearch"
-            type="text"
-            placeholder="搜索订阅..."
-            aria-label="搜索订阅"
-            class="h-9 w-full rounded-lg border border-transparent bg-muted/40 pl-9 pr-3 text-sm font-medium outline-none transition-all placeholder:text-muted-foreground/50 hover:bg-muted/60 focus:border-primary/30 focus:bg-background focus:ring-2 focus:ring-primary/15"
-          />
-        </div>
-
-        <div class="flex items-center gap-2">
-          <div ref="siteFilterRef" class="relative flex-1">
-            <button
-              class="flex h-9 w-full items-center justify-between rounded-lg border border-transparent bg-muted/40 px-3 text-xs font-semibold transition-all outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="site ? 'border-primary/20 bg-primary/5 text-foreground' : 'text-muted-foreground'"
-              :aria-expanded="showSiteDropdown"
-              aria-haspopup="listbox"
-              @click="showSiteDropdown = !showSiteDropdown"
-            >
-              <div class="flex items-center gap-2">
-                <AppIcon name="filter" class="h-3.5 w-3.5" :class="site ? 'text-primary' : ''" />
-                <span>{{ activeSiteLabel }}</span>
-              </div>
-              <AppIcon name="chevronRight" class="h-3.5 w-3.5 transition-transform duration-200" :class="{ 'rotate-90': showSiteDropdown }" />
-            </button>
-
-            <div v-if="showSiteDropdown" class="absolute left-0 right-0 top-full z-50 mt-1.5 rounded-xl border border-border/50 bg-popover p-1.5 shadow-xl ring-1 ring-black/5">
-              <div class="max-h-[280px] overflow-y-auto custom-scrollbar pr-1">
-                <button @click="site = ''; showSiteDropdown = false" class="flex h-9 w-full items-center rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-accent" :class="!site ? 'text-foreground bg-accent/50' : 'text-muted-foreground'">全部来源</button>
-                <div class="h-px w-full bg-border/50 my-1"></div>
-                <button v-for="opt in siteOptionsList" :key="opt.value" @click="site = opt.value; showSiteDropdown = false" class="flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-accent" :class="site === opt.value ? 'text-foreground bg-accent/50' : 'text-muted-foreground'">
-                  <SiteIcon :site="opt.value" class="h-4 w-4 rounded-sm" />
-                  <span class="flex-1 truncate">{{ opt.label }}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            class="flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-transparent bg-muted/40 px-3 text-xs font-semibold transition-all outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
-            :class="specialFilter === 'yes' ? 'border-amber-400/30 bg-warning/10 text-warning' : 'text-muted-foreground hover:text-foreground'"
-            :aria-pressed="specialFilter === 'yes'"
-            @click="toggleSpecialFilter"
-          >
-            <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current drop-shadow-sm': specialFilter === 'yes' }" />
-            <span>特别关注</span>
-          </button>
-        </div>
-      </div>
-
-      <div ref="channelsContainer" class="flex-1 space-y-1 overflow-y-auto p-3 custom-scrollbar relative">
-        <div
-          v-for="sub in filteredChannels"
-          :key="sub.id"
-          role="button"
-          tabindex="0"
-          @click="handleChannelClick(sub.id)"
-          @keydown.enter.prevent="handleChannelClick(sub.id)"
-          @keydown.space.prevent="handleChannelClick(sub.id)"
-          class="group relative flex h-[3.25rem] w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-all overflow-hidden"
-          :class="activeChannelId === sub.id ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
-        >
-          <div class="relative shrink-0">
-            <SubscriptionAvatar :src="sub.avatar" :name="sub.name" size="md" :class="activeChannelId === sub.id ? 'ring-2 ring-primary/30' : ''" />
-            <div v-if="sub.unread_count > 0" class="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-2xs font-bold text-primary-foreground ring-2 ring-background shadow-sm">
-              {{ sub.unread_count > 99 ? '99+' : sub.unread_count }}
-            </div>
-          </div>
-          
-          <div class="flex-1 min-w-0" :class="{'pr-8': sub.is_special_followed}">
-            <span class="block truncate" :class="activeChannelId === sub.id ? 'font-bold' : 'font-medium'">{{ sub.name }}</span>
-          </div>
-
-          <button
-            v-if="sub.is_special_followed"
-            type="button"
-            class="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg text-warning hover:bg-warning/10 transition-colors"
-            aria-label="取消特别关注"
-            @click.stop="toggleSpecialFollow(sub)"
-          >
-            <AppIcon name="star" class="h-4 w-4 fill-current drop-shadow-sm" />
-          </button>
-
-          <button
-            v-else
-            type="button"
-            class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-lg opacity-0 transition-all group-hover:opacity-100 text-muted-foreground/50 hover:text-foreground hover:bg-background/90 backdrop-blur-sm"
-            aria-label="设为特别关注"
-            @click.stop="toggleSpecialFollow(sub)"
-          >
-            <AppIcon name="star" class="h-4 w-4" />
-          </button>
-        </div>
-
-        <div v-if="loadingChannels" class="space-y-2 p-2">
-          <div v-for="i in 5" :key="i" class="h-12 w-full animate-pulse rounded-xl bg-accent/40" />
-        </div>
-        
-        <div ref="channelsTrigger" class="flex h-12 w-full items-center justify-center">
-          <AppSpinner v-if="loadingMoreChannels" />
-        </div>
-
-        <AppEmptyState
-          v-if="channelsFinished && !filteredChannels.length"
-          class="py-10"
-          variant="plain"
-          icon="inbox"
-          title="暂无匹配订阅"
-          copy="请尝试更换筛选条件"
-        />
-      </div>
-
-      <div class="shrink-0 border-t border-border/30 p-4 bg-background/50 backdrop-blur-sm">
-        <Button variant="outline" class="h-10 w-full justify-start rounded-xl border-border/50 hover:bg-background shadow-sm font-medium" @click="showImportDialog = true">
-          <AppIcon name="download" class="mr-2 h-4 w-4 text-muted-foreground" />
-          导入订阅
-        </Button>
-      </div>
-    </aside>
+    <SubscriptionSidebar
+      ref="sidebarRef"
+      :channels="filteredChannels"
+      :loading="loadingChannels"
+      :loading-more="loadingMoreChannels"
+      :finished="channelsFinished"
+      :search="sidebarSearch"
+      :site="site || ''"
+      :site-options="siteOptionsList"
+      :active-site-label="activeSiteLabel"
+      :site-dropdown-open="showSiteDropdown"
+      :special-filter="specialFilter"
+      :active-channel-id="activeChannelId"
+      @add="showAddDialog = true"
+      @import="showImportDialog = true"
+      @select-channel="handleChannelClick"
+      @toggle-special="toggleSpecialFollow"
+      @toggle-special-filter="toggleSpecialFilter"
+      @update:search="sidebarSearch = $event"
+      @update:site="site = $event"
+      @update:site-dropdown-open="showSiteDropdown = $event"
+    />
 
     <main class="flex min-w-0 flex-1 flex-col bg-background relative">
       <header class="relative flex shrink-0 items-center justify-between border-b border-border/10 bg-background/70 px-4 py-4 lg:px-8 backdrop-blur-2xl z-20">
@@ -313,19 +202,16 @@
 import { ref, computed, watch, onUnmounted, onMounted, nextTick } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { useRouter } from 'vue-router'
-import { onClickOutside } from '@vueuse/core'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppBounceDots from '@/shared/components/AppBounceDots.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
+import SubscriptionSidebar from '@/features/video/components/SubscriptionSidebar.vue'
 import SubscriptionCard from '@/features/video/components/feed/SubscriptionCard.vue'
 import SubscriptionCardSkeleton from '@/features/video/components/feed/SubscriptionCardSkeleton.vue'
 import RemoteChannelVideoGrid from '@/features/video/components/feed/RemoteChannelVideoGrid.vue'
 import VideoItem from '@/features/video/components/feed/VideoItem.vue'
 import VideoSkeleton from '@/features/video/components/feed/VideoSkeleton.vue'
-import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
-import SiteIcon from '@/shared/components/SiteIcon.vue'
 import AddChannelDialog from '@/features/video/components/dialogs/AddChannelDialog.vue'
 import ImportSubscriptionDialog from '@/features/video/components/dialogs/ImportSubscriptionDialog.vue'
 import { useFeedFilters } from '../composables/useFeedFilters'
@@ -353,14 +239,16 @@ const viewMode = ref<'feed' | 'grid'>('feed')
 const channelDataMode = ref<'local' | 'remote'>('local')
 const sidebarSearch = ref('')
 const showSiteDropdown = ref(false)
-const siteFilterRef = ref<HTMLElement | null>(null)
 const specialFilter = ref<'all' | 'yes'>('all')
 const activeChannelId = ref<string | number | null>(null)
 const activeChannelNameCache = ref('')
 const showAddDialog = ref(false)
 const showImportDialog = ref(false)
 const feedContainer = ref<HTMLElement | null>(null)
-const channelsContainer = ref<HTMLElement | null>(null)
+// The sidebar exposes its list container + load-more sentinel via defineExpose
+// so this view's IntersectionObserver + scroll-reset can reach the DOM nodes
+// inside the extracted component.
+const sidebarRef = ref<{ listContainer: HTMLElement | null; loadMore: HTMLElement | null } | null>(null)
 
 // --- Adaptive skeleton counts ---------------------------------------------
 // Shared width measurement on the centered content wrapper. Two configs,
@@ -428,13 +316,15 @@ let loadedRemoteChannelKey = ''
 
 // Observers
 const feedTrigger = ref<HTMLElement | null>(null)
-const channelsTrigger = ref<HTMLElement | null>(null)
 const gridMoreTrigger = ref<HTMLElement | null>(null)
 let feedObserver: IntersectionObserver | null = null
 let channelsObserver: IntersectionObserver | null = null
 let gridObserver: IntersectionObserver | null = null
 
-onClickOutside(siteFilterRef, () => { showSiteDropdown.value = false })
+// Site-filter dropdown click-outside is now handled inside SubscriptionSidebar
+// (the dropdown trigger lives there). showSiteDropdown is still owned here so
+// the header/view can react to it, but the outside-click close is local to the
+// sidebar component.
 
 const activeChannelName = computed(() => {
   if (!activeChannelId.value) return ''
@@ -602,7 +492,7 @@ const scrollToTop = (el: HTMLElement | null) => {
 
 const resetAllScroll = () => {
   scrollToTop(feedContainer.value)
-  nextTick(() => scrollToTop(channelsContainer.value))
+  nextTick(() => scrollToTop(sidebarRef.value?.listContainer ?? null))
 }
 
 const handleChannelClick = (id: string | number) => {
@@ -669,7 +559,7 @@ const initObservers = () => {
   gridObserver?.disconnect()
 
   const scrollContainer = feedContainer.value
-  const channelsEl = channelsContainer.value
+  const channelsEl = sidebarRef.value?.listContainer ?? null
 
   // 1. Feed Observer
   feedObserver = new IntersectionObserver((entries) => {
@@ -677,11 +567,13 @@ const initObservers = () => {
   }, { root: scrollContainer, rootMargin: '800px' })
   if (feedTrigger.value) feedObserver.observe(feedTrigger.value)
 
-  // 2. Channels Sidebar Observer
+  // 2. Channels Sidebar Observer — sentinel + scroll root both live inside the
+  // extracted SubscriptionSidebar, reached via its defineExpose'd refs.
   channelsObserver = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && !loadingChannels.value && !loadingMoreChannels.value && !channelsFinished.value) fetchChannels()
   }, { root: channelsEl, rootMargin: '200px' })
-  if (channelsTrigger.value) channelsObserver.observe(channelsTrigger.value)
+  const channelsSentinel = sidebarRef.value?.loadMore ?? null
+  if (channelsSentinel) channelsObserver.observe(channelsSentinel)
 
   // 3. Grid Mode Observer
   if (viewMode.value === 'grid') {
@@ -713,7 +605,7 @@ watch(sidebarSearch, () => {
   if (sidebarSearchTimer !== null) window.clearTimeout(sidebarSearchTimer)
   sidebarSearchTimer = window.setTimeout(() => {
     fetchChannels(true)
-    nextTick(() => scrollToTop(channelsContainer.value))
+    nextTick(() => scrollToTop(sidebarRef.value?.listContainer ?? null))
   }, 250)
 })
 onUnmounted(() => {

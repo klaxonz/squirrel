@@ -62,7 +62,7 @@
         </div>
 
         <div class="flex shrink-0 items-center gap-2">
-          <div class="relative hidden w-80 md:block">
+          <div class="relative w-80">
             <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               v-model="searchQuery"
@@ -80,231 +80,22 @@
         </div>
       </template>
 
-        <div class="shrink-0 space-y-2 border-b border-border/50 p-3 md:hidden">
-          <div class="relative">
-            <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              v-model="searchQuery"
-              placeholder="搜索站点、站点或描述"
-              class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
-            />
-            <button
-              v-if="searchQuery"
-              @click="searchQuery = ''"
-              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 transition-colors hover:text-foreground"
-            >
-              <AppIcon name="close" class="h-4 w-4" />
-            </button>
-          </div>
-          <div class="flex gap-2">
-            <Button as-child variant="outline" class="h-9 flex-1 justify-start rounded-md">
-              <label class="cursor-pointer">
-                <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
-                <AppIcon name="cookie" class="h-4 w-4" />
-                <span class="truncate">{{ cookiesFileName || '登录凭据' }}</span>
-              </label>
-            </Button>
-          </div>
-          <div v-if="selectedCookiesFile" class="flex gap-2">
-            <Button v-if="selectedCookiesFile" class="h-9 flex-1 rounded-md" :disabled="importingCookies" @click="handleImportAllCookies">
-              <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': importingCookies }" />
-              导入
-            </Button>
-            <Button variant="outline" class="h-9 rounded-md" :disabled="testingAll" @click="handleTestAll">
-              <AppIcon name="sync" class="h-4 w-4" :class="{ 'animate-spin': testingAll }" />
-            </Button>
-          </div>
-          <Button v-else variant="outline" class="h-9 w-full rounded-md" :disabled="testingAll" @click="handleTestAll">
-            <AppIcon name="sync" class="h-4 w-4" :class="{ 'animate-spin': testingAll }" />
-            测试全部
-          </Button>
-        </div>
-
-        <div class="flex-1 overflow-y-auto custom-scrollbar">
-          <div class="mx-auto w-full max-w-[1400px] p-4 lg:p-6">
-            <Alert v-if="discoveryErrors.length" variant="error" class="mb-3 py-2.5">
-              <AppIcon name="error" class="h-4 w-4" />
-              <AlertTitle>发现 {{ discoveryErrors.length }} 个站点失败</AlertTitle>
-              <AlertDescription class="truncate text-xs">{{ discoveryErrors[0].metadata_path }} · {{ discoveryErrors[0].reason }}</AlertDescription>
-            </Alert>
-            <div class="overflow-x-auto rounded-lg border border-border/50">
-              <div class="site-runtime-grid min-w-[980px] border-b border-border/50 bg-muted/20 px-4 py-3 text-xs font-medium text-muted-foreground">
-                <div>站点</div>
-                <div>状态</div>
-                <div>能力</div>
-                <div>网络</div>
-                <div>登录</div>
-                <div class="text-right">操作</div>
-              </div>
-
-              <div v-if="isInitialLoading" class="min-w-[980px] space-y-2 p-4">
-                <div v-for="i in 5" :key="i" class="h-16 animate-pulse rounded-lg bg-accent/30" />
-              </div>
-
-              <div v-else-if="!displaySiteRuntimes.length" class="min-h-[20rem]">
-                <AppEmptyState
-                  variant="plain"
-                  icon="cube"
-                  :title="searchQuery ? '没有匹配的站点' : '暂无站点'"
-                  :copy="searchQuery ? '更换搜索关键词后再试。' : '本地站点发现后会显示在这里。'"
-                />
-              </div>
-
-              <div v-else class="min-w-[980px] divide-y divide-border/50">
-                <div
-                  v-for="runtime in displaySiteRuntimes"
-                  :key="runtime.runtime_id"
-                  class="site-runtime-grid group items-center px-4 py-3 transition-colors hover:bg-accent/30"
-                >
-                  <div class="flex min-w-0 items-center gap-3">
-                    <SiteIcon
-                      v-if="runtime.primarySite"
-                      :icon-url="runtime.primarySite.icon_url"
-                      :label="runtime.primarySite.site_name || runtime.display_name"
-                      size="md"
-                      class="rounded-md border border-border/50"
-                    />
-                    <div v-else class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border/50 bg-muted text-muted-foreground">
-                      <AppIcon name="cube" class="h-5 w-5" />
-                    </div>
-                    <div class="min-w-0">
-                      <h3 class="truncate text-sm font-semibold text-foreground">{{ runtime.display_name }}</h3>
-                      <p v-if="runtime.description" class="mt-1 line-clamp-1 text-xs text-muted-foreground">{{ runtime.description }}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <span class="inline-flex h-7 items-center rounded-md border px-2 text-xs font-medium" :class="getSiteRuntimeStatusClass(runtime)">
-                      {{ getSiteRuntimeStatusText(runtime) }}
-                    </span>
-                  </div>
-
-                  <div class="flex min-w-0 flex-wrap gap-1">
-                    <span
-                      v-for="cap in runtime.capabilities.slice(0, 3)"
-                      :key="cap.name"
-                      class="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
-                      :title="cap.name"
-                    >
-                      {{ getCapabilityLabel(cap.name) }}
-                    </span>
-                    <span v-if="runtime.capabilities.length > 3" class="text-xs text-muted-foreground">
-                      +{{ runtime.capabilities.length - 3 }}
-                    </span>
-                  </div>
-
-                  <div class="text-sm text-muted-foreground">
-                    <span v-if="runtime.siteTesting" class="inline-flex items-center gap-1">
-                      <AppIcon name="refresh" class="h-3.5 w-3.5 animate-spin" />
-                      检测中
-                    </span>
-                    <span v-else>{{ getNetworkText(runtime) }}</span>
-                  </div>
-
-                  <div class="text-sm text-muted-foreground">
-                    <span v-if="runtime.siteLoginTesting" class="inline-flex items-center gap-1">
-                      <AppIcon name="refresh" class="h-3.5 w-3.5 animate-spin" />
-                      检测中
-                    </span>
-                    <span v-else>{{ getLoginText(runtime) }}</span>
-                  </div>
-
-                  <div class="flex items-center justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8 rounded-md text-muted-foreground"
-                      :disabled="actioning === runtime.runtime_id"
-                      :title="runtime.enabled ? '停用站点' : '启用站点'"
-                      @click="runtime.enabled ? handleDisable(runtime) : handleEnable(runtime)"
-                    >
-                      <AppIcon v-if="runtime.enabled" name="pause" class="h-4 w-4" />
-                      <AppIcon v-else name="play" class="h-4 w-4 fill-current" />
-                    </Button>
-                    <Button
-                      v-if="runtime.siteName"
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8 rounded-md text-muted-foreground"
-                      :disabled="runtime.siteTesting"
-                      title="连通性测试"
-                      @click="handleTestSingleBySite(runtime.siteName)"
-                    >
-                      <AppIcon name="bolt" class="h-4 w-4" />
-                    </Button>
-                    <Button
-                      v-if="runtime.siteSupportsLogin"
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8 rounded-md text-muted-foreground"
-                      :disabled="runtime.siteLoginTesting"
-                      title="验证登录状态"
-                      @click="handleTestLoginBySite(runtime.siteName)"
-                    >
-                      <AppIcon name="security" class="h-4 w-4" />
-                    </Button>
-                    <DropdownMenu v-if="isDesktopApp && runtime.siteDesktopLoginSupported">
-                      <DropdownMenuTrigger as-child>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          class="h-8 w-8 rounded-md text-muted-foreground"
-                          :disabled="runtime.siteLoginTesting"
-                          :title="runtime.siteLoginStatus?.logged_in ? '桌面会话已登录' : '桌面会话'"
-                        >
-                          <AppIcon
-                            :name="runtime.siteLoginStatus?.logged_in ? 'statusSuccess' : 'user'"
-                            class="h-4 w-4"
-                            :class="{ 'text-success': runtime.siteLoginStatus?.logged_in }"
-                          />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" class="w-44">
-                        <DropdownMenuItem @click="handleDesktopSiteLogin(runtime.siteName)">
-                          <AppIcon name="user" class="h-4 w-4" />
-                          <span>{{ runtime.siteLoginStatus?.logged_in ? '重新登录' : '打开桌面登录' }}</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem @click="handleTestLoginBySite(runtime.siteName)">
-                          <AppIcon name="refresh" class="h-4 w-4" />
-                          <span>刷新登录状态</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          :disabled="!runtime.siteLoginStatus?.logged_in"
-                          class="text-destructive focus:text-destructive"
-                          @click="handleClearDesktopSiteSession(runtime.siteName)"
-                        >
-                          <AppIcon name="logout" class="h-4 w-4" />
-                          <span>清除桌面会话</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button
-                      v-if="runtime.siteName === 'youtube'"
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8 rounded-md text-muted-foreground"
-                      title="授权管理"
-                      @click="runtime.siteOAuthStatus === 'authenticated' || runtime.siteOAuthStatus === 'pending' ? handleRevokeYouTubeOAuth() : handleStartYouTubeOAuth()"
-                    >
-                      <AppIcon v-if="runtime.siteOAuthStatus === 'authenticated'" name="link" class="h-4 w-4" />
-                      <AppIcon v-else name="unlink" class="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8 rounded-md text-muted-foreground"
-                      title="站点配置"
-                      @click="openSiteEditorByRuntime(runtime)"
-                    >
-                      <AppIcon name="settingsPanel" class="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <SiteRuntimeTable
+        :runtimes="displaySiteRuntimes"
+        :loading="isInitialLoading"
+        :actioning="actioning"
+        :search-query="searchQuery"
+        :discovery-errors="discoveryErrors"
+        @enable="handleEnable"
+        @disable="handleDisable"
+        @test-connectivity="handleTestSingleBySite"
+        @test-login="handleTestLoginBySite"
+        @desktop-login="handleDesktopSiteLogin"
+        @clear-desktop-session="handleClearDesktopSiteSession"
+        @start-oauth="handleStartYouTubeOAuth"
+        @revoke-oauth="handleRevokeYouTubeOAuth"
+        @edit-site="openSiteEditorByRuntime"
+      />
 
       <SiteConfigEditorDialog
         :visible="siteEditorVisible"
@@ -316,42 +107,12 @@
         @save="saveSiteEditor"
       />
 
-      <Transition name="oauth-prompt">
-        <div
-          v-if="youtubeOAuthPrompt.visible"
-          class="fixed bottom-6 right-6 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-md border border-border/60 bg-background p-4 text-foreground shadow-xl"
-        >
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex items-center gap-2 text-sm font-semibold">
-                <AppIcon name="link" class="h-4 w-4" />
-                <span>YouTube TV 授权</span>
-              </div>
-              <p class="mt-1 text-xs text-muted-foreground">在授权页输入此代码</p>
-            </div>
-            <Button variant="ghost" size="icon" class="h-7 w-7 rounded-md text-muted-foreground" title="关闭" @click="hideYouTubeOAuthPrompt">
-              <AppIcon name="close" class="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div class="mt-3 flex items-center gap-2">
-            <div class="min-w-0 flex-1 select-all rounded-md border border-border/50 bg-muted px-3 py-2 font-mono text-lg font-semibold text-foreground">
-              {{ youtubeOAuthPrompt.userCode }}
-            </div>
-            <Button variant="outline" size="icon" class="h-10 w-10 rounded-md" title="复制授权码" @click="copyYouTubeOAuthCode">
-              <AppIcon name="clipboard" class="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div class="mt-3 flex items-center justify-between gap-2">
-            <span class="text-xs text-muted-foreground">{{ youtubeOAuthPrompt.copied ? '已复制' : '等待授权完成' }}</span>
-            <Button variant="outline" class="h-8 rounded-md text-xs" @click="openExternalUrl(youtubeOAuthPrompt.verificationUrl)">
-              <AppIcon name="externalLink" class="h-3.5 w-3.5" />
-              打开授权页
-            </Button>
-          </div>
-        </div>
-      </Transition>
+      <YouTubeOAuthPrompt
+        :prompt="youtubeOAuthPrompt"
+        @dismiss="hideYouTubeOAuthPrompt"
+        @copy="copyYouTubeOAuthCode"
+        @open="openExternalUrl"
+      />
     </AppTwoColumnLayout>
   </AppPageShell>
 </template>
@@ -361,23 +122,15 @@ import { onMounted, ref, computed } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
-import SiteIcon from '@/shared/components/SiteIcon.vue'
 import SiteConfigEditorDialog from '@/features/settings/components/SiteConfigEditorDialog.vue'
+import SiteRuntimeTable from '@/features/settings/components/SiteRuntimeTable.vue'
+import YouTubeOAuthPrompt from '@/features/settings/components/YouTubeOAuthPrompt.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
-import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
 import { Logger } from '@/shared/lib/logger'
 import { shouldRefreshLoginStatusesAfterCookieImport } from '@/shared/lib/site-runtime-login-status'
-import { getDesktopBridge, useDesktopBridge } from '@/shared/composables/useDesktopBridge'
+import { getDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useSiteCatalog } from '@/features/video/composables/useSites'
 import { useYouTubeOAuth } from '@/features/settings/composables/useYouTubeOAuth'
 import { useSiteConnectivityCache } from '@/features/settings/composables/useSiteConnectivityCache'
@@ -422,9 +175,7 @@ const {
 } = useSiteConnectivityCache()
 
 // ponytail: desktop-app site login/session handlers + site-name normalisation
-// live in useSiteDesktopLogin. The view's duplicate getDesktopBridge is gone —
-// the composable uses the shared one from useDesktopBridge (the source of truth
-// already used by useYouTubeOAuth). loginStatusTesting/upsert/save are injected
+// live in useSiteDesktopLogin. loginStatusTesting/upsert/save are injected
 // so the desktop cluster doesn't reach into the cache cluster's internals.
 const {
   supportsDesktopLoginSite,
@@ -437,19 +188,10 @@ const {
 })
 
 // ponytail: status/network/login badge text + Tailwind classes + capability
-// labels + time formatting live in useSiteRuntimeStatus. Pure formatters,
-// extracted so the view's script stops interleaving formulae with actions.
-const {
-  getSiteRuntimeStatusText,
-  getSiteRuntimeStatusClass,
-  getNetworkText,
-  getLoginText,
-  getCapabilityLabel,
-  formatTime,
-} = useSiteRuntimeStatus()
-
-const { isDesktop: isDesktopEnv } = useDesktopBridge()
-const isDesktopApp = computed(() => isDesktopEnv())
+// labels + time formatting live in useSiteRuntimeStatus. Only formatTime is
+// needed by the sidebar (last-tested timestamp); the table owns its own badge
+// formatters via its own useSiteRuntimeStatus instance.
+const { formatTime } = useSiteRuntimeStatus()
 
 const selectedCookiesFile = ref(null)
 const cookiesFileName = ref('')
@@ -762,30 +504,3 @@ onMounted(() => {
   fetchSupportedSites()
 })
 </script>
-
-<style scoped>
-/* OAuth prompt banner — slides up from the bottom-right. Deliberately NOT named
-   `toast-*` so it can't collide with the global toast stack's `app-toast-*`. */
-.oauth-prompt-enter-active,
-.oauth-prompt-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-
-.oauth-prompt-enter-from,
-.oauth-prompt-leave-to {
-  opacity: 0;
-  transform: translateY(0.5rem);
-}
-
-.site-runtime-grid {
-  display: grid;
-  grid-template-columns: minmax(18rem, 1fr) 7rem 12rem 7rem 7rem 15rem;
-  gap: 1rem;
-}
-
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
-</style>
-
-

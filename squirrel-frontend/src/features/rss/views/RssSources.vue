@@ -514,23 +514,11 @@
     />
 
     <!-- 4. Delete Account Confirmation Dialog -->
-    <Dialog :open="showDeleteConfirmModal" @update:open="showDeleteConfirmModal = $event">
-      <DialogContent class="max-w-sm overflow-hidden rounded-2xl p-0 border border-border/50 bg-background/95 backdrop-blur-xl">
-        <DialogHeader class="border-b border-border/10 p-5 text-left">
-          <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-            <AppIcon name="trash" class="h-5 w-5" />
-          </div>
-          <DialogTitle class="text-base font-semibold text-foreground">确认删除账号？</DialogTitle>
-          <DialogDescription class="text-sm leading-relaxed text-muted-foreground/90 mt-1">
-            此操作将永久移除该 RSS 账号「{{ accountToDelete?.name }}」及其同步的所有订阅源和文章记录。该操作不可撤销。
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter class="gap-2 bg-muted/30 p-4">
-          <Button variant="outline" class="h-9 rounded-xl text-xs font-semibold" @click="showDeleteConfirmModal = false">取消</Button>
-          <Button class="h-9 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-semibold" @click="handleDeleteAccount">确认删除</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <DeleteAccountDialog
+      v-model:open="showDeleteConfirmModal"
+      :account-name="accountToDelete?.name || ''"
+      @confirm="handleDeleteAccount"
+    />
 
     <!-- 5. Subscribe Feed Dialog -->
     <Dialog :open="showSubscribeModal" @update:open="showSubscribeModal = $event">
@@ -670,29 +658,11 @@
 
 
     <!-- Beautiful Full-screen Image Lightbox -->
-    <div 
-      v-if="activeLightboxImg" 
-      class="fixed inset-0 z-sidebar flex items-center justify-center bg-background/95 backdrop-blur-md transition-all duration-300 animate-fade-in"
-      @click="closeLightbox"
-    >
-      <!-- Close Button -->
-      <button 
-        class="absolute top-5 right-5 h-10 w-10 rounded-full bg-accent/20 hover:bg-accent/40 text-foreground flex items-center justify-center backdrop-blur-md border border-border/10 transition-all cursor-pointer"
-        @click.stop="closeLightbox"
-      >
-        <AppIcon name="close" class="h-5 w-5" />
-      </button>
-      
-      <!-- Interactive Image -->
-      <div class="relative max-w-[90vw] max-h-[90vh] overflow-hidden select-none">
-        <img 
-          :src="activeLightboxImg" 
-          class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl transition-transform duration-300 cursor-zoom-out"
-          :style="{ transform: `scale(${lightboxScale})` }"
-          @click.stop="closeLightbox"
-        />
-      </div>
-    </div>
+    <RssImageLightbox
+      :src="activeLightboxImg"
+      :scale="lightboxScale"
+      @close="closeLightbox"
+    />
 
     <!-- Customized Right-Click Context Menu -->
     <RssArticleContextMenu
@@ -738,6 +708,8 @@ import ReaderSettingsPanel from '@/features/rss/components/ReaderSettingsPanel.v
 import AccountDropdown from '@/features/rss/components/AccountDropdown.vue'
 import FeedFolderTree from '@/features/rss/components/FeedFolderTree.vue'
 import AccountEditDialog from '@/features/rss/components/AccountEditDialog.vue'
+import DeleteAccountDialog from '@/features/rss/components/DeleteAccountDialog.vue'
+import RssImageLightbox from '@/features/rss/components/RssImageLightbox.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
