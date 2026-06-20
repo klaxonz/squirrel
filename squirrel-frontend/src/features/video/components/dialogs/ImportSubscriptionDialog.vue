@@ -192,9 +192,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import {
-  getSupportedImportSites,
   importSubscriptions,
-  previewImportSubscriptions,
 } from '@/shared/api'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
@@ -209,7 +207,9 @@ import {
   DialogTitle,
 } from '@/shared/ui/dialog'
 import { useImageFallback } from '@/shared/composables/useImageFallback'
-import { useSiteCatalog } from '@/features/video/composables/useSites'
+import { useImportSelection } from '@/features/video/composables/useImportSelection'
+import { useImportPreview } from '@/features/video/composables/useImportPreview'
+import { useImportSiteMeta } from '@/features/video/composables/useImportSiteMeta'
 
 const props = defineProps({
   show: { type: Boolean, default: false }
@@ -217,136 +217,58 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'imported'])
 const { getImageSrc: getAvatarSrc, handleImageError: handleAvatarError } = useImageFallback()
-const { catalog: siteCatalog, loadCatalog } = useSiteCatalog()
 
 const step = ref(1)
-const supportedSites = ref([])
 const selectedSite = ref('')
-const PREVIEW_BATCH_SIZE = 50
-const previewData = ref({
-  total: null,
-  subscriptions: [],
-  has_more: false,
-  cursor_payload: null,
-})
-const selectedUrlMap = ref({})
 const importResult = ref({})
-const loadingPreview = ref(false)
-const loadingMorePreview = ref(false)
 const importing = ref(false)
-const requestError = ref('')
 
-const siteConfig = {
-  bilibili: { name: '哔哩哔哩' },
-  youtube: { name: '油管' },
-  pornhub: { name: '成人站点一' },
-  youporn: { name: '成人站点二' },
-  javdb: { name: '影片数据库' },
-}
+// ponytail: paginated preview (fetch/append + url-dedup + cursor + derived
+// counts + the shared request-error string) lives in useImportPreview. The
+// site-meta and import handlers below write to the same requestError ref so a
+// single error surface spans the whole flow.
+const {
+  previewData,
+  loadingPreview,
+  loadingMorePreview,
+  requestError,
+  loadedCount,
+  importedCount,
+  notImportedCount,
+  fetchPreviewBatch,
+  loadMorePreview,
+  resetPreview,
+} = useImportPreview({ selectedSite })
 
-const getSiteCatalogItem = (site) => siteCatalog.value?.[site?.toLowerCase?.() || site] || null
-const getSiteName = (site) => getSiteCatalogItem(site)?.label || siteConfig[site]?.name || site.charAt(0).toUpperCase() + site.slice(1)
-const getSiteIconUrl = (site) => {
-  const iconUrl = getSiteCatalogItem(site)?.icon_url
-  return typeof iconUrl === 'string' && iconUrl.trim() ? iconUrl : null
-}
-const selectedCount = computed(() => Object.keys(selectedUrlMap.value || {}).length)
-const loadedCount = computed(() => (previewData.value.subscriptions || []).length)
-const importedCount = computed(() => (
-  previewData.value.subscriptions || []
-).filter(item => item?.is_imported).length)
-const notImportedCount = computed(() => (
-  previewData.value.subscriptions || []
-).filter(item => item && !item.is_imported).length)
+// ponytail: supported-import-site discovery + catalog/fallback name+icon
+// resolution lives in useImportSiteMeta. requestError is shared so a site-load
+// failure surfaces on the same banner as the preview/import errors.
+const {
+  supportedSites,
+  loadSupportedSites,
+  getSiteName,
+  getSiteIconUrl,
+} = useImportSiteMeta({ requestError })
+
+// ponytail: URL-keyed multi-select (toggle/select-all/clear, with imported items
+// treated as immutable) lives in useImportSelection. Selection is keyed by url so
+// it survives preview-batch appends.
+const {
+  selectedUrlMap,
+  selectedCount,
+  toggleSelection,
+  selectAllNotImported,
+  clearSelection,
+} = useImportSelection({
+  subscriptions: computed(() => previewData.value.subscriptions || []),
+})
 
 const resetState = () => {
   step.value = 1
   selectedSite.value = ''
-  previewData.value = {
-    total: null,
-    subscriptions: [],
-    has_more: false,
-    cursor_payload: null,
-  }
+  resetPreview()
   selectedUrlMap.value = {}
   importResult.value = {}
-  loadingMorePreview.value = false
-  requestError.value = ''
-}
-
-const selectAllNotImported = () => {
-  const map = {}
-  for (const sub of previewData.value.subscriptions || []) {
-    if (sub?.url && !sub.is_imported) {
-      map[sub.url] = true
-    }
-  }
-  selectedUrlMap.value = map
-}
-
-const clearSelection = () => {
-  selectedUrlMap.value = {}
-}
-
-const toggleSelection = (sub) => {
-  if (!sub?.url || sub.is_imported) return
-
-  const map = { ...(selectedUrlMap.value || {}) }
-  if (map[sub.url]) {
-    delete map[sub.url]
-  } else {
-    map[sub.url] = true
-  }
-  selectedUrlMap.value = map
-}
-
-const loadSupportedSites = async () => {
-  await loadCatalog()
-  try {
-    const data = await getSupportedImportSites()
-    requestError.value = ''
-    supportedSites.value = data
-  } catch (err) {
-    requestError.value = err instanceof Error ? err.message : '加载可导入站点失败'
-    supportedSites.value = []
-  }
-}
-
-const mergePreviewSubscriptions = (existing, incoming) => {
-  const merged = []
-  const seen = new Set()
-  for (const item of [...(existing || []), ...(incoming || [])]) {
-    if (!item?.url || seen.has(item.url)) continue
-    seen.add(item.url)
-    merged.push(item)
-  }
-  return merged
-}
-
-const fetchPreviewBatch = async ({ cursorPayload = null, append = false } = {}) => {
-  const loadingState = append ? loadingMorePreview : loadingPreview
-  loadingState.value = true
-  try {
-    const data = await previewImportSubscriptions(selectedSite.value, {
-      cursorPayload,
-      limit: PREVIEW_BATCH_SIZE,
-    })
-    requestError.value = ''
-    previewData.value = {
-      total: data?.total ?? previewData.value.total,
-      subscriptions: append
-        ? mergePreviewSubscriptions(previewData.value.subscriptions, data?.subscriptions || [])
-        : (data?.subscriptions || []),
-      has_more: !!data?.has_more,
-      cursor_payload: data?.cursor_payload || null,
-    }
-    return true
-  } catch (err) {
-    requestError.value = err instanceof Error ? err.message : '预览订阅失败'
-    return false
-  } finally {
-    loadingState.value = false
-  }
 }
 
 const handlePreview = async () => {
@@ -358,14 +280,6 @@ const handlePreview = async () => {
     selectAllNotImported()
     step.value = 2
   }
-}
-
-const loadMorePreview = async () => {
-  if (!selectedSite.value || !previewData.value.has_more) return
-  await fetchPreviewBatch({
-    cursorPayload: previewData.value.cursor_payload,
-    append: true,
-  })
 }
 
 const handleImport = async () => {
