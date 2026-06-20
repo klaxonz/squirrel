@@ -298,8 +298,11 @@ import { Input } from '@/shared/ui/input'
 import { Textarea } from '@/shared/ui/textarea'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { usePlaylist } from '@/features/video/composables/usePlaylist'
+import { usePlaylistEditor } from '@/features/video/composables/usePlaylistEditor'
+import { usePlaylistDeleteConfirm } from '@/features/video/composables/usePlaylistDeleteConfirm'
+import { usePlaylistThumbnails } from '@/features/video/composables/usePlaylistThumbnails'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
-import type { Playlist, PlaylistItem } from '@/features/video/types/playlist'
+import type { PlaylistItem } from '@/features/video/types/playlist'
 
 const router = useRouter()
 
@@ -320,16 +323,8 @@ const {
   removeVideo,
 } = usePlaylist()
 
-const showCreateModal = ref(false)
-const editingPlaylist = ref<Playlist | null>(null)
-const formName = ref('')
-const formDesc = ref('')
 const isHydratingSelection = ref(false)
-const showDeleteConfirm = ref(false)
-const deleteTargetPlaylist = ref<Playlist | null>(null)
-const playlistThumbnails = ref<Map<string | number, string[]>>(new Map())
 
-const editorOpen = computed(() => showCreateModal.value || !!editingPlaylist.value)
 const activePlaylistDurationSeconds = computed(() => (
   activePlaylistItems.value.reduce((sum, item) => sum + Number(item.video?.duration || 0), 0)
 ))
@@ -337,61 +332,25 @@ const activePlaylistDurationLabel = computed(() => (
   activePlaylistDurationSeconds.value ? formatDuration(activePlaylistDurationSeconds.value) : '暂无时长'
 ))
 
-const getPlaylistThumbnails = (playlist: Playlist): string[] => {
-  const cached = playlistThumbnails.value.get(playlist.id)
-  if (cached) return cached
+// ponytail: cached 4-up thumbnail projection lives in usePlaylistThumbnails.
+// Only the active playlist has its items loaded in memory; others render a
+// placeholder until opened.
+const { getPlaylistThumbnails } = usePlaylistThumbnails({ activePlaylist, activePlaylistItems })
 
-  const items = activePlaylist.value && String(activePlaylist.value.id) === String(playlist.id)
-    ? activePlaylistItems.value
-    : []
+const selectPlaylist = async (playlistId: number | string) => {
+  if (activePlaylist.value && String(activePlaylist.value.id) === String(playlistId)) return
 
-  const thumbs = items
-    .map(item => item.video?.thumbnail)
-    .filter((thumbnail): thumbnail is string => !!thumbnail)
-    .slice(0, 4)
-
-  if (thumbs.length > 0) {
-    playlistThumbnails.value.set(playlist.id, thumbs)
+  isHydratingSelection.value = true
+  try {
+    await loadAndSetPlaylist(playlistId)
+  } finally {
+    isHydratingSelection.value = false
   }
-  return thumbs
 }
 
-const closeModal = () => {
-  showCreateModal.value = false
-  editingPlaylist.value = null
-  formName.value = ''
-  formDesc.value = ''
-}
-
-const openCreateModal = () => {
-  editingPlaylist.value = null
-  formName.value = ''
-  formDesc.value = ''
-  showCreateModal.value = true
-}
-
-const openEditModal = () => {
-  if (!activePlaylist.value) return
-
-  showCreateModal.value = false
-  editingPlaylist.value = activePlaylist.value
-  formName.value = activePlaylist.value.name
-  formDesc.value = activePlaylist.value.description || ''
-}
-
-const handleEditorOpenChange = (open: boolean) => {
-  if (!open) closeModal()
-}
-
-const closeDeleteConfirm = () => {
-  showDeleteConfirm.value = false
-  deleteTargetPlaylist.value = null
-}
-
-const handleDeleteConfirmOpenChange = (open: boolean) => {
-  if (!open) closeDeleteConfirm()
-}
-
+// Selection sync: pick the preferred id if still present, else the current
+// active, else the first available. Used after create/update/delete to keep the
+// list pointed at a valid playlist.
 const syncSelectionWithList = async (preferredPlaylistId: number | string | null = null) => {
   const availablePlaylists = playlists.value
   const availableIds = new Set(availablePlaylists.map(p => String(p.id)))
@@ -425,58 +384,41 @@ const reloadPlaylists = async () => {
   await syncSelectionWithList()
 }
 
-const selectPlaylist = async (playlistId: number | string) => {
-  if (activePlaylist.value && String(activePlaylist.value.id) === String(playlistId)) return
+// ponytail: create/edit-playlist form state machine lives in usePlaylistEditor.
+// onSaved re-syncs selection to the just-saved playlist; declared after
+// syncSelectionWithList so the callback can reference it directly.
+const {
+  editingPlaylist,
+  formName,
+  formDesc,
+  editorOpen,
+  openCreateModal,
+  openEditModal,
+  closeModal,
+  handleEditorOpenChange,
+  handleSave,
+} = usePlaylistEditor({
+  activePlaylist,
+  create,
+  update,
+  onSaved: (playlist) => syncSelectionWithList(playlist.id),
+})
 
-  isHydratingSelection.value = true
-  try {
-    await loadAndSetPlaylist(playlistId)
-  } finally {
-    isHydratingSelection.value = false
-  }
-}
-
-const handleSave = async () => {
-  const playlistName = formName.value.trim()
-  const playlistDescription = formDesc.value.trim() || null
-
-  if (!playlistName) return
-
-  if (editingPlaylist.value) {
-    const updated = await update(editingPlaylist.value.id, playlistName, playlistDescription)
-    closeModal()
-    if (updated) await syncSelectionWithList(updated.id)
-    return
-  }
-
-  const created = await create(playlistName, playlistDescription)
-  closeModal()
-  if (created) await syncSelectionWithList(created.id)
-}
-
-const handleDelete = (playlistId: number | string) => {
-  const target = playlists.value.find(p => String(p.id) === String(playlistId)) || null
-  if (!target) return
-
-  deleteTargetPlaylist.value = target
-  showDeleteConfirm.value = true
-}
-
-const confirmDelete = async () => {
-  const target = deleteTargetPlaylist.value
-  if (!target) return
-
-  const wasActivePlaylist = !!activePlaylist.value && String(activePlaylist.value.id) === String(target.id)
-  const removed = await remove(target.id)
-
-  closeDeleteConfirm()
-
-  if (!removed) return
-
-  if (wasActivePlaylist) {
-    await syncSelectionWithList()
-  }
-}
+// ponytail: delete-playlist confirm-dialog flow (stash target → confirm →
+// remove → re-sync when the active one was deleted) lives in
+// usePlaylistDeleteConfirm.
+const {
+  showDeleteConfirm,
+  deleteTargetPlaylist,
+  handleDelete,
+  confirmDelete,
+  handleDeleteConfirmOpenChange,
+} = usePlaylistDeleteConfirm({
+  playlists,
+  isActive: (playlist) => !!activePlaylist.value && String(activePlaylist.value.id) === String(playlist.id),
+  remove,
+  onDeleted: (wasActive) => { if (wasActive) syncSelectionWithList() },
+})
 
 const playVideo = (item: PlaylistItem) => {
   if (item.video?.id) {
