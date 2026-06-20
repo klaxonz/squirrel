@@ -128,7 +128,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
@@ -145,6 +145,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog'
+import { useSiteConfigEditorForm } from '@/features/settings/composables/useSiteConfigEditorForm'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -156,265 +157,23 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save']);
 
-const createEmptyForm = () => ({
-  slug: '',
-  siteName: '',
-  label: '',
-  domainsText: '',
-  aliasesText: '',
-  enabled: true,
-  testUrl: '',
-  iconUrl: '',
-  httpHeadersText: '',
-  rateLimitEnabled: true,
-  rateLimitMin: '',
-  rateLimitMax: '',
-  proxyConnectTimeout: '',
-  proxyReadTimeout: '',
-  proxyWriteTimeout: '',
-  proxyPoolTimeout: '',
-  proxyKeepaliveExpiry: '',
-  proxyMaxConnections: '',
-  proxyMaxKeepaliveConnections: '',
-  proxyChunkSize: '',
-  proxyMaxRetries: '',
-  proxyEnableHttp2: true,
-  proxyFollowRedirects: true,
-  loginCheckUrl: '',
-  loginHeadersText: '',
-  loginTimeout: '',
-  metadataNsfw: false,
-  metadataRequiresCookies: false,
-  metadataRequiresLogin: false,
-  metadataOfflineThumbnailsDownload: false,
-  metadataOfflineThumbnailsDisplay: false,
-});
-
-const siteEditorForm = ref(createEmptyForm());
-const localError = ref('');
-
-const setSiteEditorBooleanField = (key, value) => {
-  if (!siteEditorForm.value || !key) {
-    return;
-  }
-  siteEditorForm.value[key] = !!value;
-};
-
-const headersToText = (headers = {}) => {
-  return Object.entries(headers || {})
-    .map(([key, value]) => `${key}: ${value}`)
-    .join('\n');
-};
-
-const parseListInput = (text = '') => {
-  return text
-    .split(/[\n,]/)
-    .map(item => item.trim())
-    .filter(Boolean);
-};
-
-const parseHeadersText = (text = '') => {
-  const result = {};
-  text.split('\n').forEach(line => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    const [key, ...rest] = trimmed.split(':');
-    if (!key) return;
-    result[key.trim()] = rest.join(':').trim();
-  });
-  return result;
-};
-
-const toNumberOrUndefined = (value) => {
-  if (value === '' || value === null || value === undefined) {
-    return undefined;
-  }
-  const num = Number(value);
-  return Number.isNaN(num) ? undefined : num;
-};
-
-const buildFormFromSite = (site, catalog) => {
-  const siteName = site?.site_name || site?.name || site?.label || site?.slug || '';
-  const slug = site?.slug || String(siteName || '').toLowerCase();
-  const catalogInfo = catalog?.[slug] || {};
-  const rateLimit = catalogInfo?.rate_limit || {};
-  const proxy = catalogInfo?.proxy || {};
-  const loginConfig = catalogInfo?.login || {};
-  const metadata = catalogInfo?.metadata || {};
-
-  return {
-    slug,
-    siteName,
-    label: catalogInfo?.label || site?.label || siteName || slug,
-    domainsText: (catalogInfo?.domains?.length ? catalogInfo.domains : (site?.domains || [])).join('\n'),
-    aliasesText: (catalogInfo?.aliases || []).join('\n'),
-    enabled: catalogInfo?.enabled !== false,
-    testUrl: catalogInfo?.test_url || site?.test_url || '',
-    iconUrl: catalogInfo?.icon_url || site?.icon_url || '',
-    httpHeadersText: headersToText(catalogInfo?.http?.headers || {}),
-    rateLimitEnabled: rateLimit?.enabled !== false,
-    rateLimitMin: rateLimit?.min_interval ?? '',
-    rateLimitMax: rateLimit?.max_interval ?? '',
-    proxyConnectTimeout: proxy?.connect_timeout ?? '',
-    proxyReadTimeout: proxy?.read_timeout ?? '',
-    proxyWriteTimeout: proxy?.write_timeout ?? '',
-    proxyPoolTimeout: proxy?.pool_timeout ?? '',
-    proxyKeepaliveExpiry: proxy?.keepalive_expiry ?? '',
-    proxyMaxConnections: proxy?.max_connections ?? '',
-    proxyMaxKeepaliveConnections: proxy?.max_keepalive_connections ?? '',
-    proxyChunkSize: proxy?.chunk_size ?? '',
-    proxyMaxRetries: proxy?.max_retries ?? '',
-    proxyEnableHttp2: proxy?.enable_http2 !== false,
-    proxyFollowRedirects: proxy?.follow_redirects !== false,
-    loginCheckUrl: loginConfig?.check_url || '',
-    loginHeadersText: headersToText(loginConfig?.headers || {}),
-    loginTimeout: loginConfig?.timeout ?? '',
-    metadataNsfw: !!metadata?.nsfw,
-    metadataRequiresCookies: !!metadata?.requires_cookies,
-    metadataRequiresLogin: !!metadata?.requires_login,
-    metadataOfflineThumbnailsDownload: !!metadata?.offline_thumbnails_download,
-    metadataOfflineThumbnailsDisplay: !!metadata?.offline_thumbnails_display,
-  };
-};
-
-const resolvedError = computed(() => {
-  return localError.value || props.errorMessage;
-});
-
-const hydrateForm = () => {
-  if (!props.site) {
-    siteEditorForm.value = createEmptyForm();
-    localError.value = '';
-    return;
-  }
-  siteEditorForm.value = buildFormFromSite(props.site, props.catalog);
-  localError.value = '';
-};
-
-const handleSave = () => {
-  localError.value = '';
-  const { slug, siteName } = siteEditorForm.value;
-  if (!slug) {
-    localError.value = '站点标识不可为空';
-    return;
-  }
-
-  const aliases = parseListInput(siteEditorForm.value.aliasesText);
-  const label = siteEditorForm.value.label?.trim() || siteName || slug;
-  const httpHeaders = parseHeadersText(siteEditorForm.value.httpHeadersText);
-  const loginHeaders = parseHeadersText(siteEditorForm.value.loginHeadersText);
-  const rateLimitMin = toNumberOrUndefined(siteEditorForm.value.rateLimitMin);
-  const rateLimitMax = toNumberOrUndefined(siteEditorForm.value.rateLimitMax);
-
-  const proxyPayload = {};
-  const proxyFields = [
-    ['connect_timeout', siteEditorForm.value.proxyConnectTimeout],
-    ['read_timeout', siteEditorForm.value.proxyReadTimeout],
-    ['write_timeout', siteEditorForm.value.proxyWriteTimeout],
-    ['pool_timeout', siteEditorForm.value.proxyPoolTimeout],
-    ['keepalive_expiry', siteEditorForm.value.proxyKeepaliveExpiry],
-    ['max_connections', siteEditorForm.value.proxyMaxConnections],
-    ['max_keepalive_connections', siteEditorForm.value.proxyMaxKeepaliveConnections],
-    ['chunk_size', siteEditorForm.value.proxyChunkSize],
-    ['max_retries', siteEditorForm.value.proxyMaxRetries],
-  ];
-
-  proxyFields.forEach(([key, value]) => {
-    const num = toNumberOrUndefined(value);
-    if (num !== undefined) {
-      proxyPayload[key] = num;
-    }
-  });
-  proxyPayload.enable_http2 = !!siteEditorForm.value.proxyEnableHttp2;
-  proxyPayload.follow_redirects = !!siteEditorForm.value.proxyFollowRedirects;
-
-  const rateLimitPayload = {};
-  rateLimitPayload.enabled = !!siteEditorForm.value.rateLimitEnabled;
-  if (rateLimitMin !== undefined) rateLimitPayload.min_interval = rateLimitMin;
-  if (rateLimitMax !== undefined) rateLimitPayload.max_interval = rateLimitMax;
-
-  const loginPayload = {};
-  if (siteEditorForm.value.loginCheckUrl?.trim()) {
-    loginPayload.check_url = siteEditorForm.value.loginCheckUrl.trim();
-  }
-  if (Object.keys(loginHeaders).length) {
-    loginPayload.headers = loginHeaders;
-  }
-  const loginTimeout = toNumberOrUndefined(siteEditorForm.value.loginTimeout);
-  if (loginTimeout !== undefined) {
-    loginPayload.timeout = loginTimeout;
-  }
-
-  const sitePayload = {
-    label,
-    aliases,
-    enabled: !!siteEditorForm.value.enabled,
-    metadata: {
-      nsfw: !!siteEditorForm.value.metadataNsfw,
-      requires_cookies: !!siteEditorForm.value.metadataRequiresCookies,
-      requires_login: !!siteEditorForm.value.metadataRequiresLogin,
-      offline_thumbnails_download: !!siteEditorForm.value.metadataOfflineThumbnailsDownload,
-      offline_thumbnails_display: !!siteEditorForm.value.metadataOfflineThumbnailsDisplay,
-    },
-  };
-
-  const testUrl = siteEditorForm.value.testUrl?.trim();
-  if (testUrl) {
-    sitePayload.test_url = testUrl;
-  }
-  const iconUrl = siteEditorForm.value.iconUrl?.trim();
-  if (iconUrl) {
-    sitePayload.icon_url = iconUrl;
-  }
-  if (Object.keys(httpHeaders).length) {
-    sitePayload.http = { headers: httpHeaders };
-  }
-  if (Object.keys(rateLimitPayload).length) {
-    sitePayload.rate_limit = rateLimitPayload;
-  }
-  if (Object.keys(proxyPayload).some(key => proxyPayload[key] !== undefined && proxyPayload[key] !== '')) {
-    sitePayload.proxy = proxyPayload;
-  }
-  if (Object.keys(loginPayload).length) {
-    sitePayload.login = loginPayload;
-  }
-
-  emit('save', {
-    slug,
-    sitePayload,
-  });
-};
-
-watch(
-  () => props.visible,
-  (visible) => {
-    if (!visible) {
-      siteEditorForm.value = createEmptyForm();
-      localError.value = '';
-      return;
-    }
-    hydrateForm();
-  },
-  { immediate: true }
-);
-
-watch(
-  () => props.site,
-  () => {
-    if (!props.visible) return;
-    hydrateForm();
-  },
-  { deep: true }
-);
-
-watch(
-  () => props.catalog,
-  () => {
-    if (!props.visible) return;
-    hydrateForm();
-  },
-  { deep: true }
-);
+// ponytail: the form model + hydrate/validate/serialize state machine + the
+// open/close + site/catalog hydration watchers live in useSiteConfigEditorForm.
+// The converters (headers<->text, list parse, number-or-undefined) live in the
+// shared siteConfigFormConverters lib. This view is now a thin shell that binds
+// the form to the template and forwards the serialised payload to its API call.
+const {
+  siteEditorForm,
+  resolvedError,
+  setSiteEditorBooleanField,
+  handleSave,
+} = useSiteConfigEditorForm({
+  visible: computed(() => props.visible),
+  site: computed(() => props.site),
+  catalog: computed(() => props.catalog),
+  errorMessage: computed(() => props.errorMessage),
+  onSave: (payload) => emit('save', payload),
+})
 </script>
 
 <style scoped>
