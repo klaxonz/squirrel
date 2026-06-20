@@ -379,7 +379,7 @@ import {
 } from '@/shared/ui/dropdown-menu'
 import { Logger } from '@/shared/lib/logger'
 import { shouldRefreshLoginStatusesAfterCookieImport } from '@/shared/lib/site-runtime-login-status'
-import { getDesktopBridge } from '@/shared/composables/useDesktopBridge'
+import { getDesktopBridge, useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useSiteCatalog } from '@/features/video/composables/useSites'
 import { useYouTubeOAuth } from '@/features/settings/composables/useYouTubeOAuth'
 import { useSiteConnectivityCache } from '@/features/settings/composables/useSiteConnectivityCache'
@@ -450,7 +450,8 @@ const {
   formatTime,
 } = useSiteRuntimeStatus()
 
-const isDesktopApp = computed(() => window.desktopApp?.isDesktop === true)
+const { isDesktop: isDesktopEnv } = useDesktopBridge()
+const isDesktopApp = computed(() => isDesktopEnv())
 
 const selectedCookiesFile = ref(null)
 const cookiesFileName = ref('')

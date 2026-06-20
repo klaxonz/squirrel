@@ -158,6 +158,7 @@ import {
 } from '@/shared/ui/dropdown-menu'
 import { getSubscriptionDetail, triggerDirectRefresh, unsubscribe as apiUnsubscribe, updateSpecialFollowStatus } from '@/shared/api'
 import { notifySubscriptionRemoved } from '@/shared/lib/subscriptionEvents'
+import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 
 const props = defineProps({
   subscriptionId: { type: [String, Number], required: true },
@@ -176,7 +177,7 @@ const unsubscribeError = ref('')
 const syncError = ref('')
 const syncMessage = ref('')
 const DISMISS_MS = 180
-const isDesktop = window.desktopApp?.isDesktop === true
+const isDesktop = useDesktopBridge().isDesktop()
 
 const canOpenRemote = computed(() => {
   return isDesktop && !!detail.value?.site && !!detail.value?.url

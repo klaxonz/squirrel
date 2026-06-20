@@ -105,6 +105,7 @@ import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPla
 import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
+import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 
 type RemoteProfile = {
   id?: string | number | null
@@ -154,7 +155,7 @@ const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
   youporn: /youporn\.com\/watch\//i,
 }
 const router = useRouter()
-const isDesktop = window.desktopApp?.isDesktop === true
+const isDesktop = useDesktopBridge().isDesktop()
 const items = ref<RemoteSearchItem[]>([])
 const loading = ref(false)
 const allLoaded = ref(false)

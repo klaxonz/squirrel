@@ -60,6 +60,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import RouteContextBar from '@/shared/components/layout/RouteContextBar.vue'
 import GlobalSearchBar from '@/shared/components/layout/GlobalSearchBar.vue'
@@ -94,8 +95,9 @@ function handleBack() {
 
 const showSearch = computed(() => !!route.meta?.showSearch)
 const homeSearchMode = computed(() => uiStore.homeSearchMode)
+const { isDesktop: isDesktopEnv } = useDesktopBridge()
 const showHomeSearchMode = computed(() => {
-  return window.desktopApp?.isDesktop === true
+  return isDesktopEnv()
     && route.matched.some((record) => record.name === 'HomeView')
     && !route.params.id
 })

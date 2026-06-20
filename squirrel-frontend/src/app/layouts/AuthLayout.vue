@@ -11,6 +11,7 @@
 <script setup lang="ts">
 import DesktopTitleBar from '@/app/shell/DesktopTitleBar.vue'
 import ToastProvider from '@/shared/components/toast/ToastProvider.vue'
+import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 
-const isDesktop = window.desktopApp?.isDesktop === true
+const isDesktop = useDesktopBridge().isDesktop()
 </script>

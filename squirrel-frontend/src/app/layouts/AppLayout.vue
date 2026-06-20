@@ -42,6 +42,7 @@ import AppHeader from '@/app/shell/AppHeader.vue'
 import GlobalVideoPlayerHost from '@/features/playback/components/video-player/GlobalVideoPlayerHost.vue'
 import GlobalMusicPlayerBar from '@/features/music/components/GlobalMusicPlayerBar.vue'
 import ToastProvider from '@/shared/components/toast/ToastProvider.vue'
+import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useThemeStore } from '@/shared/stores/theme'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
@@ -53,7 +54,8 @@ type ScrollRouteState = {
 }
 
 const scrollPositions = new Map<string, number>()
-const isDesktop = window.desktopApp?.isDesktop === true
+const { isDesktop: isDesktopClient } = useDesktopBridge()
+const isDesktop = isDesktopClient()
 const themeStore = useThemeStore()
 const musicPlayerStore = useMusicPlayerStore()
 const nav = useNavigationHistory()

@@ -256,7 +256,10 @@ import { Logger } from '@/shared/lib/logger'
 import useVideoInteraction from '@/features/video/composables/useVideoInteraction'
 import { usePlaylist } from '@/features/video/composables/usePlaylist'
 import { saveRemoteVideo } from '@/shared/api'
+import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import type { VideoPageVideo, VideoProfile } from '@/features/playback/types/videoPlayback'
+
+const { isDesktop: isDesktopEnv } = useDesktopBridge()
 
 const route = useRoute()
 const router = useRouter()
@@ -429,7 +432,7 @@ const videoActors = computed(() => {
 const shouldResolveJavdbMetadata = computed(() => {
   const v = video.value
   const url = String(v?.url || '').trim()
-  return !!v && url.includes('javdb.com/') && videoActors.value.length === 0 && window.desktopApp?.isDesktop === true
+  return !!v && url.includes('javdb.com/') && videoActors.value.length === 0 && isDesktopEnv()
 })
 const primaryVisibleActions = computed(() => {
   const keys = isRemoteVideo.value ? ['later', 'like', 'dislike'] : ['like', 'dislike']

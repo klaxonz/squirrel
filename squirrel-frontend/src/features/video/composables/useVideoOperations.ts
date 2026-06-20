@@ -1,4 +1,5 @@
 import { Logger } from '@/shared/lib/logger'
+import { getDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import type { MediaSource } from '@/features/playback/components/video-player/core'
 
 type VideoId = string | number
@@ -41,16 +42,6 @@ export type VideoUrlInfo = {
 export const toPlayerSourceType = (streamType?: VideoUrlInfo['stream_type']): MediaSource['type'] => {
   if (streamType === 'progressive') return 'native'
   return streamType || 'auto'
-}
-
-type DesktopWindow = Window & {
-  desktopApp?: DesktopAppBridge
-}
-
-const getDesktopBridge = () => {
-  if (typeof window === 'undefined') return null
-  const desktopWindow = window as DesktopWindow
-  return desktopWindow.desktopApp || null
 }
 
 export const DESKTOP_PLAYBACK_TIMEOUT_MS = 120000
@@ -141,8 +132,7 @@ export const resolveDesktopPlayback = async (
 export const isDesktopPlaybackClient = () => {
   if (typeof window === 'undefined') return false
 
-  const desktopWindow = window as DesktopWindow
-  if (desktopWindow.desktopApp?.isDesktop === true) return true
+  if (getDesktopBridge()?.isDesktop === true) return true
   if (typeof navigator === 'undefined') return false
 
   const userAgent = String(navigator.userAgent || '')

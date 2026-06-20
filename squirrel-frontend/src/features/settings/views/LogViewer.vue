@@ -139,7 +139,7 @@
               >
                 <!-- Time -->
                 <span class="text-muted-foreground/60 whitespace-nowrap tabular-nums shrink-0 pt-0.5">
-                  {{ formatTime(item.timestamp) }}
+                  {{ formatLogTimestamp(item.timestamp) }}
                 </span>
 
                 <!-- Level -->
@@ -191,7 +191,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import AppIcon from '@/shared/icons/AppIcon.vue';
 import AppSpinner from '@/shared/components/AppSpinner.vue';
@@ -205,6 +205,8 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import { getLogFiles, queryLogs } from '@/shared/api'
 import { Logger } from '@/shared/lib/logger'
 import { useLogClipboard } from '@/features/settings/composables/useLogClipboard'
+import { useLogAutoRefresh } from '@/features/settings/composables/useLogAutoRefresh'
+import { formatLogTimestamp, getLevelColorClass, formatFileSize } from '@/features/settings/lib/logPresenters'
 
 
 // 数据
@@ -212,7 +214,6 @@ const logs = ref([]);
 const logFiles = ref([]);
 const totalLogs = ref(0);
 const loading = ref(false);
-const autoRefresh = ref(true);
 
 // 过滤条件
 const filters = ref({
@@ -240,18 +241,10 @@ const fileOptions = computed(() => {
 const hasActiveFilters = computed(() => Boolean(filters.value.keyword || filters.value.level))
 
 
-// 自动刷新定时器
-let refreshTimer = null;
-
 // 生命周期
 onMounted(() => {
   loadLogFiles();
   loadLogs();
-  startAutoRefresh();
-});
-
-onUnmounted(() => {
-  stopAutoRefresh();
 });
 
 // 加载日志文件列表
@@ -324,61 +317,15 @@ function filterByTraceId(traceId) {
 // returned allCopied flag drives the toolbar's success label.
 const { allCopied, copyLog, copyAllLogs } = useLogClipboard({ logs, filters });
 
-// 切换自动刷新
-function toggleAutoRefresh() {
-  autoRefresh.value = !autoRefresh.value;
-  
-  if (autoRefresh.value) {
-    startAutoRefresh();
-  } else {
-    stopAutoRefresh();
-  }
-}
+// ponytail: polling-based auto-refresh (interval + lifecycle cleanup) lives in
+// useLogAutoRefresh. Declared after loadLogs so the refresh callback can
+// reference it; the composable starts polling on creation and clears on unmount.
+const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs });
 
-// 开始自动刷新
-function startAutoRefresh() {
-  stopAutoRefresh();
-  refreshTimer = setInterval(() => {
-    loadLogs();
-  }, 5000);
-}
-
-// 停止自动刷新
-function stopAutoRefresh() {
-  if (refreshTimer) {
-    clearInterval(refreshTimer);
-    refreshTimer = null;
-  }
-}
-
-// 格式化时间
-function formatTime(timestamp) {
-  if (!timestamp) return '';
-  const parts = timestamp.split(' ');
-  if (parts.length > 1) {
-    return parts[1];
-  }
-  return timestamp;
-}
-
-// 获取日志级别颜色
-function getLevelColorClass(level) {
-  const classes = {
-    DEBUG: 'text-muted-foreground/40',
-    INFO: 'text-info/80',
-    WARNING: 'text-warning/80',
-    ERROR: 'text-destructive',
-    CRITICAL: 'text-destructive font-black'
-  };
-  return classes[level] || 'text-muted-foreground';
-}
-
-// 格式化文件大小
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-}
+// ponytail: log-timestamp / level-colour / file-size formatters live in the
+// shared logPresenters lib. formatLogTimestamp is NOT named formatTime — the
+// shared dateFormat.formatTime formats a duration, this extracts the clock
+// portion of a log-line timestamp.
 </script>
 
 <style scoped>

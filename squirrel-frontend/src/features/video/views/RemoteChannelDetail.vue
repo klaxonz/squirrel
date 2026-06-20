@@ -121,6 +121,7 @@ import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPla
 import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
+import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { getSubscriptionStatus, subscribe, unsubscribe } from '@/shared/api'
 
 type RemoteProfile = {
@@ -175,6 +176,7 @@ const allLoaded = ref(false)
 const currentPage = ref(1)
 const nextCursor = shallowRef<unknown>(null)
 const errorMessage = ref('')
+const { isDesktop: isDesktopEnv } = useDesktopBridge()
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 const isCheckingSubscription = ref(false)
 const isSubscriptionChecked = ref(false)
@@ -263,7 +265,7 @@ const appendUniqueItems = (nextItems: RemoteSearchItem[]) => {
 }
 
 const loadPage = async (page: number) => {
-  if (!window.desktopApp?.isDesktop || typeof window.desktopApp?.getRemoteChannel !== 'function') {
+  if (!isDesktopEnv() || typeof window.desktopApp?.getRemoteChannel !== 'function') {
     errorMessage.value = '当前桌面端不支持远端频道'
     return
   }
