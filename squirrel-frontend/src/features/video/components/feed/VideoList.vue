@@ -39,12 +39,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import VideoItem from './VideoItem.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
 import { useUIStore } from '@/shared/stores/ui'
-import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
+import { useInfiniteScrollSentinel } from '@/shared/composables/useInfiniteScrollSentinel'
 import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
 import type { VideoListItem } from '@/features/video/types/video'
 
@@ -62,7 +62,6 @@ const props = defineProps<{
 const emit = defineEmits(['goToSubscription', 'openModal', 'loadMore'])
 
 const loadMoreTrigger = ref<HTMLElement | null>(null)
-let observer: IntersectionObserver | null = null
 
 // --- Adaptive skeleton count ----------------------------------------------
 // Breakpoints must mirror the grid classes below:
@@ -86,24 +85,17 @@ const { count: skeletonCount, attachRef: root } = useSkeletonCount({
   rowGap: 24, // matches `gap-6` (1.5rem ≈ 24px)
 })
 
-onMounted(() => {
-  // Use the app's primary scroll container as the observer root so the sentinel
-  // triggers against the real scrolling viewport, not the window.
-  const scrollRoot = getMainScrollRoot()
-
-  observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && !props.loading && !props.allLoaded) {
-      emit('loadMore')
-    }
-  }, {
-    root: scrollRoot,
-    rootMargin: '600px'
-  })
-
-  if (loadMoreTrigger.value) observer.observe(loadMoreTrigger.value)
+// ponytail: the sentinel IntersectionObserver + mount/unmount lifecycle lives
+// in useInfiniteScrollSentinel (deduped from 3 video-feed components). The
+// loading/allLoaded guards stay in the callback since they're component-specific.
+useInfiniteScrollSentinel({
+  sentinel: loadMoreTrigger,
+  onIntersect: () => {
+    if (!props.loading && !props.allLoaded) emit('loadMore')
+  },
+  rootMargin: '600px',
 })
 
-onUnmounted(() => observer?.disconnect())
 </script>
 
 <style scoped>

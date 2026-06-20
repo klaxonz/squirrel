@@ -94,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onActivated, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onActivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
@@ -104,8 +104,8 @@ import VideoThumbnail from './VideoThumbnail.vue'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { useSkeletonCount, type GridBreakpoint } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
-import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
+import { useInfiniteScrollSentinel } from '@/shared/composables/useInfiniteScrollSentinel'
 
 type RemoteProfile = {
   id?: string | number | null
@@ -183,7 +183,6 @@ const { count: skeletonCount, attachRef: root } = useSkeletonCount({
 })
 
 let requestToken = 0
-let observer: IntersectionObserver | null = null
 let loadedSearchKey = ''
 const pendingYouPornAvatarUrls = new Set<string>()
 
@@ -432,21 +431,14 @@ onActivated(() => {
   refresh()
 })
 
-onMounted(() => {
-  const root = getMainScrollRoot()
-  observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) {
-      loadMore()
-    }
-  }, {
-    root,
-    rootMargin: '600px',
-  })
-
-  if (loadMoreTrigger.value) observer.observe(loadMoreTrigger.value)
+// ponytail: the sentinel IntersectionObserver + mount/unmount lifecycle lives
+// in useInfiniteScrollSentinel (deduped from the video-feed components). The
+// loading/allLoaded guards live inside loadMore().
+useInfiniteScrollSentinel({
+  sentinel: loadMoreTrigger,
+  onIntersect: () => loadMore(),
+  rootMargin: '600px',
 })
-
-onUnmounted(() => observer?.disconnect())
 
 defineExpose({ refresh })
 </script>
