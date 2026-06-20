@@ -272,21 +272,6 @@ const restRanks = computed(() => props.ranks.slice(4))
   margin-top: 0.125rem;
 }
 
-@media (max-width: 768px) {
-  .music-discovery-grid {
-    padding: 1rem 1rem 2rem;
-  }
-
-  .music-rank-featured {
-    grid-template-columns: 1fr;
-  }
-
-  .music-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-  }
-}
-
 @media (min-width: 769px) and (max-width: 1180px) {
   .music-rank-featured {
     grid-template-columns: repeat(2, minmax(0, 1fr));

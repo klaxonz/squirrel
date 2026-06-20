@@ -317,25 +317,4 @@ function handleFollow() {
   color: hsl(var(--foreground));
   border-color: hsl(var(--primary));
 }
-
-@media (max-width: 768px) {
-  .music-artist-detail {
-    padding: 1rem;
-  }
-
-  .music-artist-header {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-
-  .music-artist-cover {
-    width: 160px;
-    height: 160px;
-  }
-
-  .music-artist-actions {
-    justify-content: center;
-  }
-}
 </style>

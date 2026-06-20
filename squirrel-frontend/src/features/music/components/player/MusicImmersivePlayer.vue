@@ -563,15 +563,4 @@ const activeTab = ref<'lyrics' | 'comments'>('lyrics')
   color: hsl(var(--primary));
   font-weight: 600;
 }
-
-@media (max-width: 768px) {
-  .immersive-container {
-    padding: 1rem;
-  }
-
-  .immersive-art-wrapper {
-    width: 3.5rem;
-    height: 3.5rem;
-  }
-}
 </style>

@@ -125,14 +125,4 @@ watch(
   font-size: 1.5rem;
   font-weight: 700;
 }
-
-@media (max-width: 768px) {
-  .music-lyric-line {
-    font-size: 1rem;
-  }
-
-  .music-lyric-line--active {
-    font-size: 1.25rem;
-  }
-}
 </style>

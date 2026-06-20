@@ -249,25 +249,4 @@ function shuffleAll() {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
-@media (max-width: 768px) {
-  .music-album-detail {
-    padding: 1rem;
-  }
-
-  .music-detail-header {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-
-  .music-detail-cover {
-    width: 160px;
-    height: 160px;
-  }
-
-  .music-detail-actions {
-    justify-content: center;
-  }
-}
 </style>

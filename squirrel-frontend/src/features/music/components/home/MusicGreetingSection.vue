@@ -407,16 +407,6 @@ const subtitleText = computed(() => {
   box-shadow: 0 1px 3px hsl(var(--foreground) / 0.08);
 }
 
-@media (max-width: 768px) {
-  .music-greeting-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .music-fm-entry {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 1100px) {
   .music-greeting-actions {
     grid-template-columns: 1fr;

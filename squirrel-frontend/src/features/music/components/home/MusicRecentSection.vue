@@ -170,14 +170,4 @@ function isPlaying(track: MusicTrack): boolean {
   color: hsl(var(--muted-foreground) / 0.5);
   flex-shrink: 0;
 }
-
-@media (max-width: 768px) {
-  .music-recent-list {
-    flex-direction: column;
-  }
-
-  .music-recent-item {
-    flex: none;
-  }
-}
 </style>

@@ -113,10 +113,4 @@ defineEmits<{
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-@media (max-width: 768px) {
-  .music-bar-track-info {
-    width: 220px;
-  }
-}
 </style>

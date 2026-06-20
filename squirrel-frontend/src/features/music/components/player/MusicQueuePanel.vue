@@ -264,14 +264,4 @@ defineEmits<{
   background: hsl(var(--muted));
   color: hsl(var(--destructive));
 }
-
-@media (max-width: 768px) {
-  .music-queue-panel {
-    left: 1rem;
-    right: 1rem;
-    width: auto;
-    max-width: 24rem;
-    margin: 0 auto;
-  }
-}
 </style>

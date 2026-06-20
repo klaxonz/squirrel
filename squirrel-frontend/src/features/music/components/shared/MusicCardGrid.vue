@@ -57,16 +57,4 @@ const layoutClass = computed(() => musicCardGridVariants({ layout: props.layout 
   flex-shrink: 0;
   width: 160px;
 }
-
-@media (max-width: 768px) {
-  .music-card-grid--cols-3,
-  .music-card-grid--cols-4 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .music-card-grid--auto {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.875rem;
-  }
-}
 </style>

@@ -160,16 +160,4 @@ const volumeIcon = computed(() => {
   border-radius: 9999px;
   font-weight: 700;
 }
-
-@media (max-width: 768px) {
-  .music-bar-actions {
-    flex: 1;
-    width: auto;
-    justify-content: flex-end;
-  }
-
-  .music-bar-volume {
-    display: none;
-  }
-}
 </style>

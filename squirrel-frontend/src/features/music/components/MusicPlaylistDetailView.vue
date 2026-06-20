@@ -281,19 +281,4 @@ function shuffleAll() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-@media (max-width: 768px) {
-  .music-playlist-detail {
-    padding: 1rem 1rem 2rem;
-  }
-
-  .music-playlist-topbar {
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .music-playlist-tracks {
-    margin: 0 -1rem;
-  }
-}
 </style>

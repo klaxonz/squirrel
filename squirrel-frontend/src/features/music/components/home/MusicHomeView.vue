@@ -143,10 +143,4 @@ function handlePlayTrack(track: MusicTrack) {
   max-width: 1480px;
   margin: 0;
 }
-
-@media (max-width: 768px) {
-  .music-home {
-    padding: 1rem 1rem 2rem;
-  }
-}
 </style>

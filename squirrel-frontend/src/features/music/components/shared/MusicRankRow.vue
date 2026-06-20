@@ -163,12 +163,6 @@ function badgeColor(index: number): string {
   opacity: 1;
 }
 
-@media (max-width: 768px) {
-  .music-rank-row {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (min-width: 769px) and (max-width: 1180px) {
   .music-rank-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));

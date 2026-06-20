@@ -161,17 +161,4 @@ const variantClass = computed(() => `music-action-button--${props.variant}`)
     height: auto;
   }
 }
-
-@media (max-width: 768px) {
-  .music-action-button {
-    min-height: 3.75rem;
-    height: auto;
-    padding: 0.875rem 1rem;
-  }
-
-  .music-action-icon {
-    width: 2.25rem;
-    height: 2.25rem;
-  }
-}
 </style>

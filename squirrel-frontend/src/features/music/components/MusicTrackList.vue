@@ -550,30 +550,4 @@ const {
   background: hsl(var(--border) / 0.5);
   margin: 0.375rem 0;
 }
-
-@media (max-width: 768px) {
-  .music-track-list {
-    padding: 0 1rem;
-  }
-
-  .music-track-header,
-  .music-track-row {
-    grid-template-columns: 2.5rem 2.5rem 3.25rem 1fr 4.5rem;
-  }
-
-  .music-track-col--album {
-    display: none;
-  }
-
-  .music-track-batch-bar {
-    flex-direction: column;
-    gap: 0.875rem;
-    align-items: stretch;
-  }
-
-  .music-batch-left,
-  .music-batch-actions {
-    justify-content: center;
-  }
-}
 </style>

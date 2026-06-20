@@ -652,19 +652,4 @@ function handlePlaySong(track: MusicTrack) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-@media (max-width: 768px) {
-  .music-search {
-    padding: 1rem;
-  }
-
-  .music-hot-list {
-    grid-template-columns: 1fr;
-  }
-
-  .music-search-artists,
-  .music-search-albums {
-    flex-direction: column;
-  }
-}
 </style>
