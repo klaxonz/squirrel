@@ -241,6 +241,7 @@ import type { AppThemeMode } from '@/shared/lib/theme'
 import { Logger } from '@/shared/lib/logger'
 import { useSystemConfig } from '@/shared/composables/useSystemConfig'
 import { useUserSettings } from '@/shared/composables/useUserSettings'
+import { useServerConfigForm } from '@/features/settings/composables/useServerConfigForm'
 
 const route = useRoute()
 const router = useRouter()
@@ -290,13 +291,22 @@ const { config: systemConfig, loading: systemLoading, loadSystemConfig, updateSy
 const systemSaving = ref(false)
 const pageLoading = ref(true)
 
-// Server config
-const { serverUrl: currentServerUrl, setServerUrl, testServerConnection, initServerConfig } = useServerConfig()
-const serverForm = ref({ url: '' })
-const serverSaving = ref(false)
-const serverTesting = ref(false)
-const serverTestResult = ref<boolean | null>(null)
-const serverTestMessage = ref('')
+// ponytail: server-url config form (test-connection → result → save flow,
+// with loading guards + error mapping) lives in useServerConfigForm. The host
+// still owns the onMounted initServerConfig() call (it coordinates parallel
+// loads) and re-syncs serverForm.url from the canonical value after init.
+// initServerConfig + currentServerUrl come from the shared useServerConfig
+// singleton (module-level state), so the form composable and this view agree.
+const { serverUrl: currentServerUrl, initServerConfig } = useServerConfig()
+const {
+  serverForm,
+  serverSaving,
+  serverTesting,
+  serverTestResult,
+  serverTestMessage,
+  handleTestServer,
+  handleSaveServer,
+} = useServerConfigForm()
 
 // Save toast
 const toast = useToast()
@@ -345,41 +355,6 @@ const onSystemToggle = async (key: string, val: boolean) => {
   }
 }
 
-const handleTestServer = async () => {
-  if (!serverForm.value.url.trim()) return
-  serverTesting.value = true
-  serverTestResult.value = null
-  try {
-    const result = await testServerConnection(serverForm.value.url)
-    serverTestResult.value = result.ok
-    serverTestMessage.value = result.message
-  } catch (err) {
-    Logger.warn('[Settings] Server test failed', err)
-    serverTestResult.value = false
-    serverTestMessage.value = '无法连接'
-  } finally {
-    serverTesting.value = false
-  }
-}
-
-const handleSaveServer = async () => {
-  if (!serverForm.value.url.trim()) return
-  serverSaving.value = true
-  try {
-    const ok = await setServerUrl(serverForm.value.url)
-    if (!ok) {
-      toast.error('无效的服务器地址')
-      return
-    }
-    toast.success('服务器已更新')
-    serverForm.value.url = currentServerUrl.value || ''
-  } catch (err) {
-    Logger.warn('[Settings] Failed to save server', err)
-    toast.error('保存失败')
-  } finally {
-    serverSaving.value = false
-  }
-}
 </script>
 
 <style scoped>
