@@ -43,6 +43,20 @@
   ::-webkit-scrollbar-thumb {
     @apply bg-muted-foreground/10 rounded-full hover:bg-muted-foreground/20 transition-colors;
   }
+
+  /* Global keyboard-focus fallback.
+     Every interactive element gets a visible :focus-visible ring bound to the
+     brand --ring token unless a component supplies its own (shadcn primitives,
+     .app-tab-button, <Button>, etc. already do). This closes the WCAG 2.4.7 gap
+     where hand-written <button>/<div role=button> elements across the app had
+     hover/active states but no focus feedback. `:focus-visible` only fires for
+     keyboard navigation, so mouse clicks stay clean. */
+  :where(a, button, [role="button"], [tabindex]:not([tabindex="-1"]),
+         input, select, textarea, summary):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.55);
+    border-radius: inherit;
+  }
 }
 
 @layer utilities {
