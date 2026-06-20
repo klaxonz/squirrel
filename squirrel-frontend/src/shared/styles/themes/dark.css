@@ -52,8 +52,11 @@
   --radius-lg: 8px; /* 容器圆角 */
   --radius-xl: 12px; /* 面板圆角 */
 
-  /* Sidebar */
-  --sidebar-width: 240px;
+  /* NOTE: --sidebar-width is defined once in layout.css (the token foundation).
+     It does not vary by theme, so it must NOT be re-declared here — a previous
+     duplicate `--sidebar-width: 240px` in this :root shadowed layout.css's
+     `14rem` because dark.css loads last, producing a single accidental 240px
+     value and a confusing double source of truth. */
 
   /* Shadows - Linear Style (Sharp & Subtle).
      Full scale: xs/sm/md/lg/premium. Replaces scattered `shadow-sm`/`shadow-2xl`/

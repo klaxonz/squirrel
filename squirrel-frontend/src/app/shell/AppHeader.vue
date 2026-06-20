@@ -49,7 +49,7 @@
             <template v-if="userInitial">{{ userInitial }}</template>
             <AppIcon v-else name="user" class="w-3.5 h-3.5" />
           </div>
-          <span class="text-sm font-medium text-foreground hidden sm:inline">{{ userDisplayName }}</span>
+          <span class="text-sm font-medium text-foreground">{{ userDisplayName }}</span>
         </div>
       </div>
     </div>

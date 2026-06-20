@@ -26,7 +26,7 @@
         @click="btn.action"
         :title="btn.label"
         class="w-10 h-8 flex items-center justify-center hover:bg-accent hover:text-foreground transition-colors group"
-        :class="{ 'hover:bg-red-600 hover:text-white': btn.type === 'close' }"
+        :class="{ 'hover:bg-destructive hover:text-destructive-foreground': btn.type === 'close' }"
       >
         <AppIcon :name="btn.icon" class="w-3.5 h-3.5" />
       </button>

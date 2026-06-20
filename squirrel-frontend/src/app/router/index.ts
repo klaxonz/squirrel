@@ -177,8 +177,12 @@ const routes: RouteRecordRaw[] = [
     path: '/profile',
     name: 'Profile',
     component: Profile,
+    // No navKey: profile is reached via the header avatar, not the sidebar, and
+    // there is intentionally no `profile` NAV_ITEM. A stray `navKey: 'profile'`
+    // here was orphaned meta — it matched nothing in NAV_ITEMS, so it neither
+    // highlighted a sidebar item nor contributed to breadcrumbs. Dropping it
+    // keeps the meta honest; resolveRouteContext still yields sectionLabel/pageTitle.
     meta: createNoSearchMeta('个人主页', {
-      navKey: 'profile',
       sectionLabel: '个人',
     }),
   },
@@ -247,7 +251,7 @@ const routes: RouteRecordRaw[] = [
     component: RemoteChannelDetail,
     meta: createNoSearchMeta('远端频道', {
       navKey: 'videos',
-      sectionLabel: '首页',
+      sectionLabel: '视频',
       keepAlive: true,
       keepAliveComponent: 'RemoteChannelDetail',
       scrollable: true,
@@ -295,7 +299,7 @@ const routes: RouteRecordRaw[] = [
     component: VideoPlay,
     meta: createSearchMeta('视频播放', {
       navKey: 'videos',
-      sectionLabel: '首页',
+      sectionLabel: '视频',
       searchRedirectName: 'AllVideos',
       searchPersistKey: 'VideosView',
       scrollable: true,
