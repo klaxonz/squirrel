@@ -1,4 +1,6 @@
-export const APP_THEME_STORAGE_KEY = 'squirrel-app-theme'
+import { STORAGE_KEYS } from '@/shared/lib/storageKeys'
+
+export const APP_THEME_STORAGE_KEY = STORAGE_KEYS.theme.current
 
 export type AppThemeMode = 'light' | 'dark' | 'system'
 export type EffectiveTheme = 'light' | 'dark'

@@ -4,20 +4,26 @@
       <aside class="hidden w-72 shrink-0 flex-col border-r border-border/50 bg-background lg:flex">
         <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
           <div class="min-w-0">
-            <h1 class="truncate text-sm font-semibold">播放列表</h1>
+            <h1 class="app-h3 truncate">播放列表</h1>
             <p class="mt-0.5 text-xs text-muted-foreground">{{ playlists.length }} 个列表</p>
           </div>
-          <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md" @click="openCreateModal">
+          <button
+            class="flex size-8 items-center justify-center rounded-full bg-primary/5 text-primary outline-none transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring/40"
+            title="新建播放列表"
+            aria-label="新建播放列表"
+            @click="openCreateModal"
+          >
             <AppIcon name="plus" class="h-4 w-4" />
-          </Button>
+          </button>
         </div>
 
-        <nav class="flex-1 space-y-1 overflow-y-auto p-2 custom-scrollbar">
+        <nav class="flex-1 space-y-0.5 overflow-y-auto p-2 custom-scrollbar">
           <button
             v-for="playlist in playlists"
             :key="playlist.id"
-            class="group flex h-12 w-full items-center gap-2.5 rounded-md px-2 text-left transition-colors"
+            class="group flex h-12 w-full items-center gap-2.5 rounded-lg px-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40"
             :class="String(activePlaylist?.id) === String(playlist.id) ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+            :aria-current="String(activePlaylist?.id) === String(playlist.id) ? 'true' : undefined"
             @click="selectPlaylist(playlist.id)"
           >
             <div class="h-8 w-8 shrink-0 overflow-hidden rounded-md bg-muted">
@@ -41,25 +47,34 @@
       <main class="flex min-w-0 flex-1 flex-col bg-background">
         <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
           <div class="min-w-0">
-            <h2 class="truncate text-base font-semibold">{{ activePlaylist?.name || '播放列表' }}</h2>
+            <h2 class="app-h2 truncate">{{ activePlaylist?.name || '播放列表' }}</h2>
             <p class="mt-0.5 text-xs text-muted-foreground">
               {{ activePlaylist ? `${activePlaylistItems.length} 个视频 · ${activePlaylistDurationLabel}` : `${playlists.length} 个列表` }}
             </p>
           </div>
 
-          <div class="flex shrink-0 items-center gap-1">
-            <Button v-if="activePlaylistItems.length" size="sm" class="h-8 rounded-md px-3" @click="playAll">
+          <div class="flex shrink-0 items-center gap-1.5">
+            <Button v-if="activePlaylistItems.length" size="sm" class="h-8 rounded-full px-4" @click="playAll">
               <AppIcon name="play" class="h-4 w-4 fill-current" />
               播放全部
             </Button>
-            <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="reloadPlaylists">
+            <button
+              class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              :disabled="loading || isHydratingSelection"
+              title="刷新"
+              aria-label="刷新"
+              @click="reloadPlaylists"
+            >
               <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': loading || isHydratingSelection }" />
-            </Button>
+            </button>
             <DropdownMenu v-if="activePlaylist && !activePlaylist.is_default">
               <DropdownMenuTrigger as-child>
-                <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md">
+                <button
+                  class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  aria-label="更多操作"
+                >
                   <AppIcon name="more" class="h-4 w-4" />
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" class="w-40">
                 <DropdownMenuItem @click="openEditModal">
@@ -73,19 +88,24 @@
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md lg:hidden" @click="openCreateModal">
+            <button
+              class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
+              title="新建播放列表"
+              aria-label="新建播放列表"
+              @click="openCreateModal"
+            >
               <AppIcon name="plus" class="h-4 w-4" />
-            </Button>
+            </button>
           </div>
         </header>
 
         <div v-if="playlists.length" class="border-b border-border/50 p-2 lg:hidden">
-          <div class="flex gap-2 overflow-x-auto custom-scrollbar">
+          <div class="flex gap-1.5 overflow-x-auto custom-scrollbar">
             <button
               v-for="playlist in playlists"
               :key="playlist.id"
-              class="h-8 shrink-0 rounded-md px-3 text-sm font-medium transition-colors"
-              :class="String(activePlaylist?.id) === String(playlist.id) ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+              class="h-8 shrink-0 rounded-full px-3.5 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="String(activePlaylist?.id) === String(playlist.id) ? 'bg-accent text-foreground' : 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground'"
               @click="selectPlaylist(playlist.id)"
             >
               {{ playlist.name }}
@@ -142,7 +162,7 @@
 
                 <div class="min-w-0 flex-1">
                   <div class="text-xs font-medium text-muted-foreground">播放列表</div>
-                  <h1 class="mt-1 truncate text-lg font-semibold">{{ activePlaylist.name }}</h1>
+                  <h1 class="app-h2 mt-1 truncate">{{ activePlaylist.name }}</h1>
                   <p v-if="activePlaylist.description" class="mt-2 line-clamp-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
                     {{ activePlaylist.description }}
                   </p>
@@ -160,7 +180,7 @@
                 <div v-for="i in 6" :key="i" class="h-16 animate-pulse rounded-lg bg-accent/25" />
               </div>
 
-              <div v-else-if="!activePlaylistItems.length" class="min-h-[20rem]">
+              <div v-else-if="!activePlaylistItems.length" class="flex min-h-[24rem] items-center justify-center">
                 <AppEmptyState variant="plain" icon="playlistVideo" title="暂无视频" copy="添加到列表的视频会显示在这里。" />
               </div>
 
@@ -176,9 +196,13 @@
                 <article
                   v-for="(item, index) in activePlaylistItems"
                   :key="item.id"
-                  class="group grid cursor-pointer grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-3 rounded-lg border border-transparent px-2 py-2 transition-colors hover:border-border/50 hover:bg-accent/40 md:grid-cols-[2rem_minmax(0,1fr)_8rem_8rem_3rem]"
+                  class="group grid cursor-pointer grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-3 rounded-lg border border-transparent px-2 py-2 outline-none transition-colors hover:border-border/50 hover:bg-accent/40 focus-visible:border-border/50 focus-visible:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring/40 md:grid-cols-[2rem_minmax(0,1fr)_8rem_8rem_3rem]"
                   :class="{ 'text-primary': currentVideoId && String(item.video_id) === String(currentVideoId) }"
+                  role="button"
+                  tabindex="0"
                   @click="playVideo(item)"
+                  @keydown.enter.prevent="playVideo(item)"
+                  @keydown.space.prevent="playVideo(item)"
                 >
                   <div class="flex items-center justify-center text-sm text-muted-foreground">
                     <span class="group-hover:hidden">{{ index + 1 }}</span>
@@ -443,10 +467,3 @@ onMounted(async () => {
   await reloadPlaylists()
 })
 </script>
-
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(var(--primary), 0.1); border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.2); }
-</style>

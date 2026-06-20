@@ -2,7 +2,7 @@
   <section class="page-header">
     <div class="page-header__copy">
       <div class="page-header__title-row">
-        <h1 class="page-header__title">{{ title }}</h1>
+        <h1 class="page-header__title app-h2">{{ title }}</h1>
         <slot name="meta" />
       </div>
       <p v-if="description" class="page-header__description">{{ description }}</p>
@@ -45,11 +45,9 @@ defineProps<{
 }
 
 .page-header__title {
-  margin: 0;
-  font-size: 1.125rem;
-  line-height: 1.25;
-  font-weight: 700;
-  letter-spacing: 0;
+  /* Size/weight/leading/tracking/family now come from the .app-h2 utility
+     applied in the template; this block only owns color fallback for callers
+     that pass a custom title class. */
   color: hsl(var(--foreground));
 }
 

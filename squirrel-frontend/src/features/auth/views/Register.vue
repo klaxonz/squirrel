@@ -19,10 +19,10 @@
       <div class="p-6 sm:p-8">
         <!-- Header Area -->
         <header class="flex flex-col items-center text-center mb-8">
-          <div class="h-12 w-12 bg-primary text-primary-foreground shadow-sm rounded-xl flex items-center justify-center mb-5">
+          <div class="h-12 w-12 text-primary-foreground rounded-xl flex items-center justify-center mb-5 shadow-[0_8px_24px_hsl(var(--primary)/0.35)]" style="background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(28 80% 46%));">
             <AppIcon name="brand" class="h-6 w-6" />
           </div>
-          <h1 class="text-2xl font-semibold tracking-tight text-foreground mb-1.5">加入松鼠</h1>
+          <h1 class="app-h1 mb-1.5">加入归仓</h1>
           <p class="text-sm text-muted-foreground">创建账户，开始管理您的内容订阅</p>
         </header>
 

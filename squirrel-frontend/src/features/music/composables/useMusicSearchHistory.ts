@@ -1,4 +1,5 @@
 import { ref, watch, type ComputedRef, type Ref, type WatchSource } from 'vue'
+import { getItem, setItem } from '@/shared/lib/storageKeys'
 
 /**
  * Music search history persisted to localStorage.
@@ -11,7 +12,6 @@ import { ref, watch, type ComputedRef, type Ref, type WatchSource } from 'vue'
  * "record on query change" side effect live in one place rather than inline
  * with the view's presentation helpers.
  */
-const HISTORY_KEY = 'squirrel_music_search_history'
 const MAX_HISTORY = 15
 
 export interface UseMusicSearchHistoryOptions {
@@ -27,7 +27,7 @@ export interface UseMusicSearchHistoryReturn {
 
 const loadHistory = (): string[] => {
   try {
-    const raw = localStorage.getItem(HISTORY_KEY)
+    const raw = getItem('musicSearchHistory')
     return raw ? JSON.parse(raw) : []
   } catch {
     return []
@@ -40,7 +40,7 @@ export function useMusicSearchHistory(options: UseMusicSearchHistoryOptions): Us
   const history = ref<string[]>(loadHistory())
 
   const saveHistory = () => {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.value))
+    setItem('musicSearchHistory', JSON.stringify(history.value))
   }
 
   const addToHistory = (q: string) => {

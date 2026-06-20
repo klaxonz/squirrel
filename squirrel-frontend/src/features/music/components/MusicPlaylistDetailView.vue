@@ -125,10 +125,13 @@ function shuffleAll() {
 }
 
 .music-playlist-topbar-title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: hsl(var(--foreground));
-  letter-spacing: -0.02em;
+  /* Aligns with the app-wide heading system: display font + h1 scale token. */
+  font-family: var(--app-heading-font);
+  font-size: var(--app-h1-size);
+  font-weight: var(--app-h1-weight);
+  letter-spacing: var(--app-h1-tracking);
+  line-height: var(--app-h1-leading);
+  color: var(--app-heading-color);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

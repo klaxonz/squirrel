@@ -29,7 +29,7 @@
     </div>
 
     <!-- Empty State -->
-    <div v-if="!loading && videos.length === 0" class="min-h-[60vh] p-10">
+    <div v-if="!loading && videos.length === 0" class="min-h-[28rem] p-6 flex items-center justify-center">
       <AppEmptyState variant="plain" icon="inbox" title="未找到内容" copy="请调整筛选条件或搜索关键词后再试。" />
     </div>
 

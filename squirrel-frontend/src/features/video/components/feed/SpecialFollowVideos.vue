@@ -1,7 +1,7 @@
 <template>
   <section v-if="items.length > 0 || loading" class="group/container mb-6 px-6 pt-2">
     <div class="mb-4 flex items-center justify-between">
-      <h2 class="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground/90">
+      <h2 class="app-h3 flex items-center gap-2">
         <AppIcon name="star" class="size-5 fill-current text-amber-500" />
         特别关注
       </h2>

@@ -263,11 +263,6 @@ watch(() => props.task, initializeForm, { deep: true })
 </script>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar { width: 5px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(var(--primary), 0.1); border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.2); }
-
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }

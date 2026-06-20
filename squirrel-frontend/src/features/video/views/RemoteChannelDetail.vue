@@ -15,7 +15,7 @@
           <SubscriptionAvatar :src="profile.avatar" :name="profile.name || siteLabel" size="xl" />
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
-              <h1 class="truncate text-xl font-semibold tracking-tight text-foreground">{{ profile.name || siteLabel }}</h1>
+              <h1 class="app-h2 truncate">{{ profile.name || siteLabel }}</h1>
               <span class="shrink-0 rounded-[4px] bg-accent/50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 {{ siteLabel }}
               </span>
@@ -47,7 +47,7 @@
               v-if="channelUrl"
               type="button"
               class="h-9 min-w-20 rounded-full px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-              :class="isSubscriptionChecked && isSubscribed ? 'bg-secondary text-foreground ring-1 ring-border/40' : 'bg-foreground text-background hover:opacity-90'"
+              :class="isSubscriptionChecked && isSubscribed ? 'bg-secondary text-foreground ring-1 ring-border/40' : 'bg-primary text-primary-foreground hover:bg-primary/90'"
               :disabled="isCheckingSubscription || isSubscribing"
               @click="handleSubscribe"
             >

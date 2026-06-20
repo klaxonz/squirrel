@@ -4,7 +4,7 @@
       <template #sidebar>
         <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
           <div class="min-w-0">
-            <h1 class="truncate text-sm font-semibold">定时任务</h1>
+            <h1 class="app-h3 truncate">定时任务</h1>
             <p class="mt-0.5 text-xs text-muted-foreground">{{ statistics.total_tasks }} 个任务</p>
           </div>
           <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md" @click="showCreateDialog = true">
@@ -47,7 +47,7 @@
 
       <template #header>
         <div class="min-w-0">
-          <h2 class="truncate text-base font-semibold">{{ activeStatusLabel }}</h2>
+          <h2 class="app-h2 truncate">{{ activeStatusLabel }}</h2>
           <p class="mt-0.5 text-xs text-muted-foreground">{{ taskSummary }}</p>
         </div>
 
@@ -429,11 +429,6 @@ const getStatusCount = (status: string) => getStatusCountFor(status, statistics.
   grid-template-columns: minmax(16rem, 1fr) 7rem 8rem 10rem 7rem;
   gap: 1rem;
 }
-
-.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(var(--primary), 0.1); border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.2); }
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;

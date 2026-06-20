@@ -71,7 +71,7 @@
       <button
         v-if="showFilter"
         type="button"
-        class="relative flex size-8 shrink-0 items-center justify-center rounded-full transition-colors outline-none focus-visible:ring-0 border-0"
+        class="relative flex size-8 shrink-0 items-center justify-center rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background border-0"
         :class="[
           activeFilterCount > 0
             ? 'bg-primary/10 text-primary hover:bg-primary/20'
@@ -82,23 +82,29 @@
         :aria-label="activeFilterCount > 0 ? '筛选已启用' : '筛选'"
       >
         <AppIcon name="filter" class="size-4 shrink-0" />
+        <span
+          v-if="activeFilterCount > 0"
+          class="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground ring-2 ring-background"
+        >{{ activeFilterCount }}</span>
       </button>
 
       <!-- View Mode Toggle -->
       <div class="hidden sm:flex p-0.5 shrink-0 items-center gap-0.5 bg-muted/40 rounded-full">
         <button
-          class="flex items-center justify-center size-7 rounded-full transition-colors"
+          class="flex items-center justify-center size-7 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           :class="uiStore.viewMode === 'grid' ? 'text-foreground bg-background shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
           @click="uiStore.setViewMode('grid')"
           title="网格视图"
+          aria-label="网格视图"
         >
           <AppIcon name="layoutGrid" class="w-4 h-4" />
         </button>
         <button
-          class="flex items-center justify-center size-7 rounded-full transition-colors"
+          class="flex items-center justify-center size-7 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           :class="uiStore.viewMode === 'list' ? 'text-foreground bg-background shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
           @click="uiStore.setViewMode('list')"
           title="列表视图"
+          aria-label="列表视图"
         >
           <AppIcon name="list" class="w-4 h-4" />
         </button>
@@ -108,9 +114,10 @@
       <button
         v-if="showRefresh"
         type="button"
-        class="flex size-8 shrink-0 items-center justify-center rounded-full border-0 text-muted-foreground transition-colors outline-none bg-muted/40 hover:bg-muted/70 hover:text-foreground focus-visible:ring-0"
+        class="flex size-8 shrink-0 items-center justify-center rounded-full border-0 text-muted-foreground transition-colors outline-none bg-muted/40 hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         @click="$emit('refresh')"
         title="刷新内容"
+        aria-label="刷新内容"
       >
         <AppIcon
           name="refresh"

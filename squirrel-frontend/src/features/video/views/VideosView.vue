@@ -40,7 +40,7 @@
 
       <!-- Remote search header (replaces nothing above; only an inline section header) -->
       <div v-if="searchMode === 'remote' && searchQuery" class="px-6 flex items-center justify-between mb-2 mt-4">
-        <h2 class="text-[16px] font-bold tracking-tight text-foreground/90 flex items-center gap-2">
+        <h2 class="app-h3 flex items-center gap-2">
           <AppIcon name="siteFallback" class="w-5 h-5 text-primary opacity-80" />
           远端搜索结果
         </h2>

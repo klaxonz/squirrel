@@ -5,13 +5,15 @@
       class="music-bar-btn"
       :class="{ 'music-bar-btn--liked': liked }"
       :title="liked ? '取消喜欢' : '喜欢'"
+      :aria-label="liked ? '取消喜欢' : '喜欢'"
+      :aria-pressed="liked"
       @click="$emit('like')"
     >
       <AppIcon name="heart" class="h-4 w-4" :class="{ 'fill-primary text-primary': liked }" />
     </button>
 
     <div class="music-bar-volume">
-      <button class="music-bar-btn" title="音量" @click="$emit('toggle-mute')">
+      <button class="music-bar-btn" title="音量" aria-label="静音/取消静音" @click="$emit('toggle-mute')">
         <AppIcon :name="volumeIcon" class="h-4 w-4" />
       </button>
       <input
@@ -21,12 +23,13 @@
         max="1"
         step="0.05"
         :value="volume"
+        aria-label="音量"
         :style="{ '--slider-progress': `${volume * 100}%` }"
         @input="$emit('volume', Number(($event.target as HTMLInputElement).value))"
       />
     </div>
 
-    <button class="music-bar-btn" title="播放队列" @click="$emit('queue')">
+    <button class="music-bar-btn" title="播放队列" aria-label="播放队列" @click="$emit('queue')">
       <AppIcon name="playlistMusic" class="h-4 w-4" />
       <span v-if="queueCount" class="music-bar-badge">
         {{ queueCount > 99 ? '99+' : queueCount }}
@@ -95,6 +98,11 @@ const volumeIcon = computed(() => {
 .music-bar-btn:hover {
   background: hsl(var(--muted) / 0.6);
   color: hsl(var(--foreground));
+}
+
+.music-bar-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
 }
 
 .music-bar-btn--liked {

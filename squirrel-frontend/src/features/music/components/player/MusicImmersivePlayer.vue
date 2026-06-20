@@ -15,7 +15,7 @@
 
       <div class="immersive-container">
         <header class="immersive-header">
-          <button class="immersive-close-btn" @click="$emit('close')">
+          <button class="immersive-close-btn" title="关闭" aria-label="关闭沉浸播放" @click="$emit('close')">
             <AppIcon name="chevronDown" class="h-5 w-5" />
           </button>
           <div class="immersive-header-title">正在播放</div>
@@ -79,24 +79,30 @@
                 <button
                   class="immersive-btn"
                   :class="{ 'immersive-btn--active': shuffle }"
+                  title="随机播放"
+                  aria-label="随机播放"
+                  :aria-pressed="shuffle"
                   @click="$emit('toggle-shuffle')"
                 >
                   <AppIcon name="shuffle" class="h-5 w-5" />
                 </button>
-                <button class="immersive-btn" :disabled="!canStep" @click="$emit('previous')">
+                <button class="immersive-btn" :disabled="!canStep" title="上一首" aria-label="上一首" @click="$emit('previous')">
                   <AppIcon name="previous" class="h-5 w-5" />
                 </button>
-                <button class="immersive-btn immersive-btn--play" :disabled="loading" @click="$emit('toggle')">
+                <button class="immersive-btn immersive-btn--play" :disabled="loading" :title="playing ? '暂停' : '播放'" :aria-label="playing ? '暂停' : '播放'" :aria-pressed="playing" @click="$emit('toggle')">
                   <AppIcon v-if="loading" name="loadingSpinner" class="h-6 w-6 animate-spin" />
                   <AppIcon v-else-if="playing" name="pause" class="h-6 w-6" />
                   <AppIcon v-else name="play" class="h-6 w-6" />
                 </button>
-                <button class="immersive-btn" :disabled="!canStep" @click="$emit('next')">
+                <button class="immersive-btn" :disabled="!canStep" title="下一首" aria-label="下一首" @click="$emit('next')">
                   <AppIcon name="next" class="h-5 w-5" />
                 </button>
                 <button
                   class="immersive-btn"
                   :class="{ 'immersive-btn--active': repeat !== 'none' }"
+                  :title="repeat === 'one' ? '单曲循环' : '列表循环'"
+                  :aria-label="repeat === 'one' ? '单曲循环' : '列表循环'"
+                  :aria-pressed="repeat !== 'none'"
                   @click="$emit('toggle-repeat')"
                 >
                   <AppIcon v-if="repeat === 'one'" name="repeatOne" class="h-5 w-5" />
@@ -285,6 +291,11 @@ const activeTab = ref<'lyrics' | 'comments'>('lyrics')
 
 .immersive-close-btn:hover {
   background: hsl(var(--foreground) / 0.1);
+}
+
+.immersive-close-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.5);
 }
 
 .immersive-header-title {
@@ -476,6 +487,11 @@ const activeTab = ref<'lyrics' | 'comments'>('lyrics')
 .immersive-btn:hover {
   color: hsl(var(--foreground));
   background: hsl(var(--foreground) / 0.05);
+}
+
+.immersive-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.5);
 }
 
 .immersive-btn:disabled {

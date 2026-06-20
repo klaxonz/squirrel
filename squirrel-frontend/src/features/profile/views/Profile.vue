@@ -30,7 +30,7 @@
 
         <!-- User Details -->
         <div class="space-y-0.5">
-          <h2 class="text-lg font-bold tracking-tight text-foreground">
+          <h2 class="app-h2">
             {{ userStore.currentUser?.nickname || '未设置昵称' }}
           </h2>
           <div v-if="createdAt" class="flex items-center gap-1 text-[10px] text-muted-foreground/60">

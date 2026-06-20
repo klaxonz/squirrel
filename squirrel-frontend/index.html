@@ -1,15 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/squirrel-icon.png" />
     <meta name="referrer" content="no-referrer" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Squirrel</title>
+    <title>归仓 · 视频订阅与收藏</title>
     <script>
       try {
-        const storageKey = 'squirrel-app-theme';
-        const storedMode = window.localStorage.getItem(storageKey);
+        const storageKey = 'app:theme';
+        const legacyKey = 'squirrel-app-theme';
+        let storedMode = window.localStorage.getItem(storageKey);
+        // 一次性迁移：旧品牌前缀 key → 功能性 key
+        if (storedMode === null) {
+          const legacy = window.localStorage.getItem(legacyKey);
+          if (legacy !== null) {
+            storedMode = legacy;
+            window.localStorage.setItem(storageKey, legacy);
+            window.localStorage.removeItem(legacyKey);
+          }
+        }
         const isSystemMode = storedMode === 'system' || !storedMode || (storedMode !== 'light' && storedMode !== 'dark');
         const isDark = storedMode === 'dark' || (isSystemMode && window.matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.classList.toggle('dark', isDark);

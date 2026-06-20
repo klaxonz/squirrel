@@ -89,23 +89,25 @@
         </button>
 
         <div class="music-mini-controls">
-          <button class="music-mini-btn" :disabled="!canStep" title="上一首" @click="store.playPrevious()">
+          <button class="music-mini-btn" :disabled="!canStep" title="上一首" aria-label="上一首" @click="store.playPrevious()">
             <AppIcon name="previous" class="h-4 w-4" />
           </button>
           <button
             class="music-mini-btn music-mini-btn--play"
             :disabled="store.resolvingUrl || isBuffering"
-            title="播放/暂停"
+            :title="store.playing ? '暂停' : '播放'"
+            :aria-label="store.playing ? '暂停' : '播放'"
+            :aria-pressed="store.playing"
             @click="store.togglePlayback()"
           >
             <AppIcon v-if="store.resolvingUrl || isBuffering" name="loadingSpinner" class="h-4 w-4 animate-spin" />
             <AppIcon v-else-if="store.playing" name="pause" class="h-4 w-4" />
             <AppIcon v-else name="play" class="h-4 w-4" />
           </button>
-          <button class="music-mini-btn" :disabled="!canStep" title="下一首" @click="store.playNext()">
+          <button class="music-mini-btn" :disabled="!canStep" title="下一首" aria-label="下一首" @click="store.playNext()">
             <AppIcon name="next" class="h-4 w-4" />
           </button>
-          <button class="music-mini-btn" title="播放队列" @click="showQueue = !showQueue">
+          <button class="music-mini-btn" title="播放队列" aria-label="播放队列" @click="showQueue = !showQueue">
             <AppIcon name="playlistMusic" class="h-4 w-4" />
           </button>
         </div>
@@ -489,6 +491,11 @@ function removeQueueItem(index: number) {
 .music-mini-btn:hover {
   background: hsl(var(--muted) / 0.65);
   color: hsl(var(--foreground));
+}
+
+.music-mini-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
 }
 
 .music-mini-btn:disabled {

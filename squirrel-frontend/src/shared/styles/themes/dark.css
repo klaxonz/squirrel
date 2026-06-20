@@ -1,25 +1,28 @@
 :root {
-  /* Colors - Inspired by Apple & Linear (Light Mode) */
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
+  /* Colors —— 浅色底微偏暖灰(从纯冷灰 240 移到 24/36),与焦糖琥珀品牌色同温,
+     避免"暖强调色配冷灰底"的违和。中性但不冰冷。 */
+  --background: 36 30% 99%;
+  --foreground: 24 10% 10%;
 
   --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
+  --card-foreground: 24 10% 10%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
+  --popover-foreground: 24 10% 10%;
 
-  --primary: 240 5.9% 10%;
-  --primary-foreground: 0 0% 98%;
+  /* 品牌强调色 —— 焦糖琥珀,与暗色模式同色相、略深一档以保证浅底对比度。
+     替代了原先的近黑 --primary(那只是文字色别名,产品因此毫无色彩身份)。 */
+  --primary: 28 85% 48%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
+  --secondary: 30 20% 95%;
+  --secondary-foreground: 24 10% 10%;
 
-  --muted: 240 5% 96%;
-  --muted-foreground: 240 4% 46%;
+  --muted: 30 16% 95%;
+  --muted-foreground: 24 5% 42%;
 
-  --accent: 240 5% 96%;
-  --accent-foreground: 240 5.9% 10%;
+  --accent: 30 20% 93%;
+  --accent-foreground: 24 10% 10%;
 
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
@@ -34,9 +37,16 @@
   --warning: 32 95% 44%;           /* amber-600 — distinct from destructive red */
   --warning-foreground: 0 0% 100%;
 
-  --border: 240 6% 90%;
-  --input: 240 6% 90%;
-  --ring: 240 6% 10%;
+  --border: 28 12% 89%;
+  --input: 28 12% 89%;
+  /* ring 跟随品牌色,让焦点态也成为身份的一部分 */
+  --ring: 28 85% 48%;
+
+  /* Sidebar — slightly recessed from the main canvas so the rail reads as a
+     distinct surface (Apple Mail / Linear pattern). Foreground inherits the
+     base text color; only the canvas needs its own token. */
+  --sidebar: 30 20% 97%;
+  --sidebar-foreground: 24 10% 10%;
 
   --radius: 6px; /* 严格基础圆角 */
   --radius-lg: 8px; /* 容器圆角 */
@@ -51,30 +61,40 @@
 }
 
 .dark {
-  --background: 240 10% 2%;
-  --foreground: 0 0% 98%;
+  --background: 24 10% 5%;
+  --foreground: 36 30% 96%;
 
-  --card: 240 10% 4%;
-  --card-foreground: 0 0% 98%;
+  --card: 24 8% 7%;
+  --card-foreground: 36 30% 96%;
 
-  --popover: 240 10% 4%;
-  --popover-foreground: 0 0% 98%;
+  --popover: 24 9% 6%;
+  --popover-foreground: 36 30% 96%;
 
-  --primary: 0 0% 98%;
-  --primary-foreground: 240 5.9% 10%;
+  /* 品牌强调色 —— 焦糖琥珀。这是整个 chrome 唯一的"视觉心跳":
+     激活的导航条、播放/订阅按钮、进度条填充、链接 hover 全部收口到这个色。
+     替代了原先的近白色 --primary(那只是文字色的别名,产品因此毫无色彩身份)。 */
+  --primary: 32 95% 52%;
+  --primary-foreground: 24 10% 6%;
 
-  --secondary: 240 4% 10%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary: 24 6% 12%;
+  --secondary-foreground: 36 30% 96%;
 
-  --muted: 240 4% 8%;
-  --muted-foreground: 240 5% 65%;
+  --muted: 24 6% 10%;
+  --muted-foreground: 30 8% 62%;
 
-  --accent: 240 4% 12%;
-  --accent-foreground: 0 0% 98%;
+  --accent: 28 8% 14%;
+  --accent-foreground: 36 30% 96%;
 
-  --border: 240 4% 12%;
-  --input: 240 4% 12%;
-  --ring: 240 5% 84%;
+  --destructive: 0 72% 58%;
+  --destructive-foreground: 0 0% 98%;
 
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.35);
+  --border: 28 6% 16%;
+  --input: 28 6% 16%;
+  /* ring 跟随品牌色,让焦点态也成为身份的一部分 */
+  --ring: 32 90% 58%;
+
+  --sidebar: 24 10% 4%;
+  --sidebar-foreground: 36 30% 96%;
+
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.4);
 }

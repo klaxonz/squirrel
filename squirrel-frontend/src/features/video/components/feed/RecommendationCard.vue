@@ -1,10 +1,14 @@
 <template>
   <article
-    class="group w-[18rem] shrink-0 cursor-pointer snap-start"
+    class="group w-[18rem] shrink-0 cursor-pointer snap-start rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"
+    role="button"
+    tabindex="0"
     @click="$emit('openModal', video)"
+    @keydown.enter.prevent="$emit('openModal', video)"
+    @keydown.space.prevent="$emit('openModal', video)"
   >
     <div
-      class="relative aspect-video overflow-hidden bg-muted transition-all duration-300 group-hover:brightness-110 group-hover:shadow-lg"
+      class="relative aspect-video overflow-hidden bg-muted transition-all duration-300 group-hover:brightness-110 group-hover:shadow-lg group-active:scale-[0.99]"
       :style="{ borderRadius: 'var(--app-card-radius)' }"
     >
       <VideoThumbnail
@@ -44,7 +48,7 @@
       </div>
     </div>
 
-    <h3 class="mt-2 line-clamp-2 text-sm font-medium text-foreground/80 transition-colors group-hover:text-primary">
+    <h3 class="mt-2 line-clamp-2 text-sm font-semibold leading-snug text-foreground/90 transition-colors group-hover:text-primary">
       {{ video.title }}
     </h3>
 

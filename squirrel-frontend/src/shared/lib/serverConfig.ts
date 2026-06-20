@@ -1,8 +1,8 @@
-const CONFIG_KEY = 'squirrel_server_url'
+import { getItem } from '@/shared/lib/storageKeys'
 
 const readFromStorage = (): string => {
   if (typeof window === 'undefined') return ''
-  return localStorage.getItem(CONFIG_KEY) || ''
+  return getItem('serverUrl') || ''
 }
 
 let cachedUrl = ''

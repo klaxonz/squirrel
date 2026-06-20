@@ -2,12 +2,10 @@ import { ref } from 'vue'
 import { Logger } from '@/shared/lib/logger'
 import { updateServerUrlCache } from '@/shared/lib/serverConfig'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
+import { getItem, setItem, removeItem } from '@/shared/lib/storageKeys'
 
 const desktopBridge = useDesktopBridge()
 
-const CONFIG_KEY = 'squirrel_server_url'
-const CONFIG_VERSION_KEY = 'squirrel_server_url_version'
-const RECENT_SERVER_URLS_KEY = 'squirrel_recent_server_urls'
 const MAX_RECENT_SERVER_URLS = 5
 
 const serverUrl = ref<string>('')
@@ -34,14 +32,14 @@ const normalizeServerUrl = (value: unknown): string => {
 
 const readFromStorage = (): string => {
   if (typeof window === 'undefined') return ''
-  return normalizeServerUrl(localStorage.getItem(CONFIG_KEY))
+  return normalizeServerUrl(getItem('serverUrl'))
 }
 
 const readRecentServerUrlsFromStorage = (): string[] => {
   if (typeof window === 'undefined') return []
 
   try {
-    const rawValue = localStorage.getItem(RECENT_SERVER_URLS_KEY)
+    const rawValue = getItem('recentServerUrls')
     if (!rawValue) return []
 
     const parsed = JSON.parse(rawValue)
@@ -60,24 +58,24 @@ const writeToStorage = (url: string) => {
   if (typeof window === 'undefined') return
 
   if (url) {
-    localStorage.setItem(CONFIG_KEY, url)
-    localStorage.setItem(CONFIG_VERSION_KEY, '1')
+    setItem('serverUrl', url)
+    setItem('serverUrlVersion', '1')
     return
   }
 
-  localStorage.removeItem(CONFIG_KEY)
-  localStorage.removeItem(CONFIG_VERSION_KEY)
+  removeItem('serverUrl')
+  removeItem('serverUrlVersion')
 }
 
 const writeRecentServerUrlsToStorage = (urls: string[]) => {
   if (typeof window === 'undefined') return
 
   if (!urls.length) {
-    localStorage.removeItem(RECENT_SERVER_URLS_KEY)
+    removeItem('recentServerUrls')
     return
   }
 
-  localStorage.setItem(RECENT_SERVER_URLS_KEY, JSON.stringify(urls))
+  setItem('recentServerUrls', JSON.stringify(urls))
 }
 
 const syncRecentServerUrlsState = (urls: string[]) => {

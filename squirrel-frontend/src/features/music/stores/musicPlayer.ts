@@ -3,10 +3,9 @@ import { errorMessage } from '@/shared/lib/errorMessage'
 import { computed, nextTick, ref, shallowRef, watch } from 'vue'
 import { getMusicLyric, getMusicPlayUrl, uploadMusicPlayHistory, type MusicLyricLine, type MusicTrack } from '@/shared/api/music'
 import { Logger } from '@/shared/lib/logger'
+import { getItem, setItem, removeItem } from '@/shared/lib/storageKeys'
 
 export type RepeatMode = 'all' | 'one' | 'none'
-
-const PLAYER_SESSION_KEY = 'squirrel:music:player-session'
 
 type MusicPlayerSession = {
   currentTrack: MusicTrack | null
@@ -206,7 +205,7 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
     lyricError.value = ''
     lyricLoading.value = false
     savedSession.value = null
-    localStorage.removeItem(PLAYER_SESSION_KEY)
+    removeItem('musicPlayerSession')
   }
 
   function clearQueue() {
@@ -230,7 +229,7 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
       audioSrc.value = ''
       lyricLines.value = []
       savedSession.value = null
-      localStorage.removeItem(PLAYER_SESSION_KEY)
+      removeItem('musicPlayerSession')
     } else if (queueIndex.value > idx) {
       queueIndex.value--
     }
@@ -411,7 +410,7 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
 
   function loadSession(): MusicPlayerSession | null {
     try {
-      const raw = localStorage.getItem(PLAYER_SESSION_KEY)
+      const raw = getItem('musicPlayerSession')
       if (!raw) return null
       const parsed = JSON.parse(raw) as Partial<MusicPlayerSession>
       if (!parsed.currentTrack?.hash) return null
@@ -445,7 +444,7 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
       fmPoolId: fmPoolId.value,
     }
     savedSession.value = session
-    localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify(session))
+    setItem('musicPlayerSession', JSON.stringify(session))
   }
 
   if (savedSession.value) {

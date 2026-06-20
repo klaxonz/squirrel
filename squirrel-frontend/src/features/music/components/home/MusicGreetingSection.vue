@@ -210,11 +210,14 @@ const subtitleText = computed(() => {
 }
 
 .music-greeting-title {
+  /* Hero greeting — uses the display font + a slightly larger hero cut
+     (between h1 and the next step up) for the music landing surface. */
+  font-family: var(--app-heading-font);
   font-size: 1.375rem;
-  font-weight: 800;
-  color: hsl(var(--foreground));
-  letter-spacing: -0.03em;
-  line-height: 1.2;
+  font-weight: var(--app-h1-weight);
+  color: var(--app-heading-color);
+  letter-spacing: var(--app-h1-tracking);
+  line-height: var(--app-h1-leading);
 }
 
 .music-greeting-subtitle {

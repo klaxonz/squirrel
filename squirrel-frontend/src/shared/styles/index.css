@@ -7,6 +7,10 @@
 @layer base {
   :root {
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* Display 字体 —— 仅用于标题/品牌位,和正文 Inter 形成重量与性格对比。
+       这是建立"标题有重量、正文安静"层级的关键。Outfit 几何感强、标题重量足,
+       已在字体表内,无额外网络成本。 */
+    --font-display: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   html, body {
@@ -51,6 +55,33 @@
   }
   .overflow-anchor-none {
     overflow-anchor: none;
+  }
+
+  /* `.custom-scrollbar` — single source of truth for the themed thin scrollbar
+     used by scroll regions inside panels, sidebars, and dialogs.
+
+     Previously every view re-declared this block with `rgba(var(--primary), 0.1)`,
+     but `--primary` is an HSL channel triple (e.g. `240 5.9% 10%`), so that
+     `rgba(...)` was invalid CSS and the thumb rendered invisible. Use the same
+     token-driven hue as the global scrollbar + Music.vue so every surface agrees. */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.2);
+    border-radius: 9999px;
+    transition: background-color 0.15s ease;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.35);
   }
 }
 

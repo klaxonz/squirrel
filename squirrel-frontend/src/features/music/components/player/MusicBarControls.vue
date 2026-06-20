@@ -7,6 +7,8 @@
         class="music-bar-btn"
         :class="{ 'music-bar-btn--active': shuffle }"
         title="随机播放"
+        aria-label="随机播放"
+        :aria-pressed="shuffle"
         @click="$emit('shuffle')"
       >
         <AppIcon name="shuffle" class="h-4 w-4" />
@@ -16,6 +18,7 @@
         class="music-bar-btn"
         :disabled="!canStep"
         title="上一首"
+        aria-label="上一首"
         @click="$emit('previous')"
       >
         <AppIcon name="previous" class="h-4 w-4" />
@@ -24,7 +27,9 @@
       <button
         class="music-bar-btn music-bar-btn--play"
         :disabled="loading"
-        title="播放/暂停"
+        :title="playing ? '暂停' : '播放'"
+        :aria-label="playing ? '暂停' : '播放'"
+        :aria-pressed="playing"
         @click="$emit('toggle')"
       >
         <AppIcon v-if="loading" name="loadingSpinner" class="h-5 w-5 animate-spin" />
@@ -36,6 +41,7 @@
         class="music-bar-btn"
         :disabled="!canStep"
         title="下一首"
+        aria-label="下一首"
         @click="$emit('next')"
       >
         <AppIcon name="next" class="h-4 w-4" />
@@ -45,6 +51,8 @@
         class="music-bar-btn"
         :class="{ 'music-bar-btn--active': repeat !== 'none' }"
         :title="repeatTitle"
+        :aria-label="repeatTitle"
+        :aria-pressed="repeat !== 'none'"
         @click="$emit('repeat')"
       >
         <AppIcon v-if="repeat === 'one'" name="repeatOne" class="h-4 w-4" />
@@ -121,6 +129,11 @@ const repeatTitle = computed(() => {
 .music-bar-btn:hover {
   background: hsl(var(--muted) / 0.6);
   color: hsl(var(--foreground));
+}
+
+.music-bar-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
 }
 
 .music-bar-btn:disabled {

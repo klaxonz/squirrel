@@ -36,9 +36,9 @@
                 rel="noopener noreferrer"
                 class="hover:text-primary transition-colors min-w-0"
               >
-                <h2 class="text-base sm:text-lg font-bold text-foreground truncate tracking-tight">{{ detail?.name || '未知频道' }}</h2>
+                <h2 class="app-h2 truncate">{{ detail?.name || '未知频道' }}</h2>
               </a>
-              <h2 v-else class="text-base sm:text-lg font-bold text-foreground truncate tracking-tight">{{ detail?.name || '未知频道' }}</h2>
+              <h2 v-else class="app-h2 truncate">{{ detail?.name || '未知频道' }}</h2>
               
               <span v-if="detail?.is_nsfw" class="shrink-0 px-1.5 py-0.5 text-[10px] font-bold tracking-widest uppercase border border-primary/50 text-primary rounded-md">NSFW</span>
             </div>
@@ -62,11 +62,12 @@
             </div>
           </div>
 
-          <div v-if="canOpenRemote" class="flex rounded-lg border border-border/40 bg-muted/40 p-0.5">
+          <div v-if="canOpenRemote" class="flex items-center gap-0.5 rounded-full bg-muted/40 p-0.5">
             <button
               type="button"
-              class="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold transition-colors"
-              :class="mode === 'local' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+              class="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="mode === 'local' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              :aria-pressed="mode === 'local'"
               @click="emit('update:mode', 'local')"
             >
               <AppIcon name="library" class="h-3.5 w-3.5" />
@@ -74,8 +75,9 @@
             </button>
             <button
               type="button"
-              class="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold transition-colors"
-              :class="mode === 'remote' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+              class="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="mode === 'remote' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              :aria-pressed="mode === 'remote'"
               @click="emit('update:mode', 'remote')"
             >
               <AppIcon name="siteFallback" class="h-3.5 w-3.5" />
@@ -86,10 +88,11 @@
           <div class="flex items-center gap-2">
             <button
               type="button"
-              class="inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="detail?.is_special_followed ? 'border-amber-400/40 bg-amber-400/10 text-amber-600' : 'border-border/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
               :disabled="isTogglingSpecial"
               aria-label="切换特别关注"
+              :aria-pressed="!!detail?.is_special_followed"
               @click="handleToggleSpecialFollow"
             >
               <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': detail?.is_special_followed }" />
@@ -97,10 +100,10 @@
             <div v-if="syncMessage" class="hidden max-w-40 truncate text-xs font-medium sm:block" :class="syncError ? 'text-destructive' : 'text-muted-foreground'">
               {{ syncMessage }}
             </div>
-            <div class="flex overflow-hidden rounded-md border border-border/40 bg-background">
+            <div class="flex overflow-hidden rounded-lg border border-border/40 bg-background">
               <button
                 type="button"
-                class="inline-flex h-8 items-center gap-1.5 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60"
+                class="inline-flex h-8 items-center gap-1.5 px-3 text-xs font-semibold text-foreground transition-colors outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="isSyncing"
                 @click="handleDirectSync('incremental')"
               >
@@ -111,7 +114,7 @@
                 <DropdownMenuTrigger as-child>
                   <button
                     type="button"
-                    class="inline-flex h-8 w-8 items-center justify-center border-l border-border/40 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                    class="inline-flex h-8 w-8 items-center justify-center border-l border-border/40 text-muted-foreground transition-colors outline-none hover:bg-muted/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60"
                     :disabled="isSyncing"
                     aria-label="选择同步模式"
                   >
@@ -131,10 +134,10 @@
               </DropdownMenu>
             </div>
           </div>
-          
+
           <button
             type="button"
-            class="px-3 py-1.5 text-xs font-semibold rounded-md border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+            class="inline-flex h-8 items-center px-3 text-xs font-semibold rounded-full border border-destructive/30 text-destructive outline-none transition-colors hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50"
             :disabled="isUnsubscribing"
             @click="handleUnsubscribe"
           >

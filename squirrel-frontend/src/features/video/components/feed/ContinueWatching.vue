@@ -1,7 +1,7 @@
 <template>
   <div v-if="historyItems.length > 0 || loading" class="mb-6 pt-4 px-6 overflow-hidden relative group/container">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold tracking-tight flex items-center gap-2 text-foreground/90">
+      <h2 class="app-h3 flex items-center gap-2">
         <AppIcon name="time" class="size-5 text-primary" />
         继续观看
       </h2>

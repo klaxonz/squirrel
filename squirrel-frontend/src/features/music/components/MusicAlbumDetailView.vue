@@ -142,11 +142,14 @@ function shuffleAll() {
 }
 
 .music-detail-name {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: hsl(var(--foreground));
+  /* Aligns with the app-wide heading system: display font + h1 scale token. */
+  font-family: var(--app-heading-font);
+  font-size: var(--app-h1-size);
+  font-weight: var(--app-h1-weight);
+  letter-spacing: var(--app-h1-tracking);
+  line-height: var(--app-h1-leading);
+  color: var(--app-heading-color);
   margin-top: 0.5rem;
-  line-height: 1.3;
 }
 
 .music-detail-meta {

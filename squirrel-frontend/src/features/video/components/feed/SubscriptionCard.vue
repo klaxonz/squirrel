@@ -23,7 +23,7 @@
 
       <div class="min-w-0 flex-1 pt-0.5">
         <div class="flex items-start justify-between gap-2">
-          <h3 class="line-clamp-2 text-[15px] font-bold leading-tight text-foreground/90 group-hover:text-primary transition-colors">
+          <h3 class="app-h3 line-clamp-2 group-hover:text-primary transition-colors">
             {{ subscription.name }}
           </h3>
           <button

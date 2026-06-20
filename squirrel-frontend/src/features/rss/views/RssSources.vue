@@ -6,7 +6,7 @@
         <!-- Header -->
         <div class="flex h-20 shrink-0 items-center justify-between border-b border-border/20 px-5 bg-background/50 backdrop-blur-sm">
           <div class="min-w-0 flex flex-col justify-center">
-            <h1 class="truncate text-lg font-bold tracking-tight text-foreground/90">RSS 内容源</h1>
+            <h1 class="app-h2 truncate">RSS 内容源</h1>
             <p class="mt-0.5 text-xs font-medium text-muted-foreground/70">{{ accounts.length }} 个服务账号</p>
           </div>
           <Button 
@@ -79,10 +79,12 @@
           <!-- Feed Search input -->
           <div class="relative group">
             <AppIcon name="search" class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
-            <input 
+            <input
               v-model="feedSearch"
-              placeholder="搜索订阅源..." 
-              class="h-8 w-full rounded-lg border border-transparent bg-accent/40 hover:bg-accent/60 pl-8 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/40 focus:bg-background"
+              type="text"
+              placeholder="搜索订阅源..."
+              aria-label="搜索订阅源"
+              class="h-8 w-full rounded-lg border border-transparent bg-muted/40 pl-8 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 hover:bg-muted/60 focus:border-primary/30 focus:bg-background focus:ring-2 focus:ring-primary/15"
             />
           </div>
         </div>
@@ -110,14 +112,15 @@
               <div class="flex items-center gap-2">
                 <button
                   v-if="feedNavStack"
-                  @click="goBackFromFeed"
-                  class="shrink-0 flex items-center gap-1 rounded-lg bg-accent/40 hover:bg-accent/60 px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  class="shrink-0 flex items-center gap-1 rounded-full bg-muted/40 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 cursor-pointer"
                   title="返回之前的列表"
+                  aria-label="返回之前的列表"
+                  @click="goBackFromFeed"
                 >
                   <AppIcon name="back" class="h-3 w-3" />
                   <span>返回</span>
                 </button>
-                <h2 class="truncate text-base font-bold tracking-tight text-foreground/90">
+                <h2 class="app-h3 truncate">
                   {{ selectedFeedTitle || selectedAccount?.name || 'RSS 阅读器' }}
                 </h2>
               </div>
@@ -128,15 +131,16 @@
                 </div>
               </div>
             </div>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              class="h-7 w-7 rounded-lg bg-accent/40 hover:bg-accent/60 shrink-0" 
+
+            <button
+              class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background shrink-0"
+              :disabled="loading"
+              title="刷新文章"
+              aria-label="刷新文章"
               @click="loadAll"
             >
               <AppIcon name="refresh" class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" />
-            </Button>
+            </button>
           </div>
 
           <!-- Controls Toolbar Row -->
@@ -146,38 +150,44 @@
               <AppIcon name="search" class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
               <input
                 v-model="entrySearch"
+                type="text"
                 placeholder="搜索文章..."
-                class="h-8 w-full rounded-lg border border-border/50 bg-accent/20 hover:bg-accent/40 pl-8 pr-3 text-xs outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/30 focus:bg-background"
+                aria-label="搜索文章"
+                class="h-8 w-full rounded-lg border border-transparent bg-muted/40 pl-8 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 hover:bg-muted/60 focus:border-primary/30 focus:bg-background focus:ring-2 focus:ring-primary/15"
               />
             </div>
 
             <!-- iOS/Reeder segmented control -->
-            <div class="flex p-0.5 bg-muted/40 dark:bg-muted/10 rounded-lg border border-border/10">
+            <div class="flex items-center gap-0.5 rounded-lg bg-muted/40 p-0.5">
               <button
-                @click="activeFilter = 'all'"
-                class="flex-1 py-1 text-[10px] font-bold rounded-md transition-all text-center cursor-pointer"
+                class="flex-1 h-7 py-1 text-[10px] font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 :class="activeFilter === 'all' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="activeFilter === 'all'"
+                @click="activeFilter = 'all'"
               >
                 全部
               </button>
               <button
-                @click="activeFilter = 'unread'"
-                class="flex-1 py-1 text-[10px] font-bold rounded-md transition-all text-center cursor-pointer"
+                class="flex-1 h-7 py-1 text-[10px] font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 :class="activeFilter === 'unread' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="activeFilter === 'unread'"
+                @click="activeFilter = 'unread'"
               >
                 未读
               </button>
               <button
-                @click="activeFilter = 'starred'"
-                class="flex-1 py-1 text-[10px] font-bold rounded-md transition-all text-center cursor-pointer"
+                class="flex-1 h-7 py-1 text-[10px] font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 :class="activeFilter === 'starred' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="activeFilter === 'starred'"
+                @click="activeFilter = 'starred'"
               >
                 星标
               </button>
               <button
-                @click="activeFilter = 'recent'"
-                class="flex-1 py-1 text-[10px] font-bold rounded-md transition-all text-center cursor-pointer"
+                class="flex-1 h-7 py-1 text-[10px] font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 :class="activeFilter === 'recent' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="activeFilter === 'recent'"
+                @click="activeFilter = 'recent'"
               >
                 最近浏览
               </button>
@@ -191,13 +201,13 @@
 
             <div
               v-if="loading && filteredEntries.length === 0"
-              class="flex min-h-[20rem] flex-col items-center justify-center text-center py-10"
+              class="flex min-h-[24rem] flex-col items-center justify-center text-center py-10"
             >
               <AppSpinner size="lg" />
             </div>
 
             <!-- Empty view -->
-            <div v-else-if="filteredEntries.length === 0" class="min-h-[20rem] py-10">
+            <div v-else-if="filteredEntries.length === 0" class="flex min-h-[24rem] items-center justify-center py-10">
               <AppEmptyState
                 variant="plain"
                 icon="inbox"
@@ -208,13 +218,17 @@
 
             <!-- Articles List -->
             <div v-else class="flex flex-col divide-y divide-border/10 border-t border-b border-border/10">
-              <div 
-                v-for="entry in filteredEntries" 
+              <div
+                v-for="entry in filteredEntries"
                 :key="entry.id"
-                @click="openReader(entry)"
-                @contextmenu.prevent.stop="showArticleContextMenu(entry, $event)"
-                class="group relative flex flex-col justify-between py-4 px-3.5 transition-all duration-200 ease-out cursor-pointer animate-fade-in"
+                class="group relative flex flex-col justify-between py-4 px-3.5 transition-all duration-200 ease-out cursor-pointer animate-fade-in outline-none focus-visible:bg-accent/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
                 :class="readingEntry && String(readingEntry.id) === String(entry.id) ? 'bg-primary/5' : 'bg-transparent hover:bg-accent/5'"
+                role="button"
+                tabindex="0"
+                @click="openReader(entry)"
+                @keydown.enter.prevent="openReader(entry)"
+                @keydown.space.prevent="openReader(entry)"
+                @contextmenu.prevent.stop="showArticleContextMenu(entry, $event)"
               >
                 <!-- Card Top: Category & Time -->
                 <div class="flex items-center justify-between text-xs text-muted-foreground/85 mb-2">
@@ -294,55 +308,63 @@
             </button>
 
             <!-- Right Side: Action buttons -->
-            <div class="flex items-center gap-2 shrink-0">
+            <div class="flex items-center gap-1 shrink-0">
               <!-- 应用内预览原文 -->
-              <button 
-                @click="openInAppBrowser"
-                class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
+              <button
+                class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 title="在应用内打开原文"
+                aria-label="在应用内打开原文"
+                @click="openInAppBrowser"
               >
                 <AppIcon name="siteFallback" class="h-4 w-4" />
               </button>
 
               <!-- 在系统浏览器打开 -->
-              <a 
-                :href="readingEntry.canonical_url" 
-                target="_blank" 
+              <a
+                :href="readingEntry.canonical_url"
+                target="_blank"
                 rel="noopener noreferrer"
-                class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5"
+                class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 title="在系统浏览器打开"
+                aria-label="在系统浏览器打开"
               >
                 <AppIcon name="externalLink" class="h-4 w-4" />
               </a>
 
               <!-- 收藏 / 取消收藏 -->
               <button
-                @click="toggleStarStatus(readingEntry)"
-                class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
+                class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                :class="readingEntry.is_starred ? 'text-amber-500' : ''"
                 :title="readingEntry.is_starred ? '取消收藏' : '收藏文章'"
+                :aria-label="readingEntry.is_starred ? '取消收藏' : '收藏文章'"
+                :aria-pressed="readingEntry.is_starred"
+                @click="toggleStarStatus(readingEntry)"
               >
                 <AppIcon name="star" class="h-4 w-4" :class="readingEntry.is_starred ? 'text-amber-500 fill-amber-500' : ''" />
               </button>
 
               <!-- 取消订阅该源 -->
               <button
-                @click="unsubscribeCurrentFeedFromReader"
-                class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-destructive/15 text-muted-foreground hover:text-destructive flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
+                class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-destructive/15 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 title="取消订阅该源"
+                aria-label="取消订阅该源"
+                @click="unsubscribeCurrentFeedFromReader"
               >
                 <AppIcon name="close" class="h-4 w-4" />
               </button>
 
               <!-- Reader Settings -->
               <div class="relative" ref="readerSettingsRef">
-                <button 
-                  @click="showReaderSettings = !showReaderSettings"
-                  class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
+                <button
+                  class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  :aria-expanded="showReaderSettings"
                   title="阅读个性化设置"
+                  aria-label="阅读个性化设置"
+                  @click="showReaderSettings = !showReaderSettings"
                 >
                   <AppIcon name="settingsPanel" class="h-4 w-4" />
                 </button>
-                
+
                 <ReaderSettingsPanel
                   :visible="showReaderSettings"
                   :font-family="readerFontFamily"
@@ -634,7 +656,7 @@
           </Button>
           <Button
             type="button"
-            class="h-9 rounded-lg text-xs font-semibold px-4 transition-all duration-150 cursor-pointer bg-foreground text-background hover:opacity-90 active:scale-[0.98]"
+            class="h-9 rounded-lg text-xs font-semibold px-4 transition-all duration-150 cursor-pointer hover:opacity-90 active:scale-[0.98]"
             :disabled="subscribingFeed || !subscribeForm.feedUrl.trim()"
             @click="handleSubscribeFeed"
           >
@@ -1042,22 +1064,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar { 
-  width: 5px; 
-}
-.custom-scrollbar::-webkit-scrollbar-track { 
-  background: transparent; 
-}
-.custom-scrollbar::-webkit-scrollbar-thumb { 
-  background: rgba(var(--primary), 0.1); 
-  border-radius: 10px; 
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
-  background: rgba(var(--primary), 0.2); 
-}
-
-
-
 /* Scoped stylesheet for reader content typography — WeRead-inspired */
 .font-serif {
   font-family: Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;

@@ -4,7 +4,7 @@
       <template #sidebar>
         <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
           <div class="min-w-0">
-            <h1 class="truncate text-sm font-semibold">设置</h1>
+            <h1 class="app-h3 truncate">设置</h1>
             <p class="mt-0.5 text-xs text-muted-foreground">{{ activeTab.label }}</p>
           </div>
           <span v-if="hasUnsavedChanges" class="inline-flex h-7 items-center rounded-md border border-border/50 bg-muted px-2 text-xs text-muted-foreground">
@@ -29,7 +29,7 @@
 
       <template #header>
         <div class="min-w-0">
-          <h2 class="truncate text-base font-semibold">{{ activeTab.label }}</h2>
+          <h2 class="app-h2 truncate">{{ activeTab.label }}</h2>
           <p class="mt-0.5 text-xs text-muted-foreground">{{ activeTabDescription }}</p>
         </div>
 
@@ -428,9 +428,4 @@ const onSystemToggle = async (key: string, val: boolean) => {
   background: hsl(var(--muted) / 0.5);
   color: hsl(var(--foreground));
 }
-
-.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(var(--primary), 0.1); border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.2); }
 </style>

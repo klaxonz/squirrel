@@ -2,7 +2,7 @@
   <AppPageShell variant="compact">
     <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
       <div class="min-w-0">
-        <h1 class="truncate text-base font-semibold">{{ pageTitle }}</h1>
+        <h1 class="app-h3 truncate">{{ pageTitle }}</h1>
         <p class="mt-0.5 text-xs text-muted-foreground">{{ displayVideos.length }} 条记录</p>
       </div>
 
@@ -179,10 +179,3 @@ const groupedVideos = computed(() => {
 
 onMounted(() => loadData())
 </script>
-
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar { width: 5px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(var(--primary), 0.1); border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.2); }
-</style>

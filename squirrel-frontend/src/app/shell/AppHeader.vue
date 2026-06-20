@@ -36,15 +36,14 @@
     </div>
     
     <div class="flex items-center gap-1">
-      <button class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-all active:scale-95 relative group">
-        <AppIcon name="notification" class="w-4 h-4" />
-        <span class="absolute top-2 right-2 w-1.5 h-1.5 bg-destructive rounded-full border border-background shadow-sm" />
-      </button>
-
       <div class="flex items-center gap-2.5 pl-2.5 ml-1 border-l border-border">
         <div
-          class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer transition-all active:scale-95"
+          class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          role="button"
+          tabindex="0"
           @click="goToProfile"
+          @keydown.enter.prevent="goToProfile"
+          @keydown.space.prevent="goToProfile"
         >
           <div class="w-7 h-7 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-xs font-bold text-primary dark:text-primary-foreground shrink-0">
             <template v-if="userInitial">{{ userInitial }}</template>

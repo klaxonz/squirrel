@@ -24,7 +24,7 @@
           <!-- Video Header Info -->
           <div v-if="video" class="space-y-6">
             <div class="space-y-2">
-              <h1 class="text-lg md:text-xl font-semibold tracking-tight leading-[1.3] text-foreground">
+              <h1 class="app-h2">
                 {{ video.title }}
               </h1>
               <div class="flex items-center gap-2 text-sm text-muted-foreground/60 font-medium">
@@ -35,8 +35,16 @@
             </div>
             
             <div class="flex flex-wrap items-center justify-between gap-4 py-1">
-              <div class="flex items-center gap-6">
-                <div v-if="primarySubscription" class="flex items-center gap-3 group cursor-pointer" @click="openChannelDetail(primarySubscription)">
+              <div class="flex items-center gap-5">
+                <div
+                  v-if="primarySubscription"
+                  class="flex items-center gap-3 group cursor-pointer rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/40 p-1 -m-1"
+                  role="button"
+                  tabindex="0"
+                  @click="openChannelDetail(primarySubscription)"
+                  @keydown.enter.prevent="openChannelDetail(primarySubscription)"
+                  @keydown.space.prevent="openChannelDetail(primarySubscription)"
+                >
                   <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name || ''" size="xl" />
                   <div class="flex flex-col -space-y-0.5">
                     <span class="font-bold text-[15px] group-hover:text-primary transition-colors tracking-tight">{{ primarySubscription.name }}</span>
@@ -46,8 +54,8 @@
                 <button
                   v-if="primarySubscriptionUrl"
                   type="button"
-                  class="h-7 min-w-16 px-3 text-xs font-semibold rounded-full transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
-                  :class="isSubscriptionChecked && isSubscribed ? 'bg-secondary text-foreground ring-1 ring-border/40' : 'bg-foreground text-background hover:opacity-90 active:scale-95'"
+                  class="h-8 min-w-16 px-4 text-xs font-semibold rounded-full transition-all shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60"
+                  :class="isSubscriptionChecked && isSubscribed ? 'bg-secondary text-foreground ring-1 ring-border/40 hover:bg-secondary/80' : 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95'"
                   :disabled="isCheckingSubscription || isSubscribing"
                   @click="handleSubscribe"
                 >
@@ -56,12 +64,14 @@
               </div>
 
               <div class="flex items-center gap-2">
-                <div class="flex bg-accent/40 rounded-full p-0.5 ring-1 ring-border/20">
+                <div class="flex items-center gap-0.5 rounded-full bg-muted/40 p-0.5">
                   <button
                     v-for="action in primaryVisibleActions"
                     :key="action.key"
-                    class="flex items-center gap-2 px-4 py-1.5 rounded-full hover:bg-accent/60 transition-all text-[13px] font-semibold"
-                    :class="{ 'text-foreground bg-background shadow-sm ring-1 ring-border/10': action.active, 'text-muted-foreground': !action.active }"
+                    class="flex items-center gap-2 h-8 px-3.5 rounded-full transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40 text-[13px] font-semibold"
+                    :class="{ 'text-foreground bg-background shadow-sm': action.active, 'text-muted-foreground hover:bg-muted/60 hover:text-foreground': !action.active }"
+                    :aria-pressed="action.active"
+                    :aria-label="action.label || action.key"
                     @click="handleVideoAction(action)"
                   >
                     <AppIcon :name="action.icon" class="w-4 h-4" :stroke-width="action.active ? 2.5 : 2" />
@@ -70,15 +80,19 @@
                 </div>
 
                 <button
-                  class="w-9 h-9 flex items-center justify-center rounded-full bg-accent/40 hover:bg-accent/60 transition-all active:scale-95 ring-1 ring-border/20 text-muted-foreground hover:text-foreground"
+                  class="flex size-9 items-center justify-center rounded-full bg-muted/40 transition-all outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background text-muted-foreground hover:text-foreground"
                   title="分享链接"
+                  aria-label="分享链接"
                   @click="handleShare"
                 >
                   <AppIcon name="share" class="w-4 h-4" />
                 </button>
                 <div class="relative" ref="moreMenuRef">
                   <button
-                    class="w-9 h-9 flex items-center justify-center rounded-full bg-accent/40 hover:bg-accent/60 transition-all active:scale-95 ring-1 ring-border/20 text-muted-foreground hover:text-foreground"
+                    class="flex size-9 items-center justify-center rounded-full bg-muted/40 transition-all outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background text-muted-foreground hover:text-foreground"
+                    :aria-expanded="moreMenuOpen"
+                    aria-haspopup="menu"
+                    aria-label="更多操作"
                     @click.stop="moreMenuOpen = !moreMenuOpen"
                   >
                     <AppIcon name="more" class="w-4 h-4" />
@@ -88,7 +102,7 @@
                       <button
                         v-for="action in videoOverflowActions.filter(a => a.key !== 'source')"
                         :key="action.key"
-                        class="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-foreground/80 hover:bg-accent transition-colors"
+                        class="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-foreground/80 hover:bg-accent transition-colors outline-none focus-visible:bg-accent focus-visible:text-foreground"
                         @click.stop="handleVideoAction(action); moreMenuOpen = false"
                       >
                         <AppIcon :name="action.icon" class="w-4 h-4 text-muted-foreground" />
@@ -99,7 +113,7 @@
                         :href="video.url"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-foreground/80 hover:bg-accent transition-colors"
+                        class="flex w-full items-center gap-2.5 px-3.5 py-2 text-[13px] font-medium text-foreground/80 hover:bg-accent transition-colors outline-none focus-visible:bg-accent focus-visible:text-foreground"
                         @click.stop="moreMenuOpen = false"
                       >
                         <AppIcon name="externalLink" class="w-4 h-4 text-muted-foreground" />
@@ -117,7 +131,7 @@
                   v-for="actor in displayedVideoActors"
                   :key="actor.url || actor.name"
                   type="button"
-                  class="inline-flex h-8 shrink-0 items-center gap-2 rounded-full bg-accent/35 px-2.5 text-[12px] font-semibold text-foreground/85 ring-1 ring-border/20 transition-colors hover:bg-accent/55"
+                  class="inline-flex h-8 shrink-0 items-center gap-2 rounded-full bg-muted/40 px-2.5 text-[12px] font-semibold text-foreground/85 outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
                   @click="openChannelDetail(actor)"
                 >
                   <SubscriptionAvatar :src="actor.avatar" :name="actor.name || ''" size="xs" />
@@ -143,10 +157,12 @@
               <button
                 v-if="hasLongDescription"
                 type="button"
-                class="mt-2 text-[13px] font-semibold text-foreground/70 hover:text-foreground transition-colors"
+                class="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-foreground/70 outline-none transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 rounded px-0.5"
+                :aria-expanded="descriptionExpanded"
                 @click="descriptionExpanded = !descriptionExpanded"
               >
                 {{ descriptionExpanded ? '收起' : '展开' }}
+                <AppIcon :name="descriptionExpanded ? 'chevronUp' : 'chevronDown'" class="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -206,7 +222,16 @@
                 </div>
               </div>
               <div v-else-if="relatedVideos.length" class="space-y-2">
-                <article v-for="related in relatedVideos" :key="related.id" class="flex gap-3 group cursor-pointer rounded-lg p-1.5 -mx-1.5 hover:bg-accent/40 transition-colors" @click="related.id != null && goToVideo(related.id, related)">
+                <article
+                  v-for="related in relatedVideos"
+                  :key="related.id"
+                  class="flex gap-3 group cursor-pointer rounded-lg p-1.5 -mx-1.5 outline-none transition-colors hover:bg-accent/40 focus-visible:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring/40"
+                  role="button"
+                  tabindex="0"
+                  @click="related.id != null && goToVideo(related.id, related)"
+                  @keydown.enter.prevent="related.id != null && goToVideo(related.id, related)"
+                  @keydown.space.prevent="related.id != null && goToVideo(related.id, related)"
+                >
                   <div class="relative w-40 aspect-video shrink-0 overflow-hidden rounded-md bg-muted">
                     <VideoThumbnail v-if="related.thumbnail" :src="(related.thumbnail as string)" fit="contain" />
                     <span v-if="related.duration" class="absolute bottom-1 right-1 inline-flex h-[18px] items-center rounded-[4px] bg-black/70 px-1 text-[10px] font-semibold text-white tabular-nums">{{ formatDuration(related.duration as number) }}</span>

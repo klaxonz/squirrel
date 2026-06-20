@@ -1,6 +1,7 @@
 import { ref, type Ref } from 'vue'
 import { Logger } from '@/shared/lib/logger'
 import { mergeLoginStatusResult, type SiteLoginStatus } from '@/shared/lib/site-runtime-login-status'
+import { getItem, setItem, removeItem } from '@/shared/lib/storageKeys'
 
 /**
  * Connectivity + login-status result storage with localStorage persistence.
@@ -12,9 +13,6 @@ import { mergeLoginStatusResult, type SiteLoginStatus } from '@/shared/lib/site-
  * persistence policy + the merge seam live in one place rather than interleaved
  * with the desktop-login and runtime-action handlers.
  */
-const CACHE_KEY_CONNECTIVITY = 'squirrel_connectivity_results'
-const CACHE_KEY_LOGIN_STATUS = 'squirrel_login_status_results'
-const CACHE_KEY_LAST_TESTED = 'squirrel_last_tested_at'
 
 /** One entry in the backend's all-sites connectivity batch result. */
 interface ConnectivityBatch {
@@ -56,7 +54,7 @@ export function useSiteConnectivityCache(): UseSiteConnectivityCacheReturn {
   const clearLoginStatusCache = () => {
     loginStatusResults.value = {}
     try {
-      localStorage.removeItem(CACHE_KEY_LOGIN_STATUS)
+      removeItem('sitesLoginStatus')
     } catch (error) {
       Logger.warn('Failed to clear login status cache', error)
     }
@@ -65,14 +63,14 @@ export function useSiteConnectivityCache(): UseSiteConnectivityCacheReturn {
   const saveResultsToCache = () => {
     try {
       if (connectivityResults.value.length > 0) {
-        localStorage.setItem(CACHE_KEY_CONNECTIVITY, JSON.stringify(connectivityResults.value))
+        setItem('sitesConnectivity', JSON.stringify(connectivityResults.value))
       }
       if (Object.keys(loginStatusResults.value).length > 0) {
-        localStorage.setItem(CACHE_KEY_LOGIN_STATUS, JSON.stringify(loginStatusResults.value))
+        setItem('sitesLoginStatus', JSON.stringify(loginStatusResults.value))
       }
       const now = new Date().toISOString()
       lastTestedAt.value = now
-      localStorage.setItem(CACHE_KEY_LAST_TESTED, now)
+      setItem('sitesLastTested', now)
     } catch (error) {
       Logger.warn('Failed to save connectivity cache', error)
     }
@@ -80,9 +78,9 @@ export function useSiteConnectivityCache(): UseSiteConnectivityCacheReturn {
 
   const loadResultsFromCache = () => {
     try {
-      const cachedConnectivity = localStorage.getItem(CACHE_KEY_CONNECTIVITY)
-      const cachedLoginStatus = localStorage.getItem(CACHE_KEY_LOGIN_STATUS)
-      const cachedLastTested = localStorage.getItem(CACHE_KEY_LAST_TESTED)
+      const cachedConnectivity = getItem('sitesConnectivity')
+      const cachedLoginStatus = getItem('sitesLoginStatus')
+      const cachedLastTested = getItem('sitesLastTested')
 
       if (cachedConnectivity) {
         connectivityResults.value = JSON.parse(cachedConnectivity)

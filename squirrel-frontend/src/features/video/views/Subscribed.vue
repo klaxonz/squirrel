@@ -3,7 +3,7 @@
     <aside class="hidden w-[320px] shrink-0 flex-col border-r border-border/20 bg-muted/10 lg:flex">
       <div class="flex h-20 shrink-0 items-center justify-between border-b border-border/20 px-5 bg-background/50 backdrop-blur-sm">
         <div class="min-w-0 flex flex-col justify-center">
-          <h1 class="truncate text-lg font-bold tracking-tight text-foreground/90">订阅频道</h1>
+          <h1 class="app-h2 truncate">订阅频道</h1>
           <p class="mt-0.5 text-xs font-medium text-muted-foreground/70">{{ list.length }} 个频道</p>
         </div>
         <Button variant="ghost" size="icon" class="h-9 w-9 rounded-full bg-primary/5 hover:bg-primary/10 text-primary transition-colors" @click="showAddDialog = true">
@@ -11,31 +11,35 @@
         </Button>
       </div>
 
-      <div class="shrink-0 space-y-3 border-b border-border/10 p-4 bg-background/20 backdrop-blur-sm z-10">
+      <div class="shrink-0 space-y-2.5 border-b border-border/10 p-3 bg-background/20 backdrop-blur-sm z-10">
         <div class="relative group">
           <AppIcon name="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
-          <input 
+          <input
             v-model="sidebarSearch"
-            placeholder="搜索订阅..." 
-            class="h-10 w-full rounded-xl border border-transparent bg-accent/40 hover:bg-accent/60 pl-10 pr-4 text-sm font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/30 focus:bg-background focus:ring-4 focus:ring-primary/10"
+            type="text"
+            placeholder="搜索订阅..."
+            aria-label="搜索订阅"
+            class="h-9 w-full rounded-lg border border-transparent bg-muted/40 pl-9 pr-3 text-sm font-medium outline-none transition-all placeholder:text-muted-foreground/50 hover:bg-muted/60 focus:border-primary/30 focus:bg-background focus:ring-2 focus:ring-primary/15"
           />
         </div>
-        
+
         <div class="flex items-center gap-2">
           <div ref="siteFilterRef" class="relative flex-1">
             <button
+              class="flex h-9 w-full items-center justify-between rounded-lg border border-transparent bg-muted/40 px-3 text-xs font-semibold transition-all outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="site ? 'border-primary/20 bg-primary/5 text-foreground' : 'text-muted-foreground'"
+              :aria-expanded="showSiteDropdown"
+              aria-haspopup="listbox"
               @click="showSiteDropdown = !showSiteDropdown"
-              class="flex h-9 w-full items-center justify-between rounded-lg border border-transparent bg-accent/40 px-3 text-xs font-semibold transition-all hover:bg-accent/60"
-              :class="site ? 'text-foreground border-primary/20 bg-primary/5' : 'text-muted-foreground'"
             >
               <div class="flex items-center gap-2">
                 <AppIcon name="filter" class="h-3.5 w-3.5" :class="site ? 'text-primary' : ''" />
                 <span>{{ activeSiteLabel }}</span>
               </div>
-              <AppIcon name="chevronRight" class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showSiteDropdown }" />
+              <AppIcon name="chevronRight" class="h-3.5 w-3.5 transition-transform duration-200" :class="{ 'rotate-90': showSiteDropdown }" />
             </button>
 
-            <div v-if="showSiteDropdown" class="absolute left-0 right-0 top-full z-50 mt-1.5 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl p-1.5 shadow-xl ring-1 ring-black/5">
+            <div v-if="showSiteDropdown" class="absolute left-0 right-0 top-full z-50 mt-1.5 rounded-xl border border-border/50 bg-popover p-1.5 shadow-xl ring-1 ring-black/5">
               <div class="max-h-[280px] overflow-y-auto custom-scrollbar pr-1">
                 <button @click="site = ''; showSiteDropdown = false" class="flex h-9 w-full items-center rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-accent" :class="!site ? 'text-foreground bg-accent/50' : 'text-muted-foreground'">全部来源</button>
                 <div class="h-px w-full bg-border/50 my-1"></div>
@@ -49,8 +53,9 @@
 
           <button
             type="button"
-            class="flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-transparent bg-accent/40 px-3 text-xs font-semibold transition-all hover:bg-accent/60"
+            class="flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-transparent bg-muted/40 px-3 text-xs font-semibold transition-all outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
             :class="specialFilter === 'yes' ? 'border-amber-400/30 bg-amber-400/10 text-amber-600' : 'text-muted-foreground hover:text-foreground'"
+            :aria-pressed="specialFilter === 'yes'"
             @click="toggleSpecialFilter"
           >
             <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current drop-shadow-sm': specialFilter === 'yes' }" />
@@ -144,7 +149,7 @@
 
           <div class="min-w-0 flex flex-col justify-center">
             <div class="flex min-w-0 items-center gap-3">
-              <h2 class="max-w-[400px] truncate text-xl font-bold tracking-tight text-foreground/90 cursor-pointer hover:text-primary transition-colors" @click="activeChannel && openActiveChannelDetail()">
+              <h2 class="app-h2 max-w-[400px] truncate cursor-pointer hover:text-primary transition-colors" @click="activeChannel && openActiveChannelDetail()">
                 {{ activeChannelName || '订阅动态' }}
               </h2>
               
@@ -190,22 +195,51 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
-          <div class="flex shrink-0 rounded-lg bg-accent/40 p-1">
-            <button @click="showLocalFeed" class="h-8 rounded-md px-4 text-sm font-semibold transition-all" :class="channelDataMode === 'local' && viewMode === 'feed' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">最近发布</button>
-            <button @click="showLocalGrid" class="h-8 rounded-md px-4 text-sm font-semibold transition-all" :class="channelDataMode === 'local' && viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">频道</button>
+        <div class="flex items-center gap-1.5">
+          <!-- View toggle (feed / channels) — segmented control, aligns with FeedToolbar's pill language -->
+          <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-muted/40 p-0.5">
+            <button
+              class="flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="channelDataMode === 'local' && viewMode === 'feed' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              :aria-pressed="channelDataMode === 'local' && viewMode === 'feed'"
+              @click="showLocalFeed"
+            >
+              <AppIcon name="film" class="h-3.5 w-3.5" />
+              最近发布
+            </button>
+            <button
+              class="flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="channelDataMode === 'local' && viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              :aria-pressed="channelDataMode === 'local' && viewMode === 'grid'"
+              @click="showLocalGrid"
+            >
+              <AppIcon name="layoutGrid" class="h-3.5 w-3.5" />
+              频道
+            </button>
           </div>
-          
-          <div class="h-8 w-px bg-border/40 mx-1 hidden md:block"></div>
 
-          <button class="hidden h-9 items-center gap-2 rounded-lg border border-transparent bg-accent/40 px-4 text-sm font-semibold transition-all md:flex" :class="nsfw === 'all' ? 'text-muted-foreground hover:bg-accent/60 hover:text-foreground' : 'bg-destructive/10 text-destructive'" @click="nsfw = nsfw === 'all' ? 'yes' : 'all'">
-            <span class="h-2 w-2 rounded-full" :class="nsfw === 'all' ? 'bg-muted-foreground/40' : 'bg-destructive'" />
+          <!-- NSFW toggle — pill, size-8, clear active state + aria -->
+          <button
+            class="hidden h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex"
+            :class="nsfw === 'all' ? 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground' : 'border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15'"
+            :aria-pressed="nsfw !== 'all'"
+            :title="nsfw === 'all' ? '显示成年内容' : '隐藏成年内容'"
+            @click="nsfw = nsfw === 'all' ? 'yes' : 'all'"
+          >
+            <span class="h-1.5 w-1.5 rounded-full" :class="nsfw === 'all' ? 'bg-muted-foreground/50' : 'bg-destructive'" />
             成年内容
           </button>
-          
-          <Button variant="ghost" size="icon" class="h-9 w-9 rounded-lg bg-accent/40 hover:bg-accent/60" @click="handleRefresh">
-            <AppIcon name="refresh" class="h-4 w-4 text-foreground/80" :class="{ 'animate-spin': headerLoading }" />
-          </Button>
+
+          <!-- Refresh — size-8 icon pill, matches FeedToolbar refresh -->
+          <button
+            class="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/40 text-muted-foreground transition-colors outline-none hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            :disabled="headerLoading"
+            title="刷新内容"
+            aria-label="刷新内容"
+            @click="handleRefresh"
+          >
+            <AppIcon name="refresh" class="h-4 w-4" :class="{ 'animate-spin': headerLoading }" />
+          </button>
         </div>
       </header>
 
@@ -237,7 +271,7 @@
 
             <div v-for="group in videoGroups" :key="group.title" class="space-y-4">
               <div class="flex items-center gap-3 pt-4 pb-2">
-                <h3 class="text-[20px] font-bold tracking-tight text-foreground/90">{{ group.title }}</h3>
+                <h3 class="app-h2">{{ group.title }}</h3>
                 <span class="text-[12px] font-semibold text-muted-foreground/60">{{ group.videos.length }} 视频</span>
               </div>
               <div class="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5">
@@ -699,12 +733,3 @@ onUnmounted(() => {
   feedObserver?.disconnect(); channelsObserver?.disconnect(); gridObserver?.disconnect()
 })
 </script>
-
-<style scoped>
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-.custom-scrollbar::-webkit-scrollbar { width: 5px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(var(--primary), 0.1); border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(var(--primary), 0.2); }
-</style>

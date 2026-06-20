@@ -2,6 +2,7 @@ import { computed, onMounted, onUnmounted, ref, watch, type ComputedRef, type Re
 
 import { useI18n, type LocaleCode, type LocaleMessages, type UseI18nOptions } from '../i18n'
 import { useTheme, type ThemeName, type UseThemeOptions } from '../themes'
+import { getItem, setItem } from '@/shared/lib/storageKeys'
 
 import { createPlayerRuntimeStore, type PlayerRuntimeStore } from './PlayerStore'
 import { createPlayerEngine, type PlayerEngine, type PlayerEngineOptions } from '../core/createPlayerEngine'
@@ -151,11 +152,9 @@ const calculateBufferedAheadPercent = (buffered: TimeRanges, duration: number, c
   return Math.min(100, Math.max(0, (currentTime / duration) * 100))
 }
 
-const SUBTITLE_STYLE_KEY = 'squirrel-player-subtitle-style'
-
 const loadSubtitleStyleFromStorage = (): SubtitleStyleBag => {
   try {
-    const raw = localStorage.getItem(SUBTITLE_STYLE_KEY)
+    const raw = getItem('playerSubtitleStyle')
     return raw ? JSON.parse(raw) : {}
   } catch {
     return {}
@@ -164,7 +163,7 @@ const loadSubtitleStyleFromStorage = (): SubtitleStyleBag => {
 
 const saveSubtitleStyleToStorage = (style: SubtitleStyleBag): void => {
   try {
-    localStorage.setItem(SUBTITLE_STYLE_KEY, JSON.stringify(style))
+    setItem('playerSubtitleStyle', JSON.stringify(style))
   } catch (err) { playerLogger.warn('Failed to save subtitle style', err) }
 }
 

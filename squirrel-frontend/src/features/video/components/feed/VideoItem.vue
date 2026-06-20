@@ -1,6 +1,6 @@
 <template>
   <div
-    class="group flex cursor-pointer"
+    class="group flex cursor-pointer rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"
     :class="[layout === 'list' ? 'flex-row gap-4' : 'flex-col gap-2.5']"
     role="button"
     tabindex="0"
@@ -11,7 +11,7 @@
   >
     <!-- Thumbnail Container -->
     <div :class="[
-      'relative overflow-hidden bg-muted transition-all duration-300 group-hover:brightness-110 group-hover:shadow-lg',
+      'relative overflow-hidden bg-muted transition-all duration-300 group-hover:brightness-110 group-hover:shadow-lg group-active:scale-[0.99]',
       layout === 'list' ? 'w-48 shrink-0 md:w-64 aspect-video' : 'aspect-video w-full'
     ]"
     :style="{ borderRadius: 'var(--app-card-radius)' }">

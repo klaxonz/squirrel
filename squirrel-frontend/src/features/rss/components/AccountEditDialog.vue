@@ -161,7 +161,7 @@
           </Button>
           <Button
             type="button"
-            class="h-9 rounded-lg text-xs font-semibold px-4 transition-all duration-150 cursor-pointer bg-foreground text-background hover:opacity-90 active:scale-[0.98]"
+            class="h-9 rounded-lg text-xs font-semibold px-4 transition-all duration-150 cursor-pointer hover:opacity-90 active:scale-[0.98]"
             :disabled="saving || !canSaveForm"
             @click="$emit('save')"
           >

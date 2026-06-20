@@ -4,21 +4,21 @@ import { cva } from 'class-variance-authority'
 export { default as Button } from './Button.vue'
 
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97] select-none',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97] select-none',
   {
     variants: {
       variant: {
         default:
-          'bg-foreground text-background shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:opacity-90',
+          'bg-primary text-primary-foreground shadow-[0_1px_2px_rgba(0,0,0,0.12)] hover:bg-primary/90',
         destructive:
-          'bg-destructive text-destructive-foreground shadow-sm hover:opacity-90',
+          'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
         outline:
           'border border-border/60 bg-background text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:bg-accent hover:border-border',
         secondary:
           'bg-accent/50 text-foreground hover:bg-accent',
-        ghost: 
+        ghost:
           'text-muted-foreground hover:bg-accent hover:text-foreground',
-        link: 
+        link:
           'text-primary underline-offset-4 hover:underline',
       },
       size: {
