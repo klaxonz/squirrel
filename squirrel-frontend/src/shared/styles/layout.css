@@ -229,33 +229,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.app-status-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 999px;
-  background: hsl(var(--muted-foreground));
-}
-
-.app-status-dot--muted {
-  background: hsl(var(--muted-foreground));
-}
-
-.app-status-dot.bg-blue-500 {
-  background: hsl(var(--primary));
-}
-
-.app-status-dot.bg-emerald-500 {
-  background: hsl(142 71% 45%);
-}
-
-.app-status-dot.bg-rose-500 {
-  background: hsl(var(--destructive));
-}
-
-.app-status-dot.bg-amber-500 {
-  background: hsl(38 92% 50%);
-}
-
 .app-tab-list {
   display: inline-flex;
   align-items: center;

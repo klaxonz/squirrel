@@ -160,7 +160,7 @@
           <div class="md:col-span-3">
             <Button
               variant="outline"
-              class="h-9 border-border/80 text-xs font-medium text-muted-foreground hover:bg-destructive hover:text-white hover:border-destructive transition-all duration-200"
+              class="h-9 border-border/80 text-xs font-medium text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all duration-200"
               @click="handleLogout"
             >
               <AppIcon name="logout" class="h-3.5 w-3.5" />

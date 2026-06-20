@@ -41,7 +41,7 @@
         </button>
         <button
           class="flex size-7 items-center justify-center rounded-md bg-black/60 backdrop-blur transition-colors"
-          :class="isLiked === 1 ? 'text-red-500 bg-black/80 hover:bg-black/90' : 'text-white hover:bg-primary hover:text-primary-foreground'"
+          :class="isLiked === 1 ? 'text-destructive bg-black/80 hover:bg-black/90' : 'text-white hover:bg-primary hover:text-primary-foreground'"
           title="喜欢"
           @click.stop="toggleLikeVideo"
         >

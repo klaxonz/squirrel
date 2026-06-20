@@ -23,7 +23,7 @@
       </div>
 
       <button
-        class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-md bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-colors group-hover:opacity-100 hover:bg-destructive hover:text-white"
+        class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-md bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-colors group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
         @click.stop="handleDelete"
       >
         <AppIcon name="trash" class="h-4 w-4" />

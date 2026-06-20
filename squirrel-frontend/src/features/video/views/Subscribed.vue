@@ -28,7 +28,7 @@
         <div class="flex min-w-0 items-center gap-4">
           <div v-if="activeChannel" class="shrink-0 relative group cursor-pointer" @click="openActiveChannelDetail">
             <SubscriptionAvatar :src="activeChannel.avatar" :name="activeChannel.name" size="xl" class="ring-2 ring-background shadow-md transition-transform group-hover:scale-105" />
-            <div v-if="activeChannel.is_special_followed" class="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-warning/10 text-white ring-2 ring-background shadow-sm">
+            <div v-if="activeChannel.is_special_followed" class="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-warning/10 text-warning ring-2 ring-background shadow-sm">
               <AppIcon name="star" class="h-3 w-3 fill-current" />
             </div>
           </div>

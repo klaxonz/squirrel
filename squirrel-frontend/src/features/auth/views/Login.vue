@@ -105,7 +105,7 @@
       </div>
       
       <!-- Card Footer -->
-      <div class="p-4 sm:p-6 bg-muted dark:bg-zinc-900/50 border-t border-border text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+      <div class="p-4 sm:p-6 bg-muted border-t border-border text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
         <span class="text-sm text-muted-foreground">还没有账户？</span>
         <router-link to="/register" class="text-sm font-medium text-foreground hover:text-primary transition-colors underline decoration-border underline-offset-4 hover:decoration-primary">
           创建新账户

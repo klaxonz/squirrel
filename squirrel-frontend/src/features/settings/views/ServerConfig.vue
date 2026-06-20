@@ -115,7 +115,7 @@
       </div>
       
       <!-- Card Footer -->
-      <div class="p-4 sm:p-6 bg-muted dark:bg-zinc-900/50 border-t border-border text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+      <div class="p-4 sm:p-6 bg-muted border-t border-border text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
         <span class="text-sm text-muted-foreground">本地开发？</span>
         <button type="button" class="text-sm font-medium text-foreground hover:text-primary transition-colors underline decoration-border underline-offset-4 hover:decoration-primary" @click="fillLocalhost">
           快速切换至本机地址
