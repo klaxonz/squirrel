@@ -110,6 +110,7 @@ import {
   isDesktopPlaybackClient,
 } from '@/features/video/composables/useVideoOperations'
 import { useUIStore } from '@/shared/stores/ui'
+import { useSearchHistory } from '@/shared/composables/useSearchHistory'
 
 type SearchModeOption = {
   value: string
@@ -150,10 +151,18 @@ const isTyping = ref(false)
 const isComposing = ref(false)
 const isPanelOpen = ref(false)
 const activeSuggestionIndex = ref(-1)
-const recentSearches = ref<string[]>([])
 const remoteSuggestions = ref<SearchSuggestionItem[]>([])
 const rootRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
+
+// ponytail: recent-search history (add/remove/clear + localStorage persistence,
+// capped at 10, most-recent-first, de-duped) lives in useSearchHistory.
+const {
+  recentSearches,
+  addRecentSearch,
+  removeRecentSearch,
+  clearRecentSearches,
+} = useSearchHistory()
 
 let typingTimeout: ReturnType<typeof setTimeout> | undefined
 let suggestionTimeout: ReturnType<typeof setTimeout> | undefined
@@ -287,9 +296,7 @@ async function handleSearch() {
     return
   }
   if (trimmedInputValue.value) {
-    const next = [trimmedInputValue.value, ...recentSearches.value.filter(s => s !== trimmedInputValue.value)].slice(0, 10)
-    recentSearches.value = next
-    localStorage.setItem('search-history', JSON.stringify(next))
+    addRecentSearch(trimmedInputValue.value)
   }
   uiStore.triggerSearch(inputValue.value)
   emit('search')
@@ -323,16 +330,6 @@ function clearSearch() {
 function handleCompositionEnd() {
   isComposing.value = false
   handleInput()
-}
-
-function clearRecentSearches() {
-  recentSearches.value = []
-  localStorage.removeItem('search-history')
-}
-
-function removeRecentSearch(val: string) {
-  recentSearches.value = recentSearches.value.filter(s => s !== val)
-  localStorage.setItem('search-history', JSON.stringify(recentSearches.value))
 }
 
 function handleFocusIn(e: FocusEvent) {
@@ -371,8 +368,6 @@ const handleGlobalKeydown = (e: KeyboardEvent) => {
 }
 
 onMounted(() => {
-  const saved = localStorage.getItem('search-history')
-  if (saved) recentSearches.value = JSON.parse(saved)
   window.addEventListener('keydown', handleGlobalKeydown)
 })
 
