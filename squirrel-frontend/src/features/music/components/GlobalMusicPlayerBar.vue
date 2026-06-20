@@ -165,6 +165,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
+import { formatPlaybackTime as formatDuration } from '@/features/music/lib/musicFormatters'
 import MusicProgressBar from './player/MusicProgressBar.vue'
 import MusicBarTrackInfo from './player/MusicBarTrackInfo.vue'
 import MusicBarControls from './player/MusicBarControls.vue'
@@ -203,13 +204,8 @@ const isTrackLiked = computed(() => {
   return likedTracks.value.has(track.album_audio_id)
 })
 
-function formatDuration(seconds: number): string {
-  if (!seconds || Number.isNaN(seconds)) return '00:00'
-  const rounded = Math.floor(seconds)
-  const minutes = Math.floor(rounded / 60)
-  const rest = rounded % 60
-  return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
-}
+// ponytail: formatDuration is the player-surface variant (zero-padded mm:ss)
+// from the shared musicFormatters lib, deduped from 5 components.
 
 function handleSeek(time: number) {
   store.seekTo(time)

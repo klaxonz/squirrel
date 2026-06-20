@@ -138,6 +138,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { formatPlaybackTime as formatDuration } from '@/features/music/lib/musicFormatters'
 import MusicLyricsPanel from './MusicLyricsPanel.vue'
 import MusicCommentsPanel from './MusicCommentsPanel.vue'
 import type { MusicTrack, MusicLyricLine, MusicComment } from '@/shared/api/music'
@@ -200,13 +201,8 @@ defineEmits<{
 
 const activeTab = ref<'lyrics' | 'comments'>('lyrics')
 
-function formatDuration(seconds: number): string {
-  if (!seconds || Number.isNaN(seconds)) return '00:00'
-  const rounded = Math.floor(seconds)
-  const minutes = Math.floor(rounded / 60)
-  const rest = rounded % 60
-  return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
-}
+// ponytail: formatDuration is the player-surface variant (zero-padded mm:ss)
+// from the shared musicFormatters lib, deduped from 5 components.
 </script>
 
 <style scoped>

@@ -1,6 +1,6 @@
 import type { AxiosRequestConfig } from 'axios'
 import axios from './axios'
-import { ApiError, ErrorTypes, getErrorTypeByCode, type ErrorType } from './apiError'
+import { ApiError, ErrorTypes, getErrorTypeByCode } from './apiError'
 
 // Re-exported so existing `import { ApiError, ErrorTypes } from '@/shared/lib/request'`
 // callsites keep working. The definitions live in apiError.ts to avoid a module

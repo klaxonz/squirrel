@@ -325,7 +325,7 @@ export class AnalyticsPlugin implements PlayerPlugin {
     return Math.round(Math.max(0, Math.min(100, avgScore)))
   }
 
-  private log(...args: any[]): void {
+  private log(...args: unknown[]): void {
     if (this.options.debug) {
       this.context?.logger.debug('[AnalyticsPlugin]', ...args)
     }

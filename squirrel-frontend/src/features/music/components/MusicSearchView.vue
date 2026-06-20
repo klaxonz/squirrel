@@ -167,10 +167,14 @@ import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { formatCount } from '@/shared/lib/dateFormat'
+import { useMusicSearchHistory } from '@/features/music/composables/useMusicSearchHistory'
+import {
+  formatDuration,
+  formatArtistMeta,
+  createArtistFromTrack,
+  createAlbumFromTrack,
+} from '@/features/music/lib/musicFormatters'
 import type { MusicTrack, MusicArtist, MusicAlbum, MusicHotSearch } from '@/shared/api/music'
-
-const HISTORY_KEY = 'squirrel_music_search_history'
-const MAX_HISTORY = 15
 
 const props = defineProps<{
   hotSearches: MusicHotSearch[]
@@ -189,26 +193,16 @@ const emit = defineEmits<{
 
 const player = useMusicPlayerStore()
 const hasSearched = ref(false)
-const history = ref<string[]>(loadHistory())
 
-function loadHistory(): string[] {
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function saveHistory() {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.value))
-}
+// ponytail: search history (load/add/clear + localStorage persistence) lives
+// in useMusicSearchHistory. The "record on query change" side effect is owned
+// there; this view keeps only the hasSearched flag it derives the view from.
+const { history, addToHistory, clearHistory } = useMusicSearchHistory({
+  query: () => props.searchQuery,
+})
 
 watch(() => props.searchQuery, (val) => {
-  if (val) {
-    hasSearched.value = true
-    addToHistory(val)
-  }
+  if (val) hasSearched.value = true
 }, { immediate: true })
 
 function searchByKeyword(keyword: string) {
@@ -217,63 +211,13 @@ function searchByKeyword(keyword: string) {
   emit('search', keyword)
 }
 
-function addToHistory(q: string) {
-  const h = history.value.filter(k => k !== q)
-  history.value = [q, ...h].slice(0, MAX_HISTORY)
-  saveHistory()
-}
-
-function clearHistory() {
-  history.value = []
-  saveHistory()
-}
-
-// Hot-search scores use the same 亿/万 compaction as play counts.
+// ponytail: duration/artist-meta formatters + track→artist/album synthesis
+// live in the shared musicFormatters lib (deduped from 5 components). Hot-search
+// scores reuse the shared count compaction.
 const formatScore = formatCount
-
-function formatDuration(seconds: number): string {
-  if (!seconds) return '--:--'
-  const minutes = Math.floor(seconds / 60)
-  const remainSeconds = Math.floor(seconds % 60)
-  return `${minutes}:${String(remainSeconds).padStart(2, '0')}`
-}
-
-function formatArtistMeta(artist: MusicArtist): string {
-  const parts = []
-  if (artist.song_count) parts.push(`${artist.song_count} 首歌`)
-  if (artist.album_count) parts.push(`${artist.album_count} 张专辑`)
-  return parts.join(' · ') || '歌手'
-}
 
 function handlePlaySong(track: MusicTrack) {
   player.playTrack(track)
-}
-
-function createArtistFromTrack(track: MusicTrack): MusicArtist {
-  return {
-    id: track.artist_id || '',
-    name: track.artist || '未知歌手',
-    avatar: '',
-    intro: '',
-    song_count: 0,
-    album_count: 0,
-    fan_count: 0,
-  }
-}
-
-function createAlbumFromTrack(track: MusicTrack): MusicAlbum {
-  return {
-    id: track.album_id,
-    name: track.album || '未知专辑',
-    cover: track.cover || '',
-    intro: '',
-    artist: track.artist || '未知歌手',
-    artist_id: track.artist_id || '',
-    publish_date: '',
-    language: '',
-    type: '',
-    heat: 0,
-  }
 }
 </script>
 

@@ -92,23 +92,33 @@ export default tseslint.config(
     },
   },
 
-  // logger modules: console is the whole point
+  // logger modules: console is the whole point. Repointed to the feature-based
+  // layout after the src/{utils,components}/* → src/{features,shared}/* move;
+  // the old paths silently stopped matching and re-introduced 8 no-console errors.
   {
-    files: ['src/utils/logger.ts', 'src/components/video-player/core/logger.ts'],
+    files: [
+      'src/shared/lib/logger.ts',
+      'src/features/playback/components/video-player/core/logger.ts',
+    ],
     rules: { 'no-console': 'off' },
   },
 
-  // --- progressive-convergence overrides (remove each block once clean) ---
-  // ponytail: these start as warn so error-level doesn't block; flip to error
-  // (or delete the override) once each area is fully typed. Tracked in the
-  // frontend maintainability refactor (Phase 4).
+  // --- progressive-convergence overrides ---
+  // ponytail: convergence debt tracked against the feature-based layout. The
+  // video-player block below was promoted warn → error once its first-party
+  // anys were eliminated (EventEmitter typed, AnalyticsPlugin.log → unknown[]);
+  // only the third-party adapter/plugin boundary anys remain, exempted by the
+  // following block. All paths repointed to the feature-based layout after the
+  // src/{components,utils}/* → src/{features,shared}/* refactor.
   {
-    // VideoPlayer.vue is a 2784-line component slated for a separate refactor epic;
-    // keep its any-usage non-blocking until then.
-    files: ['src/components/video-player/**/*.{vue,ts}'],
+    // VideoPlayer.vue is a 2784-line component slated for a separate refactor epic.
+    // Promoted from warn → error once the subtree cleared its first-party anys
+    // (EventEmitter.ts typed; AnalyticsPlugin.log → unknown[]). The third-party
+    // boundary anys in adapters/ and plugins/ are exempted by the block below.
+    files: ['src/features/playback/components/video-player/**/*.{vue,ts}'],
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      'vue/no-mutating-props': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
+      'vue/no-mutating-props': 'error',
     },
   },
   {
@@ -119,15 +129,15 @@ export default tseslint.config(
     // they are exempt rather than carried as convergence debt. (Formerly
     // plugins/**; the stream technology moved to adapters/ per ADR-0001.)
     files: [
-      'src/components/video-player/adapters/**/*.{ts,vue}',
-      'src/components/video-player/plugins/**/*.{ts,vue}',
+      'src/features/playback/components/video-player/adapters/**/*.{ts,vue}',
+      'src/features/playback/components/video-player/plugins/**/*.{ts,vue}',
     ],
     rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
   {
     // ponytail: shadcn-vue/reka generated primitives. Hand-editing these fights
     // upstream regenerations; their any usage stays non-blocking permanently.
-    files: ['src/components/ui/**/*.{vue,ts}'],
+    files: ['src/shared/ui/**/*.{vue,ts}'],
     rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
 )

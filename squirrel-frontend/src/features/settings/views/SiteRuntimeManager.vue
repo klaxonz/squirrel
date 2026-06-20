@@ -378,10 +378,13 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
 import { Logger } from '@/shared/lib/logger'
-import { mergeLoginStatusResult, shouldRefreshLoginStatusesAfterCookieImport } from '@/shared/lib/site-runtime-login-status'
+import { shouldRefreshLoginStatusesAfterCookieImport } from '@/shared/lib/site-runtime-login-status'
+import { getDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useSiteCatalog } from '@/features/video/composables/useSites'
 import { useYouTubeOAuth } from '@/features/settings/composables/useYouTubeOAuth'
-import { useToast } from '@/shared/components/toast/useToast'
+import { useSiteConnectivityCache } from '@/features/settings/composables/useSiteConnectivityCache'
+import { useSiteDesktopLogin } from '@/features/settings/composables/useSiteDesktopLogin'
+import { useSiteRuntimeStatus } from '@/features/settings/composables/useSiteRuntimeStatus'
 import {
   disableSiteRuntime,
   enableSiteRuntime,
@@ -403,102 +406,55 @@ const isInitialLoading = computed(() => loading.value && !siteRuntimes.value.len
 
 const testingAll = ref(false)
 const supportedSites = ref([])
-const connectivityResults = ref([])
-const loginStatusResults = ref({})
-const loginStatusTesting = ref({})
-const lastTestedAt = ref(null)
 
 const { catalog: siteCatalog, loadCatalog, saveCatalog } = useSiteCatalog()
 
-const CACHE_KEY_CONNECTIVITY = 'squirrel_connectivity_results'
-const CACHE_KEY_LOGIN_STATUS = 'squirrel_login_status_results'
-const CACHE_KEY_LAST_TESTED = 'squirrel_last_tested_at'
-const CAPABILITY_LABELS = {
-  check_login_status: '登录检测',
-  import_subscriptions: '导入订阅',
-  resolve_subscription: '解析订阅',
-  sync_subscription: '同步订阅',
-  extract_video: '视频信息',
-  fetch_subtitles: '字幕',
-  resolve_proxy_config: '代理配置',
-  rewrite_proxy_playlist: '代理播放',
-}
-const DESKTOP_LOGIN_SITES = new Set(['bilibili', 'javdb', 'pornhub', 'youporn'])
-const DESKTOP_LOGIN_SITE_ALIASES = {
-  'b23.tv': 'bilibili',
-  'bilibili.com': 'bilibili',
-  'javdb.com': 'javdb',
-  'pornhub.com': 'pornhub',
-  'youporn.com': 'youporn',
-}
+// ponytail: connectivity/login result storage + localStorage persistence lives
+// in useSiteConnectivityCache. The cache keys + the login-status merge seam are
+// owned there so the view's script reads as state → derived → actions.
+const {
+  connectivityResults,
+  loginStatusResults,
+  loginStatusTesting,
+  lastTestedAt,
+  clearLoginStatusCache,
+  saveResultsToCache,
+  loadResultsFromCache,
+  upsertLoginStatus,
+} = useSiteConnectivityCache()
+
+// ponytail: desktop-app site login/session handlers + site-name normalisation
+// live in useSiteDesktopLogin. The view's duplicate getDesktopBridge is gone —
+// the composable uses the shared one from useDesktopBridge (the source of truth
+// already used by useYouTubeOAuth). loginStatusTesting/upsert/save are injected
+// so the desktop cluster doesn't reach into the cache cluster's internals.
+const {
+  supportsDesktopLoginSite,
+  handleDesktopSiteLogin,
+  handleClearDesktopSiteSession,
+} = useSiteDesktopLogin({
+  loginStatusTesting,
+  upsertLoginStatus,
+  saveResultsToCache,
+})
+
+// ponytail: status/network/login badge text + Tailwind classes + capability
+// labels + time formatting live in useSiteRuntimeStatus. Pure formatters,
+// extracted so the view's script stops interleaving formulae with actions.
+const {
+  getSiteRuntimeStatusText,
+  getSiteRuntimeStatusClass,
+  getNetworkText,
+  getLoginText,
+  getCapabilityLabel,
+  formatTime,
+} = useSiteRuntimeStatus()
+
 const isDesktopApp = computed(() => window.desktopApp?.isDesktop === true)
-
-const normalizeDesktopLoginSite = (siteName) => {
-  const rawValue = String(siteName || '').trim().toLowerCase()
-  if (!rawValue) return ''
-  let normalizedSite = rawValue.replace(/^\./, '')
-  try {
-    normalizedSite = new URL(rawValue.includes('://') ? rawValue : `https://${rawValue}`).hostname
-      .toLowerCase()
-      .replace(/^www\./, '')
-      .replace(/^\./, '')
-  } catch {
-    normalizedSite = normalizedSite.replace(/^www\./, '')
-  }
-  return DESKTOP_LOGIN_SITE_ALIASES[normalizedSite] || normalizedSite
-}
-
-const supportsDesktopLoginSite = (siteName) => DESKTOP_LOGIN_SITES.has(normalizeDesktopLoginSite(siteName))
-
-const clearLoginStatusCache = () => {
-  loginStatusResults.value = {}
-  try {
-    localStorage.removeItem(CACHE_KEY_LOGIN_STATUS)
-  } catch (error) {
-    Logger.warn('Failed to clear login status cache', error)
-  }
-}
-
-const saveResultsToCache = () => {
-  try {
-    if (connectivityResults.value.length > 0) {
-      localStorage.setItem(CACHE_KEY_CONNECTIVITY, JSON.stringify(connectivityResults.value))
-    }
-    if (Object.keys(loginStatusResults.value).length > 0) {
-      localStorage.setItem(CACHE_KEY_LOGIN_STATUS, JSON.stringify(loginStatusResults.value))
-    }
-    const now = new Date().toISOString()
-    lastTestedAt.value = now
-    localStorage.setItem(CACHE_KEY_LAST_TESTED, now)
-  } catch (error) {
-    Logger.warn('Failed to save connectivity cache', error)
-  }
-}
-
-const loadResultsFromCache = () => {
-  try {
-    const cachedConnectivity = localStorage.getItem(CACHE_KEY_CONNECTIVITY)
-    const cachedLoginStatus = localStorage.getItem(CACHE_KEY_LOGIN_STATUS)
-    const cachedLastTested = localStorage.getItem(CACHE_KEY_LAST_TESTED)
-
-    if (cachedConnectivity) {
-      connectivityResults.value = JSON.parse(cachedConnectivity)
-    }
-    if (cachedLoginStatus) {
-      loginStatusResults.value = JSON.parse(cachedLoginStatus)
-    }
-    if (cachedLastTested) {
-      lastTestedAt.value = cachedLastTested
-    }
-  } catch (error) {
-    Logger.warn('Failed to load connectivity cache', error)
-  }
-}
 
 const selectedCookiesFile = ref(null)
 const cookiesFileName = ref('')
 const importingCookies = ref(false)
-const toast = useToast()
 
 const editingSite = ref(null)
 const siteEditorVisible = ref(false)
@@ -713,78 +669,6 @@ const handleTestLoginBySite = async (siteName) => {
   }
 }
 
-const getDesktopBridge = () => window.desktopApp || null
-
-const handleDesktopSiteLogin = async (siteName) => {
-  if (!siteName) return
-  const bridge = getDesktopBridge()
-  if (bridge?.isDesktop !== true || typeof bridge.openSiteLogin !== 'function') return
-
-  loginStatusTesting.value[siteName] = true
-  try {
-    toast.success('桌面登录窗口已打开，手机确认后会自动完成')
-    const result = await bridge.openSiteLogin(siteName)
-    if (result) {
-      upsertLoginStatus(siteName, result)
-      if (result.logged_in) {
-        toast.success('桌面登录成功')
-      } else {
-        toast.error(result.message || '未检测到桌面登录态')
-      }
-    }
-  } catch (error) {
-    Logger.error('Failed to open desktop site login', error)
-    upsertLoginStatus(siteName, {
-      site_name: siteName,
-      supported: true,
-      logged_in: false,
-      message: '桌面登录窗口打开失败',
-      checked_at: new Date().toISOString(),
-      source: 'desktop',
-    })
-    toast.error('桌面登录窗口打开失败')
-  } finally {
-    loginStatusTesting.value[siteName] = false
-    saveResultsToCache()
-  }
-}
-
-const handleClearDesktopSiteSession = async (siteName) => {
-  if (!siteName) return
-  const bridge = getDesktopBridge()
-  if (bridge?.isDesktop !== true || typeof bridge.clearSiteSession !== 'function') return
-
-  loginStatusTesting.value[siteName] = true
-  try {
-    const result = await bridge.clearSiteSession(siteName)
-    if (result) {
-      upsertLoginStatus(siteName, result)
-      toast.success('桌面会话已清除')
-    }
-  } catch (error) {
-    Logger.error('Failed to clear desktop site session', error)
-    upsertLoginStatus(siteName, {
-      site_name: siteName,
-      supported: true,
-      logged_in: false,
-      message: '清除桌面会话失败',
-      checked_at: new Date().toISOString(),
-      source: 'desktop',
-    })
-    toast.error('清除桌面会话失败')
-  } finally {
-    loginStatusTesting.value[siteName] = false
-    saveResultsToCache()
-  }
-}
-
-const upsertLoginStatus = (siteName, payload) => {
-  loginStatusResults.value = {
-    ...loginStatusResults.value,
-    [siteName]: mergeLoginStatusResult(loginStatusResults.value?.[siteName], payload)
-  }
-}
-
 const openSiteEditorByRuntime = (plugin) => {
   const siteName = plugin.siteName
   if (!siteName) return
@@ -842,43 +726,6 @@ const fetchSupportedSites = async () => {
 const testLoginForAllSupportedSites = async () => {
   const targets = supportedSites.value.filter(site => site.supports_login_status)
   await Promise.all(targets.map(site => handleTestLoginBySite(site.site_name || site.name)))
-}
-
-const getSiteRuntimeStatusText = (plugin) => {
-  if (!plugin.enabled) return '停用'
-  if (plugin.active_runtime?.state === 'running') return '运行'
-  if (plugin.health?.healthy === false || plugin.active_runtime?.state === 'failed') return '异常'
-  return '待检查'
-}
-
-const getSiteRuntimeStatusClass = (plugin) => {
-  if (!plugin.enabled) return 'border-border/50 bg-muted text-muted-foreground'
-  if (plugin.active_runtime?.state === 'running') return 'border-border/50 bg-background text-foreground'
-  if (plugin.health?.healthy === false || plugin.active_runtime?.state === 'failed') return 'border-destructive/20 bg-destructive/10 text-destructive'
-  return 'border-border/50 bg-muted text-muted-foreground'
-}
-
-const getNetworkText = (plugin) => {
-  if (plugin.siteAccessible === true) return '正常'
-  if (plugin.siteAccessible === false) return '失败'
-  return '未检测'
-}
-
-const getLoginText = (plugin) => {
-  if (plugin.siteOAuthStatus === 'authenticated') return '有效'
-  if (plugin.siteOAuthStatus === 'pending') return '授权中'
-  if (plugin.siteLoginStatus?.supported === false) return '不支持'
-  if (plugin.siteLoginStatus?.source === 'desktop') return plugin.siteLoginStatus?.logged_in ? '桌面已登录' : '桌面未登录'
-  if (plugin.siteLoginStatus?.logged_in) return '有效'
-  if (plugin.siteLoginStatus) return '失效'
-  return '未检测'
-}
-
-const getCapabilityLabel = (name) => CAPABILITY_LABELS[name] || name
-
-const formatTime = (value) => {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 const openExternalUrl = async (targetUrl) => {

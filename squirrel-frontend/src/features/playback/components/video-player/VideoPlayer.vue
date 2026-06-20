@@ -362,7 +362,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { formatTime } from '@/shared/lib/dateFormat'
 import { usePlayer, type PlayerOptions } from './runtime/usePlayer'
-import type { Chapter, MediaSource, SubtitleTrack } from './core'
+import type { MediaSource, SubtitleTrack } from './core'
 import type { ThemeName } from './themes'
 import type { VideoClipMarker } from '@/features/video/types/videoClipMarker'
 import { usePlaybackSession } from '@/features/playback/composables/usePlaybackSession'
@@ -387,6 +387,10 @@ import { useVideoRotation } from './composables/useVideoRotation'
 import { useProgressScrub } from './composables/useProgressScrub'
 import { usePlayerKeyboard } from './composables/usePlayerKeyboard'
 import { useSourceSync } from './composables/useSourceSync'
+import { useControlAutoHide } from './composables/useControlAutoHide'
+import { useVolumeScrub } from './composables/useVolumeScrub'
+import { useChapterThumbnails } from './composables/useChapterThumbnails'
+import { usePlayerError } from './composables/usePlayerError'
 
 import './themes/variables.css'
 import './themes/dark.css'
@@ -470,17 +474,21 @@ const {
   onPause: () => emit('pause'),
   onEnded: () => emit('ended'),
   onError: (e) => {
-    errorState.value = {
-      show: true,
-      title: t('errorTitle'),
-      message: resolveErrorMessage(e.code, e.message),
-      code: e.code,
-      canRetry: true
-    }
+    playerError.reportError(e.code, e.message)
     emit('error', e)
   },
   onTimeUpdate: (time) => emit('timeupdate', time)
 })
+
+// ponytail: error-overlay state + code→message translation live in
+// usePlayerError. The onError callback above closes over `playerError` lazily
+// (it only fires after setup completes), so declaring it here after usePlayer
+// is safe. `errorState`/`handleRetry` are aliased for the template binding.
+const playerError = usePlayerError({
+  t: t as (key: string, params?: Record<string, string | number>) => string,
+  onRetry: () => emit('retry'),
+})
+const { errorState, handleRetry } = playerError
 
 const playbackSession = usePlaybackSession()
 const playlistEntries = computed(() => playbackSession.facts.playlist || [])
@@ -532,44 +540,15 @@ const {
 
 const showStats = ref(false)
 const showPlaylist = ref(false)
-const isVolumeScrubbing = ref(false)
-const isVolumeHovered = ref(false)
 
-const pendingUserVolumeHud = ref<number | null>(null)
 const pendingWidescreenValue = ref<boolean | null>(null)
-const errorState = ref({ show: false, title: '', message: '', code: '', canRetry: true })
 
-// 按 code 把引擎/适配器产生的英文错误信息映射为中文。
-// 这些 message 来自 core/error-recovery.ts、createPlayerEngine.ts、adapters/{Hls,Dash,ShakaDash}Adapter.ts，
-// 在源头改会侵入多个适配器并丢失原始信息，故在 UI 层统一翻译。
-const resolveErrorMessage = (code: string, fallback: string): string => {
-  const upper = String(code || '').toUpperCase()
-  if (upper.includes('NETWORK') || upper.includes('TIMEOUT')) return t('errorNetwork')
-  if (upper.includes('NOT_SUPPORTED') || upper.includes('CAPABILITY')) return t('errorNotSupported')
-  if (upper.includes('DECODE')) return t('errorDecode')
-  if (upper.includes('MEDIA') || upper.includes('HLS_') || upper.includes('DASH_')) return t('errorMedia')
-  if (upper.includes('STALL')) return t('buffering')
-  return fallback || t('errorUnknown')
-}
-
-const handleRetry = () => {
-  errorState.value.show = false
-  emit('retry')
-}
-const showLoadingOverlay = computed(() => (store.loading || props.externalLoading) && !errorState.value.show)
+const showLoadingOverlay = computed(() => (store.loading || props.externalLoading) && !playerError.errorState.value.show)
 const isAudioOnly = computed(() => !!props.source?.audioOnly)
 const loadingStageText = computed(() => {
   if (store.loadingStage === 'fetching') return t('loading')
   if (store.loadingStage === 'buffering') return t('buffering')
   return null
-})
-
-watch(volume, (newVol, oldVol) => {
-  if (Math.abs(newVol - oldVol) < 0.1) return
-  const expectedVolume = pendingUserVolumeHud.value
-  pendingUserVolumeHud.value = null
-  if (expectedVolume === null || Math.abs(newVol - expectedVolume) > 0.1) return
-  showCentralHud('volume', `${Math.round(newVol)}%`, volumeIconName.value, newVol)
 })
 
 // ponytail: settings menu state + handlers + option arrays live in
@@ -624,41 +603,6 @@ const settingsActivePresetId = computed(() => {
 })
 const progress = computed(() => duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0)
 
-const sourceChapters = computed(() => props.source?.chapters || [])
-const normalizedChapters = computed(() => {
-  if (!duration.value || duration.value <= 0) return []
-  return sourceChapters.value.map((chapter: Chapter) => ({
-    ...chapter,
-    startPercent: Math.min((chapter.startTime / duration.value) * 100, 100),
-  }))
-})
-
-const thumbnailSpriteUrl = computed(() => props.source?.thumbnailSpriteUrl || null)
-const thumbnailSpriteColumns = computed(() => props.source?.thumbnailSpriteColumns || 10)
-const thumbnailSpriteRows = computed(() => props.source?.thumbnailSpriteRows || 10)
-const thumbnailSpriteInterval = computed(() => props.source?.thumbnailSpriteInterval || 10)
-const thumbnailSpriteStyle = computed(() => {
-  if (!thumbnailSpriteUrl.value || !duration.value) return {}
-  const totalFrames = thumbnailSpriteColumns.value * thumbnailSpriteRows.value
-  const frameIndex = Math.min(
-    Math.floor((previewTime.value ?? 0) / thumbnailSpriteInterval.value),
-    totalFrames - 1
-  )
-  const col = frameIndex % thumbnailSpriteColumns.value
-  const row = Math.floor(frameIndex / thumbnailSpriteColumns.value)
-  const frameW = 100 * thumbnailSpriteColumns.value
-  const frameH = 100 * thumbnailSpriteRows.value
-  return {
-    backgroundImage: `url(${thumbnailSpriteUrl.value})`,
-    backgroundPosition: `-${col * 100}% -${row * 100}%`,
-    backgroundSize: `${frameW}% ${frameH}%`,
-  }
-})
-
-const handleChapterClick = (time: number) => {
-  seek(time)
-}
-
 const {
   hoveredMarkerId,
   hasPendingSegment,
@@ -705,9 +649,42 @@ const {
   seek,
 })
 
-const volumeIconName = computed(() => (isMuted.value || volume.value === 0) ? 'volumeOff' : volume.value < 50 ? 'volumeLow' : 'volumeHigh')
-const volumeText = computed(() => isMuted.value ? 'Muted' : `${Math.round(volume.value)}%`)
-const volumeFillPercent = computed(() => (isMuted.value ? 0 : Math.min(100, (volume.value / MAX_VOLUME) * 100)))
+// ponytail: chapter normalisation + thumbnail-sprite frame math live in
+// useChapterThumbnails. Declared after useProgressScrub because the sprite
+// frame depends on the scrub `previewTime`.
+const {
+  normalizedChapters,
+  thumbnailSpriteUrl,
+  thumbnailSpriteStyle,
+  handleChapterClick,
+} = useChapterThumbnails({
+  source: computed(() => props.source),
+  duration,
+  previewTime,
+  seek,
+})
+
+// ponytail: volume display computeds + pointer-scrub + user-HUD suppression
+// live in useVolumeScrub. `setUserVolume` is also consumed by the keyboard
+// shortcut table, so it stays destructured here.
+const {
+  isVolumeScrubbing,
+  isVolumeHovered,
+  volumeIconName,
+  volumeText,
+  volumeFillPercent,
+  setUserVolume,
+  onVolumePointerDown,
+  onVolumePointerMove,
+  onVolumePointerUp,
+} = useVolumeScrub({
+  volume,
+  isMuted,
+  setVolume,
+  showCentralHud,
+  maxVolume: MAX_VOLUME,
+})
+
 // ponytail: quality display pipeline (codec matching, dedup/score, active
 // check, labels) lives in useQualityDisplay; VideoPlayer just consumes the
 // derived values. Behavior is byte-identical to the former inline block.
@@ -746,7 +723,7 @@ const { cleanup: cleanupSourceSync } = useSourceSync({
   play,
   pause,
   seek,
-  onSourceChange: () => { errorState.value.show = false },
+  onSourceChange: () => { playerError.clear() },
 })
 
 watch(videoRef, (el) => { videoElement.value = el }, { immediate: true })
@@ -755,10 +732,10 @@ watch(() => props.subtitles, (ts) => { setSubtitleTracks(ts || []) }, { immediat
 
 // 修复"视频在正常播放但错误遮罩仍盖在上面"的问题：
 // 引擎的错误恢复链（HLS recoverMediaError / DASH attachSource / 重试）经常能在底层把播放救回来，
-// 但 reportFatalError 已经触发过 onError → errorState.show=true。这里在视频真正重新进入播放态时兜底清除遮罩。
+// 但 reportFatalError 已经触发过 onError → error overlay shown。这里在视频真正重新进入播放态时兜底清除遮罩。
 watch(() => store.playing, (playing) => {
   if (playing && errorState.value.show) {
-    errorState.value.show = false
+    playerError.clear()
   }
 })
 
@@ -800,23 +777,19 @@ const toggleSubtitlesQuick = () => {
 
   setSubtitle(nextTrack)
 }
-let hideTimer: ReturnType<typeof setTimeout>
-const clearHideTimer = () => clearTimeout(hideTimer)
-const hideControls = () => {
-  clearHideTimer()
-  store.setControlsVisible(false)
-  clearPreview()
-  closeMenus()
-}
-const syncHideTimer = () => {
-  clearHideTimer()
-  if (store.controlsVisible && isPlaying.value && !isScrubbing.value) {
-    hideTimer = setTimeout(() => hideControls(), 3000)
-  }
-}
+// ponytail: the 3s idle auto-hide timer + show/hide/sync contract lives in
+// useControlAutoHide. showControls additionally drives the fullscreen
+// info-overlay auto-fade (a video-info concern, not control visibility), so we
+// wrap it here to keep that side-effect co-located with the overlay it owns.
+const { showControls: showControlsBase, hideControls, syncHideTimer, clearHideTimer } = useControlAutoHide({
+  store,
+  isPlaying,
+  isScrubbing,
+  clearPreview,
+  closeMenus,
+})
 const showControls = () => {
-  store.setControlsVisible(true)
-  syncHideTimer()
+  showControlsBase()
   if (isFullscreen.value) {
     showVideoInfo.value = true
     if (videoInfoTimer) clearTimeout(videoInfoTimer)
@@ -845,18 +818,6 @@ const onPointerMove = (event: PointerEvent) => {
 
 const onPointerLeave = () => {
   if (!isScrubbing.value) hideControls()
-}
-
-const onVolumePointerDown = (e: PointerEvent) => { isVolumeScrubbing.value = true; updateVol(e) }
-const onVolumePointerMove = (e: PointerEvent) => { if (isVolumeScrubbing.value) updateVol(e) }
-const onVolumePointerUp = () => { isVolumeScrubbing.value = false }
-const setUserVolume = (value: number) => {
-  pendingUserVolumeHud.value = value
-  setVolume(value)
-}
-const updateVol = (e: PointerEvent) => {
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  setUserVolume(Math.max(0, Math.min(MAX_VOLUME, ((e.clientX - rect.left) / rect.width) * MAX_VOLUME)))
 }
 
 const markPlayerActive = () => {}

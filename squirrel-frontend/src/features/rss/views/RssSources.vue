@@ -678,7 +678,7 @@
       :entry="contextMenuEntry"
       :feed="contextMenuFeedResolved"
       :position="contextMenuPosition"
-      :ref="bindContextMenuRef"
+      :ref="bindArticleMenuRef"
       @toggle-read="toggleReadStatus"
       @toggle-star="toggleStarStatus"
       @go-to-feed="goToFeedFromContextMenu"
@@ -694,7 +694,7 @@
       :visible="showFeedContextMenuState"
       :feed="contextMenuFeed"
       :position="feedContextMenuPosition"
-      :ref="bindFeedContextMenuRef"
+      :ref="bindFeedMenuRef"
       @mark-all-read="markFeedAllAsRead"
       @sync-feed="syncFeedFromContextMenu"
       @copy-link="copyFeedLink"
@@ -706,7 +706,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppBounceDots from '@/shared/components/AppBounceDots.vue'
@@ -726,28 +726,20 @@ import { useRssFeeds } from '@/features/rss/composables/useRssFeeds'
 import { useRssEntries } from '@/features/rss/composables/useRssEntries'
 import { useRssReader } from '@/features/rss/composables/useRssReader'
 import { useRssSync } from '@/features/rss/composables/useRssSync'
+import { useRssStatus } from '@/features/rss/composables/useRssStatus'
+import { useRssFeedHeader } from '@/features/rss/composables/useRssFeedHeader'
+import { useRssContextMenu } from '@/features/rss/composables/useRssContextMenu'
 import RssFeedContextMenu from '@/features/rss/components/RssFeedContextMenu.vue'
 import RssArticleContextMenu from '@/features/rss/components/RssArticleContextMenu.vue'
-import type { RssEntry, RecentEntry, RssFeed } from '@/features/rss/composables/rssTypes'
+import type { RssEntry, RecentEntry } from '@/features/rss/composables/rssTypes'
 
 // Cross-cutting UI state
 const loading = ref(false)
-const statusMessage = ref('')
-const statusError = ref(false)
 
-let statusTimeout: ReturnType<typeof setTimeout> | null = null
-
-const onStatus = (message: string, isError = false) => {
-  statusMessage.value = message
-  statusError.value = isError
-  if (statusTimeout) clearTimeout(statusTimeout)
-  if (message && !message.includes('同步中')) {
-    statusTimeout = setTimeout(() => {
-      statusMessage.value = ''
-      statusError.value = false
-    }, 6000)
-  }
-}
+// ponytail: status banner state + auto-dismiss timer live in useRssStatus so
+// the "don't auto-dismiss progress messages" policy + timer cleanup are owned
+// in one place rather than inlined beside six composable wiring blocks.
+const { statusMessage, statusError, onStatus, dispose: disposeStatus } = useRssStatus()
 
 // Forward ref for loadAll (defined after composables)
 let loadAllImpl: () => Promise<void> = async () => {}
@@ -934,54 +926,34 @@ const {
   loadEntries,
 })
 
-// Cross-composable computed properties
-const selectedFeedTitle = computed(() => {
-  if (activeFilter.value === 'recent') return '最近浏览'
-  if (selectedFeedId.value) {
-    return feeds.value.find(f => f.id === selectedFeedId.value)?.title || '订阅源'
-  }
-  return null
+// ponytail: header title/subtitle derivation lives in useRssFeedHeader so the
+// "which filter context wins the header" formula is one import, not an inline
+// block interleaved with orchestration.
+const { selectedFeedTitle, selectedFeedSubtitle } = useRssFeedHeader({
+  activeFilter,
+  selectedFeedId,
+  feeds,
+  recentlyViewed,
+  totalEntries,
+  selectedAccount,
 })
 
-const selectedFeedSubtitle = computed(() => {
-  if (activeFilter.value === 'recent') return `共 ${recentlyViewed.value.length} 篇最近浏览的文章`
-  if (selectedFeedId.value) {
-    const feed = feeds.value.find(f => f.id === selectedFeedId.value)
-    return `${feed?.category || '未分类'} · ${totalEntries.value} 篇文章`
-  }
-  if (selectedAccount.value) {
-    return `共 ${totalEntries.value} 篇文章`
-  }
-  return '浏览您的 RSS 服务内容源'
+// ponytail: context-menu close + child-ref bridging + article-menu feed
+// resolution live in useRssContextMenu. The two bind helpers were copy-pasted
+// with identical `instance.rootRef` extraction; centralised behind one bridge.
+const {
+  closeContextMenu,
+  bindFeedMenuRef,
+  bindArticleMenuRef,
+  contextMenuFeedResolved,
+} = useRssContextMenu({
+  feedContextMenuRef,
+  contextMenuRef,
+  closeFeedContextMenu,
+  closeArticleContextMenu: entriesCloseContextMenu,
+  contextMenuEntry,
+  findFeedByEntry,
 })
-
-// Orchestration functions
-const closeContextMenu = () => {
-  entriesCloseContextMenu()
-  closeFeedContextMenu()
-}
-
-// ponytail: bridge the composable-owned feedContextMenuRef to the child
-// component's exposed rootRef, so useRssFeeds can still measure the rendered
-// menu for overflow repositioning after the template moved into the child.
-type FeedContextMenuInstance = { rootRef?: HTMLElement | null }
-const bindFeedContextMenuRef = (el: unknown) => {
-  const instance = (el && typeof el === 'object' ? (el as FeedContextMenuInstance) : null)
-  feedContextMenuRef.value = instance?.rootRef ?? null
-}
-
-// ponytail: same bridge for the article context menu; useRssEntries measures
-// contextMenuRef for overflow repositioning.
-const bindContextMenuRef = (el: unknown) => {
-  const instance = (el && typeof el === 'object' ? (el as FeedContextMenuInstance) : null)
-  contextMenuRef.value = instance?.rootRef ?? null
-}
-
-// ponytail: resolve the article menu's feed once here (the inline template
-// called findFeedByEntry 4 times per render); pass it down as a prop.
-const contextMenuFeedResolved = computed<RssFeed | null>(() =>
-  contextMenuEntry.value ? (findFeedByEntry(contextMenuEntry.value) ?? null) : null,
-)
 
 loadAllImpl = async () => {
   loading.value = true
@@ -1065,6 +1037,7 @@ onUnmounted(() => {
   window.removeEventListener('click', closeContextMenu)
   window.removeEventListener('contextmenu', closeContextMenu)
   stopSyncPolling()
+  disposeStatus()
 })
 </script>
 

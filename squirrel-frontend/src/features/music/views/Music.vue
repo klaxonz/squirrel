@@ -269,12 +269,7 @@ import { useMusicDetail } from '@/features/music/composables/useMusicDetail'
 import { useMusicAuth } from '@/features/music/composables/useMusicAuth'
 import { useMusicFm } from '@/features/music/composables/useMusicFm'
 import {
-  searchMusicComplex,
-  getMusicTrackMv,
-  getMusicVideoUrl,
   collectMusicPlaylist,
-  getMusicArtistDetail,
-  getMusicAlbumDetail,
   type MusicTrack,
   type MusicPlaylist,
   type MusicArtist,
@@ -283,6 +278,9 @@ import {
   type MusicUserPlaylist,
 } from '@/shared/api/music'
 import { useMusicQrLogin } from '@/features/music/composables/useMusicQrLogin'
+import { useMusicVideoModal } from '@/features/music/composables/useMusicVideoModal'
+import { useMusicSearch } from '@/features/music/composables/useMusicSearch'
+import { useMusicTrackNavigation } from '@/features/music/composables/useMusicTrackNavigation'
 import { Logger } from '@/shared/lib/logger'
 import { useToast } from '@/shared/components/toast/useToast'
 
@@ -380,14 +378,32 @@ const fmActive = computed(() => Boolean(
 ))
 const fmPlaying = computed(() => fmActive.value && playerStore.playing)
 
-const searchLoading = ref(false)
-const searchError = ref<string | null>(null)
-const complexResult = ref<{ songs: MusicTrack[]; artists: MusicArtist[]; albums: MusicAlbum[] } | null>(null)
-const searchQuery = ref('')
+// ponytail: complex-search state + execute/reset live in useMusicSearch. The
+// error-string mapping + empty-query reset policy are owned there; the view
+// injects the navigation hand-off so the composable doesn't reach into nav.
+const {
+  searchLoading,
+  searchError,
+  complexResult,
+  searchQuery,
+  handleSearch,
+  resetSearch,
+} = useMusicSearch({
+  isSearchView: () => activeView.value === 'search',
+  onResetWhenSearching: () => navigateTo('home'),
+})
 
-const videoModalVisible = ref(false)
-const videoTitle = ref('')
-const videoUrl = ref('')
+// ponytail: MV/artist-video modal state + async URL resolution live in
+// useMusicVideoModal. The two open-then-fetch flows + their error handling are
+// co-located; the modal opens optimistically and the URL fills on response.
+const {
+  videoModalVisible,
+  videoTitle,
+  videoUrl,
+  handlePlayMv,
+  handlePlayArtistVideo,
+  handleCloseVideoModal,
+} = useMusicVideoModal()
 
 // ponytail: QR login used to be hand-rolled inline (~50 lines mirroring
 // useMusicQrLogin). The composable now owns open/close + polling + cleanup;
@@ -512,36 +528,6 @@ function handleNavigateFavorites() {
   }
 }
 
-async function handleSearch(query: string) {
-  const normalizedQuery = query.trim()
-  if (!normalizedQuery) {
-    resetSearch()
-    return
-  }
-  searchQuery.value = normalizedQuery
-  searchLoading.value = true
-  searchError.value = null
-  try {
-    const data = await searchMusicComplex(normalizedQuery)
-    complexResult.value = data || { songs: [], artists: [], albums: [] }
-  } catch (err) {
-    Logger.warn('handleSearch failed', err)
-    searchError.value = err instanceof Error ? err.message : '搜索失败，请稍后重试'
-    complexResult.value = null
-  } finally {
-    searchLoading.value = false
-  }
-}
-
-function resetSearch() {
-  searchQuery.value = ''
-  searchLoading.value = false
-  complexResult.value = null
-  if (activeView.value === 'search') {
-    navigateTo('home')
-  }
-}
-
 async function handleSelectPlaylist(playlist: MusicPlaylist) {
   await selectPlaylist(playlist)
   navigateTo('playlist-detail')
@@ -572,20 +558,19 @@ async function handleSelectAlbumFromSearch(album: MusicAlbum) {
   await handleSelectAlbum(album)
 }
 
-function handleSelectArtistFromAlbum() {
-  if (selectedAlbum.value?.artist_id) {
-    const artist: MusicArtist = {
-      id: selectedAlbum.value.artist_id,
-      name: selectedAlbum.value.artist || '',
-      avatar: '',
-      intro: '',
-      song_count: 0,
-      album_count: 0,
-      fan_count: 0,
-    }
-    handleSelectArtistDetail(artist)
-  }
-}
+// ponytail: artist/album resolution from a track or album context lives in
+// useMusicTrackNavigation. The fetch-then-navigate + error-toast pattern is
+// co-located; the view's select handlers are injected so this composable
+// doesn't reach into detail/navigation internals.
+const {
+  handleSelectArtistFromTrack,
+  handleSelectAlbumFromTrack,
+  handleSelectArtistFromAlbum,
+} = useMusicTrackNavigation({
+  selectedAlbum,
+  onSelectArtist: handleSelectArtistDetail,
+  onSelectAlbum: handleSelectAlbum,
+})
 
 function handlePlayAll(shuffle: boolean) {
   playAll(shuffle)
@@ -680,73 +665,8 @@ async function handleAddToPlaylist(track: MusicTrack) {
   await addToPlaylist(track)
 }
 
-async function handlePlayMv(track: MusicTrack) {
-  if (!track.album_audio_id) return
-  try {
-    const mvData = await getMusicTrackMv(track.album_audio_id)
-    const mv = mvData?.items?.[0]
-    if (!mv?.id) return
-
-    videoTitle.value = `${track.title} - ${track.artist}`
-    videoModalVisible.value = true
-    videoUrl.value = ''
-
-    const urlData = await getMusicVideoUrl(mv.id)
-    videoUrl.value = urlData?.url || ''
-  } catch (err) {
-    Logger.warn('handlePlayMv failed', err)
-    toast.error('MV 播放失败，请稍后重试')
-  }
-}
-
-function handlePlayArtistVideo(video: { id: string; name: string }) {
-  videoTitle.value = video.name
-  videoModalVisible.value = true
-  videoUrl.value = ''
-
-  getMusicVideoUrl(video.id)
-    .then((data) => {
-      videoUrl.value = data?.url || ''
-    })
-    .catch((err) => {
-      Logger.warn('handlePlayArtistVideo failed', err)
-      toast.error('MV 播放失败，请稍后重试')
-    })
-}
-
-function handleCloseVideoModal() {
-  videoModalVisible.value = false
-  videoUrl.value = ''
-}
-
 function handleSelectRelated(track: MusicTrack) {
   Logger.info('Select related tracks', track)
-}
-
-async function handleSelectArtistFromTrack(track: MusicTrack) {
-  if (!track.artist_id) return
-  try {
-    const data = await getMusicArtistDetail(track.artist_id)
-    if (data) {
-      handleSelectArtistDetail(data)
-    }
-  } catch (err) {
-    Logger.warn('handleSelectArtistFromTrack failed', err)
-    toast.error('歌手信息获取失败')
-  }
-}
-
-async function handleSelectAlbumFromTrack(track: MusicTrack) {
-  if (!track.album_id) return
-  try {
-    const data = await getMusicAlbumDetail(track.album_id)
-    if (data) {
-      handleSelectAlbum(data)
-    }
-  } catch (err) {
-    Logger.warn('handleSelectAlbumFromTrack failed', err)
-    toast.error('专辑信息获取失败')
-  }
 }
 
 async function handleLoadProfile() {

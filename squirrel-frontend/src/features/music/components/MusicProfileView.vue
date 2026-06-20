@@ -213,6 +213,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import MusicTrackList from './MusicTrackList.vue'
+import { formatRegTime } from '@/features/music/lib/musicFormatters'
 import type { MusicUserProfile, MusicUserPlaylist, MusicTrack, MusicAuthStatus } from '@/shared/api/music'
 
 const props = defineProps<{
@@ -246,14 +247,9 @@ const createdPlaylists = computed(() => props.userPlaylists.filter(pl => !pl.is_
 const collectedPlaylists = computed(() => props.userPlaylists.filter(pl => pl.is_collected))
 const currentProfileTracks = computed(() => activeTab.value === 'history' ? props.history : props.listenRank)
 
-function formatRegTime(val: string): string {
-  if (!val) return ''
-  if (/^\d+$/.test(val)) {
-    const d = new Date(Number(val) * 1000)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  }
-  return val.split(' ')[0] || val
-}
+// ponytail: formatRegTime (Kugou registration-time normaliser, handles both
+// epoch-seconds and datetime-string shapes) is imported from the shared
+// musicFormatters lib.
 </script>
 
 <style scoped>

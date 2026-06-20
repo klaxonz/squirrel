@@ -230,7 +230,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
@@ -239,10 +239,12 @@ import usePlaybackReporting from '../composables/usePlaybackReporting'
 import useVideoActionBar from '@/features/video/composables/useVideoActionBar'
 import useVideoClipMarkers from '@/features/video/composables/useVideoClipMarkers'
 import useVideoPlaybackShell from '../composables/useVideoPlaybackShell'
+import { useVideoDescriptionOverflow } from '../composables/useVideoDescriptionOverflow'
+import { useVideoSubscription } from '../composables/useVideoSubscription'
+import { useVideoShareMenu } from '../composables/useVideoShareMenu'
 import useVideoPageNavigation from '@/features/video/composables/useVideoPageNavigation'
 import { consumeVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { useGlobalVideoPlayer } from '@/features/playback/composables/useGlobalVideoPlayer'
-import { useToast } from '@/shared/components/toast/useToast'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/shared/stores/theme'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
@@ -253,7 +255,7 @@ import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
 import { Logger } from '@/shared/lib/logger'
 import useVideoInteraction from '@/features/video/composables/useVideoInteraction'
 import { usePlaylist } from '@/features/video/composables/usePlaylist'
-import { getSubscriptionStatus, saveRemoteVideo, subscribe, unsubscribe } from '@/shared/api'
+import { saveRemoteVideo } from '@/shared/api'
 import type { VideoPageVideo, VideoProfile } from '@/features/playback/types/videoPlayback'
 
 const route = useRoute()
@@ -307,15 +309,6 @@ const asideTabs = [
   { key: 'clips', label: '片段' },
   { key: 'playlist', label: '列表' },
 ]
-const descriptionExpanded = ref(false)
-const descriptionTextRef = ref<HTMLElement | null>(null)
-const hasDescriptionOverflow = ref(false)
-const isCheckingSubscription = ref(false)
-const isSubscriptionChecked = ref(false)
-const isSubscribed = ref(false)
-const isSubscribing = ref(false)
-const subscriptionId = ref<number | null>(null)
-let descriptionResizeObserver: ResizeObserver | null = null
 const remoteSaveByUrl = new Map<string, Promise<VideoPageVideo | null>>()
 let javdbMetadataRequestSeq = 0
 
@@ -380,37 +373,13 @@ watch(() => {
   if (!url) return
   await ensureLocalVideo(video.value)
 }, { immediate: true })
-
-const moreMenuOpen = ref(false)
-const moreMenuRef = ref<HTMLElement | null>(null)
-const toast = useToast()
-
-const handleShare = async () => {
-  const url = `${window.location.origin}/video/${route.params.videoId}`
-  try {
-    await navigator.clipboard.writeText(url)
-    toast.success('链接已复制到剪贴板')
-  } catch (err) {
-    Logger.warn('[VideoPlay] Failed to copy share link', err)
-    toast.error('复制失败，请手动复制链接')
-  }
-}
-
-const handleClickOutside = (e: MouseEvent) => {
-  if (moreMenuRef.value && !moreMenuRef.value.contains(e.target as Node)) {
-    moreMenuOpen.value = false
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-  void syncDescriptionOverflow()
+// ponytail: "more" dropdown open/close + click-outside lifecycle + share
+// action live in useVideoShareMenu. The document click listener + clipboard
+// fallback are owned there rather than alongside playback wiring.
+const { moreMenuOpen, moreMenuRef, handleShare } = useVideoShareMenu({
+  videoId: computed(() => route.params.videoId as string | number | null | undefined),
 })
 
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutside)
-  descriptionResizeObserver?.disconnect()
-})
 
 const { videoActions, videoOverflowActions, handleVideoAction } = useVideoActionBar({
   video,
@@ -467,22 +436,16 @@ const primaryVisibleActions = computed(() => {
   return videoActions.value.filter((action) => keys.includes(action.key))
 })
 
-const hasLongDescription = computed(() => hasDescriptionOverflow.value)
-
-const syncDescriptionOverflow = async () => {
-  await nextTick()
-  const el = descriptionTextRef.value
-  hasDescriptionOverflow.value = !!el && el.scrollHeight > el.clientHeight + 1
-}
-
-watch(() => video.value?.id, () => {
-  descriptionExpanded.value = false
-  void syncDescriptionOverflow()
-})
-
-watch(videoDescription, () => {
-  descriptionExpanded.value = false
-  void syncDescriptionOverflow()
+// ponytail: description expand/collapse + ResizeObserver overflow detection
+// lives in useVideoDescriptionOverflow. The measurement lifecycle + the two
+// reset watchers (video id / description text) are owned there.
+const {
+  descriptionTextRef,
+  descriptionExpanded,
+  hasLongDescription,
+} = useVideoDescriptionOverflow({
+  videoId: computed(() => video.value?.id),
+  description: videoDescription,
 })
 
 watch(shouldResolveJavdbMetadata, async (shouldResolve) => {
@@ -509,25 +472,19 @@ watch(shouldResolveJavdbMetadata, async (shouldResolve) => {
   }
 }, { immediate: true })
 
-watch(descriptionTextRef, (el) => {
-  descriptionResizeObserver?.disconnect()
-  descriptionResizeObserver = null
-
-  if (el) {
-    descriptionResizeObserver = new ResizeObserver(() => {
-      if (!descriptionExpanded.value) void syncDescriptionOverflow()
-    })
-    descriptionResizeObserver.observe(el)
-  }
-
-  void syncDescriptionOverflow()
-})
-
-const primarySubscription = computed(() => {
-  const v = video.value
-  if (!v) return null
-  return v.subscriptions?.[0] || v.actors?.[0] || null
-})
+// ponytail: subscription status + toggle live in useVideoSubscription.
+// primarySubscription / primarySubscriptionUrl are returned because the view
+// also renders the avatar and de-duplicates the actor list against the primary.
+const {
+  primarySubscription,
+  primarySubscriptionUrl,
+  isCheckingSubscription,
+  isSubscribing,
+  isSubscriptionChecked,
+  isSubscribed,
+  subscriptionButtonText,
+  handleSubscribe,
+} = useVideoSubscription({ video })
 
 const displayedVideoActors = computed(() => {
   const primary = primarySubscription.value
@@ -546,63 +503,6 @@ const displayedVideoActors = computed(() => {
     return !(primaryName && actorName && actorName === primaryName)
   })
 })
-
-const primarySubscriptionUrl = computed(() => String(primarySubscription.value?.url || '').trim())
-
-const subscriptionButtonText = computed(() => {
-  if (isCheckingSubscription.value) return '检查中'
-  if (isSubscribing.value) return '订阅中'
-  return isSubscriptionChecked.value && isSubscribed.value ? '取消订阅' : '订阅'
-})
-
-const refreshSubscriptionStatus = async (url: string) => {
-  isSubscribed.value = false
-  isSubscriptionChecked.value = false
-  subscriptionId.value = null
-  if (!url) return
-
-  isCheckingSubscription.value = true
-  try {
-    const data = await getSubscriptionStatus(url)
-    if (url !== primarySubscriptionUrl.value) return
-    isSubscribed.value = data?.is_subscribed === true
-    subscriptionId.value = data?.subscription_id ?? null
-    isSubscriptionChecked.value = true
-  } catch {
-    if (url !== primarySubscriptionUrl.value) return
-    // silent — subscription status check failure just leaves it unchecked
-  } finally {
-    isCheckingSubscription.value = false
-  }
-}
-
-watch(primarySubscriptionUrl, async (url) => {
-  await refreshSubscriptionStatus(url)
-}, { immediate: true })
-
-const handleSubscribe = async () => {
-  const url = primarySubscriptionUrl.value
-  if (!url || isSubscribing.value) return
-
-  isSubscribing.value = true
-  try {
-    const data = isSubscribed.value && subscriptionId.value
-      ? await unsubscribe(subscriptionId.value)
-      : await subscribe(url)
-
-    if (!isSubscribed.value) {
-      isSubscribed.value = data?.is_subscribed === true
-      subscriptionId.value = data?.subscription_id ?? null
-      isSubscriptionChecked.value = true
-    }
-
-    await refreshSubscriptionStatus(url)
-  } catch {
-    // silent — a failed subscribe/unsubscribe leaves the toggle unchanged
-  } finally {
-    isSubscribing.value = false
-  }
-}
 
 const {
   videoPlayerHostRef,

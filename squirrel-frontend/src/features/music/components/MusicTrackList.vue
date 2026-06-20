@@ -144,11 +144,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
+import { useTrackSelection } from '@/features/music/composables/useTrackSelection'
+import { useTrackContextMenu } from '@/features/music/composables/useTrackContextMenu'
+import { formatDuration } from '@/features/music/lib/musicFormatters'
 import type { MusicTrack } from '@/shared/api/music'
 
 const props = withDefaults(defineProps<{
@@ -175,151 +178,48 @@ const emit = defineEmits<{
 
 const player = useMusicPlayerStore()
 
-const selectionMode = ref(false)
-const selectedTracks = ref<Set<string>>(new Set())
-
-const contextMenu = reactive({
-  visible: false,
-  x: 0,
-  y: 0,
-  track: null as MusicTrack | null,
+// ponytail: multi-track selection state machine + batch ops live in
+// useTrackSelection. Selection is tracked by hash so it survives tracks-array
+// swaps; the composable owns the "auto-exit when the set empties" policy.
+const {
+  selectionMode,
+  selectedTracks,
+  isAllSelected,
+  isPlaying,
+  handleRowClick,
+  toggleSelect,
+  toggleSelectAll,
+  exitSelectionMode,
+  handlePlaySelected,
+  handleAddToPlaylist,
+} = useTrackSelection({
+  tracks: computed(() => props.tracks),
+  player,
+  onAddToPlaylist: (tracks) => emit('add-tracks-to-playlist', tracks),
 })
 
-const contextMenuStyle = computed(() => ({
-  left: `${contextMenu.x}px`,
-  top: `${contextMenu.y}px`,
-}))
-
-const isAllSelected = computed(() => {
-  if (props.tracks.length === 0) return false
-  return props.tracks.every(t => selectedTracks.value.has(t.hash))
+// ponytail: right-click context menu (open/close + position + click-outside
+// lifecycle) + per-action handlers live in useTrackContextMenu. The
+// navigation/playlist actions are injected so the composable stays decoupled
+// from this component's emit surface.
+const {
+  contextMenu,
+  contextMenuStyle,
+  handleContextMenu,
+  handleContextPlay,
+  handleContextInsertNext,
+  handleContextAddToPlaylist,
+  handleContextSelectArtist,
+  handleContextSelectAlbum,
+} = useTrackContextMenu({
+  player,
+  onAddToPlaylist: (track) => emit('add-to-playlist', track),
+  onSelectArtist: (track) => emit('select-artist', track),
+  onSelectAlbum: (track) => emit('select-album', track),
 })
 
-function isPlaying(track: MusicTrack): boolean {
-  return player.currentTrack?.hash === track.hash
-}
-
-function handleRowClick(track: MusicTrack, _event: MouseEvent) {
-  if (selectionMode.value) {
-    toggleSelect(track)
-  } else {
-    player.playTrack(track)
-  }
-}
-
-function toggleSelect(track: MusicTrack) {
-  if (selectedTracks.value.has(track.hash)) {
-    selectedTracks.value.delete(track.hash)
-    if (selectedTracks.value.size === 0) {
-      selectionMode.value = false
-    }
-  } else {
-    selectedTracks.value.add(track.hash)
-    selectionMode.value = true
-  }
-}
-
-function toggleSelectAll() {
-  if (isAllSelected.value) {
-    selectedTracks.value.clear()
-    selectionMode.value = false
-  } else {
-    props.tracks.forEach(t => selectedTracks.value.add(t.hash))
-    selectionMode.value = true
-  }
-}
-
-function exitSelectionMode() {
-  selectedTracks.value.clear()
-  selectionMode.value = false
-}
-
-function handlePlaySelected() {
-  const tracks = props.tracks.filter(t => selectedTracks.value.has(t.hash))
-  if (tracks.length > 0) {
-    player.playQueue(tracks, 0)
-    exitSelectionMode()
-  }
-}
-
-function handleAddToPlaylist() {
-  const tracks = props.tracks.filter(t => selectedTracks.value.has(t.hash))
-  if (tracks.length > 0) {
-    emit('add-tracks-to-playlist', tracks)
-    exitSelectionMode()
-  }
-}
-
-function handleContextMenu(track: MusicTrack, event: MouseEvent) {
-  contextMenu.visible = true
-  contextMenu.x = event.clientX
-  contextMenu.y = event.clientY
-  contextMenu.track = track
-}
-
-function closeContextMenu() {
-  contextMenu.visible = false
-  contextMenu.track = null
-}
-
-function handleContextPlay() {
-  if (contextMenu.track) {
-    player.playTrack(contextMenu.track)
-  }
-  closeContextMenu()
-}
-
-function handleContextInsertNext() {
-  if (contextMenu.track) {
-    player.insertNext(contextMenu.track)
-  }
-  closeContextMenu()
-}
-
-function handleContextAddToPlaylist() {
-  if (contextMenu.track) {
-    emit('add-to-playlist', contextMenu.track)
-  }
-  closeContextMenu()
-}
-
-function handleContextSelectArtist() {
-  if (contextMenu.track && contextMenu.track.artist_id) {
-    emit('select-artist', contextMenu.track)
-  }
-  closeContextMenu()
-}
-
-function handleContextSelectAlbum() {
-  if (contextMenu.track && contextMenu.track.album_id) {
-    emit('select-album', contextMenu.track)
-  }
-  closeContextMenu()
-}
-
-function handleClickOutside(event: MouseEvent) {
-  if (contextMenu.visible) {
-    const target = event.target as HTMLElement
-    if (!target.closest('.music-context-menu')) {
-      closeContextMenu()
-    }
-  }
-}
-
-function formatDuration(seconds: number): string {
-  if (!seconds || isNaN(seconds)) return '--:--'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
+// ponytail: formatDuration is now imported from the shared musicFormatters lib
+// (deduped from 5 components).
 </script>
 
 <style scoped>

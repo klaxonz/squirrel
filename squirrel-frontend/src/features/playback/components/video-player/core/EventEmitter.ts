@@ -5,18 +5,30 @@
 
 import { playerLogger, type PlayerLogger } from './logger'
 
-// ponytail: generic defaults kept as any deliberately. EventMap is a constraint
-// for user-supplied event->payload maps; tightening to unknown breaks the
-// PlayerEvents constraint downstream — concrete interfaces like PlayerEvents
-// don't carry a string index signature, so they fail `extends Record<string,
-// unknown>`. The concrete emitter is always instantiated with a typed Events
-// map, so these defaults only apply to the untyped fallback case.
-export type EventHandler<T = any> = (data: T) => void
-export type EventMap = Record<string, any>
+// EventMap is the constraint for user-supplied event→payload maps. The default
+// `Record<string, unknown>` keeps the untyped fallback sound, while the class
+// constraint is `object` (not `Record<string, unknown>`) so concrete interfaces
+// like PlayerEvents satisfy it — interfaces don't carry a string index signature,
+// so `extends Record<string, unknown>` rejects them. Every concrete emitter in
+// this codebase is instantiated with a typed Events map (e.g. PlayerEvents), so
+// the untyped default is only the fallback. `unknown` (not `any`) propagates:
+// callers of `on`/`emit` get checked payloads for typed maps, and the untyped
+// fallback forces the consumer to narrow rather than silently accepting anything.
+export type EventHandler<T = unknown> = (data: T) => void
+export type EventMap = Record<string, unknown>
 
-export class EventEmitter<Events extends EventMap = EventMap> {
-  private listeners: Map<keyof Events, Set<EventHandler>> = new Map()
-  private onceListeners: Map<keyof Events, Set<EventHandler>> = new Map()
+// Erased handler storage. A single `Map<keyof Events, Set<EventHandler<Events[K]>>>`
+// isn't expressible in TypeScript (a heterogeneous Map can't be parameterised per
+// key), so storage holds the type-erased union and each `on`/`emit`/`off` site is
+// the single, well-typed (de)serialisation boundary. This is the standard pattern
+// used by strongly-typed TS emitters (mitt, nanoevents): the public API is fully
+// generic; only the internal Set is erased. The cast is the soundness seam, not a
+// lossy `any` — handlers are always read back through the same `Events[K]` lens.
+type StoredHandler<Events extends object> = EventHandler<Events[keyof Events]>
+
+export class EventEmitter<Events extends object = EventMap> {
+  private listeners: Map<keyof Events, Set<StoredHandler<Events>>> = new Map()
+  private onceListeners: Map<keyof Events, Set<StoredHandler<Events>>> = new Map()
   private logger: PlayerLogger
 
   constructor() {
@@ -30,7 +42,7 @@ export class EventEmitter<Events extends EventMap = EventMap> {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set())
     }
-    this.listeners.get(event)!.add(handler)
+    this.listeners.get(event)!.add(handler as StoredHandler<Events>)
     return this
   }
 
@@ -41,7 +53,7 @@ export class EventEmitter<Events extends EventMap = EventMap> {
     if (!this.onceListeners.has(event)) {
       this.onceListeners.set(event, new Set())
     }
-    this.onceListeners.get(event)!.add(handler)
+    this.onceListeners.get(event)!.add(handler as StoredHandler<Events>)
     return this
   }
 
@@ -50,8 +62,8 @@ export class EventEmitter<Events extends EventMap = EventMap> {
    */
   off<K extends keyof Events>(event: K, handler?: EventHandler<Events[K]>): this {
     if (handler) {
-      this.listeners.get(event)?.delete(handler)
-      this.onceListeners.get(event)?.delete(handler)
+      this.listeners.get(event)?.delete(handler as StoredHandler<Events>)
+      this.onceListeners.get(event)?.delete(handler as StoredHandler<Events>)
     } else {
       this.listeners.delete(event)
       this.onceListeners.delete(event)
@@ -63,10 +75,17 @@ export class EventEmitter<Events extends EventMap = EventMap> {
    * 触发事件
    */
   emit<K extends keyof Events>(event: K, data?: Events[K]): this {
+    // `data?` widens to `Events[K] | undefined`; for void-payload events (e.g.
+    // `play: void`) callers legitimately omit it. Dispatch through the same
+    // erased handler lens used at registration so the optional-ness stays inside
+    // this single seam rather than leaking into the stored-handler type.
+    const dispatch = (handler: StoredHandler<Events>) =>
+      (handler as EventHandler<Events[K]>)(data as Events[K])
+
     // 执行普通监听器
     this.listeners.get(event)?.forEach(handler => {
       try {
-        handler(data)
+        dispatch(handler)
       } catch (err) {
         this.logger.error(`[EventEmitter] Error in handler for "${String(event)}"`, err)
       }
@@ -77,7 +96,7 @@ export class EventEmitter<Events extends EventMap = EventMap> {
     if (onceHandlers) {
       onceHandlers.forEach(handler => {
         try {
-          handler(data)
+          dispatch(handler)
         } catch (err) {
           this.logger.error(`[EventEmitter] Error in once handler for "${String(event)}"`, err)
         }
