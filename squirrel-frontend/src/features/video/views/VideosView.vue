@@ -46,7 +46,7 @@
         </h2>
 
         <Select :model-value="remoteSite || 'all'" @update:model-value="updateRemoteSite">
-          <SelectTrigger class="h-8 w-auto min-w-[120px] bg-accent/40 border-0 text-[12px] font-bold rounded-full transition-colors hover:bg-accent/60">
+          <SelectTrigger class="h-8 w-auto min-w-[120px] bg-accent/40 border-0 text-xs font-bold rounded-full transition-colors hover:bg-accent/60">
             <SelectValue placeholder="全部站点" />
           </SelectTrigger>
           <SelectContent class="border-border/10 bg-background/70 backdrop-blur-2xl shadow-2xl rounded-md min-w-[140px]">

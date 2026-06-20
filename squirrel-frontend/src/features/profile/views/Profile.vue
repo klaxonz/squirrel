@@ -17,7 +17,7 @@
           />
           <div 
             v-else 
-            class="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-violet-500/10 text-xl font-bold text-primary"
+            class="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 text-xl font-bold text-primary"
           >
             <template v-if="userInitial">{{ userInitial }}</template>
             <AppIcon v-else name="user" class="h-6 w-6 text-primary/75" />
@@ -33,7 +33,7 @@
           <h2 class="app-h2">
             {{ userStore.currentUser?.nickname || '未设置昵称' }}
           </h2>
-          <div v-if="createdAt" class="flex items-center gap-1 text-[10px] text-muted-foreground/60">
+          <div v-if="createdAt" class="flex items-center gap-1 text-2xs text-muted-foreground/60">
             <AppIcon name="time" class="h-3 w-3" />
             <span>注册于 {{ createdAt }}</span>
           </div>
@@ -56,7 +56,7 @@
               <div class="space-y-1.5">
                 <div class="flex items-center justify-between">
                   <label class="text-xs font-medium text-muted-foreground">昵称</label>
-                  <span class="text-[10px] text-muted-foreground/40 font-mono">{{ form.nickname.length }}/50</span>
+                  <span class="text-2xs text-muted-foreground/40 font-mono">{{ form.nickname.length }}/50</span>
                 </div>
                 <div class="relative">
                   <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground/50">
@@ -105,14 +105,14 @@
                   <p class="text-xs font-semibold text-foreground">头像实时预览</p>
                   <span 
                     v-if="avatarError" 
-                    class="inline-flex items-center gap-1 rounded bg-destructive/5 px-1.5 py-0.5 text-[9px] font-medium text-destructive border border-destructive/10"
+                    class="inline-flex items-center gap-1 rounded bg-destructive/5 px-1.5 py-0.5 text-3xs font-medium text-destructive border border-destructive/10"
                   >
                     <AppIcon name="warning" class="h-2.5 w-2.5" />
                     图片加载失败，请检查链接
                   </span>
                   <span 
                     v-else 
-                    class="inline-flex items-center gap-1 rounded bg-emerald-500/5 px-1.5 py-0.5 text-[9px] font-medium text-emerald-600 border border-emerald-500/10"
+                    class="inline-flex items-center gap-1 rounded bg-success/5 px-1.5 py-0.5 text-3xs font-medium text-success border border-success/10"
                   >
                     <AppIcon name="check" class="h-2.5 w-2.5" />
                     图片加载成功
@@ -141,7 +141,7 @@
               
               <span 
                 v-if="saved" 
-                class="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 animate-in fade-in duration-300"
+                class="inline-flex items-center gap-1 text-xs font-medium text-success animate-in fade-in duration-300"
               >
                 <AppIcon name="check" class="h-3.5 w-3.5" />
                 所有更改已保存

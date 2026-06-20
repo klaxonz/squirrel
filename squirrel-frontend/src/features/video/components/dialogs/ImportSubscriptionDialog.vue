@@ -127,7 +127,7 @@
 
         <section v-else-if="step === 3" class="space-y-5 py-3">
           <div class="import-dialog__result-icon">
-            <AppIcon name="check" class="h-8 w-8 text-emerald-500" />
+            <AppIcon name="check" class="h-8 w-8 text-success" />
           </div>
 
           <div class="text-center">

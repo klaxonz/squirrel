@@ -12,7 +12,7 @@
           />
           <div>
             <DialogTitle class="text-sm font-medium text-foreground">站点配置</DialogTitle>
-            <DialogDescription class="text-[11px] text-muted-foreground">{{ siteEditorForm.slug }}</DialogDescription>
+            <DialogDescription class="text-xs text-muted-foreground">{{ siteEditorForm.slug }}</DialogDescription>
           </div>
         </div>
         <DialogClose as-child>
@@ -27,18 +27,18 @@
 
         <!-- 基本参数 -->
         <section class="mb-5">
-          <h4 class="text-[11px] font-medium text-muted-foreground uppercase mb-3">基本参数</h4>
+          <h4 class="text-xs font-medium text-muted-foreground uppercase mb-3">基本参数</h4>
           <div class="space-y-2.5">
             <div class="flex items-center gap-2">
-              <label class="text-[11px] text-muted-foreground w-16 shrink-0" for="site-editor-label">显示名称</label>
+              <label class="text-xs text-muted-foreground w-16 shrink-0" for="site-editor-label">显示名称</label>
               <Input id="site-editor-label" v-model="siteEditorForm.label" placeholder="展示给用户的名称" class="flex-1 h-7 text-xs" />
             </div>
             <div class="flex items-center gap-2">
-              <label class="text-[11px] text-muted-foreground w-16 shrink-0" for="site-editor-aliases">站点别名</label>
+              <label class="text-xs text-muted-foreground w-16 shrink-0" for="site-editor-aliases">站点别名</label>
               <Textarea id="site-editor-aliases" v-model="siteEditorForm.aliasesText" :rows="2" placeholder="每行一个别名" class="flex-1 text-xs resize-none" />
             </div>
             <div class="flex items-center gap-2">
-              <label class="text-[11px] text-muted-foreground w-16 shrink-0" for="site-editor-domains">域名</label>
+              <label class="text-xs text-muted-foreground w-16 shrink-0" for="site-editor-domains">域名</label>
               <Textarea
                 id="site-editor-domains"
                 :model-value="siteEditorForm.domainsText"
@@ -56,17 +56,17 @@
 
         <!-- 采集策略 -->
         <section class="mb-5">
-          <h4 class="text-[11px] font-medium text-muted-foreground uppercase mb-3">采集策略</h4>
+          <h4 class="text-xs font-medium text-muted-foreground uppercase mb-3">采集策略</h4>
           <div class="space-y-2.5">
             <div class="flex items-center gap-2">
-              <label class="text-[11px] text-muted-foreground w-16 shrink-0" for="site-editor-test-url">测试地址</label>
+              <label class="text-xs text-muted-foreground w-16 shrink-0" for="site-editor-test-url">测试地址</label>
               <Input id="site-editor-test-url" v-model="siteEditorForm.testUrl" placeholder="用于连通性检测的地址" class="flex-1 h-7 text-xs" />
             </div>
             <div class="flex items-center gap-2">
-              <label class="text-[11px] text-muted-foreground w-16 shrink-0">频率限制</label>
+              <label class="text-xs text-muted-foreground w-16 shrink-0">频率限制</label>
               <div class="flex items-center gap-2 flex-1">
                 <Switch :checked="!!siteEditorForm.rateLimitEnabled" @update:checked="(v) => setSiteEditorBooleanField('rateLimitEnabled', v)" />
-                <span v-if="siteEditorForm.rateLimitEnabled" class="flex items-center gap-1.5 text-[11px]">
+                <span v-if="siteEditorForm.rateLimitEnabled" class="flex items-center gap-1.5 text-xs">
                   <Input v-model="siteEditorForm.rateLimitMin" type="number" step="0.1" class="w-16 h-6 text-xs" placeholder="最小" />
                   <span class="text-muted-foreground/60">~</span>
                   <Input v-model="siteEditorForm.rateLimitMax" type="number" step="0.1" class="w-16 h-6 text-xs" placeholder="最大" />
@@ -79,7 +79,7 @@
 
         <!-- 内容标记 -->
         <section>
-          <h4 class="text-[11px] font-medium text-muted-foreground uppercase mb-3">内容标记</h4>
+          <h4 class="text-xs font-medium text-muted-foreground uppercase mb-3">内容标记</h4>
           <div class="space-y-0.5">
             <label
               v-for="meta in [

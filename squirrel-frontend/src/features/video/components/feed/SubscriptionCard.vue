@@ -15,7 +15,7 @@
         </div>
         <div
           v-if="subscription.unread_count > 0"
-          class="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground ring-2 ring-background shadow-sm"
+          class="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground ring-2 ring-background shadow-sm"
         >
           {{ subscription.unread_count > 99 ? '99+' : subscription.unread_count }}
         </div>
@@ -29,7 +29,7 @@
           <button
             type="button"
             class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-all"
-            :class="subscription.is_special_followed ? 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20' : 'text-muted-foreground/30 hover:bg-accent hover:text-foreground'"
+            :class="subscription.is_special_followed ? 'text-warning bg-warning/10 hover:bg-warning/10' : 'text-muted-foreground/30 hover:bg-accent hover:text-foreground'"
             aria-label="切换特别关注"
             @click.stop="$emit('toggleSpecial', subscription)"
           >
@@ -39,7 +39,7 @@
         <div class="mt-1.5 flex items-center gap-2">
           <SiteTag :site="subscription.site" class="origin-left scale-[0.85] opacity-80" />
           <span class="text-xs font-semibold text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md">{{ subscription.total_videos || 0 }} 视频</span>
-          <div v-if="subscription.is_nsfw" class="shrink-0 rounded-md bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold text-destructive ml-auto">
+          <div v-if="subscription.is_nsfw" class="shrink-0 rounded-md bg-destructive/10 px-1.5 py-0.5 text-2xs font-bold text-destructive ml-auto">
             18+
           </div>
         </div>

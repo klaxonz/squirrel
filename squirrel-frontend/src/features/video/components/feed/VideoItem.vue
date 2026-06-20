@@ -50,7 +50,7 @@
       </div>
 
       <!-- Overlays -->
-      <span v-if="video.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium tabular-nums text-white backdrop-blur-sm transition-opacity group-hover:opacity-0">
+      <span v-if="video.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-2xs font-medium tabular-nums text-white backdrop-blur-sm transition-opacity group-hover:opacity-0">
         {{ formatDuration(video.duration) }}
       </span>
 
@@ -81,13 +81,13 @@
            :class="{ 'min-h-[2.6em]': layout === 'grid' }">
         <h3 :class="[
           'font-semibold leading-[1.3] text-foreground/90 group-hover:text-primary transition-colors tracking-tight',
-          layout === 'list' ? 'text-[16px] line-clamp-2 md:line-clamp-3 mb-1' : 'text-[14px] line-clamp-2'
+          layout === 'list' ? 'text-base line-clamp-2 md:line-clamp-3 mb-1' : 'text-sm line-clamp-2'
         ]">
           {{ video.title }}
         </h3>
 
         <div class="flex flex-col gap-0.5">
-          <div class="flex items-center gap-1.5 text-[12px] text-muted-foreground/80 font-medium">
+          <div class="flex items-center gap-1.5 text-xs text-muted-foreground/80 font-medium">
             <div v-if="layout === 'list' && showAvatar && displayAvatars.length" class="shrink-0 mr-1">
               <SubscriptionAvatar
                 :src="displayAvatars[0].avatar"
@@ -99,13 +99,13 @@
             <span class="hover:text-foreground transition-colors truncate" @click.stop="goToSubscription(primarySubscriptionId)">
               {{ displayNames }}
             </span>
-            <span v-if="video.site" class="shrink-0 px-1 py-px rounded-[4px] bg-accent/50 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{{ video.site }}</span>
+            <span v-if="video.site" class="shrink-0 px-1 py-px rounded bg-accent/50 text-2xs font-bold text-muted-foreground uppercase tracking-wider">{{ video.site }}</span>
           </div>
-          <div class="flex items-center gap-1 text-[11px] text-muted-foreground/70 font-medium">
+          <div class="flex items-center gap-1 text-xs text-muted-foreground/70 font-medium">
             <span>{{ displayDateText }}</span>
             <span v-if="layout === 'list' && video.duration" class="ml-2 font-mono bg-muted px-1 rounded">{{ formatDuration(video.duration) }}</span>
           </div>
-          <div v-if="layout === 'list' && video.description" class="hidden md:block mt-2 text-[12px] text-muted-foreground/70 line-clamp-2">
+          <div v-if="layout === 'list' && video.description" class="hidden md:block mt-2 text-xs text-muted-foreground/70 line-clamp-2">
             {{ video.description }}
           </div>
         </div>

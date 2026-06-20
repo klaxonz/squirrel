@@ -258,7 +258,7 @@
                           <AppIcon
                             :name="runtime.siteLoginStatus?.logged_in ? 'statusSuccess' : 'user'"
                             class="h-4 w-4"
-                            :class="{ 'text-emerald-500': runtime.siteLoginStatus?.logged_in }"
+                            :class="{ 'text-success': runtime.siteLoginStatus?.logged_in }"
                           />
                         </Button>
                       </DropdownMenuTrigger>

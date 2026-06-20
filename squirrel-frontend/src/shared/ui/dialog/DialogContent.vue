@@ -20,9 +20,9 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
 <template>
   <DialogPortal>
     <DialogOverlay
-      class="fixed inset-0 z-[100] bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200"
+      class="fixed inset-0 z-sidebar bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200"
     />
-    <div class="fixed inset-0 z-[100] grid place-items-center p-4 pointer-events-none">
+    <div class="fixed inset-0 z-sidebar grid place-items-center p-4 pointer-events-none">
       <DialogContent
         v-bind="forwarded"
         :class="cn(

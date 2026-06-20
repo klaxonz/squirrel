@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-screen overflow-hidden bg-background">
     <!-- 1. Desktop Title Bar (Fixed Height) -->
-    <DesktopTitleBar v-if="isDesktop" class="shrink-0 z-[100]" />
+    <DesktopTitleBar v-if="isDesktop" class="shrink-0 z-sidebar" />
 
     <div class="flex flex-1 min-h-0 overflow-hidden">
       <!-- 2. Sidebar (Fixed Width, Full Height) -->

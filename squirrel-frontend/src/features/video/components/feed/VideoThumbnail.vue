@@ -16,7 +16,7 @@
     <span class="flex size-10 items-center justify-center rounded-md border border-border/50 bg-background/55 text-muted-foreground/50 shadow-sm">
       <AppIcon name="imageOff" class="size-5" :stroke-width="1.75" />
     </span>
-    <span class="mt-2 max-w-[80%] truncate text-[11px] font-medium text-muted-foreground/60">
+    <span class="mt-2 max-w-[80%] truncate text-xs font-medium text-muted-foreground/60">
       {{ thumbnailSrc ? '封面加载失败' : '暂无封面' }}
     </span>
   </div>

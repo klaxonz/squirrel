@@ -4,29 +4,29 @@
     class="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-border/30 bg-popover text-popover-foreground p-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-3 animate-fade-in"
   >
     <div class="space-y-1">
-      <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">排版字体</span>
+      <span class="text-3xs font-bold text-muted-foreground uppercase tracking-wider block">排版字体</span>
       <div class="grid grid-cols-2 gap-1 bg-accent/20 p-0.5 rounded-lg border border-border/5">
         <button
           @click="select('sans')"
-          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
+          class="py-1 text-2xs font-semibold rounded-md transition-all text-center cursor-pointer"
           :class="fontFamily === 'sans' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
           title="极简现代 (Inter)"
         >Inter</button>
         <button
           @click="select('outfit')"
-          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center cursor-pointer"
+          class="py-1 text-2xs font-semibold rounded-md transition-all text-center cursor-pointer"
           :class="fontFamily === 'outfit' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
           title="优雅圆润 (Outfit)"
         >Outfit</button>
         <button
           @click="select('serif')"
-          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
+          class="py-1 text-2xs font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
           :class="fontFamily === 'serif' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
           title="经典衬线 (Georgia)"
         >Georgia</button>
         <button
           @click="select('lora')"
-          class="py-1 text-[10px] font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
+          class="py-1 text-2xs font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
           :class="fontFamily === 'lora' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
           title="人文阅读 (Lora)"
         >Lora</button>
@@ -35,8 +35,8 @@
 
     <div class="space-y-1">
       <div class="flex items-center justify-between">
-        <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">字号大小</span>
-        <span class="text-[10px] font-semibold tabular-nums text-foreground/80">{{ fontSize }}px</span>
+        <span class="text-3xs font-bold text-muted-foreground uppercase tracking-wider block">字号大小</span>
+        <span class="text-2xs font-semibold tabular-nums text-foreground/80">{{ fontSize }}px</span>
       </div>
       <div class="flex items-center gap-1">
         <button

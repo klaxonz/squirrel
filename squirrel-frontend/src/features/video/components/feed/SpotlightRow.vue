@@ -2,7 +2,7 @@
   <section v-if="items.length > 0 || loading" class="group/container mb-8 px-6 pt-8">
     <div class="mb-5 flex items-center justify-between">
       <h2 class="app-h3 flex items-center gap-2">
-        <AppIcon name="star" class="size-5 fill-amber-400 text-amber-400" />
+        <AppIcon name="star" class="size-5 fill-primary text-primary" />
         精选推荐
       </h2>
       <div class="flex gap-1 opacity-0 transition-opacity duration-200 group-hover/container:opacity-100" :class="{ 'opacity-100': canScrollLeft || canScrollRight }">

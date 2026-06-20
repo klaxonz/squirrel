@@ -1,7 +1,7 @@
 <template>
   <router-link
     :to="item.path"
-    class="group relative flex items-center gap-3 h-9 px-3 rounded-lg text-[13px] transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+    class="group relative flex items-center gap-3 h-9 px-3 rounded-lg text-sm transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
     :class="[
       isActive
         ? 'bg-accent text-foreground font-semibold'

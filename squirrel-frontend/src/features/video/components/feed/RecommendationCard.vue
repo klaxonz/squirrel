@@ -24,7 +24,7 @@
       <!-- Optional duration badge -->
       <div
         v-if="video.duration && showDuration"
-        class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium tabular-nums text-white backdrop-blur-sm"
+        class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-2xs font-medium tabular-nums text-white backdrop-blur-sm"
       >
         {{ formatDuration(video.duration) }}
       </div>

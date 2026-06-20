@@ -4,11 +4,11 @@
       <router-link
         v-if="item.to"
         :to="item.to"
-        class="text-[12px] font-medium text-muted-foreground/60 hover:text-foreground transition-colors"
+        class="text-xs font-medium text-muted-foreground/60 hover:text-foreground transition-colors"
       >
         {{ item.label }}
       </router-link>
-      <span v-else class="text-[12px] font-semibold text-foreground/80">
+      <span v-else class="text-xs font-semibold text-foreground/80">
         {{ item.label }}
       </span>
       <AppIcon

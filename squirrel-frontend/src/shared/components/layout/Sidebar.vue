@@ -7,7 +7,7 @@
         <div class="w-8 h-8 text-primary-foreground rounded-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-105 group-active:scale-95 bg-gradient-to-br shadow-[0_2px_10px_hsl(var(--primary)/0.35)]" style="background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(28 80% 46%));">
           <AppIcon name="brand" class="w-4 h-4" />
         </div>
-        <span class="text-[16px] font-bold tracking-tight text-foreground font-display">归仓</span>
+        <span class="text-base font-bold tracking-tight text-foreground font-display">归仓</span>
       </router-link>
     </div>
 
@@ -18,7 +18,7 @@
     >
       <div v-for="group in NAV_GROUPS" :key="group.key">
         <div class="px-2 mb-2 flex items-center justify-between">
-          <span class="text-[11px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
+          <span class="text-xs font-semibold tracking-wider text-muted-foreground/60 uppercase">
             {{ group.label }}
           </span>
         </div>

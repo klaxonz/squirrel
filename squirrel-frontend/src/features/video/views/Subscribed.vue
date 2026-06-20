@@ -54,7 +54,7 @@
           <button
             type="button"
             class="flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-transparent bg-muted/40 px-3 text-xs font-semibold transition-all outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
-            :class="specialFilter === 'yes' ? 'border-amber-400/30 bg-amber-400/10 text-amber-600' : 'text-muted-foreground hover:text-foreground'"
+            :class="specialFilter === 'yes' ? 'border-amber-400/30 bg-warning/10 text-warning' : 'text-muted-foreground hover:text-foreground'"
             :aria-pressed="specialFilter === 'yes'"
             @click="toggleSpecialFilter"
           >
@@ -78,7 +78,7 @@
         >
           <div class="relative shrink-0">
             <SubscriptionAvatar :src="sub.avatar" :name="sub.name" size="md" :class="activeChannelId === sub.id ? 'ring-2 ring-primary/30' : ''" />
-            <div v-if="sub.unread_count > 0" class="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background shadow-sm">
+            <div v-if="sub.unread_count > 0" class="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-2xs font-bold text-primary-foreground ring-2 ring-background shadow-sm">
               {{ sub.unread_count > 99 ? '99+' : sub.unread_count }}
             </div>
           </div>
@@ -90,7 +90,7 @@
           <button
             v-if="sub.is_special_followed"
             type="button"
-            class="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg text-amber-500 hover:bg-amber-500/10 transition-colors"
+            class="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg text-warning hover:bg-warning/10 transition-colors"
             aria-label="取消特别关注"
             @click.stop="toggleSpecialFollow(sub)"
           >
@@ -139,11 +139,11 @@
         <div class="flex min-w-0 items-center gap-4">
           <div v-if="activeChannel" class="shrink-0 relative group cursor-pointer" @click="openActiveChannelDetail">
             <SubscriptionAvatar :src="activeChannel.avatar" :name="activeChannel.name" size="xl" class="ring-2 ring-background shadow-md transition-transform group-hover:scale-105" />
-            <div v-if="activeChannel.is_special_followed" class="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 text-white ring-2 ring-background shadow-sm">
+            <div v-if="activeChannel.is_special_followed" class="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-warning/10 text-white ring-2 ring-background shadow-sm">
               <AppIcon name="star" class="h-3 w-3 fill-current" />
             </div>
           </div>
-          <div v-else class="flex h-[3.25rem] w-[3.25rem] shrink-0 items-center justify-center rounded-[18px] bg-primary/10 text-primary">
+          <div v-else class="flex h-[3.25rem] w-[3.25rem] shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <AppIcon name="library" class="h-6 w-6" />
           </div>
 
@@ -156,7 +156,7 @@
               <div v-if="canOpenRemoteChannel" class="flex shrink-0 rounded-lg border border-border/40 bg-muted/50 p-0.5 shadow-sm">
                 <button
                   type="button"
-                  class="inline-flex h-6 items-center gap-1.5 rounded-[6px] px-2.5 text-[11px] font-bold uppercase tracking-wider transition-all"
+                  class="inline-flex h-6 items-center gap-1.5 rounded px-2.5 text-xs font-bold uppercase tracking-wider transition-all"
                   :class="channelDataMode === 'local' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
                   @click="openLocalChannel"
                 >
@@ -165,7 +165,7 @@
                 </button>
                 <button
                   type="button"
-                  class="inline-flex h-6 items-center gap-1.5 rounded-[6px] px-2.5 text-[11px] font-bold uppercase tracking-wider transition-all"
+                  class="inline-flex h-6 items-center gap-1.5 rounded px-2.5 text-xs font-bold uppercase tracking-wider transition-all"
                   :class="channelDataMode === 'remote' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
                   @click="openRemoteChannel"
                 >
@@ -178,7 +178,7 @@
                 v-if="activeChannel"
                 type="button"
                 class="inline-flex h-7 shrink-0 items-center justify-center rounded-full border transition-all"
-                :class="activeChannel.is_special_followed ? 'border-amber-400/40 bg-amber-400/10 text-amber-600 ring-1 ring-amber-400/20' : 'border-border/50 text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+                :class="activeChannel.is_special_followed ? 'border-warning/40 bg-warning/10 text-warning ring-1 ring-warning/20' : 'border-border/50 text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
                 aria-label="切换特别关注"
                 @click="toggleSpecialFollow(activeChannel)"
               >
@@ -199,7 +199,7 @@
           <!-- View toggle (feed / channels) — segmented control, aligns with FeedToolbar's pill language -->
           <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-muted/40 p-0.5">
             <button
-              class="flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="channelDataMode === 'local' && viewMode === 'feed' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
               :aria-pressed="channelDataMode === 'local' && viewMode === 'feed'"
               @click="showLocalFeed"
@@ -208,7 +208,7 @@
               最近发布
             </button>
             <button
-              class="flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              class="flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               :class="channelDataMode === 'local' && viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
               :aria-pressed="channelDataMode === 'local' && viewMode === 'grid'"
               @click="showLocalGrid"
@@ -220,7 +220,7 @@
 
           <!-- NSFW toggle — pill, size-8, clear active state + aria -->
           <button
-            class="hidden h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex"
+            class="hidden h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex"
             :class="nsfw === 'all' ? 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground' : 'border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15'"
             :aria-pressed="nsfw !== 'all'"
             :title="nsfw === 'all' ? '显示成年内容' : '隐藏成年内容'"
@@ -272,7 +272,7 @@
             <div v-for="group in videoGroups" :key="group.title" class="space-y-4">
               <div class="flex items-center gap-3 pt-4 pb-2">
                 <h3 class="app-h2">{{ group.title }}</h3>
-                <span class="text-[12px] font-semibold text-muted-foreground/60">{{ group.videos.length }} 视频</span>
+                <span class="text-xs font-semibold text-muted-foreground/60">{{ group.videos.length }} 视频</span>
               </div>
               <div class="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5">
                 <VideoItem v-for="video in group.videos" :key="video.id" :video="video" show-avatar @openModal="handleOpenVideo" />

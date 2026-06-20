@@ -112,7 +112,7 @@
               <div class="flex items-center gap-2">
                 <button
                   v-if="feedNavStack"
-                  class="shrink-0 flex items-center gap-1 rounded-full bg-muted/40 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 cursor-pointer"
+                  class="shrink-0 flex items-center gap-1 rounded-full bg-muted/40 px-2.5 py-1 text-2xs font-semibold text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 cursor-pointer"
                   title="返回之前的列表"
                   aria-label="返回之前的列表"
                   @click="goBackFromFeed"
@@ -124,7 +124,7 @@
                   {{ selectedFeedTitle || selectedAccount?.name || 'RSS 阅读器' }}
                 </h2>
               </div>
-              <div class="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground/80 font-medium">
+              <div class="mt-0.5 flex items-center gap-2 text-2xs text-muted-foreground/80 font-medium">
                 <span>{{ selectedFeedSubtitle }}</span>
                 <div v-if="loading" class="flex items-center gap-1 ml-1">
                   <AppBounceDots />
@@ -160,7 +160,7 @@
             <!-- iOS/Reeder segmented control -->
             <div class="flex items-center gap-0.5 rounded-lg bg-muted/40 p-0.5">
               <button
-                class="flex-1 h-7 py-1 text-[10px] font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="flex-1 h-7 py-1 text-2xs font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 :class="activeFilter === 'all' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
                 :aria-pressed="activeFilter === 'all'"
                 @click="activeFilter = 'all'"
@@ -168,7 +168,7 @@
                 全部
               </button>
               <button
-                class="flex-1 h-7 py-1 text-[10px] font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="flex-1 h-7 py-1 text-2xs font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 :class="activeFilter === 'unread' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
                 :aria-pressed="activeFilter === 'unread'"
                 @click="activeFilter = 'unread'"
@@ -176,7 +176,7 @@
                 未读
               </button>
               <button
-                class="flex-1 h-7 py-1 text-[10px] font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="flex-1 h-7 py-1 text-2xs font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 :class="activeFilter === 'starred' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
                 :aria-pressed="activeFilter === 'starred'"
                 @click="activeFilter = 'starred'"
@@ -184,7 +184,7 @@
                 星标
               </button>
               <button
-                class="flex-1 h-7 py-1 text-[10px] font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                class="flex-1 h-7 py-1 text-2xs font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 :class="activeFilter === 'recent' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
                 :aria-pressed="activeFilter === 'recent'"
                 @click="activeFilter = 'recent'"
@@ -233,14 +233,14 @@
                 <!-- Card Top: Category & Time -->
                 <div class="flex items-center justify-between text-xs text-muted-foreground/85 mb-2">
                   <span
-                    class="inline-flex items-center text-[10px] font-bold tracking-wider uppercase transition-colors"
+                    class="inline-flex items-center text-2xs font-bold tracking-wider uppercase transition-colors"
                     :class="entry.is_read ? 'text-muted-foreground/55' : 'text-primary'"
                   >
                     {{ getFeedCategory(entry.feed_id) }}
                   </span>
                   <div class="flex items-center gap-1.5">
-                    <AppIcon v-if="entry.is_starred" name="star" class="h-3 w-3 text-amber-500 fill-amber-500" />
-                    <span class="tabular-nums text-[10px] text-muted-foreground/60">{{ activeFilter === 'recent' ? formatRelativeTime((entry as RecentEntry).viewed_at) : formatDate(entry.published_at) }}</span>
+                    <AppIcon v-if="entry.is_starred" name="star" class="h-3 w-3 text-warning fill-warning" />
+                    <span class="tabular-nums text-2xs text-muted-foreground/60">{{ activeFilter === 'recent' ? formatRelativeTime((entry as RecentEntry).viewed_at) : formatDate(entry.published_at) }}</span>
                   </div>
                 </div>
                 
@@ -258,7 +258,7 @@
                   </h4>
                   <p
                     v-if="entry.summary"
-                    class="text-[11px] leading-relaxed line-clamp-2 transition-colors"
+                    class="text-xs leading-relaxed line-clamp-2 transition-colors"
                     :class="entry.is_read ? 'text-muted-foreground/50' : 'text-muted-foreground/70'"
                   >{{ stripHtmlTags(entry.summary) }}</p>
                 </div>
@@ -271,7 +271,7 @@
                   >
                     <SiteIcon :icon-url="getFeedIconUrl(entry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
                     <span
-                      class="text-[11px] font-semibold truncate transition-colors"
+                      class="text-xs font-semibold truncate transition-colors"
                       :class="entry.is_read ? 'text-muted-foreground/55' : 'text-muted-foreground/90'"
                     >
                       {{ getFeedTitle(entry.feed_id) }}
@@ -334,13 +334,13 @@
               <!-- 收藏 / 取消收藏 -->
               <button
                 class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                :class="readingEntry.is_starred ? 'text-amber-500' : ''"
+                :class="readingEntry.is_starred ? 'text-warning' : ''"
                 :title="readingEntry.is_starred ? '取消收藏' : '收藏文章'"
                 :aria-label="readingEntry.is_starred ? '取消收藏' : '收藏文章'"
                 :aria-pressed="readingEntry.is_starred"
                 @click="toggleStarStatus(readingEntry)"
               >
-                <AppIcon name="star" class="h-4 w-4" :class="readingEntry.is_starred ? 'text-amber-500 fill-amber-500' : ''" />
+                <AppIcon name="star" class="h-4 w-4" :class="readingEntry.is_starred ? 'text-warning fill-amber-500' : ''" />
               </button>
 
               <!-- 取消订阅该源 -->
@@ -427,7 +427,7 @@
                   <AppIcon name="back" class="h-4 w-4" />
                 </button>
                 <div class="flex flex-col min-w-0 leading-tight">
-                  <span class="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">正在浏览原文</span>
+                  <span class="text-3xs font-bold text-muted-foreground uppercase tracking-wider">正在浏览原文</span>
                   <span class="text-xs font-semibold text-foreground/80 truncate max-w-[150px] lg:max-w-[280px]">
                     {{ readingEntry.title }}
                   </span>
@@ -435,7 +435,7 @@
               </div>
 
               <!-- Center: Address Bar (Globe + Domain) -->
-              <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex items-center bg-accent/20 px-3 py-1 rounded-lg border border-border/5 text-[10px] font-medium text-muted-foreground/85 max-w-[220px] lg:max-w-[320px] truncate shadow-inner">
+              <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex items-center bg-accent/20 px-3 py-1 rounded-lg border border-border/5 text-2xs font-medium text-muted-foreground/85 max-w-[220px] lg:max-w-[320px] truncate shadow-inner">
                 <AppIcon name="siteFallback" class="h-3.5 w-3.5 mr-1.5 text-muted-foreground/60 shrink-0" />
                 <span class="truncate">{{ getDisplayDomain(readingEntry.canonical_url) }}</span>
               </div>
@@ -476,7 +476,7 @@
               />
               
               <!-- Fallback Browser Alert for web users -->
-              <div v-if="!isElectron && !iframeLoading" class="absolute bottom-4 right-4 max-w-xs p-3 rounded-xl border border-border bg-popover text-popover-foreground shadow-lg text-[10px] leading-relaxed z-20 flex flex-col gap-1.5 animate-fade-in">
+              <div v-if="!isElectron && !iframeLoading" class="absolute bottom-4 right-4 max-w-xs p-3 rounded-xl border border-border bg-popover text-popover-foreground shadow-lg text-2xs leading-relaxed z-20 flex flex-col gap-1.5 animate-fade-in">
                 <span class="font-bold text-foreground">💡 原文加载提示</span>
                 <span class="text-muted-foreground">如果页面显示空白或拒绝连接，是由于源站安全策略限制。您可以点击右上角图标在外部浏览器中打开。</span>
               </div>
@@ -596,7 +596,7 @@
                 >
                   <span>{{ cat }}</span>
                 </button>
-                <div v-if="!existingCategories.length" class="py-3 text-center text-[10px] text-muted-foreground/60">暂无分类</div>
+                <div v-if="!existingCategories.length" class="py-3 text-center text-2xs text-muted-foreground/60">暂无分类</div>
               </div>
               <div class="h-px w-full bg-border/50 my-1"></div>
               <div v-if="!showCustomCategoryInput" class="p-1">
@@ -633,12 +633,12 @@
             <div
               v-if="subscribeMessage"
               class="flex items-start gap-2 p-2.5 rounded-lg border text-xs leading-relaxed animate-fade-in"
-              :class="subscribeError ? 'border-destructive/20 bg-destructive/5 text-destructive' : 'border-emerald-500/20 bg-emerald-500/5 text-emerald-500'"
+              :class="subscribeError ? 'border-destructive/20 bg-destructive/5 text-destructive' : 'border-emerald-500/20 bg-success/5 text-success'"
             >
               <AppIcon
                 :name="subscribeError ? 'error' : 'check'"
                 class="h-3.5 w-3.5 shrink-0 mt-0.5"
-                :class="subscribeError ? 'text-destructive' : 'text-emerald-500'"
+                :class="subscribeError ? 'text-destructive' : 'text-success'"
               />
               <span class="font-medium">{{ subscribeMessage }}</span>
             </div>
@@ -672,7 +672,7 @@
     <!-- Beautiful Full-screen Image Lightbox -->
     <div 
       v-if="activeLightboxImg" 
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-md transition-all duration-300 animate-fade-in"
+      class="fixed inset-0 z-sidebar flex items-center justify-center bg-background/95 backdrop-blur-md transition-all duration-300 animate-fade-in"
       @click="closeLightbox"
     >
       <!-- Close Button -->

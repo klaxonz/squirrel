@@ -55,8 +55,17 @@
   /* Sidebar */
   --sidebar-width: 240px;
 
-  /* Shadows - Linear Style (Sharp & Subtle) */
+  /* Shadows - Linear Style (Sharp & Subtle).
+     Full scale: xs/sm/md/lg/premium. Replaces scattered `shadow-sm`/`shadow-2xl`/
+     `shadow-inner` and the old two-token gap (only xs+premium existed).
+     - xs/sm: hairline separation (cards, inputs)
+     - md:    resting elevation for floating surfaces (panels, popovers)
+     - lg:    hovering elements (menus, tooltips)
+     - premium: overlays that must lift clear of the canvas (dialogs, toasts) */
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 8px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 16px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.06);
   --shadow-premium: 0 1px 2px rgba(0,0,0,0.1), 0 8px 24px rgba(0,0,0,0.2);
 }
 
@@ -97,4 +106,7 @@
   --sidebar-foreground: 36 30% 96%;
 
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 8px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3);
+  --shadow-lg: 0 8px 16px rgba(0,0,0,0.55), 0 4px 8px rgba(0,0,0,0.35);
 }

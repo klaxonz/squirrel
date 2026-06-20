@@ -31,7 +31,7 @@
           <AppIcon name="rss" class="h-3.5 w-3.5 shrink-0 opacity-70" />
           <span class="flex-1 truncate">
             {{ acc.name }}
-            <span class="text-[9px] text-muted-foreground/80 block">({{ acc.provider }})</span>
+            <span class="text-3xs text-muted-foreground/80 block">({{ acc.provider }})</span>
           </span>
           <div class="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
             <button

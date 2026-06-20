@@ -40,7 +40,7 @@
               </a>
               <h2 v-else class="app-h2 truncate">{{ detail?.name || '未知频道' }}</h2>
               
-              <span v-if="detail?.is_nsfw" class="shrink-0 px-1.5 py-0.5 text-[10px] font-bold tracking-widest uppercase border border-primary/50 text-primary rounded-md">NSFW</span>
+              <span v-if="detail?.is_nsfw" class="shrink-0 px-1.5 py-0.5 text-2xs font-bold tracking-widest uppercase border border-primary/50 text-primary rounded-md">NSFW</span>
             </div>
             
             <p v-if="detail?.description" class="text-xs text-muted-foreground/80 line-clamp-1 sm:line-clamp-2 max-w-2xl leading-relaxed">
@@ -50,14 +50,14 @@
         </div>
 
         <!-- Stats & Actions -->
-        <div class="flex items-center gap-6 sm:gap-8 shrink-0 ml-[4rem] sm:ml-0">
+        <div class="flex items-center gap-6 sm:gap-8 shrink-0 ml-16 sm:ml-0">
           <div class="flex items-center gap-4 sm:gap-6">
             <div class="flex flex-col items-center">
-              <span class="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1">总数</span>
+              <span class="text-2xs font-bold text-muted-foreground/50 uppercase tracking-widest mb-1">总数</span>
               <span class="text-sm font-semibold font-mono text-foreground/80">{{ detail?.total_videos || 0 }}</span>
             </div>
             <div class="flex flex-col items-center">
-              <span class="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1">解析</span>
+              <span class="text-2xs font-bold text-muted-foreground/50 uppercase tracking-widest mb-1">解析</span>
               <span class="text-sm font-semibold font-mono text-foreground/80">{{ detail?.total_extract || 0 }}</span>
             </div>
           </div>
@@ -89,7 +89,7 @@
             <button
               type="button"
               class="inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="detail?.is_special_followed ? 'border-amber-400/40 bg-amber-400/10 text-amber-600' : 'border-border/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              :class="detail?.is_special_followed ? 'border-amber-400/40 bg-warning/10 text-warning' : 'border-border/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
               :disabled="isTogglingSpecial"
               aria-label="切换特别关注"
               :aria-pressed="!!detail?.is_special_followed"

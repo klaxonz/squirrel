@@ -33,8 +33,8 @@
             
             <div class="text-center flex-1">
               <h4 class="text-base font-extrabold tracking-tight">扫码登录酷狗</h4>
-              <p class="text-[10px] text-muted-foreground font-medium flex items-center justify-center gap-1 mt-0.5">
-                <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <p class="text-2xs text-muted-foreground font-medium flex items-center justify-center gap-1 mt-0.5">
+                <span class="inline-block h-1.5 w-1.5 rounded-full bg-success/10 animate-pulse"></span>
                 {{ qrStatusText }}
               </p>
             </div>
@@ -51,8 +51,8 @@
               
               <div v-if="qrStatus === 0" class="music-qr-expired-overlay">
                 <AppIcon name="refresh" class="h-5 w-5 text-primary mb-1 animate-pulse" />
-                <span class="text-[10px] font-bold text-slate-700">二维码已失效</span>
-                <span class="text-[9px] text-muted-foreground mt-0.5">点击重试</span>
+                <span class="text-2xs font-bold text-foreground">二维码已失效</span>
+                <span class="text-3xs text-muted-foreground mt-0.5">点击重试</span>
               </div>
             </div>
             

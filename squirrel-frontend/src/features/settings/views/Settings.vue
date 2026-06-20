@@ -46,7 +46,7 @@
               v-for="tab in tabs"
               :key="tab.key"
               @click="navigateToTab(tab.path)"
-              class="h-8 shrink-0 rounded-[6px] px-3 text-sm font-medium transition-colors"
+              class="h-8 shrink-0 rounded px-3 text-sm font-medium transition-colors"
               :class="currentTab === tab.key ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
             >
               {{ tab.label }}

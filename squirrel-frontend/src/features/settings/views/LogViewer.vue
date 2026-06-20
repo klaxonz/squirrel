@@ -102,7 +102,7 @@
         </div>
       </div>
 
-      <div class="log-stream-container flex-1 flex flex-col min-h-0 overflow-hidden font-mono text-[13px]">
+      <div class="log-stream-container flex-1 flex flex-col min-h-0 overflow-hidden font-mono text-sm">
         <div v-if="loading && logs.length === 0" class="flex items-center justify-center py-20 text-muted-foreground">
           <AppSpinner size="sm" class="mr-2" />
           加载中...
@@ -144,7 +144,7 @@
 
                 <!-- Level -->
                 <span 
-                  class="w-16 shrink-0 uppercase font-bold text-[11px] pt-0.5"
+                  class="w-16 shrink-0 uppercase font-bold text-xs pt-0.5"
                   :class="getLevelColorClass(item.level)"
                 >
                   {{ item.level }}
@@ -153,7 +153,7 @@
                 <!-- Content Area -->
                 <div class="flex-1 min-w-0 flex flex-col gap-0.5">
                   <!-- Meta -->
-                  <div class="flex items-center gap-3 text-[11px] text-muted-foreground/50">
+                  <div class="flex items-center gap-3 text-xs text-muted-foreground/50">
                     <span v-if="item.trace_id" 
                           @click="filterByTraceId(item.trace_id)"
                           class="hover:text-foreground cursor-pointer underline decoration-dotted transition-colors">

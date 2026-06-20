@@ -10,7 +10,7 @@
           <button
             v-for="tab in tabs"
             :key="tab.value"
-            class="flex items-center text-[13px] font-semibold whitespace-nowrap transition-colors outline-none focus-visible:ring-0 shrink-0"
+            class="flex items-center text-sm font-semibold whitespace-nowrap transition-colors outline-none focus-visible:ring-0 shrink-0"
             @click="localActiveTab = tab.value"
           >
             <span class="relative inline-flex items-center px-3.5 py-1.5 rounded-full transition-all duration-200"
@@ -31,7 +31,7 @@
       <button
         v-if="special === 'yes'"
         type="button"
-        class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 text-xs font-semibold text-amber-600 transition-colors hover:bg-amber-400/15"
+        class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-3 text-xs font-semibold text-warning transition-colors hover:bg-warning/10"
         title="清除特别关注过滤"
         @click="emit('update:special', 'all')"
       >
@@ -42,7 +42,7 @@
 
       <!-- Site Select -->
       <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
-        <SelectTrigger class="h-8 w-auto min-w-0 shrink-0 flex-nowrap whitespace-nowrap border-0 bg-muted/40 px-3 py-0 text-[13px] font-semibold text-muted-foreground shadow-none hover:bg-muted/70 hover:text-foreground focus:ring-0 rounded-full transition-colors">
+        <SelectTrigger class="h-8 w-auto min-w-0 shrink-0 flex-nowrap whitespace-nowrap border-0 bg-muted/40 px-3 py-0 text-sm font-semibold text-muted-foreground shadow-none hover:bg-muted/70 hover:text-foreground focus:ring-0 rounded-full transition-colors">
           <SelectValue />
         </SelectTrigger>
         <SelectContent class="min-w-44 border-border/10 bg-background/70 backdrop-blur-2xl shadow-2xl rounded-md">
@@ -56,7 +56,7 @@
       <!-- Sort Select -->
       <div v-if="showSort" class="hidden sm:block shrink-0">
         <Select v-model="localSortBy">
-          <SelectTrigger class="h-8 w-auto min-w-0 flex-nowrap whitespace-nowrap border-0 bg-muted/40 px-3 py-0 text-[13px] font-semibold text-muted-foreground shadow-none hover:bg-muted/70 hover:text-foreground focus:ring-0 rounded-full transition-colors">
+          <SelectTrigger class="h-8 w-auto min-w-0 flex-nowrap whitespace-nowrap border-0 bg-muted/40 px-3 py-0 text-sm font-semibold text-muted-foreground shadow-none hover:bg-muted/70 hover:text-foreground focus:ring-0 rounded-full transition-colors">
             <SelectValue />
           </SelectTrigger>
           <SelectContent class="min-w-36 border-border/10 bg-background/70 backdrop-blur-2xl shadow-2xl rounded-md">
@@ -84,7 +84,7 @@
         <AppIcon name="filter" class="size-4 shrink-0" />
         <span
           v-if="activeFilterCount > 0"
-          class="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground ring-2 ring-background"
+          class="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-3xs font-bold text-primary-foreground ring-2 ring-background"
         >{{ activeFilterCount }}</span>
       </button>
 

@@ -4,7 +4,7 @@
     :style="tagStyles"
   >
     <div class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: siteColor }" />
-    <span class="text-[9px] font-black uppercase tracking-wider leading-none">
+    <span class="text-3xs font-black uppercase tracking-wider leading-none">
       {{ site }}
     </span>
   </div>

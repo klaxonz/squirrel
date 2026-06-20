@@ -1,5 +1,5 @@
 <template>
-  <header class="h-14 sticky top-0 z-[60] flex items-center px-6 gap-4 bg-background">
+  <header class="h-14 sticky top-0 z-header flex items-center px-6 gap-4 bg-background">
     <button
       v-if="nav.showBackButton"
       @click="handleBack"
@@ -7,7 +7,7 @@
       :title="nav.backLabel ? `返回${nav.backLabel}` : '返回'"
     >
       <AppIcon name="back" class="w-4 h-4" />
-      <span v-if="nav.backLabel" class="text-[13px] font-medium whitespace-nowrap">{{ nav.backLabel }}</span>
+      <span v-if="nav.backLabel" class="text-sm font-medium whitespace-nowrap">{{ nav.backLabel }}</span>
     </button>
 
     <div class="flex items-center gap-4 flex-1 min-w-0">
@@ -49,7 +49,7 @@
             <template v-if="userInitial">{{ userInitial }}</template>
             <AppIcon v-else name="user" class="w-3.5 h-3.5" />
           </div>
-          <span class="text-[13px] font-medium text-foreground hidden sm:inline">{{ userDisplayName }}</span>
+          <span class="text-sm font-medium text-foreground hidden sm:inline">{{ userDisplayName }}</span>
         </div>
       </div>
     </div>

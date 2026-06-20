@@ -1,4 +1,30 @@
 :root {
+  /* Z-index scale — single source of truth for stacking order across the app.
+     Replaces the 54+ scattered `z-[60]`/`z-[100]` magic values. Aligned with
+     reka-ui's overlay primitives (dropdown/popover/dialog start at 1000+). */
+  --z-base: 0;
+  --z-content: 10;            /* sticky toolbars, sticky table heads */
+  --z-header: 40;             /* AppHeader */
+  --z-sidebar: 50;            /* AppSidebar + DesktopTitleBar (same layer, DOM order wins) */
+  --z-dropdown: 1000;         /* dropdown-menu, context-menu */
+  --z-popover: 1100;          /* popover, tooltip, command palette */
+  --z-sheet: 1200;            /* sheet / slide-over */
+  --z-dialog: 1300;           /* modal dialog */
+  --z-toast: 1400;            /* toast stack — always above dialogs */
+  --z-player-overlay: 1500;   /* fullscreen player overlay */
+
+  /* Motion tokens — single source of truth for durations & easings.
+     These were referenced as `var(--duration-fast)` / `var(--ease-default)`
+     by .app-table-row / .app-tab-button but never defined, so they silently
+     fell back to the literal in the shorthand. Defining them here makes the
+     whole chrome share one motion curve. */
+  --duration-fast: 120ms;     /* hover/focus feedback, tab switches */
+  --duration-base: 180ms;     /* page transitions, panel reveals */
+  --duration-slow: 240ms;     /* large surface transitions */
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);   /* standard material ease */
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);          /* entering elements */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* press/active bounce */
+
   --app-page-gutter: 1rem;
   --app-page-gutter-sm: 1.5rem;
   --app-page-gutter-lg: 2rem;

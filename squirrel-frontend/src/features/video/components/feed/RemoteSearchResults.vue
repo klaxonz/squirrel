@@ -31,16 +31,16 @@
         >
           <div class="relative aspect-video overflow-hidden rounded-sm bg-muted transition-colors group-hover:brightness-110">
             <VideoThumbnail :src="item.thumbnail" :alt="item.title" />
-            <span v-if="item.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium tabular-nums text-white backdrop-blur-sm">
+            <span v-if="item.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-2xs font-medium tabular-nums text-white backdrop-blur-sm">
               {{ formatDuration(item.duration) }}
             </span>
           </div>
 
           <div class="flex min-w-0 flex-col gap-1 px-0.5">
-            <h3 class="line-clamp-2 text-[14px] font-semibold leading-[1.3] tracking-tight text-foreground/90 transition-colors group-hover:text-primary">
+            <h3 class="line-clamp-2 text-sm font-semibold leading-[1.3] tracking-tight text-foreground/90 transition-colors group-hover:text-primary">
               {{ item.title }}
             </h3>
-            <div class="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground/80">
+            <div class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/80">
               <button
                 v-if="primarySubscription(item)?.url"
                 type="button"
@@ -65,14 +65,14 @@
                   {{ primarySubscription(item)?.name || item.uploader }}
                 </span>
               </template>
-              <span class="shrink-0 rounded-[4px] bg-accent/50 px-1 py-0 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+              <span class="shrink-0 rounded bg-accent/50 px-1 py-0 text-3xs font-bold uppercase tracking-wider text-muted-foreground">
                 {{ siteLabel(item.site) }}
               </span>
             </div>
-            <div v-if="actorText(item)" class="truncate text-[11px] font-medium text-muted-foreground/60">
+            <div v-if="actorText(item)" class="truncate text-xs font-medium text-muted-foreground/60">
               {{ actorText(item) }}
             </div>
-            <div class="text-[11px] font-medium text-muted-foreground/50">
+            <div class="text-xs font-medium text-muted-foreground/50">
               {{ displayDate(item) }}
             </div>
           </div>

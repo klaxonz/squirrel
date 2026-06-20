@@ -63,7 +63,7 @@
             <label class="text-xs font-semibold text-foreground/80">用户名</label>
             <span
               v-if="form.provider === 'greader' || form.provider === 'fever'"
-              class="text-[10px] text-destructive/80 font-bold animate-fade-in"
+              class="text-2xs text-destructive/80 font-bold animate-fade-in"
             >
               * 必填
             </span>
@@ -84,7 +84,7 @@
             <label class="text-xs font-semibold text-foreground/80">{{ credentialPlaceholder }}</label>
             <span
               v-if="!form.id"
-              class="text-[10px] text-destructive/80 font-bold animate-fade-in"
+              class="text-2xs text-destructive/80 font-bold animate-fade-in"
             >
               * 必填
             </span>
@@ -106,7 +106,7 @@
         <div class="flex items-center justify-between py-1.5 select-none">
           <div class="flex flex-col text-left pr-4">
             <span class="text-xs font-semibold text-foreground/90">启用此账号同步</span>
-            <span class="text-[10px] text-muted-foreground/60 mt-0.5 leading-normal">开启后系统将自动定期在后台同步此账号的订阅内容</span>
+            <span class="text-2xs text-muted-foreground/60 mt-0.5 leading-normal">开启后系统将自动定期在后台同步此账号的订阅内容</span>
           </div>
           <button
             type="button"
@@ -126,12 +126,12 @@
           <div
             v-if="formMessage"
             class="flex items-start gap-2 p-2.5 rounded-lg border text-xs leading-relaxed animate-fade-in"
-            :class="formError ? 'border-destructive/20 bg-destructive/5 text-destructive' : 'border-emerald-500/20 bg-emerald-500/5 text-emerald-500'"
+            :class="formError ? 'border-destructive/20 bg-destructive/5 text-destructive' : 'border-emerald-500/20 bg-success/5 text-success'"
           >
             <AppIcon
               :name="formError ? 'error' : 'check'"
               class="h-3.5 w-3.5 shrink-0 mt-0.5"
-              :class="formError ? 'text-destructive' : 'text-emerald-500'"
+              :class="formError ? 'text-destructive' : 'text-success'"
             />
             <span class="font-medium">{{ formMessage }}</span>
           </div>

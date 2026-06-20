@@ -5,7 +5,7 @@
       ref="rootRef"
       role="menu"
       aria-label="文章操作"
-      class="fixed z-[9999] w-[200px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
+      class="fixed z-toast w-[200px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
       :style="{ left: position.x + 'px', top: position.y + 'px' }"
     >
       <div class="flex flex-col gap-0.5">
@@ -23,7 +23,7 @@
           @click="$emit('toggleStar', entry)"
           class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
         >
-          <AppIcon name="star" class="h-3.5 w-3.5 opacity-70" :class="entry.is_starred ? 'text-amber-500 fill-amber-500' : ''" />
+          <AppIcon name="star" class="h-3.5 w-3.5 opacity-70" :class="entry.is_starred ? 'text-warning fill-amber-500' : ''" />
           <span>{{ entry.is_starred ? '取消收藏' : '收藏文章' }}</span>
         </button>
 
@@ -39,7 +39,7 @@
         <div class="h-px bg-border/20 my-1" role="separator"></div>
 
         <template v-if="feed">
-          <div class="px-2.5 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider" role="group" aria-label="默认打开方式">默认打开方式</div>
+          <div class="px-2.5 py-1 text-3xs font-bold text-muted-foreground uppercase tracking-wider" role="group" aria-label="默认打开方式">默认打开方式</div>
 
           <button
             role="menuitemradio"

@@ -37,7 +37,7 @@
           />
           <span class="truncate">{{ folder.name }}</span>
         </div>
-        <span class="text-[10px] bg-accent/60 px-1.5 py-0.5 rounded-full text-muted-foreground/80 shrink-0">{{ folder.feeds.length }}</span>
+        <span class="text-2xs bg-accent/60 px-1.5 py-0.5 rounded-full text-muted-foreground/80 shrink-0">{{ folder.feeds.length }}</span>
       </button>
 
       <div v-if="expandedFolders[folder.name]" class="pl-3 space-y-0.5">

@@ -18,7 +18,7 @@
         <div class="h-full bg-white transition-all duration-500 ease-out" :style="{ width: `${progress * 100}%` }" />
       </div>
 
-      <div v-if="video.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-[10px] font-medium text-white tabular-nums backdrop-blur-sm z-20">
+      <div v-if="video.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-2xs font-medium text-white tabular-nums backdrop-blur-sm z-20">
         {{ formatDuration(video.duration) }}
       </div>
 
@@ -50,7 +50,7 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span v-if="video.site" class="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+          <span v-if="video.site" class="rounded bg-muted px-1.5 py-0.5 text-2xs font-medium text-muted-foreground">
             {{ video.site }}
           </span>
           <span class="h-1 w-1 rounded-full bg-border" />

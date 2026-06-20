@@ -8,7 +8,7 @@
       <div v-if="searchModesList.length > 0" class="shrink-0">
         <button
           type="button"
-          class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           @click="toggleMode"
         >
           <AppIcon :name="activeSearchMode === 'local' ? 'library' : 'siteFallback'" class="w-3.5 h-3.5" />
@@ -24,7 +24,7 @@
         v-model="inputValue"
         type="text"
         :placeholder="placeholder"
-        class="flex-1 bg-transparent border-none px-1 text-[13px] font-medium outline-none placeholder:text-muted-foreground/30 min-w-0"
+        class="flex-1 bg-transparent border-none px-1 text-sm font-medium outline-none placeholder:text-muted-foreground/30 min-w-0"
         @input="handleInput"
         @compositionstart="isComposing = true"
         @compositionend="handleCompositionEnd"
@@ -67,8 +67,8 @@
     >
       <div v-if="showSuggestions" class="absolute top-full left-0 right-0 z-50 mt-2 flex flex-col gap-0.5 rounded-xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-[0_18px_50px_-20px_rgba(0,0,0,0.35),0_8px_24px_-16px_rgba(0,0,0,0.25)]">
         <div class="flex items-center justify-between px-2 py-1.5 mb-1">
-          <span class="text-[10px] font-bold tracking-widest uppercase text-muted-foreground/50">{{ suggestionTitle }}</span>
-          <button v-if="recentSearches.length" @click="clearRecentSearches" class="text-[10px] font-bold text-muted-foreground/40 hover:text-destructive transition-colors uppercase">清空</button>
+          <span class="text-2xs font-bold tracking-widest uppercase text-muted-foreground/50">{{ suggestionTitle }}</span>
+          <button v-if="recentSearches.length" @click="clearRecentSearches" class="text-2xs font-bold text-muted-foreground/40 hover:text-destructive transition-colors uppercase">清空</button>
         </div>
 
 
@@ -82,8 +82,8 @@
           >
             <AppIcon :name="item.type === 'search' ? 'search' : 'history'" class="h-4 w-4 shrink-0 opacity-50" />
             <div class="flex min-w-0 flex-1 flex-col">
-              <span class="block max-w-full truncate text-[13px] font-medium">{{ item.label }}</span>
-              <span v-if="item.meta" class="block max-w-full truncate text-[10px] opacity-50">{{ item.meta }}</span>
+              <span class="block max-w-full truncate text-sm font-medium">{{ item.label }}</span>
+              <span v-if="item.meta" class="block max-w-full truncate text-2xs opacity-50">{{ item.meta }}</span>
             </div>
           </button>
           <button v-if="item.type === 'recent'" @click.stop="removeRecentSearch(item.value)" class="flex w-8 shrink-0 items-center justify-center rounded-xl text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive">
@@ -91,7 +91,7 @@
           </button>
         </div>
         
-        <div v-if="!suggestionItems.length" class="p-8 text-center text-[12px] text-muted-foreground/40 font-medium">暂无搜索记录</div>
+        <div v-if="!suggestionItems.length" class="p-8 text-center text-xs text-muted-foreground/40 font-medium">暂无搜索记录</div>
       </div>
     </transition>
   </div>

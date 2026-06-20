@@ -3,7 +3,7 @@
     <div
       v-if="visible && feed"
       ref="rootRef"
-      class="fixed z-[9999] w-[200px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
+      class="fixed z-toast w-[200px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
       :style="{ left: position.x + 'px', top: position.y + 'px' }"
     >
       <div class="flex flex-col gap-0.5">
@@ -42,7 +42,7 @@
 
         <div class="h-px bg-border/20 my-1"></div>
 
-        <div class="px-2.5 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">默认打开方式</div>
+        <div class="px-2.5 py-1 text-3xs font-bold text-muted-foreground uppercase tracking-wider">默认打开方式</div>
 
         <button
           @click="$emit('setOpenMethod', feed, null)"

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-full flex flex-col justify-center items-center bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-8 relative">
+  <div class="min-h-full flex flex-col justify-center items-center bg-muted dark:bg-background p-4 sm:p-8 relative">
     
     <!-- Server Config Pill -->
     <div class="absolute top-4 right-4 sm:top-8 sm:right-8 z-20">
@@ -105,7 +105,7 @@
       </div>
       
       <!-- Card Footer -->
-      <div class="p-4 sm:p-6 bg-zinc-50/50 dark:bg-zinc-900/50 border-t border-border text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+      <div class="p-4 sm:p-6 bg-muted dark:bg-zinc-900/50 border-t border-border text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
         <span class="text-sm text-muted-foreground">已有账户？</span>
         <router-link to="/login" class="text-sm font-medium text-foreground hover:text-primary transition-colors underline decoration-border underline-offset-4 hover:decoration-primary">
           直接登录
