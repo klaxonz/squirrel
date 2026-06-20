@@ -38,6 +38,7 @@ from infrastructure.http.middleware.auth import (
 from infrastructure.http.middleware.trace import RequestContextMiddleware
 from infrastructure.http.response import ErrorCode
 from infrastructure.scheduling.routes import router as scheduler_router
+from shared_kernel.domain.exceptions import DomainError
 from infrastructure.site_catalog.routes.connectivity_batch import router as connectivity_router
 from infrastructure.site_catalog.routes.site_cookies_bulk_import import router as site_cookies_router
 from infrastructure.site_catalog.routes.site_plugins import router as site_plugins_router
@@ -83,11 +84,28 @@ async def default_exception_handler(request: Request, exc: Exception) -> JSONRes
     return response.server_error('服务器内部错误')
 
 
+async def domain_error_handler(request: Request, exc: DomainError) -> JSONResponse:
+    """Translate a business/domain error into a JSON response.
+
+    The HTTP status comes from the error's ``http_status`` category; the body
+    carries the domain ``code`` and human-readable ``message``. This lets
+    application services raise typed errors (``NotFoundError`` etc.) and have
+    them surface with the correct status without routes wrapping every call in
+    ``try/except``.
+    """
+    logger.info('DomainError [%s]: %s', exc.code, exc.message)
+    body: dict = {'code': exc.code, 'msg': exc.message}
+    if exc.details is not None:
+        body['data'] = exc.details
+    return JSONResponse(status_code=exc.http_status, content=body)
+
+
 _EXCEPTION_HANDLERS = {
     FastAPIHTTPException: http_exception_handler,
     RequestValidationError: request_validation_error_handler,
     StarletteHTTPException: http_exception_handler,
     Exception: default_exception_handler,
+    DomainError: domain_error_handler,
     AuthenticationError: authentication_error_handler,
     TokenMissingError: authentication_error_handler,
     TokenExpiredError: authentication_error_handler,

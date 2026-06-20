@@ -5,9 +5,9 @@ import logging
 from fastapi import Cookie, HTTPException, status
 from jose import JWTError, jwt
 
-import domains.user.application.services.config as user_config_service
 import domains.user.application.services.service as user_service
 from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from infrastructure.auth.jwt import (
     ALGORITHM,
     AUTH_COOKIE_NAME,
@@ -26,12 +26,17 @@ def _credentials_exception() -> HTTPException:
     )
 
 
-async def get_current_user(token: str | None = Cookie(default=None, alias=AUTH_COOKIE_NAME)) -> User:
-    """Validate token and return current user with config preloaded"""
-    _, user = validate_auth_token(token)
+async def get_current_user(
+    token: str | None = Cookie(default=None, alias=AUTH_COOKIE_NAME),
+) -> CurrentUserDto:
+    """Validate the auth cookie and return the resolved current user.
 
-    user._cached_config = user_config_service.get_config(user.id)
-    return user
+    Returns a ``CurrentUserDto`` -- a small, serialisation-safe projection of
+    the ORM ``User`` row -- so routes cannot accidentally leak sensitive ORM
+    columns (e.g. ``token_version``) or relationships to the HTTP boundary.
+    """
+    _, user = validate_auth_token(token)
+    return CurrentUserDto.model_validate(user)
 
 
 def validate_auth_token(token: str | None) -> tuple[dict, User]:

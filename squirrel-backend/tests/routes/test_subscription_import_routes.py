@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -9,10 +8,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from domains.subscription.interfaces.http import router
 from domains.subscription.interfaces.http.dependencies import get_subscription_import_service
 from domains.user.application.services.auth import get_current_user
+from tests.common.app_factory import create_test_app
 
 
 def _build_client(monkeypatch, import_service=None):
-    app = FastAPI()
+    app = create_test_app()
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: type('User', (), {'id': 7})()
     if import_service:

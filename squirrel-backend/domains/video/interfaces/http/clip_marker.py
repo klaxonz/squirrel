@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 
 from domains.user.application.services.auth import get_current_user
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from domains.video.application.services.engagement.clip_marker import VideoClipMarkerService
 from domains.video.interfaces.dto.video_clip_marker import ClipMarkerCreate, ClipMarkerPreviewUpload, ClipMarkerUpdate
 from infrastructure.http import response
@@ -16,7 +16,7 @@ def get_clip_marker_service() -> VideoClipMarkerService:
 @router.get('')
 def list_video_clip_markers(
     video_id: int = Query(..., description='视频ID'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: VideoClipMarkerService = Depends(get_clip_marker_service),
 ):
     markers = svc.list_markers(current_user.id, video_id)
@@ -26,13 +26,12 @@ def list_video_clip_markers(
 @router.post('')
 def create_video_clip_marker(
     data: ClipMarkerCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: VideoClipMarkerService = Depends(get_clip_marker_service),
 ):
-    try:
-        marker = svc.create_marker(current_user.id, data)
-    except ValueError as exc:
-        return response.param_error(str(exc))
+    """Validation/not-found errors surface via the global ``DomainError``
+    handler with the appropriate status (400/404)."""
+    marker = svc.create_marker(current_user.id, data)
     return response.success(marker)
 
 
@@ -40,14 +39,10 @@ def create_video_clip_marker(
 def update_video_clip_marker(
     marker_id: int,
     data: ClipMarkerUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: VideoClipMarkerService = Depends(get_clip_marker_service),
 ):
-    try:
-        marker = svc.update_marker(current_user.id, marker_id, data)
-    except ValueError as exc:
-        return response.param_error(str(exc))
-
+    marker = svc.update_marker(current_user.id, marker_id, data)
     if not marker:
         return response.not_found('片段标记不存在')
     return response.success(marker)
@@ -57,14 +52,10 @@ def update_video_clip_marker(
 def upload_video_clip_marker_preview(
     marker_id: int,
     data: ClipMarkerPreviewUpload,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: VideoClipMarkerService = Depends(get_clip_marker_service),
 ):
-    try:
-        marker = svc.save_preview(current_user.id, marker_id, data.image_data_url)
-    except ValueError as exc:
-        return response.param_error(str(exc))
-
+    marker = svc.save_preview(current_user.id, marker_id, data.image_data_url)
     if not marker:
         return response.not_found('片段标记不存在')
     return response.success(marker)
@@ -73,7 +64,7 @@ def upload_video_clip_marker_preview(
 @router.delete('/{marker_id}')
 def delete_video_clip_marker(
     marker_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: VideoClipMarkerService = Depends(get_clip_marker_service),
 ):
     deleted_count = svc.delete_marker(current_user.id, marker_id)

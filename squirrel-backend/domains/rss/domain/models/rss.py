@@ -4,10 +4,9 @@ from sqlalchemy import JSON, VARCHAR, Boolean, DateTime, Index, Integer, Text, U
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 
-class RssAccount(Base, SerializerMixin):
+class RssAccount(Base):
     __tablename__ = 'rss_account'
 
     __table_args__ = (
@@ -31,7 +30,7 @@ class RssAccount(Base, SerializerMixin):
     updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(), onupdate=lambda: datetime.now())
 
 
-class RssFeed(Base, SerializerMixin):
+class RssFeed(Base):
     __tablename__ = 'rss_feed'
 
     __table_args__ = (
@@ -57,7 +56,7 @@ class RssFeed(Base, SerializerMixin):
     updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(), onupdate=lambda: datetime.now())
 
 
-class RssEntry(Base, SerializerMixin):
+class RssEntry(Base):
     __tablename__ = 'rss_entry'
 
     __table_args__ = (
@@ -85,7 +84,7 @@ class RssEntry(Base, SerializerMixin):
     updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(), onupdate=lambda: datetime.now())
 
 
-class RssEntryView(Base, SerializerMixin):
+class RssEntryView(Base):
     __tablename__ = 'rss_entry_view'
 
     __table_args__ = (

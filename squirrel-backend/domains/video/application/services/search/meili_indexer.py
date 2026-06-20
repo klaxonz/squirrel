@@ -500,3 +500,28 @@ def get_meili_video_indexer() -> MeiliVideoIndexer:
     if _indexer is None:
         _indexer = MeiliVideoIndexer()
     return _indexer
+
+
+def register_meili_video_event_listener() -> None:
+    """Subscribe the Meilisearch indexer to the ``video.saved`` domain event.
+
+    This decouples the video persistence layer from the indexer: persistence
+    fires ``DomainEvents.VIDEO_SAVED`` via the in-process dispatcher, and this
+    listener (registered once at bootstrap, in both the web lifespan and the
+    worker bootstrap) calls ``upsert_safe``. Idempotent -- safe to call from
+    both startup paths; registration dedupes.
+    """
+    from shared_kernel.domain.events import DomainEvents, domain_events
+
+    def _on_video_saved(payload: dict) -> None:
+        video_id = payload.get('video_id')
+        if video_id is None:
+            return
+        try:
+            get_meili_video_indexer().upsert_safe(video_id)
+        except Exception:
+            logging.getLogger(__name__).warning(
+                'meili upsert_safe failed video_id=%s (full reindex will catch up)', video_id, exc_info=True
+            )
+
+    domain_events.register(DomainEvents.VIDEO_SAVED, _on_video_saved)

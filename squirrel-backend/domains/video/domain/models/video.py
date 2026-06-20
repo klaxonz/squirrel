@@ -7,7 +7,6 @@ from sqlalchemy import JSON, VARCHAR, Boolean, DateTime, Index, Integer, Text, t
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 if TYPE_CHECKING:
     from domains.playlist.domain.models.playlist_item import PlaylistItem
@@ -69,7 +68,7 @@ def _playlist_items_join():
     return Video.id == foreign(PlaylistItem.video_id)
 
 
-class Video(Base, SerializerMixin):
+class Video(Base):
     __tablename__ = 'video'
 
     __table_args__ = (

@@ -3,6 +3,7 @@ from __future__ import annotations
 from threading import Lock
 
 from infrastructure.database.session import get_session
+from infrastructure.scheduling.models.scheduled_task import ScheduledTask, TaskExecutionLog
 from infrastructure.scheduling.store import dynamic_task_manager
 
 
@@ -12,15 +13,11 @@ class SchedulerTaskSynchronizer:
         self._fingerprints: dict[int, tuple] = {}
 
     def seed_task_fingerprints(self) -> None:
-        from infrastructure.scheduling.models.scheduled_task import ScheduledTask
-
         with get_session() as session:
             tasks = session.query(ScheduledTask).all()
             self._fingerprints = {task.id: self._get_task_fingerprint(task) for task in tasks}
 
     def sync_scheduled_tasks(self) -> None:
-        from infrastructure.scheduling.models.scheduled_task import ScheduledTask
-
         with self._lock, get_session() as session:
             tasks = session.query(ScheduledTask).all()
             current_ids = set()
@@ -46,8 +43,6 @@ class SchedulerTaskSynchronizer:
                 del self._fingerprints[task_id]
 
     def consume_manual_triggers(self) -> None:
-        from infrastructure.scheduling.models.scheduled_task import TaskExecutionLog
-
         pending: list[tuple[int, int, str]] = []
         with get_session() as session:
             logs = (
@@ -70,10 +65,15 @@ class SchedulerTaskSynchronizer:
             dynamic_task_manager.execute_task_now(task_id, execution_log_id=log_id, executed_by=executed_by)
 
     @staticmethod
-    def _get_task_fingerprint(task) -> tuple:
+    def _get_task_fingerprint(task: ScheduledTask) -> tuple:
+        """Build a hashable fingerprint of the scheduling-relevant task fields.
+
+        Typed access (no getattr) so a wrong type surfaces immediately instead
+        of silently producing a different fingerprint.
+        """
         return (
-            bool(getattr(task, 'is_active', False)),
-            int(getattr(task, 'interval', 0)),
-            str(getattr(task, 'unit', '')),
-            bool(getattr(task, 'start_immediately', False)),
+            bool(task.is_active),
+            int(task.interval),
+            str(task.unit),
+            bool(task.start_immediately),
         )

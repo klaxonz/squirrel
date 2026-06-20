@@ -8,12 +8,14 @@ from sqlalchemy.orm import Session, selectinload, with_loader_criteria
 import infrastructure.site_catalog.url as url_helper
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.interfaces.dto.subscription_responses import serialize_subscription
 from domains.video.application.services.listing.profiles import merge_profiles, video_extra_profiles
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_clip_marker import VideoClipMarker
 from domains.video.domain.models.video_history import VideoHistory
 from domains.video.domain.models.video_interaction import VideoInteraction
+from domains.video.interfaces.dto.video_responses import serialize_creator, serialize_video
 
 
 class VideoDetailLoader:
@@ -64,17 +66,17 @@ class VideoDetailLoader:
         clip_markers = self._load_clip_markers(session, user_id=user_id, video_id=video_id)
 
         return {
-            **video.to_dict(),
+            **serialize_video(video),
             'thumbnail': self.thumbnail_downloader.get_thumbnail_url(video.id, video.thumbnail, video.url),
             'interaction_type': video_interaction.interaction_type if video_interaction else None,
             'last_position': video_history.last_position if video_history else 0,
             'domain': url_helper.extract_top_level_domain(video.url),
             'subscriptions': merge_profiles(subscriptions_data, video_extra_profiles(video, 'subscriptions')),
             'actors': merge_profiles(
-                [creator.to_dict() for creator in video.creators],
+                [serialize_creator(creator) for creator in video.creators],
                 video_extra_profiles(video, 'actors'),
             ),
-            'creators': [creator.to_dict() for creator in video.creators],
+            'creators': [serialize_creator(creator) for creator in video.creators],
             'clip_markers': [self.serialize_marker(marker) for marker in clip_markers],
         }
 
@@ -102,7 +104,7 @@ class VideoDetailLoader:
             if not user_subscriptions:
                 continue
             user_subscription = user_subscriptions[0]
-            subscription_data = subscription.to_dict()
+            subscription_data = serialize_subscription(subscription)
             subscription_data['total_extract'] = counts_map.get(subscription.id, 0)
             subscription_data['total_videos'] = max(
                 int(subscription_data.get('total_videos') or 0),

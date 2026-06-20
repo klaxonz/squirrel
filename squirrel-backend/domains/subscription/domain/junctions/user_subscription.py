@@ -5,11 +5,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Index, Integer, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 if TYPE_CHECKING:
     from domains.subscription.domain.models.subscription import Subscription
@@ -21,12 +20,14 @@ def _user_subscription_subscription_join():
     return Subscription.id == foreign(UserSubscription.subscription_id)
 
 
-class UserSubscription(Base, SerializerMixin):
+class UserSubscription(Base):
     __tablename__ = 'user_subscription'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    subscription_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    subscription_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('subscription.id', ondelete='CASCADE'), nullable=False
+    )
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     is_nsfw: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_special_followed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

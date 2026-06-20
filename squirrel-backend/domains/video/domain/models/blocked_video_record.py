@@ -4,10 +4,9 @@ from sqlalchemy import VARCHAR, Index, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 
-class BlockedVideoRecord(Base, SerializerMixin):
+class BlockedVideoRecord(Base):
     __tablename__ = 'blocked_video_record'
 
     __table_args__ = (

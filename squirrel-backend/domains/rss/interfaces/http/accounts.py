@@ -4,7 +4,7 @@ from pydantic import BaseModel, SecretStr
 from domains.rss.application.services.client._base import RssServiceError
 from domains.rss.application.services.service import RssService
 from domains.user.application.services.auth import get_current_user
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from infrastructure.http import response
 
 from .dependencies import get_rss_service
@@ -40,14 +40,14 @@ class RssAccountTestRequest(BaseModel):
 
 
 @router.get('/accounts')
-def list_rss_accounts(current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)):
+def list_rss_accounts(current_user: CurrentUserDto = Depends(get_current_user), svc: RssService = Depends(get_rss_service)):
     return response.success({'data': svc.list_accounts(current_user.id)})
 
 
 @router.post('/accounts')
 def create_rss_account(
     req: RssAccountCreateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     try:
@@ -70,7 +70,7 @@ def create_rss_account(
 def update_rss_account(
     account_id: int,
     req: RssAccountUpdateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     payload = req.model_dump(exclude_unset=True)
@@ -88,7 +88,7 @@ def update_rss_account(
 
 @router.delete('/accounts/{account_id}')
 def delete_rss_account(
-    account_id: int, current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)
+    account_id: int, current_user: CurrentUserDto = Depends(get_current_user), svc: RssService = Depends(get_rss_service)
 ):
     if not svc.delete_account(current_user.id, account_id):
         return response.not_found('RSS 账号不存在')
@@ -98,7 +98,7 @@ def delete_rss_account(
 @router.post('/accounts/test')
 def test_rss_account_config(
     req: RssAccountTestRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     try:
@@ -118,7 +118,7 @@ def test_rss_account_config(
 
 @router.post('/accounts/{account_id}/test')
 def test_rss_account(
-    account_id: int, current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)
+    account_id: int, current_user: CurrentUserDto = Depends(get_current_user), svc: RssService = Depends(get_rss_service)
 ):
     try:
         result = svc.test_account(current_user.id, account_id)

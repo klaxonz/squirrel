@@ -2,6 +2,7 @@ import logging
 import threading
 from threading import Lock
 
+from infrastructure.concurrency.thread_manager import thread_manager
 from infrastructure.config.settings import settings
 from workers.scheduling.executors.runtime import CrawlWorkerRuntime
 
@@ -33,6 +34,7 @@ def crawl_worker_start() -> None:
             name='crawl-runtime-1',
         )
         thread.start()
+        thread_manager.register(thread)
 
         _worker_threads = [thread]
         _workers_running = True
@@ -45,6 +47,9 @@ def crawl_worker_stop() -> None:
         if not _workers_running:
             _logger.info('[crawl-worker] not running, skip stop()')
             return
+        # Signal the run loop to exit; the actual thread join happens at
+        # process shutdown via thread_manager.shutdown_all() so in-flight
+        # tasks get a bounded chance to finish instead of being killed.
         if _stop_event is not None:
             _stop_event.set()
         _worker_threads = []

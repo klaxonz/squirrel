@@ -4,6 +4,7 @@ import time
 from domains.subscription.application.services.core.sync.lifecycle import subscription_sync_lifecycle
 from domains.system.application.services.config_service import SystemConfigService
 from domains.system.domain.models.constants import SYS_ENABLE_SCHEDULER
+from infrastructure.concurrency.thread_manager import thread_manager
 from infrastructure.scheduling.lifecycle import scheduler_start, scheduler_stop
 from workers.bootstrap import bootstrap_runtime, create_shutdown_event
 
@@ -46,6 +47,10 @@ def main():
         if is_running:
             logger.info('[scheduler] Stopping scheduler before exit...')
             scheduler_stop()
+
+        # Give every managed background thread a bounded chance to finish
+        # in-flight DB writes before the process tears down.
+        thread_manager.shutdown_all()
 
     logger.info('[scheduler] Scheduler process exited')
 

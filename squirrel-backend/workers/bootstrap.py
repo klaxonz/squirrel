@@ -77,6 +77,18 @@ def bootstrap_runtime(component: str):
         logger.exception('[%s] Site plugin bootstrap failed', component)
         raise
 
+    # Wire the Meilisearch indexer to the `video.saved` domain event so the
+    # video persistence layer (which runs here in the crawl worker) can fire
+    # the event without importing the indexer. Skipped when Meilisearch is not
+    # configured -- the publisher already no-ops in that case.
+    if settings.meili.url:
+        try:
+            from domains.video.application.services.search.meili_indexer import register_meili_video_event_listener
+
+            register_meili_video_event_listener()
+        except Exception:
+            logger.warning('[%s] Meilisearch event listener registration failed', component, exc_info=True)
+
     try:
         yield
     finally:

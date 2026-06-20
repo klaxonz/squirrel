@@ -1,6 +1,7 @@
 """Video persistence service - handles video database operations"""
 
 import logging
+from collections.abc import Callable, Generator
 from datetime import datetime
 
 from sqlalchemy import select
@@ -8,20 +9,27 @@ from sqlalchemy.orm import Session
 
 import domains.subscription.application.services.core.video_service as subscription_video_service
 import infrastructure.site_catalog.url as url_helper
-from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
 from domains.video.domain.models.video import Video as VideoModel
 from infrastructure.config.settings import settings
-from infrastructure.database.session import get_session, register_after_commit
+from infrastructure.database.session import get_session as _default_get_session
+from infrastructure.database.session import register_after_commit
+from shared_kernel.domain.events import DomainEvents, domain_events
 
 logger = logging.getLogger(__name__)
 
+SessionFactory = Callable[[], Generator[Session, None, None]]
+
 
 def _index_video_after_commit(session: Session, video: VideoModel) -> None:
-    """事务提交后把 video 推到 Meilisearch(增量直写,失败仅告警)。"""
+    """事务提交后把 video 推到 Meilisearch(增量直写,失败仅告警)。
+
+    发布 ``video.saved`` 事件,由在 bootstrap 注册的 Meilisearch 监听器消费,
+    本模块不再直接依赖 meili_indexer,从而消除函数内 import。
+    """
     if not settings.meili.url:
         return
     try:
-        register_after_commit(session, lambda: get_meili_video_indexer().upsert_safe(video.id))
+        register_after_commit(session, lambda: domain_events.fire(DomainEvents.VIDEO_SAVED, {'video_id': video.id}))
     except Exception:
         logger.warning('meili index register failed video_id=%s', getattr(video, 'id', None), exc_info=True)
 
@@ -34,6 +42,9 @@ class VideoPersistenceService:
     - Create subscription-video associations
     - Update subscription statistics
     """
+
+    def __init__(self, session_factory: SessionFactory | None = None):
+        self._session_factory = session_factory or _default_get_session
 
     def create_or_update(
         self,
@@ -62,7 +73,7 @@ class VideoPersistenceService:
             (video_model, is_new): Video model and whether it was newly created
 
         """
-        with get_session() as session:
+        with self._session_factory() as session:
             # Query if already exists
             video = session.scalars(
                 select(VideoModel).where(VideoModel.url == url),

@@ -7,19 +7,25 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import and_, desc, or_, select
 
 from infrastructure.database.query import escape_ilike
-from infrastructure.database.session import get_session
+from infrastructure.database.session import get_session as _default_get_session
 from infrastructure.scheduling.bootstrap import discover_task_classes, ensure_system_tasks
 from infrastructure.scheduling.models.scheduled_task import ScheduledTask, TaskExecutionLog, TaskStatus, TaskType
+from infrastructure.scheduling.responses import serialize_scheduled_task
 from infrastructure.scheduling.store import dynamic_task_manager
 
 logger = logging.getLogger(__name__)
 
 
 class ScheduledTaskService:
-    """Scheduled task service"""
+    """Scheduled task service.
+
+    All methods are instance methods backed by the injected ``session_factory``
+    so tests can swap the session and the production wiring stays uniform --
+    no mix of static methods + hardcoded ``get_session()``.
+    """
 
     def __init__(self, session_factory=None):
-        self.session_factory = session_factory or get_session
+        self.session_factory = session_factory or _default_get_session
 
     def get_task_list(
         self,
@@ -59,11 +65,11 @@ class ScheduledTaskService:
             'page': task_page.page,
             'page_size': task_page.size,
             'total': task_page.total,
-            'data': [task.to_dict() for task in task_page.items],
+            'data': [serialize_scheduled_task(task) for task in task_page.items],
         }
 
-    @staticmethod
     def create_task(
+        self,
         name: str,
         task_class: str,
         task_type: str = TaskType.USER.value,
@@ -99,7 +105,7 @@ class ScheduledTaskService:
                 updated_by=created_by,
             )
 
-            with get_session() as session:
+            with self.session_factory() as session:
                 session.add(task_config)
                 session.commit()
                 session.refresh(task_config)
@@ -111,8 +117,8 @@ class ScheduledTaskService:
             logger.error('Failed to create task %s: %s', name, e)
             return None
 
-    @staticmethod
     def update_task(
+        self,
         task_id: int,
         name: str | None = None,
         description: str | None = None,
@@ -126,7 +132,7 @@ class ScheduledTaskService:
     ) -> bool:
         """Update task configuration"""
         try:
-            with get_session() as session:
+            with self.session_factory() as session:
                 task_config = session.query(ScheduledTask).filter(ScheduledTask.id == task_id).first()
                 if not task_config:
                     return False
@@ -162,11 +168,10 @@ class ScheduledTaskService:
             logger.error('Failed to update task %s: %s', task_id, e)
             return False
 
-    @staticmethod
-    def delete_task(task_id: int) -> bool:
+    def delete_task(self, task_id: int) -> bool:
         """Delete a task"""
         try:
-            with get_session() as session:
+            with self.session_factory() as session:
                 task_config = session.query(ScheduledTask).filter(ScheduledTask.id == task_id).first()
                 if not task_config:
                     return False
@@ -186,30 +191,27 @@ class ScheduledTaskService:
             logger.error('Failed to delete task %s: %s', task_id, e)
             return False
 
-    @staticmethod
-    def enable_task(task_id: int, updated_by: str | None = None) -> bool:
+    def enable_task(self, task_id: int, updated_by: str | None = None) -> bool:
         """Enable a task"""
-        return ScheduledTaskService.update_task(
+        return self.update_task(
             task_id=task_id,
             is_active=True,
             updated_by=updated_by,
         )
 
-    @staticmethod
-    def disable_task(task_id: int, updated_by: str | None = None) -> bool:
+    def disable_task(self, task_id: int, updated_by: str | None = None) -> bool:
         """Disable a task"""
-        return ScheduledTaskService.update_task(
+        return self.update_task(
             task_id=task_id,
             is_active=False,
             updated_by=updated_by,
         )
 
-    @staticmethod
-    def execute_task_now(task_id: int, executed_by: str | None = None) -> bool:
+    def execute_task_now(self, task_id: int, executed_by: str | None = None) -> bool:
         """Execute a task immediately"""
         try:
             # 记录执行请求
-            with get_session() as session:
+            with self.session_factory() as session:
                 task_config = session.query(ScheduledTask).filter(ScheduledTask.id == task_id).first()
                 if not task_config:
                     return False
@@ -231,18 +233,16 @@ class ScheduledTaskService:
             logger.error('Failed to execute task %s now: %s', task_id, e)
             return False
 
-    @staticmethod
-    def get_available_task_classes() -> dict[str, Any]:
+    def get_available_task_classes(self) -> dict[str, Any]:
         """Get available task classes"""
         discover_task_classes()
         return dynamic_task_manager.task_factory.get_available_task_classes()
 
-    @staticmethod
-    def get_task_statistics() -> dict[str, Any]:
+    def get_task_statistics(self) -> dict[str, Any]:
         """Get task statistics"""
         ensure_system_tasks()
 
-        with get_session() as session:
+        with self.session_factory() as session:
             db_total_tasks = session.query(ScheduledTask).count()
             db_active_tasks = (
                 session.query(ScheduledTask)

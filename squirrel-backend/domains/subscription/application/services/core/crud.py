@@ -33,9 +33,9 @@ class SubscriptionCrudService:
                 .join(UserSubscription, UserSubscription.subscription_id == Subscription.id)
                 .where(
                     Subscription.url == url,
-                    not Subscription.is_deleted,
+                    Subscription.is_deleted.is_(False),
                     UserSubscription.user_id == user_id,
-                    not UserSubscription.is_deleted,
+                    UserSubscription.is_deleted.is_(False),
                 ),
             ).scalar_one_or_none()
             return subscription
@@ -148,9 +148,11 @@ class SubscriptionCrudService:
             session.commit()
             updated = True
 
-        import user.services.search.suggestion_service as search_suggestion_service
+        from domains.user.application.services.search.suggestion_service import (
+            invalidate_users_for_subscription,
+        )
 
-        search_suggestion_service.invalidate_users_for_subscription(subscription_id)
+        invalidate_users_for_subscription(subscription_id)
         return updated
 
     def toggle_status(self, subscription_id: int, status: bool, field: str) -> bool:

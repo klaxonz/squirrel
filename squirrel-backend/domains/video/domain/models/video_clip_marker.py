@@ -3,11 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import VARCHAR, Float, Index, Integer, Text
+from sqlalchemy import VARCHAR, Float, ForeignKey, Index, Integer, Text
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 if TYPE_CHECKING:
     from domains.video.domain.models.video import Video
@@ -19,7 +18,7 @@ def _video_join():
     return Video.id == foreign(VideoClipMarker.video_id)
 
 
-class VideoClipMarker(Base, SerializerMixin):
+class VideoClipMarker(Base):
     __tablename__ = 'video_clip_marker'
 
     __table_args__ = (
@@ -28,8 +27,8 @@ class VideoClipMarker(Base, SerializerMixin):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, index=True)
-    video_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('user.id', ondelete='CASCADE'), index=True)
+    video_id: Mapped[int] = mapped_column(Integer, ForeignKey('video.id', ondelete='CASCADE'), nullable=False)
     title: Mapped[str | None] = mapped_column(VARCHAR(255), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     preview_image_url: Mapped[str | None] = mapped_column(VARCHAR(1024), nullable=True)

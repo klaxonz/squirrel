@@ -7,7 +7,6 @@ from sqlalchemy import VARCHAR, Index, Integer
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 if TYPE_CHECKING:
     from domains.playlist.domain.models.playlist_item import PlaylistItem
@@ -19,7 +18,7 @@ def _items_join():
     return Playlist.id == foreign(PlaylistItem.playlist_id)
 
 
-class Playlist(Base, SerializerMixin):
+class Playlist(Base):
     __tablename__ = 'playlist'
 
     __table_args__ = (

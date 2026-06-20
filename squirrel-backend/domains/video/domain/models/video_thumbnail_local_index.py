@@ -4,10 +4,9 @@ from sqlalchemy import VARCHAR, Boolean, DateTime, Index, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 
-class VideoThumbnailLocalIndex(Base, SerializerMixin):
+class VideoThumbnailLocalIndex(Base):
     __tablename__ = 'video_thumbnail_local_index'
 
     __table_args__ = (

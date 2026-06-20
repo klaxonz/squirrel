@@ -17,7 +17,7 @@ from domains.subscription.interfaces.http.dependencies import (
     get_subscription_manage_service,
 )
 from domains.user.application.services.auth import get_current_user
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from infrastructure.http import response
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
@@ -28,7 +28,7 @@ router = APIRouter()
 @router.post('/subscribe')
 def subscribe_content(
     req: SubscribeRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     import_svc: SubscriptionImportService = Depends(get_subscription_import_service),
 ):
     domain = extract_top_level_domain(req.url)
@@ -47,7 +47,7 @@ def subscribe_content(
 @router.post('/unsubscribe')
 def unsubscribe_content(
     req: UnsubscribeRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     manage_svc: SubscriptionManageService = Depends(get_subscription_manage_service),
 ):
     manage_svc.unsubscribe_by_id(current_user.id, req.subscription_id)
@@ -57,7 +57,7 @@ def unsubscribe_content(
 @router.get('/status')
 def get_subscription_status(
     url: str = Query(None),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     crud_svc: SubscriptionCrudService = Depends(get_subscription_crud_service),
 ):
     return response.success(crud_svc.check_subscription_status(current_user.id, url))
@@ -66,7 +66,7 @@ def get_subscription_status(
 @router.get('/detail/{subscription_id}')
 def get_subscription_detail(
     subscription_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     crud_svc: SubscriptionCrudService = Depends(get_subscription_crud_service),
     list_svc: SubscriptionListService = Depends(get_subscription_list_service),
 ):
@@ -89,7 +89,7 @@ def get_subscription_detail(
 @router.get('/list')
 def list_subscriptions(
     params: SubscriptionListQuery = Depends(),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     list_svc: SubscriptionListService = Depends(get_subscription_list_service),
 ):
     domains: list[str] | None = None
@@ -119,7 +119,7 @@ def list_subscriptions(
 
 @router.get('/options')
 def get_subscription_options(
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     list_svc: SubscriptionListService = Depends(get_subscription_list_service),
 ):
     return response.success(
@@ -132,7 +132,7 @@ def get_subscription_options(
 @router.post('/toggle-nsfw')
 def toggle_nsfw(
     req: ToggleStatusRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     manage_svc: SubscriptionManageService = Depends(get_subscription_manage_service),
 ):
     success = manage_svc.toggle_nsfw_status(
@@ -146,7 +146,7 @@ def toggle_nsfw(
 @router.post('/toggle-special-follow')
 def toggle_special_follow(
     req: ToggleStatusRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     manage_svc: SubscriptionManageService = Depends(get_subscription_manage_service),
 ):
     success = manage_svc.toggle_special_follow_status(

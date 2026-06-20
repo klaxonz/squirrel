@@ -4,10 +4,9 @@ from sqlalchemy import VARCHAR, DateTime, Index, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 
-class CrawlDispatchScope(Base, SerializerMixin):
+class CrawlDispatchScope(Base):
     __tablename__ = 'crawl_dispatch_scope'
 
     __table_args__ = (

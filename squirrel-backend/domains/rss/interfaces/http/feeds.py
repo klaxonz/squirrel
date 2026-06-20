@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from domains.rss.application.services.client._base import RssServiceError
 from domains.rss.application.services.service import RssService
 from domains.user.application.services.auth import get_current_user
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from infrastructure.http import response
 
 from .dependencies import get_rss_service
@@ -23,7 +23,7 @@ class RssFeedSubscribeRequest(BaseModel):
 @router.post('/feeds/subscribe')
 def subscribe_rss_feed(
     req: RssFeedSubscribeRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     try:
@@ -45,7 +45,7 @@ def subscribe_rss_feed(
 def unsubscribe_rss_feed(
     feed_id: int,
     account_id: int = Query(..., alias='accountId'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     try:
@@ -60,7 +60,7 @@ def unsubscribe_rss_feed(
 def patch_rss_feed(
     feed_id: int,
     req: dict[str, Any],
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     try:
@@ -76,7 +76,7 @@ def patch_rss_feed(
 @router.post('/feeds/{feed_id}/read')
 def mark_rss_feed_as_read(
     feed_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     return response.success(svc.mark_feed_as_read(current_user.id, feed_id))
@@ -85,7 +85,7 @@ def mark_rss_feed_as_read(
 @router.get('/feeds')
 def list_rss_feeds(
     account_id: int | None = Query(None, alias='accountId'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     return response.success({'data': svc.list_feeds(current_user.id, account_id)})

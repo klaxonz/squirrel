@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from domains.user.application.services.auth import get_current_user
 from domains.user.application.services.config import UserConfigService
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from infrastructure.http import response
 
 from .dependencies import get_config_service
@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.get('/me/config')
 async def get_user_config(
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     cfg_svc: UserConfigService = Depends(get_config_service),
 ):
     settings = cfg_svc.get_config(current_user.id)
@@ -23,7 +23,7 @@ async def get_user_config(
 @router.put('/me/config')
 async def update_user_config(
     config_data: UserConfigUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     cfg_svc: UserConfigService = Depends(get_config_service),
 ):
     updated = cfg_svc.update_config(

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 import domains.playlist.application.services.repository as repository
 from domains.playlist.application.services.serialization import serialize_item, serialize_playlist
+from domains.video.interfaces.dto.video_responses import serialize_video
 from infrastructure.database.session import get_session as _default_get_session
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
@@ -64,7 +65,7 @@ class PlaylistQueryService:
             video = video_map.get(item['video_id'])
             if video:
                 item = item.copy()
-                item['video'] = video.to_dict()
+                item['video'] = serialize_video(video)
             enriched.append(item)
 
         return enriched

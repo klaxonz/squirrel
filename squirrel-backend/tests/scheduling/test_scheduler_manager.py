@@ -15,10 +15,11 @@ class _FakeScheduler:
 
 
 class _FakeThread:
-    def __init__(self, target=None, args=None, daemon=None):
+    def __init__(self, target=None, args=None, daemon=None, name=None):
         self.target = target
         self.args = args or ()
         self.daemon = daemon
+        self.name = name
         self.started = False
         self.joined = False
 
@@ -41,8 +42,8 @@ def test_scheduler_start_and_stop_manage_heartbeat_thread(monkeypatch):
     monkeypatch.setattr(scheduler_manager._task_synchronizer, 'sync_scheduled_tasks', lambda: None)
     monkeypatch.setattr(scheduler_manager._task_synchronizer, 'consume_manual_triggers', lambda: None)
 
-    def _fake_thread_factory(target=None, args=None, daemon=None):
-        thread = _FakeThread(target=target, args=args, daemon=daemon)
+    def _fake_thread_factory(target=None, args=None, daemon=None, name=None):
+        thread = _FakeThread(target=target, args=args, daemon=daemon, name=name)
         started.append(thread)
         return thread
 

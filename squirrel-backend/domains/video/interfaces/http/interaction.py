@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from domains.user.application.services.auth import get_current_user
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from domains.video.application.services.engagement.interaction import VideoInteractionService
 from domains.video.interfaces.dto.video_interaction import VideoInteractionDelete, VideoInteractionUpdate
 from infrastructure.http import response
@@ -19,7 +19,7 @@ def get_video_interaction_service() -> VideoInteractionService:
 @router.post('/toggle-like')
 def update_video_interaction(
     data: VideoInteractionUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: VideoInteractionService = Depends(get_video_interaction_service),
 ):
     svc.save_or_update_video_interaction(current_user.id, data.video_id, data.interaction_type)
@@ -29,7 +29,7 @@ def update_video_interaction(
 @router.post('/delete')
 def delete_video_interaction(
     data: VideoInteractionDelete,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: VideoInteractionService = Depends(get_video_interaction_service),
 ):
     svc.delete_video_interaction(current_user.id, data.video_id)

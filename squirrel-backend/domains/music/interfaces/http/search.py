@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 
 from domains.music.application.services.service import MusicService
 from domains.user.application.services.auth import get_current_user
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from infrastructure.http import response
 
 from .dependencies import get_music_service
@@ -15,7 +15,7 @@ async def search_music(
     query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
     page: int = Query(1, ge=1, le=50, description='页码'),
     page_size: int = Query(20, ge=1, le=50, description='每页数量'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
@@ -30,7 +30,7 @@ async def search_music_artists(
     query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
     page: int = Query(1, ge=1, le=50, description='页码'),
     page_size: int = Query(10, ge=1, le=30, description='每页数量'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
@@ -45,7 +45,7 @@ async def search_music_albums(
     query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
     page: int = Query(1, ge=1, le=50, description='页码'),
     page_size: int = Query(12, ge=1, le=30, description='每页数量'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
@@ -57,7 +57,7 @@ async def search_music_albums(
 
 @router.get('/search/default')
 async def get_music_default_search(
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.get_default_search_keyword(current_user.id))
@@ -65,7 +65,7 @@ async def get_music_default_search(
 
 @router.get('/search/hot')
 async def list_music_hot_searches(
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
     return response.success(await music_service.list_hot_searches(current_user.id))
@@ -74,7 +74,7 @@ async def list_music_hot_searches(
 @router.get('/search/suggest')
 async def suggest_music_search(
     query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()
@@ -87,7 +87,7 @@ async def suggest_music_search(
 @router.get('/search/complex')
 async def search_music_complex(
     query: str = Query(..., min_length=1, max_length=100, description='搜索关键词'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     music_service: MusicService = Depends(get_music_service),
 ):
     normalized_query = query.strip()

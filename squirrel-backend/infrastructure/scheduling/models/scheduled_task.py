@@ -2,11 +2,10 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import JSON, TEXT, VARCHAR, Boolean, DateTime, Index, Integer
+from sqlalchemy import JSON, TEXT, VARCHAR, Boolean, DateTime, ForeignKey, Index, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 
 class TaskType(StrEnum):
@@ -26,7 +25,7 @@ class TaskStatus(StrEnum):
     ERROR = 'error'  # Error state
 
 
-class ScheduledTask(Base, SerializerMixin):
+class ScheduledTask(Base):
     """Scheduled task configuration model"""
 
     __tablename__ = 'scheduled_task'
@@ -76,7 +75,7 @@ class ScheduledTask(Base, SerializerMixin):
     updated_by: Mapped[str | None] = mapped_column(VARCHAR(100), nullable=True, comment='Updater')
 
 
-class TaskExecutionLog(Base, SerializerMixin):
+class TaskExecutionLog(Base):
     """Task execution log model"""
 
     __tablename__ = 'task_execution_log'
@@ -86,6 +85,12 @@ class TaskExecutionLog(Base, SerializerMixin):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # NOTE: ``task_id`` deliberately has NO ForeignKey. TaskExecutionLog is an
+    # append-only audit trail; production data contains ~285k historical rows
+    # whose scheduled task has since been hard-deleted, and those rows are
+    # valuable audit history that must not be cascade-removed. Enforcing a FK
+    # here would require deleting that history -- see the migration
+    # e9a1f3c7d4b8 docstring for the full rationale.
     task_id: Mapped[int] = mapped_column(Integer, nullable=False, comment='Task ID')
     task_name: Mapped[str] = mapped_column(VARCHAR(100), nullable=False, comment='Task name')
 

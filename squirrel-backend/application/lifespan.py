@@ -90,11 +90,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info('Startup: ensuring Meilisearch index')
     if settings.meili.url:
         try:
-            from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
+            from domains.video.application.services.search.meili_indexer import (
+                get_meili_video_indexer,
+                register_meili_video_event_listener,
+            )
             from infrastructure.search.meili import ensure_videos_index
 
             ensure_videos_index()
             get_meili_video_indexer()  # 预热单例,避免首个请求的初始化开销
+            # Wire the indexer to the `video.saved` domain event so persistence
+            # code never imports the indexer directly (decoupled via events).
+            register_meili_video_event_listener()
         except Exception:
             logger.exception('Startup: failed to ensure Meilisearch index')
             raise

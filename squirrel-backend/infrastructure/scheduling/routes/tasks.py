@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from infrastructure.http import response
+from infrastructure.scheduling.responses import serialize_scheduled_task
 from infrastructure.scheduling.routes.dependencies import get_scheduled_task_service
 from infrastructure.scheduling.routes.schemas import TaskCreateRequest, TaskListQuery, TaskUpdateRequest
 from infrastructure.scheduling.service import ScheduledTaskService
@@ -26,9 +27,12 @@ def get_scheduled_tasks(
 
 
 @router.post('/tasks')
-def create_task(request: TaskCreateRequest):
+def create_task(
+    request: TaskCreateRequest,
+    svc: ScheduledTaskService = Depends(get_scheduled_task_service),
+):
     """Create a new task."""
-    task = ScheduledTaskService.create_task(
+    task = svc.create_task(
         name=request.name,
         task_class=request.task_class,
         task_type=request.task_type,
@@ -44,13 +48,17 @@ def create_task(request: TaskCreateRequest):
     if not task:
         return response.param_error('创建任务失败')
 
-    return response.success(task.to_dict(), '任务创建成功')
+    return response.success(serialize_scheduled_task(task), '任务创建成功')
 
 
 @router.put('/tasks/{task_id}')
-def update_task(task_id: int, request: TaskUpdateRequest):
+def update_task(
+    task_id: int,
+    request: TaskUpdateRequest,
+    svc: ScheduledTaskService = Depends(get_scheduled_task_service),
+):
     """Update task configuration."""
-    task_result = ScheduledTaskService.update_task(
+    task_result = svc.update_task(
         task_id=task_id,
         name=request.name,
         description=request.description,
@@ -69,9 +77,12 @@ def update_task(task_id: int, request: TaskUpdateRequest):
 
 
 @router.delete('/tasks/{task_id}')
-def delete_task(task_id: int):
+def delete_task(
+    task_id: int,
+    svc: ScheduledTaskService = Depends(get_scheduled_task_service),
+):
     """Delete a task."""
-    task_result = ScheduledTaskService.delete_task(task_id)
+    task_result = svc.delete_task(task_id)
     if not task_result:
         return response.not_found('任务不存在或删除失败')
 
@@ -79,9 +90,12 @@ def delete_task(task_id: int):
 
 
 @router.post('/tasks/{task_id}/enable')
-def enable_task(task_id: int):
+def enable_task(
+    task_id: int,
+    svc: ScheduledTaskService = Depends(get_scheduled_task_service),
+):
     """Enable a task."""
-    task_result = ScheduledTaskService.enable_task(task_id)
+    task_result = svc.enable_task(task_id)
     if not task_result:
         return response.not_found('任务不存在或启用失败')
 
@@ -89,9 +103,12 @@ def enable_task(task_id: int):
 
 
 @router.post('/tasks/{task_id}/disable')
-def disable_task(task_id: int):
+def disable_task(
+    task_id: int,
+    svc: ScheduledTaskService = Depends(get_scheduled_task_service),
+):
     """Disable a task."""
-    task_result = ScheduledTaskService.disable_task(task_id)
+    task_result = svc.disable_task(task_id)
     if not task_result:
         return response.not_found('任务不存在或禁用失败')
 
@@ -99,9 +116,12 @@ def disable_task(task_id: int):
 
 
 @router.post('/tasks/{task_id}/execute')
-def execute_task_now(task_id: int):
+def execute_task_now(
+    task_id: int,
+    svc: ScheduledTaskService = Depends(get_scheduled_task_service),
+):
     """Execute a task immediately."""
-    task_result = ScheduledTaskService.execute_task_now(task_id)
+    task_result = svc.execute_task_now(task_id)
     if not task_result:
         return response.not_found('任务不存在或执行失败')
 
@@ -109,6 +129,8 @@ def execute_task_now(task_id: int):
 
 
 @router.get('/task-classes')
-def get_available_task_classes():
+def get_available_task_classes(
+    svc: ScheduledTaskService = Depends(get_scheduled_task_service),
+):
     """Get available task classes."""
-    return response.success(ScheduledTaskService.get_available_task_classes())
+    return response.success(svc.get_available_task_classes())

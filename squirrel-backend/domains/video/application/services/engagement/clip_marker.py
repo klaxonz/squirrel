@@ -6,9 +6,11 @@ from sqlalchemy.orm import Session
 
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_clip_marker import VideoClipMarker
+from domains.video.interfaces.dto.clip_marker_responses import ClipMarkerResponse
 from domains.video.interfaces.dto.video_clip_marker import ClipMarkerCreate, ClipMarkerUpdate
 from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session
+from shared_kernel.domain.exceptions import NotFoundError, ValidationError
 
 DEFAULT_CLIP_DURATION_SECONDS = 15.0
 
@@ -35,10 +37,18 @@ class VideoClipMarkerService:
         return f'{preview_url}{separator}v={version}'
 
     def serialize_marker(self, marker: VideoClipMarker) -> dict:
-        payload = marker.to_dict()
-        payload['duration_seconds'] = round(max((marker.end_time or 0) - (marker.start_time or 0), 0), 3)
-        payload['preview_image_url'] = self._serialize_preview_url(marker)
-        return payload
+        """Serialize a marker to its public response shape.
+
+        Uses the explicit ``ClipMarkerResponse`` schema instead of
+        ``marker.to_dict()`` so the response contract is stable and new model
+        columns cannot leak out. ``duration_seconds`` and the version-stamped
+        ``preview_image_url`` are computed the same way as before.
+        """
+        duration_seconds = round(max((marker.end_time or 0) - (marker.start_time or 0), 0), 3)
+        data = ClipMarkerResponse.model_validate(marker).model_dump()
+        data['duration_seconds'] = duration_seconds
+        data['preview_image_url'] = self._serialize_preview_url(marker)
+        return data
 
     def _resolve_preview_file_path(self, marker: VideoClipMarker) -> Path:
         return (
@@ -66,18 +76,18 @@ class VideoClipMarkerService:
         try:
             encoded = data_url.split(',', 1)[1]
         except IndexError as exc:
-            raise ValueError('Invalid image_data_url') from exc
+            raise ValidationError('Invalid image_data_url') from exc
 
         try:
             return base64.b64decode(encoded, validate=True)
         except ValueError as exc:
-            raise ValueError('Invalid image_data_url') from exc
+            raise ValidationError('Invalid image_data_url') from exc
 
     @staticmethod
     def _get_video_or_raise(session: Session, video_id: int) -> Video:
         video = session.get(Video, video_id)
         if not video or getattr(video, 'is_deleted', False):
-            raise ValueError('Video not found')
+            raise NotFoundError('Video')
         return video
 
     @staticmethod
@@ -99,7 +109,7 @@ class VideoClipMarkerService:
             normalized_end = min(normalized_end, duration_limit)
 
         if normalized_end < normalized_start:
-            raise ValueError('end_time must be greater than or equal to start_time')
+            raise ValidationError('end_time must be greater than or equal to start_time')
 
         return round(normalized_start, 3), round(normalized_end, 3)
 

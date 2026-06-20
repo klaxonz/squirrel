@@ -3,6 +3,7 @@ import time
 
 from domains.system.application.services.config_service import SystemConfigService
 from domains.system.domain.models.constants import SYS_ENABLE_WORKER
+from infrastructure.concurrency.thread_manager import thread_manager
 from workers.bootstrap import bootstrap_runtime, create_shutdown_event
 from workers.messaging.worker import worker_start, worker_stop
 
@@ -33,6 +34,10 @@ def main():
         if is_running:
             logger.info('[worker] Stopping worker threads before exit...')
             worker_stop()
+
+        # Give every managed background thread a bounded chance to finish
+        # in-flight DB writes before the process tears down.
+        thread_manager.shutdown_all()
 
     logger.info('[worker] Worker process exited')
 

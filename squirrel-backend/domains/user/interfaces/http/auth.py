@@ -16,19 +16,20 @@ async def register(
     request: UserRegisterRequest,
     user_svc: UserService = Depends(get_user_service),
 ):
-    """Register a new user"""
-    try:
-        user, _ = user_svc.create_user(
-            nickname=request.nickname,
-            email=str(request.email),
-            password=request.password,
-        )
-        return response.success(
-            data=serialize_user(user),
-            msg='注册成功',
-        )
-    except ValueError as e:
-        return response.param_error(str(e))
+    """Register a new user.
+
+    Conflict (email already registered) surfaces as a 409 via the global
+    ``DomainError`` handler -- no per-route try/except needed.
+    """
+    user, _ = user_svc.create_user(
+        nickname=request.nickname,
+        email=str(request.email),
+        password=request.password,
+    )
+    return response.success(
+        data=serialize_user(user),
+        msg='注册成功',
+    )
 
 
 @router.post('/login')

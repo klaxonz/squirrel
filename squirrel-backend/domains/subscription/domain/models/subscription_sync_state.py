@@ -5,7 +5,6 @@ from sqlalchemy import JSON, TEXT, VARCHAR, DateTime, Index, Integer, UniqueCons
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 
 class SyncMode(StrEnum):
@@ -21,7 +20,7 @@ class SyncStatus(StrEnum):
     FAILED = 'failed'
 
 
-class SubscriptionSyncState(Base, SerializerMixin):
+class SubscriptionSyncState(Base):
     __tablename__ = 'subscription_sync_state'
 
     __table_args__ = (

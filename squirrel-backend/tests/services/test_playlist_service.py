@@ -13,6 +13,7 @@ from domains.playlist.domain.models.playlist_item import PlaylistItem
 from domains.playlist.interfaces.dto.playlist import PlaylistItemReorder
 from domains.video.domain.models.video import Video
 from infrastructure.database.base import Base
+from shared_kernel.domain.exceptions import ForbiddenError
 
 
 @pytest.fixture
@@ -143,5 +144,5 @@ def test_default_playlist_cannot_be_modified_or_deleted(engine, command_svc):
     _seed_videos(engine)
     item = command_svc.add_video_to_playlist(user_id=7, video_id=1)
 
-    with pytest.raises(ValueError, match='Cannot delete default playlist'):
+    with pytest.raises(ForbiddenError, match='Cannot delete default playlist'):
         command_svc.delete_playlist(user_id=7, playlist_id=item['playlist_id'])

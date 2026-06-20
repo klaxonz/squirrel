@@ -7,7 +7,6 @@ from sqlalchemy import JSON, VARCHAR, Boolean, Text
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 if TYPE_CHECKING:
     from domains.video.domain.junctions.video_creator import VideoCreator
@@ -27,7 +26,7 @@ def _videos_secondary_join():
     return Video.id == foreign(VideoCreator.video_id)
 
 
-class Creator(Base, SerializerMixin):
+class Creator(Base):
     __tablename__ = 'creator'
 
     id: Mapped[int] = mapped_column(primary_key=True)

@@ -3,6 +3,7 @@ from datetime import timedelta
 from fastapi import Request, Response
 
 from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_responses import UserResponse
 from infrastructure.auth.jwt import (
     AUTH_COOKIE_NAME,
     REMEMBER_ME_CLAIM,
@@ -14,7 +15,14 @@ from infrastructure.auth.jwt import (
 
 
 def serialize_user(user: User) -> dict:
-    return user.to_dict(exclude={'token_version'})
+    """Serialize a User ORM row into the public response shape.
+
+    Uses an explicit Pydantic schema (whitelisted fields) instead of
+    ``User.to_dict()`` so the response contract is stable and adding a column
+    to the model can never leak into API output. ``token_version`` and any
+    other sensitive columns are excluded by construction.
+    """
+    return UserResponse.model_validate(user).model_dump()
 
 
 def issue_auth_cookie(

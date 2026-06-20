@@ -46,13 +46,18 @@ def test_get_task_list_serializes_only_current_page(engine, svc):
 
     serialized_ids = []
 
-    def fake_to_dict(task):
+    def fake_serialize(task):
         serialized_ids.append(task.id)
         return {'id': task.id, 'name': task.name}
 
     from unittest.mock import patch
 
-    with patch.object(ScheduledTask, 'to_dict', fake_to_dict):
+    # get_task_list now serializes each task via serialize_scheduled_task
+    # (the SerializerMixin.to_dict() path is gone); patch that instead.
+    with patch(
+        'infrastructure.scheduling.service.serialize_scheduled_task',
+        fake_serialize,
+    ):
         result = svc.get_task_list(page=2, page_size=5)
 
     assert result['total'] == 30

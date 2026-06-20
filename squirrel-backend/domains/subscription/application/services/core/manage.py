@@ -16,6 +16,7 @@ from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session, register_after_commit
 from infrastructure.messaging.framework.producer import RedisStreamProducer
 from infrastructure.messaging.models.message import Message
+from infrastructure.messaging.payload import serialize_message
 
 
 class SubscriptionManageService:
@@ -203,7 +204,7 @@ class SubscriptionManageService:
             message = Message(body=json.dumps(task))
             session.add(message)
             session.commit()
-            dump_json = message.to_dict()
+            dump_json = serialize_message(message)
             RedisStreamProducer().send(constants.QUEUE_SUBSCRIBE, dump_json)
         return dump_json
 

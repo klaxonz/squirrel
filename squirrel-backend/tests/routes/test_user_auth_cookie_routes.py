@@ -12,22 +12,21 @@ from domains.user.interfaces.http.dependencies import get_user_service
 from infrastructure.auth.jwt import AUTH_COOKIE_NAME
 
 
-def _make_user(user_id=7, email='demo@example.com', token_version=0):
-    def _to_dict(self, exclude=None, **kwargs):
-        _ = kwargs
-        data = {'id': user_id, 'email': email, 'token_version': token_version}
-        for key in exclude or set():
-            data.pop(key, None)
-        return data
-
+def _make_user(user_id=7, email='demo@example.com', token_version=0, nickname='demo'):
+    # The real User ORM row exposes id/nickname/avatar/created_at/updated_at
+    # (no email column -- email lives on Account). The stub mirrors the public
+    # UserResponse field set so serialize_user -> UserResponse validates.
     return type(
         'UserStub',
         (),
         {
             'id': user_id,
             'email': email,
+            'nickname': nickname,
+            'avatar': None,
+            'created_at': None,
+            'updated_at': None,
             'token_version': token_version,
-            'to_dict': _to_dict,
         },
     )()
 
@@ -83,7 +82,16 @@ def test_login_sets_session_auth_cookie_without_remember_me(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json()['data'] == {'id': 7, 'email': 'demo@example.com'}
+    # Login response is the whitelisted UserResponse shape (no token_version,
+    # no email -- email is not a User column). email is still used for the
+    # token claim and lookup, just not echoed in the response body.
+    assert response.json()['data'] == {
+        'id': 7,
+        'nickname': 'demo',
+        'avatar': None,
+        'created_at': None,
+        'updated_at': None,
+    }
     assert response.cookies.get(AUTH_COOKIE_NAME) == 'cookie-token'
     set_cookie_header = response.headers['set-cookie'].lower()
     assert f'{AUTH_COOKIE_NAME}=cookie-token' in set_cookie_header

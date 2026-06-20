@@ -9,6 +9,7 @@ from domains.playlist.domain.models.playlist import Playlist
 from domains.playlist.domain.models.playlist_item import PlaylistItem
 from domains.playlist.interfaces.dto.playlist import PlaylistCreate, PlaylistItemReorder, PlaylistUpdate
 from infrastructure.database.session import get_session as _default_get_session
+from shared_kernel.domain.exceptions import ForbiddenError, NotFoundError
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
 
@@ -37,7 +38,7 @@ class PlaylistCommandService:
                 return None
 
             if playlist.is_default:
-                raise ValueError('Cannot modify default playlist')
+                raise ForbiddenError('Cannot modify default playlist')
 
             if data.name is not None:
                 playlist.name = data.name
@@ -59,7 +60,7 @@ class PlaylistCommandService:
                 return False
 
             if playlist.is_default:
-                raise ValueError('Cannot delete default playlist')
+                raise ForbiddenError('Cannot delete default playlist')
 
             repository.delete_playlist_items(session, playlist_id=playlist_id)
             session.delete(playlist)
@@ -70,7 +71,7 @@ class PlaylistCommandService:
         with self._session_factory() as session:
             video = repository.get_active_video(session, video_id=video_id)
             if not video:
-                raise ValueError('Video not found')
+                raise NotFoundError('Video')
 
             playlist = self._resolve_target_playlist(session, user_id=user_id, playlist_id=playlist_id)
             existing = repository.get_playlist_video_item(session, playlist_id=playlist.id, video_id=video_id)
@@ -132,7 +133,7 @@ class PlaylistCommandService:
         if playlist_id:
             playlist = repository.get_user_playlist(session, user_id=user_id, playlist_id=playlist_id)
             if not playlist:
-                raise ValueError('Playlist not found')
+                raise NotFoundError('Playlist')
             return playlist
 
         return repository.get_or_create_default_playlist(session, user_id=user_id)

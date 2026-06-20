@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 import domains.playlist.application.services.ordering as ordering
 import domains.playlist.application.services.repository as repository
+from domains.video.interfaces.dto.video_responses import serialize_video
 from infrastructure.database.session import get_session as _default_get_session
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
@@ -38,5 +39,5 @@ class PlaylistPlaybackService:
             return {
                 'has_next': True,
                 'video_id': next_item.video_id,
-                'video': video.to_dict(),
+                'video': serialize_video(video),
             }

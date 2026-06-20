@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 
 from domains.system.infrastructure.logs import LogService
 from domains.user.application.services.auth import get_current_user
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from infrastructure.http import response
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class LogQuery:
 
 @router.get('/files')
 def get_log_files(
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: LogService = Depends(get_log_service),
 ):
     """Get all log file list"""
@@ -49,7 +49,7 @@ def get_log_files(
 @router.get('/query')
 def query_logs(
     params: LogQuery = Depends(),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: LogService = Depends(get_log_service),
 ):
     """Query log contents

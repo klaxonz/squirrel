@@ -3,9 +3,9 @@ import logging
 from fastapi import APIRouter, Depends, Query
 
 from domains.user.application.services.auth import get_current_user
-from domains.user.domain.models.user import User
-from domains.video.application.services.listing.service import get_video as get_video_detail
-from domains.video.application.services.listing.service import list_videos
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
+from domains.video.application.services.listing.service import VideoListService
+from domains.video.interfaces.http.dependencies import get_video_list_service
 from domains.video.interfaces.http.query_params import VideoListQuery
 from infrastructure.http import response
 from infrastructure.site_catalog.catalog import SiteCatalog
@@ -17,26 +17,25 @@ router = APIRouter()
 @router.get('/detail')
 def get_video(
     video_id: int = Query(None, description='视频ID'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
+    svc: VideoListService = Depends(get_video_list_service),
 ):
-    video = get_video_detail(current_user.id, video_id)
+    video = svc.get_video(current_user.id, video_id)
     return response.success(video)
 
 
 @router.get('/list')
 def get_videos(
     params: VideoListQuery = Depends(),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
+    svc: VideoListService = Depends(get_video_list_service),
 ):
     domains_list: list[str] | None = None
     if params.site:
         resolved = SiteCatalog.resolve_domains(params.site)
         domains_list = resolved or None
 
-    if hasattr(current_user, '_cached_config'):
-        logger.info('[Performance] Route: Using cached user config')
-
-    videos, next_cursor = list_videos(
+    videos, next_cursor = svc.list_videos(
         current_user.id,
         params.query,
         params.subscription_id,

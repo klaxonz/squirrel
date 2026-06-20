@@ -7,6 +7,12 @@ from sqlalchemy.orm import Session
 
 from domains.user.domain.models.user import Account, AccountType, User
 from infrastructure.database.session import get_session as _default_get_session
+from shared_kernel.domain.exceptions import (
+    AuthenticationError,
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
 
@@ -37,7 +43,7 @@ class UserService:
             ).first()
 
             if existing_account:
-                raise ValueError('邮箱已被注册')
+                raise ConflictError('邮箱已被注册')
 
             user = User(nickname=nickname)
             session.add(user)
@@ -98,17 +104,17 @@ class UserService:
         with self._session_factory() as session:
             user = session.get(User, user_id)
             if not user:
-                raise ValueError('用户不存在')
+                raise NotFoundError('用户')
 
             account = self._get_email_account_by_user_id(session, user_id)
             if not account:
-                raise ValueError('邮箱账号不存在')
+                raise NotFoundError('邮箱账号')
 
             if not self.verify_password(current_password, account.credential):
-                raise ValueError('当前密码错误')
+                raise AuthenticationError('当前密码错误')
 
             if self.verify_password(new_password, account.credential):
-                raise ValueError('新密码不能与当前密码相同')
+                raise ValidationError('新密码不能与当前密码相同')
 
             account.credential = self.hash_password(new_password)
             account.last_login_at = datetime.now()
@@ -123,7 +129,7 @@ class UserService:
         with self._session_factory() as session:
             user = session.get(User, user_id)
             if not user:
-                raise ValueError('用户不存在')
+                raise NotFoundError('用户')
 
             user.token_version = int(user.token_version or 0) + 1
             session.commit()

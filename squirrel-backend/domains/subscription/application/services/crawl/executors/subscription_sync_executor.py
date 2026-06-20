@@ -8,6 +8,10 @@ from domains.subscription.application.services.core.update.models import (
     parse_trigger,
 )
 from domains.subscription.application.services.core.update.orchestrator import orchestrator
+from domains.subscription.application.services.crawl.tasks.errors import (
+    CrawlTaskNotFoundError,
+    CrawlTaskStateError,
+)
 from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
@@ -45,7 +49,7 @@ class CrawlExecutorService:
                 trigger=trigger.value,
             )
             if not claimed_state:
-                raise ValueError(f'Failed to claim sync state: sync_state_id={sync_state_id}')
+                raise CrawlTaskStateError(f'Failed to claim sync state: sync_state_id={sync_state_id}')
             cursor_payload = cursor_payload if cursor_payload is not None else claimed_state.cursor_payload
             last_seen_video_url = (
                 last_seen_video_url if last_seen_video_url is not None else claimed_state.last_seen_video_url
@@ -75,7 +79,7 @@ class CrawlExecutorService:
     def _resolve_subscription_url(self, subscription_id: int) -> str:
         subscription = self._subscription_service.get_subscription_by_id(subscription_id)
         if not subscription or not subscription.url:
-            raise ValueError(f'Subscription URL not found: {subscription_id}')
+            raise CrawlTaskNotFoundError(f'Subscription URL not found: {subscription_id}')
         return subscription.url
 
     @staticmethod

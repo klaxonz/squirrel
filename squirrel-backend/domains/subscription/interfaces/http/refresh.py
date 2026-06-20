@@ -10,7 +10,7 @@ from domains.subscription.interfaces.http.dependencies import (
     get_subscription_scheduler,
 )
 from domains.user.application.services.auth import get_current_user
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from infrastructure.http import response
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
@@ -23,7 +23,7 @@ def refresh_subscription(
     subscription_id: int,
     request: Request,
     mode: str = Query('incremental', description='Sync mode: incremental|full', pattern=r'^(incremental|full)$'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     crud_svc: SubscriptionCrudService = Depends(get_subscription_crud_service),
     subscription_scheduler: SubscriptionScheduler = Depends(get_subscription_scheduler),
 ):
@@ -71,7 +71,7 @@ def refresh_subscription_direct(
     subscription_id: int,
     request: Request,
     mode: str = Query('incremental', description='Sync mode: incremental|full', pattern=r'^(incremental|full)$'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     crud_svc: SubscriptionCrudService = Depends(get_subscription_crud_service),
     subscription_scheduler: SubscriptionScheduler = Depends(get_subscription_scheduler),
 ):

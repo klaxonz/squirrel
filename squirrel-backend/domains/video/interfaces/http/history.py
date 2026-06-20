@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Body, Depends
 
 from domains.user.application.services.auth import get_current_user
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from domains.video.application.services.history.service import VideoHistoryService
 from domains.video.interfaces.dto.video_history import (
     HistoryBatchUpdate,
@@ -23,7 +23,7 @@ def get_video_history_service():
 @router.post('/update')
 def update_history(
     data: HistoryCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: VideoHistoryService = Depends(get_video_history_service),
 ):
     svc.update_history(current_user.id, data)
@@ -33,7 +33,7 @@ def update_history(
 @router.post('/batch-update')
 def batch_update_history(
     data: HistoryBatchUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: VideoHistoryService = Depends(get_video_history_service),
 ):
     svc.batch_update_histories(current_user.id, data.reports)
@@ -43,7 +43,7 @@ def batch_update_history(
 @router.get('/list')
 def get_history_list(
     params: VideoHistoryListQuery = Depends(),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: VideoHistoryService = Depends(get_video_history_service),
 ):
     filters = {
@@ -67,7 +67,7 @@ def get_history_list(
 @router.post('/clear')
 def clear_history(
     video_ids: list[int] = Body(None),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: VideoHistoryService = Depends(get_video_history_service),
 ):
     svc.clear_histories(
@@ -80,7 +80,7 @@ def clear_history(
 @router.delete('/{history_id}')
 def delete_history(
     history_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: VideoHistoryService = Depends(get_video_history_service),
 ):
     deleted_count = svc.delete_history(current_user.id, history_id)

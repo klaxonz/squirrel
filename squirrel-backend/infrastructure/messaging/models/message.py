@@ -4,10 +4,9 @@ from sqlalchemy import VARCHAR, DateTime, Index, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 
-class Message(Base, SerializerMixin):
+class Message(Base):
     __tablename__ = 'message'
 
     __table_args__ = (

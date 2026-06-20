@@ -4,10 +4,9 @@ from sqlalchemy import JSON, TEXT, VARCHAR, DateTime, Index, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 
-class CrawlJob(Base, SerializerMixin):
+class CrawlJob(Base):
     __tablename__ = 'crawl_job'
 
     __table_args__ = (

@@ -7,7 +7,6 @@ from sqlalchemy import DateTime, Float, Index, Integer
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 if TYPE_CHECKING:
     from domains.video.domain.models.video import Video
@@ -19,7 +18,7 @@ def _video_join():
     return Video.id == foreign(VideoHistory.video_id)
 
 
-class VideoHistory(Base, SerializerMixin):
+class VideoHistory(Base):
     __tablename__ = 'video_history'
 
     __table_args__ = (

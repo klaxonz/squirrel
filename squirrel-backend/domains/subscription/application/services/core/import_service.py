@@ -13,8 +13,10 @@ from domains.subscription.application.services.core.runtime_models import (
 from domains.subscription.domain.models.subscription import Subscription
 from domains.system.domain.models import constants
 from infrastructure.database.session import get_session
+from shared_kernel.domain.exceptions import ValidationError
 from infrastructure.messaging.framework.producer import RedisStreamProducer
 from infrastructure.messaging.models.message import Message
+from infrastructure.messaging.payload import serialize_message
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
 from infrastructure.site_plugins.registry import SitePluginRegistry, get_site_plugin_registry
@@ -67,10 +69,10 @@ class SubscriptionImportService:
             message = (
                 response.error.message if response.error else f'Plugin subscription resolution failed for url: {url}'
             )
-            raise ValueError(message)
+            raise ValidationError(message)
 
         if not isinstance(response.data, dict):
-            raise ValueError(f'Plugin resolve_subscription payload must be an object for url: {url}')
+            raise ValidationError(f'Plugin resolve_subscription payload must be an object for url: {url}')
 
         return SubscriptionMeta.from_dict(response.data)
 
@@ -101,11 +103,11 @@ class SubscriptionImportService:
         response = self._registry.invoke('import_subscriptions', payload=payload or None, site_name=site_name)
         if not response.ok:
             message = response.error.message if response.error else f'Plugin import failed for site: {site_name}'
-            raise ValueError(message)
+            raise ValidationError(message)
 
         payload = response.data
         if not isinstance(payload, dict):
-            raise ValueError(f'Plugin import payload must be an object for site: {site_name}')
+            raise ValidationError(f'Plugin import payload must be an object for site: {site_name}')
 
         batch = SubscriptionImportBatchResult.from_dict(payload)
         batch.items = SubscriptionImportService._dedupe_import_items(batch.items)
@@ -211,7 +213,7 @@ class SubscriptionImportService:
                         session.add(message)
                         session.flush()
 
-                        dump_json = message.to_dict()
+                        dump_json = serialize_message(message)
                         producer.send(constants.QUEUE_SUBSCRIBE, dump_json)
                         enqueued += 1
 

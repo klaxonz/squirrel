@@ -5,7 +5,7 @@ from domains.user.application.services.search.suggestion_service import (
     SearchSuggestionService,
     search_suggestion_service,
 )
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from infrastructure.http import response
 
 router = APIRouter(prefix='/api/search', tags=['搜索建议接口'])
@@ -30,7 +30,7 @@ class SearchSuggestionQuery:
 @router.get('/suggestions')
 def get_search_suggestions(
     params: SearchSuggestionQuery = Depends(),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: SearchSuggestionService = Depends(get_search_suggestion_service),
 ):
     items = svc.list_search_suggestions(

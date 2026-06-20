@@ -1,14 +1,13 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import JSON, VARCHAR, Boolean, DateTime, Integer
+from sqlalchemy import JSON, VARCHAR, Boolean, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 
-class User(Base, SerializerMixin):
+class User(Base):
     __tablename__ = 'user'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -28,11 +27,13 @@ class AccountType(StrEnum):
     EMAIL = 'email'
 
 
-class Account(Base, SerializerMixin):
+class Account(Base):
     __tablename__ = 'account'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
     account_type: Mapped[str] = mapped_column(VARCHAR(20), nullable=False)
     identifier: Mapped[str] = mapped_column(VARCHAR(120), unique=True, nullable=False)
     credential: Mapped[str] = mapped_column(VARCHAR(128))
@@ -47,11 +48,13 @@ class Account(Base, SerializerMixin):
     )
 
 
-class UserConfig(Base, SerializerMixin):
+class UserConfig(Base):
     __tablename__ = 'user_config'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
     settings: Mapped[dict] = mapped_column(JSON, nullable=False, default={})
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(), onupdate=lambda: datetime.now())

@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from domains.rss.application.services.service import RssService
 from domains.user.application.services.auth import get_current_user
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from infrastructure.http import response
 
 from .dependencies import get_rss_service
@@ -42,7 +42,7 @@ class RssEntryListQuery:
 @router.get('/entries')
 def list_rss_entries(
     params: RssEntryListQuery = Depends(),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     return response.success(
@@ -61,7 +61,7 @@ def list_rss_entries(
 @router.patch('/entries/bulk')
 def update_rss_entries_bulk(
     req: RssEntriesBulkUpdateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     return response.success(
@@ -77,7 +77,7 @@ def update_rss_entries_bulk(
 def update_rss_entry(
     entry_id: int,
     req: RssEntryUpdateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     entry = svc.update_entry(
@@ -94,7 +94,7 @@ def update_rss_entry(
 @router.post('/entries/{entry_id}/view')
 def record_rss_entry_view(
     entry_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     svc.record_entry_view(current_user.id, entry_id)
@@ -103,7 +103,7 @@ def record_rss_entry_view(
 
 @router.get('/entries/recently-viewed')
 def list_recently_viewed(
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     return response.success({'data': svc.list_recently_viewed(current_user.id)})

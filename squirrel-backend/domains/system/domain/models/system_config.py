@@ -4,10 +4,9 @@ from sqlalchemy import VARCHAR, DateTime, Integer, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 
-class SystemConfig(Base, SerializerMixin):
+class SystemConfig(Base):
     __tablename__ = 'system_config'
     __table_args__ = (UniqueConstraint('key', name='uq_system_config_key'),)
 

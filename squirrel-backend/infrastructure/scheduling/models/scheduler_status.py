@@ -4,10 +4,9 @@ from sqlalchemy import TEXT, VARCHAR, Boolean, DateTime, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 
-class SchedulerStatus(Base, SerializerMixin):
+class SchedulerStatus(Base):
     """Scheduler status model (for cross-process state sharing)"""
 
     __tablename__ = 'scheduler_status'

@@ -50,9 +50,17 @@ def get_session() -> Generator[Session, None, None]:
 
 
 def register_after_commit(session, callback) -> None:
-    if not hasattr(session, 'info'):
-        callback()
-        return
+    """Register a callback to run after the current transaction commits.
+
+    The callback is stored on the session and replayed by the ``after_commit``
+    event listener. It is only ever invoked after a successful commit, never
+    during the transaction or after a rollback.
+
+    Note: ``Session.info`` is a lazy-initialized dict in SQLAlchemy 2.0, so it
+    always exists by the time we access it. We deliberately do not guard
+    against its absence here -- if it were somehow missing we want the error
+    to surface instead of silently executing the callback before commit.
+    """
     session.info.setdefault(AFTER_COMMIT_CALLBACKS_KEY, []).append(callback)
 
 

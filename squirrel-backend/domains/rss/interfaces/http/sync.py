@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from domains.rss.application.services.client._base import RssServiceError
 from domains.rss.application.services.service import RssService
 from domains.user.application.services.auth import get_current_user
-from domains.user.domain.models.user import User
+from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from infrastructure.http import response
 
 from .dependencies import get_rss_service
@@ -29,7 +29,7 @@ class RssSyncStartQuery:
 def sync_rss_account(
     account_id: int,
     entry_limit: int | None = Query(None, ge=1, alias='entryLimit'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     try:
@@ -46,7 +46,7 @@ def sync_rss_account(
 def start_rss_sync(
     account_id: int,
     params: RssSyncStartQuery = Depends(),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     progress = svc.get_sync_progress(current_user.id, account_id)
@@ -75,7 +75,7 @@ def start_rss_sync(
 
 @router.get('/accounts/{account_id}/sync/status')
 def get_rss_sync_status(
-    account_id: int, current_user: User = Depends(get_current_user), svc: RssService = Depends(get_rss_service)
+    account_id: int, current_user: CurrentUserDto = Depends(get_current_user), svc: RssService = Depends(get_rss_service)
 ):
     progress = svc.get_sync_progress(current_user.id, account_id)
     if progress is None:
@@ -87,7 +87,7 @@ def get_rss_sync_status(
 def sync_rss_feed(
     feed_id: int,
     entry_limit: int = Query(50, ge=1, le=500, alias='entryLimit'),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     try:

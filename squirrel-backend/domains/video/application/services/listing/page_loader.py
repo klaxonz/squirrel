@@ -13,6 +13,7 @@ from domains.video.domain.junctions.video_creator import VideoCreator
 from domains.video.domain.models.creator import Creator
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
+from domains.video.interfaces.dto.video_responses import serialize_creator
 
 
 @dataclass(frozen=True)
@@ -144,5 +145,5 @@ class VideoListPageLoader:
         ).all()
         actors_map: dict[int, list[dict]] = {}
         for video_id, creator in creator_rows:
-            actors_map.setdefault(video_id, []).append(creator.to_dict())
+            actors_map.setdefault(video_id, []).append(serialize_creator(creator))
         return actors_map

@@ -9,7 +9,6 @@ from sqlalchemy import Index, Integer
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from infrastructure.database.base import Base
-from infrastructure.database.mixins import SerializerMixin
 
 if TYPE_CHECKING:
     from domains.subscription.domain.models.subscription import Subscription
@@ -28,7 +27,7 @@ def _subscription_video_video_join():
     return Video.id == foreign(SubscriptionVideo.video_id)
 
 
-class SubscriptionVideo(Base, SerializerMixin):
+class SubscriptionVideo(Base):
     __tablename__ = 'subscription_video'
 
     __table_args__ = (

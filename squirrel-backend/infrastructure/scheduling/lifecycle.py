@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from threading import Lock, Thread
 
+from infrastructure.concurrency.thread_manager import thread_manager
 from infrastructure.database.session import get_session
 from infrastructure.scheduling.bootstrap import ensure_system_tasks
 from infrastructure.scheduling.engine import Scheduler
@@ -100,8 +101,9 @@ def scheduler_start() -> None:
         _update_scheduler_status(is_running=True, job_count=job_count)
 
         _heartbeat_running = True
-        _heartbeat_thread = Thread(target=_heartbeat_worker, daemon=True)
+        _heartbeat_thread = Thread(target=_heartbeat_worker, name='scheduler-heartbeat', daemon=True)
         _heartbeat_thread.start()
+        thread_manager.register(_heartbeat_thread)
 
         logger.info('[scheduler] started with %s jobs', job_count)
 
@@ -114,13 +116,19 @@ def scheduler_stop() -> None:
             return
         logger.info('[scheduler] stopping...')
         try:
+            # Signal both loops to stop, then give them a bounded chance to
+            # finish in-flight work before the process tears down.
             _heartbeat_running = False
-            if _heartbeat_thread:
-                _heartbeat_thread.join(timeout=2)
-
             if _scheduler:
                 _scheduler.stop()
 
+            if _heartbeat_thread:
+                _heartbeat_thread.join(timeout=2)
+
+            # Let the scheduler run-loop (registered in thread_manager) observe
+            # the stop event and exit its current wait(). The actual join of
+            # all managed threads happens at process shutdown via
+            # thread_manager.shutdown_all(), invoked by the worker bootstrap.
         finally:
             _scheduler = None
             _scheduler_running = False
