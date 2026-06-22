@@ -234,7 +234,7 @@
                 >
                   <div class="relative w-40 aspect-video shrink-0 overflow-hidden rounded-md bg-muted">
                     <VideoThumbnail v-if="related.thumbnail" :src="(related.thumbnail as string)" fit="contain" />
-                    <span v-if="related.duration" class="absolute bottom-1 right-1 inline-flex h-[18px] items-center rounded bg-black/70 px-1 text-2xs font-semibold text-white tabular-nums">{{ formatDuration(related.duration as number) }}</span>
+                    <span v-if="related.duration" class="absolute bottom-1 right-1 inline-flex items-center rounded bg-black/70 px-1 py-px text-3xs font-semibold leading-none text-white tabular-nums shadow-sm">{{ formatDuration(related.duration as number) }}</span>
                   </div>
                   <div class="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
                     <h4 class="text-sm font-semibold line-clamp-2 leading-[1.35] group-hover:text-primary transition-colors text-foreground/85">{{ related.title }}</h4>

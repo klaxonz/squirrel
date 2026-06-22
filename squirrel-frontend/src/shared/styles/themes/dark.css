@@ -1,6 +1,77 @@
 :root {
-  /* Colors —— 浅色底微偏暖灰(从纯冷灰 240 移到 24/36),与焦糖琥珀品牌色同温,
-     避免"暖强调色配冷灰底"的违和。中性但不冰冷。 */
+  --background: 24 10% 7%;
+  --foreground: 40 20% 96%;
+
+  --card: 24 9% 9%;
+  --card-foreground: 40 20% 96%;
+
+  --popover: 24 10% 8%;
+  --popover-foreground: 40 20% 96%;
+
+  --primary: 38 92% 56%;
+  --primary-foreground: 24 10% 6%;
+
+  --secondary: 24 8% 13%;
+  --secondary-foreground: 40 20% 96%;
+
+  --muted: 24 8% 11%;
+  --muted-foreground: 30 8% 64%;
+
+  --accent: 28 10% 15%;
+  --accent-foreground: 40 20% 96%;
+
+  --destructive: 0 72% 62%;
+  --destructive-foreground: 0 0% 98%;
+
+  --success: 142 65% 48%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 90% 56%;
+  --warning-foreground: 24 10% 6%;
+  --info: 200 85% 60%;
+  --info-foreground: 0 0% 100%;
+
+  --border: 24 8% 17%;
+  --input: 24 8% 17%;
+  --ring: 38 92% 58%;
+
+  --sidebar: 24 10% 5%;
+  --sidebar-foreground: 40 20% 96%;
+  --sidebar-border: 24 8% 13%;
+
+  --shadow-xs: 0 1px 0 hsl(0 0% 0% / 0.25);
+  --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.4);
+  --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.45), 0 1px 2px hsl(0 0% 0% / 0.3);
+  --shadow-lg: 0 12px 32px hsl(0 0% 0% / 0.55), 0 4px 8px hsl(0 0% 0% / 0.35);
+  --shadow-premium: 0 2px 8px hsl(0 0% 0% / 0.5), 0 24px 48px hsl(0 0% 0% / 0.7);
+
+  --cinema-noise-opacity: 0.018;
+  --cinema-noise-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --cinema-spotlight:
+    radial-gradient(ellipse 80% 50% at 50% -10%,
+      hsl(38 92% 56% / 0.045) 0%,
+      hsl(38 92% 56% / 0.018) 35%,
+      transparent 70%);
+  --cinema-vignette:
+    radial-gradient(ellipse 100% 80% at 50% 50%,
+      transparent 50%,
+      hsl(0 0% 0% / 0.25) 100%);
+
+  --shadow-card-hover: 0 4px 12px hsl(0 0% 0% / 0.4), 0 1px 3px hsl(0 0% 0% / 0.3);
+
+  --gray-50:  24 8% 97%;
+  --gray-100: 24 8% 93%;
+  --gray-200: 24 8% 86%;
+  --gray-300: 24 7% 75%;
+  --gray-400: 24 7% 60%;
+  --gray-500: 24 6% 45%;
+  --gray-600: 24 6% 33%;
+  --gray-700: 24 8% 22%;
+  --gray-800: 24 8% 15%;
+  --gray-900: 24 8% 10%;
+  --gray-950: 24 10% 6%;
+}
+
+.light {
   --background: 36 30% 99%;
   --foreground: 24 10% 10%;
 
@@ -10,9 +81,7 @@
   --popover: 0 0% 100%;
   --popover-foreground: 24 10% 10%;
 
-  /* 品牌强调色 —— 焦糖琥珀,与暗色模式同色相、略深一档以保证浅底对比度。
-     替代了原先的近黑 --primary(那只是文字色别名,产品因此毫无色彩身份)。 */
-  --primary: 28 85% 48%;
+  --primary: 26 88% 50%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 30 20% 95%;
@@ -27,96 +96,47 @@
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
 
-  /* Status colors — the design system's semantic feedback palette. Used by the
-     shared <Alert> variants, success/warning banners, and form feedback.
-     Previously feature code referenced `text-error`/`text-success`/`text-warning`
-     classes that resolved to nothing (no tokens defined) → banners rendered
-     colorless. These are the single source of truth for status hue. */
-  --success: 142 71% 40%;          /* emerald-600 — readable on light & dark */
+  --success: 142 71% 38%;
   --success-foreground: 0 0% 100%;
-  --warning: 32 95% 44%;           /* amber-600 — distinct from destructive red */
+  --warning: 32 95% 44%;
   --warning-foreground: 0 0% 100%;
+  --info: 210 80% 52%;
+  --info-foreground: 0 0% 100%;
 
   --border: 28 12% 89%;
   --input: 28 12% 89%;
-  /* ring 跟随品牌色,让焦点态也成为身份的一部分 */
-  --ring: 28 85% 48%;
+  --ring: 26 88% 50%;
 
-  /* Sidebar — slightly recessed from the main canvas so the rail reads as a
-     distinct surface (Apple Mail / Linear pattern). Foreground inherits the
-     base text color; only the canvas needs its own token. */
   --sidebar: 30 20% 97%;
   --sidebar-foreground: 24 10% 10%;
+  --sidebar-border: 28 12% 90%;
 
-  --radius: 6px; /* 严格基础圆角 */
-  --radius-lg: 8px; /* 容器圆角 */
-  --radius-xl: 12px; /* 面板圆角 */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
+  --shadow-premium: 0 1px 2px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.2);
 
-  /* NOTE: --sidebar-width is defined once in layout.css (the token foundation).
-     It does not vary by theme, so it must NOT be re-declared here — a previous
-     duplicate `--sidebar-width: 240px` in this :root shadowed layout.css's
-     `14rem` because dark.css loads last, producing a single accidental 240px
-     value and a confusing double source of truth. */
+  --cinema-noise-opacity: 0.012;
+  --cinema-noise-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --cinema-spotlight:
+    radial-gradient(ellipse 80% 50% at 50% -10%,
+      hsl(38 88% 55% / 0.06) 0%,
+      hsl(38 88% 55% / 0.025) 35%,
+      transparent 70%);
+  --cinema-vignette: transparent;
 
-  /* Shadows - Linear Style (Sharp & Subtle).
-     Full scale: xs/sm/md/lg/premium. Replaces scattered `shadow-sm`/`shadow-2xl`/
-     `shadow-inner` and the old two-token gap (only xs+premium existed).
-     - xs/sm: hairline separation (cards, inputs)
-     - md:    resting elevation for floating surfaces (panels, popovers)
-     - lg:    hovering elements (menus, tooltips)
-     - premium: overlays that must lift clear of the canvas (dialogs, toasts) */
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 8px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg: 0 8px 16px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.06);
-  --shadow-premium: 0 1px 2px rgba(0,0,0,0.1), 0 8px 24px rgba(0,0,0,0.2);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
 
-  /* Brand identity — the caramel-amber gradient + glow used on the product
-     mark. Extracted from 4 hand-inlined copies (Login/Register/ServerConfig/
-     Sidebar) that each hard-coded the same linear-gradient + shadow. */
-  --brand-gradient: linear-gradient(135deg, hsl(var(--primary)), hsl(28 80% 46%));
-  --brand-glow: 0 8px 24px hsl(var(--primary) / 0.35);
-  --brand-glow-sm: 0 2px 10px hsl(var(--primary) / 0.35);
-}
-
-.dark {
-  --background: 24 10% 5%;
-  --foreground: 36 30% 96%;
-
-  --card: 24 8% 7%;
-  --card-foreground: 36 30% 96%;
-
-  --popover: 24 9% 6%;
-  --popover-foreground: 36 30% 96%;
-
-  /* 品牌强调色 —— 焦糖琥珀。这是整个 chrome 唯一的"视觉心跳":
-     激活的导航条、播放/订阅按钮、进度条填充、链接 hover 全部收口到这个色。
-     替代了原先的近白色 --primary(那只是文字色的别名,产品因此毫无色彩身份)。 */
-  --primary: 32 95% 52%;
-  --primary-foreground: 24 10% 6%;
-
-  --secondary: 24 6% 12%;
-  --secondary-foreground: 36 30% 96%;
-
-  --muted: 24 6% 10%;
-  --muted-foreground: 30 8% 62%;
-
-  --accent: 28 8% 14%;
-  --accent-foreground: 36 30% 96%;
-
-  --destructive: 0 72% 58%;
-  --destructive-foreground: 0 0% 98%;
-
-  --border: 28 6% 16%;
-  --input: 28 6% 16%;
-  /* ring 跟随品牌色,让焦点态也成为身份的一部分 */
-  --ring: 32 90% 58%;
-
-  --sidebar: 24 10% 4%;
-  --sidebar-foreground: 36 30% 96%;
-
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.4);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 8px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3);
-  --shadow-lg: 0 8px 16px rgba(0,0,0,0.55), 0 4px 8px rgba(0,0,0,0.35);
+  --gray-50:  36 30% 99%;
+  --gray-100: 30 16% 96%;
+  --gray-200: 30 14% 90%;
+  --gray-300: 28 12% 82%;
+  --gray-400: 26 8% 64%;
+  --gray-500: 24 6% 46%;
+  --gray-600: 24 8% 32%;
+  --gray-700: 24 9% 22%;
+  --gray-800: 24 10% 14%;
+  --gray-900: 24 10% 10%;
+  --gray-950: 24 10% 6%;
 }

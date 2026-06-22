@@ -1,5 +1,5 @@
 <template>
-  <header class="h-14 sticky top-0 z-header flex items-center px-6 gap-4 bg-background">
+  <header class="h-14 sticky top-0 z-header flex items-center px-6 gap-4 bg-background border-b border-border/40">
     <button
       v-if="nav.showBackButton"
       @click="handleBack"
@@ -36,20 +36,20 @@
     </div>
     
     <div class="flex items-center gap-1">
-      <div class="flex items-center gap-2.5 pl-2.5 ml-1 border-l border-border">
+      <div class="flex items-center gap-2.5 pl-2.5 ml-1 border-l border-border/60">
         <div
-          class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent/40 cursor-pointer transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           role="button"
           tabindex="0"
           @click="goToProfile"
           @keydown.enter.prevent="goToProfile"
           @keydown.space.prevent="goToProfile"
         >
-          <div class="w-7 h-7 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-xs font-bold text-primary dark:text-primary-foreground shrink-0">
+          <div class="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold text-foreground/80 shrink-0 border border-border/50">
             <template v-if="userInitial">{{ userInitial }}</template>
             <AppIcon v-else name="user" class="w-3.5 h-3.5" />
           </div>
-          <span class="text-sm font-medium text-foreground">{{ userDisplayName }}</span>
+          <span class="text-sm font-medium text-foreground/90">{{ userDisplayName }}</span>
         </div>
       </div>
     </div>

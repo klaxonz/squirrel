@@ -1,27 +1,11 @@
 <template>
-  <section v-if="items.length > 0 || loading" class="group/container mb-8 px-6 pt-8">
-    <div class="mb-5 flex items-center justify-between">
-      <h2 class="app-h3 flex items-center gap-2">
-        <AppIcon name="star" class="size-5 fill-primary text-primary" />
-        精选推荐
-      </h2>
-      <div class="flex gap-1 opacity-0 transition-opacity duration-200 group-hover/container:opacity-100" :class="{ 'opacity-100': canScrollLeft || canScrollRight }">
-        <button
-          class="flex size-8 items-center justify-center rounded-full border border-border bg-background/80 shadow-sm transition-all hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
-          :disabled="!canScrollLeft"
-          @click="scroll('left')"
-        >
-          <AppIcon name="chevronLeft" class="size-4 text-foreground/70" />
-        </button>
-        <button
-          class="flex size-8 items-center justify-center rounded-full border border-border bg-background/80 shadow-sm transition-all hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
-          :disabled="!canScrollRight"
-          @click="scroll('right')"
-        >
-          <AppIcon name="chevronRight" class="size-4 text-foreground/70" />
-        </button>
-      </div>
-    </div>
+  <section v-if="items.length > 0 || loading" class="group/container app-reveal mb-10 px-6 pt-8">
+    <FeedRailHeader
+      title="精选推荐"
+      :can-scroll-left="canScrollLeft"
+      :can-scroll-right="canScrollRight"
+      @scroll="scroll"
+    />
 
     <div
       ref="scrollContainer"
@@ -29,10 +13,14 @@
       @scroll="updateScrollState"
     >
       <RecommendationSkeleton v-if="loading && items.length === 0" :count="6" />
-      <RecommendationCard
-        v-for="video in items"
+      <VideoItem
+        v-for="(video, i) in items"
         :key="video.id"
         :video="video"
+        show-avatar
+        show-duration
+        class="app-reveal w-[18rem] shrink-0 snap-start"
+        :style="{ '--reveal-index': i }"
         @openModal="$emit('openModal', video)"
         @goToSubscription="(id) => $emit('goToSubscription', id)"
       />
@@ -45,8 +33,8 @@ import { nextTick, onMounted, ref, watch } from 'vue'
 import { getVideoList } from '@/shared/api'
 import type { VideoListItem } from '@/features/video/types/video'
 import { Logger } from '@/shared/lib/logger'
-import AppIcon from '@/shared/icons/AppIcon.vue'
-import RecommendationCard from '@/features/video/components/feed/RecommendationCard.vue'
+import FeedRailHeader from '@/features/video/components/feed/FeedRailHeader.vue'
+import VideoItem from '@/features/video/components/feed/VideoItem.vue'
 import RecommendationSkeleton from '@/features/video/components/feed/RecommendationSkeleton.vue'
 
 defineEmits(['openModal', 'goToSubscription'])

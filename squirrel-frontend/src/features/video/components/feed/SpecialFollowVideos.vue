@@ -1,37 +1,13 @@
 <template>
-  <section v-if="items.length > 0 || loading" class="group/container mb-6 px-6 pt-2">
-    <div class="mb-4 flex items-center justify-between">
-      <h2 class="app-h3 flex items-center gap-2">
-        <AppIcon name="star" class="size-5 fill-current text-warning" />
-        特别关注
-      </h2>
-      <div class="flex items-center gap-2">
-        <button
-          type="button"
-          class="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-          @click="emit('viewMore')"
-        >
-          查看更多
-          <AppIcon name="chevronRight" class="size-3.5" />
-        </button>
-        <div class="flex gap-1 opacity-0 transition-opacity duration-200 group-hover/container:opacity-100" :class="{ 'opacity-100': canScrollLeft || canScrollRight }">
-        <button
-          class="flex size-8 items-center justify-center rounded-full border border-border bg-background/80 shadow-sm transition-all hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
-          :disabled="!canScrollLeft"
-          @click="scroll('left')"
-        >
-          <AppIcon name="chevronLeft" class="size-4 text-foreground/70" />
-        </button>
-        <button
-          class="flex size-8 items-center justify-center rounded-full border border-border bg-background/80 shadow-sm transition-all hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
-          :disabled="!canScrollRight"
-          @click="scroll('right')"
-        >
-          <AppIcon name="chevronRight" class="size-4 text-foreground/70" />
-        </button>
-        </div>
-      </div>
-    </div>
+  <section v-if="items.length > 0 || loading" class="group/container app-reveal mb-6 px-6 pt-2">
+    <FeedRailHeader
+      title="特别关注"
+      view-more-label="查看更多"
+      :can-scroll-left="canScrollLeft"
+      :can-scroll-right="canScrollRight"
+      @view-more="emit('viewMore')"
+      @scroll="scroll"
+    />
 
     <div
       ref="scrollContainer"
@@ -39,12 +15,14 @@
       @scroll="updateScrollState"
     >
       <RecommendationSkeleton v-if="loading && items.length === 0" :count="6" />
-      <RecommendationCard
-        v-for="item in items"
+      <VideoItem
+        v-for="(item, i) in items"
         :key="item.id"
         :video="item"
+        show-avatar
         show-duration
-        show-play-overlay
+        class="app-reveal w-[18rem] shrink-0 snap-start"
+        :style="{ '--reveal-index': i }"
         @openModal="emit('openModal', item)"
         @goToSubscription="(id) => emit('goToSubscription', id)"
       />
@@ -56,8 +34,8 @@
 import { nextTick, onMounted, ref } from 'vue'
 import { getVideoList } from '@/shared/api'
 import type { VideoListItem } from '@/features/video/types/video'
-import AppIcon from '@/shared/icons/AppIcon.vue'
-import RecommendationCard from '@/features/video/components/feed/RecommendationCard.vue'
+import FeedRailHeader from '@/features/video/components/feed/FeedRailHeader.vue'
+import VideoItem from '@/features/video/components/feed/VideoItem.vue'
 import RecommendationSkeleton from '@/features/video/components/feed/RecommendationSkeleton.vue'
 
 const emit = defineEmits(['openModal', 'goToSubscription', 'viewMore'])

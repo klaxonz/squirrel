@@ -8,7 +8,8 @@ export default {
     extend: {
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
-        display: ['var(--font-display)', 'var(--font-sans)', 'sans-serif'],
+        display: ['var(--font-display)', 'Georgia', 'serif'],
+        mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
       // Type scale — adds two sub-xs sizes for the deliberate compact-UI
       // labels (9px/10px meta, badges, timestamps) that were previously
@@ -18,7 +19,12 @@ export default {
       // type scale rather than expanding it infinitely.
       //   9px → text-3xs, 10px → text-2xs, 11px → text-xs(12),
       //   12px → text-xs, 13px → text-sm(14), 14px → text-sm
+      //   8px → text-4xs:duration badge 等极小辅助标签的专用档。
+      //     ⚠ 教训:不要用 text-[8px] 任意值 —— Tailwind JIT 对小数/小值任意值
+      //     编译不稳定(实测 text-[8px] / text-[8.5px] 未进产物,导致 badge 回退
+      //     到继承的 12px)。用命名 token 确保 JIT 必定编译。
       fontSize: {
+        '4xs': ['8px', { lineHeight: '1.15' }],
         '3xs': ['9px', { lineHeight: '1.2' }],
         '2xs': ['10px', { lineHeight: '1.25' }],
       },
@@ -41,7 +47,8 @@ export default {
       },
       borderRadius: {
         DEFAULT: 'var(--radius)',
-        'md': 'var(--radius)',
+        'sm': 'var(--radius-sm)',
+        'md': 'var(--radius-md)',
         'lg': 'var(--radius-lg)',
         'xl': 'var(--radius-xl)',
       },
@@ -51,6 +58,10 @@ export default {
         'md': 'var(--shadow-md)',
         'lg': 'var(--shadow-lg)',
         'premium': 'var(--shadow-premium)',
+        'card-hover': 'var(--shadow-card-hover)',
+      },
+      backgroundImage: {
+        'brand-gradient': 'var(--brand-gradient)',
       },
       // Z-index scale — maps the --z-* tokens to utilities so `z-dialog` /
       // `z-toast` etc. replace the scattered `z-[1300]` magic values.

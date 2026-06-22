@@ -11,7 +11,6 @@
         const storageKey = 'app:theme';
         const legacyKey = 'squirrel-app-theme';
         let storedMode = window.localStorage.getItem(storageKey);
-        // 一次性迁移：旧品牌前缀 key → 功能性 key
         if (storedMode === null) {
           const legacy = window.localStorage.getItem(legacyKey);
           if (legacy !== null) {
@@ -21,11 +20,12 @@
           }
         }
         const isSystemMode = storedMode === 'system' || !storedMode || (storedMode !== 'light' && storedMode !== 'dark');
-        const isDark = storedMode === 'dark' || (isSystemMode && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.classList.toggle('dark', isDark);
-        document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
-        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
-      } catch {}
+        const isLight = storedMode === 'light' || (isSystemMode && !window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', !isLight);
+        document.documentElement.classList.toggle('light', isLight);
+        document.documentElement.dataset.theme = isLight ? 'light' : 'dark';
+        document.documentElement.style.colorScheme = isLight ? 'light' : 'dark';
+      } catch (e) {}
     </script>
   </head>
   <body>

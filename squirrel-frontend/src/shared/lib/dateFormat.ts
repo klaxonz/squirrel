@@ -98,9 +98,10 @@ export const formatDate = (dateString: DateLike | null | undefined): string => {
 
 export const formatDuration = (seconds: number | null | undefined) => {
   if (!seconds) return '未知'
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  const remainingSeconds = seconds % 60
+  const total = Math.floor(Number(seconds))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const remainingSeconds = total % 60
   return `${hours ? hours + ':' : ''}${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
 }
 

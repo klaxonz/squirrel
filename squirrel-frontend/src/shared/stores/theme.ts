@@ -9,9 +9,6 @@ export const useThemeStore = defineStore('theme', () => {
   const effectiveTheme = computed(() => resolveEffectiveTheme(themeMode.value, systemTheme.value))
   const isDark = computed(() => shouldUseDarkTheme(themeMode.value, systemTheme.value))
 
-  // ponytail: single source of truth for OS color-scheme changes. Previously
-  // only the now-deleted useAppTheme composable wired this listener, so the
-  // store path (main.ts / AppLayout) never reacted to OS dark-mode flips.
   let mediaQuery: MediaQueryList | null = null
   let mediaQueryHandler: ((event: MediaQueryListEvent) => void) | null = null
 
@@ -33,8 +30,11 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   const apply = () => {
-    document.documentElement.classList.toggle('dark', isDark.value)
+    const dark = isDark.value
+    document.documentElement.classList.toggle('dark', dark)
+    document.documentElement.classList.toggle('light', !dark)
     document.documentElement.dataset.theme = effectiveTheme.value
+    document.documentElement.style.colorScheme = effectiveTheme.value
   }
 
   const setThemeMode = (mode: AppThemeMode) => {

@@ -1,37 +1,13 @@
 <template>
-  <div v-if="historyItems.length > 0 || loading" class="mb-6 pt-4 px-6 overflow-hidden relative group/container">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="app-h3 flex items-center gap-2">
-        <AppIcon name="time" class="size-5 text-primary" />
-        继续观看
-      </h2>
-      <div class="flex items-center gap-2">
-        <button
-          type="button"
-          class="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-          @click="$emit('viewMore')"
-        >
-          查看更多
-          <AppIcon name="chevronRight" class="size-3.5" />
-        </button>
-        <div class="flex gap-1 opacity-0 transition-opacity duration-200" :class="{ 'opacity-100': canScrollLeft || canScrollRight, 'group-hover/container:opacity-100': true }">
-        <button
-          class="size-8 flex items-center justify-center rounded-full bg-background/80 hover:bg-muted border border-border shadow-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-          :disabled="!canScrollLeft"
-          @click="scroll('left')"
-        >
-          <AppIcon name="chevronLeft" class="size-4 text-foreground/70" />
-        </button>
-        <button
-          class="size-8 flex items-center justify-center rounded-full bg-background/80 hover:bg-muted border border-border shadow-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-          :disabled="!canScrollRight"
-          @click="scroll('right')"
-        >
-          <AppIcon name="chevronRight" class="size-4 text-foreground/70" />
-        </button>
-        </div>
-      </div>
-    </div>
+  <div v-if="historyItems.length > 0 || loading" class="app-reveal mb-6 pt-4 px-6 overflow-hidden relative group/container">
+    <FeedRailHeader
+      title="继续观看"
+      view-more-label="查看全部"
+      :can-scroll-left="canScrollLeft"
+      :can-scroll-right="canScrollRight"
+      @view-more="$emit('viewMore')"
+      @scroll="scroll"
+    />
 
     <div
       ref="scrollContainer"
@@ -39,13 +15,14 @@
       @scroll="updateScrollState"
     >
       <RecommendationSkeleton v-if="loading && historyItems.length === 0" :count="6" />
-      <RecommendationCard
-        v-for="item in historyItems"
+      <VideoItem
+        v-for="(item, i) in historyItems"
         :key="item.id"
         :video="item as VideoListItem"
+        show-avatar
         show-duration
-        show-play-overlay
-        show-progress
+        class="app-reveal w-[18rem] shrink-0 snap-start"
+        :style="{ '--reveal-index': i }"
         @openModal="$emit('openModal', item)"
         @goToSubscription="(id) => $emit('goToSubscription', id)"
       />
@@ -55,14 +32,19 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
-import AppIcon from '@/shared/icons/AppIcon.vue'
-import RecommendationCard from '@/features/video/components/feed/RecommendationCard.vue'
+import FeedRailHeader from '@/features/video/components/feed/FeedRailHeader.vue'
+import VideoItem from '@/features/video/components/feed/VideoItem.vue'
 import RecommendationSkeleton from '@/features/video/components/feed/RecommendationSkeleton.vue'
 import { useVideoHistory } from '@/features/video/composables/useVideoHistory'
 import { Logger } from '@/shared/lib/logger'
 import type { VideoHistoryEntry, VideoListItem } from '@/features/video/types/video'
 
-defineEmits(['openModal', 'viewMore', 'goToSubscription'])
+const emit = defineEmits<{
+  openModal: [video: VideoHistoryEntry]
+  viewMore: []
+  goToSubscription: [id: number | string | null | undefined]
+  heroChange: [video: VideoHistoryEntry | null]
+}>()
 
 const { getWatchHistory } = useVideoHistory()
 const historyItems = ref<VideoHistoryEntry[]>([])
@@ -98,6 +80,22 @@ const getProgress = (video: VideoHistoryEntry) => {
   return d > 0 ? Math.min(1, Number(video.last_position || 0) / d) : 0
 }
 
+const HERO_PROGRESS_MIN = 0.3
+const HERO_PROGRESS_MAX = 0.9
+
+const pickHeroVideo = (items: VideoHistoryEntry[]): VideoHistoryEntry | null => {
+  if (items.length === 0) return null
+  const sweet = items.filter((v) => {
+    const p = getProgress(v)
+    return p >= HERO_PROGRESS_MIN && p <= HERO_PROGRESS_MAX && v.thumbnail
+  })
+  if (sweet.length > 0) {
+    return sweet.reduce((a, b) => (getProgress(a) > getProgress(b) ? a : b))
+  }
+  const withThumb = items.filter((v) => v.thumbnail)
+  return withThumb[0] ?? items[0] ?? null
+}
+
 const load = async () => {
   loading.value = true
   try {
@@ -105,6 +103,9 @@ const load = async () => {
     // Keep anything the user has actually started watching (progress > 0);
     // drop only items that were never played.
     historyItems.value = items.filter((item) => getProgress(item) > 0).slice(0, 12)
+
+    const hero = pickHeroVideo(historyItems.value)
+    emit('heroChange', hero)
 
     // Check scroll state after items are rendered
     await nextTick()

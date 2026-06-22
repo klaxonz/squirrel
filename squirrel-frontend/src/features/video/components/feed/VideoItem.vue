@@ -1,7 +1,7 @@
 <template>
   <div
     class="group flex cursor-pointer rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"
-    :class="[layout === 'list' ? 'flex-row gap-4' : 'flex-col gap-2.5']"
+    :class="layout === 'list' ? 'flex-row gap-4' : 'flex-col gap-2.5'"
     role="button"
     tabindex="0"
     @contextmenu.prevent="showContextMenu"
@@ -9,12 +9,10 @@
     @keydown.enter.prevent="handleClick"
     @keydown.space.prevent="handleClick"
   >
-    <!-- Thumbnail Container -->
     <div :class="[
-      'relative overflow-hidden bg-muted transition-all duration-300 group-hover:brightness-110 group-hover:shadow-lg group-active:scale-[0.99]',
+      'relative overflow-hidden bg-muted rounded-lg ring-1 ring-border/40 transition-all duration-300 group-hover:ring-primary/40 group-hover:shadow-card-hover group-active:scale-[0.99]',
       layout === 'list' ? 'w-48 shrink-0 md:w-64 aspect-video' : 'aspect-video w-full'
-    ]"
-    :style="{ borderRadius: 'var(--app-card-radius)' }">
+    ]">
       <VideoThumbnail
         :src="thumbnailSrc"
         :alt="video.title"
@@ -49,17 +47,15 @@
         </button>
       </div>
 
-      <!-- Overlays -->
-      <span v-if="video.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-2xs font-medium tabular-nums text-white backdrop-blur-sm transition-opacity group-hover:opacity-0">
+      <span v-if="video.duration && showDuration" class="video-duration-badge absolute bottom-1.5 right-1.5 inline-flex items-center rounded bg-black/70 px-1 py-px text-3xs font-medium leading-none text-white tabular-nums shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-0">
         {{ formatDuration(video.duration) }}
       </span>
 
       <!-- Bottom Shadow/Gradient for Overlay Visibility -->
       <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/60 to-transparent opacity-100 pointer-events-none z-10" />
 
-      <!-- Progress Bar -->
-      <div v-if="progressRatio > 0" class="absolute bottom-0 inset-x-0 h-1 group-hover:h-1.5 transition-all duration-300 z-20 bg-white/30">
-        <div class="h-full bg-white transition-all duration-500 ease-out" :style="{ width: `${progressRatio * 100}%` }" />
+      <div v-if="progressRatio > 0" class="absolute bottom-0 inset-x-0 h-px group-hover:h-[2px] transition-all duration-300 z-20 bg-white/15">
+        <div class="h-full bg-primary transition-[width] duration-500 ease-out" :style="{ width: `${progressRatio * 100}%` }" />
       </div>
     </div>
 
@@ -68,7 +64,7 @@
       'flex gap-3 px-0.5',
       layout === 'list' ? 'flex-1 py-1 min-w-0' : ''
     ]">
-      <div v-if="showAvatar && displayAvatars.length && layout === 'grid'" class="shrink-0 mt-0.5">
+      <div v-if="showAvatar && displayAvatars.length" class="shrink-0 mt-0.5">
         <SubscriptionAvatar
           :src="displayAvatars[0].avatar"
           :name="displayAvatars[0].name"
@@ -88,14 +84,6 @@
 
         <div class="flex flex-col gap-0.5">
           <div class="flex items-center gap-1.5 text-xs text-muted-foreground/80 font-medium">
-            <div v-if="layout === 'list' && showAvatar && displayAvatars.length" class="shrink-0 mr-1">
-              <SubscriptionAvatar
-                :src="displayAvatars[0].avatar"
-                :name="displayAvatars[0].name"
-                size="xs"
-                @click.stop="goToSubscription(displayAvatars[0].id)"
-              />
-            </div>
             <span class="hover:text-foreground transition-colors truncate" @click.stop="goToSubscription(primarySubscriptionId)">
               {{ displayNames }}
             </span>
@@ -138,12 +126,16 @@ import { useSystemConfig } from '@/shared/composables/useSystemConfig'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
 import type { VideoListItem } from '@/features/video/types/video'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   video: VideoListItem
   showAvatar?: boolean
   sortBy?: string
   layout?: 'grid' | 'list'
-}>()
+  showDuration?: boolean
+}>(), {
+  layout: 'grid',
+  showDuration: true,
+})
 
 const emit = defineEmits(['goToSubscription', 'openModal'])
 
@@ -245,6 +237,3 @@ const toggleLater = async () => {
 onMounted(() => document.addEventListener('closeAllContextMenus', closeMenuOnExternalClose))
 onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenuOnExternalClose))
 </script>
-
-<style scoped>
-</style>

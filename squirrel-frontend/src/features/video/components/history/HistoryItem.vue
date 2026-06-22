@@ -18,7 +18,7 @@
         <div class="h-full bg-white transition-all duration-500 ease-out" :style="{ width: `${progress * 100}%` }" />
       </div>
 
-      <div v-if="video.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-2xs font-medium text-white tabular-nums backdrop-blur-sm z-20">
+      <div v-if="video.duration" class="absolute bottom-1 right-1 z-20 inline-flex items-center rounded bg-black/70 px-1 py-px text-3xs font-medium leading-none text-white tabular-nums shadow-sm backdrop-blur-sm">
         {{ formatDuration(video.duration) }}
       </div>
 

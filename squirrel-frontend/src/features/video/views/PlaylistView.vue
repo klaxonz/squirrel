@@ -198,7 +198,7 @@
                       <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
                         <AppIcon name="film" class="h-5 w-5" />
                       </div>
-                      <span v-if="item.video?.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded-md bg-black/65 px-1.5 text-2xs font-medium text-white tabular-nums backdrop-blur-sm">
+                      <span v-if="item.video?.duration" class="absolute bottom-1 right-1 inline-flex items-center rounded bg-black/70 px-1 py-px text-3xs font-medium leading-none text-white tabular-nums shadow-sm backdrop-blur-sm">
                         {{ formatDuration(item.video.duration) }}
                       </span>
                     </div>

@@ -1,10 +1,10 @@
 <template>
   <div
-    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border transition-colors duration-300"
+    class="inline-flex items-center gap-1 px-1.5 py-px rounded border transition-colors duration-200"
     :style="tagStyles"
   >
-    <div class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: siteColor }" />
-    <span class="text-3xs font-black uppercase tracking-wider leading-none">
+    <div class="w-1 h-1 rounded-full" :style="{ backgroundColor: siteColor }" />
+    <span class="text-3xs font-semibold uppercase tracking-[0.1em] leading-none">
       {{ site }}
     </span>
   </div>

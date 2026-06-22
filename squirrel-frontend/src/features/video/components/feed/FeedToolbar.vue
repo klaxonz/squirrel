@@ -1,22 +1,24 @@
 <template>
-  <section class="flex w-full items-center justify-between gap-3 bg-transparent relative z-10">
+  <section class="flex w-full items-end justify-between gap-3 bg-transparent relative z-10">
     <div class="flex items-center gap-3 min-w-0">
       <nav v-if="showTabs" class="relative shrink-0 min-w-0">
         <div
           ref="tabsScroll"
-          class="flex items-center h-full gap-0.5 overflow-x-auto scrollbar-hide"
+          class="flex items-end h-full gap-5 overflow-x-auto scrollbar-hide border-b border-border/50"
           @scroll="updateScrollState"
         >
           <button
             v-for="tab in tabs"
             :key="tab.value"
-            class="flex items-center text-sm font-semibold whitespace-nowrap transition-colors outline-none focus-visible:ring-0 shrink-0"
+            class="relative flex items-center text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-0 shrink-0 -mb-px py-2"
+            :class="localActiveTab === tab.value ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'"
             @click="localActiveTab = tab.value"
           >
-            <span class="relative inline-flex items-center px-3.5 py-1.5 rounded-full transition-all duration-200"
-                  :class="localActiveTab === tab.value ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'">
-              {{ tab.label }}
-            </span>
+            {{ tab.label }}
+            <span
+              v-if="localActiveTab === tab.value"
+              class="absolute left-0 right-0 -bottom-px h-[2px] bg-primary rounded-full"
+            />
           </button>
         </div>
         <!-- Edge fade hints: only when that direction is scrollable -->
@@ -31,7 +33,7 @@
       <button
         v-if="special === 'yes'"
         type="button"
-        class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-3 text-xs font-semibold text-warning transition-colors hover:bg-warning/10"
+        class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2.5 text-xs font-medium text-warning transition-colors hover:bg-warning/15"
         title="清除特别关注过滤"
         @click="emit('update:special', 'all')"
       >
@@ -40,12 +42,11 @@
         <AppIcon name="close" class="h-3 w-3" />
       </button>
 
-      <!-- Site Select -->
       <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
-        <SelectTrigger class="h-8 w-auto min-w-0 shrink-0 flex-nowrap whitespace-nowrap border-0 bg-muted/40 px-3 py-0 text-sm font-semibold text-muted-foreground shadow-none hover:bg-muted/70 hover:text-foreground focus:ring-0 rounded-full transition-colors">
+        <SelectTrigger class="h-8 w-auto min-w-0 shrink-0 flex-nowrap whitespace-nowrap border border-border/60 bg-transparent px-2.5 py-0 text-xs font-medium text-muted-foreground shadow-none hover:bg-accent/40 hover:text-foreground focus:ring-0 rounded-md transition-colors gap-1.5">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent class="min-w-44 border-border/10 bg-background/70 backdrop-blur-2xl shadow-2xl rounded-md">
+        <SelectContent class="min-w-44 border-border/60 bg-popover shadow-lg rounded-md">
           <SelectItem value="all" class="text-xs">全部站点</SelectItem>
           <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">
             {{ opt.label }}
@@ -56,10 +57,10 @@
       <!-- Sort Select -->
       <div v-if="showSort" class="hidden sm:block shrink-0">
         <Select v-model="localSortBy">
-          <SelectTrigger class="h-8 w-auto min-w-0 flex-nowrap whitespace-nowrap border-0 bg-muted/40 px-3 py-0 text-sm font-semibold text-muted-foreground shadow-none hover:bg-muted/70 hover:text-foreground focus:ring-0 rounded-full transition-colors">
+          <SelectTrigger class="h-8 w-auto min-w-0 flex-nowrap whitespace-nowrap border border-border/60 bg-transparent px-2.5 py-0 text-xs font-medium text-muted-foreground shadow-none hover:bg-accent/40 hover:text-foreground focus:ring-0 rounded-md transition-colors gap-1.5">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent class="min-w-36 border-border/10 bg-background/70 backdrop-blur-2xl shadow-2xl rounded-md">
+          <SelectContent class="min-w-36 border-border/60 bg-popover shadow-lg rounded-md">
             <SelectItem v-for="opt in sortOptions" :key="opt.value" :value="opt.value" class="text-xs">
               {{ opt.label }}
             </SelectItem>
@@ -71,11 +72,11 @@
       <button
         v-if="showFilter"
         type="button"
-        class="relative flex size-8 shrink-0 items-center justify-center rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background border-0"
+        class="relative flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         :class="[
           activeFilterCount > 0
-            ? 'bg-primary/10 text-primary hover:bg-primary/20'
-            : 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+            ? 'bg-primary/12 text-primary border-primary/25 hover:bg-primary/20'
+            : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
         ]"
         @click="filterModalOpen = true"
         :title="activeFilterCount > 0 ? '筛选已启用' : '筛选'"
@@ -88,11 +89,10 @@
         >{{ activeFilterCount }}</span>
       </button>
 
-      <!-- View Mode Toggle -->
-      <div class="hidden sm:flex p-0.5 shrink-0 items-center gap-0.5 bg-muted/40 rounded-full">
+      <div class="hidden sm:flex p-0.5 shrink-0 items-center gap-0.5 border border-border/60 rounded-md">
         <button
-          class="flex items-center justify-center size-7 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          :class="uiStore.viewMode === 'grid' ? 'text-foreground bg-background shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          class="flex items-center justify-center size-7 rounded transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          :class="uiStore.viewMode === 'grid' ? 'text-foreground bg-accent/60' : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'"
           @click="uiStore.setViewMode('grid')"
           title="网格视图"
           aria-label="网格视图"
@@ -100,8 +100,8 @@
           <AppIcon name="layoutGrid" class="w-4 h-4" />
         </button>
         <button
-          class="flex items-center justify-center size-7 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          :class="uiStore.viewMode === 'list' ? 'text-foreground bg-background shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          class="flex items-center justify-center size-7 rounded transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          :class="uiStore.viewMode === 'list' ? 'text-foreground bg-accent/60' : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'"
           @click="uiStore.setViewMode('list')"
           title="列表视图"
           aria-label="列表视图"
@@ -114,7 +114,7 @@
       <button
         v-if="showRefresh"
         type="button"
-        class="flex size-8 shrink-0 items-center justify-center rounded-full border-0 text-muted-foreground transition-colors outline-none bg-muted/40 hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        class="flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors outline-none hover:bg-accent/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         @click="$emit('refresh')"
         title="刷新内容"
         aria-label="刷新内容"

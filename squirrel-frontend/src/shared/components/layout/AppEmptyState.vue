@@ -79,35 +79,39 @@ const variantClass = computed(() =>
   justify-content: center;
   width: 3rem;
   height: 3rem;
-  border-radius: 9999px;
-  background: hsl(var(--accent) / 0.5);
+  border-radius: var(--radius-lg);
+  background: hsl(var(--accent) / 0.4);
+  border: 1px solid hsl(var(--border) / 0.4);
   margin-bottom: 0.25rem;
 }
 
 .app-empty-state--icon-circle .app-empty-state__icon-wrap {
   width: 3.5rem;
   height: 3.5rem;
-  background: hsl(var(--accent) / 0.4);
+  border-radius: var(--radius-xl);
+  background: hsl(var(--accent) / 0.35);
   box-shadow: inset 0 0 0 4px hsl(var(--background));
 }
 
 .app-empty-state__icon {
   width: 1.5rem;
   height: 1.5rem;
-  color: hsl(var(--muted-foreground) / 0.5);
+  color: hsl(var(--muted-foreground) / 0.55);
 }
 
 .app-empty-state--icon-circle .app-empty-state__icon {
   width: 1.25rem;
   height: 1.25rem;
-  color: hsl(var(--muted-foreground) / 0.5);
+  color: hsl(var(--muted-foreground) / 0.55);
 }
 
 .app-empty-state__title {
   margin: 0;
-  color: hsl(var(--foreground));
-  font-size: 1.125rem;
+  color: hsl(var(--foreground) / 0.9);
+  font-family: var(--font-display);
+  font-size: var(--app-h3-size);
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .app-empty-state__copy {
