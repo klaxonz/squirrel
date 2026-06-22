@@ -30,7 +30,7 @@
         >
           <div class="relative aspect-video overflow-hidden rounded-sm bg-muted transition-colors group-hover:brightness-110">
             <VideoThumbnail :src="item.thumbnail" :alt="item.title" />
-            <span v-if="item.duration" class="absolute bottom-1 right-1 inline-flex items-center rounded bg-black/70 px-1 py-px text-3xs font-medium leading-none tabular-nums text-white shadow-sm backdrop-blur-sm">
+            <span v-if="item.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded-md bg-black/70 px-1.5 text-2xs font-medium tabular-nums text-white shadow-sm backdrop-blur-sm">
               {{ formatDuration(item.duration) }}
             </span>
           </div>

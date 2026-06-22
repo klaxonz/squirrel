@@ -1,5 +1,5 @@
 <template>
-  <section v-if="items.length > 0 || loading" class="group/container app-reveal mb-6 px-6 pt-2">
+  <section v-if="items.length > 0 || loading" class="group/container mb-6 px-6 pt-2">
     <FeedRailHeader
       title="特别关注"
       view-more-label="查看更多"
@@ -11,18 +11,17 @@
 
     <div
       ref="scrollContainer"
-      class="no-scrollbar flex gap-4 overflow-x-auto pb-4 scroll-smooth snap-x"
+      class="no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x"
       @scroll="updateScrollState"
     >
       <RecommendationSkeleton v-if="loading && items.length === 0" :count="6" />
       <VideoItem
-        v-for="(item, i) in items"
+        v-for="item in items"
         :key="item.id"
         :video="item"
         show-avatar
         show-duration
-        class="app-reveal w-[18rem] shrink-0 snap-start"
-        :style="{ '--reveal-index': i }"
+        class="w-[18rem] shrink-0 snap-start"
         @openModal="emit('openModal', item)"
         @goToSubscription="(id) => emit('goToSubscription', id)"
       />
@@ -59,7 +58,6 @@ const scroll = (direction: 'left' | 'right') => {
   const scrollAmount = 304 * 2
   scrollContainer.value.scrollTo({
     left: scrollContainer.value.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount),
-    behavior: 'smooth',
   })
 }
 

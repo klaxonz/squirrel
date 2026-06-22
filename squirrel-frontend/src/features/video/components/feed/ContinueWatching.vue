@@ -1,5 +1,5 @@
 <template>
-  <div v-if="historyItems.length > 0 || loading" class="app-reveal mb-6 pt-4 px-6 overflow-hidden relative group/container">
+  <div v-if="historyItems.length > 0 || loading" class="mb-6 pt-4 px-6 overflow-hidden relative group/container">
     <FeedRailHeader
       title="继续观看"
       view-more-label="查看全部"
@@ -11,18 +11,17 @@
 
     <div
       ref="scrollContainer"
-      class="no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x scroll-smooth"
+      class="no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x"
       @scroll="updateScrollState"
     >
       <RecommendationSkeleton v-if="loading && historyItems.length === 0" :count="6" />
       <VideoItem
-        v-for="(item, i) in historyItems"
+        v-for="item in historyItems"
         :key="item.id"
         :video="item as VideoListItem"
         show-avatar
         show-duration
-        class="app-reveal w-[18rem] shrink-0 snap-start"
-        :style="{ '--reveal-index': i }"
+        class="w-[18rem] shrink-0 snap-start"
         @openModal="$emit('openModal', item)"
         @goToSubscription="(id) => $emit('goToSubscription', id)"
       />
@@ -71,7 +70,6 @@ const scroll = (direction: 'left' | 'right') => {
 
   scrollContainer.value.scrollTo({
     left: targetScroll,
-    behavior: 'smooth'
   })
 }
 

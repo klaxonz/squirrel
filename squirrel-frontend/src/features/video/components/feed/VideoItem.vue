@@ -47,7 +47,7 @@
         </button>
       </div>
 
-      <span v-if="video.duration && showDuration" class="video-duration-badge absolute bottom-1.5 right-1.5 inline-flex items-center rounded bg-black/70 px-1 py-px text-3xs font-medium leading-none text-white tabular-nums shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-0">
+      <span v-if="video.duration && showDuration" class="video-duration-badge absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/70 px-1.5 text-2xs font-medium text-white tabular-nums shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-0">
         {{ formatDuration(video.duration) }}
       </span>
 

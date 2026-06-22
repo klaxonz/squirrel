@@ -78,7 +78,6 @@ import ContinueWatching from '@/features/video/components/feed/ContinueWatching.
 import SpecialFollowVideos from '@/features/video/components/feed/SpecialFollowVideos.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import { useScrollReveal } from '@/shared/composables/useScrollReveal'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import type { VideoHistoryEntry } from '@/features/video/types/video'
@@ -142,7 +141,7 @@ const heroChannelId = computed(() => heroVideo.value?.subscriptions?.[0]?.id ?? 
 
 const scrollToFirstRail = () => {
   const firstRail = contentRef.value?.querySelector('section')
-  firstRail?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  firstRail?.scrollIntoView({ block: 'start' })
 }
 
 let lastRefreshedAt = 0
@@ -160,7 +159,6 @@ const goToContinueWatching = () => router.push({ name: 'History', query: { mode:
 const goToSpecialFollowVideos = () => router.push({ name: 'AllVideos', query: { special: 'yes' } })
 
 const contentRef = ref<HTMLElement | null>(null)
-useScrollReveal(contentRef)
 
 const refresh = () => {
   Promise.allSettled([
@@ -196,50 +194,58 @@ onMounted(() => {
 }
 
 .app-hero-cta {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   height: 2.5rem;
   padding: 0 1.25rem;
+  border: 0;
   border-radius: var(--radius-md);
   font-size: 0.875rem;
   font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
   color: hsl(var(--primary-foreground));
   background: var(--brand-gradient);
-  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.35), 0 8px 32px hsl(var(--primary) / 0.28);
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.35), 0 6px 18px hsl(var(--primary) / 0.18);
   transition: transform var(--duration-fast) var(--ease-spring),
               box-shadow var(--duration-fast) var(--ease-default);
 }
 .app-hero-cta:hover {
   transform: translateY(-1px);
-  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.4), 0 16px 48px hsl(var(--primary) / 0.35);
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.4), 0 8px 22px hsl(var(--primary) / 0.22);
 }
 .app-hero-cta:active {
   transform: translateY(0) scale(0.98);
 }
 .app-hero-cta:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.4), 0 16px 48px hsl(var(--primary) / 0.35), 0 0 0 3px hsl(var(--ring) / 0.4);
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.4), 0 8px 22px hsl(var(--primary) / 0.22), 0 0 0 3px hsl(var(--ring) / 0.4);
 }
 .app-hero-cta__meta {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
   padding-left: 0.5rem;
   margin-left: 0.25rem;
   border-left: 1px solid hsl(0 0% 100% / 0.25);
   font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: 500;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
   opacity: 0.85;
 }
 .app-hero-cta--ghost {
-  background: hsl(var(--background) / 0.5);
+  background: hsl(var(--background) / 0.72);
   color: hsl(var(--foreground) / 0.9);
-  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.8);
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.95), 0 4px 14px hsl(var(--foreground) / 0.08);
   backdrop-filter: blur(8px);
 }
 .app-hero-cta--ghost:hover {
-  background: hsl(var(--foreground) / 0.08);
-  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.2);
+  background: hsl(var(--background) / 0.86);
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.18), 0 4px 14px hsl(var(--foreground) / 0.1);
 }
 
 .app-cinema-hero-pro__backdrop--fallback {

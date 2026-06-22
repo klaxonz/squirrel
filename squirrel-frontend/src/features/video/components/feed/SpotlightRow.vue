@@ -1,5 +1,5 @@
 <template>
-  <section v-if="items.length > 0 || loading" class="group/container app-reveal mb-10 px-6 pt-8">
+  <section v-if="items.length > 0 || loading" class="group/container mb-10 px-6 pt-8">
     <FeedRailHeader
       title="精选推荐"
       :can-scroll-left="canScrollLeft"
@@ -9,18 +9,17 @@
 
     <div
       ref="scrollContainer"
-      class="no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x scroll-smooth"
+      class="no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x"
       @scroll="updateScrollState"
     >
       <RecommendationSkeleton v-if="loading && items.length === 0" :count="6" />
       <VideoItem
-        v-for="(video, i) in items"
+        v-for="video in items"
         :key="video.id"
         :video="video"
         show-avatar
         show-duration
-        class="app-reveal w-[18rem] shrink-0 snap-start"
-        :style="{ '--reveal-index': i }"
+        class="w-[18rem] shrink-0 snap-start"
         @openModal="$emit('openModal', video)"
         @goToSubscription="(id) => $emit('goToSubscription', id)"
       />
@@ -58,7 +57,6 @@ const scroll = (direction: 'left' | 'right') => {
   const scrollAmount = 304 * 2
   scrollContainer.value.scrollTo({
     left: scrollContainer.value.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount),
-    behavior: 'smooth',
   })
 }
 
