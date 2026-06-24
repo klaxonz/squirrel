@@ -21,6 +21,7 @@ let electronProcess = null
 let desktopWatcher = null
 let restartTimer = null
 let restartingElectron = false
+let lastRestartAt = 0
 let shuttingDown = false
 let shutdownPromise = null
 
@@ -171,17 +172,29 @@ const restartElectron = async () => {
   await terminate(electronProcess)
   electronProcess = null
   startElectron()
+  lastRestartAt = Date.now()
   restartingElectron = false
 }
 
+const RESTART_DEBOUNCE_MS = 500
+const RESTART_COOLDOWN_MS = 2000
+
 const scheduleElectronRestart = () => {
+  if (restartingElectron) {
+    return
+  }
+
+  if (lastRestartAt && Date.now() - lastRestartAt < RESTART_COOLDOWN_MS) {
+    return
+  }
+
   if (restartTimer) {
     clearTimeout(restartTimer)
   }
   restartTimer = setTimeout(() => {
     restartTimer = null
     void restartElectron()
-  }, 250)
+  }, RESTART_DEBOUNCE_MS)
 }
 
 const watchDesktopSource = () => {
