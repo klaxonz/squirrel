@@ -1,24 +1,30 @@
 :root {
-  --background: 24 10% 7%;
-  --foreground: 40 20% 96%;
+  /* Single hue axis (H28 warm-amber). Dark and light share the same hue;
+     only lightness/saturation shift, so theme switches change brightness
+     without jumping color temperature. Previously dark used H38/H24 and
+     light used H26/H36 — two independently-tuned palettes that made the
+     whole UI feel inconsistent across themes. */
 
-  --card: 24 9% 9%;
-  --card-foreground: 40 20% 96%;
+  --background: 28 10% 7%;
+  --foreground: 28 10% 95%;
 
-  --popover: 24 10% 8%;
-  --popover-foreground: 40 20% 96%;
+  --card: 28 8% 9%;
+  --card-foreground: 28 10% 95%;
 
-  --primary: 38 92% 56%;
-  --primary-foreground: 24 10% 6%;
+  --popover: 28 9% 8%;
+  --popover-foreground: 28 10% 95%;
 
-  --secondary: 24 8% 13%;
-  --secondary-foreground: 40 20% 96%;
+  --primary: 28 90% 58%;
+  --primary-foreground: 28 10% 6%;
 
-  --muted: 24 8% 11%;
-  --muted-foreground: 30 8% 64%;
+  --secondary: 28 7% 13%;
+  --secondary-foreground: 28 10% 95%;
 
-  --accent: 28 10% 15%;
-  --accent-foreground: 40 20% 96%;
+  --muted: 28 7% 11%;
+  --muted-foreground: 28 6% 62%;
+
+  --accent: 28 8% 15%;
+  --accent-foreground: 28 10% 95%;
 
   --destructive: 0 72% 62%;
   --destructive-foreground: 0 0% 98%;
@@ -26,17 +32,17 @@
   --success: 142 65% 48%;
   --success-foreground: 0 0% 100%;
   --warning: 38 90% 56%;
-  --warning-foreground: 24 10% 6%;
+  --warning-foreground: 28 10% 6%;
   --info: 200 85% 60%;
   --info-foreground: 0 0% 100%;
 
-  --border: 24 8% 17%;
-  --input: 24 8% 17%;
-  --ring: 38 92% 58%;
+  --border: 28 7% 16%;
+  --input: 28 7% 16%;
+  --ring: 28 90% 58%;
 
-  --sidebar: 24 10% 5%;
-  --sidebar-foreground: 40 20% 96%;
-  --sidebar-border: 24 8% 13%;
+  --sidebar: 28 10% 5%;
+  --sidebar-foreground: 28 10% 95%;
+  --sidebar-border: 28 7% 11%;
 
   --shadow-xs: 0 1px 0 hsl(0 0% 0% / 0.25);
   --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.4);
@@ -48,8 +54,8 @@
   --cinema-noise-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   --cinema-spotlight:
     radial-gradient(ellipse 80% 50% at 50% -10%,
-      hsl(38 92% 56% / 0.045) 0%,
-      hsl(38 92% 56% / 0.018) 35%,
+      hsl(28 90% 58% / 0.045) 0%,
+      hsl(28 90% 58% / 0.018) 35%,
       transparent 70%);
   --cinema-vignette:
     radial-gradient(ellipse 100% 80% at 50% 50%,
@@ -58,40 +64,40 @@
 
   --shadow-card-hover: 0 4px 12px hsl(0 0% 0% / 0.4), 0 1px 3px hsl(0 0% 0% / 0.3);
 
-  --gray-50:  24 8% 97%;
-  --gray-100: 24 8% 93%;
-  --gray-200: 24 8% 86%;
-  --gray-300: 24 7% 75%;
-  --gray-400: 24 7% 60%;
-  --gray-500: 24 6% 45%;
-  --gray-600: 24 6% 33%;
-  --gray-700: 24 8% 22%;
-  --gray-800: 24 8% 15%;
-  --gray-900: 24 8% 10%;
-  --gray-950: 24 10% 6%;
+  --gray-50:  28 8% 97%;
+  --gray-100: 28 8% 93%;
+  --gray-200: 28 8% 86%;
+  --gray-300: 28 7% 75%;
+  --gray-400: 28 7% 60%;
+  --gray-500: 28 6% 45%;
+  --gray-600: 28 6% 33%;
+  --gray-700: 28 8% 22%;
+  --gray-800: 28 8% 15%;
+  --gray-900: 28 8% 10%;
+  --gray-950: 28 10% 6%;
 }
 
 .light {
-  --background: 36 30% 99%;
-  --foreground: 24 10% 10%;
+  --background: 28 30% 99%;
+  --foreground: 28 10% 10%;
 
   --card: 0 0% 100%;
-  --card-foreground: 24 10% 10%;
+  --card-foreground: 28 10% 10%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 24 10% 10%;
+  --popover-foreground: 28 10% 10%;
 
-  --primary: 26 88% 50%;
+  --primary: 28 88% 50%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 30 20% 95%;
-  --secondary-foreground: 24 10% 10%;
+  --secondary: 28 20% 95%;
+  --secondary-foreground: 28 10% 10%;
 
-  --muted: 30 16% 95%;
-  --muted-foreground: 24 5% 42%;
+  --muted: 28 16% 95%;
+  --muted-foreground: 28 5% 42%;
 
-  --accent: 30 20% 93%;
-  --accent-foreground: 24 10% 10%;
+  --accent: 28 20% 93%;
+  --accent-foreground: 28 10% 10%;
 
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
@@ -105,10 +111,10 @@
 
   --border: 28 12% 89%;
   --input: 28 12% 89%;
-  --ring: 26 88% 50%;
+  --ring: 28 88% 50%;
 
-  --sidebar: 30 20% 97%;
-  --sidebar-foreground: 24 10% 10%;
+  --sidebar: 28 20% 97%;
+  --sidebar-foreground: 28 10% 10%;
   --sidebar-border: 28 12% 90%;
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -121,22 +127,22 @@
   --cinema-noise-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   --cinema-spotlight:
     radial-gradient(ellipse 80% 50% at 50% -10%,
-      hsl(38 88% 55% / 0.06) 0%,
-      hsl(38 88% 55% / 0.025) 35%,
+      hsl(28 88% 55% / 0.06) 0%,
+      hsl(28 88% 55% / 0.025) 35%,
       transparent 70%);
   --cinema-vignette: transparent;
 
   --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
 
-  --gray-50:  36 30% 99%;
-  --gray-100: 30 16% 96%;
-  --gray-200: 30 14% 90%;
+  --gray-50:  28 30% 99%;
+  --gray-100: 28 16% 96%;
+  --gray-200: 28 14% 90%;
   --gray-300: 28 12% 82%;
-  --gray-400: 26 8% 64%;
-  --gray-500: 24 6% 46%;
-  --gray-600: 24 8% 32%;
-  --gray-700: 24 9% 22%;
-  --gray-800: 24 10% 14%;
-  --gray-900: 24 10% 10%;
-  --gray-950: 24 10% 6%;
+  --gray-400: 28 8% 64%;
+  --gray-500: 28 6% 46%;
+  --gray-600: 28 8% 32%;
+  --gray-700: 28 9% 22%;
+  --gray-800: 28 10% 14%;
+  --gray-900: 28 10% 10%;
+  --gray-950: 28 10% 6%;
 }

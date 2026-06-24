@@ -250,7 +250,7 @@ export const createMainWindow = () => {
     show: false,
     title: APP_NAME,
     autoHideMenuBar: true,
-    backgroundColor: '#091019',
+    backgroundColor: '#141110',
     ...(isMac
       ? {
           titleBarStyle: 'hiddenInset',
