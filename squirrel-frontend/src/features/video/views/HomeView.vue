@@ -238,14 +238,14 @@ onMounted(() => {
   opacity: 0.85;
 }
 .app-hero-cta--ghost {
-  background: hsl(var(--background) / 0.72);
-  color: hsl(var(--foreground) / 0.9);
-  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.95), 0 4px 14px hsl(var(--foreground) / 0.08);
+  background: hsl(0 0% 100% / 0.16);
+  color: hsl(0 0% 100%);
+  box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.35), 0 4px 14px hsl(24 10% 6% / 0.2);
   backdrop-filter: blur(8px);
 }
 .app-hero-cta--ghost:hover {
-  background: hsl(var(--background) / 0.86);
-  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.18), 0 4px 14px hsl(var(--foreground) / 0.1);
+  background: hsl(0 0% 100% / 0.26);
+  box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.5), 0 4px 14px hsl(24 10% 6% / 0.25);
 }
 
 .app-cinema-hero-pro__backdrop--fallback {
