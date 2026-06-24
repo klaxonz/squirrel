@@ -90,9 +90,9 @@
                       <div class="settings-row-desc">启用后在平台显示标记为敏感的内容。</div>
                     </div>
                     <Switch
-                      :checked="!!settings.showNsfw"
+                      :model-value="!!settings.showNsfw"
                       :disabled="userSaving"
-                      @update:checked="(value: boolean) => { settings.showNsfw = !!value; onUserSettingChange() }"
+                      @update:model-value="(value: boolean) => { settings.showNsfw = !!value; onUserSettingChange() }"
                     />
                   </div>
                   <div class="settings-row">
@@ -101,9 +101,9 @@
                       <div class="settings-row-desc">对敏感内容缩略图应用模糊效果。</div>
                     </div>
                     <Switch
-                      :checked="Boolean(systemConfig?.blur_nsfw_thumbnails)"
+                      :model-value="Boolean(systemConfig?.blur_nsfw_thumbnails)"
                       :disabled="systemLoading || systemSaving"
-                      @update:checked="(value: boolean) => onSystemToggle('blur_nsfw_thumbnails', !!value)"
+                      @update:model-value="(value: boolean) => onSystemToggle('blur_nsfw_thumbnails', !!value)"
                     />
                   </div>
                 </div>
@@ -122,9 +122,9 @@
                       <div class="settings-row-desc">{{ item.desc }}</div>
                     </div>
                     <Switch
-                      :checked="!!settings[item.key]"
+                      :model-value="!!settings[item.key]"
                       :disabled="userSaving"
-                      @update:checked="(value: boolean) => { settings[item.key] = !!value; onUserSettingChange() }"
+                      @update:model-value="(value: boolean) => { settings[item.key] = !!value; onUserSettingChange() }"
                     />
                   </div>
                 </div>
@@ -145,9 +145,9 @@
                       <div class="settings-row-desc">{{ item.desc }}</div>
                     </div>
                     <Switch
-                      :checked="Boolean(systemConfig?.[item.key])"
+                      :model-value="Boolean(systemConfig?.[item.key])"
                       :disabled="systemLoading || systemSaving"
-                      @update:checked="(value: boolean) => onSystemToggle(item.key, !!value)"
+                      @update:model-value="(value: boolean) => onSystemToggle(item.key, !!value)"
                     />
                   </div>
                 </div>

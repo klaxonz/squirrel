@@ -49,7 +49,7 @@
             </div>
             <div class="flex items-center justify-between py-1">
               <span class="text-xs text-foreground">启用站点</span>
-              <Switch :checked="!!siteEditorForm.enabled" @update:checked="(v) => setSiteEditorBooleanField('enabled', v)" />
+              <Switch :model-value="!!siteEditorForm.enabled" @update:model-value="(v) => setSiteEditorBooleanField('enabled', v)" />
             </div>
           </div>
         </section>
@@ -65,7 +65,7 @@
             <div class="flex items-center gap-2">
               <label class="text-xs text-muted-foreground w-16 shrink-0">频率限制</label>
               <div class="flex items-center gap-2 flex-1">
-                <Switch :checked="!!siteEditorForm.rateLimitEnabled" @update:checked="(v) => setSiteEditorBooleanField('rateLimitEnabled', v)" />
+                <Switch :model-value="!!siteEditorForm.rateLimitEnabled" @update:model-value="(v) => setSiteEditorBooleanField('rateLimitEnabled', v)" />
                 <span v-if="siteEditorForm.rateLimitEnabled" class="flex items-center gap-1.5 text-xs">
                   <Input v-model="siteEditorForm.rateLimitMin" type="number" step="0.1" class="w-16 h-6 text-xs" placeholder="最小" />
                   <span class="text-muted-foreground/60">~</span>
@@ -93,7 +93,7 @@
               class="flex items-center justify-between py-1.5 px-1 rounded hover:bg-muted/40 transition-colors cursor-pointer"
             >
               <span class="text-xs text-foreground/80">{{ meta.label }}</span>
-              <Switch :checked="!!siteEditorForm[meta.key]" @update:checked="(v) => setSiteEditorBooleanField(meta.key, v)" />
+              <Switch :model-value="!!siteEditorForm[meta.key]" @update:model-value="(v) => setSiteEditorBooleanField(meta.key, v)" />
             </label>
           </div>
         </section>

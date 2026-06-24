@@ -109,11 +109,11 @@
             <div class="grid gap-2">
               <label class="flex h-10 items-center justify-between rounded-md border border-border/50 px-3">
                 <span class="text-sm font-medium text-foreground">启用调度</span>
-                <Switch v-model:checked="formData.is_active" />
+                <Switch v-model="formData.is_active" />
               </label>
               <label class="flex h-10 items-center justify-between rounded-md border border-border/50 px-3">
                 <span class="text-sm font-medium text-foreground">立即执行一次</span>
-                <Switch v-model:checked="formData.start_immediately" />
+                <Switch v-model="formData.start_immediately" />
               </label>
             </div>
           </section>
