@@ -1,11 +1,10 @@
 <template>
   <aside
-    class="h-full flex flex-col bg-sidebar border-r border-sidebar-border select-none w-[var(--sidebar-width)]"
+    class="sidebar-rail relative h-full flex flex-col bg-sidebar border-r border-sidebar-border select-none w-[var(--sidebar-width)]"
+    :class="{ 'is-collapsed': !isSidebarOpen }"
   >
-    <!-- Brand row — logo + name on the left, collapse toggle on the right.
-         Folded mode drops the name and centers the logo; the toggle drops to
-         its own row below the rail. -->
-    <div class="flex items-center gap-2 px-3 h-12 shrink-0">
+    <!-- Brand row — logo only, no toggle competing for space. -->
+    <div class="flex items-center h-12 shrink-0" :class="isSidebarOpen ? 'px-3' : 'px-2'">
       <router-link
         to="/"
         class="flex items-center gap-2.5 h-8 px-1.5 rounded-md group outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
@@ -18,15 +17,6 @@
           class="text-sm font-semibold tracking-tight text-foreground font-display truncate"
         >归仓</span>
       </router-link>
-      <button
-        v-if="isSidebarOpen"
-        type="button"
-        class="shrink-0 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-        title="收起侧边栏"
-        @click="uiStore.toggleSidebar()"
-      >
-        <AppIcon name="chevronLeft" class="w-4 h-4" />
-      </button>
     </div>
 
     <!-- Navigation -->
@@ -58,15 +48,15 @@
       </div>
     </nav>
 
-    <!-- Folded-mode toggle — only the icon row, centered at the bottom. -->
+    <!-- Collapse toggle — pinned to the sidebar's right edge, vertically
+         centered. Stays in one fixed spot across both states. -->
     <button
-      v-if="!isSidebarOpen"
       type="button"
-      class="shrink-0 mx-auto mb-2 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-      title="展开侧边栏"
+      class="sidebar-toggle"
+      :title="isSidebarOpen ? '收起侧边栏' : '展开侧边栏'"
       @click="uiStore.toggleSidebar()"
     >
-      <AppIcon name="chevronRight" class="w-4 h-4" />
+      <AppIcon :name="isSidebarOpen ? 'chevronLeft' : 'chevronRight'" class="w-3.5 h-3.5" />
     </button>
   </aside>
 </template>
@@ -91,3 +81,38 @@ const showSidebarMusicPlayer = computed(() =>
   route.name !== 'Music' && Boolean(musicPlayerStore.currentTrack && (musicPlayerStore.resolvingUrl || musicPlayerStore.audioSrc))
 )
 </script>
+
+<style scoped>
+.sidebar-rail {
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 50%;
+  right: -13px;
+  transform: translateY(-50%);
+  z-index: 51;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border) / 0.6);
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.08);
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.sidebar-toggle:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--primary) / 0.4);
+}
+.sidebar-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
+}
+</style>

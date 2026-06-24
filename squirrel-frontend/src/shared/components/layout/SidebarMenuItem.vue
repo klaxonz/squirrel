@@ -1,39 +1,17 @@
 <template>
-  <!-- Expanded item -->
   <RouterLink
-    v-if="!collapsed"
     :to="item.path"
     class="sidebar-item group"
-    :class="{ 'is-active': isActive }"
+    :class="[{ 'is-active': isActive }, collapsed ? 'is-collapsed' : '']"
+    :title="collapsed ? item.name : undefined"
   >
-    <span class="sidebar-item__active-bar" />
     <AppIcon :name="item.icon" class="sidebar-item__icon" :class="{ 'is-active': isActive }" />
-    <span class="sidebar-item__label">{{ item.name }}</span>
+    <span v-if="!collapsed" class="sidebar-item__label">{{ item.name }}</span>
   </RouterLink>
-
-  <!-- Collapsed item — wrapped in Tooltip for a hover label -->
-  <Tooltip v-else>
-    <TooltipTrigger as-child>
-      <RouterLink
-        :to="item.path"
-        class="sidebar-item group is-collapsed"
-        :class="{ 'is-active': isActive }"
-      >
-        <span class="sidebar-item__active-bar" />
-        <AppIcon :name="item.icon" class="sidebar-item__icon" :class="{ 'is-active': isActive }" />
-      </RouterLink>
-    </TooltipTrigger>
-    <TooltipContent side="right">
-      {{ item.name }}
-    </TooltipContent>
-  </Tooltip>
 </template>
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import Tooltip from '@/shared/ui/tooltip/Tooltip.vue'
-import TooltipTrigger from '@/shared/ui/tooltip/TooltipTrigger.vue'
-import TooltipContent from '@/shared/ui/tooltip/TooltipContent.vue'
 import type { AppIconName } from '@/shared/icons/app-icons'
 
 defineProps<{
@@ -82,22 +60,6 @@ defineProps<{
   background: hsl(var(--primary) / 0.1);
   color: hsl(var(--foreground));
   font-weight: 500;
-}
-
-/* Left emphasis bar — replaces the old ring + drop-shadow active treatment. */
-.sidebar-item__active-bar {
-  position: absolute;
-  left: -0.375rem;
-  top: 50%;
-  transform: translateY(-50%) scaleY(0);
-  width: 2px;
-  height: 1.125rem;
-  border-radius: 2px;
-  background: hsl(var(--primary));
-  transition: transform 0.14s ease;
-}
-.sidebar-item.is-active .sidebar-item__active-bar {
-  transform: translateY(-50%) scaleY(1);
 }
 
 .sidebar-item__icon {

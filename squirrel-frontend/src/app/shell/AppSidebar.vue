@@ -1,6 +1,6 @@
 <template>
-  <!-- Width + chrome are owned by <Sidebar>'s <aside> (driven by the
-       --sidebar-width token that AppLayout sets from isSidebarOpen). Keeping
+  <!-- Width + chrome are owned by <Sidebar>'s <aside>, driven by the
+       --sidebar-width token that AppLayout sets from isSidebarOpen. Keeping
        this wrapper chrome-free avoids the duplicate border/bg that used to
        fight Sidebar.vue's own border-r/bg-sidebar. -->
   <Sidebar class="h-full" />
