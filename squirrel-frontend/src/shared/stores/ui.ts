@@ -2,8 +2,12 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 export const useUIStore = defineStore('ui', () => {
-  const isSidebarOpen = ref(true)
-  const isSidebarFlyoutOpen = ref(false)
+  const SIDEBAR_OPEN_KEY = 'ui.sidebarOpen'
+  const readPersistedSidebarOpen = (): boolean => {
+    if (typeof localStorage === 'undefined') return true
+    return localStorage.getItem(SIDEBAR_OPEN_KEY) !== 'false'
+  }
+  const isSidebarOpen = ref(readPersistedSidebarOpen())
   const isVideoWidescreen = ref(false)
   const isVideoSidebarOpen = ref(true)
   const searchQuery = ref('')
@@ -19,6 +23,16 @@ export const useUIStore = defineStore('ui', () => {
 
   const toggleSidebar = () => {
     isSidebarOpen.value = !isSidebarOpen.value
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(SIDEBAR_OPEN_KEY, String(isSidebarOpen.value))
+    }
+  }
+
+  const setSidebarOpen = (open: boolean) => {
+    isSidebarOpen.value = open
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(SIDEBAR_OPEN_KEY, String(open))
+    }
   }
 
   const triggerSearch = (query?: string) => {
@@ -40,7 +54,6 @@ export const useUIStore = defineStore('ui', () => {
   const setVideoWidescreen = (enabled: boolean) => {
     isVideoWidescreen.value = enabled
     if (enabled) {
-      isSidebarFlyoutOpen.value = false
       isVideoSidebarOpen.value = false
     } else {
       isVideoSidebarOpen.value = true
@@ -49,7 +62,6 @@ export const useUIStore = defineStore('ui', () => {
 
   return {
     isSidebarOpen,
-    isSidebarFlyoutOpen,
     isVideoWidescreen,
     isVideoSidebarOpen,
     searchQuery,
@@ -57,6 +69,7 @@ export const useUIStore = defineStore('ui', () => {
     homeSearchMode,
     viewMode,
     toggleSidebar,
+    setSidebarOpen,
     triggerSearch,
     setHomeSearchMode,
     setViewMode,

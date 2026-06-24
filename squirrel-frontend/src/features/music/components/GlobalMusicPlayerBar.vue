@@ -316,7 +316,7 @@ function removeQueueItem(index: number) {
   left: 0;
   right: auto;
   bottom: 0;
-  width: var(--sidebar-width, 14rem);
+  width: var(--sidebar-width);
   max-width: none;
   border-top: 1px solid hsl(var(--border) / 0.5);
   border-right: 1px solid hsl(var(--border));
@@ -328,7 +328,7 @@ function removeQueueItem(index: number) {
 
 @media (min-width: 768px) {
   .music-bar {
-    left: calc(var(--sidebar-width, 14rem) + 2rem);
+    left: calc(var(--sidebar-width) + 2rem);
     right: 2rem;
     max-width: 1480px;
   }

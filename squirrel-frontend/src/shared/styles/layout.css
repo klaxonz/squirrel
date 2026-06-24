@@ -71,7 +71,7 @@
 
   --container-max-width: 2560px;
 
-  --sidebar-width: 14rem;
+  --sidebar-expanded-width: 14rem;
   --sidebar-collapsed-width: 4.5rem;
   --sidebar-icon-size: 1.25rem;
   --sidebar-item-height: 2.25rem;

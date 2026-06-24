@@ -1,11 +1,14 @@
 <template>
-  <div class="flex flex-col h-screen overflow-hidden bg-background">
+  <div
+    class="flex flex-col h-screen overflow-hidden bg-background"
+    :style="{ '--sidebar-width': isSidebarOpen ? 'var(--sidebar-expanded-width)' : 'var(--sidebar-collapsed-width)' }"
+  >
     <!-- 1. Desktop Title Bar (Fixed Height) -->
     <DesktopTitleBar v-if="isDesktop" class="shrink-0 z-sidebar" />
 
     <div class="flex flex-1 min-h-0 overflow-hidden">
       <!-- 2. Sidebar (Fixed Width, Full Height) -->
-      <AppSidebar class="w-[var(--sidebar-width)] shrink-0 border-r border-border/40 z-50" />
+      <AppSidebar class="shrink-0 z-50" />
 
       <!-- 3. Main Container -->
       <main class="flex-1 min-w-0 flex flex-col relative">
@@ -46,6 +49,7 @@ import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useThemeStore } from '@/shared/stores/theme'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
+import { useUIStore } from '@/shared/stores/ui'
 import { MAIN_SCROLL_ID } from '@/shared/composables/useMainScrollRoot'
 
 type ScrollRouteState = {
@@ -58,8 +62,11 @@ const { isDesktop: isDesktopClient } = useDesktopBridge()
 const isDesktop = isDesktopClient()
 const themeStore = useThemeStore()
 const musicPlayerStore = useMusicPlayerStore()
+const uiStore = useUIStore()
 const nav = useNavigationHistory()
 const route = useRoute()
+
+const isSidebarOpen = computed(() => uiStore.isSidebarOpen)
 
 const hasActiveMusicBar = computed(() =>
   Boolean(musicPlayerStore.currentTrack && (musicPlayerStore.resolvingUrl || musicPlayerStore.audioSrc))

@@ -1,9 +1,9 @@
 <template>
-  <!-- Width is owned by the single source of truth: `--sidebar-width` (set on
-       AppLayout's wrapper AND on <Sidebar>'s <aside>). Do NOT re-declare a
-       conflicting width here — a previous `w-64` (256px) fought the token
-       (224/240px) and the outer wrapper, causing inconsistent rail widths. -->
-  <Sidebar class="h-full border-r border-border/40 bg-sidebar" />
+  <!-- Width + chrome are owned by <Sidebar>'s <aside> (driven by the
+       --sidebar-width token that AppLayout sets from isSidebarOpen). Keeping
+       this wrapper chrome-free avoids the duplicate border/bg that used to
+       fight Sidebar.vue's own border-r/bg-sidebar. -->
+  <Sidebar class="h-full" />
 </template>
 
 <script setup lang="ts">

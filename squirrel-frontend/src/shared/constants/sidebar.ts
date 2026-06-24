@@ -25,7 +25,7 @@ export interface NavigationItem {
   title: string
   path: string
   icon: AppIconName
-  group: 'content' | 'operations' | 'system'
+  group: 'content' | 'system'
   activePrefixes?: string[]
   activeRouteNames?: string[]
 }
@@ -200,7 +200,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '计划任务',
     path: '/scheduled-tasks',
     icon: 'scheduledTasks',
-    group: 'operations',
+    group: 'system',
     activeRouteNames: ['ScheduledTasks'],
   },
   {
@@ -239,11 +239,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     label: '内容',
     items: NAV_ITEMS.filter((item) => item.group === 'content'),
   },
-  {
-    key: 'operations',
-    label: '运维',
-    items: NAV_ITEMS.filter((item) => item.group === 'operations'),
-  },
+
   {
     key: 'system',
     label: '系统',
