@@ -9,11 +9,9 @@
       @synced="handleChannelSynced"
     />
 
-    <!-- Main Content Area -->
-    <div class="app-page-content">
-
-      <!-- Persistent Sticky Toolbar (always visible, zero-flicker) -->
-      <div class="sticky top-0 z-20 -mx-6 px-6 py-2 bg-background/95 backdrop-blur border-b border-border/10">
+    <!-- Sticky toolbar: outside app-page-content so top-padding never affects height -->
+    <div class="sticky top-0 z-20 bg-background border-b border-border">
+      <div class="max-w-[var(--app-page-max-width)] mx-auto px-6 py-2">
         <FeedToolbar
           :active-tab="activeTab"
           :nsfw="nsfw"
@@ -31,13 +29,17 @@
           @update:activeTab="activeTab = $event"
           @update:nsfw="nsfw = $event"
           @update:sortBy="sortBy = $event"
-          @update:time-range="timeRange = $event"
+          @update:timeRange="timeRange = $event"
           @update:duration="duration = $event"
           @update:content-type="contentType = $event"
           @update:special="setSpecialFilter"
           @refresh="refreshCurrentList"
         />
       </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="app-page-content">
 
       <!-- Error -->
       <div v-if="loadError" class="px-6 pt-6">

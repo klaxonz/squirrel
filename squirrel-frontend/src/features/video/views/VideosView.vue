@@ -1,9 +1,8 @@
 <template>
   <AppPageShell class="videos-view-page" variant="compact" :fill="false">
-    <div class="app-page-content">
-
-      <!-- Persistent Sticky Toolbar (always at top, never moves) -->
-      <div class="sticky top-0 z-20 -mx-6 mb-4 px-6 py-2 bg-background border-b border-border">
+    <!-- Sticky toolbar: outside app-page-content so top-padding never affects height -->
+    <div class="sticky top-0 z-20 bg-background border-b border-border">
+      <div class="max-w-[var(--app-page-max-width)] mx-auto px-6 py-2">
         <FeedToolbar
           :active-tab="activeTab"
           :nsfw="nsfw"
@@ -29,6 +28,9 @@
           @refresh="refreshCurrentList"
         />
       </div>
+    </div>
+
+    <div class="app-page-content">
 
       <!-- Error -->
       <div v-if="loadError" class="px-6 pt-2 pb-4">
