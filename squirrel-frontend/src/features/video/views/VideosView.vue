@@ -3,7 +3,7 @@
     <div class="app-page-content">
 
       <!-- Persistent Sticky Toolbar (always at top, never moves) -->
-      <div class="sticky top-0 z-20 -mx-6 mb-4 px-6 py-2 bg-background/95 backdrop-blur border-b border-border/10">
+      <div class="sticky top-0 z-20 -mx-6 mb-4 px-6 py-2 bg-background border-b border-border">
         <FeedToolbar
           :active-tab="activeTab"
           :nsfw="nsfw"
