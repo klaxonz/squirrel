@@ -4,7 +4,7 @@
       <nav v-if="showTabs" class="relative shrink-0 min-w-0">
         <div
           ref="tabsScroll"
-          class="flex items-end h-full gap-5 overflow-x-auto scrollbar-hide border-b border-border/50"
+          class="flex items-end h-full gap-5 overflow-x-auto no-scrollbar border-b border-border/50"
           @scroll="updateScrollState"
         >
           <button
