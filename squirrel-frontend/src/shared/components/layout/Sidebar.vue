@@ -3,27 +3,11 @@
     class="sidebar-rail relative h-full flex flex-col bg-sidebar border-r border-sidebar-border select-none w-[var(--sidebar-width)]"
     :class="{ 'is-collapsed': !isSidebarOpen }"
   >
-    <!-- Brand row — logo only, no toggle competing for space. -->
-    <div class="flex items-center h-12 shrink-0" :class="isSidebarOpen ? 'px-3' : 'px-2'">
-      <router-link
-        to="/"
-        class="flex items-center gap-2.5 h-8 px-1.5 rounded-md group outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-        :class="isSidebarOpen ? 'flex-1 min-w-0' : 'w-full justify-center'"
-        :title="isSidebarOpen ? undefined : '归仓'"
-      >
-        <BrandLogo size="sm" class="transition-transform duration-200 group-hover:scale-105 group-active:scale-95 shrink-0" />
-        <span
-          v-if="isSidebarOpen"
-          class="text-sm font-semibold tracking-tight text-foreground font-display truncate"
-        >归仓</span>
-      </router-link>
-    </div>
-
     <!-- Navigation -->
     <nav
       class="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar"
       :class="[
-        isSidebarOpen ? 'px-2 space-y-4' : 'px-1.5 space-y-2',
+        isSidebarOpen ? 'px-2 space-y-4 pt-3' : 'px-1.5 space-y-2 pt-3',
         showSidebarMusicPlayer ? 'pb-20' : 'pb-2'
       ]"
     >
@@ -64,7 +48,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import BrandLogo from '@/shared/components/BrandLogo.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import SidebarMenuItem from './SidebarMenuItem.vue'
 import { NAV_GROUPS, isNavigationItemActive } from '@/shared/constants/sidebar'

@@ -21,8 +21,8 @@ import type { HTMLAttributes } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 
 const props = withDefaults(defineProps<{
-  /** Visual size preset. `sm` = sidebar rail (32px), `md` = auth/hero (48px). */
-  size?: 'sm' | 'md'
+  /** Visual size preset. `xs` = titlebar (20px), `sm` = sidebar rail (32px), `md` = auth/hero (48px). */
+  size?: 'xs' | 'sm' | 'md'
   /** Extra classes merged onto the root (e.g. hover-scale interactions). */
   class?: HTMLAttributes['class']
 }>(), {
@@ -30,15 +30,15 @@ const props = withDefaults(defineProps<{
 })
 
 const sizeClass = computed(() =>
-  props.size === 'sm' ? 'w-8 h-8' : 'h-12 w-12',
+  props.size === 'xs' ? 'w-5 h-5' : props.size === 'sm' ? 'w-8 h-8' : 'h-12 w-12',
 )
 const roundedClass = computed(() =>
-  props.size === 'sm' ? 'rounded-lg' : 'rounded-xl',
+  props.size === 'xs' ? 'rounded-md' : props.size === 'sm' ? 'rounded-lg' : 'rounded-xl',
 )
 const iconClass = computed(() =>
-  props.size === 'sm' ? 'w-4 h-4' : 'h-6 w-6',
+  props.size === 'xs' ? 'w-3 h-3' : props.size === 'sm' ? 'w-4 h-4' : 'h-6 w-6',
 )
 const glow = computed(() =>
-  props.size === 'sm' ? 'var(--brand-glow-sm)' : 'var(--brand-glow)',
+  props.size === 'xs' ? 'var(--brand-glow-sm)' : props.size === 'sm' ? 'var(--brand-glow-sm)' : 'var(--brand-glow)',
 )
 </script>
