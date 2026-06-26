@@ -24,6 +24,12 @@ let restartingElectron = false
 let lastRestartAt = 0
 let shuttingDown = false
 let shutdownPromise = null
+let electronStartupAt = 0
+let restartCount = 0
+let restartCountResetTimer = null
+
+const MAX_RESTARTS_PER_WINDOW = 5
+const RESTART_COUNT_WINDOW_MS = 30000
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -128,6 +134,10 @@ const shutdown = (exitCode = 0) => {
       clearTimeout(restartTimer)
       restartTimer = null
     }
+    if (restartCountResetTimer) {
+      clearTimeout(restartCountResetTimer)
+      restartCountResetTimer = null
+    }
     await Promise.allSettled([
       terminate(electronProcess),
       terminate(frontendProcess),
@@ -152,6 +162,8 @@ const startElectron = () => {
     }
   )
 
+  electronStartupAt = Date.now()
+
   electronProcess.on('exit', (code) => {
     electronProcess = null
     if (shuttingDown || restartingElectron) {
@@ -167,6 +179,22 @@ const restartElectron = async () => {
     return
   }
 
+  restartCount += 1
+  if (!restartCountResetTimer) {
+    restartCountResetTimer = setTimeout(() => {
+      restartCount = 0
+      restartCountResetTimer = null
+    }, RESTART_COUNT_WINDOW_MS)
+  }
+
+  if (restartCount > MAX_RESTARTS_PER_WINDOW) {
+    console.error(
+      `[squirrel-desktop] Too many restarts (${restartCount}) in ${RESTART_COUNT_WINDOW_MS / 1000}s — stopping auto-restart. ` +
+      'Restart the dev script manually to resume.'
+    )
+    return
+  }
+
   restartingElectron = true
   console.log('[squirrel-desktop] Desktop source changed, restarting Electron')
   await terminate(electronProcess)
@@ -177,7 +205,8 @@ const restartElectron = async () => {
 }
 
 const RESTART_DEBOUNCE_MS = 500
-const RESTART_COOLDOWN_MS = 2000
+const RESTART_COOLDOWN_MS = 5000
+const RESTART_GRACE_PERIOD_MS = 10000
 
 const scheduleElectronRestart = () => {
   if (restartingElectron) {
@@ -185,6 +214,15 @@ const scheduleElectronRestart = () => {
   }
 
   if (lastRestartAt && Date.now() - lastRestartAt < RESTART_COOLDOWN_MS) {
+    return
+  }
+
+  // Ignore fs.watch events during the startup grace period — on Windows, the
+  // filesystem watcher may fire false positives while Electron initializes,
+  // and prewarming operations (YouTube InnerTube cache, JavDB Cloudflare
+  // document loading) or background OS activity can trigger spurious events
+  // that would otherwise cause a restart loop.
+  if (electronStartupAt && Date.now() - electronStartupAt < RESTART_GRACE_PERIOD_MS) {
     return
   }
 
@@ -204,6 +242,7 @@ const watchDesktopSource = () => {
       return
     }
 
+    console.debug(`[squirrel-desktop] fs.watch event: ${_eventType} ${changedFile}`)
     scheduleElectronRestart()
   })
 }
