@@ -1,15 +1,5 @@
 <template>
   <header class="h-14 sticky top-0 z-header flex items-center px-6 gap-4 bg-background border-b border-border/40">
-    <button
-      v-if="nav.showBackButton"
-      @click="handleBack"
-      class="flex items-center gap-1.5 px-2 py-1.5 -ml-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-all shrink-0"
-      :title="nav.backLabel ? `返回${nav.backLabel}` : '返回'"
-    >
-      <AppIcon name="back" class="w-4 h-4" />
-      <span v-if="nav.backLabel" class="text-sm font-medium whitespace-nowrap">{{ nav.backLabel }}</span>
-    </button>
-
     <div class="flex items-center gap-4 flex-1 min-w-0">
       <Transition name="fade" mode="out-in">
         <div v-if="!showSearch" key="context" class="flex items-center overflow-hidden">
@@ -66,13 +56,11 @@ import GlobalSearchBar from '@/shared/components/layout/GlobalSearchBar.vue'
 import { resolveRouteContext } from '@/shared/constants/sidebar'
 import { useUIStore } from '@/shared/stores/ui'
 import { useUserStore } from '@/shared/stores/user'
-import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 
 const route = useRoute()
 const router = useRouter()
 const uiStore = useUIStore()
 const userStore = useUserStore()
-const nav = useNavigationHistory()
 
 const userDisplayName = computed(() => {
   if (!userStore.currentUser) return '未登录'
@@ -86,10 +74,6 @@ const userInitial = computed(() => {
 
 const goToProfile = () => {
   router.push('/profile')
-}
-
-function handleBack() {
-  nav.goBack()
 }
 
 const showSearch = computed(() => !!route.meta?.showSearch)

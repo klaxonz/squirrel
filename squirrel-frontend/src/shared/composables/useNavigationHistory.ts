@@ -125,6 +125,9 @@ export function useNavigationHistory() {
     },
   )
 
+  // Video page back-navigation context: the page the user came from when
+  // entering VideoPlay. Used by VideoPlay's in-page back button and by
+  // goBack() fallback when browser history is unavailable.
   const videoBackLabel = computed(() => {
     const ctx = lastNonVideoRoute.value
     if (!ctx) return null
@@ -140,13 +143,6 @@ export function useNavigationHistory() {
     return sectionName || ctx.pageTitle || null
   })
 
-  // Unified label for the global back button: on video pages show the source
-  // page name (e.g. "返回未读视频"); elsewhere just "返回".
-  const backLabel = computed(() => {
-    if (isVideoPage.value) return videoBackLabel.value
-    return '返回'
-  })
-
   const videoBackTarget = computed((): RouteLocationRaw | null => {
     const ctx = lastNonVideoRoute.value
     if (!ctx) return null
@@ -154,15 +150,6 @@ export function useNavigationHistory() {
   })
 
   const isVideoPage = computed(() => route.name === 'VideoPlay')
-
-  // The global back button shows whenever there is somewhere to go back to:
-  // either browser history exists (path !== initial) or an internal handler
-  // is registered. On a video page we also accept having a recorded source.
-  const showBackButton = computed(() => {
-    if (canGoBack.value) return true
-    if (isVideoPage.value && videoBackTarget.value) return true
-    return false
-  })
 
   function registerInternalBackHandler(handler: () => boolean) {
     internalBackHandler = handler
@@ -183,8 +170,6 @@ export function useNavigationHistory() {
     canGoForward,
     goBack,
     goForward,
-    backLabel,
-    showBackButton,
     videoBackLabel,
     videoBackTarget,
     isVideoPage,
