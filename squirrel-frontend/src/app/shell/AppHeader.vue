@@ -16,10 +16,10 @@
               class="min-w-0 flex-1"
               :placeholder="String(route.meta.searchPlaceholder || '搜索或输入命令...')"
               :suggestion-scope="String(route.meta.search || 'home')"
-              :search-modes="showHomeSearchMode ? searchModeOptions : []"
-              :active-search-mode="homeSearchMode"
+              :search-modes="showVideoSearchMode ? searchModeOptions : []"
+              :active-search-mode="videoSearchMode"
               :search-redirect-name="searchRedirectName"
-              @search-mode-change="uiStore.setHomeSearchMode"
+              @search-mode-change="setVideoSearchMode"
             />
           </div>
         </div>
@@ -78,17 +78,24 @@ const goToProfile = () => {
 }
 
 const showSearch = computed(() => !!route.meta?.showSearch)
-const homeSearchMode = computed(() => uiStore.homeSearchMode)
 const { isDesktop: isDesktopEnv } = useDesktopBridge()
-const showHomeSearchMode = computed(() => {
+const isVideosRoute = computed(() => route.matched.some((record) => record.name === 'VideosView'))
+const showVideoSearchMode = computed(() => {
   return isDesktopEnv()
-    && route.matched.some((record) => record.name === 'HomeView')
-    && !route.params.id
+    && (
+      route.matched.some((record) => record.name === 'HomeView')
+      || isVideosRoute.value
+      || route.name === 'VideoPlay'
+    )
+})
+const videoSearchMode = computed(() => {
+  if (isVideosRoute.value) return route.query.mode === 'remote' ? 'remote' : 'local'
+  return uiStore.homeSearchMode
 })
 const searchRedirectName = computed(() => (
-  showHomeSearchMode.value
+  showVideoSearchMode.value && !isVideosRoute.value
     ? 'AllVideos'
-    : route.matched.some((record) => record.name === 'VideosView')
+    : isVideosRoute.value
       ? String(route.name || 'AllVideos')
       : String(route.meta.searchRedirectName || '')
 ))
@@ -97,4 +104,17 @@ const searchModeOptions = [
   { value: 'local', label: '本地' },
   { value: 'remote', label: '远端' },
 ] as const
+
+function setVideoSearchMode(mode: 'local' | 'remote') {
+  uiStore.setHomeSearchMode(mode)
+  if (!isVideosRoute.value) return
+
+  const query = { ...route.query }
+  if (mode === 'remote') query.mode = 'remote'
+  else {
+    delete query.mode
+    delete query.site
+  }
+  router.replace({ query })
+}
 </script>

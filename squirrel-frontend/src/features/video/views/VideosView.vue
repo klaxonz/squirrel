@@ -143,16 +143,8 @@ const remoteSearchRef = ref<{ refresh?: () => void } | null>(null)
 
 // Remote search uses an independent site filter so it never clobbers the local `site` ref.
 const remoteSite = ref('')
-
-const searchMode = computed({
-  get: () => route.query.mode === 'remote' ? 'remote' : 'local',
-  set: (value: 'local' | 'remote') => {
-    const query = { ...route.query }
-    if (value === 'remote') query.mode = 'remote'
-    else delete query.mode
-    router.replace({ query })
-  },
-})
+const isActiveVideosRoute = computed(() => route.matched.some((record) => record.name === 'VideosView'))
+const searchMode = ref<'local' | 'remote'>('local')
 
 const childFilters = computed(() => filters.value)
 
@@ -192,26 +184,33 @@ useRefreshTriggers({ onRefresh: refreshCurrentList })
 useRouteTabSync(router, route, activeTab, undefined)
 
 watch(() => uiStore.searchTrigger, () => {
+  if (!isActiveVideosRoute.value) return
   if (route.meta.search === 'home' || !route.meta.search) {
     searchQuery.value = uiStore.searchQuery
   }
 })
 
 watch(() => route.query.q, (value) => {
+  if (!isActiveVideosRoute.value) return
   const query = typeof value === 'string' ? value : ''
   searchQuery.value = query
   if (uiStore.searchQuery !== query) uiStore.searchQuery = query
 }, { immediate: true })
 
 watch(() => route.query.mode, (value) => {
-  uiStore.setHomeSearchMode(value === 'remote' ? 'remote' : 'local')
+  if (!isActiveVideosRoute.value) return
+  const mode = value === 'remote' ? 'remote' : 'local'
+  searchMode.value = mode
+  uiStore.setHomeSearchMode(mode)
 }, { immediate: true })
 
 watch(() => route.query.site, (value) => {
+  if (!isActiveVideosRoute.value) return
   remoteSite.value = typeof value === 'string' ? value : ''
 }, { immediate: true })
 
 watch(() => route.query.special, (value) => {
+  if (!isActiveVideosRoute.value) return
   special.value = value === 'yes' ? 'yes' : 'all'
 }, { immediate: true })
 </script>
