@@ -10,7 +10,7 @@
     @keydown.space.prevent="handleClick"
   >
     <div :class="[
-      'relative overflow-hidden bg-muted rounded-lg ring-1 ring-border/40 transition-all duration-300 group-hover:ring-primary/40 group-hover:shadow-card-hover group-active:scale-[0.99]',
+      'relative overflow-hidden bg-muted rounded-lg ring-1 ring-border/40 transition-all duration-300 group-hover:shadow-card-hover group-active:scale-[0.99]',
       layout === 'list' ? 'w-48 shrink-0 md:w-64 aspect-video' : 'aspect-video w-full'
     ]">
       <VideoThumbnail
@@ -22,29 +22,31 @@
       />
 
       <!-- Quick Actions (Hover) -->
-      <div class="absolute top-1.5 right-1.5 flex flex-col gap-1.5 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-10">
-        <button
-          class="flex size-7 items-center justify-center rounded-md bg-black/60 text-white backdrop-blur hover:bg-primary hover:text-primary-foreground transition-colors"
-          title="标记已读"
-          @click.stop="toggleReadStatus(!isRead)"
-        >
-          <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-4" />
-        </button>
-        <button
-          class="flex size-7 items-center justify-center rounded-md bg-black/60 text-white backdrop-blur hover:bg-primary hover:text-primary-foreground transition-colors"
-          title="稍后再看"
-          @click.stop="toggleLater"
-        >
-          <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-4" />
-        </button>
-        <button
-          class="flex size-7 items-center justify-center rounded-md bg-black/60 backdrop-blur transition-colors"
-          :class="isLiked === 1 ? 'text-destructive bg-black/80 hover:bg-black/90' : 'text-white hover:bg-primary hover:text-primary-foreground'"
-          title="喜欢"
-          @click.stop="toggleLikeVideo"
-        >
-          <AppIcon name="heart" class="size-4" :class="{ 'fill-current': isLiked === 1 }" />
-        </button>
+      <div class="absolute top-1.5 right-1.5 z-10 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
+        <div class="flex items-center gap-0.5 rounded-full bg-black/60 p-0.5 backdrop-blur shadow-lg ring-1 ring-white/10">
+          <button
+            class="flex size-7 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+            title="标记已读"
+            @click.stop="toggleReadStatus(!isRead)"
+          >
+            <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-[15px]" />
+          </button>
+          <button
+            class="flex size-7 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+            title="稍后再看"
+            @click.stop="toggleLater"
+          >
+            <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-[15px]" />
+          </button>
+          <button
+            class="flex size-7 items-center justify-center rounded-full transition-colors"
+            :class="isLiked === 1 ? 'text-red-400 hover:bg-white/10' : 'text-white/80 hover:bg-white/15 hover:text-white'"
+            title="喜欢"
+            @click.stop="toggleLikeVideo"
+          >
+            <AppIcon name="heart" class="size-[15px]" :class="{ 'fill-current': isLiked === 1 }" />
+          </button>
+        </div>
       </div>
 
       <span v-if="video.duration && showDuration" class="video-duration-badge absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/70 px-1.5 text-2xs font-medium text-white tabular-nums shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-0">
