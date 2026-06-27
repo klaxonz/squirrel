@@ -1,7 +1,26 @@
 <template>
   <transition name="sp-ui-fade">
-    <div v-if="visible" class="sp-settings-pop" ref="popupRef" data-player-interactive role="menu">
-      <template v-if="view === 'main'">
+    <div v-if="visible || qualityMenuVisible" class="sp-settings-pop" ref="popupRef" data-player-interactive role="menu">
+      <template v-if="qualityMenuVisible">
+        <div class="sp-menu-item" style="opacity: 0.5" @click="$emit('navigate', 'main')">
+          <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ qualityMenuLabel }}
+        </div>
+        <div class="sp-menu-list">
+          <div
+            v-for="q in qualities"
+            :key="q.id"
+            class="sp-menu-item"
+            :class="{ 'is-active': q.active }"
+            @click="$emit('selectQuality', q)"
+            role="menuitemradio"
+            :aria-checked="q.active"
+          >
+            {{ q.label }}
+          </div>
+        </div>
+      </template>
+
+      <template v-else-if="view === 'main'">
         <div class="sp-menu-list">
           <div class="sp-menu-item" @click="$emit('toggleAutoplayNext')" role="menuitem">
             <span>{{ autoplayNextLabel }}</span>
@@ -26,10 +45,6 @@
             <span>{{ rotateLabel }}</span>
             <span class="sp-menu-val">{{ rotation }}°</span>
           </div>
-          <div v-if="hasQuality" class="sp-menu-item" @click="$emit('navigate', 'quality')">
-            <span>{{ qualityLabel }}</span>
-            <span class="sp-menu-val">{{ qualityValue }}</span>
-          </div>
           <div v-if="hasSubtitles" class="sp-menu-item" @click="$emit('navigate', 'subtitleStyle')">
             <span>{{ subtitleLabel }}</span>
             <span class="sp-menu-val">{{ subtitleValue }}</span>
@@ -46,19 +61,6 @@
                class="sp-menu-item" :class="{ 'is-active': playbackRate === rate }"
                @click="$emit('selectSpeed', rate)">
             {{ rate }}x
-          </div>
-        </div>
-      </template>
-
-      <template v-else-if="view === 'quality'">
-        <div class="sp-menu-item" style="opacity: 0.5" @click="$emit('navigate', 'main')">
-          <PlayerIcon name="chevronLeft" style="width: 14px" /> {{ qualityLabel }}
-        </div>
-        <div class="sp-menu-list">
-          <div v-for="q in qualities" :key="q.id"
-               class="sp-menu-item" :class="{ 'is-active': q.active }"
-               @click="$emit('selectQuality', q)">
-            {{ q.label }}
           </div>
         </div>
       </template>
@@ -222,6 +224,7 @@
           </div>
         </div>
       </template>
+
     </div>
   </transition>
 </template>
@@ -258,13 +261,13 @@ interface FontSizeOption {
 
 const props = defineProps<{
   visible: boolean
+  qualityMenuVisible: boolean
   view: string
   autoplayNext: boolean
   loop: boolean
   playbackRate: number
   rotation: number
   qualities: QualityOption[]
-  hasQuality: boolean
   hasSubtitles: boolean
   subtitleTracks: SubtitleTrackOption[]
   subtitlesEnabled: boolean
@@ -282,8 +285,8 @@ const props = defineProps<{
   bgOptions: ColorOption[]
   fontSizeOptions: FontSizeOption[]
   fontSizeValue: string
-  qualityValue: string
   subtitleValue: string
+  qualityMenuLabel: string
   speeds: number[]
   rotations: number[]
   showSleepTimer: boolean
@@ -295,7 +298,6 @@ const props = defineProps<{
   loopLabel: string
   speedLabel: string
   rotateLabel: string
-  qualityLabel: string
   subtitleLabel: string
   subtitlesOffLabel: string
   presetLabel: string
@@ -345,6 +347,8 @@ function computeOpacityFromEvent(rail: HTMLElement, clientX: number): number {
   return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
 }
 
+const popupRef = ref<HTMLElement | null>(null)
+
 function onOpacityPointerDown(e: PointerEvent) {
   const rail = opacityRailRef.value
   if (!rail) return
@@ -363,3 +367,237 @@ function onOpacityPointerDown(e: PointerEvent) {
   window.addEventListener('pointerup', onUp)
 }
 </script>
+
+<style scoped>
+.sp-settings-pop {
+  position: absolute;
+  bottom: 52px;
+  right: 12px;
+  width: 220px;
+  background: var(--sp-menu-bg);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--sp-menu-border);
+  border-radius: 8px;
+  padding: 6px;
+  z-index: 100;
+  box-shadow: var(--sp-menu-shadow);
+  overflow: hidden;
+}
+
+.sp-settings-pop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(var(--sp-primary-rgb), 0.05) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  opacity: 0.2;
+}
+
+.sp-menu-list {
+  display: block;
+}
+
+.sp-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  color: var(--sp-text-secondary);
+  font-size: 12px;
+  font-family: var(--sp-font-family);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-default);
+  position: relative;
+  z-index: 1;
+  letter-spacing: 0.03em;
+}
+
+.sp-menu-item:hover {
+  background: var(--sp-menu-item-hover-bg);
+  color: var(--sp-text-strong);
+}
+
+.sp-menu-item.is-active {
+  color: var(--sp-primary);
+  background: var(--sp-menu-item-active-bg);
+}
+
+.sp-menu-val {
+  font-size: 11px;
+  opacity: 0.6;
+  font-family: var(--sp-font-mono);
+}
+
+.sp-simple-switch {
+  width: 30px;
+  height: 16px;
+  background: var(--sp-switch-bg);
+  border: 1px solid var(--sp-border);
+  border-radius: 8px;
+  position: relative;
+  transition: background var(--duration-normal) var(--ease-default);
+}
+
+.sp-simple-switch.is-on {
+  background: var(--sp-primary);
+  border-color: rgba(var(--sp-primary-rgb), 0.5);
+}
+
+.sp-simple-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform var(--duration-normal) var(--ease-default);
+}
+
+.sp-simple-switch.is-on::after {
+  transform: translateX(14px);
+}
+
+.sp-subtitle-color-preview {
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.sp-subtitle-color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  padding: 8px 14px;
+}
+
+.sp-subtitle-color-swatch {
+  width: 24px;
+  height: 24px;
+  margin: 0 auto;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-default);
+}
+
+.sp-subtitle-color-swatch:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
+}
+
+.sp-subtitle-color-swatch.is-active {
+  border-color: var(--sp-primary);
+  box-shadow: 0 0 8px rgba(var(--sp-primary-rgb), 0.5);
+}
+
+.sp-subtitle-opacity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+}
+
+.sp-subtitle-opacity-label {
+  width: 52px;
+  color: var(--sp-text-secondary);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.sp-subtitle-opacity-slider {
+  flex: 1;
+}
+
+.sp-opacity-rail {
+  position: relative;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 1.5px;
+  cursor: pointer;
+}
+
+.sp-opacity-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--sp-primary);
+  border-radius: 1.5px;
+}
+
+.sp-opacity-thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  transform: translate(-50%, -50%);
+}
+
+.sp-opacity-thumb:active {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+.sp-subtitle-opacity-val {
+  width: 32px;
+  color: var(--sp-text-secondary);
+  font-size: 11px;
+  font-family: var(--sp-font-mono);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.sp-offset-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--sp-font-mono);
+}
+
+.sp-offset-btn {
+  padding: 2px 6px;
+  background: var(--sp-bg-hover);
+  border: 1px solid var(--sp-border);
+  border-radius: 3px;
+  color: var(--sp-text-secondary);
+  font-size: 11px;
+  font-family: var(--sp-font-mono);
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-default);
+}
+
+.sp-offset-btn:hover {
+  color: var(--sp-primary);
+  border-color: var(--sp-primary);
+}
+
+.sp-offset-value {
+  min-width: 36px;
+  color: var(--sp-text-strong);
+  font-size: 11px;
+  text-align: center;
+}
+
+.sp-ui-fade-enter-active,
+.sp-ui-fade-leave-active {
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
+}
+
+.sp-ui-fade-enter-from,
+.sp-ui-fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+</style>

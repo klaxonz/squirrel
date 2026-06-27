@@ -265,35 +265,16 @@
       </div>
     </transition>
 
-    <!-- 质量快捷菜单 -->
-    <transition name="sp-ui-fade">
-      <div v-if="showQualityMenu" class="sp-settings-pop sp-quality-pop" data-player-interactive role="menu">
-        <div class="sp-menu-list">
-          <div
-            v-for="q in displayedQualities"
-            :key="q.id"
-            class="sp-menu-item"
-            :class="{ 'is-active': isQualityActive(q) }"
-            @click="handleQualitySelect(q)"
-            role="menuitemradio"
-            :aria-checked="isQualityActive(q)"
-          >
-            {{ q.label }}
-          </div>
-        </div>
-      </div>
-    </transition>
-
     <!-- 设置菜单 -->
     <SettingsMenu
       :visible="showSettingsMenu"
+      :quality-menu-visible="showQualityMenu"
       :view="settingsView"
       :autoplay-next="store.autoplayNext"
       :loop="store.loop"
       :playback-rate="store.playbackRate"
       :rotation="videoRotation"
       :qualities="settingsQualities"
-      :has-quality="displayedQualities.length > 0"
       :has-subtitles="subtitleTracks.length > 0"
       :subtitle-tracks="subtitleTracks"
       :subtitles-enabled="store.subtitlesEnabled"
@@ -311,7 +292,7 @@
       :bg-options="settings.subtitleBgOptions"
       :font-size-options="settings.fontSizeOptions"
       :font-size-value="settings.subtitleStyleLabel('fontSize', subtitleStyle.fontSize || 'medium', settings.fontSizeOptions)"
-      :quality-value="qualityMenuLabel"
+      :quality-menu-label="qualityTagLabel"
       :subtitle-value="subtitleMenuLabel"
       :speeds="settings.playbackRates"
       :rotations="settings.rotationOptions"
@@ -323,7 +304,6 @@
       :loop-label="t('loop')"
       :speed-label="t('playbackSpeed')"
       :rotate-label="t('rotate')"
-      :quality-label="t('quality')"
       :subtitle-label="t('subtitleSettings')"
       :subtitles-off-label="t('subtitlesOff')"
       :preset-label="t('preset')"
@@ -345,7 +325,7 @@
       @screenshot="captureScreenshot"
       @select-speed="settings.handleSpeedSelect"
       @select-rotation="handleRotationSelect"
-      @select-quality="settings.handleQualitySelect"
+      @select-quality="handleQualitySelect"
       @disable-subtitles="settings.handleSubtitleDisable"
       @select-subtitle="settings.handleSubtitleSelect"
       @change-subtitle-style="settings.handleSubtitleStyleChange"
@@ -1821,224 +1801,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   min-width: 36px;
   text-align: right;
   flex-shrink: 0;
-}
-
-/* 设置弹出层 */
-.sp-settings-pop {
-  position: absolute;
-  bottom: 52px;
-  right: 12px;
-  width: 220px;
-  background: var(--sp-menu-bg);
-  backdrop-filter: blur(24px);
-  border: 1px solid var(--sp-menu-border);
-  border-radius: 8px;
-  padding: 6px;
-  z-index: 100;
-  box-shadow: var(--sp-menu-shadow);
-  overflow: hidden;
-}
-
-.sp-settings-pop::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(var(--sp-primary-rgb), 0.05) 50%);
-  background-size: 100% 4px;
-  pointer-events: none;
-  opacity: 0.2;
-}
-
-.sp-menu-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  color: var(--sp-text-secondary);
-  font-size: 12px;
-  font-family: var(--sp-font-family);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
-  position: relative;
-  z-index: 1;
-  letter-spacing: 0.03em;
-}
-
-.sp-menu-item:hover {
-  background: var(--sp-menu-item-hover-bg);
-  color: var(--sp-text-strong);
-}
-
-.sp-menu-item.is-active {
-  color: var(--sp-primary);
-  background: var(--sp-menu-item-active-bg);
-}
-
-.sp-menu-val {
-  font-size: 11px;
-  opacity: 0.6;
-  font-family: var(--sp-font-mono);
-}
-
-.sp-simple-switch {
-  width: 30px;
-  height: 16px;
-  background: var(--sp-switch-bg);
-  border-radius: 8px;
-  position: relative;
-  transition: background var(--duration-normal) var(--ease-default);
-  border: 1px solid var(--sp-border);
-}
-
-.sp-simple-switch.is-on { 
-  background: var(--sp-primary);
-  border-color: rgba(var(--sp-primary-rgb), 0.5);
-}
-
-.sp-simple-switch::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 10px;
-  height: 10px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform var(--duration-normal) var(--ease-default);
-}
-
-.sp-simple-switch.is-on::after { transform: translateX(14px); }
-
-/* 字幕颜色预览 */
-.sp-subtitle-color-preview {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  border: 1px solid rgba(255,255,255,0.2);
-  flex-shrink: 0;
-}
-
-/* 字幕颜色网格 */
-.sp-subtitle-color-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 6px;
-  padding: 8px 14px;
-}
-
-.sp-subtitle-color-swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all var(--duration-normal) var(--ease-default);
-  margin: 0 auto;
-}
-
-.sp-subtitle-color-swatch:hover {
-  transform: scale(1.15);
-  box-shadow: 0 0 6px rgba(255,255,255,0.3);
-}
-
-.sp-subtitle-color-swatch.is-active {
-  border-color: var(--sp-primary);
-  box-shadow: 0 0 8px rgba(var(--sp-primary-rgb), 0.5);
-}
-
-/* 字幕透明度调节 */
-.sp-subtitle-opacity-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-}
-
-.sp-subtitle-opacity-label {
-  font-size: 12px;
-  color: var(--sp-text-secondary);
-  width: 52px;
-  flex-shrink: 0;
-}
-
-.sp-subtitle-opacity-slider {
-  flex: 1;
-}
-
-.sp-opacity-rail {
-  position: relative;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 1.5px;
-  cursor: pointer;
-}
-
-.sp-opacity-fill {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  background: var(--sp-primary);
-  border-radius: 1.5px;
-}
-
-.sp-opacity-thumb {
-  position: absolute;
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  background: #fff;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 4px rgba(0,0,0,0.4);
-  cursor: grab;
-}
-
-.sp-opacity-thumb:active {
-  cursor: grabbing;
-  transform: translate(-50%, -50%) scale(1.2);
-}
-
-.sp-subtitle-opacity-val {
-  font-size: 11px;
-  color: var(--sp-text-secondary);
-  font-family: var(--sp-font-mono);
-  width: 32px;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-/* Subtitle offset controls */
-.sp-offset-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--sp-font-mono);
-}
-
-.sp-offset-btn {
-  padding: 2px 6px;
-  background: var(--sp-bg-hover);
-  border: 1px solid var(--sp-border);
-  border-radius: 3px;
-  color: var(--sp-text-secondary);
-  font-size: 11px;
-  cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
-  font-family: var(--sp-font-mono);
-}
-
-.sp-offset-btn:hover {
-  color: var(--sp-primary);
-  border-color: var(--sp-primary);
-}
-
-.sp-offset-value {
-  font-size: 11px;
-  color: var(--sp-text-strong);
-  min-width: 36px;
-  text-align: center;
 }
 
 .sp-ui-fade-enter-active, .sp-ui-fade-leave-active {
