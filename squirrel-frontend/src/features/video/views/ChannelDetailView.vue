@@ -10,7 +10,7 @@
     />
 
     <!-- Sticky toolbar: outside app-page-content so top-padding never affects height -->
-    <div class="sticky top-0 z-20 bg-background">
+    <div class="sticky top-0 z-20 bg-background border-b border-border/50">
       <div class="max-w-[var(--app-page-max-width)] mx-auto px-6 py-2">
         <FeedToolbar
           :active-tab="activeTab"
