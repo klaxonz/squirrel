@@ -1,6 +1,6 @@
-"""Featured videos for the home page hero background.
+"""Featured videos for the home page hero.
 
-Returns a small set of videos suitable for the cinema-hero backdrop.
+Returns a small set of videos suitable for the cinema hero.
 Selection favours videos that *have thumbnails* and come from the user's
 active subscriptions so the result feels personal.
 """

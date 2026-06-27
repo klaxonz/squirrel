@@ -420,12 +420,12 @@
   background:
     linear-gradient(to top,
       hsl(var(--hero-scrim)) 0%,
-      hsl(var(--hero-scrim) / 0.9) 15%,
-      hsl(var(--hero-scrim) / 0.4) 40%,
-      transparent 60%),
+      hsl(var(--hero-scrim) / 0.8) 12%,
+      hsl(var(--hero-scrim) / 0.25) 35%,
+      transparent 55%),
     linear-gradient(to right,
-      hsl(var(--hero-scrim) / 0.55) 0%,
-      hsl(var(--hero-scrim) / 0.15) 30%,
+      hsl(var(--hero-scrim) / 0.35) 0%,
+      hsl(var(--hero-scrim) / 0.08) 30%,
       transparent 50%);
 }
 .app-cinema-hero-pro__inner {

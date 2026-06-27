@@ -3,67 +3,71 @@
     <div ref="contentRef" class="app-page-content app-page-content--cinema">
 
       <header class="app-cinema-hero-pro">
-        <!-- Featured backdrop: staggered card stack -->
-        <div
-          v-if="featuredVideos.length > 0"
-          class="app-cinema-hero-pro__backdrop app-cinema-hero-pro__backdrop--stack"
-        >
-          <button
-            v-for="(video, idx) in featuredVideos"
-            :key="video.id"
-            type="button"
-            class="app-hero-stack-card"
-            :class="[
-              { 'app-hero-stack-card--active': idx === activeFeaturedIndex },
-              `app-hero-stack-card--${cardVisualPos(idx)}`,
-            ]"
-            :aria-label="`切换到 ${video.title}`"
-            @click="activateFeatured(idx)"
-          >
-            <img
-              :src="video.thumbnail || ''"
-              :alt="video.title"
-              class="app-hero-stack-card__img"
-              loading="eager"
-            />
-          </button>
-        </div>
-        <!-- Fallback: gradient only (featured API has its own cache, single-video blur is gone) -->
-        <div v-else class="app-cinema-hero-pro__backdrop app-cinema-hero-pro__backdrop--fallback" />
+        <div class="app-cinema-hero-pro__backdrop app-cinema-hero-pro__backdrop--fallback" />
         <div class="app-cinema-hero-pro__scrim" />
 
         <div class="app-cinema-hero-pro__inner">
-          <p class="app-cinema-hero-pro__eyebrow">{{ heroEyebrow }}</p>
-          <h1 class="app-cinema-hero-pro__title">{{ heroTitle }}</h1>
-          <p v-if="heroSub" class="app-cinema-hero-pro__sub">{{ heroSub }}</p>
+          <div class="app-hero-main-card">
+            <img
+              v-if="activeFeaturedVideo?.thumbnail"
+              :key="activeFeaturedVideo.id"
+              :src="activeFeaturedVideo.thumbnail"
+              :alt="activeFeaturedVideo.title"
+              class="app-hero-main-card__img"
+              loading="eager"
+            />
+            <div class="app-hero-main-card__scrim" />
 
-          <div v-if="heroVideo" class="app-cinema-hero-pro__actions">
-            <button
-              type="button"
-              class="app-hero-cta"
-              @click="handleOpenModal(heroVideo)"
-            >
-              <AppIcon name="play" class="app-play-icon size-4" />
-              {{ heroCtaLabel }}
-              <span v-if="heroRemainingText" class="app-hero-cta__meta">{{ heroRemainingText }}</span>
-            </button>
-            <button
-              v-if="heroChannelId"
-              type="button"
-              class="app-hero-cta app-hero-cta--ghost"
-              @click="goToChannelDetail(String(heroChannelId))"
-            >
-              查看频道
-            </button>
+            <div class="app-hero-main-card__content">
+              <p class="app-cinema-hero-pro__eyebrow">{{ heroEyebrow }}</p>
+              <h1 class="app-cinema-hero-pro__title">{{ heroTitle }}</h1>
+              <p v-if="heroSub" class="app-cinema-hero-pro__sub">{{ heroSub }}</p>
+
+              <div v-if="heroVideo" class="app-cinema-hero-pro__actions">
+                <button
+                  type="button"
+                  class="app-hero-cta"
+                  @click="handleOpenModal(heroVideo)"
+                >
+                  <AppIcon name="play" class="app-play-icon size-4" />
+                  {{ heroCtaLabel }}
+                  <span v-if="heroRemainingText" class="app-hero-cta__meta">{{ heroRemainingText }}</span>
+                </button>
+                <button
+                  v-if="heroChannelId"
+                  type="button"
+                  class="app-hero-cta app-hero-cta--ghost"
+                  @click="goToChannelDetail(String(heroChannelId))"
+                >
+                  查看频道
+                </button>
+              </div>
+              <div v-else class="app-cinema-hero-pro__actions">
+                <button
+                  type="button"
+                  class="app-hero-cta"
+                  @click="scrollToFirstRail"
+                >
+                  <AppIcon name="chevronDown" class="size-4" />
+                  开始探索
+                </button>
+              </div>
+            </div>
           </div>
-          <div v-else class="app-cinema-hero-pro__actions">
+
+          <div v-if="secondaryFeaturedVideos.length > 0" class="app-hero-feature-grid" aria-label="推荐轮播">
             <button
+              v-for="{ video, index } in secondaryFeaturedVideos"
+              :key="video.id"
               type="button"
-              class="app-hero-cta"
-              @click="scrollToFirstRail"
+              class="app-hero-feature-card"
+              :class="{ 'app-hero-feature-card--active': index === activeFeaturedIndex }"
+              :aria-label="`切换到 ${video.title}`"
+              :aria-current="index === activeFeaturedIndex"
+              @click="activateFeatured(index)"
             >
-              <AppIcon name="chevronDown" class="size-4" />
-              开始探索
+              <img :src="video.thumbnail || ''" :alt="video.title" class="app-hero-feature-card__img" loading="lazy" />
+              <span class="app-hero-feature-card__title">{{ video.title }}</span>
             </button>
           </div>
         </div>
@@ -156,24 +160,19 @@ const handleHeroChange = (video: VideoHistoryEntry | null) => {
 }
 
 // Composite hero: centre featured card takes priority, history as fallback
+const activeFeaturedVideo = computed(() => featuredVideos.value[activeFeaturedIndex.value] ?? null)
+const secondaryFeaturedVideos = computed(() =>
+  featuredVideos.value
+    .map((video, index) => ({ video, index }))
+    .filter(({ index }) => index !== activeFeaturedIndex.value)
+    .slice(0, 4),
+)
+
 const heroVideo = computed<VideoHistoryEntry | VideoListItem | null>(() => {
-  const active = featuredVideos.value[activeFeaturedIndex.value]
-  if (active && active.thumbnail) return active
+  const active = activeFeaturedVideo.value
+  if (active?.thumbnail) return active
   return historyHero.value
 })
-
-// ── Card visual position: ring layout, always symmetric ──
-// 3 fixed slots (centre / left / right). Cards rotate through slots
-// in a circular ring so there is never a visual imbalance.
-const cardVisualPos = (idx: number): string => {
-  const total = featuredVideos.value.length
-  if (total <= 1) return 'centre'
-  const active = activeFeaturedIndex.value
-  const dist = (idx - active + total) % total
-  if (dist === 0) return 'centre'
-  if (dist === 1) return 'right'
-  return 'left'
-}
 
 // ── Auto-rotation ──
 const AUTO_ROTATE_INTERVAL = 6_000 // 6 seconds
@@ -270,12 +269,12 @@ const refresh = () => {
   })
 }
 
-// Load featured backdrop pool. Uses local cache to avoid fallback flash on refresh.
+// Load featured hero pool. Uses local cache to avoid fallback flash on refresh.
 const loadFeaturedVideos = async () => {
   try {
     const items = await getFeaturedVideos()
     if (Array.isArray(items) && items.length > 0) {
-      featuredVideos.value = items.slice(0, 3)
+      featuredVideos.value = items.slice(0, 5)
       writeCachedFeatured(featuredVideos.value)
       // Reset active index if it's now out of bounds
       if (activeFeaturedIndex.value >= featuredVideos.value.length) {
@@ -284,7 +283,7 @@ const loadFeaturedVideos = async () => {
       startAutoRotate()
     }
   } catch (e) {
-    Logger.warn('Failed to load featured hero backdrop:', e)
+    Logger.warn('Failed to load featured hero videos:', e)
   }
 }
 
@@ -316,7 +315,7 @@ onBeforeUnmount(() => {
 }
 
 .app-page-content--cinema {
-  padding-top: 0;
+  padding-top: 0.75rem;
 }
 
 /* ── CTA buttons ── */
@@ -386,84 +385,146 @@ onBeforeUnmount(() => {
   transform: none;
 }
 
-/* ── Staggered card stack backdrop ── */
-.app-cinema-hero-pro__backdrop--stack {
-  filter: none;
-  transform: none;
-  background: none;
-  display: block;
+.app-cinema-hero-pro {
+  min-height: 0;
+  height: clamp(360px, 34vw, 520px);
   padding: 0;
-  perspective: 1200px;
-  perspective-origin: 50% 50%;
 }
 
-.app-hero-stack-card {
-  position: absolute;
-  top: 0;
-  bottom: 0;
+.app-cinema-hero-pro__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.75rem;
   height: 100%;
-  width: auto;
-  max-width: none;
+  min-height: 0;
   padding: 0;
-  border: 0;
-  border-radius: var(--radius-xl);
+}
+
+.app-hero-main-card {
+  position: relative;
+  min-width: 0;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  background: none;
-  cursor: pointer;
-  box-shadow: 0 4px 24px hsl(var(--hero-scrim) / 0.25);
-  transform-style: preserve-3d;
-  transition:
-    transform 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.5s ease,
-    filter 0.5s ease,
-    box-shadow 0.5s ease;
+  background: hsl(0 0% 100% / 0.08);
+  box-shadow: 0 18px 42px hsl(var(--hero-scrim) / 0.42), 0 0 0 1px hsl(0 0% 100% / 0.14);
 }
 
-.app-hero-stack-card__img {
+.app-hero-main-card__img {
   display: block;
+  width: 100%;
   height: 100%;
-  width: auto;
-  aspect-ratio: 16 / 9;
   object-fit: cover;
 }
 
-/* Inactive (side) cards: dimmed, on the ring */
-.app-hero-stack-card:not(.app-hero-stack-card--active) {
-  opacity: 0.5;
-  filter: brightness(0.55) saturate(0.8);
-  box-shadow: 0 2px 12px hsl(var(--hero-scrim) / 0.15);
-}
-.app-hero-stack-card:not(.app-hero-stack-card--active):hover {
-  opacity: 0.75;
-  filter: brightness(0.7) saturate(1);
-  box-shadow: 0 4px 20px hsl(var(--hero-scrim) / 0.3);
+.app-hero-main-card__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to top, hsl(var(--hero-scrim) / 0.9), hsl(var(--hero-scrim) / 0.18) 58%, transparent),
+    linear-gradient(to right, hsl(var(--hero-scrim) / 0.72), transparent 68%);
 }
 
-/* Active (centre) card: full brightness, front of ring */
-.app-hero-stack-card--active {
-  z-index: 3;
-  opacity: 1;
-  filter: brightness(1) saturate(1);
-  box-shadow:
-    0 12px 40px hsl(var(--hero-scrim) / 0.5),
-    0 0 0 1px hsl(0 0% 100% / 0.1);
-  cursor: default;
+.app-hero-main-card__content {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: clamp(1.25rem, 2.1vw, 2.25rem);
 }
 
-/* Ring carousel positions — 3D ring with perspective */
-.app-hero-stack-card--centre {
-  z-index: 3;
-  left: 50%;
-  transform: translateX(-50%) rotateY(0deg) scale(1);
+.app-hero-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 0;
 }
-.app-hero-stack-card--left {
-  z-index: 2;
-  left: 50%;
-  transform: translateX(-78%) rotateY(32deg) scale(0.82);
+
+.app-hero-feature-card {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: hsl(0 0% 100% / 0.08);
+  box-shadow: 0 10px 28px hsl(var(--hero-scrim) / 0.28), 0 0 0 1px hsl(0 0% 100% / 0.14);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-fast) var(--ease-default),
+    opacity var(--duration-fast) var(--ease-default);
 }
-.app-hero-stack-card--right {
-  z-index: 2;
-  left: 50%;
-  transform: translateX(-22%) rotateY(-32deg) scale(0.82);
+
+.app-hero-feature-card:hover,
+.app-hero-feature-card--active {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px hsl(var(--hero-scrim) / 0.38), 0 0 0 2px hsl(0 0% 100% / 0.82);
+}
+
+.app-hero-feature-card:active {
+  transform: scale(0.98);
+}
+
+.app-hero-feature-card:focus-visible {
+  outline: none;
+  box-shadow: 0 16px 36px hsl(var(--hero-scrim) / 0.38), 0 0 0 3px hsl(var(--ring) / 0.55);
+}
+
+.app-hero-feature-card__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.app-hero-feature-card__title {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: 1.75rem 0.75rem 0.625rem;
+  overflow: hidden;
+  color: hsl(0 0% 100%);
+  background: linear-gradient(to top, hsl(var(--hero-scrim) / 0.78), transparent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+  .app-cinema-hero-pro {
+    height: auto;
+  }
+
+  .app-cinema-hero-pro__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .app-hero-main-card {
+    min-height: 320px;
+  }
+
+  .app-hero-feature-card {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-page-content--cinema {
+    padding-top: 0.5rem;
+  }
+
+  .app-cinema-hero-pro__inner,
+  .app-hero-feature-grid {
+    gap: 0.5rem;
+  }
+
+  .app-hero-main-card {
+    min-height: 300px;
+  }
 }
 </style>

@@ -1,7 +1,7 @@
 """Featured video selection service.
 
 Picks a small number of videos from the user's active subscriptions,
-biased toward those with thumbnails (required for the cinema-hero backdrop).
+biased toward those with thumbnails for the home hero.
 """
 
 import random
@@ -23,7 +23,7 @@ SessionFactory = Callable[[], Generator[Session, None, None]]
 
 class VideoFeaturedService:
     """Lightweight featured-pick service that returns a handful of videos
-    for the home-page hero backdrop.  It does *not* use Meilisearch or
+    for the home-page hero.  It does *not* use Meilisearch or
     the full ``VideoListService`` pipeline — it only needs a small
     random sample from the user's own subscription pool."""
 
@@ -43,8 +43,8 @@ class VideoFeaturedService:
         if page_loader is None:
             self._page_loader = VideoListPageLoader(thumbnail_downloader_service)
 
-    def get_featured_videos(self, user_id: int, count: int = 3) -> list[dict]:
-        """Return up to *count* videos for the hero backdrop.
+    def get_featured_videos(self, user_id: int, count: int = 5) -> list[dict]:
+        """Return up to *count* videos for the home hero.
 
         Selection strategy (no Meilisearch, PG-only):
         1. Collect all video ids from the user's active subscriptions.
