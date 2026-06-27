@@ -20,7 +20,7 @@ export function useRssEntries(options: {
   onStatus?: (message: string, isError?: boolean) => void
 }) {
   const entries = ref<RssEntry[]>([])
-  const activeFilter = ref<'all' | 'unread' | 'starred' | 'recent'>('unread')
+  const activeFilter = ref<'all' | 'unread' | 'starred' | 'recent'>('all')
   const entrySearch = ref('')
   const page = ref(1)
   const pageSize = ref(30)

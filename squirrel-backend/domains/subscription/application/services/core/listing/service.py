@@ -121,6 +121,7 @@ class SubscriptionListService:
                 statement,
                 Params(page=page, size=page_size),
                 transformer=lambda rows: [row._mapping for row in rows],
+                unique=False,
             )
             results = subscription_page.items
             subscription_ids = [int(row['id']) for row in results]
