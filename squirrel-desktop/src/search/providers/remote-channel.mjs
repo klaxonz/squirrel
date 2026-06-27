@@ -538,6 +538,9 @@ const collectPornhubVideos = (html, profile) => {
   const blocks = html.match(/<li[^>]+class=["'][^"']*(?:pcVideoListItem|videoblock)[^"']*["'][\s\S]*?<\/li>/gi) || []
   return uniqueByUrl(blocks.map((block) => {
     const videoLink = extractPornhubVideoLink(block)
+    const uploaderLink = block.match(/class=["'][^"']*usernameWrap[^"']*["'][\s\S]*?<a\b[^>]*href=["']([^"']+)["']/i)
+    const uploaderUrl = normalizeUrl(uploaderLink?.[1] || '', PORNHUB_ORIGIN)
+    if (uploaderUrl && uploaderUrl !== profile.url) return null
     const title = extractAttribute(videoLink.tag, 'title')
     const thumbnail = extractAttribute(block, 'data-mediumthumb') || extractAttribute(block, 'data-src') || extractAttribute(block, 'src')
     const durationMatch = block.match(/class=["'][^"']*duration[^"']*["'][^>]*>\s*([^<]+)/i)
@@ -556,7 +559,7 @@ const collectPornhubVideos = (html, profile) => {
       subscriptions: [profile],
       description: '',
     }
-  })).filter((item) => item.title && item.url)
+  })).filter((item) => item?.title && item.url)
 }
 
 const getPornhubChannel = async ({ url, limit, page, fetchImpl, buildCookieHeader, profile }) => {

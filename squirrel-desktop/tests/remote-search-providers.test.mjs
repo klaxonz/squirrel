@@ -1184,6 +1184,31 @@ test('desktop pornhub remote channel uses the video link title', async () => {
   assert.equal(channelResult.items[0].duration, 83)
 })
 
+test('desktop pornhub remote channel ignores videos from other uploaders', async () => {
+  const channelResult = await getRemoteChannel({
+    site: 'pornhub',
+    url: 'https://www.pornhub.com/users/demo-channel',
+    limit: 5,
+    buildCookieHeader,
+    fetchImpl: async () => htmlResponse(`
+      <h1>Demo Channel</h1>
+      <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel">
+        <a href="/view_video.php?viewkey=ph-channel" title="Demo Channel Video"></a>
+        <div class="usernameWrap"><a href="/users/demo-channel">Demo Channel</a></div>
+      </li>
+      <li class="pcVideoListItem videoblock" data-video-vkey="ph-other">
+        <a href="/view_video.php?viewkey=ph-other" title="Other Channel Video"></a>
+        <div class="usernameWrap"><a href="/users/other-channel">Other Channel</a></div>
+      </li>
+    `),
+  })
+
+  assert.deepEqual(
+    channelResult.items.map((item) => item.url),
+    ['https://www.pornhub.com/view_video.php?viewkey=ph-channel']
+  )
+})
+
 test('desktop youporn remote channel parses profile avatar', async () => {
   const channelResult = await getRemoteChannel({
     site: 'youporn',
