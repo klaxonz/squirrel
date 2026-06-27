@@ -50,7 +50,7 @@
                   @click="openLocalChannel"
                 >
                   <AppIcon name="library" class="h-3 w-3" />
-                  Local
+                  本地
                 </button>
                 <button
                   type="button"
@@ -59,7 +59,7 @@
                   @click="openRemoteChannel"
                 >
                   <AppIcon name="siteFallback" class="h-3 w-3" />
-                  Remote
+                  远端
                 </button>
               </div>
 
