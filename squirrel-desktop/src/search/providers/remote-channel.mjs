@@ -63,6 +63,17 @@ const extractPornhubVideoLink = (block) => {
   }
 }
 
+const buildPornhubVideosUrl = (channelUrl) => {
+  const targetUrl = new URL(channelUrl)
+  const path = targetUrl.pathname.replace(/\/$/, '')
+  if (!/\/videos$/i.test(path)) targetUrl.pathname = `${path}/videos`
+  return targetUrl.toString()
+}
+
+const normalizePornhubProfileUrl = (value) => normalizeUrl(value, PORNHUB_ORIGIN)
+  .replace(/\/videos(?:\?.*)?$/i, '')
+  .replace(/\/$/i, '')
+
 const looksLikeJavdbBlockedPage = (html) => {
   return /has banned your access|管理員禁止了你的訪問|管理员禁止了你的访问/i.test(String(html || ''))
 }
@@ -534,13 +545,18 @@ const getJavdbChannel = async ({ url, limit, page, loadDocumentHtml }) => {
   }
 }
 
+const extractPornhubVideoListHtml = (html) => {
+  return String(html || '').match(/<ul\b(?=[^>]*id=["'](?:mostRecentVideosSection|uploadedVideosSection|trailerVideosSection)["'])[^>]*>[\s\S]*?<\/ul>/i)?.[0] || ''
+}
+
 const collectPornhubVideos = (html, profile) => {
-  const blocks = html.match(/<li[^>]+class=["'][^"']*(?:pcVideoListItem|videoblock)[^"']*["'][\s\S]*?<\/li>/gi) || []
+  const listHtml = extractPornhubVideoListHtml(html)
+  const blocks = listHtml.match(/<li[^>]+class=["'][^"']*(?:pcVideoListItem|videoblock)[^"']*["'][\s\S]*?<\/li>/gi) || []
   return uniqueByUrl(blocks.map((block) => {
     const videoLink = extractPornhubVideoLink(block)
     const uploaderLink = block.match(/class=["'][^"']*usernameWrap[^"']*["'][\s\S]*?<a\b[^>]*href=["']([^"']+)["']/i)
-    const uploaderUrl = normalizeUrl(uploaderLink?.[1] || '', PORNHUB_ORIGIN)
-    if (uploaderUrl && uploaderUrl !== profile.url) return null
+    const uploaderUrl = normalizePornhubProfileUrl(uploaderLink?.[1] || '')
+    if (uploaderUrl && uploaderUrl !== normalizePornhubProfileUrl(profile.url)) return null
     const title = extractAttribute(videoLink.tag, 'title')
     const thumbnail = extractAttribute(block, 'data-mediumthumb') || extractAttribute(block, 'data-src') || extractAttribute(block, 'src')
     const durationMatch = block.match(/class=["'][^"']*duration[^"']*["'][^>]*>\s*([^<]+)/i)
@@ -562,14 +578,25 @@ const collectPornhubVideos = (html, profile) => {
   })).filter((item) => item?.title && item.url)
 }
 
-const getPornhubChannel = async ({ url, limit, page, fetchImpl, buildCookieHeader, profile }) => {
+const extractPornhubNextPageUrl = (html) => {
+  const source = String(html || '')
+  const headNextTag = source.match(/<link\b(?=[^>]*rel=["']next["'])[^>]*>/i)?.[0] || ''
+  if (headNextTag) return normalizeUrl(extractAttribute(headNextTag, 'href'), PORNHUB_ORIGIN)
+
+  const nextBlock = source.match(/<li\b(?=[^>]*class=["'][^"']*\bpage_next\b)[^>]*>[\s\S]*?<\/li>/i)?.[0] || ''
+  const nextTag = nextBlock.match(/<a\b[^>]*href=["'][^"']+["'][^>]*>/i)?.[0]
+    || source.match(/<a\b(?=[^>]*(?:rel=["']next["']|class=["'][^"']*\b(?:page_next|next)\b))[^>]*>/i)?.[0]
+    || ''
+  return normalizeUrl(extractAttribute(nextTag, 'href'), PORNHUB_ORIGIN)
+}
+
+const getPornhubChannel = async ({ url, limit, page, cursor, fetchImpl, buildCookieHeader, profile }) => {
   const resultLimit = clampLimit(limit)
   const resultPage = clampPage(page)
-  const channelUrl = normalizeChannelUrl(url)
-  const targetUrl = new URL(channelUrl)
-  targetUrl.searchParams.set('page', String(resultPage))
-  const cookie = await buildCookieHeader(channelUrl)
-  const html = await fetchText(fetchImpl, targetUrl.toString(), {
+  const channelUrl = buildPornhubVideosUrl(normalizeChannelUrl(url))
+  const targetUrl = resultPage > 1 && cursor?.url ? String(cursor.url) : channelUrl
+  const cookie = await buildCookieHeader(targetUrl)
+  const html = await fetchText(fetchImpl, targetUrl, {
     headers: {
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       Referer: `${PORNHUB_ORIGIN}/`,
@@ -598,12 +625,14 @@ const getPornhubChannel = async ({ url, limit, page, fetchImpl, buildCookieHeade
     is_nsfw: true,
   }
   const items = collectPornhubVideos(html, channelProfile)
+  const nextPageUrl = extractPornhubNextPageUrl(html)
 
   return {
     profile: channelProfile,
     items: items.slice(0, resultLimit),
     page: resultPage,
-    has_more: items.length >= resultLimit,
+    has_more: !!nextPageUrl,
+    next_cursor: nextPageUrl ? { url: nextPageUrl } : null,
   }
 }
 

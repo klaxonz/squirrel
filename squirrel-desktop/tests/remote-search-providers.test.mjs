@@ -1169,19 +1169,46 @@ test('desktop pornhub remote channel uses the video link title', async () => {
     buildCookieHeader,
     fetchImpl: async () => htmlResponse(`
       <h1>Demo Channel</h1>
-      <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel">
-        <a href="/view_video.php?viewkey=ph-channel" title="Demo Channel Video">
-          <img data-mediumthumb="https://ei.phncdn.com/demo-channel-video.jpg">
-        </a>
-        <button type="button" data-title="Add to playlist"></button>
-        <var class="duration">01:23</var>
-      </li>
+      <ul id="mostRecentVideosSection">
+        <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel">
+          <a href="/view_video.php?viewkey=ph-channel" title="Demo Channel Video">
+            <img data-mediumthumb="https://ei.phncdn.com/demo-channel-video.jpg">
+          </a>
+          <button type="button" data-title="Add to playlist"></button>
+          <var class="duration">01:23</var>
+        </li>
+      </ul>
     `),
   })
 
   assert.equal(channelResult.items[0].title, 'Demo Channel Video')
   assert.equal(channelResult.items[0].url, 'https://www.pornhub.com/view_video.php?viewkey=ph-channel')
   assert.equal(channelResult.items[0].duration, 83)
+})
+
+test('desktop pornhub remote channel requests profile videos tab', async () => {
+  let requestedUrl = ''
+  const channelResult = await getRemoteChannel({
+    site: 'pornhub',
+    url: 'https://www.pornhub.com/model/demo-channel',
+    limit: 5,
+    buildCookieHeader,
+    fetchImpl: async (url) => {
+      requestedUrl = url
+      return htmlResponse(`
+        <h1>Demo Channel</h1>
+        <ul id="mostRecentVideosSection">
+          <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel">
+            <a href="/view_video.php?viewkey=ph-channel" title="Demo Channel Video"></a>
+          </li>
+        </ul>
+      `)
+    },
+  })
+
+  assert.equal(requestedUrl, 'https://www.pornhub.com/model/demo-channel/videos')
+  assert.equal(channelResult.profile.url, 'https://www.pornhub.com/model/demo-channel/videos')
+  assert.equal(channelResult.items.length, 1)
 })
 
 test('desktop pornhub remote channel ignores videos from other uploaders', async () => {
@@ -1192,14 +1219,21 @@ test('desktop pornhub remote channel ignores videos from other uploaders', async
     buildCookieHeader,
     fetchImpl: async () => htmlResponse(`
       <h1>Demo Channel</h1>
-      <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel">
-        <a href="/view_video.php?viewkey=ph-channel" title="Demo Channel Video"></a>
-        <div class="usernameWrap"><a href="/users/demo-channel">Demo Channel</a></div>
-      </li>
-      <li class="pcVideoListItem videoblock" data-video-vkey="ph-other">
-        <a href="/view_video.php?viewkey=ph-other" title="Other Channel Video"></a>
-        <div class="usernameWrap"><a href="/users/other-channel">Other Channel</a></div>
-      </li>
+      <ul class="dropdownHottestVideos">
+        <li class="pcVideoListItem videoblock" data-video-vkey="ph-menu">
+          <a href="/view_video.php?viewkey=ph-menu" title="Menu Video"></a>
+        </li>
+      </ul>
+      <ul id="mostRecentVideosSection">
+        <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel">
+          <a href="/view_video.php?viewkey=ph-channel" title="Demo Channel Video"></a>
+          <div class="usernameWrap"><a href="/users/demo-channel/videos">Demo Channel</a></div>
+        </li>
+        <li class="pcVideoListItem videoblock" data-video-vkey="ph-other">
+          <a href="/view_video.php?viewkey=ph-other" title="Other Channel Video"></a>
+          <div class="usernameWrap"><a href="/users/other-channel/videos">Other Channel</a></div>
+        </li>
+      </ul>
     `),
   })
 
@@ -1207,6 +1241,77 @@ test('desktop pornhub remote channel ignores videos from other uploaders', async
     channelResult.items.map((item) => item.url),
     ['https://www.pornhub.com/view_video.php?viewkey=ph-channel']
   )
+})
+
+test('desktop pornhub remote channel follows upstream next page links', async () => {
+  const requests = []
+  const firstPage = await getRemoteChannel({
+    site: 'pornhub',
+    url: 'https://www.pornhub.com/users/demo-channel',
+    limit: 5,
+    buildCookieHeader,
+    fetchImpl: async (url) => {
+      requests.push(url)
+      return htmlResponse(`
+        <h1>Demo Channel</h1>
+        <ul id="mostRecentVideosSection">
+          <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel-1">
+            <a href="/view_video.php?viewkey=ph-channel-1" title="Demo Channel Video 1"></a>
+          </li>
+        </ul>
+        <a class="page_next" href="/users/demo-channel/videos?page=2">Next</a>
+      `)
+    },
+  })
+  const secondPage = await getRemoteChannel({
+    site: 'pornhub',
+    url: 'https://www.pornhub.com/users/demo-channel',
+    limit: 5,
+    page: 2,
+    cursor: firstPage.next_cursor,
+    profile: firstPage.profile,
+    buildCookieHeader,
+    fetchImpl: async (url) => {
+      requests.push(url)
+      return htmlResponse(`
+        <h1>Demo Channel</h1>
+        <ul id="mostRecentVideosSection">
+          <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel-2">
+            <a href="/view_video.php?viewkey=ph-channel-2" title="Demo Channel Video 2"></a>
+          </li>
+        </ul>
+      `)
+    },
+  })
+
+  assert.equal(requests[0], 'https://www.pornhub.com/users/demo-channel/videos')
+  assert.equal(requests[1], 'https://www.pornhub.com/users/demo-channel/videos?page=2')
+  assert.equal(firstPage.has_more, true)
+  assert.equal(secondPage.has_more, false)
+  assert.equal(secondPage.items[0].url, 'https://www.pornhub.com/view_video.php?viewkey=ph-channel-2')
+})
+
+test('desktop pornhub remote channel reads canonical next link tags', async () => {
+  const channelResult = await getRemoteChannel({
+    site: 'pornhub',
+    url: 'https://www.pornhub.com/model/demo-channel',
+    limit: 5,
+    buildCookieHeader,
+    fetchImpl: async () => htmlResponse(`
+      <link rel="next" href="https://www.pornhub.com/model/demo-channel/videos?page=2" />
+      <h1>Demo Channel</h1>
+      <ul id="mostRecentVideosSection">
+        <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel">
+          <a href="/view_video.php?viewkey=ph-channel" title="Demo Channel Video"></a>
+        </li>
+      </ul>
+    `),
+  })
+
+  assert.equal(channelResult.has_more, true)
+  assert.deepEqual(channelResult.next_cursor, {
+    url: 'https://www.pornhub.com/model/demo-channel/videos?page=2',
+  })
 })
 
 test('desktop youporn remote channel parses profile avatar', async () => {
