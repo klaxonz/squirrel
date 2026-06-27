@@ -89,9 +89,6 @@ const getScrollRouteState = (): ScrollRouteState => ({
 
 const restoreScrollForRoute = async (scrollRoute: ScrollRouteState, restoreSavedPosition: boolean) => {
   await nextTick()
-  // Wait for the page-level crossfade Transition to finish so the new
-  // page has settled its layout height before we restore scrollTop.
-  await new Promise((resolve) => setTimeout(resolve, 200))
   const scrollEl = mainScrollRef.value
   if (!scrollEl) return
 
