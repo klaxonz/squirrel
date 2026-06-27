@@ -170,7 +170,7 @@
           </div>
 
           <div v-else class="space-y-8 pb-12">
-            <div class="app-video-grid" style="--app-grid-min: 320px;">
+            <div class="app-video-grid" style="--app-grid-min: 280px;">
               <SubscriptionCard
                 v-for="sub in filteredChannels"
                 :key="sub.id"
@@ -179,7 +179,7 @@
                 @toggleSpecial="toggleSpecialFollow"
               />
             </div>
-            <div v-if="loadingChannels && !list.length" class="app-video-grid" style="--app-grid-min: 320px;">
+            <div v-if="loadingChannels && !list.length" class="app-video-grid" style="--app-grid-min: 280px;">
               <SubscriptionCardSkeleton v-for="i in channelSkeletonCount" :key="i" />
             </div>
             <div v-if="!channelsFinished" ref="gridMoreTrigger" class="h-20" />
@@ -259,10 +259,10 @@ const { count: videoSkeletonCount, attachRef: videoGridRef } = useSkeletonCount(
   cardHeight: 220,
 })
 
-// Subscription card grid: `.app-video-grid` with --app-grid-min: 320px, gap 24px.
+// Subscription card grid: `.app-video-grid` with --app-grid-min: 280px, gap 24px.
 // Cards are taller (avatar header + 3 thumbs + footer ≈ 280px).
 const { count: channelSkeletonCount, attachRef: channelGridRef } = useSkeletonCount({
-  minCardWidth: 320,
+  minCardWidth: 280,
   gap: 24,
   cardHeight: 280,
 })
