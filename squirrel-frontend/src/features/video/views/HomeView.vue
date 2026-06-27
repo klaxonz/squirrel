@@ -16,6 +16,13 @@
               class="app-hero-main-card__img"
               loading="eager"
             />
+            <button
+              v-if="heroVideo"
+              type="button"
+              class="app-hero-main-card__cover-action"
+              :aria-label="`播放 ${heroVideo.title}`"
+              @click="handleOpenModal(heroVideo)"
+            />
             <div class="app-hero-main-card__scrim" />
 
             <div class="app-hero-main-card__content">
@@ -61,13 +68,17 @@
               :key="video.id"
               type="button"
               class="app-hero-feature-card"
-              :class="{ 'app-hero-feature-card--active': index === activeFeaturedIndex }"
-              :aria-label="`切换到 ${video.title}`"
-              :aria-current="index === activeFeaturedIndex"
-              @click="activateFeatured(index)"
+              :aria-label="`播放 ${video.title}`"
+              @click="handleOpenModal(video)"
+              @pointerenter="activateFeatured(index)"
+              @focus="activateFeatured(index)"
             >
               <img :src="video.thumbnail || ''" :alt="video.title" class="app-hero-feature-card__img" loading="lazy" />
-              <span class="app-hero-feature-card__title">{{ video.title }}</span>
+              <span v-if="video.duration" class="app-hero-feature-card__duration">{{ formatDuration(video.duration) }}</span>
+              <span class="app-hero-feature-card__content">
+                <span class="app-hero-feature-card__title">{{ video.title }}</span>
+                <span class="app-hero-feature-card__meta">{{ video.subscriptions?.[0]?.name || video.site || '未知' }}</span>
+              </span>
             </button>
           </div>
         </div>
@@ -332,9 +343,10 @@ onBeforeUnmount(() => {
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
-  color: hsl(var(--primary-foreground));
+  color: hsl(0 0% 100%);
   background: var(--brand-gradient);
   box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.35), 0 6px 18px hsl(var(--primary) / 0.18);
+  text-shadow: 0 1px 2px hsl(var(--hero-scrim) / 0.35);
   transition: transform var(--duration-fast) var(--ease-spring),
               box-shadow var(--duration-fast) var(--ease-default);
   cursor: pointer;
@@ -365,14 +377,14 @@ onBeforeUnmount(() => {
   opacity: 0.85;
 }
 .app-hero-cta--ghost {
-  background: hsl(0 0% 100% / 0.16);
+  background: hsl(var(--hero-scrim) / 0.42);
   color: hsl(0 0% 100%);
-  box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.35), 0 4px 14px hsl(24 10% 6% / 0.2);
+  box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.22), 0 4px 14px hsl(24 10% 6% / 0.22);
   backdrop-filter: blur(8px);
 }
 .app-hero-cta--ghost:hover {
-  background: hsl(0 0% 100% / 0.26);
-  box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.5), 0 4px 14px hsl(24 10% 6% / 0.25);
+  background: hsl(var(--hero-scrim) / 0.58);
+  box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.34), 0 6px 18px hsl(24 10% 6% / 0.28);
 }
 
 /* ── Fallback gradient backdrop ── */
@@ -417,9 +429,26 @@ onBeforeUnmount(() => {
   object-fit: cover;
 }
 
+.app-hero-main-card__cover-action {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.app-hero-main-card__cover-action:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px hsl(var(--ring) / 0.58);
+}
+
 .app-hero-main-card__scrim {
   position: absolute;
   inset: 0;
+  z-index: 2;
+  pointer-events: none;
   background:
     linear-gradient(to top, hsl(var(--hero-scrim) / 0.9), hsl(var(--hero-scrim) / 0.18) 58%, transparent),
     linear-gradient(to right, hsl(var(--hero-scrim) / 0.72), transparent 68%);
@@ -429,6 +458,7 @@ onBeforeUnmount(() => {
   position: absolute;
   inset-inline: 0;
   bottom: 0;
+  z-index: 3;
   padding: clamp(1.25rem, 2.1vw, 2.25rem);
 }
 
@@ -457,10 +487,9 @@ onBeforeUnmount(() => {
     opacity var(--duration-fast) var(--ease-default);
 }
 
-.app-hero-feature-card:hover,
-.app-hero-feature-card--active {
+.app-hero-feature-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 36px hsl(var(--hero-scrim) / 0.38), 0 0 0 2px hsl(0 0% 100% / 0.82);
+  box-shadow: 0 16px 36px hsl(var(--hero-scrim) / 0.38), 0 0 0 1px hsl(0 0% 100% / 0.34);
 }
 
 .app-hero-feature-card:active {
@@ -477,20 +506,60 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform var(--duration-normal) var(--ease-default), filter var(--duration-normal) var(--ease-default);
 }
 
-.app-hero-feature-card__title {
+.app-hero-feature-card:hover .app-hero-feature-card__img {
+  filter: brightness(1.08);
+  transform: scale(1.04);
+}
+
+.app-hero-feature-card__duration {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  display: inline-flex;
+  height: 1.25rem;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  padding-inline: 0.375rem;
+  background: hsl(0 0% 0% / 0.72);
+  color: hsl(0 0% 100%);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-hero-feature-card__content {
   position: absolute;
   inset-inline: 0;
   bottom: 0;
-  padding: 1.75rem 0.75rem 0.625rem;
-  overflow: hidden;
+  display: grid;
+  gap: 0.25rem;
+  padding: 2.75rem 0.75rem 0.75rem;
   color: hsl(0 0% 100%);
-  background: linear-gradient(to top, hsl(var(--hero-scrim) / 0.78), transparent);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  line-height: 1.25;
+  background: linear-gradient(to top, hsl(var(--hero-scrim) / 0.88), hsl(var(--hero-scrim) / 0.5) 48%, transparent);
   text-align: left;
+}
+
+.app-hero-feature-card__title {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-hero-feature-card__meta {
+  overflow: hidden;
+  color: hsl(0 0% 100% / 0.7);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
