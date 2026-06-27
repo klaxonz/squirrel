@@ -162,16 +162,17 @@ const heroVideo = computed<VideoHistoryEntry | VideoListItem | null>(() => {
   return historyHero.value
 })
 
-// ── Card visual position: maps card index to a named position relative to active ──
+// ── Card visual position: ring layout, always symmetric ──
+// 3 fixed slots (centre / left / right). Cards rotate through slots
+// in a circular ring so there is never a visual imbalance.
 const cardVisualPos = (idx: number): string => {
   const total = featuredVideos.value.length
   if (total <= 1) return 'centre'
-  const diff = idx - activeFeaturedIndex.value
-  if (diff === 0) return 'centre'
-  if (diff === 1) return 'right'
-  if (diff === -1) return 'left'
-  if (diff > 1) return 'far-right'
-  return 'far-left'
+  const active = activeFeaturedIndex.value
+  const dist = (idx - active + total) % total
+  if (dist === 0) return 'centre'
+  if (dist === 1) return 'right'
+  return 'left'
 }
 
 // ── Auto-rotation ──
@@ -446,7 +447,7 @@ onBeforeUnmount(() => {
   cursor: default;
 }
 
-/* Position transforms — cards sized by height, so they extend off-screen naturally */
+/* Position transforms — 3 fixed ring slots */
 .app-hero-stack-card--centre {
   z-index: 3;
   left: 50%;
@@ -461,15 +462,5 @@ onBeforeUnmount(() => {
   z-index: 2;
   left: 50%;
   transform: translateX(-22%) rotate(5deg);
-}
-.app-hero-stack-card--far-left {
-  z-index: 1;
-  left: 50%;
-  transform: translateX(-100%) rotate(-8deg);
-}
-.app-hero-stack-card--far-right {
-  z-index: 1;
-  left: 50%;
-  transform: translateX(0%) rotate(8deg);
 }
 </style>
