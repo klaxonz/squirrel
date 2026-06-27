@@ -541,7 +541,7 @@ onBeforeUnmount(() => {
   bottom: -1px;
   display: grid;
   gap: 0.25rem;
-  padding: 2.75rem 0.75rem 1.75rem;
+  padding: 3.2rem 0.75rem 1.15rem;
   color: hsl(0 0% 100%);
   background: linear-gradient(to top, hsl(var(--hero-scrim) / 0.88), hsl(var(--hero-scrim) / 0.5) 48%, transparent);
   text-align: left;
