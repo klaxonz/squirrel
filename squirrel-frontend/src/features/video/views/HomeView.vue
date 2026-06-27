@@ -393,6 +393,8 @@ onBeforeUnmount(() => {
   background: none;
   display: block;
   padding: 0;
+  perspective: 1200px;
+  perspective-origin: 50% 50%;
 }
 
 .app-hero-stack-card {
@@ -409,11 +411,12 @@ onBeforeUnmount(() => {
   background: none;
   cursor: pointer;
   box-shadow: 0 4px 24px hsl(var(--hero-scrim) / 0.25);
+  transform-style: preserve-3d;
   transition:
-    transform 0.5s var(--ease-spring),
-    opacity 0.4s ease,
-    filter 0.4s ease,
-    box-shadow 0.4s ease;
+    transform 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.5s ease,
+    filter 0.5s ease,
+    box-shadow 0.5s ease;
 }
 
 .app-hero-stack-card__img {
@@ -424,19 +427,19 @@ onBeforeUnmount(() => {
   object-fit: cover;
 }
 
-/* Inactive (side) cards: dimmed, pushed to sides */
+/* Inactive (side) cards: dimmed, on the ring */
 .app-hero-stack-card:not(.app-hero-stack-card--active) {
-  opacity: 0.45;
-  filter: brightness(0.6) saturate(0.85);
+  opacity: 0.5;
+  filter: brightness(0.55) saturate(0.8);
   box-shadow: 0 2px 12px hsl(var(--hero-scrim) / 0.15);
 }
 .app-hero-stack-card:not(.app-hero-stack-card--active):hover {
-  opacity: 0.7;
-  filter: brightness(0.75) saturate(1);
+  opacity: 0.75;
+  filter: brightness(0.7) saturate(1);
   box-shadow: 0 4px 20px hsl(var(--hero-scrim) / 0.3);
 }
 
-/* Active (centre) card: full brightness, highest z */
+/* Active (centre) card: full brightness, front of ring */
 .app-hero-stack-card--active {
   z-index: 3;
   opacity: 1;
@@ -447,20 +450,20 @@ onBeforeUnmount(() => {
   cursor: default;
 }
 
-/* Position transforms — 3 fixed ring slots */
+/* Ring carousel positions — 3D ring with perspective */
 .app-hero-stack-card--centre {
   z-index: 3;
   left: 50%;
-  transform: translateX(-50%) rotate(0deg);
+  transform: translateX(-50%) rotateY(0deg) scale(1);
 }
 .app-hero-stack-card--left {
   z-index: 2;
   left: 50%;
-  transform: translateX(-78%) rotate(-5deg);
+  transform: translateX(-78%) rotateY(32deg) scale(0.82);
 }
 .app-hero-stack-card--right {
   z-index: 2;
   left: 50%;
-  transform: translateX(-22%) rotate(5deg);
+  transform: translateX(-22%) rotateY(-32deg) scale(0.82);
 }
 </style>
