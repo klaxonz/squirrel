@@ -2,7 +2,7 @@
   <div ref="rootRef" class="relative w-full max-w-[560px]" @focusin="handleFocusIn" @focusout="handleFocusOut">
     <!-- Search Input Field -->
     <div 
-      class="flex items-center h-9 p-1 rounded-lg bg-accent/30 border border-border/20 transition-all duration-300 group focus-within:bg-background focus-within:border-primary/20 focus-within:ring-4 focus-within:ring-primary/5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]"
+      class="flex items-center h-9 p-1 rounded-lg bg-accent/30 border border-border/20 transition-all duration-300 group focus-within:bg-background focus-within:border-border/40 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]"
     >
       <!-- Scope Toggle (Local/Remote) -->
       <div v-if="searchModesList.length > 0" class="shrink-0">
@@ -24,7 +24,7 @@
         v-model="inputValue"
         type="text"
         :placeholder="placeholder"
-        class="flex-1 bg-transparent border-none px-1 text-sm font-medium outline-none placeholder:text-muted-foreground/30 min-w-0"
+        class="flex-1 bg-transparent border-none px-1 text-sm font-medium outline-none focus-visible:shadow-none placeholder:text-muted-foreground/30 min-w-0"
         @input="handleInput"
         @compositionstart="isComposing = true"
         @compositionend="handleCompositionEnd"
