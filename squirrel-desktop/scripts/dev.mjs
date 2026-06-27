@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
-import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import chokidar from 'chokidar'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -236,13 +236,17 @@ const scheduleElectronRestart = () => {
 }
 
 const watchDesktopSource = () => {
-  desktopWatcher = fs.watch(desktopSrcDir, { recursive: true }, (_eventType, filename) => {
-    const changedFile = String(filename || '')
-    if (!changedFile || !/\.(?:cjs|mjs|js|json)$/.test(changedFile)) {
-      return
-    }
+  desktopWatcher = chokidar.watch('**/*.{cjs,mjs,js,json}', {
+    cwd: desktopSrcDir,
+    ignoreInitial: true,
+    awaitWriteFinish: {
+      stabilityThreshold: 200,
+      pollInterval: 50,
+    },
+  })
 
-    console.debug(`[squirrel-desktop] fs.watch event: ${_eventType} ${changedFile}`)
+  desktopWatcher.on('all', (eventType, changedFile) => {
+    console.debug(`[squirrel-desktop] source ${eventType}: ${changedFile}`)
     scheduleElectronRestart()
   })
 }
