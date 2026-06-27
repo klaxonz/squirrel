@@ -72,10 +72,12 @@
               @click="handleOpenModal(video)"
             >
               <img :src="video.thumbnail || ''" :alt="video.title" class="app-hero-feature-card__img" loading="lazy" />
-              <span v-if="video.duration" class="app-hero-feature-card__duration">{{ formatDuration(video.duration) }}</span>
               <span class="app-hero-feature-card__content">
                 <span class="app-hero-feature-card__title">{{ video.title }}</span>
-                <span class="app-hero-feature-card__meta">{{ video.subscriptions?.[0]?.name || video.site || '未知' }}</span>
+                <span class="app-hero-feature-card__meta-row">
+                  <span class="app-hero-feature-card__meta">{{ video.subscriptions?.[0]?.name || video.site || '未知' }}</span>
+                  <span v-if="video.duration" class="app-hero-feature-card__duration">{{ formatDuration(video.duration) }}</span>
+                </span>
               </span>
             </button>
           </div>
@@ -390,16 +392,16 @@ onBeforeUnmount(() => {
 
 .app-cinema-hero-pro {
   min-height: 0;
-  height: clamp(360px, 34vw, 520px);
+  height: auto;
   padding: 0;
 }
 
 .app-cinema-hero-pro__inner {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: stretch;
+  align-items: start;
   gap: 0.75rem;
-  height: 100%;
+  height: auto;
   min-height: 0;
   padding: 0;
 }
@@ -407,6 +409,7 @@ onBeforeUnmount(() => {
 .app-hero-main-card {
   position: relative;
   min-width: 0;
+  aspect-ratio: 16 / 9;
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: hsl(0 0% 100% / 0.08);
@@ -466,6 +469,7 @@ onBeforeUnmount(() => {
   position: relative;
   min-width: 0;
   min-height: 0;
+  aspect-ratio: 16 / 9;
   padding: 0;
   border: 0;
   border-radius: var(--radius-lg);
@@ -507,12 +511,17 @@ onBeforeUnmount(() => {
   transform: scale(1.04);
 }
 
-.app-hero-feature-card__duration {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  z-index: 2;
+.app-hero-feature-card__meta-row {
   display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.app-hero-feature-card__duration {
+  display: inline-flex;
+  flex: 0 0 auto;
   height: 1.25rem;
   align-items: center;
   border-radius: var(--radius-sm);
@@ -532,7 +541,7 @@ onBeforeUnmount(() => {
   bottom: -1px;
   display: grid;
   gap: 0.25rem;
-  padding: 2.75rem 0.75rem 0.75rem;
+  padding: 2.75rem 0.75rem 1.75rem;
   color: hsl(0 0% 100%);
   background: linear-gradient(to top, hsl(var(--hero-scrim) / 0.88), hsl(var(--hero-scrim) / 0.5) 48%, transparent);
   text-align: left;
@@ -549,6 +558,7 @@ onBeforeUnmount(() => {
 
 .app-hero-feature-card__meta {
   overflow: hidden;
+  min-width: 0;
   color: hsl(0 0% 100% / 0.7);
   font-size: 0.6875rem;
   font-weight: 500;
@@ -567,6 +577,7 @@ onBeforeUnmount(() => {
   }
 
   .app-hero-main-card {
+    aspect-ratio: auto;
     min-height: 320px;
   }
 
