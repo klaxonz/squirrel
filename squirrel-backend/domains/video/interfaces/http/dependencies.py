@@ -7,6 +7,7 @@ just exposes that capability to the routing layer.
 """
 
 from domains.video.application.services.crud import VideoCrudService
+from domains.video.application.services.featured import VideoFeaturedService
 from domains.video.application.services.listing.service import VideoListService
 from domains.video.application.services.random import VideoRandomService
 
@@ -24,3 +25,8 @@ def get_video_list_service() -> VideoListService:
 def get_video_random_service() -> VideoRandomService:
     """Per-request ``VideoRandomService`` (random video)."""
     return VideoRandomService()
+
+
+def get_featured_service() -> VideoFeaturedService:
+    """Per-request ``VideoFeaturedService`` (home hero featured videos)."""
+    return VideoFeaturedService()

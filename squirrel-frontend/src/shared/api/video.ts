@@ -1,6 +1,6 @@
 import type { AxiosRequestConfig } from 'axios'
 import { get, post } from '@/shared/lib/request'
-import type { VideoListResponse, VideoDetail, RandomVideoResult } from '@/features/video/types/video'
+import type { VideoListResponse, VideoDetail, RandomVideoResult, VideoListItem } from '@/features/video/types/video'
 import type { VideoPageVideo } from '@/features/playback/types/videoPlayback'
 
 type YesNoAll = 'all' | 'yes' | 'no'
@@ -64,4 +64,8 @@ export const getRandomVideo = async (params: RandomVideoParams = {}) => {
 
 export const saveRemoteVideo = async (data: Record<string, unknown>) => {
   return post<VideoPageVideo>('/api/video/remote-save', data)
+}
+
+export const getFeaturedVideos = async () => {
+  return get<VideoListItem[]>('/api/video/featured')
 }

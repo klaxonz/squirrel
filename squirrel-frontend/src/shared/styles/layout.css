@@ -125,13 +125,13 @@
   --app-h4-leading: 1.4;
   --app-h4-tracking: -0.005em;
 
-  --app-hero-size: clamp(2.5rem, 1.8rem + 3vw, 4rem);  /* 40 → 64px */
+  --app-hero-size: clamp(2.25rem, 1.6rem + 2.5vw, 3.25rem);  /* 36 → 52px */
   --app-hero-weight: 500;
-  --app-hero-leading: 1.05;
-  --app-hero-tracking: -0.025em;
+  --app-hero-leading: 1.15;
+  --app-hero-tracking: -0.02em;
 
-  --app-eyebrow-size: 0.6875rem;  /* 11px */
-  --app-eyebrow-tracking: 0.18em;
+  --app-eyebrow-size: 0.75rem;  /* 12px */
+  --app-eyebrow-tracking: 0.16em;
 
   /* Spinner — single source of truth for all loading spinners. */
   --app-spinner-size-sm: 0.875rem;   /* 14px — buttons, inline */
@@ -398,7 +398,7 @@
   --hero-scrim: 24 10% 6%;
   position: relative;
   overflow: hidden;
-  min-height: min(70vh, 560px);
+  min-height: min(45vh, 460px);
   display: flex;
   align-items: flex-end;
   isolation: isolate;
@@ -420,18 +420,19 @@
   background:
     linear-gradient(to top,
       hsl(var(--hero-scrim)) 0%,
-      hsl(var(--hero-scrim) / 0.85) 18%,
-      hsl(var(--hero-scrim) / 0.35) 42%,
-      transparent 65%),
+      hsl(var(--hero-scrim) / 0.9) 15%,
+      hsl(var(--hero-scrim) / 0.4) 40%,
+      transparent 60%),
     linear-gradient(to right,
-      hsl(var(--hero-scrim) / 0.65) 0%,
-      transparent 45%);
+      hsl(var(--hero-scrim) / 0.55) 0%,
+      hsl(var(--hero-scrim) / 0.15) 30%,
+      transparent 50%);
 }
 .app-cinema-hero-pro__inner {
   position: relative;
   z-index: 1;
   width: 100%;
-  padding: 3rem var(--app-page-gutter-lg) 2.5rem;
+  padding: 2.5rem var(--app-page-gutter-lg) 2rem;
 }
 .app-cinema-hero-pro__eyebrow {
   font-family: var(--font-sans);
@@ -440,7 +441,7 @@
   letter-spacing: var(--app-eyebrow-tracking);
   text-transform: uppercase;
   color: hsl(var(--primary));
-  margin-bottom: 1rem;
+  margin-bottom: 0.625rem;
 }
 .app-cinema-hero-pro__title {
   font-family: var(--font-display);
@@ -451,14 +452,20 @@
   color: hsl(0 0% 100%);
   max-width: 32rem;
   text-wrap: balance;
-  text-shadow: 0 2px 8px hsl(var(--hero-scrim) / 0.45);
+  border-left: 3px solid hsl(var(--primary));
+  padding-left: 0.875rem;
+  text-shadow: 0 2px 12px hsl(var(--hero-scrim) / 0.55);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 .app-cinema-hero-pro__sub {
-  margin-top: 1rem;
-  max-width: 42rem;
-  font-size: 0.9375rem;
+  margin-top: 0.75rem;
+  max-width: 38rem;
+  font-size: 0.8125rem;
   line-height: 1.6;
-  color: hsl(0 0% 100% / 0.82);
+  color: hsl(0 0% 100% / 0.72);
   text-wrap: pretty;
   text-shadow: 0 1px 4px hsl(var(--hero-scrim) / 0.4);
 }
@@ -466,5 +473,5 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-top: 1.75rem;
+  margin-top: 1.25rem;
 }
