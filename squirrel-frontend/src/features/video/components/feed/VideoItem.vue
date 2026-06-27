@@ -63,28 +63,27 @@
 
     <!-- Info Container -->
     <div :class="[
-      'flex gap-3 px-0.5',
+      'flex flex-col gap-1 px-0.5',
       layout === 'list' ? 'flex-1 py-1 min-w-0' : ''
     ]">
-      <div v-if="showAvatar && displayAvatars.length" class="shrink-0 mt-0.5">
-        <SubscriptionAvatar
-          :src="displayAvatars[0].avatar"
-          :name="displayAvatars[0].name"
-          size="lg"
-          @click.stop="goToSubscription(displayAvatars[0].id)"
-        />
-      </div>
+      <h3 :class="[
+        'font-semibold leading-[1.3] text-foreground/90 group-hover:text-primary transition-colors tracking-tight',
+        layout === 'list' ? 'text-base line-clamp-2 md:line-clamp-3 mb-0.5' : 'text-sm line-clamp-2'
+      ]">
+        {{ video.title }}
+      </h3>
 
-      <div class="flex-1 min-w-0 flex flex-col gap-1 justify-center"
-           :class="{ 'min-h-[2.6em]': layout === 'grid' }">
-        <h3 :class="[
-          'font-semibold leading-[1.3] text-foreground/90 group-hover:text-primary transition-colors tracking-tight',
-          layout === 'list' ? 'text-base line-clamp-2 md:line-clamp-3 mb-1' : 'text-sm line-clamp-2'
-        ]">
-          {{ video.title }}
-        </h3>
+      <div class="flex items-start gap-3 min-w-0">
+        <div v-if="showAvatar && displayAvatars.length" class="shrink-0 mt-0.5">
+          <SubscriptionAvatar
+            :src="displayAvatars[0].avatar"
+            :name="displayAvatars[0].name"
+            size="lg"
+            @click.stop="goToSubscription(displayAvatars[0].id)"
+          />
+        </div>
 
-        <div class="flex flex-col gap-0.5">
+        <div class="flex-1 min-w-0 flex flex-col gap-0.5">
           <div class="flex items-center gap-1.5 text-xs text-muted-foreground/80 font-medium">
             <span class="hover:text-foreground transition-colors truncate" @click.stop="goToSubscription(primarySubscriptionId)">
               {{ displayNames }}
@@ -95,10 +94,11 @@
             <span>{{ displayDateText }}</span>
             <span v-if="layout === 'list' && video.duration" class="ml-2 font-mono bg-muted px-1 rounded">{{ formatDuration(video.duration) }}</span>
           </div>
-          <div v-if="layout === 'list' && video.description" class="hidden md:block mt-2 text-xs text-muted-foreground/70 line-clamp-2">
-            {{ video.description }}
-          </div>
         </div>
+      </div>
+
+      <div v-if="layout === 'list' && video.description" class="hidden md:block mt-1.5 text-xs text-muted-foreground/70 line-clamp-2">
+        {{ video.description }}
       </div>
     </div>
 
