@@ -1,6 +1,10 @@
 # Virtual environment
 .venv/
 
+# Node dependencies (monorepo — keep node_modules out of git, shared across worktrees)
+node_modules/
+.npm-cache/
+
 # Configurations and sensitive data
 # NOTE: anchored to repo root (/config) so it only ignores the top-level
 # secrets/config directory — a bare "config" previously shadowed source

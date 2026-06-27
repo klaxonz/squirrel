@@ -1,0 +1,18 @@
+{
+  "name": "squirrel",
+  "private": true,
+  "description": "Squirrel monorepo",
+  "workspaces": [
+    "squirrel-frontend",
+    "squirrel-desktop",
+    "squirrel-music-api",
+    "squirrel-site-runtimes/youtube/src/squirrel_youtube/node"
+  ],
+  "scripts": {
+    "dev:frontend": "npm -w squirrel-front run dev",
+    "dev:desktop": "npm -w squirrel-desktop run dev",
+    "build:frontend": "npm -w squirrel-front run build",
+    "typecheck": "npm -w squirrel-front run typecheck",
+    "test": "npm -w squirrel-front run test"
+  }
+}
