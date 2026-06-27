@@ -13,12 +13,6 @@
             class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </div>
-        <div
-          v-if="subscription.unread_count > 0"
-          class="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-2xs font-semibold text-primary-foreground ring-2 ring-card shadow-[0_0_0_1px_hsl(var(--primary)/0.4)] app-mono"
-        >
-          {{ subscription.unread_count > 99 ? '99+' : subscription.unread_count }}
-        </div>
       </div>
 
       <div class="min-w-0 flex-1 pt-0.5">
@@ -33,7 +27,7 @@
             aria-label="切换特别关注"
             @click.stop="$emit('toggleSpecial', subscription)"
           >
-            <AppIcon name="star" class="h-4 w-4" :class="{ 'fill-current': subscription.is_special_followed }" />
+            <AppIcon :name="subscription.is_special_followed ? 'bookmarkCheck' : 'bookmarkPlus'" class="h-4 w-4" />
           </button>
         </div>
         <div class="mt-1.5 flex items-center gap-2">

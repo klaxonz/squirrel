@@ -58,7 +58,7 @@
           :aria-pressed="specialFilter === 'yes'"
           @click="$emit('toggle-special-filter')"
         >
-          <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current drop-shadow-sm': specialFilter === 'yes' }" />
+          <AppIcon :name="specialFilter === 'yes' ? 'bookmarkCheck' : 'bookmarkPlus'" class="h-3.5 w-3.5" />
           <span>特别关注</span>
         </button>
       </div>
@@ -78,9 +78,6 @@
       >
         <div class="relative shrink-0">
           <SubscriptionAvatar :src="sub.avatar" :name="sub.name" size="md" :class="activeChannelId === sub.id ? 'ring-2 ring-primary/30' : ''" />
-          <div v-if="sub.unread_count > 0" class="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-2xs font-bold text-primary-foreground ring-2 ring-background shadow-sm">
-            {{ sub.unread_count > 99 ? '99+' : sub.unread_count }}
-          </div>
         </div>
 
         <div class="flex-1 min-w-0" :class="{'pr-8': sub.is_special_followed}">
@@ -94,7 +91,7 @@
           aria-label="取消特别关注"
           @click.stop="$emit('toggle-special', sub)"
         >
-          <AppIcon name="star" class="h-4 w-4 fill-current drop-shadow-sm" />
+          <AppIcon name="bookmarkCheck" class="h-4 w-4" />
         </button>
 
         <button
@@ -104,7 +101,7 @@
           aria-label="设为特别关注"
           @click.stop="$emit('toggle-special', sub)"
         >
-          <AppIcon name="star" class="h-4 w-4" />
+          <AppIcon name="bookmarkPlus" class="h-4 w-4" />
         </button>
       </div>
 

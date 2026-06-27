@@ -159,14 +159,8 @@
               <AppEmptyState variant="plain" icon="inbox" title="暂无内容" copy="订阅频道更新后会显示在这里。" />
             </div>
 
-            <div v-for="group in videoGroups" :key="group.title" class="space-y-4">
-              <div class="flex items-center gap-3 pt-4 pb-2">
-                <h3 class="app-h2">{{ group.title }}</h3>
-                <span class="text-xs font-semibold text-muted-foreground/60">{{ group.videos.length }} 视频</span>
-              </div>
-              <div class="app-video-grid app-video-grid--feed">
-                <VideoItem v-for="video in group.videos" :key="video.id" :video="video" show-avatar @openModal="handleOpenVideo" />
-              </div>
+            <div class="app-video-grid app-video-grid--feed pb-12">
+              <VideoItem v-for="video in feedItems" :key="video.id" :video="video" show-avatar @openModal="handleOpenVideo" />
             </div>
 
             <div v-if="loadingMoreFeed" class="app-video-grid app-video-grid--feed pt-6">
@@ -221,7 +215,6 @@ import { useSites } from '../composables/useSites'
 import { useRemoteChannel } from '@/features/video/composables/useRemoteChannel'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useRemoteVideoMapping } from '@/features/video/composables/useRemoteVideoMapping'
-import { useFeedGrouping } from '@/features/video/composables/useFeedGrouping'
 import { sortSubscriptions } from '@/features/video/lib/subscriptionSort'
 import { getSubscriptions, getVideoList, updateSpecialFollowStatus } from '@/shared/api'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
@@ -406,11 +399,6 @@ const toggleSpecialFollow = async (subscription: SubscriptionListItem) => {
     togglingSpecialIds.value = nextIds
   }
 }
-
-// ponytail: date-bucket grouping (今天/昨天/本周/本月/年月) lives in
-// useFeedGrouping. The bucket order is now explicit (the original relied on
-// Object.entries insertion order, which is fragile for the year-month buckets).
-const { videoGroups } = useFeedGrouping({ feedItems })
 
 const fetchChannels = async (isReset = false) => {
   if (!isReset && (loadingChannels.value || loadingMoreChannels.value || channelsFinished.value)) return
