@@ -452,8 +452,6 @@
   color: hsl(0 0% 100%);
   max-width: 32rem;
   text-wrap: balance;
-  border-left: 3px solid hsl(var(--primary));
-  padding-left: 0.875rem;
   text-shadow: 0 2px 12px hsl(var(--hero-scrim) / 0.55);
   display: -webkit-box;
   -webkit-box-orient: vertical;
