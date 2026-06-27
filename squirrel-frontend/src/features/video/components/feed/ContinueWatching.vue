@@ -29,6 +29,26 @@
   </div>
 </template>
 
+<script lang="ts">
+// Module-level record of recently shown hero video IDs.
+// Persists across component mount/unmount within the same page session
+// to prevent the same video from dominating the hero spot.
+import type { VideoHistoryEntry } from '@/features/video/types/video'
+
+const recentHeroIds: number[] = []
+const MAX_RECENT_HERO = 5
+
+export function pushRecentHero(video: VideoHistoryEntry) {
+  if (video.id == null) return
+  recentHeroIds.push(video.id)
+  if (recentHeroIds.length > MAX_RECENT_HERO) recentHeroIds.shift()
+}
+
+export function getRecentHeroIds(): readonly number[] {
+  return recentHeroIds
+}
+</script>
+
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import FeedRailHeader from '@/features/video/components/feed/FeedRailHeader.vue'
@@ -36,7 +56,7 @@ import VideoItem from '@/features/video/components/feed/VideoItem.vue'
 import RecommendationSkeleton from '@/features/video/components/feed/RecommendationSkeleton.vue'
 import { useVideoHistory } from '@/features/video/composables/useVideoHistory'
 import { Logger } from '@/shared/lib/logger'
-import type { VideoHistoryEntry, VideoListItem } from '@/features/video/types/video'
+import type { VideoListItem } from '@/features/video/types/video'
 
 const emit = defineEmits<{
   openModal: [video: VideoHistoryEntry]
@@ -81,17 +101,60 @@ const getProgress = (video: VideoHistoryEntry) => {
 const HERO_PROGRESS_MIN = 0.3
 const HERO_PROGRESS_MAX = 0.9
 
+function weightedRandomPick<T>(items: T[], weightFn: (item: T) => number): T | null {
+  if (items.length === 0) return null
+  const weights = items.map(weightFn)
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0)
+  if (totalWeight <= 0) return items[Math.floor(Math.random() * items.length)]
+  let rand = Math.random() * totalWeight
+  for (let i = 0; i < items.length; i++) {
+    rand -= weights[i]
+    if (rand <= 0) return items[i]
+  }
+  return items[items.length - 1]
+}
+
 const pickHeroVideo = (items: VideoHistoryEntry[]): VideoHistoryEntry | null => {
   if (items.length === 0) return null
+
+  // Build candidate pools with progressive fallback
   const sweet = items.filter((v) => {
     const p = getProgress(v)
     return p >= HERO_PROGRESS_MIN && p <= HERO_PROGRESS_MAX && v.thumbnail
   })
+
+  let pool: VideoHistoryEntry[]
   if (sweet.length > 0) {
-    return sweet.reduce((a, b) => (getProgress(a) > getProgress(b) ? a : b))
+    pool = sweet
+  } else {
+    const withThumb = items.filter((v) => v.thumbnail)
+    pool = withThumb.length > 0 ? withThumb : items
   }
-  const withThumb = items.filter((v) => v.thumbnail)
-  return withThumb[0] ?? items[0] ?? null
+
+  // Single candidate – use it directly
+  if (pool.length === 1) {
+    pushRecentHero(pool[0])
+    return pool[0]
+  }
+
+  // Exclude recently shown videos, but keep at least one candidate
+  const freshCandidates = pool.filter((v) => !recentHeroIds.includes(v.id))
+  const candidates = freshCandidates.length > 0 ? freshCandidates : pool
+
+  // Weighted random: progress weight (1–9) + recency position weight (0–5).
+  // `items` arrives sorted by played_at desc, so lower index = more recently watched.
+  const weightFn = (item: VideoHistoryEntry): number => {
+    const p = getProgress(item)
+    const progressWeight = p > 0 ? Math.min(9, Math.max(1, p * 10)) : 1
+    const originalIdx = items.findIndex((v) => v.id === item.id)
+    const recencyWeight =
+      originalIdx >= 0 ? Math.max(0, 5 - (originalIdx / Math.max(1, items.length - 1)) * 5) : 0
+    return progressWeight + recencyWeight
+  }
+
+  const hero = weightedRandomPick(candidates, weightFn) ?? candidates[0]!
+  pushRecentHero(hero)
+  return hero
 }
 
 const load = async () => {
