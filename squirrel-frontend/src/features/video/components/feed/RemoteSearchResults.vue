@@ -82,6 +82,12 @@
         <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" />
       </div>
 
+      <div v-if="items.length > 0 && !allLoaded" class="flex justify-center px-6 pb-8">
+        <Button variant="outline" class="h-9 rounded-md" :disabled="loading" @click="loadMore">
+          {{ loading ? '加载中' : '加载更多' }}
+        </Button>
+      </div>
+
       <div v-if="!loading && !errorMessage && items.length === 0" class="min-h-[60vh] p-10">
         <AppEmptyState variant="plain" icon="inbox" title="未找到远端结果" copy="换个关键词或站点再试。" />
       </div>
@@ -93,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onActivated, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, ref, watch } from 'vue'
 import { errorMessage as resolveError } from '@/shared/lib/errorMessage'
 import { useRouter } from 'vue-router'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
@@ -106,6 +112,7 @@ import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useInfiniteScrollSentinel } from '@/shared/composables/useInfiniteScrollSentinel'
+import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 
 type RemoteProfile = {
   id?: string | number | null
@@ -342,7 +349,11 @@ const loadPage = async (page: number) => {
     emit('error', error instanceof Error ? error : new Error(errorMessage.value))
   } finally {
     clearTimeout(timer)
-    if (currentToken === requestToken) setLoading(false)
+    if (currentToken === requestToken) {
+      setLoading(false)
+      await nextTick()
+      void loadMoreIfTriggerVisible()
+    }
   }
 }
 
@@ -358,6 +369,16 @@ const refresh = async () => {
 const loadMore = async () => {
   if (loading.value || allLoaded.value || !items.value.length) return
   await loadPage(currentPage.value + 1)
+}
+
+const loadMoreIfTriggerVisible = async () => {
+  if (loading.value || allLoaded.value || errorMessage.value || !items.value.length) return
+  const trigger = loadMoreTrigger.value
+  if (!trigger) return
+  const triggerRect = trigger.getBoundingClientRect()
+  const rootRect = getMainScrollRoot()?.getBoundingClientRect()
+  const bottom = rootRect?.bottom ?? window.innerHeight
+  if (triggerRect.top <= bottom + 700) await loadMore()
 }
 
 const hashRemoteUrl = (url: string) => {

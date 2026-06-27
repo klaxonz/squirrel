@@ -18,6 +18,7 @@
               :suggestion-scope="String(route.meta.search || 'home')"
               :search-modes="showHomeSearchMode ? searchModeOptions : []"
               :active-search-mode="homeSearchMode"
+              :search-redirect-name="searchRedirectName"
               @search-mode-change="uiStore.setHomeSearchMode"
             />
           </div>
@@ -84,6 +85,13 @@ const showHomeSearchMode = computed(() => {
     && route.matched.some((record) => record.name === 'HomeView')
     && !route.params.id
 })
+const searchRedirectName = computed(() => (
+  showHomeSearchMode.value
+    ? 'AllVideos'
+    : route.matched.some((record) => record.name === 'VideosView')
+      ? String(route.name || 'AllVideos')
+      : String(route.meta.searchRedirectName || '')
+))
 const routeContext = computed(() => resolveRouteContext(route))
 const searchModeOptions = [
   { value: 'local', label: '本地' },

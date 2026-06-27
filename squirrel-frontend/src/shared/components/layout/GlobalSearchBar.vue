@@ -99,7 +99,8 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import type { LocationQueryRaw } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import { getSearchSuggestions } from '@/shared/api/search'
@@ -140,10 +141,12 @@ const props = defineProps<{
   suggestionScope?: string
   searchModes?: readonly SearchModeOption[]
   activeSearchMode?: string
+  searchRedirectName?: string
 }>()
 
 const emit = defineEmits(['update:modelValue', 'search', 'clear', 'search-mode-change'])
 const uiStore = useUIStore()
+const route = useRoute()
 const router = useRouter()
 
 const inputValue = ref(uiStore.searchQuery)
@@ -299,6 +302,15 @@ async function handleSearch() {
   if (trimmedInputValue.value) {
     addRecentSearch(trimmedInputValue.value)
   }
+  if (props.searchRedirectName) {
+    const query: LocationQueryRaw = { ...route.query, q: trimmedInputValue.value }
+    if (props.activeSearchMode === 'remote') query.mode = 'remote'
+    else {
+      delete query.mode
+      delete query.site
+    }
+    await router.push({ name: props.searchRedirectName, query })
+  }
   uiStore.triggerSearch(inputValue.value)
   emit('search')
   isPanelOpen.value = false
@@ -324,6 +336,13 @@ function clearSearch() {
   uiStore.searchQuery = ''
   emit('update:modelValue', '')
   emit('clear')
+  if (route.query.q) {
+    const query = { ...route.query }
+    delete query.q
+    delete query.mode
+    delete query.site
+    router.replace({ query })
+  }
   uiStore.triggerSearch('')
   inputRef.value?.focus()
 }

@@ -1,7 +1,7 @@
 <template>
   <AppPageShell class="videos-view-page" variant="compact" :fill="false">
     <!-- Sticky toolbar: outside app-page-content so top-padding never affects height -->
-    <div class="sticky top-0 z-20 bg-background border-b border-border/50">
+    <div v-if="searchMode !== 'remote'" class="sticky top-0 z-20 bg-background border-b border-border/50">
       <div class="max-w-[var(--app-page-max-width)] mx-auto px-6 py-2">
         <FeedToolbar
           :active-tab="activeTab"
@@ -29,6 +29,38 @@
         />
       </div>
     </div>
+    <div v-else class="sticky top-0 z-20 bg-background border-b border-border/50">
+      <div class="max-w-[var(--app-page-max-width)] mx-auto flex items-center justify-between gap-3 px-6 py-2">
+        <div class="flex min-w-0 items-center gap-2">
+          <AppIcon name="siteFallback" class="h-4 w-4 shrink-0 text-primary opacity-80" />
+          <span class="shrink-0 text-sm font-semibold text-foreground">远端搜索</span>
+          <span v-if="searchQuery" class="min-w-0 truncate text-sm text-muted-foreground">“{{ searchQuery }}”</span>
+        </div>
+
+        <div class="flex shrink-0 items-center gap-1">
+          <Select :model-value="remoteSite || 'all'" @update:model-value="updateRemoteSite">
+            <SelectTrigger class="h-8 w-auto min-w-[120px] border border-border/60 bg-transparent px-2.5 py-0 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent/40 hover:text-foreground focus:ring-0">
+              <SelectValue placeholder="全部站点" />
+            </SelectTrigger>
+            <SelectContent class="min-w-44 border-border/60 bg-popover shadow-lg rounded-md">
+              <SelectItem value="all" class="text-xs">全部站点</SelectItem>
+              <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">{{ opt.label }}</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <button
+            type="button"
+            class="flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors outline-none hover:bg-accent/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            @click="refreshCurrentList"
+            title="刷新内容"
+            aria-label="刷新内容"
+          >
+            <AppSpinner v-if="isRefreshing" size="sm" />
+            <AppIcon v-else name="refresh" class="w-4 h-4 shrink-0" />
+          </button>
+        </div>
+      </div>
+    </div>
 
     <div class="app-page-content">
 
@@ -39,24 +71,6 @@
             <Button variant="outline" size="sm" @click="refreshCurrentList">重试</Button>
           </template>
         </AppEmptyState>
-      </div>
-
-      <!-- Remote search header (replaces nothing above; only an inline section header) -->
-      <div v-if="searchMode === 'remote' && searchQuery" class="px-6 flex items-center justify-between mb-2 mt-4">
-        <h2 class="app-h3 flex items-center gap-2">
-          <AppIcon name="siteFallback" class="w-5 h-5 text-primary opacity-80" />
-          远端搜索结果
-        </h2>
-
-        <Select :model-value="remoteSite || 'all'" @update:model-value="updateRemoteSite">
-          <SelectTrigger class="h-8 w-auto min-w-[120px] bg-accent/40 border-0 text-xs font-bold rounded-full transition-colors hover:bg-accent/60">
-            <SelectValue placeholder="全部站点" />
-          </SelectTrigger>
-          <SelectContent class="border-border/10 bg-background/70 backdrop-blur-2xl shadow-2xl rounded-md min-w-[140px]">
-            <SelectItem value="all" class="text-xs">全部站点</SelectItem>
-            <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">{{ opt.label }}</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       <!-- Remote search results -->
@@ -100,6 +114,7 @@ import FeedToolbar from '@/features/video/components/feed/FeedToolbar.vue'
 import RemoteSearchResults from '@/features/video/components/feed/RemoteSearchResults.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
 import { VIDEO_TABS } from '@/features/video/constants/videos'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import AppIcon from '@/shared/icons/AppIcon.vue'
@@ -130,14 +145,23 @@ const remoteSearchRef = ref<{ refresh?: () => void } | null>(null)
 const remoteSite = ref('')
 
 const searchMode = computed({
-  get: () => uiStore.homeSearchMode,
-  set: (value: 'local' | 'remote') => uiStore.setHomeSearchMode(value),
+  get: () => route.query.mode === 'remote' ? 'remote' : 'local',
+  set: (value: 'local' | 'remote') => {
+    const query = { ...route.query }
+    if (value === 'remote') query.mode = 'remote'
+    else delete query.mode
+    router.replace({ query })
+  },
 })
 
 const childFilters = computed(() => filters.value)
 
 const updateRemoteSite = (value: unknown) => {
-  remoteSite.value = String(value || 'all') === 'all' ? '' : String(value)
+  const siteValue = String(value || 'all') === 'all' ? '' : String(value)
+  const query = { ...route.query }
+  if (siteValue) query.site = siteValue
+  else delete query.site
+  router.replace({ query })
 }
 
 const refreshCurrentList = () => {
@@ -172,6 +196,20 @@ watch(() => uiStore.searchTrigger, () => {
     searchQuery.value = uiStore.searchQuery
   }
 })
+
+watch(() => route.query.q, (value) => {
+  const query = typeof value === 'string' ? value : ''
+  searchQuery.value = query
+  if (uiStore.searchQuery !== query) uiStore.searchQuery = query
+}, { immediate: true })
+
+watch(() => route.query.mode, (value) => {
+  uiStore.setHomeSearchMode(value === 'remote' ? 'remote' : 'local')
+}, { immediate: true })
+
+watch(() => route.query.site, (value) => {
+  remoteSite.value = typeof value === 'string' ? value : ''
+}, { immediate: true })
 
 watch(() => route.query.special, (value) => {
   special.value = value === 'yes' ? 'yes' : 'all'
