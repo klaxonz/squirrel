@@ -64,14 +64,12 @@
 
           <div v-if="secondaryFeaturedVideos.length > 0" class="app-hero-feature-grid" aria-label="推荐轮播">
             <button
-              v-for="{ video, index } in secondaryFeaturedVideos"
+              v-for="{ video } in secondaryFeaturedVideos"
               :key="video.id"
               type="button"
               class="app-hero-feature-card"
               :aria-label="`播放 ${video.title}`"
               @click="handleOpenModal(video)"
-              @pointerenter="activateFeatured(index)"
-              @focus="activateFeatured(index)"
             >
               <img :src="video.thumbnail || ''" :alt="video.title" class="app-hero-feature-card__img" loading="lazy" />
               <span v-if="video.duration" class="app-hero-feature-card__duration">{{ formatDuration(video.duration) }}</span>
@@ -203,13 +201,6 @@ const stopAutoRotate = () => {
     clearInterval(autoRotateTimer)
     autoRotateTimer = null
   }
-}
-
-const activateFeatured = (idx: number) => {
-  if (idx === activeFeaturedIndex.value) return
-  activeFeaturedIndex.value = idx
-  // Reset timer on manual interaction
-  startAutoRotate()
 }
 
 // ── Hero text ──
@@ -480,7 +471,7 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: hsl(0 0% 100% / 0.08);
-  box-shadow: 0 10px 28px hsl(var(--hero-scrim) / 0.28), 0 0 0 1px hsl(0 0% 100% / 0.14);
+  box-shadow: 0 10px 28px hsl(var(--hero-scrim) / 0.28);
   cursor: pointer;
   transition: transform var(--duration-fast) var(--ease-spring),
     box-shadow var(--duration-fast) var(--ease-default),
@@ -489,7 +480,7 @@ onBeforeUnmount(() => {
 
 .app-hero-feature-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 36px hsl(var(--hero-scrim) / 0.38), 0 0 0 1px hsl(0 0% 100% / 0.34);
+  box-shadow: 0 16px 36px hsl(var(--hero-scrim) / 0.38);
 }
 
 .app-hero-feature-card:active {
@@ -503,8 +494,10 @@ onBeforeUnmount(() => {
 
 .app-hero-feature-card__img {
   display: block;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
   object-fit: cover;
   transition: transform var(--duration-normal) var(--ease-default), filter var(--duration-normal) var(--ease-default);
 }
@@ -536,7 +529,7 @@ onBeforeUnmount(() => {
 .app-hero-feature-card__content {
   position: absolute;
   inset-inline: 0;
-  bottom: 0;
+  bottom: -1px;
   display: grid;
   gap: 0.25rem;
   padding: 2.75rem 0.75rem 0.75rem;
