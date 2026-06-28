@@ -208,6 +208,7 @@
 import { ref, computed, watch, onUnmounted, onMounted, nextTick } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { useRouter } from 'vue-router'
+import { useUIStore } from '@/shared/stores/ui'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppBounceDots from '@/shared/components/AppBounceDots.vue'
@@ -236,6 +237,7 @@ import type { VideoListItem } from '@/features/video/types/video'
 defineOptions({ name: 'Subscribed' })
 
 const router = useRouter()
+const uiStore = useUIStore()
 const { openVideo, openSubscription } = useVideoCardNavigation(router)
 const { nsfw, site } = useFeedFilters()
 const { options: siteOptions, fetchSites } = useSites()
@@ -245,6 +247,7 @@ const desktopBridge = useDesktopBridge()
 const viewMode = ref<'feed' | 'grid'>('feed')
 const channelDataMode = ref<'local' | 'remote'>('local')
 const sidebarSearch = ref('')
+const feedSearch = ref('')
 const showSiteDropdown = ref(false)
 const specialFilter = ref<'all' | 'yes'>('all')
 const activeChannelId = ref<string | number | null>(null)
@@ -463,6 +466,7 @@ const fetchFeed = async (isReset = false) => {
       cursor: feedCursor.value,
       pageSize: FEED_PAGE_SIZE,
       page_size: FEED_PAGE_SIZE,
+      query: feedSearch.value,
       nsfw: nsfwValue,
       site: site.value || undefined,
       subscription_id: activeChannelId.value || undefined,
@@ -595,6 +599,15 @@ watch(viewMode, () => {
 })
 
 watch([nsfw, site, specialFilter], () => { fetchChannels(true); fetchFeed(true); resetAllScroll() })
+
+watch(() => uiStore.searchTrigger, () => {
+  const query = uiStore.searchQuery.trim()
+  feedSearch.value = query
+  channelDataMode.value = 'local'
+  viewMode.value = 'feed'
+  fetchFeed(true)
+  nextTick(resetAllScroll)
+})
 
 watch(remoteChannelKey, () => {
   loadedRemoteChannelKey = ''
