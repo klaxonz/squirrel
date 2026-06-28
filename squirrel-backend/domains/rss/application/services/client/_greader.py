@@ -22,6 +22,7 @@ G_READER_PAGE_SIZE = 1000
 G_READER_CONTENT_BATCH_SIZE = 500
 G_READER_QUICK_ENTRIES_PER_FEED = 10
 G_READER_QUICK_MAX_ENTRIES = 1000
+G_READER_READING_LIST_STATE = 'user/-/state/com.google/reading-list'
 G_READER_READ_STATE = 'user/-/state/com.google/read'
 G_READER_STARRED_STATE = 'user/-/state/com.google/starred'
 
@@ -111,7 +112,7 @@ class GReaderClient:
         progress_callback: Callable[[int, str | None], None] | None = None,
     ) -> list[RemoteEntry]:
         result: list[RemoteEntry] = []
-        for page in self._iter_stream_entries('reading-list', limit, progress_callback):
+        for page in self._iter_stream_entries(G_READER_READING_LIST_STATE, limit, progress_callback):
             result.extend(page)
         return result[:limit] if limit is not None else result
 
@@ -120,7 +121,7 @@ class GReaderClient:
         limit: int | None,
         progress_callback: Callable[[int, str | None], None] | None = None,
     ) -> Iterator[list[RemoteEntry]]:
-        return self._iter_stream_entries('reading-list', limit, progress_callback)
+        return self._iter_stream_entries(G_READER_READING_LIST_STATE, limit, progress_callback)
 
     def _iter_stream_entries(
         self,
@@ -156,7 +157,7 @@ class GReaderClient:
             if not items or not continuation:
                 break
 
-    def fetch_all_item_ids(self, stream_id: str = 'reading-list', limit: int = 200000) -> list[str]:
+    def fetch_all_item_ids(self, stream_id: str = G_READER_READING_LIST_STATE, limit: int = 200000) -> list[str]:
         params = {'output': 'json', 's': stream_id, 'n': str(limit)}
         data = self.http_client.get_json(
             f'{self.config.base_url}/reader/api/0/stream/items/ids?{urllib.parse.urlencode(params)}',
@@ -166,16 +167,16 @@ class GReaderClient:
             return []
         ids = data.get('itemRefs') or data.get('itemIds')
         if isinstance(ids, list):
-            return [str(i.get('id') if isinstance(i, dict) else i) for i in ids if i]
+            return [_greader_normalize_item_id(i.get('id') if isinstance(i, dict) else i) for i in ids if i]
         items = data.get('items')
         if isinstance(items, list):
-            return [str(i.get('id', '')) for i in items if isinstance(i, dict) and i.get('id')]
+            return [_greader_normalize_item_id(i.get('id')) for i in items if isinstance(i, dict) and i.get('id')]
         return []
 
     def fetch_unread_item_ids(self, limit: int = 200000) -> list[str]:
         params = {
             'output': 'json',
-            's': 'reading-list',
+            's': G_READER_READING_LIST_STATE,
             'xt': G_READER_READ_STATE,
             'n': str(limit),
         }
@@ -187,18 +188,17 @@ class GReaderClient:
             return []
         ids = data.get('itemRefs') or data.get('itemIds')
         if isinstance(ids, list):
-            return [str(i.get('id') if isinstance(i, dict) else i) for i in ids if i]
+            return [_greader_normalize_item_id(i.get('id') if isinstance(i, dict) else i) for i in ids if i]
         items = data.get('items')
         if isinstance(items, list):
-            return [str(i.get('id', '')) for i in items if isinstance(i, dict) and i.get('id')]
+            return [_greader_normalize_item_id(i.get('id')) for i in items if isinstance(i, dict) and i.get('id')]
         return []
 
     def fetch_items_contents(self, entry_ids: list[str]) -> list[RemoteEntry]:
         base = f'{self.config.base_url}/reader/api/0/stream/items/contents?output=json'
-        body = urllib.parse.urlencode([('i', eid) for eid in entry_ids])
         data = self.http_client.post_text(
             base,
-            body,
+            [('i', eid) for eid in entry_ids],
             {
                 'Authorization': self._headers()['Authorization'],
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -286,7 +286,7 @@ def _greader_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
     origin_url = origin.get('htmlUrl') if isinstance(origin, dict) else None
     origin_stream_id = origin.get('streamId') if isinstance(origin, dict) else None
     url = _greader_alternate_url(item) or str(origin_url or '').strip()
-    entry_id = str(item.get('id') or url).strip()
+    entry_id = _greader_normalize_item_id(item.get('id') or url)
     categories = item.get('categories') if isinstance(item.get('categories'), list) else []
     category_set = {str(category) for category in categories}
     return RemoteEntry(
@@ -301,6 +301,15 @@ def _greader_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
         is_starred=G_READER_STARRED_STATE in category_set,
         raw_data=dict(item),
     )
+
+
+def _greader_normalize_item_id(value: Any) -> str:
+    raw = str(value or '').strip()
+    if not raw:
+        return ''
+    if raw.isdecimal():
+        return f'tag:google.com,2005:reader/item/{int(raw):016x}'
+    return raw
 
 
 def _greader_category_label(categories: Any) -> str | None:

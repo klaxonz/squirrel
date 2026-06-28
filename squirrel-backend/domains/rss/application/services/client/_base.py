@@ -4,6 +4,7 @@ import json
 import logging
 import urllib.parse
 import urllib.request
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -75,7 +76,7 @@ class _JsonHttpClient:
         with urllib.request.urlopen(request, timeout=20) as response:
             return json.loads(response.read().decode('utf-8'))
 
-    def post_text(self, url: str, data: dict[str, str], headers: dict[str, str]) -> str:
+    def post_text(self, url: str, data: Mapping[str, Any] | Sequence[tuple[str, Any]], headers: dict[str, str]) -> str:
         body = urllib.parse.urlencode(data).encode('utf-8')
         request = urllib.request.Request(url, data=body, headers=headers, method='POST')
         with urllib.request.urlopen(request, timeout=20) as response:

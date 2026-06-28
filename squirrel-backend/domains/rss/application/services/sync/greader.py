@@ -10,6 +10,7 @@ from domains.rss.application.services.client._greader import (
     G_READER_CONTENT_BATCH_SIZE,
     G_READER_QUICK_ENTRIES_PER_FEED,
     G_READER_QUICK_MAX_ENTRIES,
+    G_READER_READING_LIST_STATE,
     GReaderClient,
 )
 from domains.rss.application.services.sync.entry_store import RssEntryStore, rss_entry_store
@@ -159,7 +160,7 @@ class GReaderSync:
         return synced_entries
 
     def _reconcile_full_reading_state(self, *, account_id: int, client: GReaderClient) -> None:
-        reading_ids_raw = client.fetch_all_item_ids('reading-list', limit=200000)
+        reading_ids_raw = client.fetch_all_item_ids(G_READER_READING_LIST_STATE, limit=200000)
         if not reading_ids_raw:
             return
 

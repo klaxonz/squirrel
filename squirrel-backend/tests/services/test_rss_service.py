@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from unittest.mock import patch
 
@@ -9,7 +10,9 @@ from domains.rss.application.services.account.service import RssAccountService
 from domains.rss.application.services.client._base import RemoteEntry, RemoteFeed, RssAccountConfig
 from domains.rss.application.services.client._greader import (
     G_READER_QUICK_ENTRIES_PER_FEED,
+    G_READER_READING_LIST_STATE,
     GReaderClient,
+    _greader_normalize_item_id,
     _greader_entry_to_remote,
 )
 from domains.rss.application.services.client._miniflux import MinifluxClient
@@ -272,7 +275,7 @@ def test_greader_client_fetches_unread_item_ids():
 
         def get_json(self, url, headers):
             self.urls.append(url)
-            return {'itemRefs': [{'id': 'entry-1'}, {'id': 'entry-2'}]}
+            return {'itemRefs': [{'id': '1782612007899357'}, {'id': 'entry-2'}]}
 
     http_client = _FakeHttpClient()
     client = GReaderClient(
@@ -287,10 +290,56 @@ def test_greader_client_fetches_unread_item_ids():
 
     result = client.fetch_unread_item_ids(limit=200000)
 
-    assert result == ['entry-1', 'entry-2']
+    assert result == ['tag:google.com,2005:reader/item/00065546b380d0dd', 'entry-2']
     assert 'stream/items/ids?' in http_client.urls[0]
-    assert 's=reading-list' in http_client.urls[0]
+    assert 's=user%2F-%2Fstate%2Fcom.google%2Freading-list' in http_client.urls[0]
     assert 'xt=user%2F-%2Fstate%2Fcom.google%2Fread' in http_client.urls[0]
+
+
+def test_greader_normalizes_decimal_item_id_to_entry_id():
+    assert _greader_normalize_item_id('1782612007899357') == 'tag:google.com,2005:reader/item/00065546b380d0dd'
+    assert _greader_normalize_item_id('tag:google.com,2005:reader/item/00065546b380d0dd') == (
+        'tag:google.com,2005:reader/item/00065546b380d0dd'
+    )
+
+
+def test_greader_client_fetches_item_contents_with_repeated_item_ids():
+    class _FakeHttpClient:
+        def __init__(self):
+            self.posted = []
+
+        def post_text(self, url, data, headers):
+            self.posted.append((url, data, headers))
+            if url.endswith('/accounts/ClientLogin'):
+                return 'Auth=reader-token\n'
+            return json.dumps(
+                {
+                    'items': [
+                        {
+                            'id': '1782612007899357',
+                            'title': 'Unread Entry',
+                            'alternate': [{'href': 'https://example.com/posts/unread'}],
+                            'origin': {'streamId': 'feed/1'},
+                        }
+                    ]
+                }
+            )
+
+    http_client = _FakeHttpClient()
+    client = GReaderClient(
+        RssAccountConfig(
+            provider='greader',
+            base_url='https://reader.example.com/api/greader.php',
+            username='alice',
+            credential='api-password',
+        ),
+        http_client=http_client,
+    )
+
+    entries = client.fetch_items_contents(['tag:google.com,2005:reader/item/00065546b380d0dd'])
+
+    assert entries[0].external_entry_id == 'tag:google.com,2005:reader/item/00065546b380d0dd'
+    assert http_client.posted[-1][1] == [('i', 'tag:google.com,2005:reader/item/00065546b380d0dd')]
 
 
 def test_greader_client_uses_client_login_and_stream_api():
@@ -403,7 +452,7 @@ def test_greader_client_paginates_reading_list():
 
     assert [entry.title for entry in entries] == ['Entry One', 'Entry Two']
     assert len(http_client.urls) == 2
-    assert 'stream/contents/reading-list?output=json&n=1000' in http_client.urls[0]
+    assert f'stream/contents/{G_READER_READING_LIST_STATE}?output=json&n=1000' in http_client.urls[0]
     assert 'c=next-page' in http_client.urls[1]
 
 
@@ -500,7 +549,7 @@ def test_sync_greader_imports_missing_unread_entries(engine, session_factory, ac
                 user_id=1,
                 account_id=account['id'],
                 feed_id=feed.id,
-                external_entry_id='entry-existing-unread',
+                external_entry_id='tag:google.com,2005:reader/item/00065546b380d0dd',
                 canonical_url='https://example.com/posts/existing',
                 title='Existing Entry',
                 is_read=True,
@@ -512,7 +561,7 @@ def test_sync_greader_imports_missing_unread_entries(engine, session_factory, ac
                 user_id=1,
                 account_id=account['id'],
                 feed_id=feed.id,
-                external_entry_id='entry-read-remotely',
+                external_entry_id='tag:google.com,2005:reader/item/00065546b380d0dc',
                 canonical_url='https://example.com/posts/read',
                 title='Read Entry',
                 is_read=False,
@@ -547,14 +596,17 @@ def test_sync_greader_imports_missing_unread_entries(engine, session_factory, ac
                 yield []
 
         def fetch_unread_item_ids(self, limit=200000):
-            return ['entry-existing-unread', 'entry-missing-unread']
+            return [
+                'tag:google.com,2005:reader/item/00065546b380d0dd',
+                'tag:google.com,2005:reader/item/00065546b380d0de',
+            ]
 
         def fetch_items_contents(self, entry_ids):
             self.content_requests.append(list(entry_ids))
             return [
                 RemoteEntry(
                     external_feed_id='feed/1',
-                    external_entry_id='entry-missing-unread',
+                    external_entry_id='tag:google.com,2005:reader/item/00065546b380d0de',
                     canonical_url='https://example.com/posts/missing',
                     title='Missing Entry',
                     is_read=False,
@@ -573,17 +625,17 @@ def test_sync_greader_imports_missing_unread_entries(engine, session_factory, ac
         read_entry = session.scalars(
             select(RssEntry).where(
                 RssEntry.account_id == account['id'],
-                RssEntry.external_entry_id == 'entry-read-remotely',
+                RssEntry.external_entry_id == 'tag:google.com,2005:reader/item/00065546b380d0dc',
             )
         ).one()
 
     assert unread['total'] == 2
     assert [entry['external_entry_id'] for entry in unread['data']] == [
-        'entry-missing-unread',
-        'entry-existing-unread',
+        'tag:google.com,2005:reader/item/00065546b380d0de',
+        'tag:google.com,2005:reader/item/00065546b380d0dd',
     ]
     assert read_entry.is_read is True
-    assert client.content_requests == [['entry-missing-unread']]
+    assert client.content_requests == [['tag:google.com,2005:reader/item/00065546b380d0de']]
 
 
 def test_sync_progress_reports_completed_state(engine, session_factory, account_svc, sync_svc):
@@ -845,7 +897,7 @@ def test_greader_full_sync_reconciles_read_and_starred_state(engine, session_fac
 
         def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
             self.state_streams.append(stream_id)
-            if stream_id == 'reading-list':
+            if stream_id == G_READER_READING_LIST_STATE:
                 return ['entry-1']
             if stream_id == 'user/-/state/com.google/read':
                 return ['entry-1']
@@ -880,7 +932,7 @@ def test_greader_full_sync_reconciles_read_and_starred_state(engine, session_fac
         assert entry.is_starred is True
         assert other_entry.title == 'Other Removed Entry'
     assert client.state_streams == [
-        'reading-list',
+        G_READER_READING_LIST_STATE,
         'user/-/state/com.google/read',
         'user/-/state/com.google/starred',
     ]
