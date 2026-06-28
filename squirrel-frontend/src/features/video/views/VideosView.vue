@@ -92,8 +92,8 @@
             :key="childRoute.name"
             :filters="childFilters"
             ref="videoChildRef"
-            @goToSubscription="goToChannelDetail"
-            @openModal="handleOpenModal"
+            @goToSubscription="openSubscription"
+            @openModal="openVideo"
             @error="loadError = String($event || '')"
             @loading-change="isRefreshing = !!$event"
           />
@@ -116,7 +116,7 @@ import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import { VIDEO_TABS } from '@/features/video/constants/videos'
-import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
+import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { useSites } from '@/features/video/composables/useSites'
@@ -129,6 +129,7 @@ defineOptions({ name: 'VideosView' })
 const router = useRouter()
 const route = useRoute()
 const uiStore = useUIStore()
+const { openVideo, openSubscription } = useVideoCardNavigation(router)
 
 const { activeTab, nsfw, sortBy, site, searchQuery, special, timeRange, duration, contentType, filters } = useFeedFilters()
 const { options: siteOptions } = useSites()
@@ -164,13 +165,6 @@ const refreshCurrentList = () => {
   }
   videoChildRef.value?.refresh?.()
 }
-
-const handleOpenModal = (video: { id: string | number }) => {
-  rememberVideoPlaybackSeed(video)
-  router.push(`/video/${video.id}`)
-}
-
-const goToChannelDetail = (id: string) => router.push(`/subscription/${id}/all`)
 
 const setSpecialFilter = (value: string) => {
   special.value = value === 'yes' ? 'yes' : 'all'

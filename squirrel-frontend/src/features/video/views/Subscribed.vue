@@ -164,7 +164,14 @@
             </div>
 
             <div v-else class="app-video-grid app-video-grid--feed pb-12">
-              <VideoItem v-for="video in feedItems" :key="video.id" :video="video" show-avatar @openModal="handleOpenVideo" />
+              <VideoItem
+                v-for="video in feedItems"
+                :key="video.id"
+                :video="video"
+                show-avatar
+                @openModal="openVideo"
+                @goToSubscription="openSubscription"
+              />
             </div>
 
             <div v-if="loadingMoreFeed" class="app-video-grid app-video-grid--feed pt-6">
@@ -219,9 +226,9 @@ import { useSites } from '../composables/useSites'
 import { useRemoteChannel } from '@/features/video/composables/useRemoteChannel'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useRemoteVideoMapping } from '@/features/video/composables/useRemoteVideoMapping'
+import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import { sortSubscriptions } from '@/features/video/lib/subscriptionSort'
 import { getSubscriptions, getVideoList, updateSpecialFollowStatus } from '@/shared/api'
-import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
 import type { SubscriptionListItem } from '@/features/video/types/subscription'
 import type { VideoListItem } from '@/features/video/types/video'
@@ -229,6 +236,7 @@ import type { VideoListItem } from '@/features/video/types/video'
 defineOptions({ name: 'Subscribed' })
 
 const router = useRouter()
+const { openVideo, openSubscription } = useVideoCardNavigation(router)
 const { nsfw, site } = useFeedFilters()
 const { options: siteOptions, fetchSites } = useSites()
 const desktopBridge = useDesktopBridge()
@@ -503,7 +511,7 @@ const handleChannelClick = (id: string | number) => {
 
 const openActiveChannelDetail = () => {
   if (!activeChannelId.value) return
-  router.push({ name: 'SubscriptionAllVideos', params: { id: String(activeChannelId.value) } })
+  openSubscription(activeChannelId.value)
 }
 
 const handleRefresh = () => {
@@ -512,7 +520,6 @@ const handleRefresh = () => {
   else fetchFeed(true)
   resetAllScroll()
 }
-const handleOpenVideo = (video: VideoListItem) => { rememberVideoPlaybackSeed(video); router.push(`/video/${video.id}`) }
 const showLocalFeed = () => {
   channelDataMode.value = 'local'
   viewMode.value = 'feed'

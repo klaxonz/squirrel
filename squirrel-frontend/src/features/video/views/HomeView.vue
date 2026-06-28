@@ -21,7 +21,7 @@
               type="button"
               class="app-hero-main-card__cover-action"
               :aria-label="`播放 ${heroVideo.title}`"
-              @click="handleOpenModal(heroVideo)"
+              @click="openVideo(heroVideo)"
             />
             <div class="app-hero-main-card__scrim" />
 
@@ -34,7 +34,7 @@
                 <button
                   type="button"
                   class="app-hero-cta"
-                  @click="handleOpenModal(heroVideo)"
+                  @click="openVideo(heroVideo)"
                 >
                   <AppIcon name="play" class="app-play-icon size-4" />
                   {{ heroCtaLabel }}
@@ -44,7 +44,7 @@
                   v-if="heroChannelId"
                   type="button"
                   class="app-hero-cta app-hero-cta--ghost"
-                  @click="goToChannelDetail(String(heroChannelId))"
+                  @click="openSubscription(heroChannelId)"
                 >
                   查看频道
                 </button>
@@ -69,7 +69,7 @@
               type="button"
               class="app-hero-feature-card"
               :aria-label="`播放 ${video.title}`"
-              @click="handleOpenModal(video)"
+              @click="openVideo(video)"
             >
               <img :src="video.thumbnail || ''" :alt="video.title" class="app-hero-feature-card__img" loading="lazy" />
               <span class="app-hero-feature-card__content">
@@ -86,20 +86,20 @@
 
       <SpotlightRow
         ref="spotlightRef"
-        @openModal="handleOpenModal"
-        @goToSubscription="goToChannelDetail"
+        @openModal="openVideo"
+        @goToSubscription="openSubscription"
       />
       <ContinueWatching
         ref="continueWatchingRef"
-        @openModal="handleOpenModal"
+        @openModal="openVideo"
         @viewMore="goToContinueWatching"
-        @goToSubscription="goToChannelDetail"
+        @goToSubscription="openSubscription"
         @heroChange="handleHeroChange"
       />
       <SpecialFollowVideos
         ref="specialFollowRef"
-        @openModal="handleOpenModal"
-        @goToSubscription="goToChannelDetail"
+        @openModal="openVideo"
+        @goToSubscription="openSubscription"
         @viewMore="goToSpecialFollowVideos"
       />
     </div>
@@ -115,7 +115,7 @@ import SpecialFollowVideos from '@/features/video/components/feed/SpecialFollowV
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { formatDuration } from '@/shared/lib/dateFormat'
-import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
+import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import { getFeaturedVideos } from '@/shared/api/video'
 import { Logger } from '@/shared/lib/logger'
 import type { VideoHistoryEntry, VideoListItem } from '@/features/video/types/video'
@@ -124,6 +124,7 @@ import type { VideoHistoryEntry, VideoListItem } from '@/features/video/types/vi
 defineOptions({ name: 'HomeView' })
 
 const router = useRouter()
+const { openVideo, openSubscription } = useVideoCardNavigation(router)
 
 // feed rows share a refresh() surface via defineExpose; minimal interface
 // avoids coupling the parent to specific component instances.
@@ -248,15 +249,6 @@ const scrollToFirstRail = () => {
 
 let lastRefreshedAt = 0
 
-const handleOpenModal = (video: { id: string | number }) => {
-  rememberVideoPlaybackSeed(video)
-  router.push(`/video/${video.id}`)
-}
-
-const goToChannelDetail = (id: string | number | null | undefined) => {
-  if (id == null || id === '') return
-  router.push(`/subscription/${id}/all`)
-}
 const goToContinueWatching = () => router.push({ name: 'History', query: { mode: 'continue' } })
 const goToSpecialFollowVideos = () => router.push({ name: 'AllVideos', query: { special: 'yes' } })
 

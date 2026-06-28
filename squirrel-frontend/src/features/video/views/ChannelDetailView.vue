@@ -70,8 +70,8 @@
             :key="childRoute.name"
             :filters="childFilters"
             ref="videoChildRef"
-            @goToSubscription="goToChannelDetail"
-            @openModal="handleOpenModal"
+            @goToSubscription="openSubscription"
+            @openModal="openVideo"
             @error="loadError = String($event || '')"
             @loading-change="isRefreshing = !!$event"
           />
@@ -94,7 +94,7 @@ import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
 import { VIDEO_TABS } from '@/features/video/constants/videos'
-import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
+import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import { onSubscriptionRemoved } from '@/shared/lib/subscriptionEvents'
 import { useRemoteChannel } from '@/features/video/composables/useRemoteChannel'
 import { useRemoteVideoMapping } from '@/features/video/composables/useRemoteVideoMapping'
@@ -104,6 +104,7 @@ defineOptions({ name: 'ChannelDetailView' })
 
 const router = useRouter()
 const route = useRoute()
+const { openVideo, openSubscription } = useVideoCardNavigation(router)
 
 const subscriptionId = computed(() => route.params.id as string)
 const { activeTab, nsfw, sortBy, special, timeRange, duration, contentType, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
@@ -163,13 +164,6 @@ const handleChannelSynced = () => {
   }
   refreshCurrentList()
 }
-
-const handleOpenModal = (video: { id: string | number }) => {
-  rememberVideoPlaybackSeed(video)
-  router.push(`/video/${video.id}`)
-}
-
-const goToChannelDetail = (id: string) => router.push(`/subscription/${id}/all`)
 
 const setSpecialFilter = (value: string) => {
   special.value = value === 'yes' ? 'yes' : 'all'
