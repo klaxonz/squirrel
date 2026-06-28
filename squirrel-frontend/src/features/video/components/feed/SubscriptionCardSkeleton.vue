@@ -1,9 +1,9 @@
 <template>
-  <div class="space-y-3 rounded-lg border border-border/50 bg-background p-3">
-    <div class="flex items-start gap-3">
-      <AppSkeleton width="2.75rem" height="2.75rem" rounded="var(--radius-md)" shimmer />
+  <div class="space-y-2.5 rounded-md border border-border/50 bg-background p-3">
+    <div class="flex items-start gap-2.5">
+      <AppSkeleton width="2.25rem" height="2.25rem" rounded="var(--radius-md)" shimmer />
       <div class="flex-1 space-y-2 py-0.5">
-        <AppSkeleton width="66%" height="1rem" rounded="var(--radius-md)" shimmer />
+        <AppSkeleton width="66%" height="0.875rem" rounded="var(--radius-md)" shimmer />
         <div class="flex gap-2">
           <AppSkeleton width="3.5rem" height="0.75rem" rounded="var(--radius)" shimmer />
           <AppSkeleton width="4rem" height="0.75rem" rounded="var(--radius)" shimmer />

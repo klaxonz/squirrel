@@ -1,16 +1,16 @@
 <template>
-  <aside class="flex w-[320px] shrink-0 flex-col border-r border-border/20 bg-muted/10">
-    <div class="flex h-20 shrink-0 items-center justify-between border-b border-border/20 px-5 bg-background/50 backdrop-blur-sm">
+  <aside class="flex w-[280px] shrink-0 flex-col border-r border-border/20 bg-muted/10">
+    <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/20 px-4 bg-background/50 backdrop-blur-sm">
       <div class="min-w-0 flex flex-col justify-center">
-        <h1 class="app-h2 truncate">订阅频道</h1>
+        <h1 class="app-h3 truncate">订阅频道</h1>
         <p class="mt-0.5 text-xs font-medium text-muted-foreground/70">{{ channels.length }} 个频道</p>
       </div>
-      <Button variant="ghost" size="icon" class="h-9 w-9 rounded-full bg-primary/5 hover:bg-primary/10 text-primary transition-colors" @click="$emit('add')">
-        <AppIcon name="plus" class="w-5 h-5" />
+      <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md bg-primary/5 hover:bg-primary/10 text-primary transition-colors" @click="$emit('add')">
+        <AppIcon name="plus" class="w-4 h-4" />
       </Button>
     </div>
 
-    <div class="shrink-0 space-y-2.5 border-b border-border/10 p-3 bg-background/20 backdrop-blur-sm z-10">
+    <div class="shrink-0 space-y-2 border-b border-border/10 p-3 bg-background/20 backdrop-blur-sm z-10">
       <div class="relative group">
         <AppIcon name="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
         <input
@@ -19,14 +19,14 @@
           type="text"
           placeholder="搜索订阅..."
           aria-label="搜索订阅"
-          class="h-9 w-full rounded-lg border border-transparent bg-muted/40 pl-9 pr-3 text-sm font-medium outline-none transition-all placeholder:text-muted-foreground/50 hover:bg-muted/60 focus:border-primary/30 focus:bg-background focus:ring-2 focus:ring-primary/15"
+          class="h-8 w-full rounded-md border border-transparent bg-muted/40 pl-9 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 hover:bg-muted/60 focus:border-primary/30 focus:bg-background focus:ring-2 focus:ring-primary/15"
         />
       </div>
 
       <div class="flex items-center gap-2">
         <div ref="siteFilterRef" class="relative flex-1">
           <button
-            class="flex h-9 w-full items-center justify-between rounded-lg border border-transparent bg-muted/40 px-3 text-xs font-semibold transition-all outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
+            class="flex h-8 w-full items-center justify-between rounded-md border border-transparent bg-muted/40 px-3 text-xs font-medium transition-all outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
             :class="site ? 'border-primary/20 bg-primary/5 text-foreground' : 'text-muted-foreground'"
             :aria-expanded="siteDropdownOpen"
             aria-haspopup="listbox"
@@ -39,11 +39,11 @@
             <AppIcon name="chevronRight" class="h-3.5 w-3.5 transition-transform duration-200" :class="{ 'rotate-90': siteDropdownOpen }" />
           </button>
 
-          <div v-if="siteDropdownOpen" class="absolute left-0 right-0 top-full z-dropdown mt-1.5 rounded-xl border border-border/50 bg-popover p-1.5 shadow-xl ring-1 ring-black/5">
+          <div v-if="siteDropdownOpen" class="absolute left-0 right-0 top-full z-dropdown mt-1.5 rounded-md border border-border/50 bg-popover p-1.5 shadow-xl ring-1 ring-black/5">
             <div class="max-h-[280px] overflow-y-auto custom-scrollbar pr-1">
-              <button @click="$emit('update:site', ''); $emit('update:siteDropdownOpen', false)" class="flex h-9 w-full items-center rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-accent" :class="!site ? 'text-foreground bg-accent/50' : 'text-muted-foreground'">全部来源</button>
+              <button @click="$emit('update:site', ''); $emit('update:siteDropdownOpen', false)" class="flex h-8 w-full items-center rounded-md px-3 text-left text-xs font-medium transition-colors hover:bg-accent" :class="!site ? 'text-foreground bg-accent/50' : 'text-muted-foreground'">全部来源</button>
               <div class="h-px w-full bg-border/50 my-1"></div>
-              <button v-for="opt in siteOptions" :key="opt.value" @click="$emit('update:site', opt.value); $emit('update:siteDropdownOpen', false)" class="flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium transition-colors hover:bg-accent" :class="site === opt.value ? 'text-foreground bg-accent/50' : 'text-muted-foreground'">
+              <button v-for="opt in siteOptions" :key="opt.value" @click="$emit('update:site', opt.value); $emit('update:siteDropdownOpen', false)" class="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-left text-xs font-medium transition-colors hover:bg-accent" :class="site === opt.value ? 'text-foreground bg-accent/50' : 'text-muted-foreground'">
                 <SiteIcon :site="opt.value" class="h-4 w-4 rounded-sm" />
                 <span class="flex-1 truncate">{{ opt.label }}</span>
               </button>
@@ -53,7 +53,7 @@
 
         <button
           type="button"
-          class="flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-transparent bg-muted/40 px-3 text-xs font-semibold transition-all outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
+          class="flex h-8 flex-1 items-center justify-center gap-2 rounded-md border border-transparent bg-muted/40 px-3 text-xs font-medium transition-all outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
           :class="specialFilter === 'yes' ? 'border-warning/30 bg-warning/10 text-warning' : 'text-muted-foreground hover:text-foreground'"
           :aria-pressed="specialFilter === 'yes'"
           @click="$emit('toggle-special-filter')"
@@ -64,7 +64,7 @@
       </div>
     </div>
 
-    <div ref="listContainerRef" class="flex-1 space-y-1 overflow-y-auto p-3 custom-scrollbar relative">
+    <div ref="listContainerRef" class="flex-1 space-y-1 overflow-y-auto p-2 custom-scrollbar relative">
       <div
         v-for="sub in channels"
         :key="sub.id"
@@ -73,7 +73,7 @@
         @click="$emit('select-channel', sub.id)"
         @keydown.enter.prevent="$emit('select-channel', sub.id)"
         @keydown.space.prevent="$emit('select-channel', sub.id)"
-        class="group relative flex h-[3.25rem] w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-all overflow-hidden"
+        class="group relative flex h-11 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-all overflow-hidden"
         :class="activeChannelId === sub.id ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
       >
         <div class="relative shrink-0">
@@ -87,7 +87,7 @@
         <button
           v-if="sub.is_special_followed"
           type="button"
-          class="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg text-warning hover:bg-warning/10 transition-colors"
+          class="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-md text-warning hover:bg-warning/10 transition-colors"
           aria-label="取消特别关注"
           @click.stop="$emit('toggle-special', sub)"
         >
@@ -97,7 +97,7 @@
         <button
           v-else
           type="button"
-          class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-lg opacity-0 transition-all group-hover:opacity-100 text-muted-foreground/50 hover:text-foreground hover:bg-background/90 backdrop-blur-sm"
+          class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md opacity-0 transition-all group-hover:opacity-100 text-muted-foreground/50 hover:text-foreground hover:bg-background/90 backdrop-blur-sm"
           aria-label="设为特别关注"
           @click.stop="$emit('toggle-special', sub)"
         >
@@ -106,7 +106,7 @@
       </div>
 
       <div v-if="loading" class="space-y-2 p-2">
-        <AppSkeleton v-for="i in 5" :key="i" height="3rem" rounded="var(--radius-xl)" shimmer />
+        <AppSkeleton v-for="i in 5" :key="i" height="2.75rem" rounded="var(--radius-md)" shimmer />
       </div>
 
       <div ref="loadMoreRef" class="flex h-12 w-full items-center justify-center">
@@ -123,8 +123,8 @@
       />
     </div>
 
-    <div class="shrink-0 border-t border-border/30 p-4 bg-background/50 backdrop-blur-sm">
-      <Button variant="outline" class="h-10 w-full justify-start rounded-xl border-border/50 hover:bg-background shadow-sm font-medium" @click="$emit('import')">
+    <div class="shrink-0 border-t border-border/30 p-3 bg-background/50 backdrop-blur-sm">
+      <Button variant="outline" class="h-9 w-full justify-start rounded-md border-border/50 hover:bg-background shadow-sm font-medium" @click="$emit('import')">
         <AppIcon name="download" class="mr-2 h-4 w-4 text-muted-foreground" />
         导入订阅
       </Button>

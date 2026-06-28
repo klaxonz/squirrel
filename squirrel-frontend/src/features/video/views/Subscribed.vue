@@ -24,28 +24,28 @@
     />
 
     <main class="flex min-w-0 flex-1 flex-col bg-background relative">
-      <header class="relative flex shrink-0 items-center justify-between border-b border-border/10 bg-background/70 px-4 py-4 lg:px-8 backdrop-blur-2xl z-20">
-        <div class="flex min-w-0 items-center gap-4">
+      <header class="relative flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-background/70 px-4 lg:px-6 backdrop-blur-2xl z-20">
+        <div class="flex min-w-0 items-center gap-3">
           <div v-if="activeChannel" class="shrink-0 relative group cursor-pointer" @click="openActiveChannelDetail">
-            <SubscriptionAvatar :src="activeChannel.avatar" :name="activeChannel.name" size="xl" class="ring-2 ring-background shadow-md transition-transform group-hover:scale-105" />
-            <div v-if="activeChannel.is_special_followed" class="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-warning/10 text-warning ring-2 ring-background shadow-sm">
-              <AppIcon name="star" class="h-3 w-3 fill-current" />
+            <SubscriptionAvatar :src="activeChannel.avatar" :name="activeChannel.name" size="lg" class="ring-2 ring-background shadow-sm transition-transform group-hover:scale-105" />
+            <div v-if="activeChannel.is_special_followed" class="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-warning/10 text-warning ring-2 ring-background shadow-sm">
+              <AppIcon name="star" class="h-2.5 w-2.5 fill-current" />
             </div>
           </div>
-          <div v-else class="flex h-[3.25rem] w-[3.25rem] shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <AppIcon name="library" class="h-6 w-6" />
+          <div v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <AppIcon name="library" class="h-4 w-4" />
           </div>
 
           <div class="min-w-0 flex flex-col justify-center">
-            <div class="flex min-w-0 items-center gap-3">
-              <h2 class="app-h2 max-w-[400px] truncate cursor-pointer hover:text-primary transition-colors" @click="activeChannel && openActiveChannelDetail()">
+            <div class="flex min-w-0 items-center gap-2">
+              <h2 class="app-h3 max-w-[400px] truncate cursor-pointer hover:text-primary transition-colors" @click="activeChannel && openActiveChannelDetail()">
                 {{ activeChannelName || '订阅动态' }}
               </h2>
               
-              <div v-if="canOpenRemoteChannel" class="flex shrink-0 rounded-lg border border-border/40 bg-muted/50 p-0.5 shadow-sm">
+              <div v-if="canOpenRemoteChannel" class="flex shrink-0 rounded-md border border-border/40 bg-muted/50 p-0.5 shadow-sm">
                 <button
                   type="button"
-                  class="inline-flex h-6 items-center gap-1.5 rounded px-2.5 text-xs font-bold uppercase tracking-wider transition-all"
+                  class="inline-flex h-6 items-center gap-1.5 rounded px-2 text-xs font-semibold transition-all"
                   :class="channelDataMode === 'local' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
                   @click="openLocalChannel"
                 >
@@ -54,7 +54,7 @@
                 </button>
                 <button
                   type="button"
-                  class="inline-flex h-6 items-center gap-1.5 rounded px-2.5 text-xs font-bold uppercase tracking-wider transition-all"
+                  class="inline-flex h-6 items-center gap-1.5 rounded px-2 text-xs font-semibold transition-all"
                   :class="channelDataMode === 'remote' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
                   @click="openRemoteChannel"
                 >
@@ -86,10 +86,10 @@
 
         <div class="flex items-center gap-1.5">
           <!-- View toggle (feed / channels) — segmented control, aligns with FeedToolbar's pill language -->
-          <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-muted/40 p-0.5">
+          <div class="flex shrink-0 items-center gap-0.5 rounded-md border border-border/60 p-0.5">
             <button
-              class="flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="channelDataMode === 'local' && viewMode === 'feed' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              class="flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="channelDataMode === 'local' && viewMode === 'feed' ? 'bg-accent/60 text-foreground' : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'"
               :aria-pressed="channelDataMode === 'local' && viewMode === 'feed'"
               @click="showLocalFeed"
             >
@@ -97,8 +97,8 @@
               最近发布
             </button>
             <button
-              class="flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="channelDataMode === 'local' && viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              class="flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              :class="channelDataMode === 'local' && viewMode === 'grid' ? 'bg-accent/60 text-foreground' : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'"
               :aria-pressed="channelDataMode === 'local' && viewMode === 'grid'"
               @click="showLocalGrid"
             >
@@ -109,7 +109,7 @@
 
           <!-- NSFW toggle — pill, size-8, clear active state + aria -->
           <button
-            class="hidden h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex"
+            class="hidden h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex"
             :class="nsfw === 'all' ? 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground' : 'border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15'"
             :aria-pressed="nsfw !== 'all'"
             :title="nsfw === 'all' ? '显示成年内容' : '隐藏成年内容'"
@@ -121,7 +121,7 @@
 
           <!-- Refresh — size-8 icon pill, matches FeedToolbar refresh -->
           <button
-            class="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/40 text-muted-foreground transition-colors outline-none hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            class="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-accent/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             :disabled="headerLoading"
             title="刷新内容"
             aria-label="刷新内容"
@@ -134,7 +134,7 @@
       </header>
 
       <div ref="feedContainer" class="flex-1 overflow-y-auto custom-scrollbar bg-background">
-        <div ref="gridWrapper" class="mx-auto w-full max-w-[1800px] p-4 lg:p-6 lg:px-8">
+        <div ref="gridWrapper" class="mx-auto w-full max-w-[1800px] p-4 lg:p-6">
           <RemoteChannelVideoGrid
             v-if="channelDataMode === 'remote'"
             :items="remoteItems"
@@ -159,18 +159,22 @@
               <AppEmptyState variant="plain" icon="inbox" title="暂无内容" copy="订阅频道更新后会显示在这里。" />
             </div>
 
-            <div class="app-video-grid app-video-grid--feed pb-12">
+            <div v-if="loadingFeed && !feedItems.length" class="app-video-grid app-video-grid--feed pb-12">
+              <VideoSkeleton v-for="i in videoSkeletonCount" :key="i" :delay="(i - 1) * 50" />
+            </div>
+
+            <div v-else class="app-video-grid app-video-grid--feed pb-12">
               <VideoItem v-for="video in feedItems" :key="video.id" :video="video" show-avatar @openModal="handleOpenVideo" />
             </div>
 
             <div v-if="loadingMoreFeed" class="app-video-grid app-video-grid--feed pt-6">
-              <VideoSkeleton v-for="i in videoSkeletonCount" :key="i" />
+              <VideoSkeleton v-for="i in videoSkeletonCount" :key="i" :delay="(i - 1) * 50" />
             </div>
             <div ref="feedTrigger" class="h-20" />
           </div>
 
           <div v-else class="space-y-8 pb-12">
-            <div class="app-video-grid" style="--app-grid-min: 280px;">
+            <div class="app-video-grid" style="--app-grid-min: 240px;">
               <SubscriptionCard
                 v-for="sub in filteredChannels"
                 :key="sub.id"
@@ -179,7 +183,7 @@
                 @toggleSpecial="toggleSpecialFollow"
               />
             </div>
-            <div v-if="loadingChannels && !list.length" class="app-video-grid" style="--app-grid-min: 280px;">
+            <div v-if="loadingChannels && !list.length" class="app-video-grid" style="--app-grid-min: 240px;">
               <SubscriptionCardSkeleton v-for="i in channelSkeletonCount" :key="i" />
             </div>
             <div v-if="!channelsFinished" ref="gridMoreTrigger" class="h-20" />
@@ -259,12 +263,11 @@ const { count: videoSkeletonCount, attachRef: videoGridRef } = useSkeletonCount(
   cardHeight: 220,
 })
 
-// Subscription card grid: `.app-video-grid` with --app-grid-min: 280px, gap 24px.
-// Cards are taller (avatar header + 3 thumbs + footer ≈ 280px).
+// Subscription card grid: `.app-video-grid` with --app-grid-min: 240px, gap 24px.
 const { count: channelSkeletonCount, attachRef: channelGridRef } = useSkeletonCount({
-  minCardWidth: 280,
+  minCardWidth: 240,
   gap: 24,
-  cardHeight: 280,
+  cardHeight: 220,
 })
 
 // Both branches render inside the same centered wrapper; point each composable's

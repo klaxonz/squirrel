@@ -1,11 +1,11 @@
 <template>
   <div
-    class="group flex cursor-pointer flex-col overflow-hidden rounded-lg border border-border/55 bg-card transition-[border-color,background-color,box-shadow] duration-200 hover:border-primary/40 hover:bg-accent/25"
+    class="group flex cursor-pointer flex-col overflow-hidden rounded-md border border-border/55 bg-card transition-[border-color,background-color,box-shadow] duration-200 hover:border-primary/40 hover:bg-accent/25"
     @click="$emit('click')"
   >
-    <div class="flex items-start gap-3 p-4 pb-2.5">
+    <div class="flex items-start gap-2.5 p-3 pb-2">
       <div class="relative shrink-0">
-        <div class="h-14 w-14 overflow-hidden rounded-md bg-muted ring-1 ring-border/50 group-hover:ring-primary/30 transition-colors">
+        <div class="h-11 w-11 overflow-hidden rounded-md bg-muted ring-1 ring-border/50 group-hover:ring-primary/30 transition-colors">
           <SubscriptionAvatar
             :src="subscription.avatar"
             :name="subscription.name"
@@ -15,9 +15,9 @@
         </div>
       </div>
 
-      <div class="min-w-0 flex-1 pt-0.5">
+      <div class="min-w-0 flex-1">
         <div class="flex items-start justify-between gap-2">
-          <h3 class="app-h3 line-clamp-2 group-hover:text-primary transition-colors">
+          <h3 class="line-clamp-2 text-sm font-semibold leading-snug tracking-normal group-hover:text-primary transition-colors">
             {{ subscription.name }}
           </h3>
           <button
@@ -30,7 +30,7 @@
             <AppIcon :name="subscription.is_special_followed ? 'bookmarkCheck' : 'bookmarkPlus'" class="h-4 w-4" />
           </button>
         </div>
-        <div class="mt-1.5 flex items-center gap-2">
+        <div class="mt-1 flex items-center gap-2">
           <SiteTag :site="subscription.site" class="origin-left scale-[0.85] opacity-90" />
           <span class="text-xs font-medium text-muted-foreground app-mono">{{ subscription.total_videos || 0 }} 视频</span>
           <div v-if="subscription.is_nsfw" class="shrink-0 rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-2xs font-semibold text-destructive ml-auto">
@@ -40,7 +40,7 @@
       </div>
     </div>
 
-    <div v-if="subscription.latest_videos?.length" class="px-4 mt-1 mb-1.5">
+    <div v-if="subscription.latest_videos?.length" class="px-3 mt-1 mb-1.5">
       <div class="grid grid-cols-3 gap-1.5">
         <div
           v-for="video in subscription.latest_videos.slice(0, 3)"
@@ -61,7 +61,7 @@
       </div>
     </div>
 
-    <div class="mt-auto px-4 py-2.5 flex items-center justify-between border-t border-border/40">
+    <div class="mt-auto px-3 py-2 flex items-center justify-between border-t border-border/40">
       <div class="flex items-center gap-1.5 text-xs text-muted-foreground/80">
         <AppIcon name="time" class="h-3.5 w-3.5 opacity-70" />
         <span>{{ lastUpdatedText }}</span>

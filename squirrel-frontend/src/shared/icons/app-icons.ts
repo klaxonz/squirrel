@@ -120,6 +120,8 @@ export const APP_ICON_MAP = {
   back: ArrowLeft,
   bolt: Bolt,
   bookmark: Bookmark,
+  bookmarkCheck: BookmarkCheck,
+  bookmarkPlus: BookmarkPlus,
   brand: Zap,
   breadcrumb: ChevronRight,
   camera: Camera,
