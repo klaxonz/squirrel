@@ -42,6 +42,7 @@ const selectOption = (value) => {
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  flex: 0 0 auto;
   background: hsl(var(--secondary));
   border-radius: var(--radius-md);
   padding: 2px;
@@ -56,6 +57,7 @@ const selectOption = (value) => {
   cursor: pointer;
   font-size: 0.8125rem;
   font-weight: 500;
+  white-space: nowrap;
   transition: all var(--duration-fast) var(--ease-default);
 }
 

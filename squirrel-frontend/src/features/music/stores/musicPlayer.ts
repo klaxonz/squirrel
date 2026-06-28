@@ -318,6 +318,7 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
     try {
       const data = await getMusicPlayUrl({
         hash: track.hash,
+        album_id: track.album_id || undefined,
         album_audio_id: track.album_audio_id || undefined,
         quality: quality.value,
       })
@@ -382,6 +383,7 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
     try {
       const data = await getMusicPlayUrl({
         hash: nextTrack.hash,
+        album_id: nextTrack.album_id || undefined,
         album_audio_id: nextTrack.album_audio_id || undefined,
         quality: quality.value,
       })

@@ -46,11 +46,11 @@
           </div>
 
           <div class="music-login-qr-body">
-            <div class="music-qr-card" :class="{ 'qr-expired': qrStatus === 0 }" @click="qrStatus === 0 && $emit('refresh')">
-              <img v-if="qrLogin?.base64" :src="qrLogin.base64" alt="KuGou login QR code" class="music-qr-img" :style="{ opacity: qrStatus === 0 ? 0.15 : 1, filter: qrStatus === 0 ? 'blur(3px)' : 'none' }" />
+            <div class="music-qr-card" :class="{ 'qr-expired': isExpired }" @click="isExpired && $emit('refresh')">
+              <img v-if="qrLogin?.base64" :src="qrLogin.base64" alt="KuGou login QR code" class="music-qr-img" :style="{ opacity: isExpired ? 0.15 : 1, filter: isExpired ? 'blur(3px)' : 'none' }" />
               <AppSpinner v-else size="lg" class="text-primary" />
               
-              <div v-if="qrStatus === 0" class="music-qr-expired-overlay">
+              <div v-if="isExpired" class="music-qr-expired-overlay">
                 <AppIcon name="refresh" class="h-5 w-5 text-primary mb-1 animate-pulse" />
                 <span class="text-2xs font-bold text-foreground">二维码已失效</span>
                 <span class="text-3xs text-muted-foreground mt-0.5">点击重试</span>
@@ -68,18 +68,21 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import { Button } from '@/shared/ui/button'
 import type { MusicQrLogin } from '@/shared/api/music'
 
-defineProps<{
+const props = defineProps<{
   qrOpen: boolean
   qrLoading: boolean
   qrLogin: MusicQrLogin | null
   qrStatus: number
   qrStatusText: string
 }>()
+
+const isExpired = computed(() => props.qrStatus === 0 && !!props.qrLogin)
 
 defineEmits<{
   'open': []

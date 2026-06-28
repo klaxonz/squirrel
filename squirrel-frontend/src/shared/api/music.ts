@@ -1,5 +1,25 @@
 import { get, post, request } from '@/shared/lib/request'
 
+const desktopMusic = <T>(operation: string, payload?: unknown): Promise<T> | null => {
+  const bridge = window.desktopApp
+  if (bridge?.isDesktop === true && typeof bridge.callMusic === 'function') {
+    return bridge.callMusic<T>(operation, payload)
+  }
+  return null
+}
+
+const musicGet = <T>(operation: string, url: string, params?: unknown) => {
+  return desktopMusic<T>(operation, params) ?? get<T>(url, params)
+}
+
+const musicPost = <T>(operation: string, url: string, data?: unknown) => {
+  return desktopMusic<T>(operation, data) ?? post<T>(url, data)
+}
+
+const musicDelete = <T>(operation: string, url: string, params?: unknown) => {
+  return desktopMusic<T>(operation, params) ?? request<T>({ url, method: 'delete', params })
+}
+
 export type MusicTrack = {
   id: string
   title: string
@@ -137,15 +157,16 @@ export type MusicPlaylistTagResult = {
 }
 
 export type MusicUserPlaylist = {
-  id: string
+  listid: number | string
   name: string
-  cover: string
-  song_count: number
-  is_default: boolean
-  is_collected: boolean
-  list_create_userid: string
-  list_create_listid: string
-  list_create_gid: string
+  pic?: string
+  type?: number | string
+  is_def?: number | string
+  m_count?: number | string
+  count?: number | string
+  list_create_userid?: number | string
+  list_create_listid?: number | string
+  list_create_gid?: string
 }
 
 export type MusicUserPlaylistResult = {
@@ -229,7 +250,7 @@ export const searchMusic = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicSearchResult>('/api/music/search', params)
+  return musicGet<MusicSearchResult>('searchTracks', '/api/music/search', params)
 }
 
 export const searchMusicArtists = (params: {
@@ -237,7 +258,7 @@ export const searchMusicArtists = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicArtistResult>('/api/music/search/artists', params)
+  return musicGet<MusicArtistResult>('searchArtists', '/api/music/search/artists', params)
 }
 
 export const searchMusicAlbums = (params: {
@@ -245,23 +266,23 @@ export const searchMusicAlbums = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicAlbumResult>('/api/music/search/albums', params)
+  return musicGet<MusicAlbumResult>('searchAlbums', '/api/music/search/albums', params)
 }
 
 export const getMusicDefaultSearch = () => {
-  return get<MusicSearchDefaultResult>('/api/music/search/default')
+  return musicGet<MusicSearchDefaultResult>('defaultSearch', '/api/music/search/default')
 }
 
 export const getMusicHotSearch = () => {
-  return get<MusicHotSearchResult>('/api/music/search/hot')
+  return musicGet<MusicHotSearchResult>('hotSearch', '/api/music/search/hot')
 }
 
 export const getMusicSearchSuggestions = (query: string) => {
-  return get<MusicSearchSuggestionResult>('/api/music/search/suggest', { query })
+  return musicGet<MusicSearchSuggestionResult>('searchSuggest', '/api/music/search/suggest', { query })
 }
 
 export const getMusicRanks = () => {
-  return get<MusicRankResult>('/api/music/ranks')
+  return musicGet<MusicRankResult>('ranks', '/api/music/ranks')
 }
 
 export type FmParams = {
@@ -276,20 +297,20 @@ export type FmParams = {
 }
 
 export const getMusicRecommendations = (params?: FmParams) => {
-  return get<MusicSearchResult>('/api/music/recommend', params)
+  return musicGet<MusicSearchResult>('recommendations', '/api/music/recommend', params)
 }
 
 export const getMusicRecommendCard = (params?: {
   card_id?: number
   page_size?: number
 }) => {
-  return get<MusicRecommendCardResult>('/api/music/recommend/card', params)
+  return musicGet<MusicRecommendCardResult>('recommendCard', '/api/music/recommend/card', params)
 }
 
 export const getMusicDailyRecommend = (params?: {
   page_size?: number
 }) => {
-  return get<MusicDailyRecommendResult>('/api/music/recommend/daily', params)
+  return musicGet<MusicDailyRecommendResult>('dailyRecommend', '/api/music/recommend/daily', params)
 }
 
 export const reportFmGarbage = (params: {
@@ -299,7 +320,7 @@ export const reportFmGarbage = (params: {
   mode?: string
   song_pool_id?: string
 }) => {
-  return get<MusicSearchResult>('/api/music/fm/garbage', params)
+  return musicGet<MusicSearchResult>('recommendations', '/api/music/fm/garbage', { ...params, action: 'garbage', is_overplay: true })
 }
 
 export const getMusicRankTracks = (params: {
@@ -308,7 +329,7 @@ export const getMusicRankTracks = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicSearchResult>('/api/music/rank/tracks', params)
+  return musicGet<MusicSearchResult>('rankTracks', '/api/music/rank/tracks', params)
 }
 
 export const getMusicPlaylists = (params: {
@@ -316,15 +337,15 @@ export const getMusicPlaylists = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicPlaylistResult>('/api/music/playlists', params)
+  return musicGet<MusicPlaylistResult>('playlists', '/api/music/playlists', params)
 }
 
 export const getMusicPlaylistTags = () => {
-  return get<MusicPlaylistTagResult>('/api/music/playlist/tags')
+  return musicGet<MusicPlaylistTagResult>('playlistTags', '/api/music/playlist/tags')
 }
 
 export const getMusicSimilarPlaylists = (playlist_id: string) => {
-  return get<MusicPlaylistResult>('/api/music/playlist/similar', { playlist_id })
+  return musicGet<MusicPlaylistResult>('similarPlaylists', '/api/music/playlist/similar', { playlist_id })
 }
 
 export const getMusicPlaylistTracks = (params: {
@@ -332,14 +353,14 @@ export const getMusicPlaylistTracks = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicSearchResult>('/api/music/playlist/tracks', params)
+  return musicGet<MusicSearchResult>('playlistTracks', '/api/music/playlist/tracks', params)
 }
 
 export const getMusicUserPlaylists = (params?: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicUserPlaylistResult>('/api/music/user/playlists', params)
+  return musicGet<MusicUserPlaylistResult>('userPlaylists', '/api/music/user/playlists', params)
 }
 
 export const getMusicUserPlaylistTracks = (params: {
@@ -347,11 +368,11 @@ export const getMusicUserPlaylistTracks = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicSearchResult>('/api/music/user/playlist/tracks', params)
+  return musicGet<MusicSearchResult>('userPlaylistTracks', '/api/music/user/playlist/tracks', params)
 }
 
 export const getMusicArtistDetail = (artist_id: string) => {
-  return get<MusicArtist>('/api/music/artist/detail', { artist_id })
+  return musicGet<MusicArtist>('artistDetail', '/api/music/artist/detail', { artist_id })
 }
 
 export const getMusicArtistTracks = (params: {
@@ -359,7 +380,7 @@ export const getMusicArtistTracks = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicSearchResult>('/api/music/artist/tracks', params)
+  return musicGet<MusicSearchResult>('artistTracks', '/api/music/artist/tracks', params)
 }
 
 export const getMusicArtistAlbums = (params: {
@@ -367,11 +388,11 @@ export const getMusicArtistAlbums = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicAlbumResult>('/api/music/artist/albums', params)
+  return musicGet<MusicAlbumResult>('artistAlbums', '/api/music/artist/albums', params)
 }
 
 export const getMusicAlbumDetail = (album_id: string) => {
-  return get<MusicAlbum>('/api/music/album/detail', { album_id })
+  return musicGet<MusicAlbum>('albumDetail', '/api/music/album/detail', { album_id })
 }
 
 export const getMusicAlbumTracks = (params: {
@@ -379,7 +400,7 @@ export const getMusicAlbumTracks = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicSearchResult>('/api/music/album/tracks', params)
+  return musicGet<MusicSearchResult>('albumTracks', '/api/music/album/tracks', params)
 }
 
 export const getMusicNewSongs = (params?: {
@@ -387,54 +408,54 @@ export const getMusicNewSongs = (params?: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicSearchResult>('/api/music/songs/new', params)
+  return musicGet<MusicSearchResult>('newSongs', '/api/music/songs/new', params)
 }
 
 export const createMusicUserPlaylist = (data: {
   name: string
   is_private?: boolean
 }) => {
-  return post<MusicActionResult>('/api/music/user/playlists', data)
+  return musicPost<MusicActionResult>('createUserPlaylist', '/api/music/user/playlists', data)
 }
 
 export const collectMusicPlaylist = (playlist_id: string) => {
-  return post<MusicActionResult>('/api/music/user/playlists/collect', { playlist_id })
+  return musicPost<MusicActionResult>('collectPlaylist', '/api/music/user/playlists/collect', { playlist_id })
 }
 
 export const deleteMusicUserPlaylist = (list_id: string) => {
-  return request<MusicActionResult>({ url: '/api/music/user/playlists', method: 'delete', params: { list_id } })
+  return musicDelete<MusicActionResult>('deleteUserPlaylist', '/api/music/user/playlists', { list_id })
 }
 
 export const addMusicUserPlaylistTrack = (data: {
   list_id: string
   track: Pick<MusicTrack, 'title' | 'hash' | 'album_id' | 'album_audio_id'>
 }) => {
-  return post<MusicActionResult>('/api/music/user/playlist/tracks', data)
+  return musicPost<MusicActionResult>('addUserPlaylistTrack', '/api/music/user/playlist/tracks', data)
 }
 
 export const removeMusicUserPlaylistTracks = (params: {
   list_id: string
   file_ids: string
 }) => {
-  return request<MusicActionResult>({ url: '/api/music/user/playlist/tracks', method: 'delete', params })
+  return musicDelete<MusicActionResult>('removeUserPlaylistTracks', '/api/music/user/playlist/tracks', params)
 }
 
 export const getMusicUserHistory = (params?: {
   bp?: string
 }) => {
-  return get<MusicSearchResult & { bp?: string }>('/api/music/user/history', params)
+  return musicGet<MusicSearchResult & { bp?: string }>('userHistory', '/api/music/user/history', params)
 }
 
 export const getMusicUserListenRank = (params?: {
   type?: 0 | 1
 }) => {
-  return get<MusicSearchResult>('/api/music/user/listen-rank', params)
+  return musicGet<MusicSearchResult>('userListenRank', '/api/music/user/listen-rank', params)
 }
 
 export const getMusicLatestListenSongs = (params?: {
   page_size?: number
 }) => {
-  return get<MusicSearchResult>('/api/music/latest-songs/listen', params)
+  return musicGet<MusicSearchResult>('latestListenSongs', '/api/music/latest-songs/listen', params)
 }
 
 export const uploadMusicPlayHistory = (data: {
@@ -442,31 +463,24 @@ export const uploadMusicPlayHistory = (data: {
   played_at?: number
   play_count?: number
 }) => {
-  return post<MusicActionResult>('/api/music/playhistory', data)
+  return musicPost<MusicActionResult>('uploadPlayHistory', '/api/music/playhistory', data)
 }
 
 export const getMusicFavoriteCount = (mixsongids: string) => {
-  return get<MusicFavoriteCountResult>('/api/music/favorite/count', { mixsongids })
-}
-
-export const addMusicFavorite = (album_audio_id: string) => {
-  return post<MusicActionResult>('/api/music/favorite', { album_audio_id })
-}
-
-export const removeMusicFavorite = (album_audio_id: string) => {
-  return request<MusicActionResult>({ url: '/api/music/favorite', method: 'delete', params: { album_audio_id } })
+  return musicGet<MusicFavoriteCountResult>('favoriteCount', '/api/music/favorite/count', { mixsongids })
 }
 
 export const getMusicPlayUrl = (params: {
   hash: string
+  album_id?: string
   album_audio_id?: string
   quality?: string
 }) => {
-  return get<MusicPlayUrl>('/api/music/play-url', params)
+  return musicGet<MusicPlayUrl>('playUrl', '/api/music/play-url', params)
 }
 
 export const getMusicTrackClimax = (hash: string) => {
-  return get<MusicTrackClimaxResult>('/api/music/song/climax', { hash })
+  return musicGet<MusicTrackClimaxResult>('trackClimax', '/api/music/song/climax', { hash })
 }
 
 export const getMusicRelatedTracks = (params: {
@@ -476,11 +490,11 @@ export const getMusicRelatedTracks = (params: {
   sort?: 'all' | 'hot' | 'new'
   type?: string
 }) => {
-  return get<MusicSearchResult>('/api/music/song/related', params)
+  return musicGet<MusicSearchResult>('relatedTracks', '/api/music/song/related', params)
 }
 
 export const getMusicTrackMv = (album_audio_id: string) => {
-  return get<MusicTrackMvResult>('/api/music/song/mv', { album_audio_id })
+  return musicGet<MusicTrackMvResult>('trackMv', '/api/music/song/mv', { album_audio_id })
 }
 
 export const getMusicLyric = (params: {
@@ -490,7 +504,7 @@ export const getMusicLyric = (params: {
   album_audio_id?: string
   duration?: number
 }) => {
-  return get<MusicLyricResult>('/api/music/lyric', params)
+  return musicGet<MusicLyricResult>('lyric', '/api/music/lyric', params)
 }
 
 export type MusicUserProfile = {
@@ -506,27 +520,27 @@ export type MusicUserProfile = {
 }
 
 export const getMusicUserProfile = () => {
-  return get<MusicUserProfile>('/api/music/user/profile')
+  return musicGet<MusicUserProfile>('userProfile', '/api/music/user/profile')
 }
 
 export const logoutMusicUser = () => {
-  return post<{ ok: boolean }>('/api/music/user/logout')
+  return musicPost<{ ok: boolean }>('logout', '/api/music/user/logout')
 }
 
 export const getMusicAuthStatus = () => {
-  return get<MusicAuthStatus>('/api/music/auth/status')
+  return musicGet<MusicAuthStatus>('authStatus', '/api/music/auth/status')
 }
 
 export const createMusicQrLogin = () => {
-  return post<MusicQrLogin>('/api/music/auth/qr')
+  return musicPost<MusicQrLogin>('createQrLogin', '/api/music/auth/qr')
 }
 
 export const checkMusicQrLogin = (key: string) => {
-  return get<MusicQrLoginStatus>('/api/music/auth/qr/check', { key })
+  return musicGet<MusicQrLoginStatus>('checkQrLogin', '/api/music/auth/qr/check', { key })
 }
 
 export const logoutMusic = () => {
-  return post<MusicActionResult>('/api/music/auth/logout')
+  return musicPost<MusicActionResult>('logout', '/api/music/auth/logout')
 }
 
 // --- Comments ---
@@ -567,7 +581,7 @@ export const getMusicSongComments = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicCommentResult>('/api/music/comment/song', params)
+  return musicGet<MusicCommentResult>('songComments', '/api/music/comment/song', params)
 }
 
 export const getMusicSongCommentsClassify = (params: {
@@ -576,11 +590,11 @@ export const getMusicSongCommentsClassify = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicCommentResult>('/api/music/comment/song/classify', params)
+  return musicGet<MusicCommentResult>('songCommentsClassify', '/api/music/comment/song/classify', params)
 }
 
 export const getMusicSongCommentsHotword = (mixsongid: string) => {
-  return get<MusicCommentHotwordResult>('/api/music/comment/song/hotword', { mixsongid })
+  return musicGet<MusicCommentHotwordResult>('songCommentsHotword', '/api/music/comment/song/hotword', { mixsongid })
 }
 
 export const getMusicFloorComments = (params: {
@@ -589,7 +603,7 @@ export const getMusicFloorComments = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicCommentResult>('/api/music/comment/floor', params)
+  return musicGet<MusicCommentResult>('floorComments', '/api/music/comment/floor', params)
 }
 
 export const getMusicPlaylistComments = (params: {
@@ -597,7 +611,7 @@ export const getMusicPlaylistComments = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicCommentResult>('/api/music/comment/playlist', params)
+  return musicGet<MusicCommentResult>('playlistComments', '/api/music/comment/playlist', params)
 }
 
 export const getMusicAlbumComments = (params: {
@@ -605,33 +619,29 @@ export const getMusicAlbumComments = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicCommentResult>('/api/music/comment/album', params)
+  return musicGet<MusicCommentResult>('albumComments', '/api/music/comment/album', params)
 }
 
 export const getMusicCommentCounts = (hash: string) => {
-  return get<MusicCommentCount>('/api/music/comment/count', { hash })
+  return musicGet<MusicCommentCount>('commentCount', '/api/music/comment/count', { hash })
 }
 
 // --- Artist Follow ---
 
 export const followMusicArtist = (artist_id: string) => {
-  return post<MusicActionResult>(`/api/music/artist/follow?artist_id=${encodeURIComponent(artist_id)}`)
+  return musicPost<MusicActionResult>('followArtist', `/api/music/artist/follow?artist_id=${encodeURIComponent(artist_id)}`, { artist_id })
 }
 
 export const unfollowMusicArtist = (artist_id: string) => {
-  return request<MusicActionResult>({
-    url: '/api/music/artist/follow',
-    method: 'delete',
-    params: { artist_id },
-  })
+  return musicDelete<MusicActionResult>('unfollowArtist', '/api/music/artist/follow', { artist_id })
 }
 
 export const getMusicFollowedArtistNewSongs = () => {
-  return get<MusicSearchResult>('/api/music/artist/follow/newsongs')
+  return musicGet<MusicSearchResult>('followedArtistNewSongs', '/api/music/artist/follow/newsongs')
 }
 
 export const getMusicFollowedArtists = () => {
-  return get<MusicArtistResult>('/api/music/user/followed-artists')
+  return musicGet<MusicArtistResult>('followedArtists', '/api/music/user/followed-artists')
 }
 
 // --- Video / MV ---
@@ -665,15 +675,15 @@ export type MusicVideoPrivilege = {
 }
 
 export const getMusicVideoDetail = (video_id: string) => {
-  return get<MusicVideo>('/api/music/video/detail', { video_id })
+  return musicGet<MusicVideo>('videoDetail', '/api/music/video/detail', { video_id })
 }
 
 export const getMusicVideoUrl = (video_id: string) => {
-  return get<MusicVideoUrl>('/api/music/video/url', { video_id })
+  return musicGet<MusicVideoUrl>('videoUrl', '/api/music/video/url', { video_id })
 }
 
 export const getMusicVideoPrivilege = (video_id: string) => {
-  return get<MusicVideoPrivilege>('/api/music/video/privilege', { video_id })
+  return musicGet<MusicVideoPrivilege>('videoPrivilege', '/api/music/video/privilege', { video_id })
 }
 
 // --- Discovery & Recommendation Enhancements ---
@@ -682,21 +692,21 @@ export const getMusicNewAlbums = (params?: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicAlbumResult>('/api/music/albums/new', params)
+  return musicGet<MusicAlbumResult>('newAlbums', '/api/music/albums/new', params)
 }
 
 export const getMusicAiRecommend = (params?: {
   page_size?: number
 }) => {
-  return get<MusicSearchResult>('/api/music/recommend/ai', params)
+  return musicGet<MusicSearchResult>('aiRecommend', '/api/music/recommend/ai', params)
 }
 
 export const getMusicEverydayRecommend = () => {
-  return get<MusicSearchResult>('/api/music/recommend/everyday')
+  return musicGet<MusicSearchResult>('everydayRecommend', '/api/music/recommend/everyday')
 }
 
 export const getMusicStyleRecommend = () => {
-  return get<MusicSearchResult>('/api/music/recommend/style')
+  return musicGet<MusicSearchResult>('styleRecommend', '/api/music/recommend/style')
 }
 
 export const getMusicArtistVideos = (params: {
@@ -704,7 +714,7 @@ export const getMusicArtistVideos = (params: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicVideoResult>('/api/music/artist/videos', params)
+  return musicGet<MusicVideoResult>('artistVideos', '/api/music/artist/videos', params)
 }
 
 export type MusicArtistHonour = {
@@ -718,29 +728,29 @@ export type MusicArtistHonourResult = {
 }
 
 export const getMusicArtistHonour = (artist_id: string) => {
-  return get<MusicArtistHonourResult>('/api/music/artist/honour', { artist_id })
+  return musicGet<MusicArtistHonourResult>('artistHonour', '/api/music/artist/honour', { artist_id })
 }
 
 export const getMusicArtistDirectory = (params?: {
   page?: number
   page_size?: number
 }) => {
-  return get<MusicArtistResult>('/api/music/artists/directory', params)
+  return musicGet<MusicArtistResult>('artistDirectory', '/api/music/artists/directory', params)
 }
 
 export const getMusicRankDetail = (rank_id: string) => {
-  return get<{
+  return musicGet<{
     id: string
     name: string
     cover: string
     intro: string
     update_frequency: string
     song_count: number
-  }>('/api/music/rank/detail', { rank_id })
+  }>('rankDetail', '/api/music/rank/detail', { rank_id })
 }
 
 export const getMusicBanner = () => {
-  return get<{
+  return musicGet<{
     items: Array<{
       id: string
       title: string
@@ -748,34 +758,34 @@ export const getMusicBanner = () => {
       type: string
       target_id: string
     }>
-  }>('/api/music/banner')
+  }>('banner', '/api/music/banner')
 }
 
 export const searchMusicComplex = (query: string) => {
-  return get<{
+  return musicGet<{
     songs: MusicTrack[]
     artists: MusicArtist[]
     albums: MusicAlbum[]
-  }>('/api/music/search/complex', { query })
+  }>('complexSearch', '/api/music/search/complex', { query })
 }
 
 export const getMusicUserVip = () => {
-  return get<{
+  return musicGet<{
     is_vip: boolean
     vip_type: number
     vip_expire_time: string
     vip_level: number
-  }>('/api/music/user/vip')
+  }>('userVip', '/api/music/user/vip')
 }
 
 export const sendMusicCaptcha = (phone: string) => {
-  return post<{ ok: boolean }>('/api/music/auth/captcha', { phone })
+  return musicPost<{ ok: boolean }>('sendCaptcha', '/api/music/auth/captcha', { phone })
 }
 
 export const loginMusicCellphone = (phone: string, captcha: string) => {
-  return post<{
+  return musicPost<{
     ok: boolean
     logged_in: boolean
     auth: MusicAuthStatus
-  }>('/api/music/auth/login', { phone, captcha })
+  }>('loginCellphone', '/api/music/auth/login', { phone, captcha })
 }

@@ -7,14 +7,14 @@
     >
       <button
         v-for="playlist in visiblePlaylists"
-        :key="playlist.id"
+        :key="playlist.listid"
         class="music-user-playlist-item"
-        :class="{ 'music-user-playlist-item--active': selectedId === playlist.id }"
+        :class="{ 'music-user-playlist-item--active': selectedId === String(playlist.listid || '') }"
         @click="$emit('select', playlist)"
       >
         <AppIcon name="playlistMusic" class="h-3.5 w-3.5" />
         <span class="truncate">{{ playlist.name }}</span>
-        <span class="music-user-playlist-count">{{ playlist.song_count }}</span>
+        <span class="music-user-playlist-count">{{ playlist.m_count || playlist.count || 0 }}</span>
       </button>
     </TransitionGroup>
 

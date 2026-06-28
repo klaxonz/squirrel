@@ -1,17 +1,5 @@
 <template>
   <div class="music-bar-actions">
-    <button
-      v-if="track?.album_audio_id"
-      class="music-bar-btn"
-      :class="{ 'music-bar-btn--liked': liked }"
-      :title="liked ? '取消喜欢' : '喜欢'"
-      :aria-label="liked ? '取消喜欢' : '喜欢'"
-      :aria-pressed="liked"
-      @click="$emit('like')"
-    >
-      <AppIcon name="heart" class="h-4 w-4" :class="{ 'fill-primary text-primary': liked }" />
-    </button>
-
     <div class="music-bar-volume">
       <button class="music-bar-btn" title="音量" aria-label="静音/取消静音" @click="$emit('toggle-mute')">
         <AppIcon :name="volumeIcon" class="h-4 w-4" />
@@ -41,21 +29,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import type { MusicTrack } from '@/shared/api/music'
 
 const props = withDefaults(defineProps<{
-  track?: MusicTrack | null
-  liked?: boolean
   volume?: number
   queueCount?: number
 }>(), {
-  liked: false,
   volume: 0.7,
   queueCount: 0,
 })
 
 defineEmits<{
-  like: []
   'toggle-mute': []
   volume: [value: number]
   queue: []
@@ -103,10 +86,6 @@ const volumeIcon = computed(() => {
 .music-bar-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
-}
-
-.music-bar-btn--liked {
-  color: hsl(var(--primary));
 }
 
 .music-bar-volume {

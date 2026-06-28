@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "camoufox-js": "^0.10.2",
+    "kugoumusicapi": "https://github.com/MakcRe/KuGouMusicApi/archive/566de02034493af31c5a44f124429cbc1cb11b13.tar.gz",
     "playwright-core": "1.53.1",
     "youtubei.js": "^17.0.1"
   },

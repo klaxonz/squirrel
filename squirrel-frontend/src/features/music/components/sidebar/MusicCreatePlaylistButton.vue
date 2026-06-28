@@ -1,5 +1,9 @@
 <template>
-  <button class="music-create-playlist-btn" @click="showDialog = true">
+  <button
+    class="music-create-playlist-btn"
+    :class="{ 'music-create-playlist-btn--compact': compact }"
+    @click="showDialog = true"
+  >
     <AppIcon name="plus" class="h-3.5 w-3.5" />
     <span>创建歌单</span>
   </button>
@@ -37,6 +41,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 
+withDefaults(defineProps<{
+  compact?: boolean
+}>(), {
+  compact: false,
+})
+
 const emit = defineEmits<{
   create: [name: string]
 }>()
@@ -61,6 +71,7 @@ async function handleCreate() {
 .music-create-playlist-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.375rem;
   padding: 0.375rem 1.25rem;
   margin: 0.25rem 0.5rem;
@@ -79,5 +90,14 @@ async function handleCreate() {
   color: hsl(var(--primary));
   border-color: hsl(var(--primary) / 0.4);
   background: hsl(var(--primary) / 0.05);
+}
+
+.music-create-playlist-btn--compact {
+  width: auto;
+  height: 2.25rem;
+  margin: 0;
+  padding: 0 0.75rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 </style>

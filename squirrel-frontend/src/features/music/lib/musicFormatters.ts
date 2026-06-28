@@ -35,6 +35,10 @@ export function formatPlaybackTime(seconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
 }
 
+export function formatMusicImageUrl(value?: string | null): string {
+  return value ? String(value).replace('{size}', '240') : ''
+}
+
 /** "N 首歌 · N 张专辑" metadata line for an artist card; '歌手' fallback. */
 export function formatArtistMeta(artist: MusicArtist): string {
   const parts: string[] = []

@@ -23,6 +23,7 @@ import {
 } from '@/shared/api/music'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { Logger } from '@/shared/lib/logger'
+import { formatMusicImageUrl } from '@/features/music/lib/musicFormatters'
 
 type TrackPage = { items: MusicTrack[]; total: number }
 
@@ -52,17 +53,17 @@ export function useMusicDetail() {
     if (!selectedUserPlaylist.value) return null
     const pl = selectedUserPlaylist.value
     return {
-      id: pl.id,
+      id: String(pl.listid || ''),
       name: pl.name,
-      cover: pl.cover,
+      cover: formatMusicImageUrl(pl.pic || ''),
       intro: '',
       creator: '',
       play_count: 0,
       collect_count: 0,
       tags: [],
-      list_create_userid: pl.list_create_userid,
-      list_create_listid: pl.list_create_listid,
-      list_create_gid: pl.list_create_gid,
+      list_create_userid: String(pl.list_create_userid || ''),
+      list_create_listid: String(pl.list_create_listid || ''),
+      list_create_gid: String(pl.list_create_gid || ''),
     } as MusicPlaylist
   })
 
@@ -129,7 +130,7 @@ export function useMusicDetail() {
 
     tracksLoading.value = true
     try {
-      const data = await getMusicUserPlaylistTracks({ list_id: playlist.id, page: 1, page_size: 30 }) as TrackPage
+      const data = await getMusicUserPlaylistTracks({ list_id: String(playlist.listid || ''), page: 1, page_size: 30 }) as TrackPage
       tracks.value = data?.items || []
       total.value = data?.total || 0
       tracksHasMore.value = tracks.value.length < total.value
@@ -284,7 +285,7 @@ export function useMusicDetail() {
         }) as TrackPage
       } else if (selectedUserPlaylist.value) {
         data = await getMusicUserPlaylistTracks({
-          list_id: selectedUserPlaylist.value.id,
+          list_id: String(selectedUserPlaylist.value.listid || ''),
           page: currentPage.value,
           page_size: 30,
         }) as TrackPage

@@ -67,43 +67,44 @@
       </header>
       
       <Tabs
-        :value="activeTab"
+        v-model="activeTab"
         class="music-profile-tabs-wrapper"
-        @update:value="activeTab = $event as 'playlists' | 'history' | 'rank'"
       >
-        <TabsList class="music-profile-tabs-list">
-          <TabsTrigger value="playlists" class="music-profile-tab-btn" :class="{ 'active': activeTab === 'playlists' }">
-            <span>我的歌单</span>
-          </TabsTrigger>
-          <TabsTrigger value="history" class="music-profile-tab-btn" :class="{ 'active': activeTab === 'history' }">
-            <span>最近播放</span>
-          </TabsTrigger>
-          <TabsTrigger value="rank" class="music-profile-tab-btn" :class="{ 'active': activeTab === 'rank' }">
-            <span>听歌排行</span>
-          </TabsTrigger>
-        </TabsList>
+        <div class="music-profile-tabs-header">
+          <TabsList class="music-profile-tabs-list">
+            <TabsTrigger value="playlists" class="music-profile-tab-btn">
+              <span>我的歌单</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" class="music-profile-tab-btn">
+              <span>最近播放</span>
+            </TabsTrigger>
+            <TabsTrigger value="rank" class="music-profile-tab-btn">
+              <span>听歌排行</span>
+            </TabsTrigger>
+          </TabsList>
 
-        <div class="music-profile-tab-actions">
-          <button
-            v-if="activeTab !== 'playlists' && currentProfileTracks.length > 0"
-            class="music-chip music-chip--primary"
-            @click="$emit('play-all-profile', false)"
-          >
-            <AppIcon name="play" class="h-3.5 w-3.5" />
-            播放全部
-          </button>
+          <div class="music-profile-tab-actions">
+            <button
+              v-if="activeTab !== 'playlists' && currentProfileTracks.length > 0"
+              class="music-chip music-chip--primary"
+              @click="$emit('play-all-profile', false)"
+            >
+              <AppIcon name="play" class="h-3.5 w-3.5" />
+              播放全部
+            </button>
 
-          <div v-if="activeTab === 'rank'" class="music-profile-rank-pills">
-            <button
-              class="music-profile-rank-pill"
-              :class="{ 'active': rankType === 0 }"
-              @click="$emit('toggle-rank-type', 0)"
-            >最近一周</button>
-            <button
-              class="music-profile-rank-pill"
-              :class="{ 'active': rankType === 1 }"
-              @click="$emit('toggle-rank-type', 1)"
-            >全部累计</button>
+            <div v-if="activeTab === 'rank'" class="music-profile-rank-pills">
+              <button
+                class="music-profile-rank-pill"
+                :class="{ 'active': rankType === 0 }"
+                @click="$emit('toggle-rank-type', 0)"
+              >最近一周</button>
+              <button
+                class="music-profile-rank-pill"
+                :class="{ 'active': rankType === 1 }"
+                @click="$emit('toggle-rank-type', 1)"
+              >全部累计</button>
+            </div>
           </div>
         </div>
       
@@ -117,7 +118,7 @@
             <div v-else class="music-grid">
               <div
                 v-for="playlist in createdPlaylists"
-                :key="playlist.id"
+                :key="playlist.listid"
                 class="music-grid-card"
                 role="button"
                 tabindex="0"
@@ -126,7 +127,7 @@
                 @keydown.space.prevent="$emit('select-playlist', playlist)"
               >
                 <div class="music-source-cover-wrap">
-                  <img v-if="playlist.cover" :src="playlist.cover" :alt="playlist.name" class="music-source-cover" />
+                  <img v-if="playlist.pic" :src="formatMusicImageUrl(playlist.pic)" :alt="playlist.name" class="music-source-cover" />
                   <div v-else class="music-source-cover">
                     <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
                   </div>
@@ -135,7 +136,7 @@
                   </div>
                 </div>
                 <span class="music-grid-card-title">{{ playlist.name }}</span>
-                <span class="music-grid-card-subtitle">{{ playlist.song_count }} 首歌曲</span>
+                <span class="music-grid-card-subtitle">{{ playlist.m_count || playlist.count || 0 }} 首歌曲</span>
               </div>
             </div>
           </div>
@@ -148,7 +149,7 @@
             <div v-else class="music-grid">
               <div
                 v-for="playlist in collectedPlaylists"
-                :key="playlist.id"
+                :key="playlist.listid"
                 class="music-grid-card"
                 role="button"
                 tabindex="0"
@@ -157,7 +158,7 @@
                 @keydown.space.prevent="$emit('select-playlist', playlist)"
               >
                 <div class="music-source-cover-wrap">
-                  <img v-if="playlist.cover" :src="playlist.cover" :alt="playlist.name" class="music-source-cover" />
+                  <img v-if="playlist.pic" :src="formatMusicImageUrl(playlist.pic)" :alt="playlist.name" class="music-source-cover" />
                   <div v-else class="music-source-cover">
                     <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
                   </div>
@@ -166,7 +167,7 @@
                   </div>
                 </div>
                 <span class="music-grid-card-title">{{ playlist.name }}</span>
-                <span class="music-grid-card-subtitle">{{ playlist.song_count }} 首歌曲</span>
+                <span class="music-grid-card-subtitle">{{ playlist.m_count || playlist.count || 0 }} 首歌曲</span>
               </div>
             </div>
           </div>
@@ -213,7 +214,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import MusicTrackList from './MusicTrackList.vue'
-import { formatRegTime } from '@/features/music/lib/musicFormatters'
+import { formatMusicImageUrl, formatRegTime } from '@/features/music/lib/musicFormatters'
 import type { MusicUserProfile, MusicUserPlaylist, MusicTrack, MusicAuthStatus } from '@/shared/api/music'
 
 const props = defineProps<{
@@ -243,8 +244,8 @@ defineEmits<{
 
 const activeTab = ref<'playlists' | 'history' | 'rank'>('playlists')
 
-const createdPlaylists = computed(() => props.userPlaylists.filter(pl => !pl.is_collected))
-const collectedPlaylists = computed(() => props.userPlaylists.filter(pl => pl.is_collected))
+const createdPlaylists = computed(() => props.userPlaylists.filter(pl => Number(pl.type || 0) !== 1))
+const collectedPlaylists = computed(() => props.userPlaylists.filter(pl => Number(pl.type || 0) === 1))
 const currentProfileTracks = computed(() => activeTab.value === 'history' ? props.history : props.listenRank)
 
 // ponytail: formatRegTime (Kugou registration-time normaliser, handles both
@@ -384,10 +385,17 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
 
 .music-profile-tabs-wrapper {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.music-profile-tabs-header {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.75rem;
+  padding: 0.75rem 0;
   border-bottom: 1px solid hsl(var(--border) / 0.2);
 }
 
@@ -421,7 +429,7 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
   color: hsl(var(--foreground));
 }
 
-.music-profile-tab-btn.active {
+.music-profile-tab-btn[data-state="active"] {
   color: hsl(var(--primary));
   background: hsl(var(--primary) / 0.1);
   border-color: hsl(var(--primary) / 0.3);

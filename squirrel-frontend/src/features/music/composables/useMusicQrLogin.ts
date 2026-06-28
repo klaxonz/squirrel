@@ -6,7 +6,7 @@ export function useMusicQrLogin() {
   const isOpen = ref(false)
   const loading = ref(false)
   const qrLogin = ref<MusicQrLogin | null>(null)
-  const status = ref(0)
+  const status = ref(-1)
   const authStatus = ref<MusicAuthStatus | null>(null)
   let timer: ReturnType<typeof setInterval> | null = null
 
@@ -21,7 +21,7 @@ export function useMusicQrLogin() {
   async function open() {
     isOpen.value = true
     loading.value = true
-    status.value = 0
+    status.value = -1
     qrLogin.value = null
 
     try {

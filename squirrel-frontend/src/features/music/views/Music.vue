@@ -10,6 +10,7 @@
         />
         <MusicCreatePlaylistButton
           v-if="authStatus?.logged_in && activeView === 'profile'"
+          compact
           class="music-top-create"
           @create="handleCreatePlaylist"
         />
@@ -436,13 +437,18 @@ const musicNavOptions = computed(() =>
 // ponytail: bridge useMusicQrLogin.authStatus -> useMusicAuth.authStatus so
 // the logged_in watcher (loadUserPlaylists) fires after a successful scan,
 // preserving the pre-refactor side effect.
-watch(() => qrLogin.authStatus.value, (status) => {
-  if (status) authStatus.value = status
+watch(() => qrLogin.authStatus.value, async (status) => {
+  if (!status) return
+  authStatus.value = status
+  if (status.logged_in) {
+    navigateTo('profile')
+    await loadProfile()
+  }
 })
 
 const favoriteTracks = computed(() => {
   const favoritePlaylist = userPlaylists.value.find(p => p.name === '我喜欢' || p.name === '我喜欢的音乐')
-  if (favoritePlaylist && selectedUserPlaylist.value?.id === favoritePlaylist.id) {
+  if (favoritePlaylist && String(selectedUserPlaylist.value?.listid || '') === String(favoritePlaylist.listid || '')) {
     return tracks.value
   }
   return []
@@ -536,7 +542,7 @@ async function handleSelectPlaylist(playlist: MusicPlaylist) {
 async function handleSelectUserPlaylist(playlist: MusicUserPlaylist) {
   await selectUserPlaylist(playlist)
   navigateTo('user-playlist-detail')
-  targetUserPlaylistId.value = playlist.id
+  targetUserPlaylistId.value = String(playlist.listid || '')
 }
 
 async function handleSelectRank(rank: MusicRank) {
@@ -690,16 +696,6 @@ async function handleLogout() {
 <style scoped>
 .music-top-create {
   flex: 0 0 auto;
-}
-
-.music-top-create :deep(.music-create-playlist-btn),
-.music-create-playlist-btn.music-top-create {
-  width: auto;
-  height: 2.25rem;
-  margin: 0;
-  padding: 0 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.75rem;
 }
 
 .music-content {

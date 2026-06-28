@@ -64,10 +64,8 @@
 
           <MusicBarActions
             :track="store.currentTrack"
-            :liked="isTrackLiked"
             :volume="store.volume"
             :queue-count="store.queue.length"
-            @like="toggleLike"
             @toggle-mute="toggleMute"
             @volume="store.setVolume"
             @queue="showQueue = !showQueue"
@@ -176,7 +174,6 @@ import MusicBarActions from './player/MusicBarActions.vue'
 import MusicQueuePanel from './player/MusicQueuePanel.vue'
 import MusicImmersivePlayer from './player/MusicImmersivePlayer.vue'
 import { useMusicComments } from '@/features/music/composables/useMusicComments'
-import { useMusicFavorites } from '@/features/music/composables/useMusicFavorites'
 import { useImmersivePlayer } from '@/features/music/composables/useImmersivePlayer'
 import { useAudioElementBridge } from '@/features/music/composables/useAudioElementBridge'
 import { useQueueReorder } from '@/features/music/composables/useQueueReorder'
@@ -202,13 +199,6 @@ const { onDragStart, onDrop } = useQueueReorder({ store })
 // ponytail: immersive overlay toggle + body-scroll-lock live in
 // useImmersivePlayer. The lock is always released on close and on unmount.
 const { showImmersive, openImmersive, closeImmersive } = useImmersivePlayer()
-
-// ponytail: track-favorite (like) state + optimistic toggle + loading guard
-// live in useMusicFavorites, keyed by album_audio_id. Any track surface that
-// renders a heart can reuse it.
-const { isTrackLiked, toggleLike } = useMusicFavorites({
-  currentTrack: computed(() => store.currentTrack),
-})
 
 // ponytail: comments logic used to be hand-rolled inline (~50 lines mirroring
 // useMusicComments). The composable now owns load/loadMore/count/switch/

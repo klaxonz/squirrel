@@ -31,6 +31,7 @@ interface DesktopAppBridge {
   resolveBilibiliSubtitles?: DesktopSubtitleResolver
   searchRemoteVideos?: DesktopRemoteSearchResolver
   getRemoteChannel?: DesktopRemoteChannelResolver
+  callMusic?: <T = unknown>(operation: string, payload?: unknown) => Promise<T>
   getYouPornProfileAvatar?: (profileUrl: string) => Promise<string>
   getSiteLoginStatus?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   openSiteLogin?: (siteName: string) => Promise<DesktopSiteLoginStatus>

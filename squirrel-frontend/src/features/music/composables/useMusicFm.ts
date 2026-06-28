@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { getMusicRecommendations, reportFmGarbage, addMusicUserPlaylistTrack, type MusicTrack } from '@/shared/api/music'
+import { getMusicRecommendations, reportFmGarbage, addMusicUserPlaylistTrack, type MusicTrack, type MusicUserPlaylist } from '@/shared/api/music'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { Logger } from '@/shared/lib/logger'
 import { isApiError } from '@/shared/lib/apiError'
@@ -26,7 +26,7 @@ export function useMusicFm() {
 
   const queueLen = computed(() => Math.max(0, batch.value.length - batchIndex.value - 1))
 
-  async function loadBatch(isNext = false, autoPlay = true, _userPlaylists: { id: string; name: string }[] = []) {
+  async function loadBatch(isNext = false, autoPlay = true, _userPlaylists: MusicUserPlaylist[] = []) {
     loading.value = true
     error.value = ''
 
@@ -73,10 +73,10 @@ export function useMusicFm() {
     }
   }
 
-  async function like(track: MusicTrack, userPlaylists: { id: string; name: string }[]) {
+  async function like(track: MusicTrack, userPlaylists: MusicUserPlaylist[]) {
     if (!track.hash || hearted.value[track.hash] || liking.value) return
 
-    const targetId = userPlaylists.find(pl => pl.name === '我喜欢')?.id
+    const targetId = userPlaylists.find(pl => pl.name === '我喜欢')?.listid
     if (!targetId) {
       error.value = '未找到「我喜欢」歌单，请先登录酷狗账号'
       return false
@@ -89,7 +89,7 @@ export function useMusicFm() {
 
     try {
       await addMusicUserPlaylistTrack({
-        list_id: targetId,
+        list_id: String(targetId),
         track: {
           title: track.title,
           hash: track.hash,

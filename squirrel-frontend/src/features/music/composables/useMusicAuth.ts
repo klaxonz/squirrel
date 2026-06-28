@@ -28,7 +28,7 @@ export function useMusicAuth() {
   const profileListenRank = ref<MusicTrack[]>([])
   const profileHistoryLoading = ref(false)
   const profileRankLoading = ref(false)
-  const profileRankType = ref<0 | 1>(0)
+  const profileRankType = ref<0 | 1>(1)
 
   async function loadAuthStatus() {
     try {
@@ -47,7 +47,7 @@ export function useMusicAuth() {
       const data = await getMusicUserPlaylists()
       userPlaylists.value = data?.items || []
       if (userPlaylists.value.length && !targetUserPlaylistId.value) {
-        targetUserPlaylistId.value = userPlaylists.value[0].id
+        targetUserPlaylistId.value = String(userPlaylists.value[0].listid || '')
       }
     } catch (err) {
       Logger.warn('loadUserPlaylists failed', err)
