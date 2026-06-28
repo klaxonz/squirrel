@@ -34,14 +34,6 @@ let authStore = {
 }
 
 const DEFAULT_COOKIE = String(process.env.KUGOU_MUSIC_COOKIE || '')
-const AUTHLESS_OPERATIONS = new Set([
-  'trackClimax',
-  'relatedTracks',
-  'favoriteCount',
-  'commentCount',
-  'sendCaptcha',
-  'loginCellphone',
-])
 
 export class DesktopMusicServiceError extends Error {
   constructor(message, details = undefined) {
@@ -791,9 +783,6 @@ export const callDesktopMusic = async (operation, payload = {}) => {
   const fn = service[operation]
   if (typeof fn !== 'function') {
     throw new DesktopMusicServiceError(`Unsupported music operation: ${operation}`)
-  }
-  if (AUTHLESS_OPERATIONS.has(operation)) {
-    return fn(payload || {})
   }
   return fn(payload || {})
 }
