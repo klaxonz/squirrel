@@ -15,10 +15,8 @@ import {
   normalizeComment,
   normalizeHotSearch,
   normalizeMv,
-  normalizePlaylist,
   normalizePlaylistTags,
   normalizeRank,
-  normalizeSuggestionItems,
   normalizeTrack,
   normalizeVideo,
   parseLrc,
@@ -261,10 +259,23 @@ const service = {
   },
 
   async playlists({ category_id = 0, page = 1, page_size = 20 }) {
-    const payload = await requestKugou('top_playlist', { category_id, page, pagesize: page_size, withsong: 0 })
+    // top_playlist API requires login (returns error_code: 200101)
+    // Fall back to theme_playlist which provides public playlists
+    const payload = await requestKugou('theme_playlist', {})
     const data = payload.data && typeof payload.data === 'object' ? payload.data : {}
-    const rows = Array.isArray(data.special_list) ? data.special_list : []
-    return { items: rows.map(normalizePlaylist), page, page_size, has_more: Boolean(data.has_next) }
+    const themeList = Array.isArray(data.theme_list) ? data.theme_list : []
+    // Convert theme playlist to standard playlist format
+    const items = themeList.map(item => ({
+      id: String(item.id),
+      specialid: String(item.id),
+      specialname: item.title,
+      name: item.title,
+      imgurl: item.pic_net_save || item.pic,
+      cover: item.pic_net_save || item.pic,
+      intro: item.intro,
+      play_count: item.play_count,
+    }))
+    return { items, page, page_size, has_more: false }
   },
 
   async playlistTags() {
@@ -276,7 +287,7 @@ const service = {
   async similarPlaylists({ playlist_id }) {
     const payload = await requestKugou('playlist_similar', { ids: playlist_id })
     const data = payload.data && typeof payload.data === 'object' ? payload.data : payload
-    return { items: firstList(data, ['info', 'list', 'lists', 'special_list', 'data']).map(normalizePlaylist) }
+    return { items: firstList(data, ['info', 'list', 'lists', 'special_list', 'data']) }
   },
 
   async playlistTracks({ playlist_id, page = 1, page_size = 20 }) {

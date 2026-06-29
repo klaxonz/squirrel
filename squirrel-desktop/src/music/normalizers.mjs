@@ -198,23 +198,6 @@ export const normalizeRank = (row = {}) => ({
   play_count: Number.parseInt(row.play_times || 0, 10),
 })
 
-export const normalizePlaylist = (row = {}) => {
-  const tags = Array.isArray(row.tags) ? row.tags : []
-  return {
-    id: String(row.global_collection_id || ''),
-    name: row.specialname || '',
-    cover: formatImageUrl(row.flexible_cover || row.imgurl || ''),
-    intro: row.intro || '',
-    creator: row.nickname || '',
-    play_count: Number.parseInt(row.play_count || 0, 10),
-    collect_count: Number.parseInt(row.collectcount || 0, 10),
-    tags: tags.filter((tag) => tag && typeof tag === 'object' && tag.tag_name).map((tag) => tag.tag_name),
-    list_create_userid: String(row.list_create_userid || row.suid || ''),
-    list_create_listid: String(row.list_create_listid || row.specialid || ''),
-    list_create_gid: String(row.list_create_gid || row.global_collection_id || ''),
-  }
-}
-
 export const normalizePlaylistTags = (rows) => {
   const tags = []
   for (const group of rows) {
