@@ -6,7 +6,6 @@
   "workspaces": [
     "squirrel-frontend",
     "squirrel-desktop",
-    "squirrel-music-api",
     "squirrel-site-runtimes/youtube/src/squirrel_youtube/node"
   ],
   "scripts": {

@@ -138,18 +138,6 @@ class CookieCloudSettings(BaseSettings):
         return bool(self.url and self.uuid and self.password)
 
 
-class KugouMusicSettings(BaseSettings):
-    """KuGou music sidecar settings (env prefix ``KUGOU_MUSIC_``).
-
-    Music search/playback is unavailable when ``api_base_url`` is empty.
-    """
-
-    model_config = SettingsConfigDict(env_prefix='KUGOU_MUSIC_', env_file_encoding='utf-8', extra='ignore')
-
-    api_base_url: str = ''
-    cookie: str = ''
-
-
 # --------------------------------------------------------------------------- #
 # Top-level settings — flat fields without a clean group, plus grouped accessors.
 # --------------------------------------------------------------------------- #
@@ -210,10 +198,6 @@ class Settings(BaseSettings):
     def cookiecloud(self) -> CookieCloudSettings:
         return _get_cookiecloud_settings()
 
-    @property
-    def kugou_music(self) -> KugouMusicSettings:
-        return _get_kugou_music_settings()
-
     # --- environment / derived helpers --- #
 
     @property
@@ -272,8 +256,6 @@ class Settings(BaseSettings):
             warnings.append(
                 'COOKIECLOUD not configured (set COOKIECLOUD_URL/UUID/PASSWORD) — CookieCloud sync unavailable'
             )
-        if not self.kugou_music.api_base_url:
-            warnings.append('KUGOU_MUSIC_API_BASE_URL not set — Kugou music search/playback unavailable')
         return warnings
 
 
@@ -307,11 +289,6 @@ def _get_cookiecloud_settings() -> CookieCloudSettings:
     return CookieCloudSettings()
 
 
-@lru_cache
-def _get_kugou_music_settings() -> KugouMusicSettings:
-    return KugouMusicSettings()
-
-
 def reset_sub_settings_cache() -> None:
     """Clear all sub-settings caches (test-only; allows env switching between cases)."""
     _get_redis_settings.cache_clear()
@@ -319,7 +296,6 @@ def reset_sub_settings_cache() -> None:
     _get_meili_settings.cache_clear()
     _get_crawl_settings.cache_clear()
     _get_cookiecloud_settings.cache_clear()
-    _get_kugou_music_settings.cache_clear()
 
 
 # --------------------------------------------------------------------------- #

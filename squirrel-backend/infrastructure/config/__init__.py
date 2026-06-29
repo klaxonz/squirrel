@@ -12,7 +12,6 @@ a lazy proxy on the submodule.
 from infrastructure.config.settings import (
     CookieCloudSettings,
     CrawlSettings,
-    KugouMusicSettings,
     MeiliSettings,
     PostgresSettings,
     RedisSettings,
@@ -23,7 +22,6 @@ from infrastructure.config.settings import (
 __all__ = [
     'CookieCloudSettings',
     'CrawlSettings',
-    'KugouMusicSettings',
     'MeiliSettings',
     'PostgresSettings',
     'RedisSettings',

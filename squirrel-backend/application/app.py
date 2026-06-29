@@ -15,7 +15,6 @@ from starlette.staticfiles import StaticFiles
 from application.lifespan import lifespan
 from application.routes.health import router as health_router
 from application.routes.logs import router as logs_router
-from domains.music.interfaces.http import router as music_router
 from domains.playlist.interfaces.http import router as playlist_router
 from domains.rss.interfaces.http import router as rss_router
 from domains.subscription.interfaces.http import router as subscription_router
@@ -152,7 +151,6 @@ _ROUTERS: tuple[APIRouter, ...] = (
     user_router,
     search_router,
     playlist_router,
-    music_router,
     rss_router,
     system_config_router,
     site_plugins_router,

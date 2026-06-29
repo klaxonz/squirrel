@@ -67,7 +67,6 @@ Write-Host "[2/3] Setting up node_modules links..." -ForegroundColor Cyan
 $Workspaces = @(
   "squirrel-frontend",
   "squirrel-desktop",
-  "squirrel-music-api",
   "squirrel-site-runtimes/youtube/src/squirrel_youtube/node"
 )
 

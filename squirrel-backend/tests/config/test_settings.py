@@ -188,17 +188,6 @@ def test_cookiecloud_settings_unconfigured_when_any_field_missing(monkeypatch):
     assert CookieCloudSettings().is_configured is False
 
 
-def test_kugou_music_settings_read_env_prefix(monkeypatch):
-    from infrastructure.config.settings import KugouMusicSettings
-
-    monkeypatch.setenv('KUGOU_MUSIC_API_BASE_URL', 'http://localhost:3000')
-    monkeypatch.setenv('KUGOU_MUSIC_COOKIE', 'token=abc;userid=1')
-
-    k = KugouMusicSettings()
-    assert k.api_base_url == 'http://localhost:3000'
-    assert k.cookie == 'token=abc;userid=1'
-
-
 def test_config_package_reexports_classes():
     """The package re-exports the public settings classes/helpers (not the singleton).
 
@@ -215,7 +204,6 @@ def test_config_package_reexports_classes():
         'MeiliSettings',
         'CrawlSettings',
         'CookieCloudSettings',
-        'KugouMusicSettings',
         'get_settings',
     ):
         assert hasattr(pkg, name), f'missing re-export: {name}'
@@ -256,22 +244,19 @@ def test_optional_feature_warnings_empty_when_all_configured(isolated_settings, 
     monkeypatch.setenv('COOKIECLOUD_URL', 'https://cc.example.com')
     monkeypatch.setenv('COOKIECLOUD_UUID', 'u')
     monkeypatch.setenv('COOKIECLOUD_PASSWORD', 'p')
-    monkeypatch.setenv('KUGOU_MUSIC_API_BASE_URL', 'http://localhost:3000')
 
     s = isolated_settings.settings
     assert s.optional_feature_warnings() == []
 
 
-def test_optional_feature_warnings_reports_missing_cookiecloud_and_kugou(isolated_settings, monkeypatch):
+def test_optional_feature_warnings_reports_missing_cookiecloud(isolated_settings, monkeypatch):
     monkeypatch.setenv('JWT_SECRET_KEY', 'k')
     monkeypatch.delenv('COOKIECLOUD_URL', raising=False)
     monkeypatch.delenv('COOKIECLOUD_UUID', raising=False)
     monkeypatch.delenv('COOKIECLOUD_PASSWORD', raising=False)
-    monkeypatch.delenv('KUGOU_MUSIC_API_BASE_URL', raising=False)
 
     warnings = isolated_settings.settings.optional_feature_warnings()
     assert any('CookieCloud' in w for w in warnings)
-    assert any('KUGOU_MUSIC' in w for w in warnings)
 
 
 def test_settings_construction_does_not_log(isolated_settings, monkeypatch, caplog):
@@ -282,9 +267,8 @@ def test_settings_construction_does_not_log(isolated_settings, monkeypatch, capl
     import logging
 
     monkeypatch.setenv('JWT_SECRET_KEY', 'k')
-    # Leave CookieCloud / Kugou unset so the old model_post_init WOULD have warned.
+    # Leave CookieCloud unset so the old model_post_init WOULD have warned.
     monkeypatch.delenv('COOKIECLOUD_PASSWORD', raising=False)
-    monkeypatch.delenv('KUGOU_MUSIC_API_BASE_URL', raising=False)
 
     with caplog.at_level(logging.WARNING, logger='infrastructure.config.settings'):
         _ = isolated_settings.settings
