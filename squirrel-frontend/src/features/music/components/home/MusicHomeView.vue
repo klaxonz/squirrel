@@ -35,10 +35,10 @@
       <MusicCardGrid v-else layout="grid-auto">
         <MusicCard
           v-for="item in playlists.slice(0, 8)"
-          :key="item.id"
-          :cover="item.cover"
-          :title="item.name"
-          :meta="item.play_count ? formatCount(item.play_count) + '次播放' : item.creator"
+          :key="item.specialid"
+          :cover="item.imgurl"
+          :title="item.specialname"
+          :meta="item.play_count ? formatCount(item.play_count) + '次播放' : item.nickname"
           size="md"
           variant="playlist"
           @select="$emit('select-playlist', item)"

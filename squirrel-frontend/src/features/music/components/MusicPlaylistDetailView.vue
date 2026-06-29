@@ -2,7 +2,7 @@
   <div class="music-playlist-detail">
     <div class="music-playlist-topbar">
       <div class="music-playlist-topbar-left">
-        <h1 class="music-playlist-topbar-title">{{ playlist.name }}</h1>
+        <h1 class="music-playlist-topbar-title">{{ playlist.specialname || playlist.name }}</h1>
         <span class="music-playlist-topbar-meta">{{ total }} 首</span>
       </div>
       <div class="music-playlist-topbar-actions">
@@ -42,12 +42,12 @@
       <div class="music-playlist-similar-grid">
         <article
           v-for="item in similar"
-          :key="item.id"
+          :key="item.specialid"
           class="music-playlist-similar-card"
           @click="$emit('change', item)"
         >
-          <img :src="item.cover" :alt="item.name" loading="lazy" />
-          <h3>{{ item.name }}</h3>
+          <img :src="item.imgurl" :alt="item.specialname" loading="lazy" />
+          <h3>{{ item.specialname }}</h3>
         </article>
       </div>
     </section>

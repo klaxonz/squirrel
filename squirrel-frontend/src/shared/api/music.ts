@@ -126,17 +126,23 @@ export type MusicRankResult = {
 }
 
 export type MusicPlaylist = {
-  id: string
-  name: string
-  cover: string
-  intro: string
-  creator: string
-  play_count: number
-  collect_count: number
-  tags: string[]
-  list_create_userid: string
-  list_create_listid: string
-  list_create_gid: string
+  specialid?: string
+  global_collection_id?: string
+  id?: string
+  specialname?: string
+  name?: string
+  imgurl?: string
+  cover?: string
+  intro?: string
+  nickname?: string
+  creator?: string
+  play_count?: number
+  collectcount?: number
+  collect_count?: number
+  tags?: Array<{ tag_name: string }>
+  list_create_userid?: string
+  list_create_listid?: string
+  list_create_gid?: string
 }
 
 export type MusicPlaylistResult = {

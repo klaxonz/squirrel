@@ -29,7 +29,7 @@
     <div v-else class="music-grid">
       <div
         v-for="playlist in playlists"
-        :key="playlist.id"
+        :key="playlist.specialid"
         class="music-grid-card"
         role="button"
         tabindex="0"
@@ -38,7 +38,7 @@
         @keydown.space.prevent="$emit('select', playlist)"
       >
         <div class="music-source-cover-wrap">
-          <img v-if="playlist.cover" :src="playlist.cover" :alt="playlist.name" class="music-source-cover" />
+          <img v-if="playlist.imgurl" :src="playlist.imgurl" :alt="playlist.specialname" class="music-source-cover" />
           <div v-else class="music-source-cover">
             <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
           </div>
@@ -46,8 +46,8 @@
             <AppIcon name="play" class="h-6 w-6 text-primary-foreground fill-current" />
           </div>
         </div>
-        <span class="music-grid-card-title">{{ playlist.name }}</span>
-        <span class="music-grid-card-subtitle">{{ playlist.creator || '歌单' }}</span>
+        <span class="music-grid-card-title">{{ playlist.specialname }}</span>
+        <span class="music-grid-card-subtitle">{{ playlist.nickname || '歌单' }}</span>
       </div>
     </div>
     <div class="flex justify-center mt-6" v-if="hasMore">

@@ -95,11 +95,13 @@ export function useMusicDetail() {
     currentPage.value = 1
     tracks.value = []
 
+    const playlistId = String(playlist.specialid || playlist.global_collection_id || playlist.id || '')
+
     tracksLoading.value = true
     try {
       const [tracksData, similarData] = await Promise.all([
-        getMusicPlaylistTracks({ playlist_id: playlist.id, page: 1, page_size: 30 }),
-        getMusicSimilarPlaylists(playlist.id).catch((err: unknown) => {
+        getMusicPlaylistTracks({ playlist_id: playlistId, page: 1, page_size: 30 }),
+        getMusicSimilarPlaylists(playlistId).catch((err: unknown) => {
           Logger.warn('selectPlaylist similar failed', err)
           return [] as MusicPlaylist[]
         }),
@@ -278,8 +280,9 @@ export function useMusicDetail() {
           page_size: 30,
         }) as TrackPage
       } else if (selectedPlaylist.value) {
+        const pl = selectedPlaylist.value
         data = await getMusicPlaylistTracks({
-          playlist_id: selectedPlaylist.value.id,
+          playlist_id: String(pl.specialid || pl.global_collection_id || pl.id || ''),
           page: currentPage.value,
           page_size: 30,
         }) as TrackPage
