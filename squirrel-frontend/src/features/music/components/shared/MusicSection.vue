@@ -44,20 +44,6 @@ defineEmits<{
   font-weight: 800;
   color: hsl(var(--foreground));
   letter-spacing: -0.02em;
-  position: relative;
-  padding-left: 0.75rem;
-}
-
-.music-section-title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 70%;
-  background: hsl(var(--primary));
-  border-radius: 2px;
 }
 
 .music-section-more {

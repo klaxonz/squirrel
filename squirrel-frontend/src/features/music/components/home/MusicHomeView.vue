@@ -37,7 +37,7 @@
           v-for="item in playlists.slice(0, 8)"
           :key="item.specialid"
           :cover="item.imgurl"
-          :title="item.specialname"
+          :title="item.specialname || item.name || '未命名歌单'"
           :meta="item.play_count ? formatCount(item.play_count) + '次播放' : item.nickname"
           size="md"
           variant="playlist"
@@ -141,6 +141,5 @@ function handlePlayTrack(track: MusicTrack) {
   padding: 0.875rem 2rem 2.5rem;
   width: 100%;
   max-width: 1480px;
-  margin: 0;
 }
 </style>

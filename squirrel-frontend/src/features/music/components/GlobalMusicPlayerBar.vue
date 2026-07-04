@@ -284,15 +284,17 @@ function removeQueueItem(index: number) {
 .music-bar {
   position: fixed;
   bottom: 0.875rem;
-  left: 1rem;
-  right: 1rem;
+  left: 50%;
+  width: calc(100vw - 2rem);
+  max-width: 1480px;
   z-index: 60;
   border: 1px solid hsl(var(--border) / 0.5);
   border-radius: 0.75rem;
   background: hsl(var(--background) / 0.94);
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
-  transition: left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(-50%);
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 10px 32px hsl(var(--foreground) / 0.1);
   overflow: hidden;
 }
@@ -304,10 +306,10 @@ function removeQueueItem(index: number) {
 
 .music-bar--mini {
   left: 0;
-  right: auto;
   bottom: 0;
   width: var(--sidebar-width);
   max-width: none;
+  transform: none;
   border-top: 1px solid hsl(var(--border) / 0.5);
   border-right: 1px solid hsl(var(--border));
   border-radius: 0;
@@ -318,13 +320,13 @@ function removeQueueItem(index: number) {
 
 @media (min-width: 768px) {
   .music-bar {
-    left: calc(var(--sidebar-width) + 2rem);
-    right: 2rem;
-    max-width: 1480px;
+    left: calc(var(--sidebar-width) + (100vw - var(--sidebar-width)) / 2);
+    width: min(1480px, calc(100vw - var(--sidebar-width) - 4rem));
   }
 
   .music-bar--mini {
     left: 0;
+    width: var(--sidebar-width);
   }
 }
 

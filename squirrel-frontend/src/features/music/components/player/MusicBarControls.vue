@@ -150,14 +150,15 @@ const repeatTitle = computed(() => {
   width: 2rem;
   height: 2rem;
   border-radius: 9999px;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  box-shadow: 0 3px 10px hsl(var(--foreground) / 0.14);
+  border: 1px solid hsl(var(--primary) / 0.35);
+  background: hsl(var(--primary) / 0.14);
+  color: hsl(var(--primary));
 }
 
 .music-bar-btn--play:hover {
   transform: scale(1.05);
-  box-shadow: 0 4px 14px hsl(var(--foreground) / 0.18);
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary));
 }
 
 .music-bar-btn--play:active {
