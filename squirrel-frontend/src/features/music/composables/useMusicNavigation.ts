@@ -20,8 +20,15 @@ export type MusicView =
 export function useMusicNavigation() {
   const activeView = ref<MusicView>('home')
   const viewHistory = ref<MusicView[]>([])
+  const rootViews: MusicView[] = ['home', 'ranks', 'playlists', 'profile']
 
   function navigateTo(view: MusicView) {
+    if (rootViews.includes(view)) {
+      activeView.value = view
+      viewHistory.value = []
+      return
+    }
+
     if (view !== activeView.value) {
       viewHistory.value.push(activeView.value)
       if (viewHistory.value.length > 20) {

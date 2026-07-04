@@ -1,6 +1,7 @@
 <template>
   <RouterLink
     :to="item.path"
+    replace
     class="sidebar-item group"
     :class="[{ 'is-active': isActive }, collapsed ? 'is-collapsed' : '']"
     :title="collapsed ? item.name : undefined"

@@ -3,7 +3,6 @@ import { useRouter, useRoute } from 'vue-router'
 import type { RouteLocationRaw } from 'vue-router'
 import { findNavigationItemByKey } from '@/shared/constants/sidebar'
 import type { AppNavKey } from '@/shared/constants/sidebar'
-import { Logger } from '@/shared/lib/logger'
 
 interface RouteSnapshot {
   fullPath: string
@@ -14,14 +13,10 @@ interface RouteSnapshot {
 }
 
 // ── singleton state (shared across all composable instances) ──
-let initialPath: string | null = null
 const lastNonVideoRoute = ref<RouteSnapshot | null>(null)
-const forwardDepth = ref(0)
-let isInternalNavigation = false
 const internalBackAvailable = ref(false)
 let internalBackHandler: (() => boolean) | null = null
-
-const canGoForward = computed(() => forwardDepth.value > 0)
+const hasInternalBack = computed(() => internalBackAvailable.value)
 
 function captureRouteSnapshot(route: {
   fullPath: string
@@ -43,58 +38,25 @@ export function useNavigationHistory() {
   const router = useRouter()
   const route = useRoute()
 
-  if (initialPath === null) {
-    initialPath = route.path
-  }
-
-  const canGoBack = computed(() => internalBackAvailable.value || route.path !== initialPath)
+  const canGoBack = computed(() => (
+    internalBackAvailable.value
+    || Boolean(route.meta?.backTarget)
+    || (isVideoPage.value && Boolean(videoBackTarget.value))
+  ))
 
   async function goBack() {
     if (internalBackAvailable.value && internalBackHandler?.()) {
-      forwardDepth.value = 0
       return
     }
-    isInternalNavigation = true
-    const pathBefore = route.fullPath
-    try {
-      await router.back()
-    } catch (err) {
-      Logger.warn('[useNavigationHistory] goBack failed', err)
-      isInternalNavigation = false
-      // No history to go back to — fall back to the video source page if any.
-      if (videoBackTarget.value) router.push(videoBackTarget.value)
-      return
-    }
-    if (route.fullPath !== pathBefore) {
-      forwardDepth.value++
-    } else {
-      // No history to go back to (e.g. deep-linked/refreshed page).
-      isInternalNavigation = false
-      // For a video page with a recorded source, jump there as a fallback.
-      if (isVideoPage.value && videoBackTarget.value) {
-        router.push(videoBackTarget.value)
-      }
-    }
-  }
 
-  async function goForward() {
-    if (forwardDepth.value <= 0) return
-    isInternalNavigation = true
-    const pathBefore = route.fullPath
-    try {
-      await router.forward()
-    } catch (err) {
-      Logger.warn('[useNavigationHistory] goForward failed', err)
-      forwardDepth.value = 0
-      isInternalNavigation = false
+    if (isVideoPage.value && videoBackTarget.value) {
+      await router.push(videoBackTarget.value)
       return
     }
-    if (route.fullPath !== pathBefore) {
-      forwardDepth.value = Math.max(0, forwardDepth.value - 1)
-    } else {
-      // No forward entries available — reset
-      forwardDepth.value = 0
-      isInternalNavigation = false
+
+    const target = route.meta?.backTarget as RouteLocationRaw | undefined
+    if (target) {
+      await router.push(target)
     }
   }
 
@@ -109,13 +71,6 @@ export function useNavigationHistory() {
     }),
     (current, previous) => {
       if (!previous || previous.path === current.path) return
-
-      // User-initiated navigation (not via title bar back/forward)
-      // invalidates the forward stack.
-      if (!isInternalNavigation) {
-        forwardDepth.value = 0
-      }
-      isInternalNavigation = false
 
       // Record the page the user came from when entering a video page.
       // Video-to-video navigation (via replace) should not overwrite the original source.
@@ -167,9 +122,8 @@ export function useNavigationHistory() {
 
   return {
     canGoBack,
-    canGoForward,
     goBack,
-    goForward,
+    hasInternalBack,
     videoBackLabel,
     videoBackTarget,
     isVideoPage,

@@ -56,6 +56,8 @@ export interface RouteContextDescriptor {
   sectionLabel: string
   pageTitle: string
   breadcrumbs: BreadcrumbItem[]
+  isTopLevel: boolean
+  backTarget?: RouteLocationRaw
 }
 
 export const DEFAULT_SETTINGS_TAB: SettingsTabKey = 'appearance'
@@ -335,10 +337,14 @@ export function resolveRouteContext(route: RouteLocationNormalizedLoaded): Route
     breadcrumbs[0] = { label: pageTitle }
   }
 
+  const backTarget = route.meta?.backTarget as RouteLocationRaw | undefined
+  const isTopLevel = Boolean(navItem && route.path === navItem.path)
+
   return {
     sectionLabel,
     pageTitle,
     breadcrumbs,
+    isTopLevel,
+    backTarget,
   }
 }
-

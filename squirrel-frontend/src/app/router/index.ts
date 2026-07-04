@@ -202,6 +202,7 @@ const routes: RouteRecordRaw[] = [
     meta: createSearchMeta('频道', {
       navKey: 'subscribed',
       sectionLabel: '订阅',
+      backTarget: { name: 'Subscribed' },
       keepAlive: true,
       keepAliveComponent: 'ChannelDetailView',
       contextParentLabel: '频道',
@@ -252,6 +253,7 @@ const routes: RouteRecordRaw[] = [
     meta: createNoSearchMeta('远端频道', {
       navKey: 'videos',
       sectionLabel: '视频',
+      backTarget: { name: 'AllVideos', query: { mode: 'remote' } },
       keepAlive: true,
       keepAliveComponent: 'RemoteChannelDetail',
       scrollable: true,
@@ -300,6 +302,7 @@ const routes: RouteRecordRaw[] = [
     meta: createSearchMeta('视频播放', {
       navKey: 'videos',
       sectionLabel: '视频',
+      backTarget: { name: 'AllVideos' },
       searchRedirectName: 'AllVideos',
       searchPersistKey: 'VideosView',
       scrollable: true,
@@ -392,4 +395,3 @@ router.beforeEach(async (to, from, next) => {
 })
 
 export default router
-

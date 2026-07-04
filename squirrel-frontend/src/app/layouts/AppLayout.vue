@@ -112,12 +112,9 @@ watch(() => route.fullPath, async () => {
 })
 
 function handleKeydown(e: KeyboardEvent) {
-  if (e.altKey && e.key === 'ArrowLeft') {
+  if (e.altKey && e.key === 'ArrowLeft' && nav.canGoBack.value) {
     e.preventDefault()
     nav.goBack()
-  } else if (e.altKey && e.key === 'ArrowRight') {
-    e.preventDefault()
-    nav.goForward()
   }
 }
 

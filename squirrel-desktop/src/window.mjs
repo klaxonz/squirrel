@@ -110,16 +110,6 @@ const buildContextMenuTemplate = (mainWindow, params) => {
   template.push(
     { type: 'separator' },
     {
-      label: '后退',
-      enabled: mainWindow.webContents.canGoBack(),
-      click: () => mainWindow.webContents.goBack(),
-    },
-    {
-      label: '前进',
-      enabled: mainWindow.webContents.canGoForward(),
-      click: () => mainWindow.webContents.goForward(),
-    },
-    {
       label: '重新加载',
       click: () => reloadRenderer(mainWindow),
     },
@@ -150,6 +140,11 @@ const installMainWindowBehaviors = (mainWindow) => {
 
   mainWindow.on('maximize', syncDesktopWindowState)
   mainWindow.on('unmaximize', syncDesktopWindowState)
+  mainWindow.on('app-command', (event, command) => {
+    if (command === 'browser-backward' || command === 'browser-forward') {
+      event.preventDefault()
+    }
+  })
   mainWindow.webContents.on('did-finish-load', () => {
     syncDesktopWindowState()
   })
