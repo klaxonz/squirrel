@@ -299,11 +299,11 @@ const appNavigation = useNavigationHistory()
 const toast = useToast()
 
 const {
-  activeView,
-  navigateTo,
-  goBack: goBackInMusic,
-  canGoBack: canGoBackInMusic,
-} = useMusicNavigation()
+    activeView,
+    navigateTo,
+    goBack: _goBackInMusic,
+    canGoBack: _canGoBackInMusic,
+  } = useMusicNavigation()
 
 const {
   playlists: homePlaylists,
@@ -420,7 +420,6 @@ const {
 const qrLogin = useMusicQrLogin()
 
 const viewAlbums = ref<MusicAlbum[]>([])
-let unregisterInternalBack: (() => void) | null = null
 
 const sidebarActiveMode = computed(() => {
   if (activeView.value === 'playlist-detail') return 'playlists'
@@ -469,20 +468,13 @@ watch(() => uiStore.searchTrigger, () => {
   }
 })
 
-watch(canGoBackInMusic, (available) => {
-  appNavigation.setInternalBackAvailable(available)
-}, { immediate: true })
-
 onMounted(() => {
   loadAuthStatus()
   loadHomeData()
-  unregisterInternalBack = appNavigation.registerInternalBackHandler(goBackInMusic)
 })
 
 onUnmounted(() => {
   qrLogin.close()
-  unregisterInternalBack?.()
-  unregisterInternalBack = null
   appNavigation.setInternalBackAvailable(false)
 })
 
