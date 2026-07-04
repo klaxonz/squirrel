@@ -671,7 +671,7 @@ const {
 const {
   displayedQualities,
   qualityTagLabel,
-  qualityMenuLabel,
+  qualityMenuLabel: _qualityMenuLabel,
   isQualityActive,
 } = useQualityDisplay({
   qualities,

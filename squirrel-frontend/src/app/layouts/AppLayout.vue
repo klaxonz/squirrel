@@ -14,13 +14,14 @@
       <main class="flex-1 min-w-0 flex flex-col relative">
         <!-- 4. App Header (Fixed Height) -->
         <AppHeader class="shrink-0 z-40" />
-        
+
         <!-- 5. Scrollable Content Area -->
         <div
           ref="mainScrollRef"
           class="flex-1 overflow-y-auto overflow-x-hidden relative scrollbar overflow-anchor-none"
           :class="musicBarPadding"
           :id="MAIN_SCROLL_ID"
+          @scroll.passive="handleScroll"
         >
           <GlobalVideoPlayerHost />
           <slot />
@@ -52,12 +53,6 @@ import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 import { useUIStore } from '@/shared/stores/ui'
 import { MAIN_SCROLL_ID } from '@/shared/composables/useMainScrollRoot'
 
-type ScrollRouteState = {
-  fullPath: string
-  keepAlive: boolean
-}
-
-const scrollPositions = new Map<string, number>()
 const { isDesktop: isDesktopClient } = useDesktopBridge()
 const isDesktop = isDesktopClient()
 const themeStore = useThemeStore()
@@ -75,59 +70,94 @@ const hasActiveMusicBar = computed(() =>
 const musicBarPadding = computed(() =>
   route.name === 'Music' && hasActiveMusicBar.value ? 'pb-20' : ''
 )
+
 const mainScrollRef = ref<HTMLElement | null>(null)
-let activeScrollRoute: ScrollRouteState = {
-  fullPath: route.fullPath,
-  keepAlive: route.meta.keepAlive === true,
-}
-let previousHistoryPosition = Number(window.history.state?.position ?? 0)
+let scrollSaveTimer: ReturnType<typeof setTimeout> | null = null
+let detachIpcListener: (() => void) | null = null
+let detachDesktopNavListener: (() => void) | null = null
 
-const getScrollRouteState = (): ScrollRouteState => ({
-  fullPath: route.fullPath,
-  keepAlive: route.meta.keepAlive === true,
-})
-
-const restoreScrollForRoute = async (scrollRoute: ScrollRouteState, restoreSavedPosition: boolean) => {
-  await nextTick()
+function handleScroll() {
   const scrollEl = mainScrollRef.value
   if (!scrollEl) return
-
-  scrollEl.scrollTop = restoreSavedPosition
-    ? scrollPositions.get(scrollRoute.fullPath) ?? 0
-    : 0
+  if (scrollSaveTimer) clearTimeout(scrollSaveTimer)
+  scrollSaveTimer = setTimeout(() => {
+    nav.saveScrollPosition(scrollEl.scrollTop)
+  }, 120)
 }
 
 watch(() => route.fullPath, async () => {
-  const currentHistoryPosition = Number(window.history.state?.position ?? previousHistoryPosition)
+  await nextTick()
   const scrollEl = mainScrollRef.value
-  // Save scroll position for ALL pages (not just keep-alive) so back-navigation
-  // restores where the user left off regardless of caching.
-  if (scrollEl) {
-    scrollPositions.set(activeScrollRoute.fullPath, scrollEl.scrollTop)
-  }
-
-  activeScrollRoute = getScrollRouteState()
-  await restoreScrollForRoute(activeScrollRoute, currentHistoryPosition < previousHistoryPosition)
-  previousHistoryPosition = currentHistoryPosition
+  if (!scrollEl) return
+  // 用 entry 里记录的 scrollY 恢复滚动位置 —— 取代旧的 "按 history.position
+  // 比较前后大小估算" 的脆弱方案。
+  const saved = nav.current.value?.scrollY ?? 0
+  scrollEl.scrollTop = saved
 })
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+  return target.isContentEditable
+}
+
 function handleKeydown(e: KeyboardEvent) {
-  if (e.altKey && e.key === 'ArrowLeft' && nav.canGoBack.value) {
-    e.preventDefault()
-    nav.goBack()
+  if (isEditableTarget(e.target)) return
+  const mod = e.metaKey || e.ctrlKey
+  // Back: Alt+← (cross-platform) or Cmd/Ctrl+[ (macOS-standard)
+  if ((e.altKey && e.key === 'ArrowLeft') || (mod && e.key === '[')) {
+    if (nav.canGoBack.value) {
+      e.preventDefault()
+      void nav.goBack()
+    }
+    return
+  }
+  // Forward: Alt+→ or Cmd/Ctrl+]
+  if ((e.altKey && e.key === 'ArrowRight') || (mod && e.key === ']')) {
+    if (nav.canGoForward.value) {
+      e.preventDefault()
+      void nav.goForward()
+    }
+    return
+  }
+  // Esc: pop detail page if applicable
+  if (e.key === 'Escape' && nav.canGoBack.value) {
+    // Only intercept Esc on detail-like pages; let inner dialogs dismiss first.
+    const tag = (e.target as HTMLElement | null)?.tagName
+    if (tag === 'BODY' || tag === 'MAIN' || tag === 'DIV') {
+      e.preventDefault()
+      void nav.goBack()
+    }
   }
 }
 
 onMounted(() => {
   themeStore.init()
   window.addEventListener('keydown', handleKeydown)
+
+  // Electron 鼠标侧键 / `app-command: browser-backward|forward` 在
+  // window.mjs 里 forward 给渲染进程的 `desktop:navigate` 事件。
+  const bridge = (window as unknown as { desktopApp?: {
+    onNavigate?: (cb: (direction: 'back' | 'forward') => void) => () => void
+  } }).desktopApp
+  if (bridge?.onNavigate) {
+    detachDesktopNavListener = bridge.onNavigate((direction) => {
+      if (direction === 'back' && nav.canGoBack.value) {
+        void nav.goBack()
+      } else if (direction === 'forward' && nav.canGoForward.value) {
+        void nav.goForward()
+      }
+    })
+  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
+  if (scrollSaveTimer) clearTimeout(scrollSaveTimer)
+  detachIpcListener?.()
+  detachDesktopNavListener?.()
+  detachIpcListener = null
+  detachDesktopNavListener = null
 })
 </script>
-
-<style scoped>
-/* No extra styles needed, relying on Tailwind's utility classes */
-</style>
