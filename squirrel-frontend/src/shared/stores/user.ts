@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { getUserMe, loginUser, logoutUser, registerUser, updateUserMe } from '@/shared/api'
 import { clearAuthStorage } from '@/shared/lib/auth'
 import { isApiError } from '@/shared/lib/apiError'
+import { resetReactive as resetNavigationHistory } from '@/shared/lib/navigationHistory'
 import type { User } from '@/shared/types/user'
 
 export type { User }
@@ -84,6 +85,8 @@ export const useUserStore = defineStore('user', () => {
       // logout best-effort — clear local state regardless
     }
     clearState()
+    // 登出后清空应用层历史栈，避免下一个账号能"前进"到上一个账号浏览过的页面。
+    resetNavigationHistory()
   }
 
   const updateProfile = async (profile: Record<string, unknown>): Promise<ResultTuple<User>> => {

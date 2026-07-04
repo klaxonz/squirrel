@@ -125,6 +125,7 @@ import { Input } from '@/shared/ui/input'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { useUserStore } from '@/shared/stores/user'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
+import { resetReactive as resetNavigationHistory } from '@/shared/lib/navigationHistory'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -162,6 +163,9 @@ const handleSubmit = async () => {
     return
   }
 
+  // 登录后丢弃登录前累积的所有导航历史，避免「我刚才看了哪些页面」泄漏给
+  // 下一次会话。
+  resetNavigationHistory()
   await router.push('/')
 }
 </script>
