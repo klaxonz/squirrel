@@ -4,6 +4,13 @@ import { useUserStore } from '@/shared/stores/user'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
 import { Logger } from '@/shared/lib/logger'
 import { isApiError } from '@/shared/lib/apiError'
+import {
+  currentEntry,
+  patchCurrentEntryReactive,
+  pushEntryReactive,
+  replaceEntryReactive,
+  resetReactive,
+} from '@/shared/lib/navigationHistory'
 
 const HomeView = () => import('@/features/video/views/HomeView.vue')
 const VideosView = () => import('@/features/video/views/VideosView.vue')
@@ -52,6 +59,8 @@ const SidebarMode = {
 
 const PUBLIC_ROUTES = ['/login', '/register', '/server-config']
 
+const APP_TITLE = '归仓'
+
 const createSearchMeta = (title: string, overrides = {}) => ({
   ...baseSearchMeta,
   title,
@@ -87,6 +96,7 @@ const routes: RouteRecordRaw[] = [
       keepAlive: true,
       keepAliveComponent: 'HomeView',
       transitionKey: 'home',
+      historyStrategy: 'push',
     }),
   },
   {
@@ -99,14 +109,15 @@ const routes: RouteRecordRaw[] = [
       keepAlive: true,
       keepAliveComponent: 'VideosView',
       transitionKey: 'videos',
+      historyStrategy: 'push',
     }),
     children: [
-      createVideoTabRoute('all', 'AllVideos', '全部视频', { navKey: 'videos', sectionLabel: '视频' }),
-      createVideoTabRoute('unread', 'UnreadVideos', '未读视频', { navKey: 'videos', sectionLabel: '视频' }),
-      createVideoTabRoute('read', 'ReadVideos', '已读视频', { navKey: 'videos', sectionLabel: '视频' }),
-      createVideoTabRoute('preview', 'PreviewVideos', '预览视频', { navKey: 'videos', sectionLabel: '视频' }),
-      createVideoTabRoute('liked', 'LikedVideos', '喜欢的视频', { navKey: 'videos', sectionLabel: '视频' }),
-      createVideoTabRoute('later', 'LaterVideos', '稍后再看', { navKey: 'videos', sectionLabel: '视频' }),
+      createVideoTabRoute('all', 'AllVideos', '全部视频', { navKey: 'videos', sectionLabel: '视频', historyStrategy: 'replace' }),
+      createVideoTabRoute('unread', 'UnreadVideos', '未读视频', { navKey: 'videos', sectionLabel: '视频', historyStrategy: 'replace' }),
+      createVideoTabRoute('read', 'ReadVideos', '已读视频', { navKey: 'videos', sectionLabel: '视频', historyStrategy: 'replace' }),
+      createVideoTabRoute('preview', 'PreviewVideos', '预览视频', { navKey: 'videos', sectionLabel: '视频', historyStrategy: 'replace' }),
+      createVideoTabRoute('liked', 'LikedVideos', '喜欢的视频', { navKey: 'videos', sectionLabel: '视频', historyStrategy: 'replace' }),
+      createVideoTabRoute('later', 'LaterVideos', '稍后再看', { navKey: 'videos', sectionLabel: '视频', historyStrategy: 'replace' }),
     ],
     redirect: { name: 'AllVideos' },
   },
@@ -126,6 +137,7 @@ const routes: RouteRecordRaw[] = [
       search: 'subscribed',
       searchEvent: 'search:subscribed',
       searchPlaceholder: '搜索订阅源',
+      historyStrategy: 'push',
     }),
   },
   {
@@ -135,6 +147,7 @@ const routes: RouteRecordRaw[] = [
     meta: createNoSearchMeta('RSS 内容源', {
       navKey: 'rss-sources',
       sectionLabel: '内容源',
+      historyStrategy: 'push',
     }),
   },
   {
@@ -153,6 +166,7 @@ const routes: RouteRecordRaw[] = [
     meta: createNoSearchMeta(tab.label, {
       navKey: 'settings',
       sectionLabel: '设置',
+      historyStrategy: 'replace',
     }),
   })),
   {
@@ -162,6 +176,7 @@ const routes: RouteRecordRaw[] = [
     meta: createNoSearchMeta('站点', {
       navKey: 'site-runtimes',
       sectionLabel: '站点',
+      historyStrategy: 'push',
     }),
   },
   {
@@ -171,19 +186,17 @@ const routes: RouteRecordRaw[] = [
     meta: createNoSearchMeta('日志查看器', {
       navKey: 'logs',
       sectionLabel: '日志',
+      historyStrategy: 'push',
     }),
   },
   {
     path: '/profile',
     name: 'Profile',
     component: Profile,
-    // No navKey: profile is reached via the header avatar, not the sidebar, and
-    // there is intentionally no `profile` NAV_ITEM. A stray `navKey: 'profile'`
-    // here was orphaned meta — it matched nothing in NAV_ITEMS, so it neither
-    // highlighted a sidebar item nor contributed to breadcrumbs. Dropping it
-    // keeps the meta honest; resolveRouteContext still yields sectionLabel/pageTitle.
     meta: createNoSearchMeta('个人主页', {
+      navKey: 'profile',
       sectionLabel: '个人',
+      historyStrategy: 'push',
     }),
   },
   {
@@ -193,6 +206,7 @@ const routes: RouteRecordRaw[] = [
     meta: createNoSearchMeta('计划任务', {
       navKey: 'scheduled-tasks',
       sectionLabel: '定时',
+      historyStrategy: 'push',
     }),
   },
   {
@@ -202,11 +216,11 @@ const routes: RouteRecordRaw[] = [
     meta: createSearchMeta('频道', {
       navKey: 'subscribed',
       sectionLabel: '订阅',
-      backTarget: { name: 'Subscribed' },
       keepAlive: true,
       keepAliveComponent: 'ChannelDetailView',
       contextParentLabel: '频道',
       transitionKey: 'channel',
+      historyStrategy: 'push',
     }),
     children: [
       {
@@ -218,31 +232,37 @@ const routes: RouteRecordRaw[] = [
         navKey: 'subscribed',
         sectionLabel: '订阅',
         contextParentLabel: '频道',
+        historyStrategy: 'replace',
       }),
       createVideoTabRoute('unread', 'SubscriptionUnreadVideos', '未读视频', {
         navKey: 'subscribed',
         sectionLabel: '订阅',
         contextParentLabel: '频道',
+        historyStrategy: 'replace',
       }),
       createVideoTabRoute('read', 'SubscriptionReadVideos', '已读视频', {
         navKey: 'subscribed',
         sectionLabel: '订阅',
         contextParentLabel: '频道',
+        historyStrategy: 'replace',
       }),
       createVideoTabRoute('preview', 'SubscriptionPreviewVideos', '预览视频', {
         navKey: 'subscribed',
         sectionLabel: '订阅',
         contextParentLabel: '频道',
+        historyStrategy: 'replace',
       }),
       createVideoTabRoute('liked', 'SubscriptionLikedVideos', '喜欢的视频', {
         navKey: 'subscribed',
         sectionLabel: '订阅',
         contextParentLabel: '频道',
+        historyStrategy: 'replace',
       }),
       createVideoTabRoute('later', 'SubscriptionLaterVideos', '稍后再看', {
         navKey: 'subscribed',
         sectionLabel: '订阅',
         contextParentLabel: '频道',
+        historyStrategy: 'replace',
       }),
     ],
   },
@@ -253,11 +273,11 @@ const routes: RouteRecordRaw[] = [
     meta: createNoSearchMeta('远端频道', {
       navKey: 'videos',
       sectionLabel: '视频',
-      backTarget: { name: 'AllVideos', query: { mode: 'remote' } },
       keepAlive: true,
       keepAliveComponent: 'RemoteChannelDetail',
       scrollable: true,
       hideScrollbar: true,
+      historyStrategy: 'push',
     }),
   },
   {
@@ -270,6 +290,7 @@ const routes: RouteRecordRaw[] = [
       search: 'history',
       searchEvent: 'search:history',
       searchPlaceholder: '搜索历史',
+      historyStrategy: 'push',
     }),
   },
   {
@@ -279,6 +300,7 @@ const routes: RouteRecordRaw[] = [
     meta: createNoSearchMeta('播放列表', {
       navKey: 'playlists',
       sectionLabel: '播放列表',
+      historyStrategy: 'push',
     }),
   },
   {
@@ -293,6 +315,7 @@ const routes: RouteRecordRaw[] = [
       search: 'music',
       searchEvent: 'search:music',
       searchPlaceholder: '搜索歌曲、歌手、专辑',
+      historyStrategy: 'push',
     }),
   },
   {
@@ -302,12 +325,13 @@ const routes: RouteRecordRaw[] = [
     meta: createSearchMeta('视频播放', {
       navKey: 'videos',
       sectionLabel: '视频',
-      backTarget: { name: 'AllVideos' },
       searchRedirectName: 'AllVideos',
       searchPersistKey: 'VideosView',
       scrollable: true,
       hideScrollbar: true,
       sidebar: SidebarMode.fixed,
+      transitionKey: 'video',
+      historyStrategy: 'push',
     }),
   },
   {
@@ -318,6 +342,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: false,
       title: '服务器配置',
       layout: 'empty',
+      historyStrategy: 'replace',
     },
   },
   {
@@ -328,6 +353,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: false,
       title: '登录',
       layout: 'auth',
+      historyStrategy: 'replace',
     },
   },
   {
@@ -338,6 +364,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: false,
       title: '注册',
       layout: 'auth',
+      historyStrategy: 'replace',
     },
   },
   {
@@ -352,9 +379,8 @@ const router = createRouter({
   history: createWebHistory(),
   routes,
   scrollBehavior(to, from, savedPosition) {
-    // Restore scroll on browser back/forward navigation;
-    // otherwise reset to top. Combined with history.scrollRestoration = 'manual',
-    // savedPosition is null on initial page load, preventing auto-scroll.
+    // 滚动位置完全交给 AppLayout 里的 navigation history entry 决定；
+    // 这里只保留"刷新页面回到顶部"的兜底，避免初始加载闪烁。
     if (savedPosition) return savedPosition
     return { top: 0 }
   },
@@ -393,5 +419,90 @@ router.beforeEach(async (to, from, next) => {
 
   next()
 })
+
+// 路由切换后维护应用层 history stack；并同步浏览器标题，
+// 让 Electron `page-title-updated` 把标题推到 BrowserWindow（dock 悬停可见）。
+//
+// 关键点：避免「goBack 触发的 router.replace → afterEach 又 pushEntry」的死循环。
+// 通过 useNavigationHistory 写入的「内部跳转」用一个模块级 suppressToken 抑制。
+let suppressStackUpdate = 0
+
+export function suppressNextStackUpdate() {
+  suppressStackUpdate += 1
+}
+
+router.afterEach((to, from) => {
+  // 同步窗口标题。Electron 的 page-title-updated 监听器会把新 title 推到 BrowserWindow。
+  const pageTitle = String(to.meta?.title ?? APP_TITLE)
+  if (typeof document !== 'undefined') {
+    document.title = `${pageTitle} - ${APP_TITLE}`
+  }
+
+  if (suppressStackUpdate > 0) {
+    suppressStackUpdate -= 1
+    // 只更新当前 entry 的 fullPath（保证与路由一致），不重新推。
+    patchCurrentEntryReactive({
+      title: pageTitle,
+      scrollY: currentEntry()?.scrollY ?? 0,
+    })
+    return
+  }
+
+  const strategy = (to.meta?.historyStrategy as string) || 'push'
+  const fromStrategy = (from.meta?.historyStrategy as string) || 'push'
+
+  // F5 / 深链进入时，sessionStorage 恢复的栈可能已经包含当前 fullPath 的 entry；
+  // 这种情况下我们应该 in-place 替换它（保留旧的 scrollY），而不是再 push 一条
+  // 把栈变长。
+  const existingEntry = currentEntry()
+  const reenteringSamePath = existingEntry?.fullPath === to.fullPath
+
+  if (reenteringSamePath) {
+    replaceEntryReactive({
+      fullPath: to.fullPath,
+      name: to.name as string | symbol | null | undefined,
+      title: pageTitle,
+      breadcrumbs: [],
+      sectionLabel: String(to.meta?.sectionLabel ?? ''),
+      scrollY: existingEntry?.scrollY ?? 0,
+    })
+    return
+  }
+
+  if (strategy === 'replace') {
+    replaceEntryReactive({
+      fullPath: to.fullPath,
+      name: to.name as string | symbol | null | undefined,
+      title: pageTitle,
+      breadcrumbs: [],
+      sectionLabel: String(to.meta?.sectionLabel ?? ''),
+      scrollY: 0,
+    })
+  } else if (fromStrategy === 'replace' && to.name === from.name) {
+    replaceEntryReactive({
+      fullPath: to.fullPath,
+      name: to.name as string | symbol | null | undefined,
+      title: pageTitle,
+      breadcrumbs: [],
+      sectionLabel: String(to.meta?.sectionLabel ?? ''),
+      scrollY: 0,
+    })
+  } else {
+    pushEntryReactive({
+      fullPath: to.fullPath,
+      name: to.name as string | symbol | null | undefined,
+      title: pageTitle,
+      breadcrumbs: [],
+      sectionLabel: String(to.meta?.sectionLabel ?? ''),
+      scrollY: 0,
+    })
+  }
+})
+
+// 登录前清空栈（防止登录后从 /login 跳回首页时栈里残留 /login）
+export function resetNavigationStack() {
+  resetReactive()
+  suppressStackUpdate += 1
+}
 
 export default router
