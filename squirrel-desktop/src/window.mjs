@@ -141,9 +141,20 @@ const installMainWindowBehaviors = (mainWindow) => {
   mainWindow.on('maximize', syncDesktopWindowState)
   mainWindow.on('unmaximize', syncDesktopWindowState)
   mainWindow.on('app-command', (event, command) => {
-    if (command === 'browser-backward' || command === 'browser-forward') {
+    // 鼠标侧键 / 多媒体键触发的浏览器导航语义。Electron 不消费它，让 renderer
+    // 端的 useNavigationHistory 统一处理（其内部含 enable/disable 判断，
+    // 已是栈底就什么都不做）。
+    if (command === 'browser-backward') {
       event.preventDefault()
+      mainWindow.webContents.send('desktop:navigate', 'back')
+      return
     }
+    if (command === 'browser-forward') {
+      event.preventDefault()
+      mainWindow.webContents.send('desktop:navigate', 'forward')
+      return
+    }
+    event.preventDefault()
   })
   mainWindow.webContents.on('did-finish-load', () => {
     syncDesktopWindowState()

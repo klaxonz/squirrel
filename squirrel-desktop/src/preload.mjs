@@ -45,4 +45,9 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   setServerUrl: (url) => ipcRenderer.invoke('server:set-url', url),
   clearServerUrl: () => ipcRenderer.invoke('server:clear-url'),
   onServerUrlChange: createUnidirectionalListener('server:url-changed'),
+
+  // Navigation: main process forwards native back/forward (mouse side buttons,
+  // multimedia keys, etc.) into renderer so useNavigationHistory can answer
+  // "is there anything to pop?" uniformly with on-page controls.
+  onNavigate: createUnidirectionalListener('desktop:navigate'),
 }))
