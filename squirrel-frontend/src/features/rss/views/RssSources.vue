@@ -49,7 +49,7 @@
               <Button
                 variant="ghost"
                 size="xs"
-                @click="syncSelectedAccount(false)" 
+                @click="syncSelectedAccount(false)"
                 class="rss-sync-status__button"
                 :disabled="syncing"
               >
@@ -60,37 +60,35 @@
               <Button
                 variant="ghost"
                 size="icon-xs"
-                @click="showSyncMenu = !showSyncMenu" 
+                @click="showSyncMenu = !showSyncMenu"
                 :disabled="syncing"
+                aria-label="更多同步选项"
               >
                 <AppIcon name="chevronDown" class="h-3 w-3" />
               </Button>
-              <div 
-                v-if="showSyncMenu" 
-                class="rss-sync-menu"
-              >
+              <AppFloatingList v-if="showSyncMenu" class="rss-sync-menu">
                 <Button
                   variant="ghost"
                   size="sm"
-                  @click="syncSelectedAccount(true); showSyncMenu = false" 
-                  class="rss-sync-menu__item"
+                  @click="syncSelectedAccount(true); showSyncMenu = false"
+                  class="w-full justify-start"
                 >
                   <AppIcon name="refresh" class="h-3 w-3" />
                   <span>全量同步</span>
                 </Button>
-              </div>
+              </AppFloatingList>
             </div>
           </div>
 
           <!-- Feed Search input -->
           <div class="relative group">
-            <AppIcon name="search" class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
-            <input
+            <AppIcon name="search" class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary pointer-events-none" />
+            <Input
               v-model="feedSearch"
               type="text"
               placeholder="搜索订阅源..."
               aria-label="搜索订阅源"
-              class="rss-search-input"
+              class="h-8 pl-7 text-xs rounded-lg"
             />
           </div>
         </div>
@@ -117,13 +115,13 @@
             <div class="min-w-0">
               <div class="flex items-center gap-2">
                 <Button
-                  v-if="feedNavStack"
+                  v-if="hasFeedNavStack"
                   variant="outline"
                   size="xs"
                   class="rss-back-button"
                   title="返回之前的列表"
                   aria-label="返回之前的列表"
-                  @click="goBackFromFeed"
+                  @click="handleFeedBack"
                 >
                   <AppIcon name="back" class="h-3 w-3" />
                   <span>返回</span>
@@ -157,13 +155,13 @@
           <div class="flex flex-col gap-2 mt-3 w-full">
             <!-- Entry Search -->
             <div class="relative w-full group">
-              <AppIcon name="search" class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
-              <input
+              <AppIcon name="search" class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary pointer-events-none" />
+              <Input
                 v-model="entrySearch"
                 type="text"
                 placeholder="搜索文章..."
                 aria-label="搜索文章"
-                class="rss-search-input"
+                class="h-8 pl-7 text-xs rounded-lg"
               />
             </div>
 
@@ -200,56 +198,64 @@
 
             <!-- Articles List -->
             <div v-else class="app-divider-top app-divider-bottom flex flex-col divide-y divide-border/10">
-              <div
+              <button
                 v-for="entry in filteredEntries"
                 :key="entry.id"
+                type="button"
                 class="rss-entry-item group"
                 :class="readingEntry && String(readingEntry.id) === String(entry.id) ? 'bg-primary/5' : 'bg-transparent hover:bg-accent/5'"
-                role="button"
-                tabindex="0"
+                :aria-label="entry.is_read ? `已读：${entry.title}` : `未读：${entry.title}`"
                 @click="openReader(entry)"
-                @keydown.enter.prevent="openReader(entry)"
-                @keydown.space.prevent="openReader(entry)"
                 @contextmenu.prevent.stop="showArticleContextMenu(entry, $event)"
               >
                 <!-- Card Top: Category & Time -->
                 <div class="rss-entry-item__meta-row">
-                  <span
-                    class="rss-entry-item__category"
-                    :class="entry.is_read ? 'text-muted-foreground/55' : 'text-primary'"
-                  >
-                    {{ getFeedCategory(entry.feed_id) }}
+                  <span class="rss-entry-item__category-row">
+                    <span
+                      v-if="!entry.is_read"
+                      class="rss-entry-item__unread-dot"
+                      aria-hidden="true"
+                    />
+                    <span
+                      class="rss-entry-item__category"
+                      :class="entry.is_read ? 'text-muted-foreground/55' : 'text-primary'"
+                    >
+                      {{ getFeedCategory(entry.feed_id) }}
+                    </span>
                   </span>
                   <div class="flex items-center gap-1.5">
                     <AppIcon v-if="entry.is_starred" name="star" class="h-3 w-3 text-warning fill-warning" />
                     <span class="rss-entry-item__date">{{ activeFilter === 'recent' ? formatRelativeTime((entry as RecentEntry).viewed_at) : formatDate(entry.published_at) }}</span>
                   </div>
                 </div>
-                
+
                 <!-- Title & Summary -->
-                <div class="flex-1 space-y-1 mb-3">
+                <div class="flex-1 space-y-1 mb-3 text-left">
                   <h4
-                    class="text-xs font-bold leading-snug transition-colors duration-200 ease-out line-clamp-2"
-                    :class="readingEntry && String(readingEntry.id) === String(entry.id)
-                      ? 'text-primary'
-                      : entry.is_read
-                        ? 'text-muted-foreground/75 group-hover:text-foreground/80'
-                        : 'text-foreground/90 group-hover:text-primary'"
+                    class="rss-entry-item__title"
+                    :class="[
+                      readingEntry && String(readingEntry.id) === String(entry.id)
+                        ? 'text-primary'
+                        : entry.is_read
+                          ? 'text-muted-foreground/75 group-hover:text-foreground/80'
+                          : 'text-foreground/90 group-hover:text-primary font-semibold',
+                    ]"
                   >
                     {{ entry.title }}
                   </h4>
                   <p
                     v-if="entry.summary"
-                    class="text-xs leading-relaxed line-clamp-2 transition-colors"
+                    class="rss-entry-item__summary"
                     :class="entry.is_read ? 'text-muted-foreground/50' : 'text-muted-foreground/70'"
                   >{{ stripHtmlTags(entry.summary) }}</p>
                 </div>
-                
+
                 <!-- Card Bottom: Source & Media indicator (clickable to view feed) -->
                 <div class="flex items-center pt-1">
                   <Button
                     variant="ghost"
                     size="xs"
+                    type="button"
                     @click.stop="pushFeedNavStack(); selectFeed(entry.feed_id)"
                     class="rss-feed-link"
                   >
@@ -262,7 +268,7 @@
                     </span>
                   </Button>
                 </div>
-              </div>
+              </button>
             </div>
 
             <!-- Infinite Scroll Loader Anchor -->
@@ -482,14 +488,14 @@
           </div>
         </div>
         
-        <!-- If no article is selected, render a gorgeous premium workstation-themed placeholder -->
+        <!-- If no article is selected, render a neutral placeholder -->
         <div v-else class="rss-reader-empty">
-          <div class="rss-reader-empty-icon">
-            <AppIcon name="library" class="h-6 w-6 text-primary/70" />
-          </div>
-          <p class="text-xs text-muted-foreground max-w-[280px] leading-relaxed">
-            选择左侧订阅源，并点击中间文章列表中感兴趣的文章即可开始阅读。
-          </p>
+          <AppEmptyState
+            variant="plain"
+            icon="library"
+            title="选择文章开始阅读"
+            copy="从中间列表挑选感兴趣的文章，或在右侧搜索特定内容。"
+          />
         </div>
       </main>
     </div>
@@ -726,6 +732,7 @@ import { useRssSync } from '@/features/rss/composables/useRssSync'
 import { useRssStatus } from '@/features/rss/composables/useRssStatus'
 import { useRssFeedHeader } from '@/features/rss/composables/useRssFeedHeader'
 import { useRssContextMenu } from '@/features/rss/composables/useRssContextMenu'
+import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 import RssFeedContextMenu from '@/features/rss/components/RssFeedContextMenu.vue'
 import RssArticleContextMenu from '@/features/rss/components/RssArticleContextMenu.vue'
 import type { RssEntry, RecentEntry } from '@/features/rss/composables/rssTypes'
@@ -883,7 +890,7 @@ const {
   recentlyViewed,
   entriesContainer,
   loadMoreTrigger,
-  feedNavStack,
+  hasFeedNavStack,
   showContextMenu,
   contextMenuPosition,
   contextMenuEntry,
@@ -894,6 +901,7 @@ const {
   recordRecentlyViewed,
   pushFeedNavStack,
   goBackFromFeed,
+  clearFeedNavStack,
   toggleReadStatus,
   batchUpdateReadStatus,
   toggleStarStatus,
@@ -911,6 +919,13 @@ const {
   readingEntry,
   onStatus,
 })
+
+// 单一来源仍是 useNavigationHistory：RSS 内部的 "feed → feed" 二级栈
+// 通过 registerInternalBackHandler 暴露给全局，让 AppHeader.back 按钮、
+// Alt+← 快捷键、页内"返回"按钮三个入口行为完全一致。
+const appNavigation = useNavigationHistory()
+
+const handleFeedBack = (): boolean => goBackFromFeed()
 
 // ponytail: sync polling owns its own state + onClickOutside + timer cleanup;
 // injects selectedAccountId, onStatus, and the three completion loaders.
@@ -1023,8 +1038,11 @@ watch(selectedAccountId, () => {
 })
 
 // Lifecycle
+let releaseInternalBack: (() => void) | null = null
+
 onMounted(async () => {
   window.addEventListener('keydown', handleKeyDown)
+  releaseInternalBack = appNavigation.registerInternalBackHandler(handleFeedBack)
   await loadAll()
   nextTick(() => {
     initObserver()
@@ -1037,6 +1055,9 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
   stopSyncPolling()
   disposeStatus()
+  releaseInternalBack?.()
+  releaseInternalBack = null
+  clearFeedNavStack()
 })
 </script>
 
@@ -1059,7 +1080,7 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 0.5rem;
   border: 1px solid hsl(var(--border) / 0.45);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   background: hsl(var(--muted) / 0.24);
   padding: 0.5rem;
   color: hsl(var(--muted-foreground));
@@ -1069,48 +1090,6 @@ onUnmounted(() => {
 .rss-sync-status__text--active {
   color: hsl(var(--primary));
   font-weight: 650;
-}
-
-.rss-sync-menu {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  z-index: 50;
-  width: 7rem;
-  margin-top: 0.25rem;
-  border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 0.5rem;
-  background: hsl(var(--popover));
-  padding: 0.25rem;
-  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.12);
-}
-
-.rss-search-input {
-  height: 2rem;
-  width: 100%;
-  border: 1px solid transparent;
-  border-radius: 0.5rem;
-  background: hsl(var(--muted) / 0.36);
-  padding: 0 0.75rem 0 2rem;
-  color: hsl(var(--foreground));
-  font-size: 0.75rem;
-  font-weight: 500;
-  outline: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.rss-search-input::placeholder {
-  color: hsl(var(--muted-foreground) / 0.72);
-}
-
-.rss-search-input:hover {
-  background: hsl(var(--muted) / 0.48);
-}
-
-.rss-search-input:focus {
-  border-color: hsl(var(--primary) / 0.35);
-  background: hsl(var(--background));
-  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.14);
 }
 
 .rss-entry-pane {
@@ -1140,12 +1119,18 @@ onUnmounted(() => {
 .rss-entry-item {
   position: relative;
   display: flex;
-  cursor: pointer;
   flex-direction: column;
   justify-content: space-between;
+  width: 100%;
   padding: 1rem 0.875rem;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
   outline: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .rss-entry-item:focus-visible {
@@ -1157,12 +1142,6 @@ onUnmounted(() => {
   gap: 0.25rem;
   color: hsl(var(--primary));
   font-weight: 650;
-}
-
-.rss-sync-menu__item {
-  justify-content: flex-start;
-  width: 100%;
-  gap: 0.5rem;
 }
 
 .rss-entry-header__subtitle {
@@ -1184,18 +1163,59 @@ onUnmounted(() => {
   font-size: 0.75rem;
 }
 
+.rss-entry-item__category-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* Unread indicator — only colour is not enough (UI-045). Pair the amber dot
+   with `font-semibold` on the title + `aria-label="未读：..."` so screen readers
+   and monochrome viewers also perceive state. */
+.rss-entry-item__unread-dot {
+  display: inline-block;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  flex: 0 0 auto;
+}
+
 .rss-entry-item__category {
   display: inline-flex;
   align-items: center;
   font-size: 0.6875rem;
   font-weight: 700;
-  transition: color 0.15s ease;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .rss-entry-item__date {
   color: hsl(var(--muted-foreground) / 0.6);
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
+}
+
+.rss-entry-item__title {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-wrap: balance;
+  transition: color var(--duration-fast) var(--ease-default);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.rss-entry-item__summary {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  transition: color var(--duration-fast) var(--ease-default);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .rss-reader-pane {
@@ -1257,7 +1277,7 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
   align-items: center;
   border: 1px solid hsl(var(--border) / 0.42);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   background: hsl(var(--muted) / 0.28);
   padding: 0.25rem 0.75rem;
   color: hsl(var(--muted-foreground));
@@ -1324,7 +1344,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 0.375rem;
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 0.625rem;
+  border-radius: var(--radius-md);
   background: hsl(var(--popover));
   padding: 0.75rem;
   color: hsl(var(--popover-foreground));
@@ -1346,18 +1366,6 @@ onUnmounted(() => {
   text-align: center;
 }
 
-.rss-reader-empty-icon {
-  display: flex;
-  width: 5rem;
-  height: 5rem;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.25rem;
-  border: 1px solid hsl(var(--border) / 0.42);
-  border-radius: 0.875rem;
-  background: hsl(var(--muted) / 0.28);
-}
-
 /* Scoped stylesheet for reader content typography — WeRead-inspired */
 .font-serif {
   font-family: Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
@@ -1373,6 +1381,7 @@ onUnmounted(() => {
 }
 
 .reader-content {
+  font-family: var(--reader-font, inherit);
   text-align: justify;
   text-justify: normal;
   word-break: break-word;
@@ -1382,31 +1391,39 @@ onUnmounted(() => {
 }
 
 .reader-content.font-sans {
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+  --reader-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
 .reader-content.font-outfit {
-  font-family: Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+  --reader-font: Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
 .reader-content.font-serif {
-  font-family: Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif !important;
+  --reader-font: Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
 }
 
 .reader-content.font-lora {
-  font-family: Lora, Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif !important;
+  --reader-font: Lora, Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
 }
 
-/* Paragraphs — generous spacing, first-line indent for Chinese */
+/* Paragraphs — generous spacing, first-line indent for Chinese (serif fonts only).
+   Specificity > Tailwind/Prose preflight, so no `!important` needed.
+   First/last-child reset is universal across families. */
 .reader-content :deep(p) {
   margin-bottom: 1.25rem;
-  line-height: 2 !important;
   letter-spacing: 0.03em;
   color: hsl(var(--foreground) / 0.82);
+}
+
+.reader-content.font-serif :deep(p),
+.reader-content.font-lora :deep(p) {
+  line-height: 2;
   text-indent: 2em;
 }
 
-.reader-content :deep(p:first-child) {
+.reader-content :deep(p:first-child),
+.reader-content.font-serif :deep(p:first-child),
+.reader-content.font-lora :deep(p:first-child) {
   text-indent: 0;
 }
 
@@ -1555,8 +1572,10 @@ onUnmounted(() => {
   text-indent: 0;
 }
 
-.reader-content :deep(pre p) {
-  text-indent: 0 !important;
+.reader-content :deep(pre p),
+.reader-content.font-serif :deep(pre p),
+.reader-content.font-lora :deep(pre p) {
+  text-indent: 0;
 }
 
 .reader-content :deep(code:not(pre code)) {
@@ -1582,14 +1601,18 @@ onUnmounted(() => {
   text-indent: 0;
 }
 
-.reader-content :deep(blockquote p) {
-  text-indent: 0 !important;
-  margin-bottom: 0.5rem !important;
-  line-height: 2 !important;
+.reader-content :deep(blockquote p),
+.reader-content.font-serif :deep(blockquote p),
+.reader-content.font-lora :deep(blockquote p) {
+  text-indent: 0;
+  margin-bottom: 0.5rem;
+  line-height: 2;
 }
 
-.reader-content :deep(blockquote p:last-child) {
-  margin-bottom: 0 !important;
+.reader-content :deep(blockquote p:last-child),
+.reader-content.font-serif :deep(blockquote p:last-child),
+.reader-content.font-lora :deep(blockquote p:last-child) {
+  margin-bottom: 0;
 }
 
 /* Divider — subtle */
@@ -1634,7 +1657,6 @@ onUnmounted(() => {
     animation: none;
   }
 
-  .rss-search-input,
   .rss-entry-item {
     transition: none;
   }

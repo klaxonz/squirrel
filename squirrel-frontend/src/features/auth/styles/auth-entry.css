@@ -56,6 +56,15 @@
     radial-gradient(ellipse 55% 45% at 88% 78%, hsl(var(--primary) / 0.06), transparent 62%);
 }
 
+/* On desktop (Electron) the form is centred and the wash fights with the
+   chrome's own gradient. Skip it; the body-level cinema-spotlight already
+   gives the page enough ambience. */
+@media (min-width: 1024px) {
+  .app-desktop .auth-shell__atmosphere {
+    display: none;
+  }
+}
+
 .auth-shell__atmosphere::after {
   content: '';
   position: absolute;

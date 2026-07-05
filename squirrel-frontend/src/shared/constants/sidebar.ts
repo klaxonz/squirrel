@@ -28,6 +28,11 @@ export interface NavigationItem {
   group: 'content' | 'system'
   activePrefixes?: string[]
   activeRouteNames?: string[]
+  /**
+   * 解析点击时实际跳转的路径。返回 `null` 表示不跳转。
+   * 当前仅 settings 用：用户已经在 settings 内时，点 sidebar 设置保持当前 tab。
+   */
+  resolvePath?: (currentPath: string) => string | null
 }
 
 export interface NavigationGroup {
@@ -232,6 +237,9 @@ export const NAV_ITEMS: NavigationItem[] = [
     group: 'system',
     activePrefixes: ['/settings'],
     activeRouteNames: ['Settings', ...SETTINGS_TABS.map((tab) => tab.routeName)],
+    // UI-012: 当用户已经在 settings 任意 tab 时，点 sidebar 设置保持当前 tab；
+    // 否则首次进入跳到默认 tab（appearance）。
+    resolvePath: (currentPath) => (currentPath.startsWith('/settings') ? currentPath : null),
   },
 ]
 

@@ -6,6 +6,7 @@
       {
         'app-toolbar-frame--bordered': bordered,
         'app-toolbar-frame--compact': compact,
+        'app-toolbar-frame--sticky': sticky,
       },
     ]"
   >
@@ -16,11 +17,17 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   variant?: 'default' | 'compact'
   bordered?: boolean
   compact?: boolean
-}>()
+  sticky?: boolean
+}>(), {
+  variant: 'default',
+  bordered: false,
+  compact: false,
+  sticky: false,
+})
 </script>
 
 <style scoped>
@@ -28,9 +35,18 @@ defineProps<{
   width: 100%;
   margin: 0 auto;
   padding-inline: var(--app-page-gutter);
-  background:
-    radial-gradient(ellipse 34% 120% at 0% 0%, hsl(var(--primary) / 0.045), transparent 72%),
-    hsl(var(--background) / 0.86);
+  /* UI-068: solid-enough background replaces the previous `backdrop-filter: blur`
+     glassmorphism; meets DESIGN.md's "flat until it moves" rule. */
+  background: hsl(var(--background) / 0.92);
+}
+
+.app-toolbar-frame--sticky {
+  position: sticky;
+  top: 0;
+  /* UI-068: rely on background opacity instead of backdrop blur — keeps the
+     toolbar readable on top of any scroll content without the frosted-glass
+     effect DESIGN.md prohibits. */
+  z-index: var(--z-sticky);
 }
 
 .app-toolbar-frame--bordered {

@@ -117,6 +117,12 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground) / 0.35);
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      transition: none;
+    }
+  }
 }
 
 /* Page-level transitions (router-view).
@@ -310,4 +316,26 @@
 .app-toast-leave-active {
   position: absolute;
   right: 0;
+}
+
+/* Global motion gate — every global transition (toast, page, fade, scrollbar
+   hover) collapses to instant for users who prefer reduced motion. Component-
+   scoped styles opt in by adding their own `@media (prefers-reduced-motion)`
+   block; this rule covers the global ones defined in index.css and the
+   `.page-forward` / `.page-back` classes defined in `app/App.vue`. */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter-active,
+  .page-leave-active,
+  .page-fade-enter-active,
+  .page-fade-leave-active,
+  .page-forward-enter-active,
+  .page-forward-leave-active,
+  .page-back-enter-active,
+  .page-back-leave-active,
+  .fade-enter-active,
+  .fade-leave-active,
+  .app-toast-enter-active,
+  .app-toast-leave-active {
+    transition: none;
+  }
 }

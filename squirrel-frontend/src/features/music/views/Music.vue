@@ -5,21 +5,13 @@
         <div class="app-workbench__scroll custom-scrollbar">
           <div class="app-workbench__content music-content">
             <div class="music-nav-row">
-              <nav class="app-tab-list" aria-label="音乐导航">
-              <Button
-                v-for="item in musicNavItems"
-                :key="item.id"
-                type="button"
-                variant="ghost"
+              <AppSegmentedControl
+                :model-value="musicActiveMode"
+                :options="musicNavItems"
                 size="sm"
-                class="app-tab-button music-nav-tab"
-                :class="{ 'is-active': sidebarActiveMode === item.id }"
-                :aria-current="sidebarActiveMode === item.id ? 'page' : undefined"
-                @click="handleNavigate(item.id)"
-              >
-                <span>{{ item.label }}</span>
-              </Button>
-              </nav>
+                aria-label="音乐导航"
+                @update:model-value="(value) => handleNavigate(String(value))"
+              />
               <MusicCreatePlaylistButton
                 v-if="authStatus?.logged_in && activeView === 'profile'"
                 compact
@@ -259,7 +251,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
-import { Button } from '@/shared/ui/button'
+import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import MusicCreatePlaylistButton from '@/features/music/components/sidebar/MusicCreatePlaylistButton.vue'
 import MusicHomeView from '@/features/music/components/home/MusicHomeView.vue'
 import MusicSearchView from '@/features/music/components/MusicSearchView.vue'
@@ -434,11 +426,16 @@ const sidebarActiveMode = computed(() => {
   return activeView.value
 })
 
-const musicNavItems = computed<Array<{ id: string; label: string }>>(() => [
-  { id: 'home', label: '首页' },
-  { id: 'ranks', label: '榜单' },
-  { id: 'playlists', label: '歌单' },
-  { id: 'profile', label: authStatus.value?.logged_in ? '我的' : '登录' },
+const musicActiveMode = computed(() => {
+  const valid = musicNavItems.value.some((item) => item.value === sidebarActiveMode.value)
+  return valid ? sidebarActiveMode.value : ''
+})
+
+const musicNavItems = computed<Array<{ value: string; label: string }>>(() => [
+  { value: 'home', label: '首页' },
+  { value: 'ranks', label: '榜单' },
+  { value: 'playlists', label: '歌单' },
+  { value: 'profile', label: authStatus.value?.logged_in ? '我的' : '登录' },
 ])
 
 // ponytail: bridge useMusicQrLogin.authStatus -> useMusicAuth.authStatus so
@@ -694,10 +691,6 @@ async function handleLogout() {
 </script>
 
 <style scoped>
-.music-top-create {
-  flex: 0 0 auto;
-}
-
 .music-content {
   --app-workbench-content-width: 1440px;
   min-height: 100%;
@@ -707,22 +700,17 @@ async function handleLogout() {
 .music-nav-row {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: var(--z-sticky);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--space-3);
   padding: 0 2rem 0.75rem;
   background: linear-gradient(180deg, hsl(var(--background)) 72%, hsl(var(--background) / 0));
 }
 
-.music-nav-tab {
-  min-width: 4.25rem;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .music-nav-tab {
-    transition: none;
-  }
+.music-top-create {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 </style>

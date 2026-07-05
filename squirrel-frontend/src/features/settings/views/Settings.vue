@@ -13,33 +13,28 @@
         </div>
 
         <nav class="settings-sidebar-nav custom-scrollbar">
-          <Button
+          <AppListOption
             v-for="tab in tabs"
             :key="tab.key"
-            variant="ghost"
-            size="sm"
+            :selected="currentTab === tab.key"
+            compact
             @click="navigateToTab(tab.path)"
-            class="settings-nav-item"
-            :class="{ 'settings-nav-item--active': currentTab === tab.key }"
           >
-            <AppIcon :name="tab.icon" class="h-4 w-4" />
+            <AppIcon :name="tab.icon" class="h-4 w-4 shrink-0" />
             <span class="min-w-0 flex-1 truncate">{{ tab.label }}</span>
             <span v-if="tab.badge" class="settings-nav-badge">{{ tab.badge }}</span>
-          </Button>
+          </AppListOption>
         </nav>
       </template>
 
       <template #header>
-        <div class="settings-header-copy">
-          <h2 class="app-h2 truncate">{{ activeTab.label }}</h2>
-          <p>{{ activeTabDescription }}</p>
-        </div>
-
-        <div class="settings-header-actions">
-          <span v-if="hasUnsavedChanges" class="settings-save-state settings-save-state--header">
-            保存中
-          </span>
-        </div>
+        <PageHeader :title="activeTab.label" :description="activeTabDescription">
+          <template #actions>
+            <span v-if="hasUnsavedChanges" class="settings-save-state settings-save-state--header">
+              保存中
+            </span>
+          </template>
+        </PageHeader>
       </template>
 
         <div class="app-workbench__scroll custom-scrollbar">
@@ -208,6 +203,8 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppListOption from '@/shared/components/layout/AppListOption.vue'
+import PageHeader from '@/shared/components/layout/PageHeader.vue'
 import { Button } from '@/shared/ui/button'
 import { Switch } from '@/shared/ui/switch'
 import { Input } from '@/shared/ui/input'
@@ -383,55 +380,16 @@ const onSystemToggle = async (key: string, val: boolean) => {
 .settings-sidebar-nav {
   flex: 1;
   overflow-y: auto;
-  padding: 0.625rem;
-}
-
-.settings-nav-item {
+  padding: var(--space-2);
   display: flex;
-  width: 100%;
-  height: 2.25rem;
-  align-items: center;
-  gap: 0.5rem;
-  border: 0;
-  border-radius: 0.4375rem;
-  background: transparent;
-  padding: 0 0.625rem;
-  color: hsl(var(--muted-foreground));
-  text-align: left;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.settings-nav-item + .settings-nav-item {
-  margin-top: 0.125rem;
-}
-
-.settings-nav-item:hover,
-.settings-nav-item--active {
-  background: hsl(var(--accent) / 0.62);
-  color: hsl(var(--foreground));
-}
-
-.settings-nav-item--active :deep(svg) {
-  color: hsl(var(--primary));
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 .settings-nav-badge {
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 500;
-}
-
-.settings-header-copy {
-  min-width: 0;
-}
-
-.settings-header-actions {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 .settings-main {
@@ -494,7 +452,6 @@ const onSystemToggle = async (key: string, val: boolean) => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .settings-nav-item,
   .settings-theme-option {
     transition: none;
   }

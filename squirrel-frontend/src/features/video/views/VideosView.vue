@@ -27,11 +27,11 @@
         />
     </AppToolbarFrame>
     <AppToolbarFrame v-else bordered compact>
-      <div class="app-page-toolbar">
+      <div class="flex items-center justify-between gap-3">
         <div class="flex min-w-0 items-center gap-2">
           <AppIcon name="siteFallback" class="h-4 w-4 shrink-0 text-primary opacity-80" />
           <span class="shrink-0 text-sm font-semibold text-foreground">远端搜索</span>
-          <span v-if="searchQuery" class="min-w-0 truncate text-sm text-muted-foreground">“{{ searchQuery }}”</span>
+          <span v-if="searchQuery" class="min-w-0 truncate text-sm text-muted-foreground">"{{ searchQuery }}"</span>
         </div>
 
         <div class="flex shrink-0 items-center gap-1">

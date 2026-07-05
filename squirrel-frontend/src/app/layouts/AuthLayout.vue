@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen overflow-hidden flex flex-col bg-background">
+  <div class="h-screen overflow-hidden flex flex-col bg-background" :class="isDesktop ? 'app-desktop' : ''">
     <DesktopTitleBar v-if="isDesktop" />
     <div class="flex-1 overflow-auto">
       <slot />

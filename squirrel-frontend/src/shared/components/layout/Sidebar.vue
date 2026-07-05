@@ -35,6 +35,7 @@
       type="button"
       class="sidebar-toggle"
       :title="isSidebarOpen ? '收起侧边栏' : '展开侧边栏'"
+      :aria-label="isSidebarOpen ? '收起侧边栏' : '展开侧边栏'"
       @click="uiStore.toggleSidebar()"
     >
       <AppIcon :name="isSidebarOpen ? 'chevronLeft' : 'chevronRight'" class="w-3.5 h-3.5" />
@@ -137,7 +138,10 @@ const showSidebarMusicPlayer = computed(() =>
   color: hsl(var(--muted-foreground));
   cursor: pointer;
   box-shadow: 0 1px 0 hsl(var(--foreground) / 0.04) inset;
-  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
 }
 .sidebar-toggle:hover {
   background: hsl(var(--accent));

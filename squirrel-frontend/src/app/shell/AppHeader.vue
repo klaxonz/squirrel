@@ -146,11 +146,8 @@ function handleBack() {
   align-items: center;
   gap: var(--space-4);
   padding: 0 var(--space-5);
-  border-bottom: 1px solid hsl(var(--border) / 0.62);
-  background:
-    radial-gradient(ellipse 30% 120% at 8% 0%, hsl(var(--primary) / 0.08), transparent 72%),
-    linear-gradient(180deg, hsl(var(--card) / 0.94), hsl(var(--card) / 0.82));
-  box-shadow: 0 1px 0 hsl(var(--foreground) / 0.035) inset;
+  border-bottom: 1px solid var(--app-hairline);
+  background: hsl(var(--card) / 0.88);
   position: relative;
   z-index: var(--z-header);
   user-select: none;

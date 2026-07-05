@@ -11,6 +11,23 @@ import {
 } from '@/shared/api'
 import type { RssEntry, RssFeed, RecentEntry, ReadBatchMode } from './rssTypes'
 
+// 单次 push 之前的状态快照。当用户从「全部/筛选列表」跳进某个 feed
+// （通过右键菜单"查看该源"、或在阅读面板点订阅源名字），需要把
+// 上一次的 selectedFeedId / activeFilter / page / 已加载 entries /
+// totalEntries / readingEntry 保存下来，"返回"时还原。
+//
+// 实现是栈：连续多次「跳到 feed」中间不丢状态；栈空时返回按钮自动消失。
+// 上层 (RssSources.vue) 通过 useNavigationHistory.registerInternalBackHandler
+// 把「出栈」接进 AppHeader.back / Alt+← / 快捷键，让三个入口行为一致。
+export interface FeedNavSnapshot {
+  selectedFeedId: number | null
+  activeFilter: 'all' | 'unread' | 'starred' | 'recent'
+  page: number
+  entries: RssEntry[]
+  totalEntries: number
+  readingEntry: RssEntry | null
+}
+
 export function useRssEntries(options: {
   selectedAccountId: Ref<number | null>
   selectedFeedId: Ref<number | null>
@@ -37,14 +54,9 @@ export function useRssEntries(options: {
   const { position: contextMenuPosition, positionMenu } = useContextMenuPosition()
   const contextMenuEntry = ref<RssEntry | null>(null)
 
-  const feedNavStack = ref<{
-    selectedFeedId: number | null
-    activeFilter: 'all' | 'unread' | 'starred' | 'recent'
-    page: number
-    entries: RssEntry[]
-    totalEntries: number
-    readingEntry: RssEntry | null
-  } | null>(null)
+  const feedNavStack = ref<FeedNavSnapshot[]>([])
+
+  const hasFeedNavStack = computed(() => feedNavStack.value.length > 0)
 
   const hasMoreEntries = computed(() => {
     if (activeFilter.value === 'recent') return false
@@ -167,29 +179,35 @@ export function useRssEntries(options: {
   }
 
   const pushFeedNavStack = () => {
-    feedNavStack.value = {
+    feedNavStack.value.push({
       selectedFeedId: options.selectedFeedId.value,
       activeFilter: activeFilter.value,
       page: page.value,
       entries: [...entries.value],
       totalEntries: totalEntries.value,
       readingEntry: options.readingEntry?.value ?? null,
-    }
+    })
   }
 
-  const goBackFromFeed = () => {
+  const goBackFromFeed = (): boolean => {
     const stack = feedNavStack.value
-    if (!stack) return
-    options.selectedFeedId.value = stack.selectedFeedId
-    activeFilter.value = stack.activeFilter
-    page.value = stack.page
-    entries.value = stack.entries
-    totalEntries.value = stack.totalEntries
+    const snapshot = stack.pop()
+    if (!snapshot) return false
+    options.selectedFeedId.value = snapshot.selectedFeedId
+    activeFilter.value = snapshot.activeFilter
+    page.value = snapshot.page
+    entries.value = snapshot.entries
+    totalEntries.value = snapshot.totalEntries
     if (options.readingEntry) {
-      options.readingEntry.value = stack.readingEntry
+      options.readingEntry.value = snapshot.readingEntry
     }
-    feedNavStack.value = null
     resetScroll()
+    return true
+  }
+
+  // 仅清空栈、不做还原。给 unmount / 显式 reset 用。
+  const clearFeedNavStack = () => {
+    feedNavStack.value = []
   }
 
   const shouldReloadAfterEntryUpdate = (entry: RssEntry) => {
@@ -338,7 +356,7 @@ export function useRssEntries(options: {
     recentlyViewed,
     entriesContainer,
     loadMoreTrigger,
-    feedNavStack,
+    hasFeedNavStack,
     showContextMenu,
     contextMenuPosition,
     contextMenuEntry,
@@ -352,6 +370,7 @@ export function useRssEntries(options: {
     resetScroll,
     pushFeedNavStack,
     goBackFromFeed,
+    clearFeedNavStack,
     shouldReloadAfterEntryUpdate,
     toggleReadStatus,
     getBatchReadTargets,

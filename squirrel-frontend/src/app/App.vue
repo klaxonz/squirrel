@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from './layouts/AppLayout.vue'
 import AuthLayout from './layouts/AuthLayout.vue'
@@ -51,7 +51,12 @@ const layout = computed(() => {
  *   - 后退：旧页向右推回，新页从左滑入；
  *   - 同级替换（如设置 tab 切换）：仅淡入淡出。
  */
+// UI-053: skip the first paint's transition. Without this guard the user
+// sees a fade-in on app launch (a "single-frame flash of nothing") for the
+// route they asked to be on. After the first navigation, normal rules apply.
+const isInitialMount = ref(true)
 const transitionName = computed(() => {
+  if (isInitialMount.value) return ''
   const direction = nav.direction.value
   if (direction === 'back') return 'page-back'
   if (direction === 'forward') return 'page-forward'
@@ -72,9 +77,11 @@ function cacheKey(r: typeof route): string {
 /**
  * 进入动画结束后，把方向重置为 'replace'，这样下一次同层切换默认走 fade。
  * 不立刻重置是为了让方向信号在整个 transition 期间保持稳定。
+ * First paint clears `isInitialMount` so subsequent navigations animate.
  */
 function handleEnter() {
   nextTick(() => {
+    isInitialMount.value = false
     if (nav.direction.value !== 'replace') {
       // 注意：nav.direction 是个 ref，不能直接清空；通过替换 entry 让它自然变化。
       // 实际上我们这里只是在下一次 push/replace 时由 router 自己覆盖。
@@ -120,7 +127,8 @@ html, body {
   will-change: opacity, transform;
 }
 
-/* Forward: old page slides left & fades, new page enters from the right. */
+/* Forward: old page slides left & fades, new page enters from the right.
+   Distance matches for both legs so a fast user never sees a >offset. */
 .page-forward-leave-active {
   position: absolute;
   inset: 0;
@@ -132,7 +140,7 @@ html, body {
 }
 .page-forward-enter-from {
   opacity: 0;
-  transform: translateX(1.5rem);
+  transform: translateX(2rem);
 }
 
 /* Back: old page slides right & fades, new page enters from the left. */
@@ -147,7 +155,7 @@ html, body {
 }
 .page-back-enter-from {
   opacity: 0;
-  transform: translateX(-1.5rem);
+  transform: translateX(-2rem);
 }
 
 /* Same-level: pure fade. */

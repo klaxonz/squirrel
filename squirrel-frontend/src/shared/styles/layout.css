@@ -48,6 +48,7 @@
      with reka-ui primitives. */
   --z-base: 0;
   --z-content: 10;            /* sticky toolbars, sticky table heads */
+  --z-sticky: 20;             /* page-level sticky bands (music nav-row, toolbar-frame--sticky) */
   --z-header: 40;             /* AppHeader */
   --z-sidebar: 50;            /* AppSidebar + DesktopTitleBar (same layer, DOM order wins) */
   --z-dropdown: 1000;         /* dropdown-menu, context-menu */
@@ -166,9 +167,6 @@
   --app-hero-weight: 650;
   --app-hero-leading: 1.18;
   --app-hero-tracking: -0.02em;
-
-  --app-eyebrow-size: 0.75rem;  /* 12px */
-  --app-eyebrow-tracking: 0.16em;
 
   /* Spinner — single source of truth for all loading spinners. */
   --app-spinner-size-sm: 0.875rem;   /* 14px — buttons, inline */
@@ -362,9 +360,9 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, hsl(var(--muted) / 0.10), transparent 10rem),
-    hsl(var(--background));
+  /* UI-035 + UI-057: chrome is flat. The previous linear-gradient on the workbench
+     floor was a UI-mood decision that conflicted with the panel's flat brief. */
+  background: hsl(var(--background));
   color: hsl(var(--foreground));
 }
 
@@ -375,9 +373,7 @@
   flex-direction: column;
   width: var(--app-workbench-sidebar-width, 17.5rem);
   border-right: 1px solid var(--app-surface-border-subtle);
-  background:
-    radial-gradient(ellipse 120% 28% at 0% 0%, hsl(var(--primary) / 0.055), transparent 64%),
-    hsl(var(--card) / 0.42);
+  background: hsl(var(--card) / 0.42);
 }
 
 .app-workbench__sidebar--always {
@@ -413,8 +409,10 @@
   justify-content: space-between;
   gap: 1rem;
   border-bottom: 1px solid var(--app-surface-border-subtle);
-  background:
-    linear-gradient(180deg, hsl(var(--card) / 0.48), hsl(var(--background) / 0.72));
+  /* UI-035: header is flat — the prior linear-gradient implied a glass/elevated
+     card. With hairline border + transparent panel the workbench already has
+     enough separation. */
+  background: transparent;
   padding-inline: var(--space-5);
 }
 
@@ -545,25 +543,6 @@
   overflow-x: hidden;
 }
 
-.app-toolbar-band {
-  width: 100%;
-  border-bottom: 1px solid var(--app-hairline);
-  background: hsl(var(--background));
-}
-
-.app-toolbar-band--sticky {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-content);
-}
-
-.app-toolbar-band__inner {
-  width: 100%;
-  max-width: var(--app-page-max-width);
-  margin-inline: auto;
-  padding: var(--space-2) var(--space-5);
-}
-
 .app-media-header {
   position: relative;
   overflow: hidden;
@@ -581,26 +560,6 @@
   gap: var(--space-4);
   margin-inline: auto;
   padding: var(--space-5);
-}
-
-.app-page-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  width: 100%;
-  margin-bottom: 1rem;
-}
-
-.app-page-toolbar__title {
-  min-width: 0;
-}
-
-.app-page-toolbar__actions {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 .app-surface {
@@ -1236,48 +1195,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.app-tab-list {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--app-control-radius);
-  background: hsl(var(--secondary));
-}
-
-.app-tab-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  min-height: 2rem;
-  padding: 0 0.75rem;
-  border-radius: var(--app-control-item-radius);
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
-  font-weight: 600;
-  white-space: nowrap;
-  transition: background-color var(--duration-fast, 150ms) var(--ease-default, ease),
-    color var(--duration-fast, 150ms) var(--ease-default, ease),
-    box-shadow var(--duration-fast, 150ms) var(--ease-default, ease);
-}
-
-.app-tab-button:hover {
-  color: hsl(var(--foreground));
-}
-
-/* Keyboard focus feedback — previously absent, leaving tab buttons with no
-   visible :focus-visible state across every app-tab-list surface. */
-.app-tab-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
-}
-
-.app-tab-button.is-active {
-  color: hsl(var(--foreground));
-  background: hsl(var(--card));
-  box-shadow: var(--shadow-xs);
-}
-
 /* Heading scale — see the --app-h* tokens above. Replaces the ad-hoc
    `font-bold|font-semibold text-xl|text-lg|text-2xl` combos that were invented
    per-page (19 files, 22 headings, 7 different size/weight pairs). Every heading
@@ -1375,70 +1292,8 @@
   color: hsl(var(--muted-foreground) / 0.8);
 }
 
-:where(.app-tab-button, .app-section-title__text a):focus-visible {
+:where(.app-section-title__text a):focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.5);
   border-radius: inherit;
-}
-
-.app-media-hero {
-  position: relative;
-  overflow: hidden;
-  display: block;
-}
-.app-media-hero__backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  background-size: cover;
-  background-position: center;
-  filter: blur(2px) saturate(1.08);
-  transform: scale(1.05);
-  transition: opacity 0.6s ease;
-}
-.app-media-hero__scrim {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(to top, hsl(0 0% 0% / 0.82), hsl(0 0% 0% / 0.18) 62%, transparent);
-}
-.app-media-hero__inner {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  padding: 2.5rem var(--app-page-gutter-lg) 2rem;
-}
-.app-media-hero__eyebrow {
-  font-family: var(--font-sans);
-  font-size: var(--app-eyebrow-size);
-  font-weight: 600;
-  letter-spacing: 0;
-  color: hsl(0 0% 100% / 0.72);
-  margin-bottom: 0.5rem;
-}
-.app-media-hero__title {
-  font-family: var(--font-display);
-  font-size: var(--app-hero-size);
-  font-weight: var(--app-hero-weight);
-  line-height: var(--app-hero-leading);
-  letter-spacing: var(--app-hero-tracking);
-  color: hsl(0 0% 100%);
-  max-width: 32rem;
-  text-wrap: balance;
-  text-shadow: 0 2px 12px hsl(var(--hero-scrim) / 0.55);
-}
-.app-media-hero__sub {
-  margin-top: 0.75rem;
-  max-width: 38rem;
-  font-size: 0.8125rem;
-  line-height: 1.6;
-  color: hsl(0 0% 100% / 0.76);
-  text-wrap: pretty;
-  text-shadow: 0 1px 4px hsl(var(--hero-scrim) / 0.4);
-}
-.app-media-hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
 }

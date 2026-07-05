@@ -2,7 +2,7 @@
   <aside class="subscription-sidebar">
     <AppSidebarHeader title="订阅频道" :subtitle="`${channels.length} 个频道`">
       <template #actions>
-        <Button size="icon-sm" @click="$emit('add')">
+        <Button size="icon-sm" aria-label="添加订阅频道" title="添加订阅频道" @click="$emit('add')">
           <AppIcon name="plus" class="w-4 h-4" />
         </Button>
       </template>

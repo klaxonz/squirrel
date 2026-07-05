@@ -35,7 +35,7 @@
         <div class="mt-1 flex items-center gap-2">
           <SiteTag :site="subscription.site" class="origin-left scale-[0.85] opacity-90" />
           <span class="text-xs font-medium text-muted-foreground app-mono">{{ subscription.total_videos || 0 }} 视频</span>
-          <div v-if="subscription.is_nsfw" class="ml-auto shrink-0 rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-xs font-semibold text-destructive">
+          <div v-if="subscription.is_nsfw" class="app-badge-nsfw">
             18+
           </div>
         </div>
@@ -102,3 +102,20 @@ const lastUpdatedText = computed(() => {
   return date ? formatDate(date) : '未知'
 })
 </script>
+
+<style scoped>
+/* NSFW chip — destructive-tinted but with a higher-contrast foreground than
+   raw `text-destructive on bg-destructive/10` which hovered below 3:1 in the
+   dark theme. A light-on-color combo clears WCAG AA for ≥18pt / bold text. */
+.app-badge-nsfw {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: hsl(0 0% 100%);
+  background: hsl(var(--destructive));
+  border-radius: var(--radius-sm);
+}
+</style>

@@ -47,6 +47,7 @@ import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 import { useUIStore } from '@/shared/stores/ui'
 import { MAIN_SCROLL_ID } from '@/shared/composables/useMainScrollRoot'
+import { useModalEscapeApi } from '@/shared/composables/useModalEscape'
 
 const { isDesktop: isDesktopClient } = useDesktopBridge()
 const isDesktop = isDesktopClient()
@@ -55,6 +56,7 @@ const musicPlayerStore = useMusicPlayerStore()
 const uiStore = useUIStore()
 const nav = useNavigationHistory()
 const route = useRoute()
+const modalApi = useModalEscapeApi()
 
 const isSidebarOpen = computed(() => uiStore.isSidebarOpen)
 
@@ -116,9 +118,11 @@ function handleKeydown(e: KeyboardEvent) {
     }
     return
   }
-  // Esc: pop detail page if applicable
-  if (e.key === 'Escape' && nav.canGoBack.value) {
-    // Only intercept Esc on detail-like pages; let inner dialogs dismiss first.
+  // Esc: 优先让栈顶 modal 处理（modal 自己的 dismiss 逻辑接管），
+  // 仅当 modal 栈为空且 detail-like 页面才走 goBack。
+  // 之前用 `(target as HTMLElement).tagName === 'DIV'` 这种粗粒度判断，
+  // 会被设置行 / 歌单卡片等焦点元素误触发 goBack（UI-008）。
+  if (e.key === 'Escape' && !modalApi.hasOpen() && nav.canGoBack.value) {
     const tag = (e.target as HTMLElement | null)?.tagName
     if (tag === 'BODY' || tag === 'MAIN' || tag === 'DIV') {
       e.preventDefault()
@@ -164,10 +168,9 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   color: hsl(var(--foreground));
-  background:
-    radial-gradient(ellipse 54% 42% at 18% 0%, hsl(var(--primary) / 0.07), transparent 66%),
-    radial-gradient(ellipse 48% 36% at 92% 0%, hsl(var(--primary) / 0.035), transparent 68%),
-    hsl(var(--background));
+  /* UI-057: chrome is flat. The previous twin radial gradients against the
+     primary hue violated DESIGN.md's "amber is state, not atmosphere" rule. */
+  background: hsl(var(--background));
 }
 
 .app-layout__titlebar {
@@ -201,11 +204,9 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: var(--radius-xl);
-  background:
-    linear-gradient(180deg, hsl(var(--card) / 0.44), hsl(var(--background) / 0.92)),
-    hsl(var(--background));
+  border: 1px solid var(--app-hairline);
+  border-radius: var(--app-surface-radius);
+  background: hsl(var(--card) / 0.5);
   box-shadow: var(--app-panel-shadow);
 }
 

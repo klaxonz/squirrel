@@ -197,9 +197,16 @@ const heroVideo = computed<VideoHistoryEntry | VideoListItem | null>(() => {
 const AUTO_ROTATE_INTERVAL = 6_000 // 6 seconds
 let autoRotateTimer: ReturnType<typeof setInterval> | null = null
 
+// Respect user's reduced-motion preference: skip auto-rotate entirely.
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined'
+  && typeof window.matchMedia === 'function'
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
 const startAutoRotate = () => {
   stopAutoRotate()
   if (featuredVideos.value.length <= 1) return
+  if (prefersReducedMotion()) return
   autoRotateTimer = setInterval(() => {
     const next = (activeFeaturedIndex.value + 1) % featuredVideos.value.length
     activeFeaturedIndex.value = next
@@ -226,7 +233,7 @@ const heroSub = computed(() => {
     const who = subs?.[0]?.name
     return who ? `来自 ${who} · 从你离开的地方继续` : '从你离开的地方继续这段旅程'
   }
-  return '从订阅更新、未完成观看和特别关注里整理今天的内容队列。'
+  return '在右侧添加第一个订阅频道，开始建立你的观看队列。'
 })
 
 const heroCtaLabel = computed(() => {
@@ -322,19 +329,6 @@ onBeforeUnmount(() => {
   padding-top: 1rem;
 }
 
-.home-page-content::before {
-  content: '';
-  position: absolute;
-  inset: 0 var(--app-page-gutter) auto;
-  height: min(36rem, 72vh);
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 42% 34% at 18% 12%, hsl(var(--primary) / 0.12), transparent 68%),
-    radial-gradient(ellipse 46% 38% at 82% 10%, hsl(var(--primary) / 0.055), transparent 66%);
-  opacity: 0.95;
-  z-index: -1;
-}
-
 /* ── CTA buttons ── */
 .app-hero-cta {
   box-sizing: border-box;
@@ -351,21 +345,15 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   color: hsl(var(--primary-foreground));
   background: hsl(var(--primary));
-  box-shadow:
-    0 1px 2px hsl(var(--primary) / 0.3),
-    0 8px 24px hsl(var(--primary) / 0.2),
-    0 0 0 1px hsl(var(--primary) / 0.42) inset;
-  text-shadow: none;
-  transition: transform var(--duration-fast) var(--ease-spring),
-              box-shadow var(--duration-fast) var(--ease-default);
+  box-shadow: 0 1px 2px hsl(var(--primary) / 0.3);
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-fast) var(--ease-default);
   cursor: pointer;
 }
 .app-hero-cta:hover {
   transform: translateY(-1px);
-  box-shadow:
-    0 2px 8px hsl(var(--primary) / 0.34),
-    0 14px 34px hsl(var(--primary) / 0.26),
-    0 0 0 1px hsl(var(--primary) / 0.5) inset;
+  box-shadow: 0 4px 14px hsl(var(--primary) / 0.34);
 }
 .app-hero-cta:active {
   transform: translateY(0) scale(0.98);
@@ -389,21 +377,13 @@ onBeforeUnmount(() => {
   opacity: 0.85;
 }
 .app-hero-cta--ghost {
-  background: hsl(var(--card) / 0.48);
+  background: hsl(var(--card) / 0.72);
   color: hsl(0 0% 100%);
-  border: 1px solid hsl(0 0% 100% / 0.22);
-  box-shadow:
-    0 1px 0 hsl(0 0% 100% / 0.06) inset,
-    0 8px 24px hsl(0 0% 0% / 0.18);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  border: 1px solid hsl(0 0% 100% / 0.18);
 }
 .app-hero-cta--ghost:hover {
-  background: hsl(var(--card) / 0.62);
-  border-color: hsl(0 0% 100% / 0.34);
-  box-shadow:
-    0 1px 0 hsl(0 0% 100% / 0.08) inset,
-    0 12px 30px hsl(0 0% 0% / 0.22);
+  background: hsl(var(--card) / 0.86);
+  border-color: hsl(0 0% 100% / 0.3);
 }
 
 .home-media-hero {
@@ -412,29 +392,11 @@ onBeforeUnmount(() => {
   height: auto;
   padding: 1px;
   overflow: hidden;
-  border-radius: var(--radius-xl);
+  border-radius: var(--app-surface-radius);
   border: 1px solid hsl(var(--border) / 0.54);
-  background:
-    radial-gradient(ellipse 72% 82% at 8% 0%, hsl(var(--primary) / 0.12), transparent 58%),
-    linear-gradient(145deg, hsl(var(--card) / 0.78), hsl(var(--card) / 0.44));
+  background: hsl(var(--card) / 0.5);
   box-shadow: var(--app-panel-shadow);
   isolation: isolate;
-}
-
-.home-media-hero__atmosphere {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    radial-gradient(ellipse 50% 42% at 16% 18%, hsl(var(--primary) / 0.16), transparent 64%),
-    radial-gradient(ellipse 45% 38% at 86% 70%, hsl(var(--primary) / 0.075), transparent 62%),
-    linear-gradient(hsl(var(--foreground) / 0.018) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--foreground) / 0.018) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 56px 56px, 56px 56px;
-  background-position: center;
-  mask-image: radial-gradient(ellipse 84% 78% at 50% 42%, black, transparent 82%);
-  -webkit-mask-image: radial-gradient(ellipse 84% 78% at 50% 42%, black, transparent 82%);
-  z-index: -1;
 }
 
 .home-media-hero__inner {
@@ -451,13 +413,10 @@ onBeforeUnmount(() => {
   position: relative;
   min-width: 0;
   aspect-ratio: 21 / 9;
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background: hsl(var(--card) / 0.58);
-  box-shadow:
-    0 1px 0 hsl(0 0% 100% / 0.08) inset,
-    0 16px 40px hsl(0 0% 0% / 0.26),
-    0 0 0 1px hsl(0 0% 100% / 0.08);
+  border: 1px solid hsl(var(--border) / 0.5);
 }
 
 .app-hero-main-card__img {
@@ -487,10 +446,7 @@ onBeforeUnmount(() => {
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  background:
-    radial-gradient(ellipse 68% 56% at 22% 82%, hsl(var(--primary) / 0.18), transparent 70%),
-    linear-gradient(to top, hsl(0 0% 0% / 0.9), hsl(0 0% 0% / 0.24) 60%, transparent),
-    linear-gradient(to right, hsl(0 0% 0% / 0.68), transparent 70%);
+  background: linear-gradient(to top, hsl(0 0% 0% / 0.9), hsl(0 0% 0% / 0.24) 60%, transparent);
 }
 
 .app-hero-main-card__content {
@@ -515,12 +471,11 @@ onBeforeUnmount(() => {
   max-width: 32rem;
   font-family: var(--app-heading-font);
   font-size: clamp(1.875rem, 1.3rem + 1.8vw, 3rem);
-  font-weight: 560;
+  font-weight: var(--app-hero-weight, 650);
   line-height: 1.08;
   letter-spacing: -0.02em;
   color: hsl(0 0% 100%);
   text-wrap: balance;
-  text-shadow: 0 2px 14px hsl(0 0% 0% / 0.62);
 }
 
 .home-media-hero__sub {
@@ -530,7 +485,6 @@ onBeforeUnmount(() => {
   line-height: 1.62;
   color: hsl(0 0% 100% / 0.76);
   text-wrap: pretty;
-  text-shadow: 0 1px 5px hsl(0 0% 0% / 0.46);
 }
 
 .home-media-hero__actions {
@@ -559,26 +513,20 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   padding: 0;
-  border: 0;
-  border-radius: var(--radius-xl);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background: hsl(var(--card) / 0.58);
-  box-shadow:
-    0 1px 0 hsl(0 0% 100% / 0.06) inset,
-    0 10px 28px hsl(0 0% 0% / 0.2),
-    0 0 0 1px hsl(0 0% 100% / 0.08);
   cursor: pointer;
-  transition: transform var(--duration-fast) var(--ease-spring),
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
     box-shadow var(--duration-fast) var(--ease-default),
     opacity var(--duration-fast) var(--ease-default);
 }
 
 .app-hero-feature-card:hover {
   transform: translateY(-2px);
-  box-shadow:
-    0 1px 0 hsl(0 0% 100% / 0.08) inset,
-    0 16px 36px hsl(0 0% 0% / 0.28),
-    0 0 0 1px hsl(var(--primary) / 0.18);
+  box-shadow: var(--app-panel-shadow);
 }
 
 .app-hero-feature-card:active {
@@ -587,7 +535,7 @@ onBeforeUnmount(() => {
 
 .app-hero-feature-card:focus-visible {
   outline: none;
-  box-shadow: 0 10px 28px hsl(0 0% 0% / 0.22), 0 0 0 3px hsl(var(--ring) / 0.55);
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.55);
 }
 
 .app-hero-feature-card__img {

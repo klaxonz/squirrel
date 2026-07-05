@@ -1,7 +1,8 @@
 <template>
   <RouterLink
-    :to="item.path"
-    replace
+    v-if="!hidden"
+    :to="targetPath"
+    :replace="resolvePathFn ? false : true"
     class="sidebar-item group"
     :class="[{ 'is-active': isActive }, collapsed ? 'is-collapsed' : '']"
     :title="collapsed ? item.name : undefined"
@@ -12,18 +13,42 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import type { AppIconName } from '@/shared/icons/app-icons'
 
-defineProps<{
+const props = defineProps<{
   item: {
     path: string
     name: string
     icon: AppIconName
+    resolvePath?: (currentPath: string) => string | null
   }
   isActive: boolean
   collapsed?: boolean
 }>()
+
+const route = useRoute()
+
+const resolvePathFn = computed(() => props.item.resolvePath)
+
+// UI-012: caller-supplied resolvePath can return the actual target path
+// (e.g. keep current settings tab) or null to suppress the click entirely.
+const targetPath = computed(() => {
+  const fn = resolvePathFn.value
+  if (fn) {
+    const resolved = fn(route.path)
+    return resolved ?? props.item.path
+  }
+  return props.item.path
+})
+
+const hidden = computed(() => {
+  const fn = resolvePathFn.value
+  if (fn) return fn(route.path) === null
+  return false
+})
 </script>
 
 <style scoped>
@@ -37,7 +62,9 @@ defineProps<{
   border-radius: var(--radius-md);
   font-size: 0.8125rem;
   color: hsl(var(--muted-foreground));
-  transition: background-color 0.12s ease, color 0.12s ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
   outline: none;
 }
 .sidebar-item:not(.is-collapsed) {
@@ -58,12 +85,9 @@ defineProps<{
   box-shadow: 0 0 0 2px hsl(var(--sidebar)), 0 0 0 4px hsl(var(--ring) / 0.4);
 }
 .sidebar-item.is-active {
-  background:
-    radial-gradient(ellipse 85% 160% at 0% 50%, hsl(var(--primary) / 0.18), transparent 72%),
-    hsl(var(--primary) / 0.11);
+  background: hsl(var(--primary) / 0.11);
   color: hsl(var(--foreground));
   font-weight: 650;
-  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.16) inset;
 }
 
 .sidebar-item__icon {
@@ -71,7 +95,7 @@ defineProps<{
   height: 1rem;
   flex-shrink: 0;
   color: hsl(var(--muted-foreground));
-  transition: color 0.12s ease;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 .sidebar-item:hover .sidebar-item__icon {
   color: hsl(var(--foreground));

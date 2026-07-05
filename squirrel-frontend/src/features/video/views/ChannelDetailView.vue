@@ -10,33 +10,31 @@
     />
 
     <!-- Sticky toolbar: outside app-page-content so top-padding never affects height -->
-    <div class="app-toolbar-band app-toolbar-band--sticky">
-      <div class="app-toolbar-band__inner">
-        <FeedToolbar
-          :active-tab="activeTab"
-          :nsfw="nsfw"
-          :sort-by="sortBy"
-          :special="special"
-          :time-range="timeRange"
-          :duration="duration"
-          :content-type="contentType"
-          :subscription-id="subscriptionId"
-          :tabs="tabs"
-          :is-refreshing="isRefreshing"
-          :show-tabs="true"
-          :show-sort="true"
-          :show-filter="true"
-          @update:activeTab="activeTab = $event"
-          @update:nsfw="nsfw = $event"
-          @update:sortBy="sortBy = $event"
-          @update:timeRange="timeRange = $event"
-          @update:duration="duration = $event"
-          @update:content-type="contentType = $event"
-          @update:special="setSpecialFilter"
-          @refresh="refreshCurrentList"
-        />
-      </div>
-    </div>
+    <AppToolbarFrame sticky bordered variant="compact">
+      <FeedToolbar
+        :active-tab="activeTab"
+        :nsfw="nsfw"
+        :sort-by="sortBy"
+        :special="special"
+        :time-range="timeRange"
+        :duration="duration"
+        :content-type="contentType"
+        :subscription-id="subscriptionId"
+        :tabs="tabs"
+        :is-refreshing="isRefreshing"
+        :show-tabs="true"
+        :show-sort="true"
+        :show-filter="true"
+        @update:activeTab="activeTab = $event"
+        @update:nsfw="nsfw = $event"
+        @update:sortBy="sortBy = $event"
+        @update:timeRange="timeRange = $event"
+        @update:duration="duration = $event"
+        @update:content-type="contentType = $event"
+        @update:special="setSpecialFilter"
+        @refresh="refreshCurrentList"
+      />
+    </AppToolbarFrame>
 
     <!-- Main Content Area -->
     <div class="app-page-content app-page-content--media">
@@ -91,6 +89,7 @@ import FeedToolbar from '@/features/video/components/feed/FeedToolbar.vue'
 import ChannelHeader from '@/features/video/components/feed/ChannelHeader.vue'
 import RemoteChannelVideoGrid from '@/features/video/components/feed/RemoteChannelVideoGrid.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
 import { VIDEO_TABS } from '@/features/video/constants/videos'

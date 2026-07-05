@@ -57,6 +57,7 @@
                 variant="ghost"
                 size="icon-sm"
                 :class="activeChannel.is_special_followed ? 'text-warning' : ''"
+                :aria-pressed="activeChannel.is_special_followed"
                 aria-label="切换特别关注"
                 @click="toggleSpecialFollow(activeChannel)"
               >

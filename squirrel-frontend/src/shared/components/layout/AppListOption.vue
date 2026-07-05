@@ -6,6 +6,7 @@
     :aria-selected="selected"
     :class="cn(
       'app-list-option',
+      compact && 'app-list-option--compact',
       selected && 'is-selected',
       danger && 'app-list-option--danger',
       props.class,
@@ -24,11 +25,13 @@ const props = withDefaults(defineProps<{
   selected?: boolean
   danger?: boolean
   role?: 'option' | 'menuitem'
+  compact?: boolean
   class?: HTMLAttributes['class']
 }>(), {
   as: 'button',
   selected: false,
   danger: false,
+  compact: false,
   role: 'option',
 })
 </script>
@@ -52,6 +55,14 @@ const props = withDefaults(defineProps<{
     color var(--duration-fast) var(--ease-default),
     background-color var(--duration-fast) var(--ease-default),
     border-color var(--duration-fast) var(--ease-default);
+}
+
+/* Slightly taller & uses body-text size for primary sidebars (Settings).
+   Padding stays the same; the height bump comes from the larger font. */
+.app-list-option--compact {
+  min-height: 2rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
 }
 
 .app-list-option:hover,

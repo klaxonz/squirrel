@@ -153,22 +153,25 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/settings',
     name: 'Settings',
+    component: Settings,
     redirect: { name: 'SettingsAppearance', replace: true },
     meta: createNoSearchMeta('系统设置', {
       navKey: 'settings',
       sectionLabel: '设置',
     }),
+    children: [
+      ...SETTINGS_TABS.map((tab) => ({
+        path: tab.path.replace(/^\/settings\/?/, ''),
+        name: tab.routeName,
+        component: Settings,
+        meta: createNoSearchMeta(tab.label, {
+          navKey: 'settings',
+          sectionLabel: '设置',
+          historyStrategy: 'replace',
+        }),
+      })),
+    ],
   },
-  ...SETTINGS_TABS.map((tab) => ({
-    path: tab.path,
-    name: tab.routeName,
-    component: Settings,
-    meta: createNoSearchMeta(tab.label, {
-      navKey: 'settings',
-      sectionLabel: '设置',
-      historyStrategy: 'replace',
-    }),
-  })),
   {
     path: '/site-runtimes',
     name: 'SiteRuntimes',

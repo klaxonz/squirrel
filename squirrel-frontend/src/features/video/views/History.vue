@@ -1,13 +1,13 @@
 <template>
   <AppPageShell variant="compact">
     <AppToolbarFrame bordered compact>
-      <div class="app-page-toolbar">
-        <div class="app-page-toolbar__title">
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
           <h1 class="app-h3 truncate">{{ pageTitle }}</h1>
           <p class="mt-0.5 text-xs text-muted-foreground">{{ pageSubtitle }}</p>
         </div>
 
-        <div class="app-page-toolbar__actions">
+        <div class="flex items-center gap-1.5">
           <Button variant="ghost" size="icon-sm" title="刷新历史" aria-label="刷新历史" @click="loadData">
             <AppSpinner v-if="loading" size="sm" />
             <AppIcon v-else name="refresh" class="h-4 w-4" />

@@ -12,7 +12,7 @@
             :key="tab.value"
             variant="ghost"
             size="sm"
-            class="feed-toolbar__tab app-tab-button"
+            class="feed-toolbar__tab"
             :class="{ 'is-active': localActiveTab === tab.value }"
             @click="localActiveTab = tab.value"
           >
@@ -273,6 +273,12 @@ const viewModeOptions = [
   padding: 0 var(--space-3);
   font-size: 0.8125rem;
   font-weight: 650;
+}
+
+.feed-toolbar__tab.is-active {
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-xs);
 }
 
 .feed-toolbar__fade {
