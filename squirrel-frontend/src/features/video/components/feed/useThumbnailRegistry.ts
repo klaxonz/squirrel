@@ -1,5 +1,4 @@
-import { ref, watch, type MaybeRefOrGetter } from 'vue'
-import { toValue } from '@vueuse/core'
+import { ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 const MAX_ENTRIES = 500
 const loadedThumbnailRegistry = new Set<string>()

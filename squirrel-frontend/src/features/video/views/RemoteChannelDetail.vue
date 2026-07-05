@@ -1,7 +1,7 @@
 <template>
   <AppPageShell variant="compact" :fill="false">
-    <div ref="root" class="app-page-content">
-      <div v-if="errorMessage" class="px-6 pt-6">
+    <div ref="root" class="app-page-content app-page-content--media">
+      <div v-if="errorMessage" class="app-page-section">
         <AppEmptyState variant="error" title="加载失败" :copy="errorMessage">
           <template #actions>
             <Button variant="outline" size="sm" @click="refresh">重试</Button>
@@ -9,95 +9,97 @@
         </AppEmptyState>
       </div>
 
-      <section class="px-6 pt-6">
-        <div class="flex min-w-0 items-center gap-4 border-b border-border/40 pb-6">
+      <section class="remote-channel-header-section">
+        <div class="remote-channel-header">
           <SubscriptionAvatar :src="profile.avatar" :name="profile.name || siteLabel" size="xl" />
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
               <h1 class="app-h2 truncate">{{ profile.name || siteLabel }}</h1>
-              <span class="shrink-0 rounded bg-accent/50 px-1.5 py-0.5 text-2xs font-bold uppercase tracking-wider text-muted-foreground">
+              <span class="remote-channel-site-badge">
                 {{ siteLabel }}
               </span>
             </div>
-            <p v-if="profile.description" class="mt-2 line-clamp-2 max-w-4xl text-sm leading-relaxed text-muted-foreground">
+            <p v-if="profile.description" class="app-copy-wide mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
               {{ profile.description }}
             </p>
           </div>
           <div class="flex items-center gap-3">
-            <div v-if="localSubscriptionRoute" class="flex rounded-lg border border-border/40 bg-muted/40 p-0.5">
-              <button
+            <div v-if="localSubscriptionRoute" class="remote-channel-switch">
+              <Button
                 type="button"
-                class="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                variant="ghost"
+                size="sm"
                 @click="openLocalChannel"
               >
                 <AppIcon name="library" class="h-3.5 w-3.5" />
                 本地
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                class="inline-flex h-8 items-center gap-1.5 rounded-md bg-background px-3 text-xs font-semibold text-foreground shadow-sm"
+                variant="secondary"
+                size="sm"
                 disabled
               >
                 <AppIcon name="siteFallback" class="h-3.5 w-3.5" />
                 远端
-              </button>
+              </Button>
             </div>
-            <button
+            <Button
               v-if="channelUrl"
               type="button"
-              class="h-9 min-w-20 rounded-full px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-              :class="isSubscriptionChecked && isSubscribed ? 'bg-secondary text-foreground ring-1 ring-border/40' : 'bg-primary text-primary-foreground hover:bg-primary/90'"
+              :variant="isSubscriptionChecked && isSubscribed ? 'outline' : 'default'"
+              size="sm"
               :disabled="isCheckingSubscription || isSubscribing"
               @click="handleSubscribe"
             >
               {{ subscriptionButtonText }}
-            </button>
+            </Button>
           </div>
         </div>
       </section>
 
-      <div v-if="items.length > 0" class="app-video-grid app-video-grid--feed p-6">
+      <div v-if="items.length > 0" class="remote-channel-grid app-video-grid app-video-grid--feed">
         <button
           v-for="item in items"
           :key="item.site + ':' + item.url"
           type="button"
-          class="group flex min-w-0 cursor-pointer flex-col gap-2.5 text-left"
+          class="remote-channel-card group"
           @click="openResult(item)"
         >
-          <div class="relative aspect-video overflow-hidden rounded-lg bg-muted transition-colors group-hover:bg-muted/80">
+          <div class="remote-channel-thumb">
             <VideoThumbnail :src="item.thumbnail" :alt="item.title" />
-            <span v-if="item.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded-md bg-black/70 px-1.5 text-2xs font-medium tabular-nums text-white shadow-sm backdrop-blur-sm">
+            <span v-if="item.duration" class="remote-channel-duration">
               {{ formatDuration(item.duration) }}
             </span>
           </div>
 
           <div class="flex min-w-0 flex-col gap-1 px-0.5">
-            <h3 class="line-clamp-2 text-sm font-semibold leading-[1.3] tracking-tight text-foreground/90 transition-colors group-hover:text-primary">
+            <h3 class="remote-channel-title">
               {{ item.title }}
             </h3>
-            <div class="text-xs font-medium text-muted-foreground/50">
+            <div class="remote-channel-meta">
               {{ displayDate(item) }}
             </div>
           </div>
         </button>
       </div>
 
-      <div v-if="loading" class="app-video-grid app-video-grid--feed p-6">
+      <div v-if="loading" class="app-page-section--grid app-video-grid app-video-grid--feed">
         <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" />
       </div>
 
-      <div v-if="items.length > 0 && !allLoaded" class="flex justify-center px-6 pb-8">
-        <button
+      <div v-if="items.length > 0 && !allLoaded" class="remote-channel-load-more">
+        <Button
           type="button"
-          class="rounded-lg bg-secondary px-5 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50"
+          variant="outline"
           :disabled="loading"
           @click="loadMore"
         >
           {{ loading ? '加载中' : '加载更多' }}
-        </button>
+        </Button>
       </div>
 
-      <div v-if="!loading && !errorMessage && items.length === 0" class="min-h-[50vh] p-10">
+      <div v-if="!loading && !errorMessage && items.length === 0" class="app-page-empty app-page-empty--compact">
         <AppEmptyState variant="plain" icon="inbox" title="暂无频道视频" />
       </div>
 
@@ -455,3 +457,119 @@ onUnmounted(() => {
   scrollRoot = null
 })
 </script>
+
+<style scoped>
+.remote-channel-header-section {
+  padding: 1.5rem 1.5rem 0;
+}
+
+.remote-channel-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.42);
+  padding-bottom: 1.5rem;
+}
+
+.remote-channel-site-badge {
+  flex: none;
+  border: 1px solid hsl(var(--border) / 0.45);
+  border-radius: 0.375rem;
+  background: hsl(var(--muted) / 0.34);
+  padding: 0.125rem 0.375rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.remote-channel-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  border: 1px solid var(--app-control-border);
+  border-radius: var(--app-control-radius);
+  background: var(--app-control-bg);
+  padding: 2px;
+}
+
+.remote-channel-grid {
+  padding: 1.5rem;
+}
+
+.remote-channel-card {
+  display: flex;
+  min-width: 0;
+  cursor: pointer;
+  flex-direction: column;
+  gap: 0.625rem;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.remote-channel-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.42);
+  border-radius: 0.625rem;
+  background: hsl(var(--muted));
+  transition: border-color 0.15s ease;
+}
+
+.remote-channel-card:hover .remote-channel-thumb {
+  border-color: hsl(var(--primary) / 0.32);
+}
+
+.remote-channel-duration {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  display: inline-flex;
+  height: 1.25rem;
+  align-items: center;
+  border-radius: 0.375rem;
+  background: hsl(0 0% 0% / 0.72);
+  padding: 0 0.375rem;
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.remote-channel-title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: hsl(var(--foreground) / 0.92);
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.35;
+  transition: color 0.15s ease;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.remote-channel-card:hover .remote-channel-title {
+  color: hsl(var(--primary));
+}
+
+.remote-channel-meta {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.remote-channel-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 0 1.5rem 2rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .remote-channel-thumb,
+  .remote-channel-title {
+    transition: none;
+  }
+}
+</style>

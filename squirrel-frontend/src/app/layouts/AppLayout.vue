@@ -165,8 +165,9 @@ onUnmounted(() => {
   overflow: hidden;
   color: hsl(var(--foreground));
   background:
-    radial-gradient(900px 420px at 58% -180px, hsl(var(--primary) / 0.07), transparent 64%),
-    linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+    radial-gradient(ellipse 54% 42% at 18% 0%, hsl(var(--primary) / 0.07), transparent 66%),
+    radial-gradient(ellipse 48% 36% at 92% 0%, hsl(var(--primary) / 0.035), transparent 68%),
+    hsl(var(--background));
 }
 
 .app-layout__titlebar {
@@ -179,8 +180,8 @@ onUnmounted(() => {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4) var(--space-4);
+  gap: var(--space-3);
+  padding: var(--space-3);
   overflow: hidden;
 }
 
@@ -201,11 +202,11 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: calc(var(--radius-xl) + 4px);
-  background: hsl(var(--background) / 0.72);
-  box-shadow:
-    0 1px 0 hsl(var(--foreground) / 0.04) inset,
-    0 18px 44px hsl(0 0% 0% / 0.18);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.44), hsl(var(--background) / 0.92)),
+    hsl(var(--background));
+  box-shadow: var(--app-panel-shadow);
 }
 
 .app-layout__header {

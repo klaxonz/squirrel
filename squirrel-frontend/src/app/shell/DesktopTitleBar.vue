@@ -1,5 +1,5 @@
 <template>
-  <header class="h-8 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border/50 select-none drag">
+  <header class="h-8 flex items-center justify-between px-4 bg-background border-b border-border/70 select-none drag">
     <div class="flex items-center gap-2 no-drag">
       <router-link
         to="/"

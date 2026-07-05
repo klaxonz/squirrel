@@ -1,28 +1,26 @@
 <template>
   <div
-    class="group relative flex cursor-pointer gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"
+    class="history-item"
     role="button"
     tabindex="0"
     @click="$emit('open', video)"
     @keydown.enter.prevent="$emit('open', video)"
     @keydown.space.prevent="$emit('open', video)"
   >
-    <div class="relative overflow-hidden rounded-lg bg-muted ring-1 ring-border/40 transition-all duration-300 group-hover:shadow-card-hover group-active:scale-[0.99] w-48 shrink-0 md:w-64 aspect-video">
+    <div class="history-item__thumb">
       <VideoThumbnail
         :src="video.thumbnail"
         :alt="video.title"
         fit="responsive"
       />
 
-      <!-- Bottom Shadow/Gradient for Overlay Visibility -->
-      <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-10" />
+      <div class="history-item__scrim" />
 
-      <!-- Progress Bar -->
-      <div v-if="progress > 0" class="absolute bottom-0 inset-x-0 h-px group-hover:h-[2px] transition-all duration-300 z-20 bg-white/15">
+      <div v-if="progress > 0" class="history-item__progress">
         <div class="h-full bg-primary transition-[width] duration-500 ease-out" :style="{ width: `${progress * 100}%` }" />
       </div>
 
-      <div v-if="video.duration" class="absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/70 px-1.5 text-2xs font-medium text-white tabular-nums shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-0">
+      <div v-if="video.duration" class="history-item__duration">
         {{ formatDuration(video.duration) }}
       </div>
     </div>
@@ -45,15 +43,15 @@
             <span class="truncate">
               {{ displayChannel || '未知作者' }}
             </span>
-            <span v-if="video.site" class="shrink-0 px-1 py-px rounded bg-accent/50 text-2xs font-bold text-muted-foreground uppercase tracking-wider">
+            <span v-if="video.site" class="history-item__site">
               {{ video.site }}
             </span>
           </div>
 
           <div class="flex items-center gap-2 text-xs text-muted-foreground/70 font-medium">
             <span>{{ formatDate(video.played_at) }}</span>
-            <span v-if="progress > 0" class="inline-flex items-center gap-1 rounded-full bg-muted/70 px-2 py-0.5 text-muted-foreground">
-              <span class="h-1.5 w-1.5 rounded-full bg-primary" />
+            <span v-if="progress > 0" class="history-item__watch-progress">
+              <span class="h-2.5 w-0.5 rounded-sm bg-primary" />
               已观看 {{ (progress * 100).toFixed(0) }}%
             </span>
           </div>
@@ -62,7 +60,7 @@
     </div>
 
     <button
-      class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-md bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-colors group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
+      class="history-item__delete"
       @click.stop="handleDelete"
     >
       <AppIcon name="trash" class="h-4 w-4" />
@@ -103,3 +101,141 @@ const displayChannel = computed(() => {
   return sources.map((s) => s.name).join(' / ')
 })
 </script>
+
+<style scoped>
+.history-item {
+  position: relative;
+  display: flex;
+  gap: 1rem;
+  cursor: pointer;
+  border-radius: 0.625rem;
+  outline: none;
+}
+
+.history-item:focus-visible {
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+}
+
+.history-item__thumb {
+  position: relative;
+  width: 12rem;
+  aspect-ratio: 16 / 9;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: 0.625rem;
+  background: hsl(var(--muted));
+  transition: border-color 0.16s ease;
+}
+
+@media (min-width: 768px) {
+  .history-item__thumb {
+    width: 16rem;
+  }
+}
+
+.history-item:hover .history-item__thumb,
+.history-item:focus-visible .history-item__thumb {
+  border-color: hsl(var(--primary) / 0.32);
+}
+
+.history-item__scrim {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  height: 2.5rem;
+  pointer-events: none;
+  background: linear-gradient(to top, hsl(0 0% 0% / 0.6), transparent);
+}
+
+.history-item__progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  height: 1px;
+  background: hsl(0 0% 100% / 0.16);
+}
+
+.history-item__duration {
+  position: absolute;
+  right: 0.375rem;
+  bottom: 0.375rem;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: 0.375rem;
+  background: hsl(0 0% 0% / 0.72);
+  color: white;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  transition: opacity 0.16s ease;
+}
+
+.history-item:hover .history-item__duration {
+  opacity: 0;
+}
+
+.history-item__site {
+  flex: 0 0 auto;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 0.25rem;
+  background: hsl(var(--accent) / 0.5);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.history-item__watch-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.375rem;
+  background: hsl(var(--muted) / 0.7);
+  color: hsl(var(--muted-foreground));
+}
+
+.history-item__delete {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  background: hsl(var(--background) / 0.92);
+  color: hsl(var(--muted-foreground));
+  opacity: 0;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.history-item:hover .history-item__delete,
+.history-item:focus-within .history-item__delete {
+  opacity: 1;
+}
+
+.history-item__delete:hover {
+  background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history-item__thumb,
+  .history-item__duration,
+  .history-item__delete {
+    transition: none;
+  }
+}
+</style>

@@ -28,10 +28,13 @@ defineProps<{
   width: 100%;
   margin: 0 auto;
   padding-inline: var(--app-page-gutter);
+  background:
+    radial-gradient(ellipse 34% 120% at 0% 0%, hsl(var(--primary) / 0.045), transparent 72%),
+    hsl(var(--background) / 0.86);
 }
 
 .app-toolbar-frame--bordered {
-  border-bottom: 1px solid hsl(var(--border) / var(--app-hairline-alpha));
+  border-bottom: 1px solid var(--app-hairline);
 }
 
 .app-toolbar-frame__inner {

@@ -2,7 +2,7 @@
   <Dialog :open="visible" @update:open="!$event && $emit('close')">
     <DialogContent class="flex max-h-[80vh] w-full max-w-xl flex-col gap-0 overflow-hidden rounded-lg p-0">
       <!-- Header -->
-      <DialogHeader class="flex flex-row items-center justify-between space-y-0 border-b border-border/50 px-4 py-3 text-left">
+      <DialogHeader class="app-divider-bottom flex flex-row items-center justify-between space-y-0 px-4 py-3 text-left">
         <div class="flex items-center gap-3">
           <SiteIcon
             :icon-url="siteEditorForm.iconUrl"
@@ -16,7 +16,7 @@
           </div>
         </div>
         <DialogClose as-child>
-          <Button variant="ghost" size="icon" class="h-7 w-7 rounded text-muted-foreground hover:bg-muted/60" aria-label="关闭">
+          <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="关闭">
             <AppIcon name="close" class="h-3.5 w-3.5" />
           </Button>
         </DialogClose>
@@ -107,7 +107,7 @@
       </div>
 
       <!-- Footer -->
-      <DialogFooter class="border-t border-border/50 px-4 py-3 sm:justify-end">
+      <DialogFooter class="app-divider-top px-4 py-3 sm:justify-end">
         <Button
           size="sm"
           variant="ghost"

@@ -1,15 +1,15 @@
 <template>
   <div ref="root" class="w-full">
-    <div v-if="!isDesktop" class="min-h-[60vh] p-10">
+    <div v-if="!isDesktop" class="app-page-empty">
       <AppEmptyState variant="plain" icon="search" title="远端搜索仅桌面端可用" copy="桌面端会直接请求源站并使用本机站点会话。" />
     </div>
 
-    <div v-else-if="!trimmedQuery" class="min-h-[60vh] p-10">
+    <div v-else-if="!trimmedQuery" class="app-page-empty">
       <AppEmptyState variant="plain" icon="search" title="输入关键词开始远端搜索" copy="结果来自源站，不会写入本地数据。" />
     </div>
 
     <div v-else>
-      <div v-if="errorMessage" class="px-6 pt-6">
+      <div v-if="errorMessage" class="app-page-section">
         <AppEmptyState variant="error" title="搜索失败" :copy="errorMessage">
           <template #actions>
             <Button variant="outline" size="sm" @click="refresh">重试</Button>
@@ -17,7 +17,7 @@
         </AppEmptyState>
       </div>
 
-      <div v-if="items.length > 0" class="app-video-grid app-video-grid--feed p-6">
+      <div v-if="items.length > 0" class="app-page-section--grid app-video-grid app-video-grid--feed">
         <article
           v-for="item in items"
           :key="item.site + ':' + item.url"
@@ -30,7 +30,7 @@
         >
           <div class="relative aspect-video overflow-hidden rounded-sm bg-muted transition-colors group-hover:brightness-110">
             <VideoThumbnail :src="item.thumbnail" :alt="item.title" />
-            <span v-if="item.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded-md bg-black/70 px-1.5 text-2xs font-medium tabular-nums text-white shadow-sm backdrop-blur-sm">
+            <span v-if="item.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded bg-black/80 px-1.5 text-xs font-medium tabular-nums text-white">
               {{ formatDuration(item.duration) }}
             </span>
           </div>
@@ -64,7 +64,7 @@
                   {{ primarySubscription(item)?.name || item.uploader }}
                 </span>
               </template>
-              <span class="shrink-0 rounded bg-accent/50 px-1 py-0 text-3xs font-bold uppercase tracking-wider text-muted-foreground">
+              <span class="shrink-0 rounded border border-border/60 bg-accent/40 px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
                 {{ siteLabel(item.site) }}
               </span>
             </div>
@@ -78,17 +78,17 @@
         </article>
       </div>
 
-      <div v-if="loading" class="app-video-grid app-video-grid--feed p-6">
+      <div v-if="loading" class="app-page-section--grid app-video-grid app-video-grid--feed">
         <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" />
       </div>
 
-      <div v-if="items.length > 0 && !allLoaded" class="flex justify-center px-6 pb-8">
-        <Button variant="outline" class="h-9 rounded-md" :disabled="loading" @click="loadMore">
+      <div v-if="items.length > 0 && !allLoaded" class="app-page-actions">
+        <Button variant="outline" :disabled="loading" @click="loadMore">
           {{ loading ? '加载中' : '加载更多' }}
         </Button>
       </div>
 
-      <div v-if="!loading && !errorMessage && items.length === 0" class="min-h-[60vh] p-10">
+      <div v-if="!loading && !errorMessage && items.length === 0" class="app-page-empty">
         <AppEmptyState variant="plain" icon="inbox" title="未找到远端结果" copy="换个关键词或站点再试。" />
       </div>
 

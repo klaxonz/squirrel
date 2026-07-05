@@ -50,8 +50,8 @@
         <span class="music-grid-card-subtitle">{{ playlist.nickname || '歌单' }}</span>
       </div>
     </div>
-    <div class="flex justify-center mt-6" v-if="hasMore">
-      <Button variant="outline" class="h-8 text-xs px-4" :loading="loading" @click="$emit('load-more')">
+    <div class="app-page-actions mt-6" v-if="hasMore">
+      <Button variant="outline" size="sm" :loading="loading" @click="$emit('load-more')">
         加载更多歌单
       </Button>
     </div>

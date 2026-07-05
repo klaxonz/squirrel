@@ -2,32 +2,32 @@
   <AppPageShell variant="compact">
     <AppTwoColumnLayout>
       <template #sidebar>
-        <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
+        <div class="flex h-14 shrink-0 items-center justify-between app-divider-bottom px-4">
           <div class="min-w-0">
             <h1 class="app-h3 truncate">定时任务</h1>
             <p class="mt-0.5 text-xs text-muted-foreground">{{ statistics.total_tasks }} 个任务</p>
           </div>
-          <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md" @click="showCreateDialog = true">
+          <Button variant="ghost" size="icon-sm" @click="showCreateDialog = true">
             <AppIcon name="plus" class="h-4 w-4" />
           </Button>
         </div>
 
-        <div class="grid shrink-0 grid-cols-2 gap-2 border-b border-border/50 p-3">
-          <div class="rounded-md border border-border/50 p-2">
-            <div class="text-xs text-muted-foreground">活跃</div>
-            <div class="mt-1 text-lg font-semibold tabular-nums">{{ statistics.active_tasks }}</div>
+        <div class="grid shrink-0 grid-cols-2 gap-2 app-divider-bottom p-3">
+          <div class="app-stat-card">
+            <div class="app-stat-card__label">活跃</div>
+            <div class="app-stat-card__value">{{ statistics.active_tasks }}</div>
           </div>
-          <div class="rounded-md border border-border/50 p-2">
-            <div class="text-xs text-muted-foreground">运行</div>
-            <div class="mt-1 text-lg font-semibold tabular-nums">{{ statistics.running_tasks }}</div>
+          <div class="app-stat-card">
+            <div class="app-stat-card__label">运行</div>
+            <div class="app-stat-card__value">{{ statistics.running_tasks }}</div>
           </div>
-          <div class="rounded-md border border-border/50 p-2">
-            <div class="text-xs text-muted-foreground">异常</div>
-            <div class="mt-1 text-lg font-semibold tabular-nums">{{ statistics.error_tasks }}</div>
+          <div class="app-stat-card">
+            <div class="app-stat-card__label">异常</div>
+            <div class="app-stat-card__value">{{ statistics.error_tasks }}</div>
           </div>
-          <div class="rounded-md border border-border/50 p-2">
-            <div class="text-xs text-muted-foreground">今日执行</div>
-            <div class="mt-1 text-lg font-semibold tabular-nums">{{ statistics.today_executions }}</div>
+          <div class="app-stat-card">
+            <div class="app-stat-card__label">今日执行</div>
+            <div class="app-stat-card__value">{{ statistics.today_executions }}</div>
           </div>
         </div>
 
@@ -36,8 +36,8 @@
             v-for="opt in statusOptions"
             :key="opt.value"
             @click="setStatusFilter(opt.value)"
-            class="flex h-10 w-full items-center justify-between rounded-md px-2 text-left text-sm font-medium transition-colors"
-            :class="statusFilter === opt.value ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+            class="app-filter-button"
+            :class="{ 'is-active': statusFilter === opt.value }"
           >
             <span>{{ opt.label }}</span>
             <span class="text-xs font-normal text-muted-foreground tabular-nums">{{ getStatusCount(opt.value) }}</span>
@@ -57,7 +57,7 @@
             <Input
               v-model="searchQuery"
               placeholder="搜索任务"
-              class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
+              class="pl-9 pr-8"
             />
             <button
               v-if="searchQuery"
@@ -67,14 +67,14 @@
               <AppIcon name="close" class="h-4 w-4" />
             </button>
           </div>
-          <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" @click="refreshData">
+          <Button variant="ghost" size="icon-sm" @click="refreshData">
             <AppSpinner v-if="loading" size="sm" />
             <AppIcon v-else name="refresh" class="h-4 w-4" />
           </Button>
         </div>
       </template>
 
-      <div class="shrink-0 space-y-2 border-b border-border/50 p-3 md:hidden">
+      <div class="shrink-0 space-y-2 app-divider-bottom p-3 md:hidden">
         <AppSegmentedControl
           v-model="statusFilter"
           :options="statusOptions"
@@ -86,7 +86,7 @@
           <Input
             v-model="searchQuery"
             placeholder="搜索任务"
-            class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
+            class="pl-9 pr-8"
           />
           <button
             v-if="searchQuery"
@@ -98,9 +98,10 @@
         </div>
       </div>
 
-      <div class="mx-auto w-full max-w-[1320px] p-4 lg:p-6">
-        <div class="overflow-x-auto rounded-lg border border-border/50">
-          <div class="task-grid min-w-[760px] border-b border-border/50 bg-muted/20 px-4 py-3 text-xs font-medium text-muted-foreground">
+      <div class="app-page-content app-table-content scheduled-tasks-content">
+        <div class="app-table-shell">
+          <div class="app-table-frame">
+          <div class="app-table-head task-grid">
             <div>任务</div>
             <div>状态</div>
             <div>频率</div>
@@ -108,11 +109,11 @@
             <div class="text-right">操作</div>
           </div>
 
-          <div v-if="loading && tasks.length === 0" class="min-w-[760px] space-y-2 p-4">
+          <div v-if="loading && tasks.length === 0" class="app-table-loading app-content-stack app-content-stack--dense">
             <AppSkeleton v-for="i in 5" :key="i" height="3.5rem" rounded="var(--radius-lg)" shimmer />
           </div>
 
-          <div v-else-if="tasks.length === 0" class="min-h-[20rem]">
+          <div v-else-if="tasks.length === 0" class="app-page-empty app-page-empty--compact">
             <AppEmptyState
               variant="plain"
               icon="time"
@@ -121,11 +122,11 @@
             />
           </div>
 
-              <div v-else class="min-w-[760px] divide-y divide-border/50">
+              <div v-else class="app-table-body">
                 <div
                   v-for="task in tasks"
                   :key="task.id"
-                  class="task-grid group items-center px-4 py-3 transition-colors hover:bg-accent/30"
+                  class="app-table-row task-grid group"
                 >
                   <div class="min-w-0">
                     <div class="flex items-center gap-2">
@@ -150,15 +151,15 @@
                   </div>
 
                   <div class="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md text-muted-foreground" title="立即执行" @click="executeTask(task)">
+                    <Button variant="ghost" size="icon-sm" class="text-muted-foreground" title="立即执行" @click="executeTask(task)">
                       <AppIcon name="play" class="h-4 w-4 fill-current" />
                     </Button>
-                    <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md text-muted-foreground" title="编辑" @click="editTask(task)">
+                    <Button variant="ghost" size="icon-sm" class="text-muted-foreground" title="编辑" @click="editTask(task)">
                       <AppIcon name="pencil" class="h-4 w-4" />
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger as-child>
-                        <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md">
+                        <Button variant="ghost" size="icon-sm">
                           <AppIcon name="more" class="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -182,17 +183,18 @@
                 </div>
               </div>
 
-              <div v-if="totalPages > 1" class="flex min-w-[760px] items-center justify-between border-t border-border/50 bg-muted/20 px-4 py-3">
+              <div v-if="totalPages > 1" class="app-table-pager">
                 <span class="text-xs text-muted-foreground">第 {{ currentPage }} / {{ totalPages }} 页</span>
                 <div class="flex items-center gap-2">
-                  <Button variant="outline" size="sm" class="h-8 rounded-md" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">
+                  <Button variant="outline" size="sm" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">
                     上一页
                   </Button>
-                  <Button variant="outline" size="sm" class="h-8 rounded-md" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">
+                  <Button variant="outline" size="sm" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">
                     下一页
                   </Button>
                 </div>
               </div>
+          </div>
           </div>
         </div>
 
@@ -245,7 +247,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onUnmounted } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
@@ -264,7 +266,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
-import { refDebounced } from '@vueuse/core'
 import type { ScheduledTask } from '@/features/settings/types/scheduler'
 import {
   getUnitFull,
@@ -279,9 +280,14 @@ import { useScheduledTaskMutations } from '@/features/settings/composables/useSc
 
 const currentPage = ref(1)
 const searchQuery = ref('')
-// Debounced mirror of searchQuery — drives the tasks queryKey so typing doesn't
-// fire a request per keystroke. Replaces the old hand-rolled debouncedSearch().
-const searchQueryDebounced = refDebounced(searchQuery, 350)
+const searchQueryDebounced = ref('')
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+watch(searchQuery, (nextValue) => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(() => {
+    searchQueryDebounced.value = nextValue
+  }, 350)
+})
 const statusFilter = ref('all')
 const showCreateDialog = ref(false)
 const editingTask = ref<ScheduledTask | null>(null)
@@ -337,6 +343,7 @@ const {
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
 onUnmounted(() => {
   if (refreshTimer) clearTimeout(refreshTimer)
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
 })
 
 // ponytail: the six task mutations + their toast/invalidate contract live in
@@ -423,10 +430,14 @@ const getStatusCount = (status: string) => getStatusCountFor(status, statistics.
 </script>
 
 <style scoped>
+.scheduled-tasks-content {
+  --app-table-content-width: 1320px;
+  --app-table-min-width: 760px;
+  --app-table-columns: minmax(16rem, 1fr) 7rem 8rem 10rem 7rem;
+}
+
 .task-grid {
-  display: grid;
-  grid-template-columns: minmax(16rem, 1fr) 7rem 8rem 10rem 7rem;
-  gap: 1rem;
+  grid-template-columns: var(--app-table-columns);
 }
 
 .tabular-nums {

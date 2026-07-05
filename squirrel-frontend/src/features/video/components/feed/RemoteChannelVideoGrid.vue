@@ -1,10 +1,10 @@
 <template>
   <div ref="root" class="space-y-6">
-    <div v-if="error" class="min-h-[24rem]">
+    <div v-if="error" class="app-page-empty app-page-empty--compact">
       <AppEmptyState variant="error" title="加载失败" :copy="error" />
     </div>
 
-    <div v-if="!items.length && !loading && !error" class="min-h-[24rem]">
+    <div v-if="!items.length && !loading && !error" class="app-page-empty app-page-empty--compact">
       <AppEmptyState variant="plain" icon="inbox" title="暂无远端内容" copy="源站频道暂时没有返回视频。" />
     </div>
 
@@ -18,7 +18,7 @@
       >
         <div class="relative aspect-video overflow-hidden rounded-sm bg-muted transition-colors group-hover:brightness-110">
           <VideoThumbnail :src="item.thumbnail" :alt="item.title" />
-          <span v-if="item.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded-md bg-black/70 px-1.5 text-2xs font-medium tabular-nums text-white shadow-sm backdrop-blur-sm">
+          <span v-if="item.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded bg-black/80 px-1.5 text-xs font-medium tabular-nums text-white">
             {{ formatDuration(item.duration) }}
           </span>
         </div>
@@ -38,8 +38,8 @@
       <VideoSkeleton v-for="i in skeletonCount" :key="i" />
     </div>
 
-    <div v-if="items.length && !allLoaded" class="flex justify-center py-4">
-      <Button variant="outline" class="h-9 rounded-md" :disabled="loading" @click="$emit('loadMore')">
+    <div v-if="items.length && !allLoaded" class="app-page-actions">
+      <Button variant="outline" :disabled="loading" @click="$emit('loadMore')">
         {{ loading ? '加载中' : '加载更多' }}
       </Button>
     </div>

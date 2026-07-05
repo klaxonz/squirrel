@@ -16,7 +16,7 @@
       <div class="h-4 w-2/3 rounded-md bg-muted" />
     </div>
     <div class="mt-2 flex items-center gap-1.5">
-      <div class="size-4 shrink-0 rounded-full bg-muted" />
+      <div class="size-4 shrink-0 rounded-md bg-muted" />
       <div class="h-3 w-20 rounded-md bg-muted" />
     </div>
   </article>

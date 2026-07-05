@@ -10,8 +10,8 @@
     />
 
     <!-- Sticky toolbar: outside app-page-content so top-padding never affects height -->
-    <div class="sticky top-0 z-20 bg-background border-b border-border/50">
-      <div class="max-w-[var(--app-page-max-width)] mx-auto px-6 py-2">
+    <div class="app-toolbar-band app-toolbar-band--sticky">
+      <div class="app-toolbar-band__inner">
         <FeedToolbar
           :active-tab="activeTab"
           :nsfw="nsfw"
@@ -39,10 +39,10 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="app-page-content">
+    <div class="app-page-content app-page-content--media">
 
       <!-- Error -->
-      <div v-if="loadError" class="px-6 pt-6">
+      <div v-if="loadError" class="app-page-section">
         <AppEmptyState variant="error" title="加载失败" :copy="loadError">
           <template #actions>
             <Button variant="outline" size="sm" @click="refreshCurrentList">重试</Button>
@@ -53,7 +53,7 @@
       <!-- Remote mode: external channel grid -->
       <RemoteChannelVideoGrid
         v-if="channelDataMode === 'remote'"
-        class="p-6"
+        class="app-page-section--grid"
         :items="remoteItems"
         :loading="remoteLoading"
         :all-loaded="remoteAllLoaded"

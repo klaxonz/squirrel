@@ -69,11 +69,11 @@ const showSidebarMusicPlayer = computed(() =>
   flex-direction: column;
   overflow: hidden;
   border: 1px solid hsl(var(--sidebar-border) / 0.82);
-  border-radius: calc(var(--radius-xl) + 4px);
-  background: hsl(var(--sidebar) / 0.94);
-  box-shadow:
-    0 1px 0 hsl(var(--foreground) / 0.035) inset,
-    0 18px 38px hsl(0 0% 0% / 0.2);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(ellipse 120% 38% at 0% 0%, hsl(var(--primary) / 0.09), transparent 62%),
+    linear-gradient(180deg, hsl(var(--sidebar)), hsl(var(--background) / 0.88));
+  box-shadow: var(--app-panel-shadow);
   user-select: none;
   transition:
     width var(--duration-base) var(--ease-default),
@@ -106,10 +106,10 @@ const showSidebarMusicPlayer = computed(() =>
 .sidebar-group__label {
   margin: 0 0 var(--space-2);
   padding: 0 var(--space-2);
-  color: hsl(var(--muted-foreground) / 0.72);
+  color: hsl(var(--muted-foreground) / 0.78);
   font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 650;
+  letter-spacing: 0;
 }
 
 .sidebar-group__items {
@@ -129,11 +129,11 @@ const showSidebarMusicPlayer = computed(() =>
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
-  background: hsl(var(--background) / 0.72);
+  background: hsl(var(--card) / 0.62);
   border: 1px solid hsl(var(--border) / 0.6);
   color: hsl(var(--muted-foreground));
   cursor: pointer;
-  box-shadow: none;
+  box-shadow: 0 1px 0 hsl(var(--foreground) / 0.04) inset;
   transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .sidebar-toggle:hover {

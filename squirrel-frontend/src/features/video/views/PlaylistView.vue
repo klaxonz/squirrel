@@ -1,32 +1,32 @@
 <template>
   <AppPageShell variant="compact">
-    <div class="flex h-full overflow-hidden bg-background text-foreground">
-      <aside class="hidden w-72 shrink-0 flex-col border-r border-border/50 bg-background lg:flex">
-        <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
+    <div class="app-workbench">
+      <aside class="app-workbench__sidebar">
+        <div class="app-workbench__sidebar-header">
           <div class="min-w-0">
             <h1 class="app-h3 truncate">播放列表</h1>
             <p class="mt-0.5 text-xs text-muted-foreground">{{ playlists.length }} 个列表</p>
           </div>
-          <button
-            class="flex size-8 items-center justify-center rounded-full bg-primary/5 text-primary outline-none transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring/40"
+          <Button
+            size="icon-sm"
             title="新建播放列表"
             aria-label="新建播放列表"
             @click="openCreateModal"
           >
             <AppIcon name="plus" class="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
-        <nav class="flex-1 space-y-0.5 overflow-y-auto p-2 custom-scrollbar">
+        <nav class="playlist-nav custom-scrollbar">
           <button
             v-for="playlist in playlists"
             :key="playlist.id"
-            class="group flex h-12 w-full items-center gap-2.5 rounded-lg px-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40"
-            :class="String(activePlaylist?.id) === String(playlist.id) ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+            class="playlist-nav-item group"
+            :class="{ 'playlist-nav-item--active': String(activePlaylist?.id) === String(playlist.id) }"
             :aria-current="String(activePlaylist?.id) === String(playlist.id) ? 'true' : undefined"
             @click="selectPlaylist(playlist.id)"
           >
-            <div class="h-8 w-8 shrink-0 overflow-hidden rounded-md bg-muted">
+            <div class="app-compact-thumb">
               <VideoThumbnail
                 v-if="getPlaylistThumbnails(playlist).length"
                 :src="getPlaylistThumbnails(playlist)[0]"
@@ -44,8 +44,8 @@
         </nav>
       </aside>
 
-      <main class="flex min-w-0 flex-1 flex-col bg-background">
-        <header class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4 lg:px-6">
+      <main class="app-workbench__main">
+        <header class="app-workbench__header">
           <div class="min-w-0">
             <h2 class="app-h2 truncate">{{ activePlaylist?.name || '播放列表' }}</h2>
             <p class="mt-0.5 text-xs text-muted-foreground">
@@ -54,12 +54,13 @@
           </div>
 
           <div class="flex shrink-0 items-center gap-1.5">
-            <Button v-if="activePlaylistItems.length" size="sm" class="h-8 rounded-full px-4" @click="playAll">
+            <Button v-if="activePlaylistItems.length" size="sm" @click="playAll">
               <AppIcon name="play" class="h-4 w-4 fill-current" />
               播放全部
             </Button>
-            <button
-              class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            <Button
+              variant="ghost"
+              size="icon-sm"
               :disabled="loading || isHydratingSelection"
               title="刷新"
               aria-label="刷新"
@@ -67,15 +68,12 @@
             >
               <AppSpinner v-if="loading || isHydratingSelection" size="sm" />
               <AppIcon v-else name="refresh" class="h-4 w-4" />
-            </button>
+            </Button>
             <DropdownMenu v-if="activePlaylist && !activePlaylist.is_default">
               <DropdownMenuTrigger as-child>
-                <button
-                  class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  aria-label="更多操作"
-                >
+                <Button variant="ghost" size="icon-sm" aria-label="更多操作">
                   <AppIcon name="more" class="h-4 w-4" />
-                </button>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" class="w-40">
                 <DropdownMenuItem @click="openEditModal">
@@ -92,8 +90,8 @@
           </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto custom-scrollbar">
-          <div class="mx-auto w-full max-w-[1200px] p-4 lg:p-6">
+        <div class="app-workbench__scroll custom-scrollbar">
+          <div class="app-workbench__content playlist-content">
             <div v-if="loading && !playlists.length" class="space-y-4">
               <AppSkeleton height="7rem" rounded="var(--radius-lg)" shimmer />
               <div class="space-y-2">
@@ -101,7 +99,7 @@
               </div>
             </div>
 
-            <div v-else-if="!playlists.length" class="min-h-[24rem]">
+            <div v-else-if="!playlists.length" class="app-page-empty app-page-empty--compact">
               <AppEmptyState
                 variant="plain"
                 icon="playlistVideo"
@@ -109,17 +107,17 @@
                 :copy="error ? '' : '创建播放列表后会显示在这里。'"
               >
                 <template #actions>
-                  <Button v-if="!error" class="h-9 rounded-md px-3" @click="openCreateModal">
+                  <Button v-if="!error" @click="openCreateModal">
                     <AppIcon name="plus" class="h-4 w-4" />
                     新建播放列表
                   </Button>
-                  <Button v-else variant="outline" class="h-9 rounded-md px-3" @click="reloadPlaylists">重试</Button>
+                  <Button v-else variant="outline" @click="reloadPlaylists">重试</Button>
                 </template>
               </AppEmptyState>
             </div>
 
             <div v-else-if="activePlaylist" class="space-y-6">
-              <section class="flex flex-col gap-4 border-b border-border/50 pb-6 sm:flex-row sm:items-end">
+              <section class="app-divider-bottom flex flex-col gap-4 pb-6 sm:flex-row sm:items-end">
                 <div class="h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
                   <div v-if="getPlaylistThumbnails(activePlaylist).length >= 4" class="grid h-full w-full grid-cols-2 grid-rows-2 gap-px">
                     <VideoThumbnail
@@ -135,7 +133,7 @@
                     fit="cover"
                   />
                   <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
-                    <AppIcon name="playlistVideo" class="h-8 w-8" />
+                    <AppIcon name="playlistVideo" class="h-6 w-6" />
                   </div>
                 </div>
 
@@ -147,9 +145,9 @@
                   </p>
                   <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span>我的媒体库</span>
-                    <span class="h-1 w-1 rounded-full bg-border" />
+                    <span class="h-3 w-px bg-border" />
                     <span>{{ activePlaylistItems.length }} 个视频</span>
-                    <span class="h-1 w-1 rounded-full bg-border" />
+                    <span class="h-3 w-px bg-border" />
                     <span>{{ activePlaylistDurationLabel }}</span>
                   </div>
                 </div>
@@ -159,12 +157,12 @@
                 <AppSkeleton v-for="i in 6" :key="i" height="4rem" rounded="var(--radius-lg)" shimmer />
               </div>
 
-              <div v-else-if="!activePlaylistItems.length" class="flex min-h-[24rem] items-center justify-center">
+              <div v-else-if="!activePlaylistItems.length" class="app-page-empty app-page-empty--compact">
                 <AppEmptyState variant="plain" icon="playlistVideo" title="暂无视频" copy="添加到列表的视频会显示在这里。" />
               </div>
 
               <div v-else class="space-y-1">
-                <div class="hidden h-8 grid-cols-[2rem_minmax(0,1fr)_8rem_8rem_3rem] items-center gap-3 border-b border-border/50 px-2 text-xs font-medium text-muted-foreground md:grid">
+                <div class="playlist-table-head app-divider-bottom hidden grid-cols-[2rem_minmax(0,1fr)_8rem_8rem_3rem] items-center gap-3 px-2 text-xs font-medium text-muted-foreground md:grid">
                   <div>#</div>
                   <div>标题</div>
                   <div>来源</div>
@@ -198,7 +196,7 @@
                       <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
                         <AppIcon name="film" class="h-5 w-5" />
                       </div>
-                      <span v-if="item.video?.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded-md bg-black/70 px-1.5 text-2xs font-medium text-white tabular-nums shadow-sm backdrop-blur-sm">
+                      <span v-if="item.video?.duration" class="playlist-duration-badge">
                         {{ formatDuration(item.video.duration) }}
                       </span>
                     </div>
@@ -214,8 +212,8 @@
                   <div class="hidden text-sm text-muted-foreground md:block">{{ formatDate(item.added_at) }}</div>
                   <Button
                     variant="ghost"
-                    size="icon"
-                    class="h-8 w-8 rounded-md opacity-0 transition-opacity group-hover:opacity-100"
+                    size="icon-sm"
+                    class="opacity-0 transition-opacity group-hover:opacity-100"
                     @click.stop="handleRemoveVideo(item)"
                   >
                     <AppIcon name="close" class="h-4 w-4" />
@@ -224,7 +222,7 @@
               </div>
             </div>
 
-            <div v-else class="min-h-[24rem]">
+            <div v-else class="app-page-empty app-page-empty--compact">
               <AppEmptyState variant="plain" icon="panelOpen" title="选择播放列表" copy="选择左侧列表后查看内容。" />
             </div>
           </div>
@@ -250,7 +248,7 @@
 
     <Dialog :open="editorOpen" @update:open="handleEditorOpenChange">
       <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
-        <DialogHeader class="border-b border-border/50 p-5 text-left">
+        <DialogHeader class="app-divider-bottom p-5 text-left">
           <DialogTitle class="text-base font-semibold">{{ editingPlaylist ? '编辑列表' : '新建播放列表' }}</DialogTitle>
         </DialogHeader>
         <div class="space-y-4 p-5">
@@ -264,8 +262,8 @@
           </div>
         </div>
         <DialogFooter class="gap-2 bg-muted/30 p-4">
-          <Button variant="outline" class="h-9 rounded-md" @click="closeModal">取消</Button>
-          <Button class="h-9 rounded-md" :disabled="!formName.trim()" @click="handleSave">
+          <Button variant="outline" @click="closeModal">取消</Button>
+          <Button :disabled="!formName.trim()" @click="handleSave">
             {{ editingPlaylist ? '保存' : '创建' }}
           </Button>
         </DialogFooter>
@@ -448,3 +446,63 @@ onMounted(async () => {
   await reloadPlaylists()
 })
 </script>
+
+<style scoped>
+.playlist-table-head {
+  min-height: 2rem;
+}
+
+.playlist-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.625rem;
+}
+
+.playlist-nav-item {
+  display: flex;
+  width: 100%;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.625rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  padding: 0.375rem 0.5rem;
+  color: hsl(var(--muted-foreground));
+  text-align: left;
+  outline: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.playlist-nav-item:hover,
+.playlist-nav-item--active {
+  background: hsl(var(--accent) / 0.58);
+  color: hsl(var(--foreground));
+}
+
+.playlist-content {
+  --app-workbench-content-width: 1200px;
+}
+
+.playlist-duration-badge {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  display: inline-flex;
+  height: 1.25rem;
+  align-items: center;
+  border-radius: 0.375rem;
+  background: hsl(0 0% 0% / 0.72);
+  padding: 0 0.375rem;
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playlist-nav-item {
+    transition: none;
+  }
+}
+</style>

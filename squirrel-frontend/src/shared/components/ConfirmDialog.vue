@@ -1,7 +1,7 @@
 <template>
   <Dialog v-model:open="open">
     <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
-      <DialogHeader class="border-b border-border/50 p-5 text-left">
+      <DialogHeader class="app-divider-bottom p-5 text-left">
         <div
           class="mb-3 flex h-10 w-10 items-center justify-center rounded-md"
           :class="iconBgClass"
@@ -14,8 +14,8 @@
         </DialogDescription>
       </DialogHeader>
       <DialogFooter class="gap-2 bg-muted/30 p-4">
-        <Button variant="outline" class="h-9 rounded-md" @click="open = false">{{ cancelLabel }}</Button>
-        <Button :variant="confirmVariant" class="h-9 rounded-md" @click="$emit('confirm')">{{ confirmLabel }}</Button>
+        <Button variant="outline" @click="open = false">{{ cancelLabel }}</Button>
+        <Button :variant="confirmVariant" @click="$emit('confirm')">{{ confirmLabel }}</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

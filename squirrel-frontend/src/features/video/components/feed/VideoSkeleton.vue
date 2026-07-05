@@ -4,14 +4,14 @@
     'video-skeleton'
   ]" :style="{ animationDelay: `${delay}ms` }">
     <div :class="[
-      layout === 'list' ? 'w-48 shrink-0 md:w-64 relative aspect-video rounded-xl bg-muted overflow-hidden' : 'relative aspect-video rounded-xl bg-muted overflow-hidden'
+      layout === 'list' ? 'w-48 shrink-0 md:w-64 relative aspect-video rounded-lg bg-muted overflow-hidden' : 'relative aspect-video rounded-lg bg-muted overflow-hidden'
     ]">
       <span class="app-shimmer" />
     </div>
     <div :class="[
       layout === 'list' ? 'flex-1 py-1 flex flex-col justify-center' : 'flex gap-3 px-1'
     ]">
-      <div v-if="layout === 'grid'" class="h-9 w-9 shrink-0 rounded-full bg-muted" />
+      <div v-if="layout === 'grid'" class="h-9 w-9 shrink-0 rounded-md bg-muted" />
       <div class="flex-1 space-y-2">
         <div class="h-4 bg-muted rounded-md w-full" />
         <div class="h-3 bg-muted rounded-md w-2/3" />

@@ -3,8 +3,8 @@
     class="inline-flex items-center gap-1 px-1.5 py-px rounded border transition-colors duration-200"
     :style="tagStyles"
   >
-    <div class="w-1 h-1 rounded-full" :style="{ backgroundColor: siteColor }" />
-    <span class="text-3xs font-semibold uppercase tracking-[0.1em] leading-none">
+    <div class="h-2.5 w-0.5 rounded-sm" :style="{ backgroundColor: siteColor }" />
+    <span class="text-xs font-semibold leading-none">
       {{ site }}
     </span>
   </div>

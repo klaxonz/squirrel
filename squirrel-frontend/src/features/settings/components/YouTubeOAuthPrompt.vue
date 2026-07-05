@@ -2,7 +2,7 @@
   <Transition name="oauth-prompt">
     <div
       v-if="prompt.visible"
-      class="fixed bottom-6 right-6 z-toast w-[min(24rem,calc(100vw-2rem))] rounded-md border border-border/60 bg-background p-4 text-foreground shadow-xl"
+      class="fixed bottom-6 right-6 z-toast w-[min(24rem,calc(100vw-2rem))] rounded-md border border-border/80 bg-background p-4 text-foreground shadow-popover"
     >
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
@@ -12,23 +12,23 @@
           </div>
           <p class="mt-1 text-xs text-muted-foreground">在授权页输入此代码</p>
         </div>
-        <Button variant="ghost" size="icon" class="h-7 w-7 rounded-md text-muted-foreground" title="关闭" @click="$emit('dismiss')">
+        <Button variant="ghost" size="icon-sm" class="text-muted-foreground" title="关闭" @click="$emit('dismiss')">
           <AppIcon name="close" class="h-4 w-4" />
         </Button>
       </div>
 
       <div class="mt-3 flex items-center gap-2">
-        <div class="min-w-0 flex-1 select-all rounded-md border border-border/50 bg-muted px-3 py-2 font-mono text-lg font-semibold text-foreground">
+        <div class="app-surface app-surface--subtle min-w-0 flex-1 select-all px-3 py-2 font-mono text-lg font-semibold text-foreground">
           {{ prompt.userCode }}
         </div>
-        <Button variant="outline" size="icon" class="h-10 w-10 rounded-md" title="复制授权码" @click="$emit('copy')">
+        <Button variant="outline" size="icon-sm" title="复制授权码" @click="$emit('copy')">
           <AppIcon name="clipboard" class="h-4 w-4" />
         </Button>
       </div>
 
       <div class="mt-3 flex items-center justify-between gap-2">
         <span class="text-xs text-muted-foreground">{{ prompt.copied ? '已复制' : '等待授权完成' }}</span>
-        <Button variant="outline" class="h-8 rounded-md text-xs" @click="$emit('open', prompt.verificationUrl)">
+        <Button variant="outline" size="sm" @click="$emit('open', prompt.verificationUrl)">
           <AppIcon name="externalLink" class="h-3.5 w-3.5" />
           打开授权页
         </Button>

@@ -1,18 +1,16 @@
 <template>
   <AppPageShell variant="compact" fill>
-    <div class="rss-workbench">
+    <div class="app-workbench rss-workbench">
       <!-- 1. Left Sidebar: Accounts & Feeds -->
-      <aside class="rss-sidebar">
+      <aside class="app-workbench__sidebar app-workbench__sidebar--always rss-sidebar">
         <!-- Header -->
-        <div class="rss-sidebar-header">
+        <div class="app-workbench__sidebar-header rss-sidebar-header">
           <div class="min-w-0 flex flex-col justify-center">
             <h1 class="app-h2 truncate">RSS 内容源</h1>
             <p class="mt-0.5 text-xs font-medium text-muted-foreground/70">{{ accounts.length }} 个服务账号</p>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            class="rss-icon-button rss-icon-button--primary"
+          <Button
+            size="icon-sm"
             @click="openAddAccount"
           >
             <AppIcon name="plus" class="h-5 w-5" />
@@ -20,18 +18,20 @@
         </div>
 
         <!-- Controls: Dropdown & Search -->
-        <div class="rss-sidebar-controls">
-          <AccountDropdown
-            :accounts="accounts"
-            :selected-id="selectedAccountId"
-            :selected-name="selectedAccount?.name || ''"
-            :open="showAccountDropdown"
-            @toggle="showAccountDropdown = !showAccountDropdown"
-            @select="(id) => { selectAccount(id); showAccountDropdown = false }"
-            @edit="(acc) => { openEditAccount(acc); showAccountDropdown = false }"
-            @delete="(acc) => { confirmDeleteAccount(acc); showAccountDropdown = false }"
-            @add="openAddAccount(); showAccountDropdown = false"
-          />
+        <div class="app-pane__controls">
+          <div ref="accountDropdownRef">
+            <AccountDropdown
+              :accounts="accounts"
+              :selected-id="selectedAccountId"
+              :selected-name="selectedAccount?.name || ''"
+              :open="showAccountDropdown"
+              @toggle="showAccountDropdown = !showAccountDropdown"
+              @select="(id) => { selectAccount(id); showAccountDropdown = false }"
+              @edit="(acc) => { openEditAccount(acc); showAccountDropdown = false }"
+              @delete="(acc) => { confirmDeleteAccount(acc); showAccountDropdown = false }"
+              @add="openAddAccount(); showAccountDropdown = false"
+            />
+          </div>
 
           <!-- Selected Account Sync Info -->
           <div 
@@ -48,7 +48,7 @@
             <div class="relative flex items-center gap-0.5 shrink-0" ref="syncDropdownRef">
               <button 
                 @click="syncSelectedAccount(false)" 
-                class="flex items-center gap-1 font-semibold text-primary hover:text-primary/80 transition-all shrink-0" 
+                class="rss-sync-status__button"
                 :disabled="syncing"
               >
                 <AppSpinner v-if="syncing" size="sm" />
@@ -106,8 +106,8 @@
       </aside>
 
       <!-- 2. Middle Column: Article List Flow -->
-      <section class="rss-entry-pane">
-        <header class="rss-entry-header">
+      <section class="app-pane rss-entry-pane">
+        <header class="app-pane__header rss-entry-header">
           <div class="flex items-center justify-between w-full">
             <div class="min-w-0">
               <div class="flex items-center gap-2">
@@ -125,7 +125,7 @@
                   {{ selectedFeedTitle || selectedAccount?.name || 'RSS 阅读器' }}
                 </h2>
               </div>
-              <div class="mt-0.5 flex items-center gap-2 text-2xs text-muted-foreground/80 font-medium">
+              <div class="rss-entry-header__subtitle">
                 <span>{{ selectedFeedSubtitle }}</span>
                 <div v-if="loading" class="flex items-center gap-1 ml-1">
                   <AppBounceDots />
@@ -133,8 +133,9 @@
               </div>
             </div>
 
-            <button
-              class="rss-icon-button"
+            <Button
+              variant="ghost"
+              size="icon-sm"
               :disabled="loading"
               title="刷新文章"
               aria-label="刷新文章"
@@ -142,7 +143,7 @@
             >
               <AppSpinner v-if="loading" size="sm" />
               <AppIcon v-else name="refresh" class="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </div>
 
           <!-- Controls Toolbar Row -->
@@ -160,34 +161,34 @@
             </div>
 
             <!-- iOS/Reeder segmented control -->
-            <div class="rss-filter-tabs">
+            <div class="app-tab-list rss-filter-tabs">
               <button
-                class="rss-filter-tab"
-                :class="{ 'rss-filter-tab--active': activeFilter === 'all' }"
+                class="app-tab-button rss-filter-tab"
+                :class="{ 'is-active': activeFilter === 'all' }"
                 :aria-pressed="activeFilter === 'all'"
                 @click="activeFilter = 'all'"
               >
                 全部
               </button>
               <button
-                class="rss-filter-tab"
-                :class="{ 'rss-filter-tab--active': activeFilter === 'unread' }"
+                class="app-tab-button rss-filter-tab"
+                :class="{ 'is-active': activeFilter === 'unread' }"
                 :aria-pressed="activeFilter === 'unread'"
                 @click="activeFilter = 'unread'"
               >
                 未读
               </button>
               <button
-                class="rss-filter-tab"
-                :class="{ 'rss-filter-tab--active': activeFilter === 'starred' }"
+                class="app-tab-button rss-filter-tab"
+                :class="{ 'is-active': activeFilter === 'starred' }"
                 :aria-pressed="activeFilter === 'starred'"
                 @click="activeFilter = 'starred'"
               >
                 星标
               </button>
               <button
-                class="rss-filter-tab"
-                :class="{ 'rss-filter-tab--active': activeFilter === 'recent' }"
+                class="app-tab-button rss-filter-tab"
+                :class="{ 'is-active': activeFilter === 'recent' }"
                 :aria-pressed="activeFilter === 'recent'"
                 @click="activeFilter = 'recent'"
               >
@@ -203,13 +204,13 @@
 
             <div
               v-if="loading && filteredEntries.length === 0"
-              class="flex min-h-[24rem] flex-col items-center justify-center text-center py-10"
+              class="app-page-empty app-page-empty--compact flex-col text-center"
             >
               <AppSpinner size="lg" />
             </div>
 
             <!-- Empty view -->
-            <div v-else-if="filteredEntries.length === 0" class="flex min-h-[24rem] items-center justify-center py-10">
+            <div v-else-if="filteredEntries.length === 0" class="app-page-empty app-page-empty--compact">
               <AppEmptyState
                 variant="plain"
                 icon="inbox"
@@ -219,7 +220,7 @@
             </div>
 
             <!-- Articles List -->
-            <div v-else class="flex flex-col divide-y divide-border/10 border-t border-b border-border/10">
+            <div v-else class="app-divider-top app-divider-bottom flex flex-col divide-y divide-border/10">
               <div
                 v-for="entry in filteredEntries"
                 :key="entry.id"
@@ -233,16 +234,16 @@
                 @contextmenu.prevent.stop="showArticleContextMenu(entry, $event)"
               >
                 <!-- Card Top: Category & Time -->
-                <div class="flex items-center justify-between text-xs text-muted-foreground/85 mb-2">
+                <div class="rss-entry-item__meta-row">
                   <span
-                    class="inline-flex items-center text-2xs font-bold tracking-wider uppercase transition-colors"
+                    class="rss-entry-item__category"
                     :class="entry.is_read ? 'text-muted-foreground/55' : 'text-primary'"
                   >
                     {{ getFeedCategory(entry.feed_id) }}
                   </span>
                   <div class="flex items-center gap-1.5">
                     <AppIcon v-if="entry.is_starred" name="star" class="h-3 w-3 text-warning fill-warning" />
-                    <span class="tabular-nums text-2xs text-muted-foreground/60">{{ activeFilter === 'recent' ? formatRelativeTime((entry as RecentEntry).viewed_at) : formatDate(entry.published_at) }}</span>
+                    <span class="rss-entry-item__date">{{ activeFilter === 'recent' ? formatRelativeTime((entry as RecentEntry).viewed_at) : formatDate(entry.published_at) }}</span>
                   </div>
                 </div>
                 
@@ -292,11 +293,11 @@
       </section>
 
       <!-- 3. Right Column: Permanent Article Content Reader -->
-      <main class="rss-reader-pane">
+      <main class="app-pane app-pane--fluid rss-reader-pane">
         <!-- If an article is selected, render it -->
         <div v-if="readingEntry" class="rss-reader-active">
           <!-- Reader Header (Clean compact toolbar) -->
-          <header class="shrink-0 border-b border-border/10 h-14 px-6 bg-background flex items-center justify-between relative z-20">
+          <header class="app-divider-bottom relative z-20 flex h-14 shrink-0 items-center justify-between bg-background px-6">
             <!-- Left Side: Source badge (clickable to view feed) -->
             <button
               @click="pushFeedNavStack(); selectFeed(readingEntry.feed_id)"
@@ -312,21 +313,22 @@
             <!-- Right Side: Action buttons -->
             <div class="flex items-center gap-1 shrink-0">
               <!-- 应用内预览原文 -->
-              <button
-                class="rss-icon-button"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 title="在应用内打开原文"
                 aria-label="在应用内打开原文"
                 @click="openInAppBrowser"
               >
                 <AppIcon name="siteFallback" class="h-4 w-4" />
-              </button>
+              </Button>
 
               <!-- 在系统浏览器打开 -->
               <a
                 :href="readingEntry.canonical_url"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="rss-icon-button"
+                class="app-icon-button"
                 title="在系统浏览器打开"
                 aria-label="在系统浏览器打开"
               >
@@ -334,8 +336,9 @@
               </a>
 
               <!-- 收藏 / 取消收藏 -->
-              <button
-                class="rss-icon-button"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 :class="readingEntry.is_starred ? 'text-warning' : ''"
                 :title="readingEntry.is_starred ? '取消收藏' : '收藏文章'"
                 :aria-label="readingEntry.is_starred ? '取消收藏' : '收藏文章'"
@@ -343,29 +346,32 @@
                 @click="toggleStarStatus(readingEntry)"
               >
                 <AppIcon name="star" class="h-4 w-4" :class="readingEntry.is_starred ? 'text-warning fill-amber-500' : ''" />
-              </button>
+              </Button>
 
               <!-- 取消订阅该源 -->
-              <button
-                class="rss-icon-button rss-icon-button--danger"
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                class="hover:bg-destructive/10 hover:text-destructive"
                 title="取消订阅该源"
                 aria-label="取消订阅该源"
                 @click="unsubscribeCurrentFeedFromReader"
               >
                 <AppIcon name="close" class="h-4 w-4" />
-              </button>
+              </Button>
 
               <!-- Reader Settings -->
               <div class="relative" ref="readerSettingsRef">
-                <button
-                  class="rss-icon-button"
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   :aria-expanded="showReaderSettings"
                   title="阅读个性化设置"
                   aria-label="阅读个性化设置"
                   @click="showReaderSettings = !showReaderSettings"
                 >
                   <AppIcon name="settingsPanel" class="h-4 w-4" />
-                </button>
+                </Button>
 
                 <ReaderSettingsPanel
                   :visible="showReaderSettings"
@@ -386,7 +392,7 @@
             class="min-h-0 flex-1 overflow-y-auto overscroll-contain custom-scrollbar px-5 md:px-16 lg:px-28 py-8 bg-background relative"
           >
             <!-- Editorial Header -->
-            <div class="max-w-[42rem] mx-auto mb-8">
+            <div class="app-reader-width mb-8">
               <!-- Title -->
               <h1 
                 @click="openInAppBrowser"
@@ -404,7 +410,7 @@
 
             <!-- Content -->
             <div 
-              class="reader-content prose prose-neutral dark:prose-invert max-w-[42rem] mx-auto text-foreground/80 py-2 space-y-0"
+              class="reader-content app-reader-width prose prose-neutral dark:prose-invert text-foreground/80 py-2 space-y-0"
               :class="readerFontClass"
               :style="{ fontSize: readerFontSize + 'px' }"
               @click="handleContentClick"
@@ -423,13 +429,13 @@
               <div class="flex items-center gap-3 min-w-0">
                 <button 
                   @click="showInAppBrowser = false"
-                  class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer shrink-0"
+                  class="rss-browser-toolbar__button"
                   title="返回正文"
                 >
                   <AppIcon name="back" class="h-4 w-4" />
                 </button>
                 <div class="flex flex-col min-w-0 leading-tight">
-                  <span class="text-3xs font-bold text-muted-foreground uppercase tracking-wider">正在浏览原文</span>
+                  <span class="rss-browser-toolbar__label">正在浏览原文</span>
                   <span class="text-xs font-semibold text-foreground/80 truncate max-w-[150px] lg:max-w-[280px]">
                     {{ readingEntry.title }}
                   </span>
@@ -447,7 +453,7 @@
                 <!-- 刷新 -->
                 <button 
                   @click="refreshIframe"
-                  class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5 cursor-pointer"
+                  class="rss-browser-toolbar__button"
                   title="重新加载"
                 >
                   <AppSpinner v-if="iframeLoading" size="sm" muted />
@@ -459,7 +465,7 @@
                   :href="readingEntry.canonical_url" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  class="h-8 w-8 rounded-lg bg-accent/30 hover:bg-accent/50 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-200 border border-border/5"
+                  class="rss-browser-toolbar__button"
                   title="在系统浏览器打开"
                 >
                   <AppIcon name="externalLink" class="h-4 w-4" />
@@ -490,7 +496,7 @@
         <!-- If no article is selected, render a gorgeous premium workstation-themed placeholder -->
         <div v-else class="rss-reader-empty">
           <div class="rss-reader-empty-icon">
-            <AppIcon name="library" class="h-9 w-9 text-primary/70" />
+            <AppIcon name="library" class="h-6 w-6 text-primary/70" />
           </div>
           <p class="text-xs text-muted-foreground max-w-[280px] leading-relaxed">
             选择左侧订阅源，并点击中间文章列表中感兴趣的文章即可开始阅读。
@@ -525,34 +531,34 @@
 
     <!-- 5. Subscribe Feed Dialog -->
     <Dialog :open="showSubscribeModal" @update:open="showSubscribeModal = $event">
-      <DialogContent class="max-w-md !overflow-visible rounded-lg p-0 border border-border/60 bg-background shadow-none transition-colors duration-150">
-        <DialogHeader class="border-b border-border/10 p-5 text-left">
+      <DialogContent class="max-w-md !overflow-visible rounded-lg p-0 transition-colors duration-150">
+        <DialogHeader class="app-divider-bottom p-5 text-left">
           <DialogTitle class="text-base font-bold text-foreground">添加订阅源</DialogTitle>
           <DialogDescription class="text-xs text-muted-foreground mt-1 leading-normal">
             输入 RSS 订阅源 URL，将其添加到「{{ selectedAccount?.name }}」账号。
           </DialogDescription>
         </DialogHeader>
 
-        <div class="p-5 space-y-4">
+        <div class="rss-subscribe-dialog__body">
           <!-- Feed URL -->
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-foreground/80">订阅源 URL</label>
-            <div class="relative group">
-              <AppIcon name="link" class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 group-focus-within:text-foreground transition-colors duration-200" />
+          <div class="rss-subscribe-dialog__field">
+            <label>订阅源 URL</label>
+            <div class="rss-subscribe-dialog__input-wrap">
+              <AppIcon name="link" class="rss-subscribe-dialog__input-icon" />
               <Input
                 v-model="subscribeForm.feedUrl"
-                class="h-9 rounded-lg pl-9 pr-3.5 border border-border/40 bg-accent/10 hover:bg-accent/15 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 text-xs font-medium shadow-none transition-all duration-200"
+                class="rss-subscribe-dialog__input"
                 placeholder="https://example.com/rss/feed.xml"
               />
             </div>
           </div>
 
           <!-- Category (custom dropdown matching app style) -->
-          <div class="space-y-1.5 relative" ref="categoryDropdownRef">
-            <label class="text-xs font-semibold text-foreground/80">分类</label>
+          <div class="rss-subscribe-dialog__field" ref="categoryDropdownRef">
+            <label>分类</label>
             <button
               @click="showCategoryDropdown = !showCategoryDropdown"
-              class="flex h-9 w-full items-center justify-between rounded-lg border border-border/40 bg-accent/10 hover:bg-accent/15 px-3 text-xs font-medium transition-all"
+              class="rss-subscribe-dialog__category-button"
               :class="subscribeForm.category ? 'text-foreground' : 'text-muted-foreground/60'"
             >
               <div class="flex items-center gap-2 min-w-0">
@@ -568,12 +574,12 @@
 
             <div
               v-if="showCategoryDropdown"
-              class="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border/50 bg-popover text-popover-foreground p-1 shadow-lg ring-1 ring-black/5"
+              class="rss-subscribe-dialog__category-menu"
             >
-              <div class="max-h-[200px] overflow-y-auto custom-scrollbar pr-1 space-y-0.5">
+              <div class="rss-subscribe-dialog__category-list custom-scrollbar">
                 <button
                   @click="subscribeForm.category = ''; showCategoryDropdown = false"
-                  class="flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent cursor-pointer"
+                  class="rss-subscribe-dialog__category-option"
                   :class="!subscribeForm.category ? 'text-foreground bg-accent/50 font-semibold' : 'text-muted-foreground'"
                 >
                   <span>未分类</span>
@@ -582,18 +588,18 @@
                   v-for="cat in existingCategories"
                   :key="cat"
                   @click="subscribeForm.category = cat; showCategoryDropdown = false"
-                  class="flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent cursor-pointer"
+                  class="rss-subscribe-dialog__category-option"
                   :class="subscribeForm.category === cat ? 'text-foreground bg-accent/50 font-semibold' : 'text-muted-foreground'"
                 >
                   <span>{{ cat }}</span>
                 </button>
-                <div v-if="!existingCategories.length" class="py-3 text-center text-2xs text-muted-foreground/60">暂无分类</div>
+                <div v-if="!existingCategories.length" class="rss-subscribe-dialog__empty">暂无分类</div>
               </div>
-              <div class="h-px w-full bg-border/50 my-1"></div>
+              <div class="rss-subscribe-dialog__separator"></div>
               <div v-if="!showCustomCategoryInput" class="p-1">
                 <button
                   @click="showCustomCategoryInput = true"
-                  class="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-primary hover:bg-primary/5 transition-colors cursor-pointer"
+                  class="rss-subscribe-dialog__new-category"
                 >
                   <AppIcon name="plus" class="h-3.5 w-3.5" />
                   新建分类
@@ -603,14 +609,14 @@
                 <div class="relative">
                   <Input
                     v-model="subscribeForm.customCategory"
-                    class="h-8 rounded-lg pl-2.5 pr-8 border border-border/40 bg-accent/10 text-xs font-medium shadow-none"
+                    class="rss-subscribe-dialog__custom-input"
                     placeholder="输入分类名称"
                     @keyup.enter="confirmCustomCategory"
                     ref="customCategoryInputRef"
                   />
                   <button
                     @click="confirmCustomCategory"
-                    class="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 rounded-md bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors cursor-pointer"
+                    class="rss-subscribe-dialog__confirm-category"
                   >
                     <AppIcon name="check" class="h-3.5 w-3.5" />
                   </button>
@@ -623,7 +629,7 @@
           <Transition name="fade">
             <div
               v-if="subscribeMessage"
-              class="flex items-start gap-2 p-2.5 rounded-lg border text-xs leading-relaxed animate-fade-in"
+              class="rss-subscribe-dialog__message"
               :class="subscribeError ? 'border-destructive/20 bg-destructive/5 text-destructive' : 'border-emerald-500/20 bg-success/5 text-success'"
             >
               <AppIcon
@@ -636,18 +642,18 @@
           </Transition>
         </div>
 
-        <DialogFooter class="gap-2 bg-muted/20 dark:bg-muted/5 p-4 border-t border-border/10 flex flex-row items-center justify-end rounded-b-xl">
+        <DialogFooter class="rss-subscribe-dialog__footer">
           <Button
             type="button"
             variant="outline"
-            class="h-9 rounded-lg text-xs font-semibold px-3 border border-border/40 hover:bg-accent/40 transition-colors cursor-pointer"
+            class="rss-subscribe-dialog__button"
             @click="closeSubscribeModal"
           >
             取消
           </Button>
           <Button
             type="button"
-            class="h-9 rounded-lg text-xs font-semibold px-4 transition-all duration-150 cursor-pointer hover:opacity-90 active:scale-[0.98]"
+            class="rss-subscribe-dialog__button rss-subscribe-dialog__button--primary"
             :disabled="!subscribeForm.feedUrl.trim()"
             :loading="subscribingFeed"
             @click="handleSubscribeFeed"
@@ -1040,48 +1046,15 @@ onUnmounted(() => {
 
 <style scoped>
 .rss-workbench {
-  display: flex;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, hsl(var(--muted) / 0.10), transparent 10rem),
-    hsl(var(--background));
-  color: hsl(var(--foreground));
   selection-color: hsl(var(--foreground));
 }
 
 .rss-sidebar {
-  display: flex;
-  min-height: 0;
-  width: 20rem;
-  flex: none;
-  flex-direction: column;
-  border-right: 1px solid hsl(var(--border) / 0.48);
-  background: hsl(var(--card) / 0.38);
+  --app-workbench-sidebar-width: 20rem;
 }
 
 .rss-sidebar-header {
-  display: flex;
-  min-height: 4.75rem;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.875rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.42);
-  padding: 0 1.125rem;
-}
-
-.rss-sidebar-controls {
-  position: relative;
-  z-index: 10;
-  flex: none;
-  border-bottom: 1px solid hsl(var(--border) / 0.32);
-  padding: 0.875rem;
-}
-
-.rss-sidebar-controls > * + * {
-  margin-top: 0.75rem;
+  --app-workbench-header-height: 4.75rem;
 }
 
 .rss-sync-status {
@@ -1145,26 +1118,10 @@ onUnmounted(() => {
 }
 
 .rss-entry-pane {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  height: 100%;
-  min-height: 0;
   width: 25rem;
-  flex: none;
-  flex-direction: column;
-  border-right: 1px solid hsl(var(--border) / 0.42);
-  background: hsl(var(--background));
 }
 
 .rss-entry-header {
-  position: relative;
-  z-index: 20;
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  border-bottom: 1px solid hsl(var(--border) / 0.38);
-  background: hsl(var(--background));
   padding: 0.875rem;
 }
 
@@ -1189,69 +1146,20 @@ onUnmounted(() => {
   color: hsl(var(--foreground));
 }
 
-.rss-icon-button {
-  display: flex;
-  width: 2rem;
-  height: 2rem;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 0.5rem;
-  background: hsl(var(--muted) / 0.38);
-  color: hsl(var(--muted-foreground));
-  outline: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
-}
-
-.rss-icon-button:hover {
-  background: hsl(var(--muted) / 0.58);
-  color: hsl(var(--foreground));
-}
-
-.rss-icon-button:focus-visible,
 .rss-back-button:focus-visible,
 .rss-filter-tab:focus-visible {
   box-shadow: 0 0 0 2px hsl(var(--ring) / 0.35);
 }
 
-.rss-icon-button--primary {
-  background: hsl(var(--primary) / 0.10);
-  color: hsl(var(--primary));
-}
-
-.rss-icon-button--danger:hover {
-  background: hsl(var(--destructive) / 0.12);
-  color: hsl(var(--destructive));
-}
-
 .rss-filter-tabs {
   display: flex;
-  align-items: center;
-  gap: 0.125rem;
-  border-radius: 0.5rem;
-  background: hsl(var(--muted) / 0.36);
-  padding: 0.1875rem;
+  width: 100%;
 }
 
 .rss-filter-tab {
-  height: 1.75rem;
   flex: 1;
-  border: 0;
-  border-radius: 0.375rem;
-  background: transparent;
-  color: hsl(var(--muted-foreground));
   font-size: 0.625rem;
   font-weight: 700;
-  text-align: center;
-  outline: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.rss-filter-tab:hover,
-.rss-filter-tab--active {
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
 }
 
 .rss-entry-item {
@@ -1269,16 +1177,62 @@ onUnmounted(() => {
   box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.35);
 }
 
-.rss-reader-pane {
-  position: relative;
+.rss-sync-status__button {
   display: flex;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-  flex: 1;
-  flex-direction: column;
-  overflow: hidden;
-  background: hsl(var(--background));
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.25rem;
+  color: hsl(var(--primary));
+  font-weight: 650;
+  transition:
+    color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.rss-sync-status__button:hover:not(:disabled) {
+  color: hsl(var(--primary) / 0.82);
+}
+
+.rss-sync-status__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.rss-entry-header__subtitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.125rem;
+  color: hsl(var(--muted-foreground) / 0.8);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.rss-entry-item__meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  color: hsl(var(--muted-foreground) / 0.85);
+  font-size: 0.75rem;
+}
+
+.rss-entry-item__category {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  transition: color 0.15s ease;
+}
+
+.rss-entry-item__date {
+  color: hsl(var(--muted-foreground) / 0.6);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rss-reader-pane {
+  border-inline-start: 0;
 }
 
 .rss-reader-active {
@@ -1297,9 +1251,8 @@ onUnmounted(() => {
   z-index: 30;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid hsl(var(--border) / 0.42);
+  border-inline-start: 1px solid hsl(var(--border) / 0.42);
   background: hsl(var(--background));
-  box-shadow: -16px 0 32px hsl(var(--foreground) / 0.12);
 }
 
 .rss-browser-toolbar {
@@ -1313,6 +1266,36 @@ onUnmounted(() => {
   border-bottom: 1px solid hsl(var(--border) / 0.38);
   background: hsl(var(--background));
   padding: 0 1.5rem;
+}
+
+.rss-browser-toolbar__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid hsl(var(--border) / 0.12);
+  border-radius: 0.5rem;
+  background: hsl(var(--accent) / 0.3);
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.rss-browser-toolbar__button:hover {
+  border-color: hsl(var(--border) / 0.28);
+  background: hsl(var(--accent) / 0.5);
+  color: hsl(var(--foreground));
+}
+
+.rss-browser-toolbar__label {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 700;
 }
 
 .rss-browser-address {
@@ -1330,6 +1313,229 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground));
   font-size: 0.625rem;
   font-weight: 600;
+}
+
+.rss-subscribe-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.rss-subscribe-dialog__field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.rss-subscribe-dialog__field label {
+  color: hsl(var(--foreground) / 0.82);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.rss-subscribe-dialog__input-wrap {
+  position: relative;
+}
+
+.rss-subscribe-dialog__input-icon {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: hsl(var(--muted-foreground) / 0.55);
+  transform: translateY(-50%);
+  transition: color 0.15s ease;
+  pointer-events: none;
+}
+
+.rss-subscribe-dialog__input-wrap:focus-within .rss-subscribe-dialog__input-icon {
+  color: hsl(var(--foreground));
+}
+
+.rss-subscribe-dialog__input,
+.rss-subscribe-dialog__category-button,
+.rss-subscribe-dialog__custom-input {
+  height: 2.25rem;
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: 0.5rem;
+  background: hsl(var(--accent) / 0.1);
+  font-size: 0.75rem;
+  font-weight: 500;
+  box-shadow: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.rss-subscribe-dialog__input {
+  padding-right: 0.875rem;
+  padding-left: 2.25rem;
+}
+
+.rss-subscribe-dialog__input:hover,
+.rss-subscribe-dialog__category-button:hover {
+  background: hsl(var(--accent) / 0.15);
+}
+
+.rss-subscribe-dialog__input:focus-visible,
+.rss-subscribe-dialog__custom-input:focus-visible {
+  border-color: hsl(var(--primary) / 0.42);
+  background: hsl(var(--background));
+  outline: 1px solid hsl(var(--primary) / 0.2);
+}
+
+.rss-subscribe-dialog__category-button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.75rem;
+}
+
+.rss-subscribe-dialog__category-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 50;
+  margin-top: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.5rem;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+.rss-subscribe-dialog__category-list {
+  max-height: 12.5rem;
+  padding-right: 0.25rem;
+  overflow-y: auto;
+}
+
+.rss-subscribe-dialog__category-option,
+.rss-subscribe-dialog__new-category {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.rss-subscribe-dialog__category-option {
+  padding: 0 0.625rem;
+  text-align: left;
+}
+
+.rss-subscribe-dialog__category-option:hover {
+  background: hsl(var(--accent));
+}
+
+.rss-subscribe-dialog__empty {
+  padding: 0.75rem;
+  color: hsl(var(--muted-foreground) / 0.62);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.rss-subscribe-dialog__separator {
+  height: 1px;
+  margin: 0.25rem 0;
+  background: hsl(var(--border) / 0.5);
+}
+
+.rss-subscribe-dialog__new-category {
+  justify-content: center;
+  padding: 0 0.625rem;
+  color: hsl(var(--primary));
+  font-weight: 650;
+}
+
+.rss-subscribe-dialog__new-category:hover {
+  background: hsl(var(--primary) / 0.06);
+}
+
+.rss-subscribe-dialog__custom-input {
+  padding-right: 2rem;
+  padding-left: 0.625rem;
+}
+
+.rss-subscribe-dialog__confirm-category {
+  position: absolute;
+  top: 50%;
+  right: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: background-color 0.15s ease;
+}
+
+.rss-subscribe-dialog__confirm-category:hover {
+  background: hsl(var(--primary) / 0.2);
+}
+
+.rss-subscribe-dialog__message {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.625rem;
+  border: 1px solid;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.rss-subscribe-dialog__footer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid hsl(var(--border) / 0.14);
+  background: hsl(var(--muted) / 0.18);
+}
+
+.rss-subscribe-dialog__button {
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.rss-subscribe-dialog__button:hover {
+  background: hsl(var(--accent) / 0.4);
+}
+
+.rss-subscribe-dialog__button--primary {
+  padding-right: 1rem;
+  padding-left: 1rem;
+  border-color: hsl(var(--primary) / 0.42);
 }
 
 @media (min-width: 768px) {
@@ -1660,7 +1866,6 @@ onUnmounted(() => {
 
   .rss-search-input,
   .rss-back-button,
-  .rss-icon-button,
   .rss-filter-tab,
   .rss-entry-item {
     transition: none;

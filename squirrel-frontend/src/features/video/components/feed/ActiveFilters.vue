@@ -6,7 +6,7 @@
         v-for="chip in activeChips"
         :key="chip.key"
         type="button"
-        class="inline-flex h-7 max-w-[12rem] items-center gap-1.5 rounded-md border border-border/50 bg-muted/35 px-2.5 text-xs font-medium text-foreground transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+        class="app-filter-button max-w-[12rem] hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
         :title="`移除 ${chip.label} 筛选`"
         @click="$emit('remove', chip.key)"
       >

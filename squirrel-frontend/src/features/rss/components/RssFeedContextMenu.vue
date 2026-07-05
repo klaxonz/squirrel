@@ -3,13 +3,13 @@
     <div
       v-if="visible && feed"
       ref="rootRef"
-      class="fixed z-toast w-[200px] rounded-xl border border-border/30 bg-popover/90 backdrop-blur-xl p-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)] animate-fade-in"
+      class="rss-feed-menu"
       :style="{ left: position.x + 'px', top: position.y + 'px' }"
     >
-      <div class="flex flex-col gap-0.5">
+      <div class="rss-feed-menu__list">
         <button
           @click="$emit('markAllRead', feed)"
-          class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          class="rss-feed-menu__item"
         >
           <AppIcon name="eye" class="h-3.5 w-3.5 opacity-70" />
           <span>全部标记为已读</span>
@@ -17,7 +17,7 @@
 
         <button
           @click="$emit('syncFeed', feed)"
-          class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          class="rss-feed-menu__item"
         >
           <AppIcon name="refresh" class="h-3.5 w-3.5 opacity-70" />
           <span>同步文章</span>
@@ -25,7 +25,7 @@
 
         <button
           @click="$emit('copyLink', feed)"
-          class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          class="rss-feed-menu__item"
         >
           <AppIcon name="link" class="h-3.5 w-3.5 opacity-70" />
           <span>复制订阅源地址</span>
@@ -34,19 +34,19 @@
         <button
           v-if="feed.site_url"
           @click="$emit('openSite', feed)"
-          class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          class="rss-feed-menu__item"
         >
           <AppIcon name="externalLink" class="h-3.5 w-3.5 opacity-70" />
           <span>访问源网站</span>
         </button>
 
-        <div class="h-px bg-border/20 my-1"></div>
+        <div class="rss-feed-menu__separator"></div>
 
-        <div class="px-2.5 py-1 text-3xs font-bold text-muted-foreground uppercase tracking-wider">默认打开方式</div>
+        <div class="rss-feed-menu__label">默认打开方式</div>
 
         <button
           @click="$emit('setOpenMethod', feed, null)"
-          class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          class="rss-feed-menu__item rss-feed-menu__item--compact"
         >
           <AppIcon name="list" class="h-3.5 w-3.5 opacity-70" />
           <span class="flex-1">内嵌阅读</span>
@@ -55,7 +55,7 @@
 
         <button
           @click="$emit('setOpenMethod', feed, 'app_browser')"
-          class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          class="rss-feed-menu__item rss-feed-menu__item--compact"
         >
           <AppIcon name="siteFallback" class="h-3.5 w-3.5 opacity-70" />
           <span class="flex-1">应用内浏览器</span>
@@ -64,18 +64,18 @@
 
         <button
           @click="$emit('setOpenMethod', feed, 'external_browser')"
-          class="flex h-7 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-foreground cursor-pointer"
+          class="rss-feed-menu__item rss-feed-menu__item--compact"
         >
           <AppIcon name="externalLink" class="h-3.5 w-3.5 opacity-70" />
           <span class="flex-1">系统浏览器</span>
           <AppIcon v-if="feed.open_method === 'external_browser'" name="check" class="h-3 w-3 text-primary" />
         </button>
 
-        <div class="h-px bg-border/20 my-1"></div>
+        <div class="rss-feed-menu__separator"></div>
 
         <button
           @click="$emit('unsubscribe', feed)"
-          class="flex h-8 items-center gap-2 rounded-lg px-2.5 text-left text-xs font-medium transition-colors hover:bg-accent text-destructive cursor-pointer"
+          class="rss-feed-menu__item rss-feed-menu__item--danger"
         >
           <AppIcon name="close" class="h-3.5 w-3.5 opacity-70" />
           <span>取消订阅</span>
@@ -112,3 +112,72 @@ defineEmits<{
 const rootRef = ref<HTMLElement | null>(null)
 defineExpose({ rootRef })
 </script>
+
+<style scoped>
+.rss-feed-menu {
+  position: fixed;
+  z-index: var(--z-toast, 80);
+  width: 12.5rem;
+  padding: 0.375rem;
+  border: 1px solid hsl(var(--border) / 0.36);
+  border-radius: 0.625rem;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+.rss-feed-menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.rss-feed-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2rem;
+  padding: 0 0.625rem;
+  border-radius: 0.5rem;
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.rss-feed-menu__item:hover,
+.rss-feed-menu__item:focus-visible {
+  background: hsl(var(--accent));
+}
+
+.rss-feed-menu__item--compact {
+  min-height: 1.75rem;
+}
+
+.rss-feed-menu__item--danger {
+  color: hsl(var(--destructive));
+}
+
+.rss-feed-menu__separator {
+  height: 1px;
+  margin: 0.25rem 0;
+  background: hsl(var(--border) / 0.22);
+}
+
+.rss-feed-menu__label {
+  padding: 0.25rem 0.625rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rss-feed-menu__item {
+    transition: none;
+  }
+}
+</style>

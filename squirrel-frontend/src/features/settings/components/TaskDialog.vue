@@ -1,7 +1,7 @@
 <template>
   <Dialog :open="true" @update:open="!$event && $emit('close')">
-    <DialogContent class="flex max-h-[90vh] w-full max-w-xl flex-col gap-0 overflow-hidden rounded-lg border-border/50 p-0">
-      <DialogHeader class="flex shrink-0 flex-row items-start justify-between space-y-0 border-b border-border/50 p-5 text-left">
+    <DialogContent class="flex max-h-[90vh] w-full max-w-xl flex-col gap-0 overflow-hidden rounded-lg p-0">
+      <DialogHeader class="app-divider-bottom flex shrink-0 flex-row items-start justify-between space-y-0 p-5 text-left">
         <div class="min-w-0">
           <DialogTitle class="text-base font-semibold text-foreground">
             {{ isEditing ? '编辑任务' : '新建任务' }}
@@ -11,7 +11,7 @@
           </DialogDescription>
         </div>
         <DialogClose as-child>
-          <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md">
+          <Button variant="ghost" size="icon-sm">
             <AppIcon name="close" class="h-4 w-4" />
           </Button>
         </DialogClose>
@@ -27,14 +27,13 @@
                 v-model="formData.name"
                 required
                 placeholder="输入任务名称"
-                class="h-9 rounded-md border-border/50 text-sm shadow-none"
               />
             </div>
 
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">逻辑类</label>
               <Select v-model="formData.task_class" :disabled="isEditing">
-                <SelectTrigger class="h-9 rounded-md border-border/50 bg-background text-sm shadow-none">
+                <SelectTrigger>
                   <SelectValue placeholder="选择任务执行逻辑" />
                 </SelectTrigger>
                 <SelectContent class="rounded-lg border-border/50 bg-background shadow-lg">
@@ -63,12 +62,12 @@
                 id="task-dialog-desc"
                 v-model="formData.description"
                 placeholder="简要说明任务用途"
-                class="min-h-20 rounded-md border-border/50 text-sm shadow-none"
+                class="min-h-20"
               />
             </div>
           </section>
 
-          <section class="space-y-4 border-t border-border/50 pt-5">
+          <section class="app-divider-top space-y-4 pt-5">
             <div class="grid gap-4 md:grid-cols-3">
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground" for="task-dialog-interval">执行间隔</label>
@@ -77,13 +76,13 @@
                 v-model.number="formData.interval"
                 type="number"
                 min="1"
-                class="h-9 rounded-md border-border/50 text-sm tabular-nums shadow-none"
+                class="tabular-nums"
               />
             </div>
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">单位</label>
               <Select v-model="formData.unit">
-                <SelectTrigger class="h-9 rounded-md border-border/50 bg-background text-sm shadow-none">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent class="rounded-lg border-border/50 bg-background">
@@ -101,31 +100,31 @@
                 v-model.number="formData.max_retries"
                 type="number"
                 min="0"
-                class="h-9 rounded-md border-border/50 text-sm tabular-nums shadow-none"
+                class="tabular-nums"
               />
             </div>
             </div>
 
             <div class="grid gap-2">
-              <label class="flex h-10 items-center justify-between rounded-md border border-border/50 px-3">
+              <label class="app-surface app-surface--subtle flex h-10 items-center justify-between px-3">
                 <span class="text-sm font-medium text-foreground">启用调度</span>
                 <Switch v-model="formData.is_active" />
               </label>
-              <label class="flex h-10 items-center justify-between rounded-md border border-border/50 px-3">
+              <label class="app-surface app-surface--subtle flex h-10 items-center justify-between px-3">
                 <span class="text-sm font-medium text-foreground">立即执行一次</span>
                 <Switch v-model="formData.start_immediately" />
               </label>
             </div>
           </section>
 
-          <section class="space-y-2 border-t border-border/50 pt-5">
+          <section class="app-divider-top space-y-2 pt-5">
             <label class="text-xs font-medium text-muted-foreground" for="task-dialog-params">任务参数</label>
             <div class="relative">
               <Textarea
                 id="task-dialog-params"
                 v-model="taskParamsJson"
                 rows="5"
-                class="font-mono rounded-md border-border/50 bg-muted/30 px-4 py-3 text-xs text-foreground shadow-none"
+                class="font-mono bg-muted/30 px-4 py-3 text-xs text-foreground"
                 placeholder='{ "名称": "内容" }'
               />
               <div v-if="jsonError" class="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-md border border-destructive/20 bg-background px-2 py-1 text-xs font-medium text-destructive">
@@ -137,9 +136,9 @@
         </form>
       </div>
 
-      <DialogFooter class="flex shrink-0 items-center justify-end gap-2 border-t border-border/50 bg-muted/30 p-4 sm:justify-end">
-        <Button variant="outline" class="h-9 rounded-md" @click="$emit('close')">取消</Button>
-        <Button class="h-9 rounded-md" :loading="loading" :disabled="!!jsonError" @click="handleSubmit">
+      <DialogFooter class="app-divider-top flex shrink-0 items-center justify-end gap-2 bg-muted/30 p-4 sm:justify-end">
+        <Button variant="outline" @click="$emit('close')">取消</Button>
+        <Button :loading="loading" :disabled="!!jsonError" @click="handleSubmit">
           {{ isEditing ? '保存' : '创建' }}
         </Button>
       </DialogFooter>

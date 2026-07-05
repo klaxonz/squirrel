@@ -5,10 +5,10 @@
      light used H26/H36 — two independently-tuned palettes that made the
      whole UI feel inconsistent across themes. */
 
-  --background: 28 10% 7%;
-  --foreground: 28 10% 95%;
+  --background: 28 8% 8%;
+  --foreground: 28 8% 94%;
 
-  --card: 28 8% 9%;
+  --card: 28 7% 10%;
   --card-foreground: 28 10% 95%;
 
   --popover: 28 9% 8%;
@@ -40,7 +40,7 @@
   --input: 28 7% 16%;
   --ring: 28 90% 58%;
 
-  --sidebar: 28 10% 5%;
+  --sidebar: 28 8% 7%;
   --sidebar-foreground: 28 10% 95%;
   --sidebar-border: 28 7% 11%;
 
@@ -49,18 +49,6 @@
   --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.45), 0 1px 2px hsl(0 0% 0% / 0.3);
   --shadow-lg: 0 12px 32px hsl(0 0% 0% / 0.55), 0 4px 8px hsl(0 0% 0% / 0.35);
   --shadow-premium: 0 2px 8px hsl(0 0% 0% / 0.5), 0 24px 48px hsl(0 0% 0% / 0.7);
-
-  --cinema-noise-opacity: 0.018;
-  --cinema-noise-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --cinema-spotlight:
-    radial-gradient(ellipse 80% 50% at 50% -10%,
-      hsl(28 90% 58% / 0.045) 0%,
-      hsl(28 90% 58% / 0.018) 35%,
-      transparent 70%);
-  --cinema-vignette:
-    radial-gradient(ellipse 100% 80% at 50% 50%,
-      transparent 50%,
-      hsl(0 0% 0% / 0.25) 100%);
 
   --shadow-card-hover: 0 4px 12px hsl(0 0% 0% / 0.4), 0 1px 3px hsl(0 0% 0% / 0.3);
 
@@ -129,15 +117,6 @@
   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
   --shadow-premium: 0 1px 2px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.2);
-
-  --cinema-noise-opacity: 0.012;
-  --cinema-noise-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --cinema-spotlight:
-    radial-gradient(ellipse 80% 50% at 50% -10%,
-      hsl(28 88% 55% / 0.06) 0%,
-      hsl(28 88% 55% / 0.025) 35%,
-      transparent 70%);
-  --cinema-vignette: transparent;
 
   --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
 

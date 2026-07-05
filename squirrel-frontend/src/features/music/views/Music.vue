@@ -1,29 +1,30 @@
 <template>
   <AppPageShell variant="compact" fill>
-    <div class="music-shell">
-      <div class="music-content custom-scrollbar">
-        <div class="music-content-inner">
-          <div class="music-nav-row">
-            <nav class="music-nav-tabs" aria-label="音乐导航">
+    <div class="app-workbench">
+      <div class="app-workbench__main">
+        <div class="app-workbench__scroll custom-scrollbar">
+          <div class="app-workbench__content music-content">
+            <div class="music-nav-row">
+              <nav class="app-tab-list" aria-label="音乐导航">
               <button
                 v-for="item in musicNavItems"
                 :key="item.id"
                 type="button"
-                class="music-nav-tab"
-                :class="{ 'music-nav-tab--active': sidebarActiveMode === item.id }"
+                class="app-tab-button music-nav-tab"
+                :class="{ 'is-active': sidebarActiveMode === item.id }"
                 :aria-current="sidebarActiveMode === item.id ? 'page' : undefined"
                 @click="handleNavigate(item.id)"
               >
                 <span>{{ item.label }}</span>
               </button>
-            </nav>
-            <MusicCreatePlaylistButton
-              v-if="authStatus?.logged_in && activeView === 'profile'"
-              compact
-              class="music-top-create"
-              @create="handleCreatePlaylist"
-            />
-          </div>
+              </nav>
+              <MusicCreatePlaylistButton
+                v-if="authStatus?.logged_in && activeView === 'profile'"
+                compact
+                class="music-top-create"
+                @create="handleCreatePlaylist"
+              />
+            </div>
 
           <MusicHomeView
             v-if="activeView === 'home'"
@@ -238,6 +239,7 @@
             @select-artist="handleSelectArtistFromTrack"
             @select-album="handleSelectAlbumFromTrack"
           />
+          </div>
         </div>
       </div>
     </div>
@@ -689,21 +691,12 @@ async function handleLogout() {
 </script>
 
 <style scoped>
-.music-shell {
-  display: flex;
-  height: 100%;
-  min-height: 0;
-  flex-direction: column;
-}
-
 .music-top-create {
   flex: 0 0 auto;
 }
 
-.music-content-inner {
-  width: 100%;
-  max-width: 1440px;
-  margin-inline: auto;
+.music-content {
+  --app-workbench-content-width: 1440px;
   min-height: 100%;
   padding-block: 1rem 2.75rem;
 }
@@ -720,54 +713,8 @@ async function handleLogout() {
   background: linear-gradient(180deg, hsl(var(--background)) 72%, hsl(var(--background) / 0));
 }
 
-.music-nav-tabs {
-  display: flex;
-  align-items: center;
-  gap: 0.125rem;
-  min-height: 2.25rem;
-  min-width: 0;
-  padding: 0.1875rem;
-  border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 0.5rem;
-  background: hsl(var(--card) / 0.74);
-}
-
 .music-nav-tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 1.875rem;
   min-width: 4.25rem;
-  padding: 0 0.75rem;
-  border-radius: 0.375rem;
-  border: 0;
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background-color var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default);
-}
-
-.music-nav-tab:hover {
-  background: hsl(var(--muted) / 0.42);
-  color: hsl(var(--foreground));
-}
-
-.music-nav-tab--active {
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-}
-
-.music-content {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background:
-    linear-gradient(180deg, hsl(var(--muted) / 0.10), transparent 11rem),
-    hsl(var(--background));
 }
 
 @media (prefers-reduced-motion: reduce) {

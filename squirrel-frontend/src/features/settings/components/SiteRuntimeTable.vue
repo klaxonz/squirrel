@@ -1,13 +1,14 @@
 <template>
   <div class="flex-1 overflow-y-auto custom-scrollbar">
-    <div class="mx-auto w-full max-w-[1400px] p-4 lg:p-6">
+    <div class="app-page-content app-table-content site-runtime-content">
       <Alert v-if="discoveryErrors.length" variant="error" class="mb-3 py-2.5">
         <AppIcon name="error" class="h-4 w-4" />
         <AlertTitle>发现 {{ discoveryErrors.length }} 个站点失败</AlertTitle>
         <AlertDescription class="truncate text-xs">{{ discoveryErrors[0].metadata_path }} · {{ discoveryErrors[0].reason }}</AlertDescription>
       </Alert>
-      <div class="overflow-x-auto rounded-lg border border-border/50">
-        <div class="site-runtime-grid min-w-[980px] border-b border-border/50 bg-muted/20 px-4 py-3 text-xs font-medium text-muted-foreground">
+      <div class="app-table-shell">
+        <div class="app-table-frame">
+        <div class="app-table-head site-runtime-grid">
           <div>站点</div>
           <div>状态</div>
           <div>能力</div>
@@ -16,11 +17,11 @@
           <div class="text-right">操作</div>
         </div>
 
-        <div v-if="loading" class="min-w-[980px] space-y-2 p-4">
+        <div v-if="loading" class="app-table-loading app-content-stack app-content-stack--dense">
           <AppSkeleton v-for="i in 5" :key="i" height="4rem" rounded="var(--radius-lg)" shimmer />
         </div>
 
-        <div v-else-if="!runtimes.length" class="min-h-[20rem]">
+        <div v-else-if="!runtimes.length" class="app-page-empty app-page-empty--compact">
           <AppEmptyState
             variant="plain"
             icon="cube"
@@ -29,11 +30,11 @@
           />
         </div>
 
-        <div v-else class="min-w-[980px] divide-y divide-border/50">
+        <div v-else class="app-table-body">
           <div
             v-for="runtime in runtimes"
             :key="runtime.runtime_id"
-            class="site-runtime-grid group items-center px-4 py-3 transition-colors hover:bg-accent/30"
+            class="app-table-row site-runtime-grid group"
           >
             <div class="flex min-w-0 items-center gap-3">
               <SiteIcon
@@ -41,9 +42,9 @@
                 :icon-url="runtime.primarySite.icon_url"
                 :label="runtime.primarySite.site_name || runtime.display_name"
                 size="md"
-                class="rounded-md border border-border/50"
+                class="rounded-md border border-border/60"
               />
-              <div v-else class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border/50 bg-muted text-muted-foreground">
+              <div v-else class="app-surface app-surface--subtle flex h-10 w-10 shrink-0 items-center justify-center text-muted-foreground">
                 <AppIcon name="cube" class="h-5 w-5" />
               </div>
               <div class="min-w-0">
@@ -91,8 +92,8 @@
             <div class="flex items-center justify-end gap-1">
               <Button
                 variant="ghost"
-                size="icon"
-                class="h-8 w-8 rounded-md text-muted-foreground"
+                size="icon-sm"
+                class="text-muted-foreground"
                 :disabled="actioning === runtime.runtime_id"
                 :title="runtime.enabled ? '停用站点' : '启用站点'"
                 @click="$emit(runtime.enabled ? 'disable' : 'enable', runtime)"
@@ -103,8 +104,8 @@
               <Button
                 v-if="runtime.siteName"
                 variant="ghost"
-                size="icon"
-                class="h-8 w-8 rounded-md text-muted-foreground"
+                size="icon-sm"
+                class="text-muted-foreground"
                 :disabled="runtime.siteTesting"
                 title="连通性测试"
                 @click="$emit('test-connectivity', runtime.siteName)"
@@ -114,8 +115,8 @@
               <Button
                 v-if="runtime.siteSupportsLogin"
                 variant="ghost"
-                size="icon"
-                class="h-8 w-8 rounded-md text-muted-foreground"
+                size="icon-sm"
+                class="text-muted-foreground"
                 :disabled="runtime.siteLoginTesting"
                 title="验证登录状态"
                 @click="$emit('test-login', runtime.siteName)"
@@ -126,8 +127,8 @@
                 <DropdownMenuTrigger as-child>
                   <Button
                     variant="ghost"
-                    size="icon"
-                    class="h-8 w-8 rounded-md text-muted-foreground"
+                    size="icon-sm"
+                    class="text-muted-foreground"
                     :disabled="runtime.siteLoginTesting"
                     :title="runtime.siteLoginStatus?.logged_in ? '桌面会话已登录' : '桌面会话'"
                   >
@@ -161,8 +162,8 @@
               <Button
                 v-if="runtime.siteName === 'youtube'"
                 variant="ghost"
-                size="icon"
-                class="h-8 w-8 rounded-md text-muted-foreground"
+                size="icon-sm"
+                class="text-muted-foreground"
                 title="授权管理"
                 @click="$emit(runtime.siteOAuthStatus === 'authenticated' || runtime.siteOAuthStatus === 'pending' ? 'revoke-oauth' : 'start-oauth')"
               >
@@ -171,8 +172,8 @@
               </Button>
               <Button
                 variant="ghost"
-                size="icon"
-                class="h-8 w-8 rounded-md text-muted-foreground"
+                size="icon-sm"
+                class="text-muted-foreground"
                 title="站点配置"
                 @click="$emit('edit-site', runtime)"
               >
@@ -180,6 +181,7 @@
               </Button>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>
@@ -246,9 +248,13 @@ const isDesktopApp = computed(() => isDesktopEnv())
 
 <style scoped>
 .site-runtime-grid {
-  display: grid;
-  grid-template-columns: minmax(18rem, 1fr) 7rem 12rem 7rem 7rem 15rem;
-  gap: 1rem;
+  grid-template-columns: var(--app-table-columns);
+}
+
+.site-runtime-content {
+  --app-table-content-width: 1400px;
+  --app-table-min-width: 980px;
+  --app-table-columns: minmax(18rem, 1fr) 7rem 12rem 7rem 7rem 15rem;
 }
 
 .tabular-nums {

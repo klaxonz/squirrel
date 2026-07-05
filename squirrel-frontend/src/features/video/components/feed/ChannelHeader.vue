@@ -1,7 +1,7 @@
 <template>
   <transition name="channel-dismiss">
-    <div v-if="isVisible" class="relative bg-background border-b border-border/20 overflow-hidden">
-      <div class="max-w-[2560px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div v-if="isVisible" class="app-media-header">
+      <div class="app-media-header__inner channel-header__inner">
         
         <div class="flex items-center gap-4 min-w-0">
           <!-- Avatar -->
@@ -10,7 +10,7 @@
             :href="detail.url"
             target="_blank"
             rel="noopener noreferrer"
-            class="shrink-0 h-12 w-12 overflow-hidden rounded-full sm:h-14 sm:w-14"
+            class="shrink-0 h-12 w-12 overflow-hidden rounded-lg sm:h-14 sm:w-14"
           >
             <SubscriptionAvatar
               :src="detail?.avatar || null"
@@ -18,7 +18,7 @@
               size="full"
             />
           </a>
-          <div v-else class="shrink-0 h-12 w-12 overflow-hidden rounded-full sm:h-14 sm:w-14">
+          <div v-else class="shrink-0 h-12 w-12 overflow-hidden rounded-lg sm:h-14 sm:w-14">
             <SubscriptionAvatar
               :src="detail?.avatar || null"
               :name="detail?.name || '未知频道'"
@@ -40,7 +40,7 @@
               </a>
               <h2 v-else class="app-h2 truncate">{{ detail?.name || '未知频道' }}</h2>
               
-              <span v-if="detail?.is_nsfw" class="shrink-0 px-1.5 py-0.5 text-2xs font-bold tracking-widest uppercase border border-primary/50 text-primary rounded-md">NSFW</span>
+              <span v-if="detail?.is_nsfw" class="shrink-0 rounded-md border border-primary/50 px-1.5 py-0.5 text-xs font-semibold text-primary">敏感</span>
             </div>
             
             <p v-if="detail?.description" class="text-xs text-muted-foreground/80 line-clamp-1 sm:line-clamp-2 max-w-2xl leading-relaxed">
@@ -53,20 +53,20 @@
         <div class="flex items-center gap-6 sm:gap-8 shrink-0 ml-16 sm:ml-0">
           <div class="flex items-center gap-4 sm:gap-6">
             <div class="flex flex-col items-center">
-              <span class="text-2xs font-bold text-muted-foreground/50 uppercase tracking-widest mb-1">总数</span>
+              <span class="mb-1 text-xs font-medium text-muted-foreground">总数</span>
               <span class="text-sm font-semibold font-mono text-foreground/80">{{ detail?.total_videos || 0 }}</span>
             </div>
             <div class="flex flex-col items-center">
-              <span class="text-2xs font-bold text-muted-foreground/50 uppercase tracking-widest mb-1">解析</span>
+              <span class="mb-1 text-xs font-medium text-muted-foreground">解析</span>
               <span class="text-sm font-semibold font-mono text-foreground/80">{{ detail?.total_extract || 0 }}</span>
             </div>
           </div>
 
-          <div v-if="canOpenRemote" class="flex items-center gap-0.5 rounded-full bg-muted/40 p-0.5">
+          <div v-if="canOpenRemote" class="app-tab-list">
             <button
               type="button"
-              class="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="mode === 'local' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              class="app-tab-button"
+              :class="{ 'is-active': mode === 'local' }"
               :aria-pressed="mode === 'local'"
               @click="emit('update:mode', 'local')"
             >
@@ -75,8 +75,8 @@
             </button>
             <button
               type="button"
-              class="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="mode === 'remote' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              class="app-tab-button"
+              :class="{ 'is-active': mode === 'remote' }"
               :aria-pressed="mode === 'remote'"
               @click="emit('update:mode', 'remote')"
             >
@@ -86,41 +86,44 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <button
+            <Button
               type="button"
-              class="inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="detail?.is_special_followed ? 'border-amber-400/40 bg-warning/10 text-warning' : 'border-border/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              variant="ghost"
+              size="icon-sm"
+              :class="detail?.is_special_followed ? 'text-warning' : ''"
               :disabled="isTogglingSpecial"
               aria-label="切换特别关注"
               :aria-pressed="!!detail?.is_special_followed"
               @click="handleToggleSpecialFollow"
             >
               <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': detail?.is_special_followed }" />
-            </button>
+            </Button>
             <div v-if="syncMessage" class="hidden max-w-40 truncate text-xs font-medium sm:block" :class="syncError ? 'text-destructive' : 'text-muted-foreground'">
               {{ syncMessage }}
             </div>
-            <div class="flex overflow-hidden rounded-lg border border-border/40 bg-background">
-              <button
+            <div class="channel-sync-group">
+              <Button
                 type="button"
-                class="inline-flex h-8 items-center gap-1.5 px-3 text-xs font-semibold text-foreground transition-colors outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60"
+                variant="ghost"
+                size="sm"
                 :disabled="isSyncing"
                 @click="handleDirectSync('incremental')"
               >
                 <AppSpinner v-if="isSyncing" size="sm" />
                 <AppIcon v-else name="refresh" class="h-3.5 w-3.5" />
                 {{ isSyncing ? '同步中' : '同步' }}
-              </button>
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button
+                  <Button
                     type="button"
-                    class="inline-flex h-8 w-8 items-center justify-center border-l border-border/40 text-muted-foreground transition-colors outline-none hover:bg-muted/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60"
+                    variant="ghost"
+                    size="icon-sm"
                     :disabled="isSyncing"
                     aria-label="选择同步模式"
                   >
                     <AppIcon name="chevronDown" class="h-3.5 w-3.5" />
-                  </button>
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="w-36">
                   <DropdownMenuItem @click="handleDirectSync('incremental')">
@@ -136,14 +139,15 @@
             </div>
           </div>
 
-          <button
+          <Button
             type="button"
-            class="inline-flex h-8 items-center px-3 text-xs font-semibold rounded-full border border-destructive/30 text-destructive outline-none transition-colors hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50"
+            variant="destructive"
+            size="sm"
             :disabled="isUnsubscribing"
             @click="handleUnsubscribe"
           >
             {{ isUnsubscribing ? '取消中...' : '取消订阅' }}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -156,6 +160,7 @@ import { errorMessage } from '@/shared/lib/errorMessage'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
+import { Button } from '@/shared/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -284,6 +289,20 @@ watch(() => props.subscriptionId, () => {
 </script>
 
 <style scoped>
+.channel-header__inner {
+  --app-page-max-width: 2400px;
+}
+
+.channel-sync-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--app-control-border);
+  border-radius: var(--app-control-radius);
+  background: var(--app-control-bg);
+  padding: 2px;
+}
+
 .channel-dismiss-enter-active,
 .channel-dismiss-leave-active {
   transition: all var(--duration-slow) var(--ease-out);

@@ -4,14 +4,15 @@
       <div class="flex max-h-[82vh] flex-col overflow-hidden bg-background">
         <header class="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
           <DialogTitle class="text-base font-semibold text-foreground">筛选</DialogTitle>
-          <button
+          <Button
             type="button"
-            class="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            variant="ghost"
+            size="icon-sm"
             title="关闭"
             @click="close"
           >
             <AppIcon name="close" class="size-4" />
-          </button>
+          </Button>
         </header>
 
         <div class="overflow-y-auto px-5 pb-2 sm:px-6">

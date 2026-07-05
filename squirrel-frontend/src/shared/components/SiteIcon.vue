@@ -52,7 +52,7 @@ const sizeClass = computed(() => {
 })
 
 const roundedClass = computed(() => {
-  if (props.rounded === 'full') return 'rounded-full'
+  if (props.rounded === 'full') return 'rounded-md'
   if (props.rounded === 'sm') return 'rounded'
   return 'rounded-md'
 })

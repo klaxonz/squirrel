@@ -10,7 +10,7 @@
       :copy="error"
     >
       <template #actions>
-        <Button class="h-8 rounded-md px-3 text-xs" @click="$emit('retry')">
+        <Button size="sm" @click="$emit('retry')">
           重试
         </Button>
       </template>
@@ -22,7 +22,7 @@
     
     <div v-else-if="profile" class="music-profile-layout">
       <header class="music-profile-banner">
-        <div class="music-profile-banner-glass">
+        <div class="music-profile-banner-content">
           <div class="music-profile-avatar-wrap">
             <img v-if="profile.avatar" :src="profile.avatar" :alt="profile.nickname ? `${profile.nickname}的头像` : '用户头像'" class="music-profile-avatar" />
             <div v-else class="music-profile-avatar-fallback">
@@ -277,74 +277,87 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
 .music-profile-layout {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .music-profile-banner {
-  padding: 1.5rem;
-  border-radius: 0.75rem;
-  background: hsl(var(--card) / 0.5);
-  border: 1px solid hsl(var(--border) / 0.3);
+  padding: 1rem;
+  border: 1px solid hsl(var(--border) / 0.36);
+  border-radius: 0.625rem;
+  background:
+    linear-gradient(90deg, hsl(var(--card) / 0.96), hsl(var(--muted) / 0.28)),
+    hsl(var(--card));
 }
 
-.music-profile-banner-glass {
+.music-profile-banner-content {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
 }
 
 .music-profile-avatar-wrap {
   position: relative;
+  flex: 0 0 auto;
 }
 
 .music-profile-avatar {
-  width: 4rem;
-  height: 4rem;
-  border-radius: 9999px;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 0.75rem;
   object-fit: cover;
-  border: 2px solid hsl(var(--primary) / 0.3);
+  border: 1px solid hsl(var(--primary) / 0.36);
 }
 
 .music-profile-avatar-fallback {
-  width: 4rem;
-  height: 4rem;
-  border-radius: 9999px;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: hsl(var(--muted) / 0.4);
+  background: hsl(var(--muted) / 0.35);
+  border: 1px solid hsl(var(--border) / 0.45);
 }
 
 .music-profile-level-badge {
   position: absolute;
-  bottom: -0.25rem;
-  left: 50%;
-  transform: translateX(-50%);
+  right: -0.375rem;
+  bottom: -0.375rem;
   font-size: 0.625rem;
   font-weight: 600;
-  padding: 0.125rem 0.5rem;
+  padding: 0.1875rem 0.4375rem;
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
-  border-radius: 9999px;
+  border: 2px solid hsl(var(--card));
+  border-radius: 0.375rem;
 }
 
 .music-profile-banner-info {
-  text-align: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
 }
 
 .music-profile-nickname {
-  font-size: 1.125rem;
+  margin: 0;
+  font-size: 1rem;
   font-weight: 700;
   color: hsl(var(--foreground));
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .music-profile-gender-reg {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.375rem;
+  margin: 0.5rem 0 0;
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
 }
@@ -360,22 +373,31 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
 }
 
 .music-profile-banner-stats {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(5.25rem, 1fr));
+  gap: 0.5rem;
+  align-self: stretch;
+  min-width: min(24rem, 42%);
 }
 
 .music-profile-stat-item {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.125rem;
+  min-height: 4.5rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid hsl(var(--border) / 0.28);
+  border-radius: 0.5rem;
+  background: hsl(var(--background) / 0.42);
 }
 
 .music-profile-stat-num {
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 700;
   color: hsl(var(--foreground));
+  line-height: 1.2;
 }
 
 .music-profile-stat-name {
@@ -422,7 +444,10 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
   border: 1px solid hsl(var(--border) / 0.3);
   border-radius: 0.375rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .music-profile-tab-btn:hover {
@@ -453,7 +478,10 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
   border: 1px solid hsl(var(--border) / 0.4);
   border-radius: 0.375rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .music-chip:hover {
@@ -478,9 +506,12 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
   color: hsl(var(--muted-foreground));
   background: transparent;
   border: 1px solid hsl(var(--border) / 0.3);
-  border-radius: 9999px;
+  border-radius: 0.375rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .music-profile-rank-pill:hover {
@@ -533,11 +564,7 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.music-grid-card:hover {
-  transform: translateY(-2px);
+  outline: none;
 }
 
 .music-source-cover-wrap {
@@ -546,6 +573,16 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
   border-radius: 0.5rem;
   overflow: hidden;
   background: hsl(var(--muted) / 0.3);
+  border: 1px solid hsl(var(--border) / 0.28);
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.music-grid-card:hover .music-source-cover-wrap,
+.music-grid-card:focus-visible .music-source-cover-wrap {
+  border-color: hsl(var(--primary) / 0.45);
+  background: hsl(var(--primary) / 0.08);
 }
 
 .music-source-cover {
@@ -593,5 +630,27 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
 .music-profile-tracks-list {
   display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 860px) {
+  .music-profile-banner-content {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .music-profile-banner-stats {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-profile-tab-btn,
+  .music-chip,
+  .music-profile-rank-pill,
+  .music-source-cover-wrap,
+  .music-source-play-overlay {
+    transition: none;
+  }
 }
 </style>

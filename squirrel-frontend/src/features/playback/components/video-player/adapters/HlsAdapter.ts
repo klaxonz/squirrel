@@ -335,7 +335,6 @@ export class HlsAdapter implements StreamAdapter {
       enableWorker: true,
       lowLatencyMode: false,
       backBufferLength: 90,
-      preserveManualLevelOnError: true,
       ...this.options.config
     }
 

@@ -1,12 +1,10 @@
 <template>
   <AppPageShell class="home-view-page" variant="compact" :fill="false">
-    <div ref="contentRef" class="app-page-content app-page-content--cinema">
+    <div ref="contentRef" class="app-page-content home-page-content">
 
-      <header class="app-cinema-hero-pro">
-        <div class="app-cinema-hero-pro__backdrop app-cinema-hero-pro__backdrop--fallback" />
-        <div class="app-cinema-hero-pro__scrim" />
-
-        <div class="app-cinema-hero-pro__inner">
+      <header class="home-media-hero">
+        <div class="home-media-hero__atmosphere" />
+        <div class="home-media-hero__inner">
           <div class="app-hero-main-card">
             <img
               v-if="activeFeaturedVideo?.thumbnail"
@@ -26,11 +24,11 @@
             <div class="app-hero-main-card__scrim" />
 
             <div class="app-hero-main-card__content">
-              <p class="app-cinema-hero-pro__eyebrow">{{ heroEyebrow }}</p>
-              <h1 class="app-cinema-hero-pro__title">{{ heroTitle }}</h1>
-              <p v-if="heroSub" class="app-cinema-hero-pro__sub">{{ heroSub }}</p>
+              <p class="home-media-hero__eyebrow">{{ heroEyebrow }}</p>
+              <h1 class="home-media-hero__title">{{ heroTitle }}</h1>
+              <p v-if="heroSub" class="home-media-hero__sub">{{ heroSub }}</p>
 
-              <div v-if="heroVideo" class="app-cinema-hero-pro__actions">
+              <div v-if="heroVideo" class="home-media-hero__actions">
                 <button
                   type="button"
                   class="app-hero-cta"
@@ -49,7 +47,7 @@
                   查看频道
                 </button>
               </div>
-              <div v-else class="app-cinema-hero-pro__actions">
+              <div v-else class="home-media-hero__actions">
                 <button
                   type="button"
                   class="app-hero-cta"
@@ -120,7 +118,7 @@ import { getFeaturedVideos } from '@/shared/api/video'
 import { Logger } from '@/shared/lib/logger'
 import type { VideoHistoryEntry, VideoListItem } from '@/features/video/types/video'
 
-// Home view: recommendation rows + cinematic hero. The full tabbed feed lives in VideosView (/videos).
+// Home view: recommendation rows + media hero. The full tabbed feed lives in VideosView (/videos).
 defineOptions({ name: 'HomeView' })
 
 const router = useRouter()
@@ -208,7 +206,7 @@ const stopAutoRotate = () => {
 
 // ── Hero text ──
 const heroEyebrow = computed(() =>
-  heroVideo.value ? '归仓 · 继续观看' : '归仓 · 你的影音仓',
+  heroVideo.value ? '继续观看' : '今日概览',
 )
 const heroTitle = computed(() =>
   heroVideo.value ? heroVideo.value.title : '今天看点什么',
@@ -219,7 +217,7 @@ const heroSub = computed(() => {
     const who = subs?.[0]?.name
     return who ? `来自 ${who} · 从你离开的地方继续` : '从你离开的地方继续这段旅程'
   }
-  return '从你订阅的频道精选、未看完的内容,以及特别关注的更新中,挑出今天的观看清单。'
+  return '从订阅更新、未完成观看和特别关注里整理今天的内容队列。'
 })
 
 const heroCtaLabel = computed(() => {
@@ -310,8 +308,22 @@ onBeforeUnmount(() => {
   --app-page-max-width: 2400px;
 }
 
-.app-page-content--cinema {
-  padding-top: 0.75rem;
+.home-page-content {
+  position: relative;
+  padding-top: 1rem;
+}
+
+.home-page-content::before {
+  content: '';
+  position: absolute;
+  inset: 0 var(--app-page-gutter) auto;
+  height: min(36rem, 72vh);
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 42% 34% at 18% 12%, hsl(var(--primary) / 0.12), transparent 68%),
+    radial-gradient(ellipse 46% 38% at 82% 10%, hsl(var(--primary) / 0.055), transparent 66%);
+  opacity: 0.95;
+  z-index: -1;
 }
 
 /* ── CTA buttons ── */
@@ -328,24 +340,30 @@ onBeforeUnmount(() => {
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
-  color: hsl(0 0% 100%);
-  background: var(--brand-gradient);
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.35), 0 6px 18px hsl(var(--primary) / 0.18);
-  text-shadow: 0 1px 2px hsl(var(--hero-scrim) / 0.35);
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary));
+  box-shadow:
+    0 1px 2px hsl(var(--primary) / 0.3),
+    0 8px 24px hsl(var(--primary) / 0.2),
+    0 0 0 1px hsl(var(--primary) / 0.42) inset;
+  text-shadow: none;
   transition: transform var(--duration-fast) var(--ease-spring),
               box-shadow var(--duration-fast) var(--ease-default);
   cursor: pointer;
 }
 .app-hero-cta:hover {
   transform: translateY(-1px);
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.4), 0 8px 22px hsl(var(--primary) / 0.22);
+  box-shadow:
+    0 2px 8px hsl(var(--primary) / 0.34),
+    0 14px 34px hsl(var(--primary) / 0.26),
+    0 0 0 1px hsl(var(--primary) / 0.5) inset;
 }
 .app-hero-cta:active {
   transform: translateY(0) scale(0.98);
 }
 .app-hero-cta:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.4), 0 8px 22px hsl(var(--primary) / 0.22), 0 0 0 3px hsl(var(--ring) / 0.4);
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.4);
 }
 .app-hero-cta__meta {
   display: inline-flex;
@@ -353,7 +371,7 @@ onBeforeUnmount(() => {
   align-self: stretch;
   padding-left: 0.5rem;
   margin-left: 0.25rem;
-  border-left: 1px solid hsl(0 0% 100% / 0.25);
+  border-inline-start: 1px solid hsl(0 0% 100% / 0.25);
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   font-weight: 500;
@@ -362,50 +380,75 @@ onBeforeUnmount(() => {
   opacity: 0.85;
 }
 .app-hero-cta--ghost {
-  background: hsl(var(--hero-scrim) / 0.42);
+  background: hsl(var(--card) / 0.48);
   color: hsl(0 0% 100%);
-  box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.22), 0 4px 14px hsl(24 10% 6% / 0.22);
-  backdrop-filter: blur(8px);
+  border: 1px solid hsl(0 0% 100% / 0.22);
+  box-shadow:
+    0 1px 0 hsl(0 0% 100% / 0.06) inset,
+    0 8px 24px hsl(0 0% 0% / 0.18);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 .app-hero-cta--ghost:hover {
-  background: hsl(var(--hero-scrim) / 0.58);
-  box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.34), 0 6px 18px hsl(24 10% 6% / 0.28);
+  background: hsl(var(--card) / 0.62);
+  border-color: hsl(0 0% 100% / 0.34);
+  box-shadow:
+    0 1px 0 hsl(0 0% 100% / 0.08) inset,
+    0 12px 30px hsl(0 0% 0% / 0.22);
 }
 
-/* ── Fallback gradient backdrop ── */
-.app-cinema-hero-pro__backdrop--fallback {
-  background: radial-gradient(ellipse 60% 80% at 30% 40%,
-    hsl(38 92% 56% / 0.12) 0%,
-    hsl(28 88% 50% / 0.06) 40%,
-    transparent 70%);
-  filter: none;
-  transform: none;
-}
-
-.app-cinema-hero-pro {
+.home-media-hero {
+  position: relative;
   min-height: 0;
   height: auto;
-  padding: 0;
+  padding: 1px;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  border: 1px solid hsl(var(--border) / 0.54);
+  background:
+    radial-gradient(ellipse 72% 82% at 8% 0%, hsl(var(--primary) / 0.12), transparent 58%),
+    linear-gradient(145deg, hsl(var(--card) / 0.78), hsl(var(--card) / 0.44));
+  box-shadow: var(--app-panel-shadow);
+  isolation: isolate;
 }
 
-.app-cinema-hero-pro__inner {
+.home-media-hero__atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 50% 42% at 16% 18%, hsl(var(--primary) / 0.16), transparent 64%),
+    radial-gradient(ellipse 45% 38% at 86% 70%, hsl(var(--primary) / 0.075), transparent 62%),
+    linear-gradient(hsl(var(--foreground) / 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.018) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 56px 56px, 56px 56px;
+  background-position: center;
+  mask-image: radial-gradient(ellipse 84% 78% at 50% 42%, black, transparent 82%);
+  -webkit-mask-image: radial-gradient(ellipse 84% 78% at 50% 42%, black, transparent 82%);
+  z-index: -1;
+}
+
+.home-media-hero__inner {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: start;
   gap: 0.75rem;
   height: auto;
   min-height: 0;
-  padding: 0;
+  padding: 0.75rem;
 }
 
 .app-hero-main-card {
   position: relative;
   min-width: 0;
   aspect-ratio: 16 / 9;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   overflow: hidden;
-  background: hsl(0 0% 100% / 0.08);
-  box-shadow: 0 18px 42px hsl(var(--hero-scrim) / 0.42), 0 0 0 1px hsl(0 0% 100% / 0.14);
+  background: hsl(var(--card) / 0.58);
+  box-shadow:
+    0 1px 0 hsl(0 0% 100% / 0.08) inset,
+    0 16px 40px hsl(0 0% 0% / 0.26),
+    0 0 0 1px hsl(0 0% 100% / 0.08);
 }
 
 .app-hero-main-card__img {
@@ -436,8 +479,9 @@ onBeforeUnmount(() => {
   z-index: 2;
   pointer-events: none;
   background:
-    linear-gradient(to top, hsl(var(--hero-scrim) / 0.9), hsl(var(--hero-scrim) / 0.18) 58%, transparent),
-    linear-gradient(to right, hsl(var(--hero-scrim) / 0.72), transparent 68%);
+    radial-gradient(ellipse 68% 56% at 22% 82%, hsl(var(--primary) / 0.18), transparent 70%),
+    linear-gradient(to top, hsl(0 0% 0% / 0.9), hsl(0 0% 0% / 0.24) 60%, transparent),
+    linear-gradient(to right, hsl(0 0% 0% / 0.68), transparent 70%);
 }
 
 .app-hero-main-card__content {
@@ -446,6 +490,45 @@ onBeforeUnmount(() => {
   bottom: 0;
   z-index: 3;
   padding: clamp(1.25rem, 2.1vw, 2.25rem);
+}
+
+.home-media-hero__eyebrow {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  color: hsl(var(--primary));
+}
+
+.home-media-hero__title {
+  margin: 0;
+  max-width: 32rem;
+  font-family: var(--app-heading-font);
+  font-size: clamp(1.875rem, 1.3rem + 1.8vw, 3rem);
+  font-weight: 560;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: hsl(0 0% 100%);
+  text-wrap: balance;
+  text-shadow: 0 2px 14px hsl(0 0% 0% / 0.62);
+}
+
+.home-media-hero__sub {
+  margin: 0.75rem 0 0;
+  max-width: 38rem;
+  font-size: 0.875rem;
+  line-height: 1.62;
+  color: hsl(0 0% 100% / 0.76);
+  text-wrap: pretty;
+  text-shadow: 0 1px 5px hsl(0 0% 0% / 0.46);
+}
+
+.home-media-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
 }
 
 .app-hero-feature-grid {
@@ -464,10 +547,13 @@ onBeforeUnmount(() => {
   aspect-ratio: 16 / 9;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   overflow: hidden;
-  background: hsl(0 0% 100% / 0.08);
-  box-shadow: 0 10px 28px hsl(var(--hero-scrim) / 0.28);
+  background: hsl(var(--card) / 0.58);
+  box-shadow:
+    0 1px 0 hsl(0 0% 100% / 0.06) inset,
+    0 10px 28px hsl(0 0% 0% / 0.2),
+    0 0 0 1px hsl(0 0% 100% / 0.08);
   cursor: pointer;
   transition: transform var(--duration-fast) var(--ease-spring),
     box-shadow var(--duration-fast) var(--ease-default),
@@ -476,7 +562,10 @@ onBeforeUnmount(() => {
 
 .app-hero-feature-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 36px hsl(var(--hero-scrim) / 0.38);
+  box-shadow:
+    0 1px 0 hsl(0 0% 100% / 0.08) inset,
+    0 16px 36px hsl(0 0% 0% / 0.28),
+    0 0 0 1px hsl(var(--primary) / 0.18);
 }
 
 .app-hero-feature-card:active {
@@ -485,7 +574,7 @@ onBeforeUnmount(() => {
 
 .app-hero-feature-card:focus-visible {
   outline: none;
-  box-shadow: 0 16px 36px hsl(var(--hero-scrim) / 0.38), 0 0 0 3px hsl(var(--ring) / 0.55);
+  box-shadow: 0 10px 28px hsl(0 0% 0% / 0.22), 0 0 0 3px hsl(var(--ring) / 0.55);
 }
 
 .app-hero-feature-card__img {
@@ -535,7 +624,7 @@ onBeforeUnmount(() => {
   gap: 0.25rem;
   padding: 3.2rem 0.75rem 1.15rem;
   color: hsl(0 0% 100%);
-  background: linear-gradient(to top, hsl(var(--hero-scrim) / 0.88), hsl(var(--hero-scrim) / 0.5) 48%, transparent);
+  background: linear-gradient(to top, hsl(0 0% 0% / 0.88), hsl(0 0% 0% / 0.5) 48%, transparent);
   text-align: left;
 }
 
@@ -560,11 +649,11 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 960px) {
-  .app-cinema-hero-pro {
+  .home-media-hero {
     height: auto;
   }
 
-  .app-cinema-hero-pro__inner {
+  .home-media-hero__inner {
     grid-template-columns: 1fr;
   }
 
@@ -579,11 +668,11 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
-  .app-page-content--cinema {
+  .home-page-content {
     padding-top: 0.5rem;
   }
 
-  .app-cinema-hero-pro__inner,
+  .home-media-hero__inner,
   .app-hero-feature-grid {
     gap: 0.5rem;
   }

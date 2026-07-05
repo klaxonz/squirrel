@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import type { Ref } from 'vue'
-import { onClickOutside } from '@vueuse/core'
+import { usePointerOutside } from '@/shared/composables/usePointerOutside'
 import { getRssSyncStatus, syncRssAccount } from '@/shared/api'
 import type { RssSyncStatus } from '@/features/rss/types/rss'
 
@@ -39,9 +39,7 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
   const syncDropdownRef = ref<HTMLElement | null>(null)
   let syncPollTimer: ReturnType<typeof setInterval> | null = null
 
-  // ponytail: click-outside lives with the dropdown ref it guards; the parent
-  // no longer needs to wire onClickOutside for the sync menu.
-  onClickOutside(syncDropdownRef, () => {
+  usePointerOutside(syncDropdownRef, () => {
     showSyncMenu.value = false
   })
 

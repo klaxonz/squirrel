@@ -10,7 +10,7 @@
             :src="subscription.avatar"
             :name="subscription.name"
             size="full"
-            class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            class="h-full w-full object-cover"
           />
         </div>
       </div>
@@ -33,7 +33,7 @@
         <div class="mt-1 flex items-center gap-2">
           <SiteTag :site="subscription.site" class="origin-left scale-[0.85] opacity-90" />
           <span class="text-xs font-medium text-muted-foreground app-mono">{{ subscription.total_videos || 0 }} 视频</span>
-          <div v-if="subscription.is_nsfw" class="shrink-0 rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-2xs font-semibold text-destructive ml-auto">
+          <div v-if="subscription.is_nsfw" class="ml-auto shrink-0 rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-xs font-semibold text-destructive">
             18+
           </div>
         </div>
@@ -69,8 +69,8 @@
 
       <Button
         variant="ghost"
-        size="icon"
-        class="h-7 w-7 rounded-md opacity-0 transition-opacity group-hover:opacity-100 hover:bg-accent/50"
+        size="icon-sm"
+        class="opacity-0 transition-opacity group-hover:opacity-100"
         @click.stop="$emit('more')"
       >
         <AppIcon name="more" class="h-4 w-4" />

@@ -1,8 +1,8 @@
 <template>
   <div class="music-track-list">
     <Transition
-      enter-active-class="transition-all duration-200 ease-out"
-      leave-active-class="transition-all duration-150 ease-in"
+      enter-active-class="transition-[transform,opacity] duration-200 ease-out"
+      leave-active-class="transition-[transform,opacity] duration-150 ease-in"
       enter-from-class="opacity-0 -translate-y-2"
       leave-to-class="opacity-0 -translate-y-2"
     >
@@ -521,7 +521,6 @@ const {
   border-radius: 0.75rem;
   box-shadow: 0 12px 32px hsl(var(--foreground) / 0.15);
   padding: 0.5rem;
-  backdrop-filter: blur(12px);
 }
 
 .music-context-item {

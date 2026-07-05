@@ -1,6 +1,6 @@
 import { computed, nextTick, ref, watch, type Ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
-import { onClickOutside } from '@vueuse/core'
+import { usePointerOutside } from '@/shared/composables/usePointerOutside'
 import { unsubscribeRssFeed } from '@/shared/api'
 import { formatDate } from '@/shared/lib/dateFormat'
 import type { RssEntry, RssFeed, RecentEntry } from './rssTypes'
@@ -39,7 +39,7 @@ export function useRssReader(options: {
 
   let progressTimer: number | null = null
 
-  onClickOutside(readerSettingsRef, () => {
+  usePointerOutside(readerSettingsRef, () => {
     showReaderSettings.value = false
   })
   const readerFontClass = computed(() => {

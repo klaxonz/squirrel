@@ -2,27 +2,27 @@
   <AppPageShell variant="compact">
     <AppTwoColumnLayout>
       <template #sidebar>
-        <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
+        <div class="flex h-14 shrink-0 items-center justify-between app-divider-bottom px-4">
           <div class="min-w-0">
             <h1 class="app-h3 truncate">站点</h1>
             <p class="mt-0.5 text-xs text-muted-foreground">{{ siteRuntimeSummary.total }} 个已安装</p>
           </div>
-          <Button variant="ghost" size="icon" class="h-8 w-8 rounded-md" :disabled="reloading || loading" @click="handleReload">
+          <Button variant="ghost" size="icon-sm" :disabled="reloading || loading" @click="handleReload">
             <AppSpinner v-if="reloading" size="sm" />
             <AppIcon v-else name="refresh" class="h-4 w-4" />
           </Button>
         </div>
 
-        <div class="grid shrink-0 grid-cols-2 gap-2 border-b border-border/50 p-3">
-          <div class="rounded-md border border-border/50 p-2">
-            <div class="text-xs text-muted-foreground">运行</div>
-            <div class="mt-1 text-lg font-semibold tabular-nums">{{ siteRuntimeSummary.running }}</div>
+        <div class="grid shrink-0 grid-cols-2 gap-2 app-divider-bottom p-3">
+          <div class="app-stat-card">
+            <div class="app-stat-card__label">运行</div>
+            <div class="app-stat-card__value">{{ siteRuntimeSummary.running }}</div>
           </div>
-          <div class="rounded-md border border-border/50 p-2">
-            <div class="text-xs text-muted-foreground">需关注</div>
-            <div class="mt-1 text-lg font-semibold tabular-nums">{{ siteRuntimeSummary.attention }}</div>
+          <div class="app-stat-card">
+            <div class="app-stat-card__label">需关注</div>
+            <div class="app-stat-card__value">{{ siteRuntimeSummary.attention }}</div>
           </div>
-          <div class="col-span-2 rounded-md border border-border/50 p-2">
+          <div class="app-stat-card col-span-2">
             <div class="flex items-center justify-between">
               <span class="text-xs text-muted-foreground">网络连通</span>
               <span class="text-sm font-semibold tabular-nums">{{ connectivitySummary.accessible }}/{{ connectivitySummary.total }}</span>
@@ -31,17 +31,17 @@
           </div>
         </div>
 
-        <div class="space-y-4 border-b border-border/50 p-3">
+        <div class="space-y-4 app-divider-bottom p-3">
           <div class="space-y-2">
             <div class="text-xs font-medium text-muted-foreground">登录凭据</div>
-            <Button as-child variant="outline" class="h-9 w-full justify-start rounded-md">
+            <Button as-child variant="outline" class="w-full justify-start">
               <label class="cursor-pointer">
                 <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
                 <AppIcon name="cookie" class="h-4 w-4" />
                 <span class="truncate">{{ cookiesFileName || '选择凭据文件' }}</span>
               </label>
             </Button>
-            <Button v-if="selectedCookiesFile" class="h-9 w-full rounded-md" :disabled="importingCookies" @click="handleImportAllCookies">
+            <Button v-if="selectedCookiesFile" class="w-full" :disabled="importingCookies" @click="handleImportAllCookies">
               <AppSpinner v-if="importingCookies" size="sm" />
               <AppIcon v-else name="refresh" class="h-4 w-4" />
               导入凭据
@@ -50,7 +50,7 @@
         </div>
 
         <div class="space-y-2 p-3">
-          <Button variant="outline" class="h-9 w-full justify-start rounded-md" :disabled="testingAll" @click="handleTestAll">
+          <Button variant="outline" class="w-full justify-start" :disabled="testingAll" @click="handleTestAll">
             <AppSpinner v-if="testingAll" size="sm" />
             <AppIcon v-else name="sync" class="h-4 w-4" />
             测试全部
@@ -70,7 +70,7 @@
             <Input
               v-model="searchQuery"
               placeholder="搜索站点、站点或描述"
-              class="h-9 w-full rounded-md border-border/50 pl-9 pr-8 text-sm shadow-none"
+              class="pl-9 pr-8"
             />
             <button
               v-if="searchQuery"

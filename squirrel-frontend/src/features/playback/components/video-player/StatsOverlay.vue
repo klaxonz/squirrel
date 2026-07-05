@@ -96,7 +96,6 @@ onUnmounted(() => {
   left: 10px;
   z-index: 80;
   background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 6px;
   padding: 10px 14px;

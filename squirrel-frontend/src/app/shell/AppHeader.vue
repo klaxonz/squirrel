@@ -1,91 +1,23 @@
 <template>
   <header class="app-header">
-    <!-- ── Left cluster: history controls + page title ── -->
     <div class="app-header__lead">
-      <div class="app-header__history" role="group" aria-label="页面导航">
-        <div
-          class="app-header__nav-wrap"
-          @mouseenter="openBackMenu"
-          @mouseleave="scheduleCloseMenu('back')"
-        >
-          <button
-            type="button"
-            class="app-header__nav-btn"
-            :disabled="!canGoBack"
-            :title="canGoBack ? `返回 ${backTooltipLabel}` : '已是第一页'"
-            aria-label="返回上一页"
-            @click="handleBack"
-          >
-            <AppIcon name="chevronLeft" class="size-[15px]" />
-          </button>
-          <Transition name="header-menu">
-            <ul
-              v-if="backMenuOpen && backCandidates.length > 0"
-              class="app-header__menu app-header__menu--back"
-              role="menu"
-              @mouseenter="cancelCloseMenu"
-              @mouseleave="scheduleCloseMenu('back')"
-            >
-              <li v-for="entry in backCandidates" :key="entry.id">
-                <button
-                  type="button"
-                  class="app-header__menu-item"
-                  role="menuitem"
-                  @click="jumpTo(entry.id)"
-                >
-                  <AppIcon name="chevronLeft" class="size-3 opacity-60" />
-                  <span class="truncate">{{ entry.title || entry.sectionLabel || entry.fullPath }}</span>
-                </button>
-              </li>
-            </ul>
-          </Transition>
-        </div>
+      <button
+        v-if="canGoBack"
+        type="button"
+        class="app-header__back"
+        :title="`返回 ${backTooltipLabel}`"
+        aria-label="返回上一页"
+        @click="handleBack"
+      >
+        <AppIcon name="chevronLeft" class="size-[15px]" />
+      </button>
 
-        <div
-          class="app-header__nav-wrap"
-          @mouseenter="openForwardMenu"
-          @mouseleave="scheduleCloseMenu('forward')"
-        >
-          <button
-            type="button"
-            class="app-header__nav-btn"
-            :disabled="!canGoForward"
-            :title="canGoForward ? '前进' : '已是最新页面'"
-            aria-label="前进到下一页"
-            @click="handleForward"
-          >
-            <AppIcon name="chevronRight" class="size-[15px]" />
-          </button>
-          <Transition name="header-menu">
-            <ul
-              v-if="forwardMenuOpen && forwardCandidates.length > 0"
-              class="app-header__menu app-header__menu--forward"
-              role="menu"
-              @mouseenter="cancelCloseMenu"
-              @mouseleave="scheduleCloseMenu('forward')"
-            >
-              <li v-for="entry in forwardCandidates" :key="entry.id">
-                <button
-                  type="button"
-                  class="app-header__menu-item"
-                  role="menuitem"
-                  @click="jumpTo(entry.id)"
-                >
-                  <AppIcon name="chevronRight" class="size-3 opacity-60" />
-                  <span class="truncate">{{ entry.title || entry.sectionLabel || entry.fullPath }}</span>
-                </button>
-              </li>
-            </ul>
-          </Transition>
-        </div>
-      </div>
-
-      <div class="app-header__title" :title="pageTitle">
+      <div class="app-header__context" :title="contextTitle">
+        <div class="app-header__section">{{ sectionLabel }}</div>
         <h1 class="app-header__page-title">{{ pageTitle }}</h1>
       </div>
     </div>
 
-    <!-- ── Center: search bar (when applicable) ── -->
     <div class="app-header__center">
       <Transition name="fade" mode="out-in">
         <div v-if="showSearch" key="search" class="app-header__search-wrap">
@@ -103,28 +35,25 @@
       </Transition>
     </div>
 
-    <!-- ── Right: user menu ── -->
     <div class="app-header__actions">
-      <div
+      <button
+        type="button"
         class="app-header__user"
-        role="button"
-        tabindex="0"
-        :title="`${userDisplayName} — 个人资料`"
+        :title="`${userDisplayName} - 个人资料`"
         @click="goToProfile"
-        @keydown.enter.prevent="goToProfile"
-        @keydown.space.prevent="goToProfile"
       >
-        <div class="app-header__avatar">
+        <span class="app-header__avatar">
           <template v-if="userInitial">{{ userInitial }}</template>
           <AppIcon v-else name="user" class="size-3.5" />
-        </div>
-      </div>
+        </span>
+        <span class="app-header__user-name">{{ userDisplayName }}</span>
+      </button>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
@@ -153,7 +82,6 @@ const goToProfile = () => {
   router.push('/profile')
 }
 
-// ── Search ──
 const showSearch = computed(() => !!route.meta?.showSearch)
 const { isDesktop: isDesktopEnv } = useDesktopBridge()
 const isVideosRoute = computed(() => route.matched.some((record) => record.name === 'VideosView'))
@@ -193,21 +121,14 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   router.replace({ query })
 }
 
-// ── Title ──
-// Header 永远只显示当前页标题；祖先面包屑（section）已经在左侧 Sidebar 里高亮，
-// 在 header 里再显示一次会变成视觉噪音（"视频 / 全部视频"这种重复）。
 const routeContext = computed(() => resolveRouteContext(route))
 const pageTitle = computed(() => routeContext.value.pageTitle)
+const sectionLabel = computed(() => routeContext.value.sectionLabel)
+const contextTitle = computed(() => `${sectionLabel.value} / ${pageTitle.value}`)
 
-// ── History controls ──
 const canGoBack = computed(() => nav.canGoBack.value)
-const canGoForward = computed(() => nav.canGoForward.value)
-const backCandidates = computed(() => nav.backCandidates.value)
-const forwardCandidates = computed(() => nav.forwardCandidates.value)
 const backTooltipLabel = computed(() => {
-  const list = backCandidates.value
-  // 栈里 currentIndex - 1 才是"上一页"，对应列表的最后一个元素（listBackCandidates
-  // 是从近到远反序）。
+  const list = nav.backCandidates.value
   const last = list[list.length - 1]
   return last?.title || last?.sectionLabel || '上一页'
 })
@@ -215,271 +136,186 @@ const backTooltipLabel = computed(() => {
 function handleBack() {
   void nav.goBack()
 }
-function handleForward() {
-  void nav.goForward()
-}
-function jumpTo(entryId: string) {
-  closeAllMenus()
-  nav.jumpTo(entryId)
-}
-
-// ── Hover menus ──
-const backMenuOpen = ref(false)
-const forwardMenuOpen = ref(false)
-let closeTimer: ReturnType<typeof setTimeout> | null = null
-
-function openBackMenu() {
-  if (!backCandidates.value.length) return
-  cancelCloseMenu()
-  backMenuOpen.value = true
-  forwardMenuOpen.value = false
-}
-function openForwardMenu() {
-  if (!forwardCandidates.value.length) return
-  cancelCloseMenu()
-  forwardMenuOpen.value = true
-  backMenuOpen.value = false
-}
-function scheduleCloseMenu(_which: 'back' | 'forward') {
-  if (closeTimer) clearTimeout(closeTimer)
-  closeTimer = setTimeout(closeAllMenus, 220)
-}
-function cancelCloseMenu() {
-  if (closeTimer) {
-    clearTimeout(closeTimer)
-    closeTimer = null
-  }
-}
-function closeAllMenus() {
-  backMenuOpen.value = false
-  forwardMenuOpen.value = false
-  if (closeTimer) {
-    clearTimeout(closeTimer)
-    closeTimer = null
-  }
-}
 </script>
 
 <style scoped>
 .app-header {
-  height: 3.75rem;
-  display: flex;
+  height: 3.5rem;
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.8fr) minmax(22rem, 1.2fr) minmax(10rem, 0.55fr);
   align-items: center;
   gap: var(--space-4);
   padding: 0 var(--space-5);
   border-bottom: 1px solid hsl(var(--border) / 0.62);
-  background: hsl(var(--card) / 0.76);
+  background:
+    radial-gradient(ellipse 30% 120% at 8% 0%, hsl(var(--primary) / 0.08), transparent 72%),
+    linear-gradient(180deg, hsl(var(--card) / 0.94), hsl(var(--card) / 0.82));
+  box-shadow: 0 1px 0 hsl(var(--foreground) / 0.035) inset;
   position: relative;
   z-index: var(--z-header);
   user-select: none;
 }
 
-/* ── Left cluster ── */
 .app-header__lead {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  flex: 0 1 auto;
   min-width: 0;
-  width: min(28rem, 38%);
 }
 
-.app-header__history {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
-  padding: 2px;
-  border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: var(--radius-lg);
-  background: hsl(var(--background) / 0.5);
-}
-
-.app-header__nav-wrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.app-header__nav-btn {
+.app-header__back {
+  width: 1.875rem;
+  height: 1.875rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  flex: 0 0 auto;
+  border: 1px solid hsl(var(--border) / 0.64);
   border-radius: var(--radius-md);
-  border: 0;
-  background: transparent;
+  background: hsl(var(--secondary) / 0.58);
   color: hsl(var(--muted-foreground));
-  cursor: pointer;
   transition:
-    background-color 140ms cubic-bezier(0.4, 0, 0.2, 1),
-    color 140ms cubic-bezier(0.4, 0, 0.2, 1),
-    transform 140ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-.app-header__nav-btn:not(:disabled):hover {
-  background: hsl(var(--accent) / 0.9);
-  color: hsl(var(--foreground));
-}
-.app-header__nav-btn:not(:disabled):active {
-  transform: scale(0.96);
-}
-.app-header__nav-btn:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-.app-header__nav-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.55);
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
 }
 
-.app-header__menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  min-width: 16rem;
-  max-width: 24rem;
-  max-height: 20rem;
-  overflow-y: auto;
-  padding: 0.3rem;
-  list-style: none;
-  margin: 0;
-  background: hsl(var(--popover));
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 10px;
-  box-shadow:
-    0 1px 2px hsl(var(--foreground) / 0.06),
-    0 8px 24px hsl(var(--foreground) / 0.14),
-    0 24px 56px hsl(var(--foreground) / 0.10);
-  z-index: var(--z-popover, 1100);
-}
-.app-header__menu--back { left: 0; }
-.app-header__menu--forward { left: 0; }
-
-.app-header__menu-item {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  width: 100%;
-  padding: 0.45rem 0.6rem;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: hsl(var(--foreground) / 0.88);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 100ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-.app-header__menu-item:hover,
-.app-header__menu-item:focus-visible {
+.app-header__back:hover {
+  border-color: hsl(var(--primary) / 0.38);
   background: hsl(var(--accent));
   color: hsl(var(--foreground));
-  outline: none;
 }
 
-/* Title: 只显示当前页标题，section 已在 sidebar 高亮，header 不再重复 */
-.app-header__title {
+.app-header__back:active {
+  transform: translateY(1px);
+}
+
+.app-header__context {
   min-width: 0;
-  display: flex;
-  align-items: center;
+  display: grid;
+  gap: 0.125rem;
+}
+
+.app-header__section {
+  overflow: hidden;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-header__page-title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.0625rem;
-  font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.012em;
-  color: hsl(var(--foreground));
-  white-space: nowrap;
   overflow: hidden;
+  color: hsl(var(--foreground));
+  font-family: var(--app-heading-font);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* ── Center: search ── */
 .app-header__center {
-  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   justify-content: center;
-  min-width: 0;
 }
+
 .app-header__search-wrap {
   width: 100%;
-  max-width: 38rem;
+  max-width: 40rem;
   display: flex;
   justify-content: center;
 }
+
 .app-header__search {
   width: 100%;
 }
+
 .app-header__spacer {
   flex: 1 1 auto;
 }
 
-/* ── Right: user ── */
 .app-header__actions {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  flex: 0 0 auto;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .app-header__user {
+  min-width: 0;
+  max-width: 11rem;
   display: inline-flex;
   align-items: center;
-  cursor: pointer;
-  transition: opacity 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.5rem 0 0.375rem;
+  border-radius: var(--radius-md);
+  color: hsl(var(--muted-foreground));
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
-.app-header__user:hover { opacity: 0.85; }
-.app-header__user:focus-visible {
-  outline: none;
-}
-.app-header__user:focus-visible .app-header__avatar {
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.55);
+
+.app-header__user:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
 }
 
 .app-header__avatar {
-  width: 2rem;
-  height: 2rem;
-  border-radius: var(--radius-lg);
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-md);
   background: hsl(var(--primary));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.6875rem;
+  font-weight: 700;
   color: hsl(var(--primary-foreground));
-  border: 1px solid hsl(var(--primary) / 0.45);
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
+  flex: 0 0 auto;
+  letter-spacing: 0;
 }
 
-/* ── Transitions ── */
+.app-header__user-name {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 140ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity var(--duration-fast) var(--ease-default);
 }
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
 }
 
-.header-menu-enter-active {
-  transition:
-    opacity 120ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
-  transform-origin: top left;
+@media (max-width: 980px) {
+  .app-header {
+    grid-template-columns: minmax(10rem, 0.7fr) minmax(16rem, 1fr) auto;
+  }
+
+  .app-header__user-name {
+    display: none;
+  }
 }
-.header-menu-leave-active {
-  transition:
-    opacity 80ms cubic-bezier(0.4, 0, 1, 1),
-    transform 100ms cubic-bezier(0.4, 0, 1, 1);
-  transform-origin: top left;
-}
-.header-menu-enter-from,
-.header-menu-leave-to {
-  opacity: 0;
-  transform: translateY(-4px) scale(0.97);
+
+@media (prefers-reduced-motion: reduce) {
+  .app-header__back,
+  .app-header__user,
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: none;
+  }
 }
 </style>

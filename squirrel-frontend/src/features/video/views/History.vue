@@ -1,45 +1,47 @@
 <template>
   <AppPageShell variant="compact">
-    <header class="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-background/95 px-4 backdrop-blur lg:px-6">
-      <div class="min-w-0">
-        <h1 class="app-h3 truncate">{{ pageTitle }}</h1>
-        <p class="mt-0.5 text-xs text-muted-foreground">{{ pageSubtitle }}</p>
-      </div>
+    <AppToolbarFrame bordered compact>
+      <div class="app-page-toolbar">
+        <div class="app-page-toolbar__title">
+          <h1 class="app-h3 truncate">{{ pageTitle }}</h1>
+          <p class="mt-0.5 text-xs text-muted-foreground">{{ pageSubtitle }}</p>
+        </div>
 
-      <div class="flex items-center gap-2">
-        <Button variant="ghost" size="icon" class="h-9 w-9 rounded-md" title="刷新历史" aria-label="刷新历史" @click="loadData">
-          <AppSpinner v-if="loading" size="sm" />
-          <AppIcon v-else name="refresh" class="h-4 w-4" />
-        </Button>
-        <Button v-if="isContinueMode" variant="ghost" class="h-9 rounded-md px-3 text-sm" @click="router.push({ name: 'History' })">
-          全部历史
-        </Button>
-        <Button
-          v-if="videos.length && !isContinueMode"
-          variant="ghost"
-          size="icon"
-          class="h-9 w-9 rounded-md text-destructive hover:bg-destructive/10 hover:text-destructive"
-          title="清空历史"
-          aria-label="清空历史"
-          @click="showClearConfirm = true"
-        >
-          <AppIcon name="trash" class="h-4 w-4" />
-        </Button>
+        <div class="app-page-toolbar__actions">
+          <Button variant="ghost" size="icon-sm" title="刷新历史" aria-label="刷新历史" @click="loadData">
+            <AppSpinner v-if="loading" size="sm" />
+            <AppIcon v-else name="refresh" class="h-4 w-4" />
+          </Button>
+          <Button v-if="isContinueMode" variant="ghost" @click="router.push({ name: 'History' })">
+            全部历史
+          </Button>
+          <Button
+            v-if="videos.length && !isContinueMode"
+            variant="ghost"
+            size="icon-sm"
+            class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            title="清空历史"
+            aria-label="清空历史"
+            @click="showClearConfirm = true"
+          >
+            <AppIcon name="trash" class="h-4 w-4" />
+          </Button>
+        </div>
       </div>
-    </header>
+    </AppToolbarFrame>
 
     <div class="flex-1">
-      <main class="mx-auto w-full max-w-[1200px] p-4 lg:p-6">
-        <div v-if="loading && videos.length === 0" class="space-y-8">
-          <div v-for="i in 2" :key="i" class="space-y-3">
+      <main class="app-page-content history-content">
+        <div v-if="loading && videos.length === 0" class="app-content-stack app-content-stack--feed">
+          <div v-for="i in 2" :key="i" class="app-content-stack app-content-stack--dense">
             <AppSkeleton width="5rem" height="1.75rem" rounded="var(--radius)" shimmer />
-            <div class="space-y-2">
+            <div class="app-content-stack app-content-stack--dense history-skeleton-list">
               <AppSkeleton v-for="j in 3" :key="j" height="7rem" rounded="var(--radius-lg)" shimmer />
             </div>
           </div>
         </div>
 
-        <div v-else-if="loadError" class="min-h-[24rem]">
+        <div v-else-if="loadError" class="app-page-empty app-page-empty--compact">
           <AppEmptyState variant="error" title="加载失败" :copy="loadError">
             <template #actions>
               <Button variant="outline" size="sm" @click="loadData">重试</Button>
@@ -47,14 +49,14 @@
           </AppEmptyState>
         </div>
 
-        <div v-else-if="groupedVideos.length === 0" class="min-h-[24rem]">
+        <div v-else-if="groupedVideos.length === 0" class="app-page-empty app-page-empty--compact">
           <AppEmptyState variant="plain" icon="time" :title="emptyTitle" :copy="emptyDescription" />
         </div>
 
-        <div v-else class="space-y-8">
-          <section v-if="featuredVideo" class="overflow-hidden rounded-lg border border-border/60 bg-card shadow-sm">
+        <div v-else class="app-content-stack app-content-stack--feed">
+          <section v-if="featuredVideo" class="overflow-hidden rounded-lg border border-border/70 bg-card">
             <button
-              class="group relative block min-h-[15rem] w-full overflow-hidden text-left lg:min-h-[18rem]"
+              class="app-featured-media group relative block w-full overflow-hidden text-left"
               @click="handleOpenVideo(featuredVideo)"
             >
               <VideoThumbnail
@@ -63,17 +65,17 @@
                 fit="responsive"
                 class="absolute inset-0 h-full w-full"
               />
-              <div class="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-black/10" />
+              <div class="history-featured__scrim" />
               <div class="absolute inset-x-0 bottom-0 h-1 bg-white/15">
                 <div class="h-full bg-primary" :style="{ width: `${getProgress(featuredVideo) * 100}%` }" />
               </div>
               <div class="relative z-10 flex h-full max-w-3xl flex-col justify-end gap-3 p-5 text-white lg:p-6">
                 <div class="flex items-center gap-2 text-xs font-medium text-white/80">
-                  <span class="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-1 backdrop-blur">
+                  <span class="inline-flex items-center gap-1 rounded-md border border-white/20 bg-black/35 px-2 py-1">
                     <AppIcon name="playback" class="h-3.5 w-3.5" />
                     {{ featuredLabel }}
                   </span>
-                  <span v-if="featuredVideo.duration" class="rounded-full bg-black/35 px-2 py-1 tabular-nums">
+                  <span v-if="featuredVideo.duration" class="rounded-md border border-white/15 bg-black/35 px-2 py-1 tabular-nums">
                     {{ formatDuration(featuredVideo.duration) }}
                   </span>
                 </div>
@@ -89,13 +91,13 @@
             </button>
           </section>
 
-          <section v-for="group in groupedVideos" :key="group.date" class="space-y-3">
-            <div class="sticky top-14 z-10 flex h-9 items-center justify-between bg-background">
+          <section v-for="group in groupedVideos" :key="group.date" class="app-content-stack app-content-stack--dense">
+            <div class="app-sticky-section-bar">
               <h3 class="text-xs font-semibold text-muted-foreground">{{ group.date }}</h3>
               <span class="text-xs text-muted-foreground">{{ group.items.length }} 条</span>
             </div>
 
-            <div class="space-y-2">
+            <div class="app-content-stack app-content-stack--dense history-item-list">
               <HistoryItem 
                 v-for="video in group.items" 
                 :key="video.history_id || video.id"
@@ -107,33 +109,30 @@
           </section>
         </div>
 
-        <div v-if="loading && videos.length > 0" class="flex justify-center py-10">
+        <div v-if="loading && videos.length > 0" class="app-page-actions app-page-actions--loose">
           <AppSpinner />
         </div>
 
-        <div v-else-if="hasMore" class="flex justify-center py-8">
-          <Button variant="outline" class="h-9 rounded-md" @click="loadMore">加载更多</Button>
+        <div v-else-if="hasMore" class="app-page-actions app-page-actions--loose">
+          <Button variant="outline" @click="loadMore">加载更多</Button>
         </div>
       </main>
     </div>
 
-    <Dialog :open="showClearConfirm" @update:open="showClearConfirm = $event">
-      <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
-        <DialogHeader class="border-b border-border/50 p-5 text-left">
-          <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-destructive/10 text-destructive">
-            <AppIcon name="trash" class="h-5 w-5" />
-          </div>
-          <DialogTitle class="text-base font-semibold">清空所有历史记录？</DialogTitle>
-          <DialogDescription class="text-sm leading-relaxed text-muted-foreground">
-            此操作将永久移除你账户下的所有观看记录，包括各端同步的进度信息。该操作不可撤销。
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter class="gap-2 bg-muted/30 p-4">
-          <Button variant="outline" class="h-9 rounded-md" @click="showClearConfirm = false">取消</Button>
-          <Button variant="destructive" class="h-9 rounded-md" @click="handleClearHistory">确认清空</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ConfirmDialog
+      v-model:open="showClearConfirm"
+      icon="trash"
+      icon-bg-class="bg-destructive/10 text-destructive"
+      title="清空所有历史记录？"
+      cancel-label="取消"
+      confirm-label="确认清空"
+      confirm-variant="destructive"
+      @confirm="handleClearHistory"
+    >
+      <template #description>
+        此操作将永久移除你账户下的所有观看记录，包括各端同步的进度信息。该操作不可撤销。
+      </template>
+    </ConfirmDialog>
   </AppPageShell>
 </template>
 
@@ -147,10 +146,11 @@ import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
+import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import HistoryItem from '@/features/video/components/history/HistoryItem.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import { Button } from '@/shared/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
 import { useVideoHistory } from '../composables/useVideoHistory'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
@@ -264,3 +264,22 @@ onMounted(() => {
   loadData()
 })
 </script>
+
+<style scoped>
+.history-content {
+  --app-page-max-width: 1200px;
+  padding-top: var(--space-5);
+}
+
+.history-skeleton-list,
+.history-item-list {
+  --app-content-stack-gap: var(--space-2);
+}
+
+.history-featured__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, hsl(0 0% 0% / 0.74), hsl(0 0% 0% / 0.42) 52%, hsl(0 0% 0% / 0.12));
+}
+</style>

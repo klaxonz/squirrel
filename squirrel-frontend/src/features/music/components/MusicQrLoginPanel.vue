@@ -33,8 +33,8 @@
             
             <div class="text-center flex-1">
               <h4 class="text-base font-extrabold tracking-tight">扫码登录酷狗</h4>
-              <p class="text-2xs text-muted-foreground font-medium flex items-center justify-center gap-1 mt-0.5">
-                <span class="inline-block h-1.5 w-1.5 rounded-full bg-success/10 animate-pulse"></span>
+              <p class="mt-0.5 flex items-center justify-center gap-1 text-xs font-medium text-muted-foreground">
+                <span class="inline-block h-2.5 w-0.5 rounded-sm bg-success/50"></span>
                 {{ qrStatusText }}
               </p>
             </div>
@@ -52,8 +52,8 @@
               
               <div v-if="isExpired" class="music-qr-expired-overlay">
                 <AppIcon name="refresh" class="h-5 w-5 text-primary mb-1 animate-pulse" />
-                <span class="text-2xs font-bold text-foreground">二维码已失效</span>
-                <span class="text-3xs text-muted-foreground mt-0.5">点击重试</span>
+                <span class="text-xs font-bold text-foreground">二维码已失效</span>
+                <span class="mt-0.5 text-xs text-muted-foreground">点击重试</span>
               </div>
             </div>
             
@@ -113,33 +113,6 @@ defineEmits<{
   margin: 0 auto 1.5rem;
 }
 
-.music-login-art-circle {
-  position: absolute;
-  border-radius: 9999px;
-  border: 1px solid hsl(var(--primary) / 0.2);
-  animation: pulse-ring 3s ease-in-out infinite;
-}
-
-.music-login-art-circle--1 {
-  inset: 0;
-  animation-delay: 0s;
-}
-
-.music-login-art-circle--2 {
-  inset: 1.5rem;
-  animation-delay: 0.5s;
-}
-
-.music-login-art-circle--3 {
-  inset: 3rem;
-  animation-delay: 1s;
-}
-
-@keyframes pulse-ring {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.05); }
-}
-
 .music-login-icon-wrapper {
   position: absolute;
   inset: 4.5rem;
@@ -147,8 +120,8 @@ defineEmits<{
   align-items: center;
   justify-content: center;
   background: hsl(var(--card));
-  border-radius: 9999px;
-  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: 0.75rem;
 }
 
 .music-login-title {
@@ -171,10 +144,10 @@ defineEmits<{
 }
 
 .music-login-btn-premium {
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.9));
+  background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   border: none;
-  border-radius: 9999px;
+  border-radius: var(--radius);
   padding: 0.75rem 1.5rem;
 }
 
@@ -197,7 +170,7 @@ defineEmits<{
   justify-content: center;
   border: none;
   background: hsl(var(--muted) / 0.4);
-  border-radius: 9999px;
+  border-radius: var(--radius);
   color: hsl(var(--muted-foreground));
   cursor: pointer;
 }

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full overflow-hidden bg-background text-foreground selection:bg-primary/10">
+  <div class="app-workbench subscribed-workbench">
     <SubscriptionSidebar
       ref="sidebarRef"
       :channels="filteredChannels"
@@ -23,16 +23,16 @@
       @update:site-dropdown-open="showSiteDropdown = $event"
     />
 
-    <main class="flex min-w-0 flex-1 flex-col bg-background relative">
-      <header class="relative flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-background/70 px-4 lg:px-6 backdrop-blur-2xl z-20">
+    <main class="app-workbench__main">
+      <header class="app-workbench__header">
         <div class="flex min-w-0 items-center gap-3">
           <div v-if="activeChannel" class="shrink-0 relative group cursor-pointer" @click="openActiveChannelDetail">
-            <SubscriptionAvatar :src="activeChannel.avatar" :name="activeChannel.name" size="lg" class="ring-2 ring-background shadow-sm transition-transform group-hover:scale-105" />
-            <div v-if="activeChannel.is_special_followed" class="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-warning/10 text-warning ring-2 ring-background shadow-sm">
+            <SubscriptionAvatar :src="activeChannel.avatar" :name="activeChannel.name" size="lg" class="subscribed-avatar" />
+            <div v-if="activeChannel.is_special_followed" class="subscribed-star-badge">
               <AppIcon name="star" class="h-2.5 w-2.5 fill-current" />
             </div>
           </div>
-          <div v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <div v-else class="subscribed-empty-avatar">
             <AppIcon name="library" class="h-4 w-4" />
           </div>
 
@@ -42,11 +42,11 @@
                 {{ activeChannelName || '订阅动态' }}
               </h2>
               
-              <div v-if="canOpenRemoteChannel" class="flex shrink-0 rounded-md border border-border/40 bg-muted/50 p-0.5 shadow-sm">
+              <div v-if="canOpenRemoteChannel" class="app-tab-list">
                 <button
                   type="button"
-                  class="inline-flex h-6 items-center gap-1.5 rounded px-2 text-xs font-semibold transition-all"
-                  :class="channelDataMode === 'local' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                  class="app-tab-button"
+                  :class="{ 'is-active': channelDataMode === 'local' }"
                   @click="openLocalChannel"
                 >
                   <AppIcon name="library" class="h-3 w-3" />
@@ -54,8 +54,8 @@
                 </button>
                 <button
                   type="button"
-                  class="inline-flex h-6 items-center gap-1.5 rounded px-2 text-xs font-semibold transition-all"
-                  :class="channelDataMode === 'remote' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                  class="app-tab-button"
+                  :class="{ 'is-active': channelDataMode === 'remote' }"
                   @click="openRemoteChannel"
                 >
                   <AppIcon name="siteFallback" class="h-3 w-3" />
@@ -63,16 +63,17 @@
                 </button>
               </div>
 
-              <button
+              <Button
                 v-if="activeChannel"
                 type="button"
-                class="inline-flex h-7 shrink-0 items-center justify-center rounded-full border transition-all"
-                :class="activeChannel.is_special_followed ? 'border-warning/40 bg-warning/10 text-warning ring-1 ring-warning/20' : 'border-border/50 text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+                variant="ghost"
+                size="icon-sm"
+                :class="activeChannel.is_special_followed ? 'text-warning' : ''"
                 aria-label="切换特别关注"
                 @click="toggleSpecialFollow(activeChannel)"
               >
-                <AppIcon name="star" class="h-3.5 w-3.5 mx-1.5" :class="{ 'fill-current drop-shadow-sm': activeChannel.is_special_followed }" />
-              </button>
+                <AppIcon name="star" class="h-3.5 w-3.5 mx-1.5" :class="{ 'fill-current': activeChannel.is_special_followed }" />
+              </Button>
             </div>
             
             <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground/80 font-medium">
@@ -86,10 +87,10 @@
 
         <div class="flex items-center gap-1.5">
           <!-- View toggle (feed / channels) — segmented control, aligns with FeedToolbar's pill language -->
-          <div class="flex shrink-0 items-center gap-0.5 rounded-md border border-border/60 p-0.5">
+          <div class="app-tab-list">
             <button
-              class="flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="channelDataMode === 'local' && viewMode === 'feed' ? 'bg-accent/60 text-foreground' : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'"
+              class="app-tab-button"
+              :class="{ 'is-active': channelDataMode === 'local' && viewMode === 'feed' }"
               :aria-pressed="channelDataMode === 'local' && viewMode === 'feed'"
               @click="showLocalFeed"
             >
@@ -97,8 +98,8 @@
               最近发布
             </button>
             <button
-              class="flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              :class="channelDataMode === 'local' && viewMode === 'grid' ? 'bg-accent/60 text-foreground' : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'"
+              class="app-tab-button"
+              :class="{ 'is-active': channelDataMode === 'local' && viewMode === 'grid' }"
               :aria-pressed="channelDataMode === 'local' && viewMode === 'grid'"
               @click="showLocalGrid"
             >
@@ -108,20 +109,22 @@
           </div>
 
           <!-- NSFW toggle — pill, size-8, clear active state + aria -->
-          <button
-            class="hidden h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex"
-            :class="nsfw === 'all' ? 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground' : 'border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15'"
+          <Button
+            class="subscribed-nsfw-toggle"
+            :variant="nsfw !== 'all' ? 'secondary' : 'ghost'"
+            size="sm"
             :aria-pressed="nsfw !== 'all'"
             :title="nsfw === 'all' ? '显示成年内容' : '隐藏成年内容'"
             @click="nsfw = nsfw === 'all' ? 'yes' : 'all'"
           >
-            <span class="h-1.5 w-1.5 rounded-full" :class="nsfw === 'all' ? 'bg-muted-foreground/50' : 'bg-destructive'" />
+            <span class="h-2.5 w-0.5 rounded-sm" :class="nsfw === 'all' ? 'bg-muted-foreground/50' : 'bg-destructive'" />
             成年内容
-          </button>
+          </Button>
 
           <!-- Refresh — size-8 icon pill, matches FeedToolbar refresh -->
-          <button
-            class="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-accent/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          <Button
+            variant="ghost"
+            size="icon-sm"
             :disabled="headerLoading"
             title="刷新内容"
             aria-label="刷新内容"
@@ -129,12 +132,12 @@
           >
             <AppSpinner v-if="headerLoading" size="sm" />
             <AppIcon v-else name="refresh" class="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </header>
 
-      <div ref="feedContainer" class="flex-1 overflow-y-auto custom-scrollbar bg-background">
-        <div ref="gridWrapper" class="mx-auto w-full max-w-[1800px] p-4 lg:p-6">
+      <div ref="feedContainer" class="app-workbench__scroll custom-scrollbar">
+        <div ref="gridWrapper" class="app-workbench__content subscribed-content">
           <RemoteChannelVideoGrid
             v-if="channelDataMode === 'remote'"
             :items="remoteItems"
@@ -146,8 +149,8 @@
             @load-more="loadMoreRemote"
           />
 
-          <div v-else-if="viewMode === 'feed'" class="space-y-12 pb-12">
-            <div v-if="fetchError && !loadingFeed" class="min-h-[30rem]">
+          <div v-else-if="viewMode === 'feed'" class="app-content-stack app-content-stack--feed">
+            <div v-if="fetchError && !loadingFeed" class="app-page-empty">
               <AppEmptyState variant="error" title="加载失败" :copy="fetchError">
                 <template #actions>
                   <Button variant="outline" size="sm" @click="fetchFeed(true)">重试</Button>
@@ -155,15 +158,15 @@
               </AppEmptyState>
             </div>
 
-            <div v-else-if="!feedItems.length && !loadingFeed" class="min-h-[30rem]">
+            <div v-else-if="!feedItems.length && !loadingFeed" class="app-page-empty">
               <AppEmptyState variant="plain" icon="inbox" title="暂无内容" copy="订阅频道更新后会显示在这里。" />
             </div>
 
-            <div v-if="loadingFeed && !feedItems.length" class="app-video-grid app-video-grid--feed pb-12">
+            <div v-if="loadingFeed && !feedItems.length" class="app-video-grid app-video-grid--feed">
               <VideoSkeleton v-for="i in videoSkeletonCount" :key="i" :delay="(i - 1) * 50" />
             </div>
 
-            <div v-else class="app-video-grid app-video-grid--feed pb-12">
+            <div v-else class="app-video-grid app-video-grid--feed">
               <VideoItem
                 v-for="video in feedItems"
                 :key="video.id"
@@ -174,14 +177,14 @@
               />
             </div>
 
-            <div v-if="loadingMoreFeed" class="app-video-grid app-video-grid--feed pt-6">
+            <div v-if="loadingMoreFeed" class="app-video-grid app-video-grid--feed">
               <VideoSkeleton v-for="i in videoSkeletonCount" :key="i" :delay="(i - 1) * 50" />
             </div>
             <div ref="feedTrigger" class="h-20" />
           </div>
 
-          <div v-else class="space-y-8 pb-12">
-            <div class="app-video-grid" style="--app-grid-min: 240px;">
+          <div v-else class="app-content-stack">
+            <div class="app-video-grid app-video-grid--compact">
               <SubscriptionCard
                 v-for="sub in filteredChannels"
                 :key="sub.id"
@@ -190,7 +193,7 @@
                 @toggleSpecial="toggleSpecialFollow"
               />
             </div>
-            <div v-if="loadingChannels && !list.length" class="app-video-grid" style="--app-grid-min: 240px;">
+            <div v-if="loadingChannels && !list.length" class="app-video-grid app-video-grid--compact">
               <SubscriptionCardSkeleton v-for="i in channelSkeletonCount" :key="i" />
             </div>
             <div v-if="!channelsFinished" ref="gridMoreTrigger" class="h-20" />
@@ -626,3 +629,61 @@ onUnmounted(() => {
   feedObserver?.disconnect(); channelsObserver?.disconnect(); gridObserver?.disconnect()
 })
 </script>
+
+<style scoped>
+.subscribed-avatar {
+  border: 1px solid hsl(var(--border) / 0.55);
+  transition: opacity 0.15s ease;
+}
+
+.subscribed-avatar:hover {
+  opacity: 0.88;
+}
+
+.subscribed-star-badge {
+  position: absolute;
+  right: -0.125rem;
+  bottom: -0.125rem;
+  display: flex;
+  width: 1rem;
+  height: 1rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(var(--background));
+  border-radius: 0.3125rem;
+  background: hsl(var(--warning) / 0.12);
+  color: hsl(var(--warning));
+}
+
+.subscribed-nsfw-toggle {
+  display: none;
+}
+
+.subscribed-empty-avatar {
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--app-control-radius);
+  background: hsl(var(--primary) / 0.10);
+  color: hsl(var(--primary));
+}
+
+.subscribed-content {
+  --app-workbench-content-width: 1800px;
+}
+
+@media (min-width: 768px) {
+  .subscribed-nsfw-toggle {
+    display: inline-flex;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .subscribed-avatar {
+    transition: none;
+  }
+}
+</style>

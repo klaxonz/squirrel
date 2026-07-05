@@ -3,8 +3,8 @@
     <!-- List/Grid Container -->
     <div v-if="videos.length > 0"
          :class="uiStore.viewMode === 'grid'
-           ? 'app-video-grid p-6'
-           : 'flex flex-col gap-4 p-6 max-w-4xl mx-auto'">
+           ? 'app-video-grid app-page-section--grid'
+           : 'app-page-section--list'">
       <VideoItem
         v-for="video in videos"
         :key="video.id"
@@ -23,13 +23,13 @@
          skeleton block alongside the stale items. -->
     <div v-if="loading && !refreshing"
          :class="uiStore.viewMode === 'grid'
-           ? 'app-video-grid p-6'
-           : 'flex flex-col gap-4 p-6 max-w-4xl mx-auto'">
+           ? 'app-video-grid app-page-section--grid'
+           : 'app-page-section--list'">
       <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" :layout="uiStore.viewMode" />
     </div>
 
     <!-- Empty State -->
-    <div v-if="!loading && videos.length === 0" class="min-h-[28rem] p-6 flex items-center justify-center">
+    <div v-if="!loading && videos.length === 0" class="app-page-empty">
       <AppEmptyState variant="plain" icon="inbox" title="未找到内容" copy="请调整筛选条件或搜索关键词后再试。" />
     </div>
 

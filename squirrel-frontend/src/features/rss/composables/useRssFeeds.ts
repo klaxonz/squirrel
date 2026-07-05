@@ -1,7 +1,7 @@
 import { computed, ref, type Ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { copyToClipboard } from '@/shared/lib/clipboard'
-import { onClickOutside } from '@vueuse/core'
+import { usePointerOutside } from '@/shared/composables/usePointerOutside'
 import { useContextMenuPosition } from '@/shared/composables/useContextMenuPosition'
 import {
   getRssFeeds,
@@ -44,7 +44,7 @@ export function useRssFeeds(options: {
   const { position: feedContextMenuPosition, positionMenu } = useContextMenuPosition()
   const contextMenuFeed = ref<RssFeed | null>(null)
 
-  onClickOutside(categoryDropdownRef, () => {
+  usePointerOutside(categoryDropdownRef, () => {
     showCategoryDropdown.value = false
   })
 

@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
-import { onClickOutside } from '@vueuse/core'
+import { usePointerOutside } from '@/shared/composables/usePointerOutside'
 import {
   createRssAccount,
   deleteRssAccount,
@@ -16,7 +16,7 @@ import type { RssAccount } from './rssTypes'
 const providers: { value: 'greader' | 'miniflux' | 'fever'; name: string; desc: string; icon: AppIconName }[] = [
   { value: 'greader', name: 'Google Reader', desc: 'Reader API', icon: 'rss' },
   { value: 'miniflux', name: 'Miniflux', desc: 'RSS Service', icon: 'siteFallback' },
-  { value: 'fever', name: 'Fever', desc: 'Fever API', icon: 'brand' },
+  { value: 'fever', name: 'Fever', desc: 'Fever API', icon: 'rss' },
 ]
 
 export function useRssAccounts(options?: {
@@ -74,7 +74,7 @@ export function useRssAccounts(options?: {
     return !!accountForm.value.base_url.trim() && !!accountForm.value.credential.trim()
   })
 
-  onClickOutside(accountDropdownRef, () => {
+  usePointerOutside(accountDropdownRef, () => {
     showAccountDropdown.value = false
   })
 

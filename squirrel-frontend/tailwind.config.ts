@@ -59,6 +59,11 @@ export default {
         'lg': 'var(--shadow-lg)',
         'premium': 'var(--shadow-premium)',
         'card-hover': 'var(--shadow-card-hover)',
+        'surface': 'var(--app-surface-shadow)',
+        'primary': '0 1px 2px hsl(var(--primary) / 0.3), 0 0 0 1px hsl(var(--primary) / 0.5) inset',
+        'primary-hover': '0 2px 8px hsl(var(--primary) / 0.35)',
+        'popover': 'var(--app-floating-shadow)',
+        'dialog': 'var(--app-overlay-shadow)',
       },
       backgroundImage: {
         'brand-gradient': 'var(--brand-gradient)',

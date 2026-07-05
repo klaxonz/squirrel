@@ -375,7 +375,6 @@ function onOpacityPointerDown(e: PointerEvent) {
   right: 12px;
   width: 220px;
   background: var(--sp-menu-bg);
-  backdrop-filter: blur(24px);
   border: 1px solid var(--sp-menu-border);
   border-radius: 8px;
   padding: 6px;

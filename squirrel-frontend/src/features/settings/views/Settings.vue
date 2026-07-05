@@ -40,17 +40,17 @@
         </div>
       </template>
 
-        <div class="settings-scroll custom-scrollbar">
-          <main class="settings-main">
+        <div class="app-workbench__scroll custom-scrollbar">
+          <main class="app-workbench__content settings-main">
             <div v-if="pageLoading" class="space-y-3">
               <AppSkeleton height="3rem" rounded="var(--radius-lg)" shimmer />
               <AppSkeleton height="12rem" rounded="var(--radius-lg)" shimmer />
               <AppSkeleton height="9rem" rounded="var(--radius-lg)" shimmer />
             </div>
 
-            <div v-else class="space-y-6">
-              <section v-if="currentTab === 'appearance'" class="space-y-4">
-                <div class="settings-section-title">
+            <div v-else class="app-settings-stack">
+              <section v-if="currentTab === 'appearance'" class="app-settings-section">
+                <div class="app-settings-section-title">
                   <h3>界面外观</h3>
                   <p>选择偏好的视觉主题。</p>
                 </div>
@@ -64,7 +64,7 @@
                     :class="{ 'settings-theme-option--active': themeMode === option.value }"
                   >
                     <div class="flex items-center justify-between">
-                      <span class="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <span class="app-option-icon">
                         <AppIcon :name="option.icon" class="h-5 w-5" />
                       </span>
                       <AppIcon v-if="themeMode === option.value" name="statusSuccess" class="h-4 w-4 text-foreground" />
@@ -77,17 +77,17 @@
                 </div>
               </section>
 
-              <section v-if="currentTab === 'content'" class="space-y-4">
-                <div class="settings-section-title">
+              <section v-if="currentTab === 'content'" class="app-settings-section">
+                <div class="app-settings-section-title">
                   <h3>内容与隐私</h3>
                   <p>控制内容展示与过滤偏好。</p>
                 </div>
 
-                <div class="settings-panel">
-                  <div class="settings-row">
+                <div class="app-settings-panel">
+                  <div class="app-settings-row">
                     <div class="min-w-0">
-                      <div class="settings-row-title">显示敏感内容</div>
-                      <div class="settings-row-desc">启用后在平台显示标记为敏感的内容。</div>
+                      <div class="app-settings-row__title">显示敏感内容</div>
+                      <div class="app-settings-row__desc">启用后在平台显示标记为敏感的内容。</div>
                     </div>
                     <Switch
                       :model-value="!!settings.showNsfw"
@@ -95,10 +95,10 @@
                       @update:model-value="(value: boolean) => { settings.showNsfw = !!value; onUserSettingChange() }"
                     />
                   </div>
-                  <div class="settings-row">
+                  <div class="app-settings-row">
                     <div class="min-w-0">
-                      <div class="settings-row-title">自动模糊封面</div>
-                      <div class="settings-row-desc">对敏感内容缩略图应用模糊效果。</div>
+                      <div class="app-settings-row__title">自动模糊封面</div>
+                      <div class="app-settings-row__desc">对敏感内容缩略图应用模糊效果。</div>
                     </div>
                     <Switch
                       :model-value="Boolean(systemConfig?.blur_nsfw_thumbnails)"
@@ -109,17 +109,17 @@
                 </div>
               </section>
 
-              <section v-if="currentTab === 'playback'" class="space-y-4">
-                <div class="settings-section-title">
+              <section v-if="currentTab === 'playback'" class="app-settings-section">
+                <div class="app-settings-section-title">
                   <h3>播放行为</h3>
                   <p>管理播放器的默认行为。</p>
                 </div>
 
-                <div class="settings-panel">
-                  <div v-for="item in playbackItems" :key="item.key" class="settings-row">
+                <div class="app-settings-panel">
+                  <div v-for="item in playbackItems" :key="item.key" class="app-settings-row">
                     <div class="min-w-0">
-                      <div class="settings-row-title">{{ item.title }}</div>
-                      <div class="settings-row-desc">{{ item.desc }}</div>
+                      <div class="app-settings-row__title">{{ item.title }}</div>
+                      <div class="app-settings-row__desc">{{ item.desc }}</div>
                     </div>
                     <Switch
                       :model-value="!!settings[item.key]"
@@ -132,17 +132,17 @@
 
               <SecuritySettings v-if="currentTab === 'security'" />
 
-              <section v-if="currentTab === 'system'" class="space-y-4">
-                <div class="settings-section-title">
+              <section v-if="currentTab === 'system'" class="app-settings-section">
+                <div class="app-settings-section-title">
                   <h3>系统引擎</h3>
                   <p>控制后台核心服务的运行状态。</p>
                 </div>
 
-                <div class="settings-panel">
-                  <div v-for="item in systemItems" :key="item.key" class="settings-row">
+                <div class="app-settings-panel">
+                  <div v-for="item in systemItems" :key="item.key" class="app-settings-row">
                     <div class="min-w-0">
-                      <div class="settings-row-title">{{ item.title }}</div>
-                      <div class="settings-row-desc">{{ item.desc }}</div>
+                      <div class="app-settings-row__title">{{ item.title }}</div>
+                      <div class="app-settings-row__desc">{{ item.desc }}</div>
                     </div>
                     <Switch
                       :model-value="Boolean(systemConfig?.[item.key])"
@@ -153,16 +153,16 @@
                 </div>
               </section>
 
-              <section v-if="currentTab === 'server'" class="space-y-4">
-                <div class="settings-section-title">
+              <section v-if="currentTab === 'server'" class="app-settings-section">
+                <div class="app-settings-section-title">
                   <h3>服务器配置</h3>
                   <p>管理与后端接口的连接地址。</p>
                 </div>
 
-                <div class="settings-panel p-4">
-                  <div class="flex flex-col gap-3 border-b border-border/50 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="app-settings-panel p-4">
+                  <div class="app-divider-bottom flex flex-col gap-3 pb-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="min-w-0 space-y-1">
-                      <div class="settings-row-title">当前连接</div>
+                      <div class="app-settings-row__title">当前连接</div>
                       <div class="truncate rounded-md bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
                         {{ currentServerUrl || '未配置' }}
                       </div>
@@ -180,12 +180,11 @@
                         type="url"
                         placeholder="http://127.0.0.1:8001"
                         :disabled="serverSaving"
-                        class="h-9 rounded-md border-border/50 text-sm shadow-none"
                       />
-                      <Button variant="outline" class="h-9 rounded-md px-3" :loading="serverTesting" :disabled="!serverForm.url.trim()" @click="handleTestServer">
+                      <Button variant="outline" :loading="serverTesting" :disabled="!serverForm.url.trim()" @click="handleTestServer">
                         {{ serverTesting ? '测试中' : '测试' }}
                       </Button>
-                      <Button class="h-9 rounded-md px-3" :loading="serverSaving" :disabled="!serverForm.url.trim()" @click="handleSaveServer">
+                      <Button :loading="serverSaving" :disabled="!serverForm.url.trim()" @click="handleSaveServer">
                         {{ serverSaving ? '保存中' : '保存' }}
                       </Button>
                     </div>
@@ -432,67 +431,8 @@ const onSystemToggle = async (key: string, val: boolean) => {
   gap: 0.5rem;
 }
 
-.settings-scroll {
-  flex: 1;
-  overflow-y: auto;
-}
-
 .settings-main {
-  width: 100%;
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 1.5rem;
-}
-
-.settings-section-title {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.settings-section-title h3 {
-  font-family: var(--app-heading-font);
-  font-size: 1rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  letter-spacing: -0.01em;
-}
-
-.settings-section-title p {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-}
-
-.settings-panel {
-  overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 0.625rem;
-  background: hsl(var(--card) / 0.58);
-}
-
-.settings-panel > .settings-row + .settings-row {
-  border-top: 1px solid hsl(var(--border) / 0.5);
-}
-
-.settings-row {
-  display: flex;
-  min-height: 4.125rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem;
-}
-
-.settings-row-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-}
-
-.settings-row-desc {
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
+  --app-workbench-content-width: 960px;
 }
 
 .settings-alert {

@@ -115,9 +115,8 @@ onUnmounted(() => {
   overflow: hidden;
   border: 1px solid hsl(var(--border) / 0.82);
   border-radius: calc(var(--radius-lg) + 2px);
-  background: hsl(var(--popover) / 0.98);
+  background: hsl(var(--popover));
   box-shadow: var(--shadow-popover);
-  backdrop-filter: blur(8px);
   animation: context-menu-fade-in var(--duration-fast) var(--ease-default);
 }
 

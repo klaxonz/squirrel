@@ -1,98 +1,80 @@
 <template>
   <AppPageShell variant="default" scrollable>
-    <div class="mx-auto w-full max-w-[720px] py-8 space-y-8 bg-background text-foreground transition-all duration-300">
-      
-      <!-- Profile Header Area (Sleek & Minimalist) -->
-      <div class="flex items-center gap-5 border-b border-border/40 pb-6">
-        <!-- Avatar with smooth hover ring & camera icon -->
+    <div class="profile-page">
+      <div class="profile-header">
         <div 
-          class="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-border/50 bg-muted shadow-sm cursor-pointer transition-all duration-300 hover:ring-4 hover:ring-primary/10 active:scale-95"
+          class="profile-avatar-control"
           @click="focusAvatarInput"
         >
           <img
             v-if="form.avatar && !avatarError"
             :src="form.avatar"
             :alt="form.nickname ? `${form.nickname}的头像` : '用户头像'"
-            class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            class="profile-avatar-image"
           />
           <div 
             v-else 
-            class="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 text-xl font-bold text-primary"
+            class="profile-avatar-fallback"
           >
             <template v-if="userInitial">{{ userInitial }}</template>
             <AppIcon v-else name="user" class="h-6 w-6 text-primary/75" />
           </div>
-          <!-- Hover mask -->
-          <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/45 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          <div class="profile-avatar-mask">
             <AppIcon name="camera" class="h-3.5 w-3.5 text-white" />
           </div>
         </div>
 
-        <!-- User Details -->
-        <div class="space-y-0.5">
+        <div class="profile-identity">
           <h2 class="app-h2">
             {{ userStore.currentUser?.nickname || '未设置昵称' }}
           </h2>
-          <div v-if="createdAt" class="flex items-center gap-1 text-2xs text-muted-foreground/60">
+          <div v-if="createdAt" class="profile-created-at">
             <AppIcon name="time" class="h-3 w-3" />
             <span>注册于 {{ createdAt }}</span>
           </div>
         </div>
       </div>
 
-      <!-- Settings Split Sections (Clean Minimalist Form) -->
-      <div class="space-y-8 divide-y divide-border/40">
-        
-        <!-- Section 1: 基本资料 (Basic Info) -->
-        <div class="grid gap-6 pt-6 md:grid-cols-4">
-          <div class="md:col-span-1">
-            <h3 class="text-sm font-semibold text-foreground">基本资料</h3>
+      <div class="profile-sections">
+        <div class="profile-section">
+          <div class="profile-section-title">
+            <h3>基本资料</h3>
           </div>
           
-          <div class="md:col-span-3 space-y-4">
-            <!-- Form Grid -->
-            <div class="grid gap-4 sm:grid-cols-2">
-              <!-- Nickname input -->
-              <div class="space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <label class="text-xs font-medium text-muted-foreground">昵称</label>
-                  <span class="text-2xs text-muted-foreground/40 font-mono">{{ form.nickname.length }}/50</span>
+          <div class="profile-section-body">
+            <div class="profile-form-grid">
+              <div class="profile-field">
+                <div class="profile-label-row">
+                  <label>昵称</label>
+                  <span>{{ form.nickname.length }}/50</span>
                 </div>
-                <div class="relative">
-                  <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground/50">
-                    <AppIcon name="user" class="h-3.5 w-3.5" />
-                  </div>
+                <div class="profile-input-wrap">
+                  <AppIcon name="user" class="profile-input-icon" />
                   <Input
                     v-model="form.nickname"
                     placeholder="请输入昵称"
-                    class="h-9 pl-9 rounded-lg border-border/60 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary/50"
+                    class="profile-input"
                     maxlength="50"
                   />
                 </div>
               </div>
-
             </div>
 
-            <!-- Avatar URL -->
-            <div class="space-y-1.5">
-              <label class="text-xs font-medium text-muted-foreground">头像图片链接 (URL)</label>
-              <div class="relative">
-                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground/50">
-                  <AppIcon name="link" class="h-3.5 w-3.5" />
-                </div>
+            <div class="profile-field">
+              <label>头像图片链接 (URL)</label>
+              <div class="profile-input-wrap">
+                <AppIcon name="link" class="profile-input-icon" />
                 <Input
                   ref="avatarInput"
                   v-model="form.avatar"
                   placeholder="输入图片链接 (HTTPS)"
-                  class="h-9 pl-9 rounded-lg border-border/60 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary/50"
+                  class="profile-input"
                 />
               </div>
             </div>
 
-            <!-- Avatar Preview card (Only shown if avatar URL is present) -->
-            <div v-if="form.avatar" class="transition-all duration-300">
-              <div class="flex items-center gap-4 rounded-xl border border-border/50 bg-muted/5 p-3">
-                <div class="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border/30 bg-muted shadow-inner">
+            <div v-if="form.avatar" class="profile-avatar-preview">
+              <div class="profile-avatar-preview-image">
                   <img
                     :src="form.avatar"
                     :alt="form.nickname ? `${form.nickname}的头像` : '用户头像'"
@@ -100,38 +82,35 @@
                     @error="avatarError = true"
                     @load="avatarError = false"
                   />
-                </div>
-                <div class="space-y-0.5 min-w-0">
-                  <p class="text-xs font-semibold text-foreground">头像实时预览</p>
+              </div>
+              <div class="profile-avatar-preview-copy">
+                  <p>头像实时预览</p>
                   <span 
                     v-if="avatarError" 
-                    class="inline-flex items-center gap-1 rounded bg-destructive/5 px-1.5 py-0.5 text-3xs font-medium text-destructive border border-destructive/10"
+                    class="profile-status profile-status--error"
                   >
                     <AppIcon name="warning" class="h-2.5 w-2.5" />
                     图片加载失败，请检查链接
                   </span>
                   <span 
                     v-else 
-                    class="inline-flex items-center gap-1 rounded bg-success/5 px-1.5 py-0.5 text-3xs font-medium text-success border border-success/10"
+                    class="profile-status profile-status--success"
                   >
                     <AppIcon name="check" class="h-2.5 w-2.5" />
                     图片加载成功
                   </span>
-                </div>
               </div>
             </div>
 
-            <!-- Error Feedback -->
-            <div v-if="saveError" class="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
+            <div v-if="saveError" class="profile-error">
               <AppIcon name="warning" class="h-3.5 w-3.5 shrink-0" />
               <span>{{ saveError }}</span>
             </div>
 
-            <!-- Action buttons -->
-            <div class="flex items-center gap-3 pt-1">
+            <div class="profile-actions">
               <Button
-                class="h-9 rounded-lg px-4 text-xs font-medium shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-all duration-200"
-                :class="hasChanges ? 'bg-primary text-primary-foreground hover:opacity-90' : 'bg-muted text-muted-foreground/60 border border-border/30 cursor-not-allowed'"
+                class="profile-save-button"
+                :class="{ 'is-disabled': !hasChanges }"
                 :loading="saving"
                 :disabled="!hasChanges"
                 @click="handleSave"
@@ -141,7 +120,7 @@
               
               <span 
                 v-if="saved" 
-                class="inline-flex items-center gap-1 text-xs font-medium text-success animate-in fade-in duration-300"
+                class="profile-saved"
               >
                 <AppIcon name="check" class="h-3.5 w-3.5" />
                 所有更改已保存
@@ -151,16 +130,15 @@
           </div>
         </div>
 
-        <!-- Section 2: 退出登录 (Logout) -->
-        <div class="grid gap-6 pt-6 md:grid-cols-4">
-          <div class="md:col-span-1">
-            <h3 class="text-sm font-semibold text-foreground">会话管理</h3>
+        <div class="profile-section">
+          <div class="profile-section-title">
+            <h3>会话管理</h3>
           </div>
           
-          <div class="md:col-span-3">
+          <div class="profile-section-body">
             <Button
               variant="outline"
-              class="h-9 border-border/80 text-xs font-medium text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all duration-200"
+              class="profile-logout-button"
               @click="handleLogout"
             >
               <AppIcon name="logout" class="h-3.5 w-3.5" />
@@ -236,4 +214,305 @@ const handleLogout = async () => {
 </script>
 
 <style scoped>
+.profile-page {
+  width: 100%;
+  max-width: 45rem;
+  margin: 0 auto;
+  padding: 2rem 0;
+  color: hsl(var(--foreground));
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+}
+
+.profile-avatar-control {
+  position: relative;
+  width: 4rem;
+  height: 4rem;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.75rem;
+  background: hsl(var(--muted));
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.profile-avatar-control:hover {
+  border-color: hsl(var(--primary) / 0.28);
+  background: hsl(var(--primary) / 0.06);
+}
+
+.profile-avatar-image,
+.profile-avatar-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.profile-avatar-image {
+  object-fit: cover;
+}
+
+.profile-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--primary));
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.profile-avatar-mask {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(0 0% 0% / 0.44);
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+
+.profile-avatar-control:hover .profile-avatar-mask {
+  opacity: 1;
+}
+
+.profile-identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.profile-created-at {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: hsl(var(--muted-foreground) / 0.68);
+  font-size: 0.75rem;
+}
+
+.profile-sections {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-section {
+  display: grid;
+  grid-template-columns: minmax(0, 9rem) minmax(0, 1fr);
+  gap: 1.5rem;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+}
+
+.profile-section:last-child {
+  border-bottom: 0;
+}
+
+.profile-section-title h3 {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.profile-section-body,
+.profile-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-section-body {
+  gap: 1rem;
+}
+
+.profile-form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.profile-field {
+  gap: 0.375rem;
+}
+
+.profile-field label,
+.profile-label-row label {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.profile-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.profile-label-row span {
+  color: hsl(var(--muted-foreground) / 0.58);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-input-wrap {
+  position: relative;
+}
+
+.profile-input-icon {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: hsl(var(--muted-foreground) / 0.55);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.profile-input {
+  height: 2.25rem;
+  padding-left: 2.25rem;
+  border-color: hsl(var(--border) / 0.6);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  box-shadow: none;
+}
+
+.profile-avatar-preview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.625rem;
+  background: hsl(var(--muted) / 0.08);
+}
+
+.profile-avatar-preview-image {
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.3);
+  border-radius: 0.5rem;
+  background: hsl(var(--muted));
+}
+
+.profile-avatar-preview-copy {
+  min-width: 0;
+}
+
+.profile-avatar-preview-copy p {
+  margin: 0 0 0.25rem;
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.profile-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  border: 1px solid;
+  border-radius: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.profile-status--error {
+  border-color: hsl(var(--destructive) / 0.16);
+  background: hsl(var(--destructive) / 0.05);
+  color: hsl(var(--destructive));
+}
+
+.profile-status--success {
+  border-color: hsl(var(--success) / 0.16);
+  background: hsl(var(--success) / 0.05);
+  color: hsl(var(--success));
+}
+
+.profile-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid hsl(var(--destructive) / 0.2);
+  border-radius: 0.5rem;
+  background: hsl(var(--destructive) / 0.05);
+  color: hsl(var(--destructive));
+  font-size: 0.75rem;
+}
+
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.profile-save-button,
+.profile-logout-button {
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.profile-save-button.is-disabled {
+  border: 1px solid hsl(var(--border) / 0.3);
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground) / 0.6);
+  cursor: not-allowed;
+}
+
+.profile-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: hsl(var(--success));
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.profile-logout-button {
+  border-color: hsl(var(--border) / 0.8);
+  color: hsl(var(--muted-foreground));
+}
+
+.profile-logout-button:hover {
+  border-color: hsl(var(--destructive));
+  background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+
+@media (max-width: 760px) {
+  .profile-section {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-avatar-control,
+  .profile-avatar-mask,
+  .profile-save-button,
+  .profile-logout-button {
+    transition: none;
+  }
+}
 </style>

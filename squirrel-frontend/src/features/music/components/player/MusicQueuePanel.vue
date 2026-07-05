@@ -1,7 +1,7 @@
 <template>
   <Transition
-    enter-active-class="transition-all duration-200 ease-out"
-    leave-active-class="transition-all duration-150 ease-in"
+    enter-active-class="transition-[transform,opacity] duration-200 ease-out"
+    leave-active-class="transition-[transform,opacity] duration-150 ease-in"
     enter-from-class="opacity-0 translate-y-2"
     leave-to-class="opacity-0 translate-y-2"
   >
@@ -93,7 +93,6 @@ defineEmits<{
   flex-direction: column;
   z-index: 55;
   overflow: hidden;
-  backdrop-filter: blur(20px);
 }
 
 .music-queue-header {

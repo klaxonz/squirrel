@@ -67,8 +67,8 @@
           <template v-else>
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="secondary" class="rounded-full" @click="selectAllNotImported">全选已加载未导入</Button>
-                <Button size="sm" variant="ghost" class="rounded-full" @click="clearSelection">清空</Button>
+                <Button size="sm" variant="secondary" class="rounded-md" @click="selectAllNotImported">全选已加载未导入</Button>
+                <Button size="sm" variant="ghost" class="rounded-md" @click="clearSelection">清空</Button>
               </div>
               <p class="text-sm text-muted-foreground">
                 已加载 {{ loadedCount }} / {{ previewData.total ?? '未知' }} 个
@@ -111,7 +111,7 @@
                   <p class="truncate text-xs text-muted-foreground">{{ sub.url }}</p>
                 </div>
 
-                <Badge :variant="sub.is_imported ? 'secondary' : 'outline'" class="rounded-full">
+                <Badge :variant="sub.is_imported ? 'secondary' : 'outline'" class="rounded-md">
                   {{ sub.is_imported ? '已导入' : '未导入' }}
                 </Badge>
               </label>
@@ -140,7 +140,7 @@
           </div>
 
           <div class="import-dialog__result-card">
-            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">新增导入任务</p>
+            <p class="text-xs font-semibold text-muted-foreground">新增导入任务</p>
             <p class="mt-2 text-4xl font-bold tracking-[-0.05em] text-foreground">{{ importResult.total || 0 }}</p>
             <p class="mt-3 text-xs text-muted-foreground">
               <span v-if="importResult.found != null">

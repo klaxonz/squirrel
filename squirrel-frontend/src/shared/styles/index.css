@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,7 +7,7 @@
 @layer base {
   :root {
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-display: 'Newsreader', 'Inter', Georgia, 'Times New Roman', serif;
+    --font-display: var(--font-sans);
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
@@ -19,30 +19,6 @@
     background: hsl(var(--background));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-image: var(--cinema-noise-url);
-    background-repeat: repeat;
-    background-size: 240px 240px;
-    opacity: var(--cinema-noise-opacity, 0.018);
-    mix-blend-mode: soft-light;
-  }
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-image: var(--cinema-spotlight), var(--cinema-vignette);
-    background-repeat: no-repeat;
-    background-size: 100% 600px, 100% 100%;
-    background-position: center top, center;
   }
 
   :root {
@@ -180,7 +156,7 @@
 /* Reader Blockquote Styles */
 .reader-content blockquote {
   border: none !important;
-  border-left: 3px solid hsl(var(--primary) / 0.35) !important;
+  border-inline-start: 3px solid hsl(var(--primary) / 0.35) !important;
   padding: 0.5rem 1.25rem !important;
   margin: 1.5rem 0 !important;
   background: transparent !important;

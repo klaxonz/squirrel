@@ -1,7 +1,7 @@
 <template>
   <Transition
-    enter-active-class="transition-all duration-300 ease-out"
-    leave-active-class="transition-all duration-200 ease-in"
+    enter-active-class="transition-[transform,opacity] duration-300 ease-out"
+    leave-active-class="transition-[transform,opacity] duration-200 ease-in"
     enter-from-class="translate-y-full opacity-0"
     leave-to-class="translate-y-full opacity-0"
   >
@@ -290,9 +290,7 @@ function removeQueueItem(index: number) {
   z-index: 60;
   border: 1px solid hsl(var(--border) / 0.5);
   border-radius: 0.75rem;
-  background: hsl(var(--background) / 0.94);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  background: hsl(var(--background));
   transform: translateX(-50%);
   transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 10px 32px hsl(var(--foreground) / 0.1);

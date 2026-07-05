@@ -1107,8 +1107,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   padding: 10px 16px;
   border-radius: var(--sp-radius-full);
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--sp-border);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
@@ -1185,8 +1183,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   justify-content: center;
   border-radius: var(--sp-radius-full);
   background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--sp-border);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
@@ -1209,8 +1205,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   padding: 3px 14px;
   border-radius: var(--sp-radius-full);
   background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 /* enter/leave only drive opacity on the root — transform is reserved for
@@ -1240,7 +1234,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   gap: 8px;
   padding: 4px 12px;
   background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
   border: 1px solid rgba(var(--sp-primary-rgb), 0.25);
   border-radius: 4px;
 }
@@ -1476,7 +1469,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   gap: 6px;
   padding: 5px 8px;
   background: hsl(0 0% 8% / 0.95);
-  backdrop-filter: blur(8px);
   border: 1px solid color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 40%, transparent);
   border-radius: 6px;
   color: #fff;
@@ -1601,7 +1593,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 .sp-preview-hint-inner {
   padding: 3px 8px;
   background: rgba(10, 10, 10, 0.95);
-  backdrop-filter: blur(8px);
   border: 1px solid rgba(var(--sp-primary-rgb), 0.25);
   color: #fff;
   font-size: 10px;
@@ -1870,7 +1861,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   gap: 6px;
   padding: 4px 10px;
   background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
   border: 1px solid rgba(var(--sp-primary-rgb), 0.25);
   border-radius: 16px;
   color: var(--sp-primary);
@@ -1895,7 +1885,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   gap: 6px;
   padding: 4px 10px;
   background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
   border: 1px solid rgba(var(--sp-primary-rgb), 0.4);
   border-radius: 16px;
   color: var(--sp-primary);
@@ -1928,7 +1917,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   z-index: 30;
   padding: 12px 16px;
   background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(12px);
   border: 1px solid var(--sp-border);
   border-radius: 8px;
   min-width: 200px;
@@ -1986,7 +1974,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   overflow-y: auto;
   padding: 8px;
   background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(12px);
   border: 1px solid var(--sp-border);
   border-radius: 0 0 8px 8px;
 }

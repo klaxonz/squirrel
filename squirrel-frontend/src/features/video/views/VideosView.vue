@@ -1,7 +1,6 @@
 <template>
   <AppPageShell class="videos-view-page" variant="compact" :fill="false">
-    <div v-if="searchMode !== 'remote'" class="videos-view-toolbar">
-      <div class="videos-view-toolbar__inner">
+    <AppToolbarFrame v-if="searchMode !== 'remote'" bordered compact>
         <FeedToolbar
           :active-tab="activeTab"
           :nsfw="nsfw"
@@ -26,10 +25,9 @@
           @update:special="setSpecialFilter"
           @refresh="refreshCurrentList"
         />
-      </div>
-    </div>
-    <div v-else class="videos-view-toolbar">
-      <div class="videos-view-toolbar__inner videos-view-toolbar__inner--remote">
+    </AppToolbarFrame>
+    <AppToolbarFrame v-else bordered compact>
+      <div class="app-page-toolbar">
         <div class="flex min-w-0 items-center gap-2">
           <AppIcon name="siteFallback" class="h-4 w-4 shrink-0 text-primary opacity-80" />
           <span class="shrink-0 text-sm font-semibold text-foreground">远端搜索</span>
@@ -38,10 +36,10 @@
 
         <div class="flex shrink-0 items-center gap-1">
           <Select :model-value="remoteSite || 'all'" @update:model-value="updateRemoteSite">
-            <SelectTrigger class="h-8 w-auto min-w-[120px] border border-border/60 bg-transparent px-2.5 py-0 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent/40 hover:text-foreground focus:ring-0">
+            <SelectTrigger class="w-auto min-w-[120px] text-xs text-muted-foreground">
               <SelectValue placeholder="全部站点" />
             </SelectTrigger>
-            <SelectContent class="min-w-44 border-border/60 bg-popover shadow-lg rounded-md">
+            <SelectContent class="min-w-44">
               <SelectItem value="all" class="text-xs">全部站点</SelectItem>
               <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">{{ opt.label }}</SelectItem>
             </SelectContent>
@@ -49,7 +47,7 @@
 
           <button
             type="button"
-            class="flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors outline-none hover:bg-accent/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            class="app-icon-button"
             @click="refreshCurrentList"
             title="刷新内容"
             aria-label="刷新内容"
@@ -59,7 +57,7 @@
           </button>
         </div>
       </div>
-    </div>
+    </AppToolbarFrame>
 
     <div class="app-page-content videos-view-content">
 
@@ -112,6 +110,7 @@ import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '@/features/video/components/feed/FeedToolbar.vue'
 import RemoteSearchResults from '@/features/video/components/feed/RemoteSearchResults.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import { VIDEO_TABS } from '@/features/video/constants/videos'
@@ -213,28 +212,6 @@ watch(() => route.query.special, (value) => {
   --app-page-max-width: 2400px;
 }
 
-.videos-view-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-content);
-  padding: var(--space-3) var(--app-page-gutter) var(--space-2);
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-  background: hsl(var(--background) / 0.92);
-}
-
-.videos-view-toolbar__inner {
-  width: 100%;
-  max-width: var(--app-page-max-width);
-  margin: 0 auto;
-}
-
-.videos-view-toolbar__inner--remote {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
 .videos-view-content {
   padding-top: var(--space-5);
 }
@@ -243,17 +220,4 @@ watch(() => route.query.special, (value) => {
   padding: 0 0 var(--space-5);
 }
 
-@media (min-width: 640px) {
-  .videos-view-toolbar {
-    padding-left: var(--app-page-gutter-sm);
-    padding-right: var(--app-page-gutter-sm);
-  }
-}
-
-@media (min-width: 1024px) {
-  .videos-view-toolbar {
-    padding-left: var(--app-page-gutter-lg);
-    padding-right: var(--app-page-gutter-lg);
-  }
-}
 </style>

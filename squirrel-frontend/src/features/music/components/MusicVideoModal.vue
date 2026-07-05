@@ -1,12 +1,12 @@
 <template>
   <Dialog :open="visible" @update:open="!$event && $emit('close')">
-    <DialogContent class="music-video-container gap-0 overflow-hidden rounded-xl p-0">
+    <DialogContent class="music-video-container gap-0 overflow-hidden rounded-lg p-0">
       <DialogHeader class="music-video-header space-y-0">
         <DialogTitle class="music-video-title truncate text-sm font-semibold">
           {{ title }}
         </DialogTitle>
         <DialogClose as-child>
-          <Button variant="ghost" size="icon" class="h-8 w-8" aria-label="关闭">
+          <Button variant="ghost" size="icon-sm" aria-label="关闭">
             <AppIcon name="close" class="h-5 w-5" />
           </Button>
         </DialogClose>

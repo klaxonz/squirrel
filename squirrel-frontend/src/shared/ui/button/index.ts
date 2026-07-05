@@ -9,15 +9,15 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-primary text-primary-foreground shadow-[0_1px_2px_hsl(var(--primary)/0.3),0_0_0_1px_hsl(var(--primary)/0.5)_inset] hover:bg-primary/90 hover:shadow-[0_2px_8px_hsl(var(--primary)/0.35)]',
+          'bg-primary text-primary-foreground shadow-primary hover:bg-primary/90 hover:shadow-primary-hover',
         destructive:
           'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
         outline:
-          'border border-border bg-transparent text-foreground hover:bg-accent/40 hover:border-border/80',
+          'border border-border/65 bg-card/35 text-foreground shadow-surface hover:border-border/80 hover:bg-card/58',
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/70',
+          'border border-border/50 bg-card/48 text-secondary-foreground shadow-surface hover:bg-card/64',
         ghost:
-          'text-muted-foreground hover:bg-accent/40 hover:text-foreground',
+          'border border-transparent text-muted-foreground hover:border-border/50 hover:bg-card/50 hover:text-foreground',
         link:
           'text-primary underline-offset-4 hover:underline',
       },
@@ -27,6 +27,7 @@ export const buttonVariants = cva(
         sm: 'h-8 px-3 text-xs rounded',
         lg: 'h-10 px-6 rounded-lg text-base',
         icon: 'h-9 w-9',
+        'icon-sm': 'h-8 w-8',
       },
     },
     defaultVariants: {

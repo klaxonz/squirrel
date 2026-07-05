@@ -1,44 +1,41 @@
 <template>
-  <div ref="videoPageRef" class="min-h-screen bg-background" :class="{ 'px-0': isWidescreen }">
+  <div ref="videoPageRef" class="video-play-page" :class="{ 'is-widescreen': isWidescreen }">
     <div
-      class="mx-auto grid grid-cols-1 transition-[max-width,padding] duration-200"
-      :class="isWidescreen ? 'max-w-none lg:grid-cols-[1fr,400px] gap-8 p-6 lg:p-8' : 'max-w-[1800px] lg:grid-cols-[1fr,400px] gap-8 p-6 lg:p-10'"
+      class="video-play-layout"
+      :class="{ 'is-widescreen': isWidescreen }"
     >
       <div
-        class="min-w-0 space-y-6"
-        :class="isWidescreen ? 'lg:contents' : 'lg:col-start-1 lg:row-start-1'"
+        class="video-play-primary"
+        :class="{ 'is-widescreen': isWidescreen }"
       >
-        <!-- Player Section -->
         <div
-          class="relative aspect-video overflow-hidden bg-black shadow-lg"
-          :class="isWidescreen ? 'lg:col-span-2 rounded-xl' : 'rounded-xl'"
+          class="video-player-stage"
+          :class="{ 'is-widescreen': isWidescreen }"
         >
           <div
             ref="videoPlayerHostRef"
-            class="absolute inset-0 overflow-hidden rounded-xl"
+            class="video-player-host"
           />
         </div>
 
-        <!-- Main Content -->
-        <div class="min-w-0 space-y-6" :class="{ 'lg:col-start-1 lg:row-start-2': isWidescreen }">
-          <!-- Video Header Info -->
-          <div v-if="video" class="space-y-6">
-            <div class="space-y-2">
+        <div class="video-play-main" :class="{ 'is-widescreen': isWidescreen }">
+          <div v-if="video" class="video-detail">
+            <div class="video-detail__title-block">
               <h1 class="app-h2">
                 {{ video.title }}
               </h1>
-              <div class="flex items-center gap-2 text-sm text-muted-foreground/60 font-medium">
+              <div class="video-detail__meta">
                 <span>{{ videoPublishedText }}</span>
-                <span>·</span>
-                <span v-if="video.site" class="inline-flex items-center uppercase tracking-wider text-2xs bg-accent/50 text-muted-foreground px-1.5 py-px rounded font-bold leading-normal">{{ video.site }}</span>
+                <span class="video-detail__dot">·</span>
+                <span v-if="video.site" class="video-detail__site">{{ video.site }}</span>
               </div>
             </div>
             
-            <div class="flex flex-wrap items-center justify-between gap-4 py-1">
-              <div class="flex items-center gap-5">
+            <div class="video-detail__bar">
+              <div class="video-detail__channel-actions">
                 <div
                   v-if="primarySubscription"
-                  class="flex items-center gap-3 group cursor-pointer rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/40 p-1 -m-1"
+                  class="video-detail__channel"
                   role="button"
                   tabindex="0"
                   @click="openChannelDetail(primarySubscription)"
@@ -46,16 +43,16 @@
                   @keydown.space.prevent="openChannelDetail(primarySubscription)"
                 >
                   <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name || ''" size="xl" />
-                  <div class="flex flex-col -space-y-0.5">
-                    <span class="font-bold text-base group-hover:text-primary transition-colors tracking-tight">{{ primarySubscription.name }}</span>
-                    <span class="text-xs text-muted-foreground/60 font-medium">{{ primarySubscription.total_videos || 0 }} 项视频</span>
+                  <div class="video-detail__channel-copy">
+                    <span>{{ primarySubscription.name }}</span>
+                    <small>{{ primarySubscription.total_videos || 0 }} 项视频</small>
                   </div>
                 </div>
                 <button
                   v-if="primarySubscriptionUrl"
                   type="button"
-                  class="h-8 min-w-16 px-4 text-xs font-semibold rounded-full transition-all shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60"
-                  :class="isSubscriptionChecked && isSubscribed ? 'bg-secondary text-foreground ring-1 ring-border/40 hover:bg-secondary/80' : 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95'"
+                  class="video-detail__subscribe-button"
+                  :class="{ 'is-subscribed': isSubscriptionChecked && isSubscribed }"
                   :disabled="isCheckingSubscription || isSubscribing"
                   @click="handleSubscribe"
                 >
@@ -63,13 +60,13 @@
                 </button>
               </div>
 
-              <div class="flex items-center gap-2">
-                <div class="flex items-center gap-0.5 rounded-full bg-muted/40 p-0.5">
+              <div class="video-detail__actions">
+                <div class="video-detail__action-group">
                   <button
                     v-for="action in primaryVisibleActions"
                     :key="action.key"
-                    class="flex items-center gap-2 h-8 px-3.5 rounded-full transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/40 text-sm font-semibold"
-                    :class="{ 'text-foreground bg-background shadow-sm': action.active, 'text-muted-foreground hover:bg-muted/60 hover:text-foreground': !action.active }"
+                    class="video-detail__action-button"
+                    :class="{ 'is-active': action.active }"
                     :aria-pressed="action.active"
                     :aria-label="action.label || action.key"
                     @click="handleVideoAction(action)"
@@ -80,7 +77,7 @@
                 </div>
 
                 <button
-                  class="flex size-9 items-center justify-center rounded-full bg-muted/40 transition-all outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background text-muted-foreground hover:text-foreground"
+                  class="video-detail__icon-button"
                   title="分享链接"
                   aria-label="分享链接"
                   @click="handleShare"
@@ -89,7 +86,7 @@
                 </button>
                 <div class="relative" ref="moreMenuRef">
                   <button
-                    class="flex size-9 items-center justify-center rounded-full bg-muted/40 transition-all outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background text-muted-foreground hover:text-foreground"
+                    class="video-detail__icon-button"
                     :aria-expanded="moreMenuOpen"
                     aria-haspopup="menu"
                     aria-label="更多操作"
@@ -98,11 +95,11 @@
                     <AppIcon name="more" class="w-4 h-4" />
                   </button>
                   <Transition name="fade">
-                    <div v-if="moreMenuOpen" class="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-xl shadow-premium py-1 z-50">
+                    <div v-if="moreMenuOpen" class="video-detail__menu">
                       <button
                         v-for="action in videoOverflowActions.filter(a => a.key !== 'source')"
                         :key="action.key"
-                        class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm font-medium text-foreground/80 hover:bg-accent transition-colors outline-none focus-visible:bg-accent focus-visible:text-foreground"
+                        class="video-detail__menu-item"
                         @click.stop="handleVideoAction(action); moreMenuOpen = false"
                       >
                         <AppIcon :name="action.icon" class="w-4 h-4 text-muted-foreground" />
@@ -113,7 +110,7 @@
                         :href="video.url"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm font-medium text-foreground/80 hover:bg-accent transition-colors outline-none focus-visible:bg-accent focus-visible:text-foreground"
+                        class="video-detail__menu-item"
                         @click.stop="moreMenuOpen = false"
                       >
                         <AppIcon name="externalLink" class="w-4 h-4 text-muted-foreground" />
@@ -125,13 +122,13 @@
               </div>
             </div>
 
-            <div v-if="displayedVideoActors.length" class="-mx-1">
-              <div class="flex gap-2 overflow-x-auto px-1 pb-0.5 no-scrollbar">
+            <div v-if="displayedVideoActors.length" class="video-detail__actors">
+              <div class="video-detail__actor-list no-scrollbar">
                 <button
                   v-for="actor in displayedVideoActors"
                   :key="actor.url || actor.name"
                   type="button"
-                  class="inline-flex h-8 shrink-0 items-center gap-2 rounded-full bg-muted/40 px-2.5 text-xs font-semibold text-foreground/85 outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+                  class="video-detail__actor"
                   @click="openChannelDetail(actor)"
                 >
                   <SubscriptionAvatar :src="actor.avatar" :name="actor.name || ''" size="xs" />
@@ -140,7 +137,7 @@
               </div>
             </div>
 
-            <div v-if="videoDescription" class="mt-2 p-4 bg-muted/30 rounded-xl ring-1 ring-border/10">
+            <div v-if="videoDescription" class="video-detail__description">
               <div
                 ref="descriptionTextRef"
                 class="relative overflow-hidden"
@@ -151,13 +148,13 @@
                 </p>
                 <div
                   v-if="!descriptionExpanded && hasLongDescription"
-                  class="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-muted/30 to-transparent pointer-events-none"
+                  class="video-detail__description-fade"
                 />
               </div>
               <button
                 v-if="hasLongDescription"
                 type="button"
-                class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-foreground/70 outline-none transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 rounded px-0.5"
+                class="video-detail__description-toggle"
                 :aria-expanded="descriptionExpanded"
                 @click="descriptionExpanded = !descriptionExpanded"
               >
@@ -167,8 +164,7 @@
             </div>
           </div>
           
-          <!-- Skeleton -->
-          <div v-else class="space-y-6">
+          <div v-else class="video-detail__skeleton">
             <div class="space-y-2">
               <AppSkeleton width="75%" height="1.75rem" rounded="var(--radius-lg)" shimmer />
               <AppSkeleton width="9rem" height="1rem" rounded="var(--radius)" shimmer />
@@ -191,10 +187,9 @@
         </div>
       </div>
 
-      <!-- Sidebar Content (Related/Clips/Playlist) -->
       <div
-        class="space-y-6"
-        :class="isWidescreen ? 'lg:col-start-2 lg:row-start-2' : 'lg:col-start-2 lg:row-start-1'"
+        class="video-play-aside"
+        :class="{ 'is-widescreen': isWidescreen }"
       >
         <div class="app-tab-list w-full">
           <button
@@ -208,7 +203,7 @@
           </button>
         </div>
 
-        <div class="min-h-[400px]">
+        <div class="video-play-aside__content">
           <Transition name="fade" mode="out-in">
             <div v-if="asideTab === 'related'" key="related">
               <div v-if="loadingRelated" class="space-y-3">
@@ -221,25 +216,25 @@
                   </div>
                 </div>
               </div>
-              <div v-else-if="relatedVideos.length" class="space-y-2">
+              <div v-else-if="relatedVideos.length" class="video-related-list">
                 <article
                   v-for="related in relatedVideos"
                   :key="related.id"
-                  class="flex gap-3 group cursor-pointer rounded-lg p-1.5 -mx-1.5 outline-none transition-colors hover:bg-accent/40 focus-visible:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring/40"
+                  class="video-related-item"
                   role="button"
                   tabindex="0"
                   @click="related.id != null && goToVideo(related.id, related)"
                   @keydown.enter.prevent="related.id != null && goToVideo(related.id, related)"
                   @keydown.space.prevent="related.id != null && goToVideo(related.id, related)"
                 >
-                  <div class="relative w-40 aspect-video shrink-0 overflow-hidden rounded-md bg-muted">
+                  <div class="video-related-item__thumb">
                     <VideoThumbnail v-if="related.thumbnail" :src="(related.thumbnail as string)" fit="contain" />
-                    <span v-if="related.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded-md bg-black/70 px-1.5 text-2xs font-semibold text-white tabular-nums shadow-sm">{{ formatDuration(related.duration as number) }}</span>
+                    <span v-if="related.duration" class="video-related-item__duration">{{ formatDuration(related.duration as number) }}</span>
                   </div>
-                  <div class="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-                    <h4 class="text-sm font-semibold line-clamp-2 leading-[1.35] group-hover:text-primary transition-colors text-foreground/85">{{ related.title }}</h4>
-                    <p class="text-xs text-muted-foreground/55 font-medium truncate">{{ related.subscriptions?.[0]?.name || related.site || '' }}</p>
-                    <p class="text-2xs text-muted-foreground/35 font-medium">{{ formatDate(related.uploaded_at) }}</p>
+                  <div class="video-related-item__copy">
+                    <h4>{{ related.title }}</h4>
+                    <p>{{ related.subscriptions?.[0]?.name || related.site || '' }}</p>
+                    <small>{{ formatDate(related.uploaded_at) }}</small>
                   </div>
                 </article>
               </div>
@@ -608,6 +603,497 @@ const openChannelDetail = async (profile: VideoProfile) => {
 </script>
 
 <style scoped>
+.video-play-page {
+  min-height: 100vh;
+  background: hsl(var(--background));
+}
+
+.video-play-page.is-widescreen {
+  padding-inline: 0;
+}
+
+.video-play-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  transition:
+    max-width 0.2s ease,
+    padding 0.2s ease;
+}
+
+.video-play-layout.is-widescreen {
+  max-width: none;
+}
+
+.video-play-primary {
+  min-width: 0;
+}
+
+.video-play-primary:not(.is-widescreen) {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.video-play-primary.is-widescreen {
+  display: contents;
+}
+
+.video-player-stage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.36);
+  border-radius: 0.75rem;
+  background: black;
+}
+
+.video-player-stage.is-widescreen {
+  border-radius: 0.75rem;
+}
+
+.video-player-host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.video-play-main {
+  min-width: 0;
+}
+
+.video-detail,
+.video-detail__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.video-detail__title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.video-detail__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: hsl(var(--muted-foreground) / 0.68);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.video-detail__dot {
+  color: hsl(var(--muted-foreground) / 0.5);
+}
+
+.video-detail__site {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 0.25rem;
+  background: hsl(var(--accent) / 0.5);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.video-detail__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.25rem;
+}
+
+.video-detail__channel-actions,
+.video-detail__actions,
+.video-detail__action-group {
+  display: flex;
+  align-items: center;
+}
+
+.video-detail__channel-actions {
+  gap: 1.25rem;
+}
+
+.video-detail__channel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: -0.25rem;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.video-detail__channel:focus-visible {
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+}
+
+.video-detail__channel-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.video-detail__channel-copy span {
+  color: hsl(var(--foreground));
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  transition: color 0.16s ease;
+}
+
+.video-detail__channel:hover .video-detail__channel-copy span {
+  color: hsl(var(--primary));
+}
+
+.video-detail__channel-copy small {
+  color: hsl(var(--muted-foreground) / 0.68);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.video-detail__subscribe-button,
+.video-detail__action-button,
+.video-detail__icon-button,
+.video-detail__actor {
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  outline: none;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.video-detail__subscribe-button {
+  min-width: 4rem;
+  height: 2rem;
+  padding: 0 1rem;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.video-detail__subscribe-button:hover {
+  background: hsl(var(--primary) / 0.9);
+}
+
+.video-detail__subscribe-button.is-subscribed {
+  border-color: hsl(var(--border) / 0.42);
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+.video-detail__subscribe-button.is-subscribed:hover {
+  background: hsl(var(--secondary) / 0.82);
+}
+
+.video-detail__subscribe-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.video-detail__actions {
+  gap: 0.5rem;
+}
+
+.video-detail__action-group {
+  gap: 0.125rem;
+  padding: 0.125rem;
+  border: 1px solid hsl(var(--border) / 0.18);
+  border-radius: 0.625rem;
+  background: hsl(var(--muted) / 0.34);
+}
+
+.video-detail__action-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.875rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.video-detail__action-button:hover {
+  background: hsl(var(--muted) / 0.62);
+  color: hsl(var(--foreground));
+}
+
+.video-detail__action-button.is-active {
+  border-color: hsl(var(--border) / 0.28);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.video-detail__icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: hsl(var(--muted) / 0.38);
+  color: hsl(var(--muted-foreground));
+}
+
+.video-detail__icon-button:hover {
+  background: hsl(var(--muted) / 0.68);
+  color: hsl(var(--foreground));
+}
+
+.video-detail__menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  width: 11rem;
+  margin-top: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.625rem;
+  background: hsl(var(--popover));
+}
+
+.video-detail__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  color: hsl(var(--foreground) / 0.82);
+  font-size: 0.875rem;
+  font-weight: 500;
+  outline: none;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.video-detail__menu-item:hover,
+.video-detail__menu-item:focus-visible {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+.video-detail__actors {
+  margin-inline: -0.25rem;
+}
+
+.video-detail__actor-list {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0 0.25rem 0.125rem;
+}
+
+.video-detail__actor {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.625rem;
+  background: hsl(var(--muted) / 0.4);
+  color: hsl(var(--foreground) / 0.86);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.video-detail__actor:hover {
+  background: hsl(var(--muted) / 0.72);
+  color: hsl(var(--foreground));
+}
+
+.video-detail__description {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  border: 1px solid hsl(var(--border) / 0.14);
+  border-radius: 0.625rem;
+  background: hsl(var(--muted) / 0.28);
+}
+
+.video-detail__description-fade {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2.5rem;
+  pointer-events: none;
+  background: linear-gradient(to top, hsl(var(--muted) / 0.3), transparent);
+}
+
+.video-detail__description-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.375rem;
+  color: hsl(var(--foreground) / 0.72);
+  font-size: 0.875rem;
+  font-weight: 650;
+  outline: none;
+  transition: color 0.16s ease;
+}
+
+.video-detail__description-toggle:hover,
+.video-detail__description-toggle:focus-visible {
+  color: hsl(var(--foreground));
+}
+
+.video-play-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.video-play-aside__content {
+  min-height: 25rem;
+}
+
+.video-related-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.video-related-item {
+  display: flex;
+  gap: 0.75rem;
+  margin-inline: -0.375rem;
+  padding: 0.375rem;
+  border-radius: 0.625rem;
+  cursor: pointer;
+  outline: none;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.video-related-item:hover,
+.video-related-item:focus-visible {
+  background: hsl(var(--accent) / 0.4);
+}
+
+.video-related-item__thumb {
+  position: relative;
+  width: 10rem;
+  aspect-ratio: 16 / 9;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.28);
+  border-radius: 0.5rem;
+  background: hsl(var(--muted));
+}
+
+.video-related-item__duration {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: 0.375rem;
+  background: hsl(0 0% 0% / 0.72);
+  color: white;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.video-related-item__copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.125rem;
+}
+
+.video-related-item__copy h4 {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: hsl(var(--foreground) / 0.86);
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  transition: color 0.16s ease;
+}
+
+.video-related-item:hover .video-related-item__copy h4 {
+  color: hsl(var(--primary));
+}
+
+.video-related-item__copy p,
+.video-related-item__copy small {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-related-item__copy p {
+  color: hsl(var(--muted-foreground) / 0.62);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.video-related-item__copy small {
+  color: hsl(var(--muted-foreground) / 0.46);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+@media (min-width: 1024px) {
+  .video-play-layout {
+    grid-template-columns: minmax(0, 1fr) 400px;
+    padding: 2.5rem;
+  }
+
+  .video-play-layout.is-widescreen {
+    padding: 2rem;
+  }
+
+  .video-player-stage.is-widescreen {
+    grid-column: span 2;
+  }
+
+  .video-play-main.is-widescreen {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .video-play-aside:not(.is-widescreen) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .video-play-aside.is-widescreen {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;
@@ -615,5 +1101,22 @@ const openChannelDetail = async (profile: VideoProfile) => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-play-layout,
+  .video-detail__channel-copy span,
+  .video-detail__subscribe-button,
+  .video-detail__action-button,
+  .video-detail__icon-button,
+  .video-detail__actor,
+  .video-detail__menu-item,
+  .video-detail__description-toggle,
+  .video-related-item,
+  .video-related-item__copy h4,
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: none;
+  }
 }
 </style>

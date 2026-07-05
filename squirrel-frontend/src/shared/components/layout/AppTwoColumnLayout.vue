@@ -38,8 +38,10 @@ withDefaults(defineProps<{
   flex-direction: column;
   flex: none;
   width: v-bind(sidebarWidth);
-  border-right: 1px solid hsl(var(--border) / 0.58);
-  background: hsl(var(--card) / 0.42);
+  border-right: 1px solid var(--app-surface-border-subtle);
+  background:
+    radial-gradient(ellipse 120% 28% at 0% 0%, hsl(var(--primary) / 0.055), transparent 64%),
+    hsl(var(--card) / 0.42);
 }
 
 .app-two-column__main {
@@ -57,8 +59,9 @@ withDefaults(defineProps<{
   justify-content: space-between;
   gap: 1rem;
   min-height: 4.25rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.48);
-  background: hsl(var(--background) / 0.72);
+  border-bottom: 1px solid var(--app-surface-border-subtle);
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.48), hsl(var(--background) / 0.72));
   padding-inline: 1rem;
 }
 

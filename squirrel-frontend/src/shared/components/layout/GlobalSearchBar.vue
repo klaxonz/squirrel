@@ -1,14 +1,10 @@
 <template>
-  <div ref="rootRef" class="relative w-full max-w-[560px]" @focusin="handleFocusIn" @focusout="handleFocusOut">
-    <!-- Search Input Field -->
-    <div 
-      class="flex items-center h-9 p-1 rounded-lg bg-accent/30 border border-border/20 transition-all duration-300 group focus-within:bg-background focus-within:border-border/40 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]"
-    >
-      <!-- Scope Toggle (Local/Remote) -->
-      <div v-if="searchModesList.length > 0" class="shrink-0">
+  <div ref="rootRef" class="global-search" @focusin="handleFocusIn" @focusout="handleFocusOut">
+    <div class="global-search__box">
+      <div v-if="searchModesList.length > 0" class="global-search__mode-wrap">
         <button
           type="button"
-          class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          class="global-search__mode"
           @click="toggleMode"
         >
           <AppIcon :name="activeSearchMode === 'local' ? 'library' : 'siteFallback'" class="w-3.5 h-3.5" />
@@ -16,15 +12,15 @@
         </button>
       </div>
       
-      <div v-if="searchModesList.length > 0" class="w-px h-3 bg-border/40 mx-1.5 shrink-0" />
-      <AppIcon v-else name="search" class="w-3.5 h-3.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors ml-2 mr-1.5" :stroke-width="2.5" />
+      <div v-if="searchModesList.length > 0" class="global-search__divider" />
+      <AppIcon v-else name="search" class="global-search__leading-icon" :stroke-width="2.5" />
       
       <input
         ref="inputRef"
         v-model="inputValue"
         type="text"
         :placeholder="placeholder"
-        class="flex-1 bg-transparent border-none px-1 text-sm font-medium outline-none focus-visible:shadow-none placeholder:text-muted-foreground/30 min-w-0"
+        class="global-search__input"
         @input="handleInput"
         @compositionstart="isComposing = true"
         @compositionend="handleCompositionEnd"
@@ -34,18 +30,16 @@
         @keydown.esc.prevent="handleEscape"
       />
 
-      <div class="flex items-center gap-1.5 pr-1">
-        <!-- Loading Spinner -->
+      <div class="global-search__actions">
         <AppSpinner v-if="isTyping" size="sm" />
         
-        <!-- Clear Button -->
-        <button v-if="inputValue" @click="clearSearch" class="p-1 rounded-md hover:bg-muted text-muted-foreground/60 transition-colors">
+        <button v-if="inputValue" @click="clearSearch" class="global-search__icon-button">
           <AppIcon name="close" class="w-3.5 h-3.5" />
         </button>
         
         <button
           type="button"
-          class="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+          class="global-search__icon-button"
           :disabled="!trimmedInputValue"
           title="搜索"
           @mousedown.prevent
@@ -65,33 +59,33 @@
       leave-from-class="opacity-100 translate-y-0" 
       leave-to-class="opacity-0 translate-y-1"
     >
-      <div v-if="showSuggestions" class="absolute top-full left-0 right-0 z-50 mt-2 flex flex-col gap-0.5 rounded-xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-[0_18px_50px_-20px_rgba(0,0,0,0.35),0_8px_24px_-16px_rgba(0,0,0,0.25)]">
-        <div class="flex items-center justify-between px-2 py-1.5 mb-1">
-          <span class="text-2xs font-bold tracking-widest uppercase text-muted-foreground/50">{{ suggestionTitle }}</span>
-          <button v-if="recentSearches.length" @click="clearRecentSearches" class="text-2xs font-bold text-muted-foreground/40 hover:text-destructive transition-colors uppercase">清空</button>
+      <div v-if="showSuggestions" class="global-search__suggestions">
+        <div class="global-search__suggestions-header">
+          <span>{{ suggestionTitle }}</span>
+          <button v-if="recentSearches.length" @click="clearRecentSearches">清空</button>
         </div>
 
 
 
-        <div v-for="(item, index) in suggestionItems" :key="item.id" class="flex min-w-0 gap-1">
+        <div v-for="(item, index) in suggestionItems" :key="item.id" class="global-search__suggestion-row">
           <button
-            class="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left transition-all"
-            :class="index === activeSuggestionIndex ? 'bg-secondary text-foreground' : 'hover:bg-secondary/50 text-muted-foreground/80'"
+            class="global-search__suggestion"
+            :class="{ 'is-active': index === activeSuggestionIndex }"
             @mouseenter="activeSuggestionIndex = index"
             @click="selectSuggestion(item.value)"
           >
             <AppIcon :name="item.type === 'search' ? 'search' : 'history'" class="h-4 w-4 shrink-0 opacity-50" />
-            <div class="flex min-w-0 flex-1 flex-col">
-              <span class="block max-w-full truncate text-sm font-medium">{{ item.label }}</span>
-              <span v-if="item.meta" class="block max-w-full truncate text-2xs opacity-50">{{ item.meta }}</span>
+            <div class="global-search__suggestion-copy">
+              <span class="global-search__suggestion-label">{{ item.label }}</span>
+              <span v-if="item.meta" class="global-search__suggestion-meta">{{ item.meta }}</span>
             </div>
           </button>
-          <button v-if="item.type === 'recent'" @click.stop="removeRecentSearch(item.value)" class="flex w-8 shrink-0 items-center justify-center rounded-xl text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive">
+          <button v-if="item.type === 'recent'" @click.stop="removeRecentSearch(item.value)" class="global-search__remove">
             <AppIcon name="close" class="w-3.5 h-3.5" />
           </button>
         </div>
         
-        <div v-if="!suggestionItems.length" class="p-8 text-center text-xs text-muted-foreground/40 font-medium">暂无搜索记录</div>
+        <div v-if="!suggestionItems.length" class="global-search__empty">暂无搜索记录</div>
       </div>
     </transition>
   </div>
@@ -395,3 +389,250 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
+
+<style scoped>
+.global-search {
+  position: relative;
+  width: 100%;
+  max-width: 35rem;
+}
+
+.global-search__box {
+  display: flex;
+  align-items: center;
+  height: 2.25rem;
+  padding: 0.25rem;
+  border: 1px solid hsl(var(--border) / 0.26);
+  border-radius: 0.5rem;
+  background: hsl(var(--accent) / 0.28);
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.global-search__box:focus-within {
+  border-color: hsl(var(--border) / 0.46);
+  background: hsl(var(--background));
+}
+
+.global-search__mode-wrap {
+  flex: 0 0 auto;
+}
+
+.global-search__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  border-radius: 0.375rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.global-search__mode:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.global-search__divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 0.75rem;
+  margin: 0 0.375rem;
+  background: hsl(var(--border) / 0.42);
+}
+
+.global-search__leading-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin: 0 0.375rem 0 0.5rem;
+  color: hsl(var(--muted-foreground) / 0.48);
+  transition: color 0.16s ease;
+}
+
+.global-search__box:focus-within .global-search__leading-icon {
+  color: hsl(var(--primary));
+}
+
+.global-search__input {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 0 0.25rem;
+  border: 0;
+  background: transparent;
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 500;
+  outline: none;
+}
+
+.global-search__input::placeholder {
+  color: hsl(var(--muted-foreground) / 0.52);
+}
+
+.global-search__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding-right: 0.25rem;
+}
+
+.global-search__icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  color: hsl(var(--muted-foreground) / 0.68);
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.global-search__icon-button:hover:not(:disabled) {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.global-search__icon-button:disabled {
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+.global-search__suggestions {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-top: 0.5rem;
+  padding: 0.375rem;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 0.625rem;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+.global-search__suggestions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+  padding: 0.375rem 0.5rem;
+  color: hsl(var(--muted-foreground) / 0.68);
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+.global-search__suggestions-header button {
+  color: hsl(var(--muted-foreground) / 0.58);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  transition: color 0.16s ease;
+}
+
+.global-search__suggestions-header button:hover {
+  color: hsl(var(--destructive));
+}
+
+.global-search__suggestion-row {
+  display: flex;
+  min-width: 0;
+  gap: 0.25rem;
+}
+
+.global-search__suggestion {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  color: hsl(var(--muted-foreground));
+  text-align: left;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.global-search__suggestion:hover,
+.global-search__suggestion.is-active {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+.global-search__suggestion-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.global-search__suggestion-label,
+.global-search__suggestion-meta {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.global-search__suggestion-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.global-search__suggestion-meta {
+  color: hsl(var(--muted-foreground) / 0.6);
+  font-size: 0.6875rem;
+}
+
+.global-search__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2rem;
+  border-radius: 0.5rem;
+  color: hsl(var(--muted-foreground) / 0.48);
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.global-search__remove:hover {
+  background: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
+}
+
+.global-search__empty {
+  padding: 2rem;
+  color: hsl(var(--muted-foreground) / 0.52);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .global-search__box,
+  .global-search__mode,
+  .global-search__leading-icon,
+  .global-search__icon-button,
+  .global-search__suggestions-header button,
+  .global-search__suggestion,
+  .global-search__remove {
+    transition: none;
+  }
+}
+</style>

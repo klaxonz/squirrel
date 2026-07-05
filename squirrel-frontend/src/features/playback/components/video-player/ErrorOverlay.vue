@@ -53,7 +53,6 @@ defineEmits<{ retry: [] }>()
   justify-content: center;
   z-index: 60;
   background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
 }
 
 .sp-error-content {

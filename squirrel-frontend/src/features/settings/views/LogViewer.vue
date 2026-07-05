@@ -42,8 +42,8 @@
       </div>
     </AppToolbarFrame>
 
-    <div class="content-container py-2 space-y-2 flex-1 flex flex-col min-h-0 overflow-hidden">
-      <div class="log-filter-area border-b border-border/40 pb-4">
+    <div class="app-page-content app-log-layout">
+      <div class="app-log-filter-bar">
         <div class="flex flex-wrap gap-2 items-center">
           <div class="flex-1 min-w-[240px]">
             <Input
@@ -51,13 +51,13 @@
               @keyup.enter="applyFilters"
               type="text"
               placeholder="搜索日志内容、追踪编号..."
-              class="h-8 text-xs bg-muted/30 border-none focus-visible:ring-1"
+              class="text-xs"
             />
           </div>
 
           <div class="w-28">
             <Select :model-value="filters.level" @update:model-value="(value) => { filters.level = value; applyFilters(); }">
-              <SelectTrigger class="h-8 text-xs border-none bg-muted/30">
+              <SelectTrigger class="text-xs">
                 <SelectValue placeholder="级别" />
               </SelectTrigger>
               <SelectContent>
@@ -70,7 +70,7 @@
 
           <div class="w-40">
             <Select :model-value="filters.filename" @update:model-value="(value) => { filters.filename = value; applyFilters(); }">
-              <SelectTrigger class="h-8 text-xs border-none bg-muted/30">
+              <SelectTrigger class="text-xs">
                 <SelectValue placeholder="日志文件" />
               </SelectTrigger>
               <SelectContent>
@@ -86,7 +86,6 @@
               @click="clearFilters"
               size="sm"
               variant="ghost"
-              class="h-8 px-3 text-xs"
             >
               清空
             </Button>
@@ -94,7 +93,6 @@
               @click="applyFilters"
               size="sm"
               variant="secondary"
-              class="h-8 px-3 text-xs"
             >
               应用
             </Button>
@@ -102,7 +100,7 @@
         </div>
       </div>
 
-      <div class="log-stream-container flex-1 flex flex-col min-h-0 overflow-hidden font-mono text-sm">
+      <div class="app-log-stream">
         <div v-if="loading && logs.length === 0" class="flex items-center justify-center py-20 text-muted-foreground">
           <AppSpinner size="sm" class="mr-2" />
           加载中...
@@ -135,7 +133,7 @@
               :data-index="index"
             >
               <div
-                class="log-row border-b border-border/20 py-1 px-2 group hover:bg-muted/30 transition-colors flex items-start gap-3 relative"
+                class="app-log-row group"
               >
                 <!-- Time -->
                 <span class="text-muted-foreground/60 whitespace-nowrap tabular-nums shrink-0 pt-0.5">
@@ -170,7 +168,7 @@
                 </div>
 
                 <!-- Actions -->
-                <div class="opacity-0 group-hover:opacity-100 absolute right-2 top-1 flex gap-1 bg-background/80 backdrop-blur-sm rounded border border-border/40 p-0.5">
+                <div class="absolute right-2 top-1 flex gap-1 rounded border border-border/60 bg-background p-0.5 opacity-0 group-hover:opacity-100">
                   <Button
                     @click="copyLog(item)"
                     size="xs"
@@ -329,28 +327,6 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 </script>
 
 <style scoped>
-.content-container {
-  max-width: var(--container-max-width, 2560px);
-  margin: 0 auto;
-  padding-left: var(--app-page-gutter);
-  padding-right: var(--app-page-gutter);
-  width: 100%;
-}
-
-@media (min-width: 640px) {
-  .content-container {
-    padding-left: var(--app-page-gutter-sm);
-    padding-right: var(--app-page-gutter-sm);
-  }
-}
-
-@media (min-width: 1024px) {
-  .content-container {
-    padding-left: var(--app-page-gutter-lg);
-    padding-right: var(--app-page-gutter-lg);
-  }
-}
-
 .log-hero__label {
   font-size: 0.68rem;
   color: hsl(var(--muted-foreground));
@@ -369,12 +345,6 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 
 .log-empty-state {
   min-height: 18rem;
-}
-
-.log-toolbar-button {
-  height: 1.75rem;
-  font-size: 0.75rem;
-  padding: 0 0.75rem;
 }
 
 .scroller {

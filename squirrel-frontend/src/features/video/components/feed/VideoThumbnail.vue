@@ -6,14 +6,14 @@
     loading="lazy"
     decoding="async"
     referrerpolicy="no-referrer"
-    class="h-full w-full transition-all duration-300"
+    class="h-full w-full transition-opacity duration-200"
     :class="imageClasses"
     @load="handleLoad"
     @error="handleError"
   >
 
   <div v-else class="absolute inset-0 flex flex-col items-center justify-center bg-muted text-center">
-    <span class="flex size-10 items-center justify-center rounded-md border border-border/50 bg-background/55 text-muted-foreground/50 shadow-sm">
+    <span class="flex size-10 items-center justify-center rounded-md border border-border/60 bg-background/70 text-muted-foreground/60">
       <AppIcon name="imageOff" class="size-5" :stroke-width="1.75" />
     </span>
     <span class="mt-2 max-w-[80%] truncate text-xs font-medium text-muted-foreground/60">
@@ -61,7 +61,7 @@ const positionClass = computed(() => props.position ? `object-${props.position}`
 const imageClasses = computed(() => [
   fitClass.value,
   positionClass.value,
-  props.interactive ? 'group-hover:scale-105 group-hover:brightness-110' : '',
+  props.interactive ? 'group-hover:brightness-110' : '',
   props.blur ? 'blur-2xl scale-110' : '',
   props.imgClass,
   props.noFade ? '' : (imageLoaded.value ? 'opacity-100' : 'opacity-0'),

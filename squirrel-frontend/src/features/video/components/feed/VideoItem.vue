@@ -10,8 +10,8 @@
     @keydown.space.prevent="handleClick"
   >
     <div :class="[
-      'relative overflow-hidden bg-muted rounded-lg ring-1 ring-border/40 transition-all duration-300 group-hover:shadow-card-hover group-active:scale-[0.99]',
-      layout === 'list' ? 'w-48 shrink-0 md:w-64 aspect-video' : 'aspect-video w-full'
+      'video-item__thumb',
+      layout === 'list' ? 'video-item__thumb--list' : 'video-item__thumb--grid'
     ]">
       <VideoThumbnail
         :src="thumbnailSrc"
@@ -21,26 +21,25 @@
         :blur="shouldBlurThumbnail"
       />
 
-      <!-- Quick Actions (Hover) -->
-      <div class="absolute top-1.5 right-1.5 z-10 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">
-        <div class="flex items-center gap-0.5 rounded-full bg-black/60 p-0.5 backdrop-blur shadow-lg ring-1 ring-white/10">
+      <div class="video-item__quick-actions">
+        <div class="video-item__quick-actions-inner">
           <button
-            class="flex size-7 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+            class="video-item__quick-action"
             title="标记已读"
             @click.stop="toggleReadStatus(!isRead)"
           >
             <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-[15px]" />
           </button>
           <button
-            class="flex size-7 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+            class="video-item__quick-action"
             title="稍后再看"
             @click.stop="toggleLater"
           >
             <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-[15px]" />
           </button>
           <button
-            class="flex size-7 items-center justify-center rounded-full transition-colors"
-            :class="isLiked === 1 ? 'text-red-400 hover:bg-white/10' : 'text-white/80 hover:bg-white/15 hover:text-white'"
+            class="video-item__quick-action"
+            :class="{ 'is-liked': isLiked === 1 }"
             title="喜欢"
             @click.stop="toggleLikeVideo"
           >
@@ -49,14 +48,13 @@
         </div>
       </div>
 
-      <span v-if="video.duration && showDuration" class="video-duration-badge absolute bottom-1.5 right-1.5 inline-flex h-5 items-center rounded-md bg-black/70 px-1.5 text-2xs font-medium text-white tabular-nums shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-0">
+      <span v-if="video.duration && showDuration" class="video-item__duration">
         {{ formatDuration(video.duration) }}
       </span>
 
-      <!-- Bottom Shadow/Gradient for Overlay Visibility -->
-      <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/60 to-transparent opacity-100 pointer-events-none z-10" />
+      <div class="video-item__scrim" />
 
-      <div v-if="progressRatio > 0" class="absolute bottom-0 inset-x-0 h-px group-hover:h-[2px] transition-all duration-300 z-20 bg-white/15">
+      <div v-if="progressRatio > 0" class="video-item__progress">
         <div class="h-full bg-primary transition-[width] duration-500 ease-out" :style="{ width: `${progressRatio * 100}%` }" />
       </div>
     </div>
@@ -85,10 +83,10 @@
 
         <div class="flex-1 min-w-0 flex flex-col gap-0.5">
           <div class="flex items-center gap-1.5 text-xs text-muted-foreground/80 font-medium">
-            <span class="hover:text-foreground transition-colors truncate" @click.stop="goToSubscription(primarySubscriptionId)">
+            <span class="video-item__source-name" @click.stop="goToSubscription(primarySubscriptionId)">
               {{ displayNames }}
             </span>
-            <span v-if="video.site" class="shrink-0 px-1 py-px rounded bg-accent/50 text-2xs font-bold text-muted-foreground uppercase tracking-wider">{{ video.site }}</span>
+            <span v-if="video.site" class="video-item__site">{{ video.site }}</span>
           </div>
           <div class="flex items-center gap-1 text-xs text-muted-foreground/70 font-medium">
             <span>{{ displayDateText }}</span>
@@ -247,21 +245,168 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   border-radius: var(--radius-lg);
   outline: none;
   transition:
-    color var(--duration-fast) var(--ease-default),
-    transform var(--duration-fast) var(--ease-default);
-}
-
-.video-item:hover {
-  transform: translateY(-1px);
+    color var(--duration-fast) var(--ease-default);
 }
 
 .video-item:focus-visible {
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
 }
 
+.video-item__thumb {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: 0.625rem;
+  background: hsl(var(--muted));
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.video-item:hover .video-item__thumb,
+.video-item:focus-visible .video-item__thumb {
+  border-color: hsl(var(--primary) / 0.32);
+}
+
+.video-item__thumb--list {
+  aspect-ratio: 16 / 9;
+  width: 12rem;
+  flex: 0 0 auto;
+}
+
+@media (min-width: 768px) {
+  .video-item__thumb--list {
+    width: 16rem;
+  }
+}
+
+.video-item__thumb--grid {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+}
+
+.video-item__quick-actions {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  z-index: 10;
+  opacity: 0;
+  transform: translateX(0.25rem);
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.video-item:hover .video-item__quick-actions,
+.video-item:focus-within .video-item__quick-actions {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.video-item__quick-actions-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  border: 1px solid hsl(0 0% 100% / 0.12);
+  border-radius: 0.5rem;
+  background: hsl(0 0% 0% / 0.62);
+}
+
+.video-item__quick-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  color: hsl(0 0% 100% / 0.82);
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.video-item__quick-action:hover {
+  background: hsl(0 0% 100% / 0.14);
+  color: hsl(0 0% 100%);
+}
+
+.video-item__quick-action.is-liked {
+  color: hsl(0 84% 68%);
+}
+
+.video-item__duration {
+  position: absolute;
+  right: 0.375rem;
+  bottom: 0.375rem;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: 0.375rem;
+  background: hsl(0 0% 0% / 0.72);
+  color: white;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  transition: opacity 0.16s ease;
+}
+
+.video-item:hover .video-item__duration {
+  opacity: 0;
+}
+
+.video-item__scrim {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  height: 2.5rem;
+  pointer-events: none;
+  background: linear-gradient(to top, hsl(0 0% 0% / 0.6), transparent);
+}
+
+.video-item__progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  height: 1px;
+  background: hsl(0 0% 100% / 0.16);
+}
+
+.video-item__source-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.16s ease;
+}
+
+.video-item__source-name:hover {
+  color: hsl(var(--foreground));
+}
+
+.video-item__site {
+  flex: 0 0 auto;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 0.25rem;
+  background: hsl(var(--accent) / 0.5);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .video-item:hover {
-    transform: none;
+  .video-item,
+  .video-item__thumb,
+  .video-item__quick-actions,
+  .video-item__quick-action,
+  .video-item__duration,
+  .video-item__source-name {
+    transition: none;
   }
 }
 </style>

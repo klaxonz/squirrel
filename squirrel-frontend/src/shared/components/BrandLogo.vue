@@ -84,7 +84,7 @@ const sizeClass = computed(() =>
   props.size === 'xs' ? 'w-5 h-5' : props.size === 'sm' ? 'w-8 h-8' : 'w-12 h-12',
 )
 const roundedClass = computed(() =>
-  props.size === 'xs' ? 'rounded-md' : props.size === 'sm' ? 'rounded-lg' : 'rounded-xl',
+  props.size === 'xs' ? 'rounded-md' : 'rounded-lg',
 )
 const iconClass = computed(() =>
   props.size === 'xs' ? 'w-3 h-3' : props.size === 'sm' ? 'w-4 h-4' : 'w-6 h-6',

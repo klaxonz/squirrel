@@ -152,8 +152,6 @@ const handleTest = async () => {
   border: 1px solid hsl(var(--border) / 0.7);
   border-radius: 999px;
   color: hsl(var(--muted-foreground));
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
   cursor: pointer;
   transition:
     color var(--duration-fast) var(--ease-default),

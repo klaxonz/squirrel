@@ -1,52 +1,52 @@
 <template>
   <div
     v-if="visible"
-    class="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-border/30 bg-popover text-popover-foreground p-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-3 animate-fade-in"
+    class="reader-settings-panel"
   >
-    <div class="space-y-1">
-      <span class="text-3xs font-bold text-muted-foreground uppercase tracking-wider block">排版字体</span>
-      <div class="grid grid-cols-2 gap-1 bg-accent/20 p-0.5 rounded-lg border border-border/5">
+    <div class="reader-settings-section">
+      <span class="reader-settings-label">排版字体</span>
+      <div class="reader-settings-grid">
         <button
           @click="select('sans')"
-          class="py-1 text-2xs font-semibold rounded-md transition-all text-center cursor-pointer"
-          :class="fontFamily === 'sans' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+          class="reader-settings-option"
+          :class="{ 'is-selected': fontFamily === 'sans' }"
           title="极简现代 (Inter)"
         >Inter</button>
         <button
           @click="select('outfit')"
-          class="py-1 text-2xs font-semibold rounded-md transition-all text-center cursor-pointer"
-          :class="fontFamily === 'outfit' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+          class="reader-settings-option"
+          :class="{ 'is-selected': fontFamily === 'outfit' }"
           title="优雅圆润 (Outfit)"
         >Outfit</button>
         <button
           @click="select('serif')"
-          class="py-1 text-2xs font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
-          :class="fontFamily === 'serif' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+          class="reader-settings-option font-serif"
+          :class="{ 'is-selected': fontFamily === 'serif' }"
           title="经典衬线 (Georgia)"
         >Georgia</button>
         <button
           @click="select('lora')"
-          class="py-1 text-2xs font-semibold rounded-md transition-all text-center font-serif cursor-pointer"
-          :class="fontFamily === 'lora' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+          class="reader-settings-option font-serif"
+          :class="{ 'is-selected': fontFamily === 'lora' }"
           title="人文阅读 (Lora)"
         >Lora</button>
       </div>
     </div>
 
-    <div class="space-y-1">
-      <div class="flex items-center justify-between">
-        <span class="text-3xs font-bold text-muted-foreground uppercase tracking-wider block">字号大小</span>
-        <span class="text-2xs font-semibold tabular-nums text-foreground/80">{{ fontSize }}px</span>
+    <div class="reader-settings-section">
+      <div class="reader-settings-row">
+        <span class="reader-settings-label">字号大小</span>
+        <span class="reader-settings-value">{{ fontSize }}px</span>
       </div>
-      <div class="flex items-center gap-1">
+      <div class="reader-settings-size-controls">
         <button
           @click="changeSize(-1)"
-          class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
+          class="reader-settings-size-button"
           :disabled="fontSize <= 12"
         >A-</button>
         <button
           @click="changeSize(1)"
-          class="h-7 w-7 rounded-lg border border-border/50 bg-accent/25 hover:bg-accent/40 flex items-center justify-center text-xs font-bold transition-all text-muted-foreground hover:text-foreground cursor-pointer flex-1"
+          class="reader-settings-size-button"
           :disabled="fontSize >= 24"
         >A+</button>
       </div>
@@ -81,3 +81,117 @@ function changeSize(delta: number) {
   }
 }
 </script>
+
+<style scoped>
+.reader-settings-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  width: 13rem;
+  margin-top: 0.375rem;
+  padding: 0.75rem;
+  border: 1px solid hsl(var(--border) / 0.36);
+  border-radius: 0.625rem;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+.reader-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.reader-settings-section + .reader-settings-section {
+  margin-top: 0.75rem;
+}
+
+.reader-settings-label {
+  display: block;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+.reader-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid hsl(var(--border) / 0.18);
+  border-radius: 0.5rem;
+  background: hsl(var(--accent) / 0.2);
+}
+
+.reader-settings-option,
+.reader-settings-size-button {
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.reader-settings-option {
+  padding: 0.3125rem 0.375rem;
+  text-align: center;
+}
+
+.reader-settings-option:hover,
+.reader-settings-size-button:hover:not(:disabled) {
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent) / 0.36);
+}
+
+.reader-settings-option.is-selected {
+  border-color: hsl(var(--primary) / 0.24);
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--foreground));
+}
+
+.reader-settings-row,
+.reader-settings-size-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reader-settings-value {
+  color: hsl(var(--foreground) / 0.82);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.reader-settings-size-controls {
+  gap: 0.375rem;
+}
+
+.reader-settings-size-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-height: 1.875rem;
+  border-color: hsl(var(--border) / 0.42);
+  background: hsl(var(--accent) / 0.24);
+}
+
+.reader-settings-size-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-settings-option,
+  .reader-settings-size-button {
+    transition: none;
+  }
+}
+</style>

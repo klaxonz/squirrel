@@ -1,6 +1,6 @@
 <template>
-  <section class="space-y-4">
-    <div class="settings-section-title">
+  <section class="app-settings-section">
+    <div class="app-settings-section-title">
       <h3>账户安全</h3>
       <p>修改密码并管理当前账户的登录会话。</p>
     </div>
@@ -14,7 +14,7 @@
       {{ securitySuccess }}
     </div>
 
-    <div class="settings-panel p-4">
+    <div class="app-settings-panel p-4">
       <div class="mb-4 flex items-center gap-2 text-sm font-semibold">
         <AppIcon name="securityAlert" class="h-4 w-4 text-muted-foreground" />
         修改登录密码
@@ -27,22 +27,21 @@
             :type="field.type"
             :placeholder="field.placeholder"
             :disabled="passwordSubmitting"
-            class="h-9 rounded-md border-border/50 text-sm shadow-none"
           />
         </div>
-        <Button type="submit" :loading="passwordSubmitting" class="h-9 rounded-md px-3">
+        <Button type="submit" :loading="passwordSubmitting">
           {{ passwordSubmitting ? '更新中' : '更新密码' }}
         </Button>
       </form>
     </div>
 
-    <div class="settings-panel">
-      <div class="settings-row">
+    <div class="app-settings-panel">
+      <div class="app-settings-row">
         <div class="min-w-0">
-          <div class="settings-row-title">注销其他会话</div>
-          <div class="settings-row-desc">使除当前设备外所有已登录的设备失效。</div>
+          <div class="app-settings-row__title">注销其他会话</div>
+          <div class="app-settings-row__desc">使除当前设备外所有已登录的设备失效。</div>
         </div>
-        <Button variant="destructive" class="h-9 rounded-md px-3" :disabled="sessionSubmitting" @click="handleRevokeSessions">
+        <Button variant="destructive" :disabled="sessionSubmitting" @click="handleRevokeSessions">
           <AppIcon name="logout" class="h-4 w-4" />
           撤销会话
         </Button>
