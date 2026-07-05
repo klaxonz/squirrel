@@ -106,7 +106,6 @@ import {
   VolumeX,
   X,
   XCircle,
-  Zap,
   CaptionsOff,
   BadgeCheck,
   MessageCircle,
@@ -122,7 +121,8 @@ export const APP_ICON_MAP = {
   bookmark: Bookmark,
   bookmarkCheck: BookmarkCheck,
   bookmarkPlus: BookmarkPlus,
-  brand: Zap,
+  // `brand` is intentionally not mapped here — the BrandLogo component draws
+  // its own inline SVG (a spiral glyph) and does not need a Lucide fallback.
   breadcrumb: ChevronRight,
   camera: Camera,
   chevronDown: ChevronDown,

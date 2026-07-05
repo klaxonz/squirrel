@@ -1,1 +1,849 @@
-/* Cleaned up for new design */
+/* =============================================================================
+ * Auth entry surface — Login / Register / ServerConfig share one shell so the
+ * three pages feel like one product surface, not three separate forms.
+ *
+ * Layout (>= 1024px): split screen
+ *   ┌──────────────────┬────────────────────────────────┐
+ *   │  brand panel     │  form panel                     │
+ *   │  (editorial)     │  (form)                         │
+ *   └──────────────────┴────────────────────────────────┘
+ *
+ * Layout (< 1024px): single column. The brand panel collapses to a compact
+ * header bar (logo + server pill); the editorial copy hides behind `lg:` so it
+ * doesn't blow up the vertical rhythm on phones.
+ *
+ * All tokens come from the global theme (--primary, --foreground, --border,
+ * --card, --muted, etc.) — this file never invents its own palette, so the
+ * light/dark themes stay in lockstep with the rest of the app.
+ * =========================================================================== */
+
+/* ─── Shell ──────────────────────────────────────────────────────────────── */
+.auth-shell {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  isolation: isolate;
+  overflow: hidden;
+  background: hsl(var(--background));
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-shell__layout {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+@media (min-width: 1024px) {
+  .auth-shell__layout {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  }
+}
+
+/* Subtle cinema-style atmospheric wash that bleeds from the brand panel over
+   the form panel. Lower alpha than the body-level cinema-spotlight so the
+   form remains the visual focus. */
+.auth-shell__atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 45% at 18% 32%, hsl(var(--primary) / 0.10), transparent 62%),
+    radial-gradient(ellipse 55% 45% at 88% 78%, hsl(var(--primary) / 0.06), transparent 62%);
+}
+
+.auth-shell__atmosphere::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(hsl(var(--foreground) / 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.018) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: center;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent 78%);
+}
+
+/* ─── Brand panel ────────────────────────────────────────────────────────── */
+/* The brand panel and the form panel share one atmospheric surface. The brand
+   panel anchors the primary tint in its top-left, then fades into a slightly
+   raised card tone (never all the way back to the flat shell color) so the
+   right edge of the brand reads as "still part of the brand zone" instead of
+   "darker than the form on its right". */
+.auth-brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(ellipse 95% 60% at 0% 0%, hsl(var(--primary) / 0.11), transparent 55%),
+    linear-gradient(165deg,
+      hsl(var(--card)) 0%,
+      hsl(var(--card) / 0.85) 55%,
+      hsl(var(--card) / 0.65) 100%);
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+@media (min-width: 1024px) {
+  .auth-brand {
+    border-bottom: 0;
+    /* A faint vertical hairline instead of a 1px solid border — the seam is
+       visible enough to give the layout structure but light enough that it
+       doesn't read as a hard cut between two surfaces. */
+    border-right: 1px solid hsl(var(--border) / 0.2);
+  }
+}
+
+/* Drifting ambient glow — slow, low alpha, no scroll dependency. The two
+   blobs are biased toward the top-left and bottom-right corners of the brand
+   panel so the warmth is bookended; the center stays cool, which lets the
+   brand and form panels feel like they share a single hue. */
+.auth-brand__glow {
+  position: absolute;
+  inset: -15%;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(56px);
+  opacity: 0.45;
+}
+
+.auth-brand__glow::before,
+.auth-brand__glow::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+}
+
+.auth-brand__glow::before {
+  top: -8%;
+  left: -12%;
+  width: 55%;
+  height: 55%;
+  background: radial-gradient(circle, hsl(var(--primary) / 0.22), transparent 65%);
+  animation: auth-float-a 22s ease-in-out infinite;
+}
+
+.auth-brand__glow::after {
+  bottom: -18%;
+  right: -8%;
+  width: 50%;
+  height: 50%;
+  background: radial-gradient(circle, hsl(var(--primary) / 0.12), transparent 65%);
+  animation: auth-float-b 28s ease-in-out -10s infinite reverse;
+}
+
+@keyframes auth-float-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(28px, -18px) scale(1.08); }
+}
+
+@keyframes auth-float-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-22px, 18px) scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-brand__glow::before,
+  .auth-brand__glow::after {
+    animation: none;
+  }
+}
+
+.auth-brand__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  flex: 1;
+  min-height: 0;
+}
+
+@media (min-width: 1024px) {
+  .auth-brand__inner {
+    gap: 2.5rem;
+    padding: clamp(2rem, 3.5vw, 3.5rem);
+  }
+}
+
+/* Top bar: brand mark + server status pill */
+.auth-brand__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.auth-brand__mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: hsl(var(--foreground));
+}
+
+.auth-brand__product {
+  font-family: var(--app-heading-font);
+  font-size: 1.0625rem;
+  /* Wordmark stays in neutral ink (slightly warm off-white in dark mode, warm
+     near-black in light mode) rather than picking up the badge's saturated
+     amber. The icon already carries the brand hue; the wordmark's job is to
+     read the product name, not echo the icon's color. Two saturated warm
+     elements stacked side-by-side lose their boundary and merge into a single
+     blob -- this is the figure/ground separation Stripe / Linear / Vercel /
+     Notion all use. The bumped weight (650) compensates for the wordmark
+     being neutral while the icon is saturated, so the wordmark still feels
+     "present" next to the badge. */
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: hsl(var(--foreground));
+}
+
+/* Editorial copy (hidden on narrow viewports to avoid vertical bloat) */
+.auth-brand__copy {
+  display: none;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+@media (min-width: 1024px) {
+  .auth-brand__copy {
+    display: flex;
+  }
+}
+
+.auth-brand__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: hsl(var(--primary));
+}
+
+.auth-brand__eyebrow::before {
+  content: '';
+  width: 1.5rem;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+.auth-brand__headline {
+  margin: 0;
+  font-family: var(--app-heading-font);
+  font-size: clamp(1.875rem, 1.2rem + 2.2vw, 3rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+  text-wrap: balance;
+  max-width: 14ch;
+}
+
+.auth-brand__headline-accent {
+  color: hsl(var(--primary));
+  font-style: italic;
+  font-weight: 500;
+  /* Chinese glyphs don't have Latin descenders, but italic-driven glyph shifts
+     still nudge the baseline a hair. Keep leading roomy. */
+  padding-bottom: 0.125rem;
+}
+
+.auth-brand__sub {
+  max-width: 30rem;
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: hsl(var(--muted-foreground));
+  text-wrap: pretty;
+}
+
+/* Feature pills — kept as semantic chips, not decorative labels. */
+.auth-brand__features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-brand__feature {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.75rem;
+  border-radius: 999px;
+  background: hsl(var(--card) / 0.55);
+  border: 1px solid hsl(var(--border) / 0.65);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: hsl(var(--foreground) / 0.85);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.auth-brand__feature-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: hsl(var(--primary));
+  flex-shrink: 0;
+}
+
+.auth-brand__foot {
+  /* Bottom-imprint line. Replaces the previous "Squirrel · 归仓 / 个人内容订阅中心"
+     colophon: the SQUIRREL mark duplicated the top-of-panel logo, so we
+     trimmed it down to a single Chinese imprint line. Mono font + small size +
+     muted color keep it quiet at the corner of the panel; the dot separator
+     matches the dot vocabulary used elsewhere in the brand (eyebrow, server
+     popover, etc.). */
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: hsl(var(--muted-foreground) / 0.7);
+  flex-shrink: 0;
+}
+
+/* ─── Form panel ─────────────────────────────────────────────────────────── */
+.auth-form {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.75rem, 5vw, 4rem) clamp(1.25rem, 4vw, 2.5rem);
+  /* Mirror the brand panel's wash so the two halves feel like one atmosphere
+     rather than two surfaces meeting at a seam. A faint primary tint lives in
+     the bottom-right corner (the "tail" of the brand's glow continues here);
+     the top-left stays neutral. */
+  background:
+    radial-gradient(ellipse 95% 70% at 100% 100%, hsl(var(--primary) / 0.07), transparent 60%),
+    linear-gradient(195deg,
+      hsl(var(--card) / 0.55) 0%,
+      hsl(var(--card) / 0.45) 60%,
+      hsl(var(--card) / 0.55) 100%);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Two soft glows that complement the brand panel's. The warm one in the top-
+   right echoes the brand panel's primary tint (so the seam between the two
+   panels reads as "warmth traveling left-to-right"); the cool one in the
+   bottom-left grounds the form against the page. Together with .auth-form's
+   background gradient this prevents the form from looking like a black slab
+   next to a colorful brand. */
+.auth-form::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(ellipse 60% 45% at 92% 0%, hsl(var(--primary) / 0.10), transparent 60%),
+    radial-gradient(ellipse 55% 50% at 0% 95%, hsl(var(--primary) / 0.05), transparent 62%),
+    var(--cinema-spotlight);
+  background-repeat: no-repeat;
+  background-size: 100% 100%, 100% 100%, 100% 600px;
+  background-position: top right, bottom left, center top;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Subtle grid pattern — same vocabulary as .auth-shell__atmosphere so the
+   page reads as one textured surface, not "left textured, right flat". */
+.auth-form::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(hsl(var(--foreground) / 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.018) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: center;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent 78%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.auth-form__inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 22rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  /* Subtle "lift" via a faint top inner glow + bottom inner glow. Just enough
+     to anchor the form against the atmospheric surface; never heavy enough
+     to read as a separate card. */
+  padding-top: 1.5rem;
+  isolation: isolate;
+}
+
+.auth-form__inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 30% at 50% 0%, hsl(var(--foreground) / 0.025), transparent 70%),
+    radial-gradient(ellipse 60% 25% at 50% 100%, hsl(var(--foreground) / 0.018), transparent 70%);
+  z-index: -1;
+}
+
+@media (min-width: 1024px) {
+  .auth-form__inner {
+    max-width: 23rem;
+  }
+}
+
+.auth-form__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.auth-form__title {
+  margin: 0;
+}
+
+.auth-form__subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.6;
+}
+
+/* ─── Form body ──────────────────────────────────────────────────────────── */
+.auth-form__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* The submit button gets a stronger shadow + spring on hover. The base
+   Button.vue variants already cover colors / focus / disabled; this just
+   dials up the prominence for the primary auth CTA. */
+.auth-form__submit {
+  margin-top: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow:
+    0 1px 2px hsl(var(--primary) / 0.3),
+    0 8px 24px hsl(var(--primary) / 0.22);
+  transition:
+    box-shadow var(--duration-base) var(--ease-default),
+    transform var(--duration-base) var(--ease-default);
+}
+
+.auth-form__submit:hover:not(:disabled) {
+  box-shadow:
+    0 2px 8px hsl(var(--primary) / 0.35),
+    0 14px 36px hsl(var(--primary) / 0.32);
+  transform: translateY(-1px);
+}
+
+.auth-form__submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.auth-form__foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid hsl(var(--border) / 0.65);
+  font-size: 0.8125rem;
+}
+
+.auth-form__foot-text {
+  color: hsl(var(--muted-foreground));
+}
+
+.auth-form__foot-link {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.auth-form__foot-link:hover {
+  color: hsl(var(--primary));
+}
+
+/* Back link used on ServerConfig (and any "I came from elsewhere" surface). */
+.auth-form__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  align-self: flex-start;
+  margin-top: 0.25rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.auth-form__back:hover {
+  color: hsl(var(--foreground));
+}
+
+.auth-form__back-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  transition: transform var(--duration-fast) var(--ease-default);
+}
+
+.auth-form__back:hover .auth-form__back-icon {
+  transform: translateX(-2px);
+}
+
+/* ─── Field ──────────────────────────────────────────────────────────────── */
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+}
+
+.auth-field__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.auth-field__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 0.92);
+  letter-spacing: 0.005em;
+  line-height: 1.4;
+}
+
+.auth-field__hint {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.auth-field__hint:hover {
+  color: hsl(var(--primary));
+}
+
+.auth-field__wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.auth-field__icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+  z-index: 1;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.auth-field__wrap:focus-within .auth-field__icon {
+  color: hsl(var(--primary));
+}
+
+/* Input overrides — bigger touch target, tighter horizontal rhythm, and a
+   clearer placeholder color (the default 70% opacity fails WCAG AA on the
+   dark theme card surface). */
+.auth-field__input {
+  height: 2.625rem;
+  padding-left: 0.875rem;
+  padding-right: 0.875rem;
+  font-size: 0.9375rem;
+  background: hsl(var(--card) / 0.65);
+  border-color: hsl(var(--border) / 0.85);
+  color: hsl(var(--foreground));
+}
+
+.auth-field__input::placeholder {
+  color: hsl(var(--muted-foreground) / 0.85);
+}
+
+.auth-field__input--with-icon {
+  padding-left: 2.5rem;
+}
+
+.auth-field__input--with-action {
+  padding-right: 2.75rem;
+}
+
+.auth-field__action {
+  position: absolute;
+  right: 0.25rem;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  width: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default);
+}
+
+.auth-field__action:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted) / 0.55);
+}
+
+/* Wider variant — hosts the ServerConfig "Test connection" button so it has
+   room for its label and a spinner. Button.vue's `size="sm"` is 32px tall;
+   the auth input is 42px, so we pin top/bottom to 4px to vertically center. */
+.auth-field__action--wide {
+  width: auto;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  height: auto;
+  top: 0.25rem;
+  bottom: 0.25rem;
+}
+
+/* Inline status messages (test result on ServerConfig, etc.) */
+.auth-field__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.auth-field__status--success { color: hsl(var(--success)); }
+.auth-field__status--error   { color: hsl(var(--destructive)); }
+.auth-field__status--idle    { color: hsl(var(--muted-foreground)); }
+
+.auth-field__status-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
+/* ─── Checkbox (custom visual, native input for a11y + autofill) ─────────── */
+.auth-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.25rem 0;
+  align-self: flex-start;
+  margin-top: 0.25rem;
+  position: relative;
+}
+
+.auth-checkbox__native {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.auth-checkbox__visual {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid hsl(var(--border));
+  background: hsl(var(--card) / 0.65);
+  transition: background var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
+  flex-shrink: 0;
+}
+
+.auth-checkbox:hover .auth-checkbox__visual {
+  border-color: hsl(var(--border) / 0.9);
+}
+
+.auth-checkbox__native:checked + .auth-checkbox__visual {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+
+.auth-checkbox__native:focus-visible + .auth-checkbox__visual {
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.55);
+}
+
+.auth-checkbox__check {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: hsl(var(--primary-foreground));
+  stroke-width: 3;
+}
+
+.auth-checkbox__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.auth-checkbox:hover .auth-checkbox__label {
+  color: hsl(var(--foreground));
+}
+
+/* ─── Quick options (ServerConfig — quick / recent server URLs) ─────────── */
+.auth-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 0.25rem;
+}
+
+.auth-options__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.auth-options__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.auth-options__title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground) / 0.9);
+}
+
+.auth-options__clear {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.auth-options__clear:hover {
+  color: hsl(var(--destructive));
+}
+
+.auth-options__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-options__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  padding: 0.375rem 0.6875rem;
+  border-radius: var(--radius-md);
+  border: 1px solid hsl(var(--border) / 0.7);
+  background: hsl(var(--card) / 0.4);
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+  max-width: 100%;
+}
+
+.auth-options__chip:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--card) / 0.7);
+  border-color: hsl(var(--border));
+}
+
+.auth-options__chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 14rem;
+}
+
+/* ─── Error alert animation ──────────────────────────────────────────────── */
+.auth-alert-enter-active,
+.auth-alert-leave-active {
+  transition: opacity var(--duration-base) var(--ease-default),
+    transform var(--duration-base) var(--ease-default);
+}
+
+.auth-alert-enter-from,
+.auth-alert-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* ─── Page entrance ─────────────────────────────────────────────────────── */
+@keyframes auth-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-shell--enter .auth-form__inner,
+.auth-shell--enter .auth-brand__inner {
+  animation: auth-page-enter 420ms var(--ease-default) both;
+}
+
+.auth-shell--enter .auth-form__inner {
+  animation-delay: 80ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-shell--enter .auth-form__inner,
+  .auth-shell--enter .auth-brand__inner {
+    animation: none;
+  }
+}

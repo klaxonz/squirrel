@@ -10,6 +10,7 @@ import { Logger } from '@/shared/lib/logger'
 import '@/shared/styles/index.css'
 import '@/shared/styles/layout.css'
 import '@/shared/styles/themes/dark.css'
+import '@/features/auth/styles/auth-entry.css'
 
 const bootstrap = async () => {
   // Prevent browser from restoring scroll position on page load,

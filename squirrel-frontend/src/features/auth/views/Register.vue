@@ -1,120 +1,153 @@
 <template>
-  <div class="min-h-full flex flex-col justify-center items-center bg-muted dark:bg-background p-4 sm:p-8 relative">
-    
-    <!-- Server Config Pill -->
-    <div class="absolute top-4 right-4 sm:top-8 sm:right-8 z-20">
-      <router-link
-        to="/server-config"
-        class="inline-flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm rounded-full bg-card border border-border hover:border-primary/50 hover:text-primary transition-colors shadow-sm"
-      >
-        <AppIcon name="server" class="h-4 w-4 opacity-70" />
-        <span class="opacity-70 hidden sm:inline">服务器:</span>
-        <span class="font-medium truncate max-w-[120px]">{{ currentServerLabel }}</span>
-      </router-link>
-    </div>
+  <div class="auth-shell auth-shell--enter">
+    <div class="auth-shell__layout">
+      <div class="auth-shell__atmosphere" aria-hidden="true" />
 
-    <!-- Main Content Container -->
-    <main class="w-full max-w-[400px] bg-card rounded-xl shadow-lg border border-border relative z-10 animate-in fade-in zoom-in-95 duration-300">
-      
-      <div class="p-6 sm:p-8">
-        <!-- Header Area -->
-        <header class="flex flex-col items-center text-center mb-8">
-          <BrandLogo size="md" class="mb-5" />
-          <h1 class="app-h1 mb-1.5">加入归仓</h1>
-          <p class="text-sm text-muted-foreground">创建账户，开始管理您的内容订阅</p>
-        </header>
+      <aside class="auth-brand">
+        <div class="auth-brand__glow" aria-hidden="true" />
 
-        <form @submit.prevent="handleSubmit" class="space-y-4">
-          <!-- Error Alert -->
-          <Alert v-if="errorMessage" variant="error" class="mb-2 animate-in slide-in-from-top-1">
-            <AppIcon name="error" class="h-4 w-4" />
-            <AlertDescription>{{ errorMessage }}</AlertDescription>
-          </Alert>
-
-          <!-- Nickname Field -->
-          <div class="space-y-2">
-            <label for="nickname" class="text-sm font-medium leading-none">
-              昵称
-            </label>
-            <Input
-              id="nickname"
-              v-model="form.nickname"
-              type="text"
-              required
-              placeholder="您希望被称呼的名字"
-              autocomplete="nickname"
-            />
-          </div>
-
-          <!-- Email Field -->
-          <div class="space-y-2">
-            <label for="email" class="text-sm font-medium leading-none">
-              邮箱
-            </label>
-            <Input
-              id="email"
-              v-model="form.email"
-              type="email"
-              required
-              placeholder="name@example.com"
-              autocomplete="email"
-            />
-          </div>
-
-          <!-- Password Field -->
-          <div class="space-y-2">
-            <label for="password" class="text-sm font-medium leading-none">
-              密码
-            </label>
-            <div class="relative">
-              <Input
-                id="password"
-                v-model="form.password"
-                :type="showPassword ? 'text' : 'password'"
-                required
-                class="pr-10"
-                placeholder="至少输入 8 位字符"
-                autocomplete="new-password"
-              />
-              <button
-                type="button"
-                class="absolute right-1 top-0.5 h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                @click="showPassword = !showPassword"
-                :title="showPassword ? '隐藏密码' : '显示密码'"
-                :aria-label="showPassword ? '隐藏密码' : '显示密码'"
-              >
-                <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
-              </button>
+        <div class="auth-brand__inner">
+          <div class="auth-brand__top">
+            <div class="auth-brand__mark">
+              <BrandLogo size="sm" />
+              <span class="auth-brand__product">归仓</span>
             </div>
           </div>
 
-          <!-- Submit Button -->
-          <div class="pt-4">
+          <div class="auth-brand__copy">
+            <span class="auth-brand__eyebrow">归仓 / 加入</span>
+            <h1 class="auth-brand__headline">
+              建一个属于您的，
+              <span class="auth-brand__headline-accent">安静的归处。</span>
+            </h1>
+            <p class="auth-brand__sub">
+              把分散在各处的订阅、频道与播放列表聚合起来。一切只为您一个人。
+            </p>
+
+            <ul class="auth-brand__features">
+              <li class="auth-brand__feature">
+                <AppIcon name="shieldCheck" class="auth-brand__feature-icon" />
+                <span>账号数据仅归属您本人</span>
+              </li>
+              <li class="auth-brand__feature">
+                <AppIcon name="inbox" class="auth-brand__feature-icon" />
+                <span>未读内容自动汇总</span>
+              </li>
+              <li class="auth-brand__feature">
+                <AppIcon name="playback" class="auth-brand__feature-icon" />
+                <span>跨端继续上次播放</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="auth-brand__foot">
+            <span>归仓 · 个人内容订阅中心</span>
+          </div>
+        </div>
+      </aside>
+
+      <section class="auth-form">
+        <div class="auth-form__inner">
+          <header class="auth-form__header">
+            <h2 class="auth-form__title app-h1">加入归仓</h2>
+            <p class="auth-form__subtitle">创建账户，开始管理您的内容订阅</p>
+          </header>
+
+          <form
+            novalidate
+            class="auth-form__form"
+            @submit.prevent="handleSubmit"
+          >
+            <Transition name="auth-alert">
+              <Alert v-if="errorMessage" variant="error">
+                <AppIcon name="error" class="h-4 w-4" />
+                <AlertDescription>{{ errorMessage }}</AlertDescription>
+              </Alert>
+            </Transition>
+
+            <div class="auth-field">
+              <label for="nickname" class="auth-field__label">昵称</label>
+              <div class="auth-field__wrap">
+                <AppIcon name="user" class="auth-field__icon" />
+                <Input
+                  id="nickname"
+                  v-model="form.nickname"
+                  type="text"
+                  required
+                  placeholder="您希望被称呼的名字"
+                  autocomplete="nickname"
+                  class="auth-field__input auth-field__input--with-icon"
+                />
+              </div>
+            </div>
+
+            <div class="auth-field">
+              <label for="email" class="auth-field__label">邮箱</label>
+              <div class="auth-field__wrap">
+                <AppIcon name="info" class="auth-field__icon" />
+                <Input
+                  id="email"
+                  v-model="form.email"
+                  type="email"
+                  required
+                  placeholder="name@example.com"
+                  autocomplete="email"
+                  class="auth-field__input auth-field__input--with-icon"
+                />
+              </div>
+            </div>
+
+            <div class="auth-field">
+              <div class="auth-field__row">
+                <label for="password" class="auth-field__label">密码</label>
+                <span class="auth-field__hint">至少 8 位字符</span>
+              </div>
+              <div class="auth-field__wrap">
+                <AppIcon name="security" class="auth-field__icon" />
+                <Input
+                  id="password"
+                  v-model="form.password"
+                  :type="showPassword ? 'text' : 'password'"
+                  required
+                  minlength="8"
+                  placeholder="设置一个安全的密码"
+                  autocomplete="new-password"
+                  class="auth-field__input auth-field__input--with-icon auth-field__input--with-action"
+                />
+                <button
+                  type="button"
+                  class="auth-field__action"
+                  :title="showPassword ? '隐藏密码' : '显示密码'"
+                  :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+                  @click="showPassword = !showPassword"
+                >
+                  <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
             <Button
               type="submit"
-              class="w-full"
               size="lg"
               :loading="loading"
+              class="auth-form__submit"
             >
-              {{ loading ? '正在注册...' : '创建账户' }}
+              {{ loading ? '正在注册' : '创建账户' }}
             </Button>
-          </div>
-        </form>
-      </div>
-      
-      <!-- Card Footer -->
-      <div class="p-4 sm:p-6 bg-muted border-t border-border text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
-        <span class="text-sm text-muted-foreground">已有账户？</span>
-        <router-link to="/login" class="text-sm font-medium text-foreground hover:text-primary transition-colors underline decoration-border underline-offset-4 hover:decoration-primary">
-          直接登录
-        </router-link>
-      </div>
-    </main>
+          </form>
+
+          <footer class="auth-form__foot">
+            <span class="auth-form__foot-text">已有账户？</span>
+            <router-link to="/login" class="auth-form__foot-link">直接登录</router-link>
+          </footer>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import BrandLogo from '@/shared/components/BrandLogo.vue'
@@ -122,11 +155,9 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { useUserStore } from '@/shared/stores/user'
-import { useServerConfig } from '@/shared/composables/useServerConfig'
 
 const router = useRouter()
 const userStore = useUserStore()
-const { initServerConfig, serverUrl: currentServerUrl } = useServerConfig()
 const loading = ref(false)
 const showPassword = ref(false)
 const errorMessage = ref('')
@@ -135,12 +166,6 @@ const form = ref({
   email: '',
   password: '',
 })
-
-onMounted(async () => {
-  await initServerConfig()
-})
-
-const currentServerLabel = computed(() => currentServerUrl.value || '未配置服务器')
 
 // ponytail: the user store catches the thrown ApiError and re-shapes it into a
 // { data, error } tuple, so this form can render the message inline (not via the

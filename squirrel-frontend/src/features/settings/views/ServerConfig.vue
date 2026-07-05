@@ -1,132 +1,180 @@
 <template>
-  <div class="min-h-full flex flex-col justify-center items-center bg-muted dark:bg-background p-4 sm:p-8 relative">
-    
-    <!-- Main Content Container -->
-    <main class="w-full max-w-[400px] bg-card rounded-xl shadow-lg border border-border relative z-10 animate-in fade-in zoom-in-95 duration-300">
-      
-      <div class="p-6 sm:p-8">
-        <!-- Header Area -->
-        <header class="flex flex-col items-center text-center mb-8">
-          <BrandLogo size="md" class="mb-5" />
-          <h1 class="app-h1 mb-1.5">归仓核心配置</h1>
-          <p class="text-sm text-muted-foreground">连接至您的后端服务引擎</p>
-        </header>
+  <div class="auth-shell auth-shell--enter">
+    <div class="auth-shell__layout">
+      <div class="auth-shell__atmosphere" aria-hidden="true" />
 
-        <form @submit.prevent="handleConnect" class="space-y-5">
-          <!-- Error Alert -->
-          <Alert v-if="errorMessage" variant="error" class="animate-in slide-in-from-top-1">
-            <AppIcon name="error" class="h-4 w-4" />
-            <AlertDescription>{{ errorMessage }}</AlertDescription>
-          </Alert>
+      <aside class="auth-brand">
+        <div class="auth-brand__glow" aria-hidden="true" />
 
-          <!-- Server URL Field -->
-          <div class="space-y-2">
-            <label for="server-url" class="text-sm font-medium leading-none">
-              服务器接口地址
-            </label>
-            <div class="relative">
-              <Input
-                id="server-url"
-                v-model="form.serverUrl"
-                type="url"
-                required
-                class="pr-24"
-                placeholder="http://127.0.0.1:8001"
-                :disabled="connecting"
-                @input="clearStatus"
-              />
-              <div class="absolute right-1 top-1/2 -translate-y-1/2">
+        <div class="auth-brand__inner">
+          <div class="auth-brand__top">
+            <div class="auth-brand__mark">
+              <BrandLogo size="sm" />
+              <span class="auth-brand__product">归仓</span>
+            </div>
+          </div>
+
+          <div class="auth-brand__copy">
+            <span class="auth-brand__eyebrow">归仓 / 引擎</span>
+            <h1 class="auth-brand__headline">
+              把归仓，
+              <span class="auth-brand__headline-accent">接到您的引擎。</span>
+            </h1>
+            <p class="auth-brand__sub">
+              归仓的前端只是一扇窗。告诉它您后端引擎的地址，它就会为您拉取所有订阅与媒体。
+            </p>
+
+            <ul class="auth-brand__features">
+              <li class="auth-brand__feature">
+                <AppIcon name="server" class="auth-brand__feature-icon" />
+                <span>支持自部署与本地开发</span>
+              </li>
+              <li class="auth-brand__feature">
+                <AppIcon name="shieldCheck" class="auth-brand__feature-icon" />
+                <span>连接信息仅保存在本机</span>
+              </li>
+              <li class="auth-brand__feature">
+                <AppIcon name="bolt" class="auth-brand__feature-icon" />
+                <span>连上即可立即进入系统</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="auth-brand__foot">
+            <span>归仓 · 个人内容订阅中心</span>
+          </div>
+        </div>
+      </aside>
+
+      <section class="auth-form">
+        <div class="auth-form__inner">
+          <header class="auth-form__header">
+            <h2 class="auth-form__title app-h1">归仓核心配置</h2>
+            <p class="auth-form__subtitle">连接至您的后端服务引擎</p>
+          </header>
+
+          <form
+            novalidate
+            class="auth-form__form"
+            @submit.prevent="handleConnect"
+          >
+            <Transition name="auth-alert">
+              <Alert v-if="errorMessage" variant="error">
+                <AppIcon name="error" class="h-4 w-4" />
+                <AlertDescription>{{ errorMessage }}</AlertDescription>
+              </Alert>
+            </Transition>
+
+            <div class="auth-field">
+              <label for="server-url" class="auth-field__label">服务器接口地址</label>
+              <div class="auth-field__wrap">
+                <AppIcon name="server" class="auth-field__icon" />
+                <Input
+                  id="server-url"
+                  v-model="form.serverUrl"
+                  type="url"
+                  required
+                  placeholder="http://127.0.0.1:8001"
+                  :disabled="connecting"
+                  class="auth-field__input auth-field__input--with-icon auth-field__input--with-action"
+                  @input="clearStatus"
+                />
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   :disabled="!form.serverUrl.trim() || testing"
                   :loading="testing"
+                  class="auth-field__action auth-field__action--wide"
                   @click="handleTest"
-                  class="h-8"
                 >
                   {{ testing ? '测试中' : '测试连接' }}
                 </Button>
               </div>
+              <p
+                v-if="connectionMessage"
+                class="auth-field__status"
+                :class="testResult === null
+                  ? 'auth-field__status--idle'
+                  : testResult ? 'auth-field__status--success' : 'auth-field__status--error'"
+              >
+                <AppIcon
+                  :name="testResult === null
+                    ? 'info'
+                    : testResult ? 'statusSuccess' : 'warning'"
+                  class="auth-field__status-icon"
+                />
+                {{ connectionMessage }}
+              </p>
             </div>
-            
-            <!-- Test Result Feedback -->
-            <div v-if="connectionMessage" :class="[
-              'text-xs font-medium mt-1.5 flex items-center gap-1.5',
-              testResult ? 'text-success' : 'text-destructive'
-            ]">
-              <AppIcon :name="testResult ? 'statusSuccess' : 'warning'" class="w-3.5 h-3.5" />
-              {{ connectionMessage }}
-            </div>
-          </div>
 
-          <!-- Quick Options -->
-          <div class="space-y-4 pt-1">
-            <div v-if="quickServerUrls.length" class="space-y-2.5">
-              <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">常用地址</span>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="url in quickServerUrls"
-                  :key="url"
-                  type="button"
-                  class="px-2.5 py-1 rounded-md border border-border bg-muted/50 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-muted transition-colors"
-                  @click="applyServerUrl(url)"
-                >
-                  {{ url }}
-                </button>
+            <div v-if="quickServerUrls.length || recentServerUrls.length" class="auth-options">
+              <div v-if="quickServerUrls.length" class="auth-options__group">
+                <span class="auth-options__title">常用地址</span>
+                <ul class="auth-options__list">
+                  <li v-for="url in quickServerUrls" :key="url">
+                    <button
+                      type="button"
+                      class="auth-options__chip"
+                      @click="applyServerUrl(url)"
+                    >
+                      <span class="auth-options__chip-text">{{ url }}</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              <div v-if="recentServerUrls.length" class="auth-options__group">
+                <div class="auth-options__head">
+                  <span class="auth-options__title">最近连接</span>
+                  <button type="button" class="auth-options__clear" @click="handleClearRecent">
+                    清空
+                  </button>
+                </div>
+                <ul class="auth-options__list">
+                  <li v-for="url in recentServerUrls" :key="url">
+                    <button
+                      type="button"
+                      class="auth-options__chip"
+                      :title="url"
+                      @click="applyServerUrl(url)"
+                    >
+                      <span class="auth-options__chip-text">{{ url }}</span>
+                    </button>
+                  </li>
+                </ul>
               </div>
             </div>
 
-            <div v-if="recentServerUrls.length" class="space-y-2.5">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">最近连接</span>
-                <button type="button" class="text-xs font-medium text-muted-foreground hover:text-destructive transition-colors" @click="handleClearRecent">
-                  清空
-                </button>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="url in recentServerUrls"
-                  :key="url"
-                  type="button"
-                  class="px-2.5 py-1 rounded-md border border-border bg-muted/50 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-muted transition-colors truncate max-w-[200px]"
-                  @click="applyServerUrl(url)"
-                  :title="url"
-                >
-                  {{ url }}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Submit Button -->
-          <div class="pt-4">
             <Button
               type="submit"
-              class="w-full"
               size="lg"
               :loading="connecting"
               :disabled="!form.serverUrl.trim()"
+              class="auth-form__submit"
             >
-              {{ connecting ? '正在连接...' : '确认并进入系统' }}
+              {{ connecting ? '正在连接' : '确认并进入系统' }}
             </Button>
-          </div>
-        </form>
-      </div>
-      
-      <!-- Card Footer -->
-      <div class="p-4 sm:p-6 bg-muted border-t border-border text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
-        <span class="text-sm text-muted-foreground">本地开发？</span>
-        <button type="button" class="text-sm font-medium text-foreground hover:text-primary transition-colors underline decoration-border underline-offset-4 hover:decoration-primary" @click="fillLocalhost">
-          快速切换至本机地址
-        </button>
-      </div>
-    </main>
+          </form>
 
-    <!-- Back link -->
-    <router-link to="/login" class="mt-8 flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors relative z-10">
-      <AppIcon name="back" class="w-4 h-4" /> 返回登录页面
-    </router-link>
+          <footer class="auth-form__foot">
+            <span class="auth-form__foot-text">本地开发？</span>
+            <button
+              type="button"
+              class="auth-form__foot-link"
+              @click="fillLocalhost"
+            >
+              快速切换至本机地址
+            </button>
+          </footer>
+
+          <router-link to="/login" class="auth-form__back">
+            <AppIcon name="back" class="auth-form__back-icon" />
+            返回登录页面
+          </router-link>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 

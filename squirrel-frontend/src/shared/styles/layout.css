@@ -16,9 +16,32 @@
   --radius-lg: 8px;
   --radius-xl: 10px;
 
-  --brand-gradient: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--ring)));
-  --brand-glow: 0 8px 24px hsl(var(--primary) / 0.4);
-  --brand-glow-sm: 0 2px 10px hsl(var(--primary) / 0.4);
+  /* Brand mark badge — a real 3-stop gradient with visible depth so the badge
+     reads as "polished enamel" rather than a flat color block. Top-left is
+     lifted (light hitting the surface), bottom-right is the shadowed edge.
+
+     NOTE on implementation: do NOT use the CSS relative-color syntax
+     `hsl(from hsl(var(--primary)) h s calc(l + 10%))` here. Electron 41
+     ships Chromium 134, which silently resolves unsupported `from-color`
+     expressions to `transparent`, which makes the entire `var(--brand-gradient)`
+     evaluate to `none` and the badge renders as a hollow box. Verified via
+     Runtime.evaluate in the running app. Instead, hardcode the HSL shades as
+     literals — both themes override them below with theme-appropriate stops. */
+  --brand-light: hsl(28 95% 65%);
+  --brand-dark: hsl(28 78% 38%);
+  --brand-gradient:
+    linear-gradient(135deg,
+      var(--brand-light) 0%,
+      hsl(var(--primary)) 50%,
+      var(--brand-dark) 100%);
+  --brand-glow:
+    0 1px 2px hsl(0 0% 0% / 0.18),
+    0 8px 24px hsl(var(--primary) / 0.32),
+    0 0 0 1px hsl(var(--primary) / 0.08);
+  --brand-glow-sm:
+    0 1px 1px hsl(0 0% 0% / 0.15),
+    0 2px 10px hsl(var(--primary) / 0.28),
+    0 0 0 1px hsl(var(--primary) / 0.08);
 
   /* Z-index scale — single source of truth for stacking order across the app.
      Replaces the 54+ scattered `z-[60]`/`z-[100]` magic values. Aligned with
