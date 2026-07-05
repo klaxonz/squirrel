@@ -1,26 +1,23 @@
 <template>
   <aside
-    class="sidebar-rail relative h-full flex flex-col bg-sidebar border-r border-sidebar-border select-none w-[var(--sidebar-width)]"
+    class="sidebar-rail"
     :class="{ 'is-collapsed': !isSidebarOpen }"
   >
-    <!-- Navigation -->
     <nav
-      class="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar"
+      class="sidebar-nav custom-scrollbar"
       :class="[
-        isSidebarOpen ? 'px-2 space-y-4 pt-3' : 'px-1.5 space-y-2 pt-3',
-        showSidebarMusicPlayer ? 'pb-20' : 'pb-2'
+        isSidebarOpen ? 'is-expanded' : 'is-compact',
+        showSidebarMusicPlayer ? 'has-player' : ''
       ]"
     >
-      <div v-for="group in NAV_GROUPS" :key="group.key">
+      <div v-for="group in NAV_GROUPS" :key="group.key" class="sidebar-group">
         <div
           v-if="isSidebarOpen"
-          class="px-2 mb-0.5"
+          class="sidebar-group__label"
         >
-          <span class="text-2xs font-semibold tracking-[0.12em] text-muted-foreground/60 uppercase">
-            {{ group.label }}
-          </span>
+          {{ group.label }}
         </div>
-        <div class="space-y-0.5">
+        <div class="sidebar-group__items">
           <SidebarMenuItem
             v-for="item in group.items"
             :key="item.path"
@@ -32,8 +29,6 @@
       </div>
     </nav>
 
-    <!-- Collapse toggle — pinned to the sidebar's right edge, vertically
-         centered. Stays in one fixed spot across both states. -->
     <button
       type="button"
       class="sidebar-toggle"
@@ -67,26 +62,78 @@ const showSidebarMusicPlayer = computed(() =>
 
 <style scoped>
 .sidebar-rail {
-  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  width: var(--sidebar-width);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid hsl(var(--sidebar-border) / 0.82);
+  border-radius: calc(var(--radius-xl) + 4px);
+  background: hsl(var(--sidebar) / 0.94);
+  box-shadow:
+    0 1px 0 hsl(var(--foreground) / 0.035) inset,
+    0 18px 38px hsl(0 0% 0% / 0.2);
+  user-select: none;
+  transition:
+    width var(--duration-base) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+}
+
+.sidebar-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.sidebar-nav.is-expanded {
+  padding: var(--space-4) var(--space-3) var(--space-3);
+}
+
+.sidebar-nav.is-compact {
+  padding: var(--space-4) var(--space-2) var(--space-3);
+}
+
+.sidebar-nav.has-player {
+  padding-bottom: 5rem;
+}
+
+.sidebar-group + .sidebar-group {
+  margin-top: var(--space-6);
+}
+
+.sidebar-group__label {
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-2);
+  color: hsl(var(--muted-foreground) / 0.72);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.sidebar-group__items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .sidebar-toggle {
   position: absolute;
-  top: 50%;
-  right: -13px;
-  transform: translateY(-50%);
-  z-index: 51;
-  width: 26px;
-  height: 26px;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  z-index: 1;
+  width: 1.75rem;
+  height: 1.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
-  background: hsl(var(--background));
+  border-radius: var(--radius-md);
+  background: hsl(var(--background) / 0.72);
   border: 1px solid hsl(var(--border) / 0.6);
   color: hsl(var(--muted-foreground));
   cursor: pointer;
-  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.08);
+  box-shadow: none;
   transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .sidebar-toggle:hover {

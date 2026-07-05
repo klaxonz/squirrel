@@ -1,7 +1,7 @@
 <template>
   <div :class="[
     layout === 'list' ? 'flex flex-row gap-4' : 'flex flex-col gap-3',
-    'animate-pulse'
+    'video-skeleton'
   ]" :style="{ animationDelay: `${delay}ms` }">
     <div :class="[
       layout === 'list' ? 'w-48 shrink-0 md:w-64 relative aspect-video rounded-xl bg-muted overflow-hidden' : 'relative aspect-video rounded-xl bg-muted overflow-hidden'
@@ -30,3 +30,24 @@ defineProps<{
   layout?: 'grid' | 'list'
 }>()
 </script>
+
+<style scoped>
+.video-skeleton {
+  animation: video-skeleton-pulse 1.6s var(--ease-default) infinite;
+}
+
+@keyframes video-skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.62;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-skeleton {
+    animation: none;
+  }
+}
+</style>

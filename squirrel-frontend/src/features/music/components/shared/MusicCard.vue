@@ -112,11 +112,7 @@ function handleCoverError() {
 <style scoped>
 .music-card {
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.music-card:hover {
-  transform: translateY(-4px);
+  outline: none;
 }
 
 .music-card--xs .music-card-info { padding: 0.375rem 0; }
@@ -131,23 +127,18 @@ function handleCoverError() {
   border-radius: var(--card-radius, 12px);
   overflow: hidden;
   background: hsl(var(--muted) / 0.3);
-  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.08), 0 2px 4px hsl(var(--foreground) / 0.04);
-  transition: box-shadow 0.25s ease;
+  border: 1px solid hsl(var(--border) / 0.42);
+  transition: border-color 0.16s ease;
 }
 
 .music-card:hover .music-card-cover {
-  box-shadow: 0 8px 28px hsl(var(--foreground) / 0.14), 0 4px 8px hsl(var(--foreground) / 0.06);
+  border-color: hsl(var(--primary) / 0.28);
 }
 
 .music-card-cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.music-card:hover .music-card-cover img {
-  transform: scale(1.06);
 }
 
 .music-card-placeholder {
@@ -165,7 +156,7 @@ function handleCoverError() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, transparent 0%, hsl(var(--foreground) / 0.55) 100%);
+  background: hsl(var(--background) / 0.48);
 }
 
 .music-card-play-btn {
@@ -174,18 +165,16 @@ function handleCoverError() {
   justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
-  border-radius: 9999px;
+  border-radius: 0.625rem;
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.15);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.16s ease, transform 0.16s ease;
 }
 
 .music-card-play-btn:hover {
-  transform: scale(1.1);
-  box-shadow: 0 6px 20px hsl(var(--foreground) / 0.2);
+  transform: scale(1.03);
 }
 
 .music-card-playing-badge {
@@ -197,7 +186,7 @@ function handleCoverError() {
   justify-content: center;
   width: 1.5rem;
   height: 1.5rem;
-  border-radius: 9999px;
+  border-radius: 0.4375rem;
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
 }
@@ -209,10 +198,10 @@ function handleCoverError() {
   padding: 0.125rem 0.5rem;
   font-size: 0.625rem;
   font-weight: 600;
-  background: hsl(var(--background) / 0.85);
+  background: hsl(var(--background) / 0.88);
   color: hsl(var(--foreground));
   border-radius: 0.25rem;
-  backdrop-filter: blur(4px);
+  border: 1px solid hsl(var(--border) / 0.35);
 }
 
 .music-card-info {
@@ -226,6 +215,11 @@ function handleCoverError() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.music-card:focus-visible .music-card-cover {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.28);
 }
 
 .music-card--xs .music-card-title { font-size: 0.75rem; }
@@ -245,5 +239,12 @@ function handleCoverError() {
   font-size: 0.6875rem;
   color: hsl(var(--muted-foreground) / 0.7);
   margin-top: 0.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-card-cover,
+  .music-card-play-btn {
+    transition: none;
+  }
 }
 </style>

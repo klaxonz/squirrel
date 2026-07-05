@@ -167,9 +167,9 @@ const subtitleText = computed(() => {
 
 <style scoped>
 .music-greeting {
-  padding: 0.875rem 0 1.375rem;
+  padding: 0.75rem 0 1.5rem;
   width: 100%;
-  max-width: 1480px;
+  max-width: 1440px;
 }
 
 .music-greeting-header {
@@ -177,7 +177,7 @@ const subtitleText = computed(() => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.875rem;
+  margin-bottom: 1rem;
 }
 
 .music-greeting-left {
@@ -188,9 +188,9 @@ const subtitleText = computed(() => {
 }
 
 .music-greeting-avatar {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 9999px;
+  width: 2.625rem;
+  height: 2.625rem;
+  border-radius: 0.625rem;
   background: hsl(var(--muted) / 0.5);
   display: flex;
   align-items: center;
@@ -211,10 +211,8 @@ const subtitleText = computed(() => {
 }
 
 .music-greeting-title {
-  /* Hero greeting — uses the display font + a slightly larger hero cut
-     (between h1 and the next step up) for the music landing surface. */
   font-family: var(--app-heading-font);
-  font-size: 1.375rem;
+  font-size: 1.3125rem;
   font-weight: var(--app-h1-weight);
   color: var(--app-heading-color);
   letter-spacing: var(--app-h1-tracking);
@@ -243,7 +241,7 @@ const subtitleText = computed(() => {
   background: hsl(var(--card));
   color: hsl(var(--foreground) / 0.7);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 }
 
 .music-continue-button:hover {
@@ -270,7 +268,7 @@ const subtitleText = computed(() => {
 
 .music-greeting-actions {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(12rem, 1fr));
+  grid-template-columns: minmax(0, 1.8fr) repeat(2, minmax(12rem, 0.9fr));
   gap: 0.875rem;
   align-items: stretch;
 }
@@ -280,11 +278,11 @@ const subtitleText = computed(() => {
   grid-template-columns: minmax(11rem, 1fr) auto auto;
   align-items: center;
   gap: 0.75rem;
-  min-height: 4.75rem;
-  padding: 0.75rem 0.875rem;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.875rem;
-  background: hsl(var(--background) / 0.72);
+  min-height: 4.5rem;
+  padding: 0.75rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 0.625rem;
+  background: hsl(var(--card) / 0.54);
 }
 
 .music-fm-main {
@@ -310,7 +308,7 @@ const subtitleText = computed(() => {
   justify-content: center;
   width: 2.25rem;
   height: 2.25rem;
-  border-radius: 0.625rem;
+  border-radius: 0.5rem;
   background: hsl(var(--muted) / 0.55);
   color: hsl(var(--foreground) / 0.7);
   flex-shrink: 0;
@@ -338,10 +336,10 @@ const subtitleText = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.875rem;
-  height: 1.875rem;
+  width: 2rem;
+  height: 2rem;
   border: none;
-  border-radius: 9999px;
+  border-radius: 0.5rem;
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   cursor: pointer;
@@ -404,7 +402,13 @@ const subtitleText = computed(() => {
 .music-fm-chip--active {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-continue-button,
+  .music-fm-chip {
+    transition: none;
+  }
 }
 
 @media (max-width: 1100px) {

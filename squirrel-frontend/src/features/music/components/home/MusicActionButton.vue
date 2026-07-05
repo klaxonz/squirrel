@@ -38,52 +38,23 @@ const variantClass = computed(() => `music-action-button--${props.variant}`)
   display: flex;
   align-items: center;
   gap: 0.875rem;
-  min-height: 4.75rem;
+  min-height: 4.5rem;
   height: 100%;
-  padding: 0.625rem 0.875rem;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  background: hsl(var(--card) / 0.62);
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 0.625rem;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
   text-align: left;
   position: relative;
   overflow: hidden;
   flex: 1;
 }
 
-.music-action-button::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-.music-action-button--primary::before {
-  background: radial-gradient(circle at top right, hsl(var(--primary) / 0.06) 0%, transparent 70%);
-}
-
-.music-action-button--fm::before {
-  background: radial-gradient(circle at top right, hsl(var(--foreground) / 0.04) 0%, transparent 70%);
-}
-
-.music-action-button--daily::before {
-  background: radial-gradient(circle at top right, hsl(25, 95%, 53% / 0.08) 0%, transparent 70%);
-}
-
-.music-action-button--rank::before {
-  background: radial-gradient(circle at top right, hsl(199, 89%, 48% / 0.08) 0%, transparent 70%);
-}
-
 .music-action-button:hover {
-  border-color: hsl(var(--primary) / 0.2);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px hsl(var(--foreground) / 0.08);
-}
-
-.music-action-button:hover::before {
-  opacity: 1;
+  border-color: hsl(var(--primary) / 0.28);
+  background: hsl(var(--muted) / 0.34);
 }
 
 .music-action-icon {
@@ -92,7 +63,7 @@ const variantClass = computed(() => `music-action-button--${props.variant}`)
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  border-radius: 0.625rem;
+  border-radius: 0.5rem;
   flex-shrink: 0;
   position: relative;
   z-index: 1;
@@ -145,7 +116,7 @@ const variantClass = computed(() => `music-action-button--${props.variant}`)
 .music-action-arrow {
   color: hsl(var(--muted-foreground) / 0.4);
   flex-shrink: 0;
-  transition: transform 0.2s ease;
+  transition: transform 0.16s ease, color 0.16s ease;
   position: relative;
   z-index: 1;
 }
@@ -153,6 +124,13 @@ const variantClass = computed(() => `music-action-button--${props.variant}`)
 .music-action-button:hover .music-action-arrow {
   transform: translateX(3px);
   color: hsl(var(--foreground) / 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-action-button,
+  .music-action-arrow {
+    transition: none;
+  }
 }
 
 @media (max-width: 1100px) {

@@ -26,15 +26,15 @@ defineProps<{
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-5);
   width: 100%;
-  padding: 0.25rem 0;
+  padding: var(--space-2) 0 var(--space-4);
 }
 
 .page-header__copy {
   min-width: 0;
   display: grid;
-  gap: 0.2rem;
+  gap: var(--space-2);
 }
 
 .page-header__title-row {
@@ -45,24 +45,24 @@ defineProps<{
 }
 
 .page-header__title {
-  /* Size/weight/leading/tracking/family now come from the .app-h2 utility
-     applied in the template; this block only owns color fallback for callers
-     that pass a custom title class. */
   color: hsl(var(--foreground));
+  text-wrap: balance;
 }
 
 .page-header__description {
   margin: 0;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  line-height: 1.45;
+  max-width: 56rem;
+  color: hsl(var(--muted-foreground) / 0.92);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  text-wrap: pretty;
 }
 
 .page-header__actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.375rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
   flex-shrink: 0;
 }

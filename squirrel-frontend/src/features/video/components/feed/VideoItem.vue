@@ -1,6 +1,6 @@
 <template>
-  <div
-    class="group flex cursor-pointer rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"
+  <article
+    class="video-item group"
     :class="layout === 'list' ? 'flex-row gap-4' : 'flex-col gap-2.5'"
     role="button"
     tabindex="0"
@@ -113,7 +113,7 @@
         @toggleLike="toggleLikeVideo"
       />
     </Teleport>
-  </div>
+  </article>
 </template>
 
 <script setup lang="ts">
@@ -239,3 +239,29 @@ const toggleLater = async () => {
 onMounted(() => document.addEventListener('closeAllContextMenus', closeMenuOnExternalClose))
 onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenuOnExternalClose))
 </script>
+
+<style scoped>
+.video-item {
+  display: flex;
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  outline: none;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
+}
+
+.video-item:hover {
+  transform: translateY(-1px);
+}
+
+.video-item:focus-visible {
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-item:hover {
+    transform: none;
+  }
+}
+</style>

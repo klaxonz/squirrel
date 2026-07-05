@@ -138,8 +138,8 @@ function handlePlayTrack(track: MusicTrack) {
 
 <style scoped>
 .music-home {
-  padding: 0.875rem 2rem 2.5rem;
+  padding: 0 2rem 2.5rem;
   width: 100%;
-  max-width: 1480px;
+  max-width: 1440px;
 }
 </style>

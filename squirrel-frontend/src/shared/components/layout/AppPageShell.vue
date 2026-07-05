@@ -27,7 +27,9 @@ defineProps<{
   min-height: 100%;
   flex-direction: column;
   color: hsl(var(--foreground));
-  background: hsl(var(--background));
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.22), transparent 12rem),
+    hsl(var(--background) / 0.3);
 }
 
 .app-page-shell--fill {
@@ -40,18 +42,20 @@ defineProps<{
 }
 
 .app-page-shell--default {
-  padding: 0 var(--app-page-gutter);
+  padding: var(--space-5) var(--app-page-gutter) var(--app-content-padding-bottom);
 }
 
 @media (min-width: 640px) {
   .app-page-shell--default {
-    padding: 0 var(--app-page-gutter-sm);
+    padding-left: var(--app-page-gutter-sm);
+    padding-right: var(--app-page-gutter-sm);
   }
 }
 
 @media (min-width: 1024px) {
   .app-page-shell--default {
-    padding: 0 var(--app-page-gutter-lg);
+    padding-left: var(--app-page-gutter-lg);
+    padding-right: var(--app-page-gutter-lg);
   }
 }
 

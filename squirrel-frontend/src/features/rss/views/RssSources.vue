@@ -1,10 +1,10 @@
 <template>
   <AppPageShell variant="compact" fill>
-    <div class="flex h-full min-h-0 overflow-hidden bg-background text-foreground selection:bg-primary/10">
+    <div class="rss-workbench">
       <!-- 1. Left Sidebar: Accounts & Feeds -->
-      <aside class="flex min-h-0 w-[320px] shrink-0 flex-col border-r border-border/20 bg-muted/20 dark:bg-muted/5">
+      <aside class="rss-sidebar">
         <!-- Header -->
-        <div class="flex h-20 shrink-0 items-center justify-between border-b border-border/20 px-5 bg-background/50 backdrop-blur-sm">
+        <div class="rss-sidebar-header">
           <div class="min-w-0 flex flex-col justify-center">
             <h1 class="app-h2 truncate">RSS 内容源</h1>
             <p class="mt-0.5 text-xs font-medium text-muted-foreground/70">{{ accounts.length }} 个服务账号</p>
@@ -12,7 +12,7 @@
           <Button 
             variant="ghost" 
             size="icon" 
-            class="h-9 w-9 rounded-full bg-primary/5 hover:bg-primary/10 text-primary transition-colors shrink-0" 
+            class="rss-icon-button rss-icon-button--primary"
             @click="openAddAccount"
           >
             <AppIcon name="plus" class="h-5 w-5" />
@@ -20,7 +20,7 @@
         </div>
 
         <!-- Controls: Dropdown & Search -->
-        <div class="shrink-0 space-y-3 border-b border-border/10 p-4 bg-background/20 backdrop-blur-sm z-10">
+        <div class="rss-sidebar-controls">
           <AccountDropdown
             :accounts="accounts"
             :selected-id="selectedAccountId"
@@ -36,11 +36,11 @@
           <!-- Selected Account Sync Info -->
           <div 
             v-if="selectedAccount" 
-            class="flex items-center justify-between p-2 rounded-lg bg-accent/20 border border-border/10 text-xs text-muted-foreground/90"
+            class="rss-sync-status"
           >
             <span 
               class="truncate pr-1 flex-1 min-w-0"
-              :class="{ 'text-primary font-semibold animate-pulse': syncing, 'text-destructive': statusError }"
+              :class="{ 'rss-sync-status__text--active': syncing, 'text-destructive': statusError }"
               :title="statusMessage"
             >
               {{ statusMessage || (selectedAccount.last_sync_at ? '同步于 ' + formatDate(selectedAccount.last_sync_at) : '从未同步') }}
@@ -64,7 +64,7 @@
               </button>
               <div 
                 v-if="showSyncMenu" 
-                class="absolute right-0 top-full z-50 mt-1 w-28 rounded-lg border border-border/50 bg-background/95 backdrop-blur-xl p-1 shadow-lg"
+                class="rss-sync-menu"
               >
                 <button 
                   @click="syncSelectedAccount(true); showSyncMenu = false" 
@@ -85,7 +85,7 @@
               type="text"
               placeholder="搜索订阅源..."
               aria-label="搜索订阅源"
-              class="h-8 w-full rounded-lg border border-transparent bg-muted/40 pl-8 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 hover:bg-muted/60 focus:border-primary/30 focus:bg-background focus:ring-2 focus:ring-primary/15"
+              class="rss-search-input"
             />
           </div>
         </div>
@@ -106,14 +106,14 @@
       </aside>
 
       <!-- 2. Middle Column: Article List Flow -->
-      <section class="flex h-full min-h-0 w-[400px] shrink-0 flex-col bg-background border-r border-border/10 relative z-10">
-        <header class="relative flex shrink-0 flex-col border-b border-border/10 bg-background/70 p-4 backdrop-blur-2xl z-20">
+      <section class="rss-entry-pane">
+        <header class="rss-entry-header">
           <div class="flex items-center justify-between w-full">
             <div class="min-w-0">
               <div class="flex items-center gap-2">
                 <button
                   v-if="feedNavStack"
-                  class="shrink-0 flex items-center gap-1 rounded-full bg-muted/40 px-2.5 py-1 text-2xs font-semibold text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 cursor-pointer"
+                  class="rss-back-button"
                   title="返回之前的列表"
                   aria-label="返回之前的列表"
                   @click="goBackFromFeed"
@@ -134,7 +134,7 @@
             </div>
 
             <button
-              class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background shrink-0"
+              class="rss-icon-button"
               :disabled="loading"
               title="刷新文章"
               aria-label="刷新文章"
@@ -155,39 +155,39 @@
                 type="text"
                 placeholder="搜索文章..."
                 aria-label="搜索文章"
-                class="h-8 w-full rounded-lg border border-transparent bg-muted/40 pl-8 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 hover:bg-muted/60 focus:border-primary/30 focus:bg-background focus:ring-2 focus:ring-primary/15"
+                class="rss-search-input"
               />
             </div>
 
             <!-- iOS/Reeder segmented control -->
-            <div class="flex items-center gap-0.5 rounded-lg bg-muted/40 p-0.5">
+            <div class="rss-filter-tabs">
               <button
-                class="flex-1 h-7 py-1 text-2xs font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                :class="activeFilter === 'all' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                class="rss-filter-tab"
+                :class="{ 'rss-filter-tab--active': activeFilter === 'all' }"
                 :aria-pressed="activeFilter === 'all'"
                 @click="activeFilter = 'all'"
               >
                 全部
               </button>
               <button
-                class="flex-1 h-7 py-1 text-2xs font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                :class="activeFilter === 'unread' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                class="rss-filter-tab"
+                :class="{ 'rss-filter-tab--active': activeFilter === 'unread' }"
                 :aria-pressed="activeFilter === 'unread'"
                 @click="activeFilter = 'unread'"
               >
                 未读
               </button>
               <button
-                class="flex-1 h-7 py-1 text-2xs font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                :class="activeFilter === 'starred' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                class="rss-filter-tab"
+                :class="{ 'rss-filter-tab--active': activeFilter === 'starred' }"
                 :aria-pressed="activeFilter === 'starred'"
                 @click="activeFilter = 'starred'"
               >
                 星标
               </button>
               <button
-                class="flex-1 h-7 py-1 text-2xs font-bold rounded-md transition-all text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                :class="activeFilter === 'recent' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                class="rss-filter-tab"
+                :class="{ 'rss-filter-tab--active': activeFilter === 'recent' }"
                 :aria-pressed="activeFilter === 'recent'"
                 @click="activeFilter = 'recent'"
               >
@@ -223,7 +223,7 @@
               <div
                 v-for="entry in filteredEntries"
                 :key="entry.id"
-                class="group relative flex flex-col justify-between py-4 px-3.5 transition-all duration-200 ease-out cursor-pointer animate-fade-in outline-none focus-visible:bg-accent/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
+                class="rss-entry-item group"
                 :class="readingEntry && String(readingEntry.id) === String(entry.id) ? 'bg-primary/5' : 'bg-transparent hover:bg-accent/5'"
                 role="button"
                 tabindex="0"
@@ -292,9 +292,9 @@
       </section>
 
       <!-- 3. Right Column: Permanent Article Content Reader -->
-      <main class="flex h-full min-h-0 flex-1 min-w-0 flex-col bg-background relative overflow-hidden border-l border-border/10">
+      <main class="rss-reader-pane">
         <!-- If an article is selected, render it -->
-        <div v-if="readingEntry" class="flex h-full min-h-0 flex-col overflow-hidden animate-fade-in bg-background relative">
+        <div v-if="readingEntry" class="rss-reader-active">
           <!-- Reader Header (Clean compact toolbar) -->
           <header class="shrink-0 border-b border-border/10 h-14 px-6 bg-background flex items-center justify-between relative z-20">
             <!-- Left Side: Source badge (clickable to view feed) -->
@@ -313,7 +313,7 @@
             <div class="flex items-center gap-1 shrink-0">
               <!-- 应用内预览原文 -->
               <button
-                class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                class="rss-icon-button"
                 title="在应用内打开原文"
                 aria-label="在应用内打开原文"
                 @click="openInAppBrowser"
@@ -326,7 +326,7 @@
                 :href="readingEntry.canonical_url"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                class="rss-icon-button"
                 title="在系统浏览器打开"
                 aria-label="在系统浏览器打开"
               >
@@ -335,7 +335,7 @@
 
               <!-- 收藏 / 取消收藏 -->
               <button
-                class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                class="rss-icon-button"
                 :class="readingEntry.is_starred ? 'text-warning' : ''"
                 :title="readingEntry.is_starred ? '取消收藏' : '收藏文章'"
                 :aria-label="readingEntry.is_starred ? '取消收藏' : '收藏文章'"
@@ -347,7 +347,7 @@
 
               <!-- 取消订阅该源 -->
               <button
-                class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-destructive/15 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                class="rss-icon-button rss-icon-button--danger"
                 title="取消订阅该源"
                 aria-label="取消订阅该源"
                 @click="unsubscribeCurrentFeedFromReader"
@@ -358,7 +358,7 @@
               <!-- Reader Settings -->
               <div class="relative" ref="readerSettingsRef">
                 <button
-                  class="flex size-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground outline-none transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  class="rss-icon-button"
                   :aria-expanded="showReaderSettings"
                   title="阅读个性化设置"
                   aria-label="阅读个性化设置"
@@ -415,10 +415,10 @@
           <!-- Reeder-style Slide-over In-App Browser Overlay -->
           <div 
             v-if="showInAppBrowser"
-            class="absolute inset-0 z-30 bg-background flex flex-col shadow-2xl border-l border-border/10 animate-fade-in"
+            class="rss-browser-overlay"
           >
             <!-- Browser Toolbar -->
-            <header class="shrink-0 border-b border-border/10 h-14 px-6 bg-background/95 backdrop-blur-md flex items-center justify-between relative z-20">
+            <header class="rss-browser-toolbar">
               <!-- Left Side: Back/Close button -->
               <div class="flex items-center gap-3 min-w-0">
                 <button 
@@ -437,7 +437,7 @@
               </div>
 
               <!-- Center: Address Bar (Globe + Domain) -->
-              <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex items-center bg-accent/20 px-3 py-1 rounded-lg border border-border/5 text-2xs font-medium text-muted-foreground/85 max-w-[220px] lg:max-w-[320px] truncate shadow-inner">
+              <div class="rss-browser-address">
                 <AppIcon name="siteFallback" class="h-3.5 w-3.5 mr-1.5 text-muted-foreground/60 shrink-0" />
                 <span class="truncate">{{ getDisplayDomain(readingEntry.canonical_url) }}</span>
               </div>
@@ -479,8 +479,8 @@
               />
               
               <!-- Fallback Browser Alert for web users -->
-              <div v-if="!isElectron && !iframeLoading" class="absolute bottom-4 right-4 max-w-xs p-3 rounded-xl border border-border bg-popover text-popover-foreground shadow-lg text-2xs leading-relaxed z-20 flex flex-col gap-1.5 animate-fade-in">
-                <span class="font-bold text-foreground">💡 原文加载提示</span>
+              <div v-if="!isElectron && !iframeLoading" class="rss-browser-alert">
+                <span class="font-bold text-foreground">原文加载提示</span>
                 <span class="text-muted-foreground">如果页面显示空白或拒绝连接，是由于源站安全策略限制。您可以点击右上角图标在外部浏览器中打开。</span>
               </div>
             </div>
@@ -488,8 +488,8 @@
         </div>
         
         <!-- If no article is selected, render a gorgeous premium workstation-themed placeholder -->
-        <div v-else class="flex flex-col items-center justify-center flex-1 text-center p-8 bg-background/30 backdrop-blur-sm h-full select-none">
-          <div class="h-20 w-20 rounded-2xl bg-accent/20 flex items-center justify-center mb-5 border border-border/10 shadow-inner ring-4 ring-accent/5 animate-pulse">
+        <div v-else class="rss-reader-empty">
+          <div class="rss-reader-empty-icon">
             <AppIcon name="library" class="h-9 w-9 text-primary/70" />
           </div>
           <p class="text-xs text-muted-foreground max-w-[280px] leading-relaxed">
@@ -525,7 +525,7 @@
 
     <!-- 5. Subscribe Feed Dialog -->
     <Dialog :open="showSubscribeModal" @update:open="showSubscribeModal = $event">
-      <DialogContent class="max-w-md !overflow-visible rounded-xl p-0 border border-border/30 bg-background/95 backdrop-blur-xl shadow-xl transition-all duration-200">
+      <DialogContent class="max-w-md !overflow-visible rounded-lg p-0 border border-border/60 bg-background shadow-none transition-colors duration-150">
         <DialogHeader class="border-b border-border/10 p-5 text-left">
           <DialogTitle class="text-base font-bold text-foreground">添加订阅源</DialogTitle>
           <DialogDescription class="text-xs text-muted-foreground mt-1 leading-normal">
@@ -1039,6 +1039,349 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.rss-workbench {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, hsl(var(--muted) / 0.10), transparent 10rem),
+    hsl(var(--background));
+  color: hsl(var(--foreground));
+  selection-color: hsl(var(--foreground));
+}
+
+.rss-sidebar {
+  display: flex;
+  min-height: 0;
+  width: 20rem;
+  flex: none;
+  flex-direction: column;
+  border-right: 1px solid hsl(var(--border) / 0.48);
+  background: hsl(var(--card) / 0.38);
+}
+
+.rss-sidebar-header {
+  display: flex;
+  min-height: 4.75rem;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.875rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.42);
+  padding: 0 1.125rem;
+}
+
+.rss-sidebar-controls {
+  position: relative;
+  z-index: 10;
+  flex: none;
+  border-bottom: 1px solid hsl(var(--border) / 0.32);
+  padding: 0.875rem;
+}
+
+.rss-sidebar-controls > * + * {
+  margin-top: 0.75rem;
+}
+
+.rss-sync-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.45);
+  border-radius: 0.5rem;
+  background: hsl(var(--muted) / 0.24);
+  padding: 0.5rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+.rss-sync-status__text--active {
+  color: hsl(var(--primary));
+  font-weight: 650;
+}
+
+.rss-sync-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 50;
+  width: 7rem;
+  margin-top: 0.25rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 0.5rem;
+  background: hsl(var(--popover));
+  padding: 0.25rem;
+  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.12);
+}
+
+.rss-search-input {
+  height: 2rem;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: hsl(var(--muted) / 0.36);
+  padding: 0 0.75rem 0 2rem;
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rss-search-input::placeholder {
+  color: hsl(var(--muted-foreground) / 0.72);
+}
+
+.rss-search-input:hover {
+  background: hsl(var(--muted) / 0.48);
+}
+
+.rss-search-input:focus {
+  border-color: hsl(var(--primary) / 0.35);
+  background: hsl(var(--background));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.14);
+}
+
+.rss-entry-pane {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  width: 25rem;
+  flex: none;
+  flex-direction: column;
+  border-right: 1px solid hsl(var(--border) / 0.42);
+  background: hsl(var(--background));
+}
+
+.rss-entry-header {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  border-bottom: 1px solid hsl(var(--border) / 0.38);
+  background: hsl(var(--background));
+  padding: 0.875rem;
+}
+
+.rss-back-button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid hsl(var(--border) / 0.42);
+  border-radius: 0.4375rem;
+  background: hsl(var(--muted) / 0.36);
+  padding: 0.25rem 0.5rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.625rem;
+  font-weight: 700;
+  outline: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.rss-back-button:hover {
+  background: hsl(var(--muted) / 0.58);
+  color: hsl(var(--foreground));
+}
+
+.rss-icon-button {
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: hsl(var(--muted) / 0.38);
+  color: hsl(var(--muted-foreground));
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.rss-icon-button:hover {
+  background: hsl(var(--muted) / 0.58);
+  color: hsl(var(--foreground));
+}
+
+.rss-icon-button:focus-visible,
+.rss-back-button:focus-visible,
+.rss-filter-tab:focus-visible {
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.35);
+}
+
+.rss-icon-button--primary {
+  background: hsl(var(--primary) / 0.10);
+  color: hsl(var(--primary));
+}
+
+.rss-icon-button--danger:hover {
+  background: hsl(var(--destructive) / 0.12);
+  color: hsl(var(--destructive));
+}
+
+.rss-filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  border-radius: 0.5rem;
+  background: hsl(var(--muted) / 0.36);
+  padding: 0.1875rem;
+}
+
+.rss-filter-tab {
+  height: 1.75rem;
+  flex: 1;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.rss-filter-tab:hover,
+.rss-filter-tab--active {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.rss-entry-item {
+  position: relative;
+  display: flex;
+  cursor: pointer;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1rem 0.875rem;
+  outline: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.rss-entry-item:focus-visible {
+  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.35);
+}
+
+.rss-reader-pane {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: hsl(var(--background));
+}
+
+.rss-reader-active {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: hsl(var(--background));
+}
+
+.rss-browser-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid hsl(var(--border) / 0.42);
+  background: hsl(var(--background));
+  box-shadow: -16px 0 32px hsl(var(--foreground) / 0.12);
+}
+
+.rss-browser-toolbar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  height: 3.5rem;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid hsl(var(--border) / 0.38);
+  background: hsl(var(--background));
+  padding: 0 1.5rem;
+}
+
+.rss-browser-address {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: none;
+  max-width: 20rem;
+  transform: translate(-50%, -50%);
+  align-items: center;
+  border: 1px solid hsl(var(--border) / 0.42);
+  border-radius: 0.5rem;
+  background: hsl(var(--muted) / 0.28);
+  padding: 0.25rem 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .rss-browser-address {
+    display: flex;
+  }
+}
+
+.rss-browser-alert {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 20;
+  display: flex;
+  max-width: 20rem;
+  flex-direction: column;
+  gap: 0.375rem;
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: 0.625rem;
+  background: hsl(var(--popover));
+  padding: 0.75rem;
+  color: hsl(var(--popover-foreground));
+  font-size: 0.6875rem;
+  line-height: 1.55;
+  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.12);
+}
+
+.rss-reader-empty {
+  display: flex;
+  height: 100%;
+  flex: 1;
+  user-select: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--background));
+  padding: 2rem;
+  text-align: center;
+}
+
+.rss-reader-empty-icon {
+  display: flex;
+  width: 5rem;
+  height: 5rem;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  border: 1px solid hsl(var(--border) / 0.42);
+  border-radius: 0.875rem;
+  background: hsl(var(--muted) / 0.28);
+}
+
 /* Scoped stylesheet for reader content typography — WeRead-inspired */
 .font-serif {
   font-family: Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
@@ -1253,7 +1596,7 @@ onUnmounted(() => {
 /* Blockquotes — left bar, quiet */
 .reader-content :deep(blockquote) {
   border: none;
-  border-left: 3px solid hsl(var(--primary) / 0.35);
+  box-shadow: inset 2px 0 0 hsl(var(--primary) / 0.42);
   padding: 0.5rem 1.25rem;
   margin: 1.5rem 0;
   background: transparent;
@@ -1308,5 +1651,19 @@ onUnmounted(() => {
 
 .animate-fade-in {
   animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in {
+    animation: none;
+  }
+
+  .rss-search-input,
+  .rss-back-button,
+  .rss-icon-button,
+  .rss-filter-tab,
+  .rss-entry-item {
+    transition: none;
+  }
 }
 </style>

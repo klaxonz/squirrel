@@ -15,17 +15,10 @@
 </template>
 
 <script setup lang="ts">
-/**
- * Two-column app shell: fixed sidebar + scrollable main with a sticky header.
- * Collapses the duplicated `<aside w-72 border-r> + <header h-14 border-b>`
- * markup that ScheduledTasks / Settings / SiteRuntimeManager each hand-rolled.
- * Sidebar is hidden below `lg`; the mobile nav (if any) is left to the caller
- * since each page wires it differently.
- */
 withDefaults(defineProps<{
   sidebarWidth?: string
 }>(), {
-  sidebarWidth: '18rem',
+  sidebarWidth: '17.5rem',
 })
 </script>
 
@@ -34,7 +27,9 @@ withDefaults(defineProps<{
   display: flex;
   height: 100%;
   overflow: hidden;
-  background: hsl(var(--background));
+  background:
+    linear-gradient(180deg, hsl(var(--muted) / 0.12), transparent 12rem),
+    hsl(var(--background));
   color: hsl(var(--foreground));
 }
 
@@ -43,8 +38,8 @@ withDefaults(defineProps<{
   flex-direction: column;
   flex: none;
   width: v-bind(sidebarWidth);
-  border-right: 1px solid hsl(var(--border) / 0.5);
-  background: hsl(var(--background));
+  border-right: 1px solid hsl(var(--border) / 0.58);
+  background: hsl(var(--card) / 0.42);
 }
 
 .app-two-column__main {
@@ -52,7 +47,7 @@ withDefaults(defineProps<{
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  background: hsl(var(--background));
+  background: transparent;
 }
 
 .app-two-column__header {
@@ -61,8 +56,9 @@ withDefaults(defineProps<{
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  height: 3.5rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  min-height: 4.25rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.48);
+  background: hsl(var(--background) / 0.72);
   padding-inline: 1rem;
 }
 

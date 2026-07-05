@@ -2,46 +2,46 @@
   <AppPageShell variant="compact">
     <AppTwoColumnLayout>
       <template #sidebar>
-        <div class="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
+        <div class="settings-sidebar-header">
           <div class="min-w-0">
             <h1 class="app-h3 truncate">设置</h1>
-            <p class="mt-0.5 text-xs text-muted-foreground">{{ activeTab.label }}</p>
+            <p>{{ activeTab.label }}</p>
           </div>
-          <span v-if="hasUnsavedChanges" class="inline-flex h-7 items-center rounded-md border border-border/50 bg-muted px-2 text-xs text-muted-foreground">
+          <span v-if="hasUnsavedChanges" class="settings-save-state">
             保存中
           </span>
         </div>
 
-        <nav class="flex-1 space-y-1 overflow-y-auto p-2 custom-scrollbar">
+        <nav class="settings-sidebar-nav custom-scrollbar">
           <button
             v-for="tab in tabs"
             :key="tab.key"
             @click="navigateToTab(tab.path)"
-            class="flex h-10 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-medium transition-colors"
-            :class="currentTab === tab.key ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'"
+            class="settings-nav-item"
+            :class="{ 'settings-nav-item--active': currentTab === tab.key }"
           >
             <AppIcon :name="tab.icon" class="h-4 w-4" />
             <span class="min-w-0 flex-1 truncate">{{ tab.label }}</span>
-            <span v-if="tab.badge" class="text-xs font-normal text-muted-foreground">{{ tab.badge }}</span>
+            <span v-if="tab.badge" class="settings-nav-badge">{{ tab.badge }}</span>
           </button>
         </nav>
       </template>
 
       <template #header>
-        <div class="min-w-0">
+        <div class="settings-header-copy">
           <h2 class="app-h2 truncate">{{ activeTab.label }}</h2>
-          <p class="mt-0.5 text-xs text-muted-foreground">{{ activeTabDescription }}</p>
+          <p>{{ activeTabDescription }}</p>
         </div>
 
-        <div class="flex shrink-0 items-center gap-2">
-          <span v-if="hasUnsavedChanges" class="hidden h-7 items-center rounded-md border border-border/50 bg-muted px-2 text-xs text-muted-foreground sm:inline-flex">
+        <div class="settings-header-actions">
+          <span v-if="hasUnsavedChanges" class="settings-save-state settings-save-state--header">
             保存中
           </span>
         </div>
       </template>
 
-        <div class="flex-1 overflow-y-auto custom-scrollbar">
-          <main class="mx-auto w-full max-w-[960px] p-4 lg:p-6">
+        <div class="settings-scroll custom-scrollbar">
+          <main class="settings-main">
             <div v-if="pageLoading" class="space-y-3">
               <AppSkeleton height="3rem" rounded="var(--radius-lg)" shimmer />
               <AppSkeleton height="12rem" rounded="var(--radius-lg)" shimmer />
@@ -55,13 +55,13 @@
                   <p>选择偏好的视觉主题。</p>
                 </div>
 
-                <div class="grid gap-3 sm:grid-cols-3">
+                <div class="settings-theme-grid">
                   <button
                     v-for="option in themeOptions"
                     :key="option.value"
                     @click="setThemeMode(option.value)"
-                    class="group relative flex min-h-28 flex-col justify-between rounded-lg border p-4 text-left transition-colors"
-                    :class="themeMode === option.value ? 'border-foreground/20 bg-accent/40 text-foreground' : 'border-border/50 bg-background hover:bg-accent/30'"
+                    class="settings-theme-option"
+                    :class="{ 'settings-theme-option--active': themeMode === option.value }"
                   >
                     <div class="flex items-center justify-between">
                       <span class="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-muted-foreground">
@@ -343,6 +343,107 @@ const onSystemToggle = async (key: string, val: boolean) => {
 </script>
 
 <style scoped>
+.settings-sidebar-header {
+  display: flex;
+  min-height: 4.25rem;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.48);
+  padding: 0 1rem;
+}
+
+.settings-sidebar-header p,
+.settings-header-copy p {
+  margin-top: 0.25rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.settings-save-state {
+  display: inline-flex;
+  height: 1.75rem;
+  align-items: center;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 0.375rem;
+  background: hsl(var(--muted) / 0.45);
+  padding: 0 0.5rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+.settings-save-state--header {
+  display: none;
+}
+
+.settings-sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.625rem;
+}
+
+.settings-nav-item {
+  display: flex;
+  width: 100%;
+  height: 2.25rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 0.4375rem;
+  background: transparent;
+  padding: 0 0.625rem;
+  color: hsl(var(--muted-foreground));
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.settings-nav-item + .settings-nav-item {
+  margin-top: 0.125rem;
+}
+
+.settings-nav-item:hover,
+.settings-nav-item--active {
+  background: hsl(var(--accent) / 0.62);
+  color: hsl(var(--foreground));
+}
+
+.settings-nav-item--active :deep(svg) {
+  color: hsl(var(--primary));
+}
+
+.settings-nav-badge {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.settings-header-copy {
+  min-width: 0;
+}
+
+.settings-header-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.settings-main {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
 .settings-section-title {
   display: flex;
   flex-direction: column;
@@ -350,9 +451,11 @@ const onSystemToggle = async (key: string, val: boolean) => {
 }
 
 .settings-section-title h3 {
-  font-size: 0.875rem;
+  font-family: var(--app-heading-font);
+  font-size: 1rem;
   font-weight: 600;
   color: hsl(var(--foreground));
+  letter-spacing: -0.01em;
 }
 
 .settings-section-title p {
@@ -362,9 +465,9 @@ const onSystemToggle = async (key: string, val: boolean) => {
 
 .settings-panel {
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.5rem;
-  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 0.625rem;
+  background: hsl(var(--card) / 0.58);
 }
 
 .settings-panel > .settings-row + .settings-row {
@@ -373,7 +476,7 @@ const onSystemToggle = async (key: string, val: boolean) => {
 
 .settings-row {
   display: flex;
-  min-height: 4.25rem;
+  min-height: 4.125rem;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -412,5 +515,45 @@ const onSystemToggle = async (key: string, val: boolean) => {
 .settings-alert--success {
   background: hsl(var(--muted) / 0.5);
   color: hsl(var(--foreground));
+}
+
+.settings-theme-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-theme-option {
+  position: relative;
+  display: flex;
+  min-height: 7rem;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 0.625rem;
+  background: hsl(var(--card) / 0.58);
+  padding: 1rem;
+  color: hsl(var(--foreground));
+  text-align: left;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.settings-theme-option:hover,
+.settings-theme-option--active {
+  border-color: hsl(var(--primary) / 0.32);
+  background: hsl(var(--accent) / 0.45);
+}
+
+@media (min-width: 640px) {
+  .settings-save-state--header {
+    display: inline-flex;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-nav-item,
+  .settings-theme-option {
+    transition: none;
+  }
 }
 </style>

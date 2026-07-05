@@ -63,71 +63,76 @@ const variantClass = computed(() =>
   justify-content: center;
   flex-direction: column;
   text-align: center;
-  gap: var(--app-empty-gap);
-  padding: var(--app-empty-padding);
-  min-height: var(--app-empty-min-height);
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-5);
+  min-height: max(var(--app-empty-min-height), 16rem);
 }
 
 .app-empty-state--bordered {
-  border: 1px dashed hsl(var(--border) / var(--app-empty-border-alpha));
-  border-radius: var(--app-surface-radius);
+  border: 1px solid hsl(var(--border) / 0.58);
+  border-radius: calc(var(--app-surface-radius) + 4px);
+  background:
+    radial-gradient(420px 180px at 50% -80px, hsl(var(--primary) / 0.08), transparent 70%),
+    hsl(var(--card) / 0.38);
 }
 
 .app-empty-state__icon-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  border-radius: var(--radius-lg);
-  background: hsl(var(--accent) / 0.4);
-  border: 1px solid hsl(var(--border) / 0.4);
-  margin-bottom: 0.25rem;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: var(--radius-xl);
+  background: hsl(var(--primary) / 0.1);
+  border: 1px solid hsl(var(--primary) / 0.18);
+  margin-bottom: var(--space-1);
 }
 
 .app-empty-state--icon-circle .app-empty-state__icon-wrap {
   width: 3.5rem;
   height: 3.5rem;
   border-radius: var(--radius-xl);
-  background: hsl(var(--accent) / 0.35);
-  box-shadow: inset 0 0 0 4px hsl(var(--background));
+  background: hsl(var(--primary) / 0.1);
+  box-shadow: inset 0 0 0 4px hsl(var(--background) / 0.58);
 }
 
 .app-empty-state__icon {
   width: 1.5rem;
   height: 1.5rem;
-  color: hsl(var(--muted-foreground) / 0.55);
+  color: hsl(var(--primary));
 }
 
 .app-empty-state--icon-circle .app-empty-state__icon {
   width: 1.25rem;
   height: 1.25rem;
-  color: hsl(var(--muted-foreground) / 0.55);
+  color: hsl(var(--primary));
 }
 
 .app-empty-state__title {
   margin: 0;
-  color: hsl(var(--foreground) / 0.9);
+  color: hsl(var(--foreground));
   font-family: var(--font-display);
-  font-size: var(--app-h3-size);
+  font-size: var(--app-h2-size);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  line-height: var(--app-h2-leading);
+  letter-spacing: var(--app-h2-tracking);
 }
 
 .app-empty-state__copy {
   margin: 0;
   max-width: var(--app-empty-copy-width);
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.92);
   font-size: 0.875rem;
   line-height: 1.6;
+  text-wrap: pretty;
 }
 
 .app-empty-state__actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.75rem;
-  margin-top: 0.25rem;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
 }
 
 /* Error variant: destructive tint on the icon badge + title so a failed load is

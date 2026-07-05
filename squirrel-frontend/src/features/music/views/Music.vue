@@ -1,6 +1,6 @@
 <template>
   <AppPageShell variant="compact" fill>
-    <div class="flex h-full flex-col">
+    <div class="music-shell">
       <div class="music-content custom-scrollbar">
         <div class="music-content-inner">
           <div class="music-nav-row">
@@ -689,37 +689,57 @@ async function handleLogout() {
 </script>
 
 <style scoped>
+.music-shell {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+}
+
 .music-top-create {
   flex: 0 0 auto;
 }
 
 .music-content-inner {
   width: 100%;
-  max-width: 1480px;
+  max-width: 1440px;
   margin-inline: auto;
+  min-height: 100%;
+  padding-block: 1rem 2.75rem;
 }
 
 .music-nav-row {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 1.25rem 2rem 0;
+  padding: 0 2rem 0.75rem;
+  background: linear-gradient(180deg, hsl(var(--background)) 72%, hsl(var(--background) / 0));
 }
 
 .music-nav-tabs {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.125rem;
+  min-height: 2.25rem;
   min-width: 0;
+  padding: 0.1875rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 0.5rem;
+  background: hsl(var(--card) / 0.74);
 }
 
 .music-nav-tab {
   display: inline-flex;
   align-items: center;
-  height: 1.75rem;
+  justify-content: center;
+  height: 1.875rem;
+  min-width: 4.25rem;
   padding: 0 0.75rem;
-  border-radius: 9999px;
+  border-radius: 0.375rem;
   border: 0;
   background: transparent;
   color: hsl(var(--muted-foreground));
@@ -731,18 +751,28 @@ async function handleLogout() {
 }
 
 .music-nav-tab:hover {
-  background: hsl(var(--foreground) / 0.06);
+  background: hsl(var(--muted) / 0.42);
   color: hsl(var(--foreground));
 }
 
 .music-nav-tab--active {
-  background: hsl(var(--primary) / 0.16);
-  color: hsl(var(--primary));
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 .music-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  background:
+    linear-gradient(180deg, hsl(var(--muted) / 0.10), transparent 11rem),
+    hsl(var(--background));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-nav-tab {
+    transition: none;
+  }
 }
 </style>

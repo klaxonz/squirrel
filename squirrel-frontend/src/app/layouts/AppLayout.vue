@@ -1,38 +1,33 @@
 <template>
   <div
-    class="flex flex-col h-screen overflow-hidden bg-background"
+    class="app-layout"
+    :class="{ 'app-layout--desktop': isDesktop }"
     :style="{ '--sidebar-width': isSidebarOpen ? 'var(--sidebar-expanded-width)' : 'var(--sidebar-collapsed-width)' }"
   >
-    <!-- 1. Desktop Title Bar (Fixed Height) -->
-    <DesktopTitleBar v-if="isDesktop" class="shrink-0 z-sidebar" />
+    <DesktopTitleBar v-if="isDesktop" class="app-layout__titlebar" />
 
-    <div class="flex flex-1 min-h-0 overflow-hidden">
-      <!-- 2. Sidebar (Fixed Width, Full Height) -->
-      <AppSidebar class="shrink-0 z-50" />
+    <div class="app-layout__frame">
+      <AppSidebar class="app-layout__sidebar" />
 
-      <!-- 3. Main Container -->
-      <main class="flex-1 min-w-0 flex flex-col relative">
-        <!-- 4. App Header (Fixed Height) -->
-        <AppHeader class="shrink-0 z-40" />
+      <main class="app-layout__workspace">
+        <AppHeader class="app-layout__header" />
 
-        <!-- 5. Scrollable Content Area -->
         <div
           ref="mainScrollRef"
-          class="flex-1 overflow-y-auto overflow-x-hidden relative scrollbar overflow-anchor-none"
+          class="app-layout__scroll custom-scrollbar overflow-anchor-none"
           :class="musicBarPadding"
           :id="MAIN_SCROLL_ID"
           @scroll.passive="handleScroll"
         >
           <GlobalVideoPlayerHost />
-          <slot />
+          <section class="app-layout__stage">
+            <slot />
+          </section>
         </div>
       </main>
     </div>
 
-    <!-- Global Music Player Bar -->
     <GlobalMusicPlayerBar />
-
-    <!-- Global toast stack (bottom-right, shared by all pages) -->
     <ToastProvider />
   </div>
 </template>
@@ -161,3 +156,78 @@ onUnmounted(() => {
   detachDesktopNavListener = null
 })
 </script>
+
+<style scoped>
+.app-layout {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  background:
+    radial-gradient(900px 420px at 58% -180px, hsl(var(--primary) / 0.07), transparent 64%),
+    linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+}
+
+.app-layout__titlebar {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: var(--z-sidebar);
+}
+
+.app-layout__frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  overflow: hidden;
+}
+
+.app-layout--desktop .app-layout__frame {
+  padding-top: var(--space-3);
+}
+
+.app-layout__sidebar {
+  flex: 0 0 var(--sidebar-width);
+  position: relative;
+  z-index: var(--z-sidebar);
+}
+
+.app-layout__workspace {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: calc(var(--radius-xl) + 4px);
+  background: hsl(var(--background) / 0.72);
+  box-shadow:
+    0 1px 0 hsl(var(--foreground) / 0.04) inset,
+    0 18px 44px hsl(0 0% 0% / 0.18);
+}
+
+.app-layout__header {
+  flex: 0 0 auto;
+}
+
+.app-layout__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-behavior: auto;
+}
+
+.app-layout__stage {
+  min-height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-layout__workspace {
+    box-shadow: 0 1px 0 hsl(var(--foreground) / 0.04) inset;
+  }
+}
+</style>

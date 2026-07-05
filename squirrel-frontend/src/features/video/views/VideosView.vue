@@ -1,8 +1,7 @@
 <template>
   <AppPageShell class="videos-view-page" variant="compact" :fill="false">
-    <!-- Sticky toolbar: outside app-page-content so top-padding never affects height -->
-    <div v-if="searchMode !== 'remote'" class="sticky top-0 z-20 bg-background border-b border-border/50">
-      <div class="max-w-[var(--app-page-max-width)] mx-auto px-6 py-2">
+    <div v-if="searchMode !== 'remote'" class="videos-view-toolbar">
+      <div class="videos-view-toolbar__inner">
         <FeedToolbar
           :active-tab="activeTab"
           :nsfw="nsfw"
@@ -29,8 +28,8 @@
         />
       </div>
     </div>
-    <div v-else class="sticky top-0 z-20 bg-background border-b border-border/50">
-      <div class="max-w-[var(--app-page-max-width)] mx-auto flex items-center justify-between gap-3 px-6 py-2">
+    <div v-else class="videos-view-toolbar">
+      <div class="videos-view-toolbar__inner videos-view-toolbar__inner--remote">
         <div class="flex min-w-0 items-center gap-2">
           <AppIcon name="siteFallback" class="h-4 w-4 shrink-0 text-primary opacity-80" />
           <span class="shrink-0 text-sm font-semibold text-foreground">远端搜索</span>
@@ -62,10 +61,10 @@
       </div>
     </div>
 
-    <div class="app-page-content">
+    <div class="app-page-content videos-view-content">
 
       <!-- Error -->
-      <div v-if="loadError" class="px-6 pt-2 pb-4">
+      <div v-if="loadError" class="videos-view-error">
         <AppEmptyState variant="error" title="加载失败" :copy="loadError">
           <template #actions>
             <Button variant="outline" size="sm" @click="refreshCurrentList">重试</Button>
@@ -212,5 +211,49 @@ watch(() => route.query.special, (value) => {
 <style scoped>
 .videos-view-page {
   --app-page-max-width: 2400px;
+}
+
+.videos-view-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-content);
+  padding: var(--space-3) var(--app-page-gutter) var(--space-2);
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  background: hsl(var(--background) / 0.92);
+}
+
+.videos-view-toolbar__inner {
+  width: 100%;
+  max-width: var(--app-page-max-width);
+  margin: 0 auto;
+}
+
+.videos-view-toolbar__inner--remote {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.videos-view-content {
+  padding-top: var(--space-5);
+}
+
+.videos-view-error {
+  padding: 0 0 var(--space-5);
+}
+
+@media (min-width: 640px) {
+  .videos-view-toolbar {
+    padding-left: var(--app-page-gutter-sm);
+    padding-right: var(--app-page-gutter-sm);
+  }
+}
+
+@media (min-width: 1024px) {
+  .videos-view-toolbar {
+    padding-left: var(--app-page-gutter-lg);
+    padding-right: var(--app-page-gutter-lg);
+  }
 }
 </style>
