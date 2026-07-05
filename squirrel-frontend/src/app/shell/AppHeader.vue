@@ -271,8 +271,7 @@ function closeAllMenus() {
   background: hsl(var(--background) / 0.85);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: var(--z-header);
   user-select: none;
 }

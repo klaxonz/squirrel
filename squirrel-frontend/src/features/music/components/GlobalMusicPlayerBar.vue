@@ -320,8 +320,10 @@ function removeQueueItem(index: number) {
 
 @media (min-width: 768px) {
   .music-bar {
-    left: calc(var(--sidebar-width) + (100vw - var(--sidebar-width)) / 2);
-    width: min(1480px, calc(100vw - var(--sidebar-width) - 4rem));
+    /* 50vw keeps the bar horizontally centered in the viewport regardless of
+       sidebar width. No resize needed — CSS variable drives it reactively. */
+    left: calc(50vw - var(--sidebar-width) / 2);
+    width: min(1480px, calc(100vw - var(--sidebar-width) - 2rem));
   }
 
   .music-bar--mini {
