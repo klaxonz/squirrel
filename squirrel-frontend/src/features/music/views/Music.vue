@@ -6,17 +6,19 @@
           <div class="app-workbench__content music-content">
             <div class="music-nav-row">
               <nav class="app-tab-list" aria-label="音乐导航">
-              <button
+              <Button
                 v-for="item in musicNavItems"
                 :key="item.id"
                 type="button"
+                variant="ghost"
+                size="sm"
                 class="app-tab-button music-nav-tab"
                 :class="{ 'is-active': sidebarActiveMode === item.id }"
                 :aria-current="sidebarActiveMode === item.id ? 'page' : undefined"
                 @click="handleNavigate(item.id)"
               >
                 <span>{{ item.label }}</span>
-              </button>
+              </Button>
               </nav>
               <MusicCreatePlaylistButton
                 v-if="authStatus?.logged_in && activeView === 'profile'"
@@ -257,6 +259,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import { Button } from '@/shared/ui/button'
 import MusicCreatePlaylistButton from '@/features/music/components/sidebar/MusicCreatePlaylistButton.vue'
 import MusicHomeView from '@/features/music/components/home/MusicHomeView.vue'
 import MusicSearchView from '@/features/music/components/MusicSearchView.vue'

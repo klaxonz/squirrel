@@ -1,9 +1,9 @@
 <template>
   <div class="music-bar-actions">
     <div class="music-bar-volume">
-      <button class="music-bar-btn" title="音量" aria-label="静音/取消静音" @click="$emit('toggle-mute')">
+      <Button variant="ghost" size="icon-sm" title="音量" aria-label="静音/取消静音" @click="$emit('toggle-mute')">
         <AppIcon :name="volumeIcon" class="h-4 w-4" />
-      </button>
+      </Button>
       <input
         class="music-bar-range"
         type="range"
@@ -17,18 +17,20 @@
       />
     </div>
 
-    <button class="music-bar-btn" title="播放队列" aria-label="播放队列" @click="$emit('queue')">
+    <Button class="relative" variant="ghost" size="icon-sm" title="播放队列" aria-label="播放队列" @click="$emit('queue')">
       <AppIcon name="playlistMusic" class="h-4 w-4" />
-      <span v-if="queueCount" class="music-bar-badge">
+      <Badge v-if="queueCount" class="music-bar-badge">
         {{ queueCount > 99 ? '99+' : queueCount }}
-      </span>
-    </button>
+      </Badge>
+    </Button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Badge } from '@/shared/ui/badge'
+import { Button } from '@/shared/ui/button'
 
 const props = withDefaults(defineProps<{
   volume?: number
@@ -60,32 +62,6 @@ const volumeIcon = computed(() => {
   flex-shrink: 0;
   width: auto;
   justify-content: flex-end;
-}
-
-.music-bar-btn {
-  display: flex;
-  height: 1.875rem;
-  width: 1.875rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.375rem;
-  border: none;
-  background: none;
-  color: hsl(var(--foreground) / 0.6);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.music-bar-btn:hover {
-  background: hsl(var(--muted) / 0.6);
-  color: hsl(var(--foreground));
-}
-
-.music-bar-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
 }
 
 .music-bar-volume {
@@ -129,14 +105,10 @@ const volumeIcon = computed(() => {
 
 .music-bar-badge {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: -0.125rem;
+  right: -0.25rem;
   font-size: 0.5rem;
   line-height: 1;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  padding: 2px 4px;
-  border-radius: 9999px;
-  font-weight: 700;
+  padding: 0.0625rem 0.25rem;
 }
 </style>

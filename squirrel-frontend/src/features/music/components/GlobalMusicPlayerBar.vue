@@ -74,7 +74,7 @@
       </template>
 
       <div v-else class="music-mini">
-        <button class="music-mini-track" title="打开沉浸播放" @click="openImmersive">
+        <Button variant="ghost" class="music-mini-track" title="打开沉浸播放" @click="openImmersive">
           <div class="music-mini-cover">
             <img v-if="store.currentTrack.cover" :src="store.currentTrack.cover" :alt="store.currentTrack.title || '封面'" />
             <AppIcon v-else name="playlistMusic" class="h-4 w-4" />
@@ -84,14 +84,16 @@
             <span v-if="store.error" class="music-mini-error" :title="store.error">{{ store.error }}</span>
             <span v-else class="music-mini-artist">{{ store.currentTrack.artist || '未知歌手' }}</span>
           </div>
-        </button>
+        </Button>
 
         <div class="music-mini-controls">
-          <button class="music-mini-btn" :disabled="!canStep" title="上一首" aria-label="上一首" @click="store.playPrevious()">
+          <Button variant="ghost" size="mini-icon" :disabled="!canStep" title="上一首" aria-label="上一首" @click="store.playPrevious()">
             <AppIcon name="previous" class="h-4 w-4" />
-          </button>
-          <button
-            class="music-mini-btn music-mini-btn--play"
+          </Button>
+          <Button
+            variant="default"
+            size="mini-icon"
+            class="rounded-full"
             :disabled="store.resolvingUrl || isBuffering"
             :title="store.playing ? '暂停' : '播放'"
             :aria-label="store.playing ? '暂停' : '播放'"
@@ -101,13 +103,13 @@
             <AppSpinner v-if="store.resolvingUrl || isBuffering" size="sm" />
             <AppIcon v-else-if="store.playing" name="pause" class="h-4 w-4" />
             <AppIcon v-else name="play" class="h-4 w-4" />
-          </button>
-          <button class="music-mini-btn" :disabled="!canStep" title="下一首" aria-label="下一首" @click="store.playNext()">
+          </Button>
+          <Button variant="ghost" size="mini-icon" :disabled="!canStep" title="下一首" aria-label="下一首" @click="store.playNext()">
             <AppIcon name="next" class="h-4 w-4" />
-          </button>
-          <button class="music-mini-btn" title="播放队列" aria-label="播放队列" @click="showQueue = !showQueue">
+          </Button>
+          <Button variant="ghost" size="mini-icon" title="播放队列" aria-label="播放队列" @click="showQueue = !showQueue">
             <AppIcon name="playlistMusic" class="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -165,6 +167,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Button } from '@/shared/ui/button'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { formatPlaybackTime as formatDuration } from '@/features/music/lib/musicFormatters'
 import MusicProgressBar from './player/MusicProgressBar.vue'
@@ -387,22 +390,10 @@ function removeQueueItem(index: number) {
 }
 
 .music-mini-track {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
   width: 100%;
   min-width: 0;
-  border: none;
-  background: none;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  border-radius: 0.375rem;
   padding: 0.125rem;
-}
-
-.music-mini-track:hover {
-  background: hsl(var(--muted) / 0.45);
+  justify-content: flex-start;
 }
 
 .music-mini-cover {
@@ -467,45 +458,5 @@ function removeQueueItem(index: number) {
   width: 100%;
   flex-shrink: 0;
 }
-
-.music-mini-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.625rem;
-  height: 1.625rem;
-  border: none;
-  border-radius: 0.375rem;
-  background: none;
-  color: hsl(var(--foreground) / 0.64);
-  cursor: pointer;
-}
-
-.music-mini-btn:hover {
-  background: hsl(var(--muted) / 0.65);
-  color: hsl(var(--foreground));
-}
-
-.music-mini-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
-}
-
-.music-mini-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.music-mini-btn--play {
-  border-radius: 9999px;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-}
-
-.music-mini-btn--play:hover {
-  background: hsl(var(--primary) / 0.9);
-  color: hsl(var(--primary-foreground));
-}
-
 
 </style>

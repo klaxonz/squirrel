@@ -62,28 +62,14 @@
             </div>
           </div>
 
-          <div v-if="canOpenRemote" class="app-tab-list">
-            <button
-              type="button"
-              class="app-tab-button"
-              :class="{ 'is-active': mode === 'local' }"
-              :aria-pressed="mode === 'local'"
-              @click="emit('update:mode', 'local')"
-            >
-              <AppIcon name="library" class="h-3.5 w-3.5" />
-              本地
-            </button>
-            <button
-              type="button"
-              class="app-tab-button"
-              :class="{ 'is-active': mode === 'remote' }"
-              :aria-pressed="mode === 'remote'"
-              @click="emit('update:mode', 'remote')"
-            >
-              <AppIcon name="siteFallback" class="h-3.5 w-3.5" />
-              远端
-            </button>
-          </div>
+          <AppSegmentedControl
+            v-if="canOpenRemote"
+            :model-value="mode || 'local'"
+            :options="channelModeOptions"
+            aria-label="频道内容来源"
+            size="sm"
+            @update:model-value="(value) => emit('update:mode', value)"
+          />
 
           <div class="flex items-center gap-2">
             <Button
@@ -160,6 +146,7 @@ import { errorMessage } from '@/shared/lib/errorMessage'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
+import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import { Button } from '@/shared/ui/button'
 import {
   DropdownMenu,
@@ -177,6 +164,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:mode', 'loaded', 'synced'])
+const channelModeOptions = [
+  { value: 'local', label: '本地' },
+  { value: 'remote', label: '远端' },
+]
 
 const detail = ref(null);
 const loading = ref(false);

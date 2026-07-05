@@ -8,24 +8,24 @@
     >
       <div v-if="selectionMode && selectedTracks.size > 0" class="music-track-batch-bar">
         <div class="music-batch-left">
-          <button class="music-batch-btn" @click="toggleSelectAll">
+          <Button variant="secondary" size="sm" @click="toggleSelectAll">
             <AppIcon :name="isAllSelected ? 'check' : 'circle'" class="h-4 w-4" />
             {{ isAllSelected ? '取消全选' : '全选' }}
-          </button>
+          </Button>
           <span class="music-batch-count">已选 {{ selectedTracks.size }} 首</span>
         </div>
         <div class="music-batch-actions">
-          <button class="music-batch-btn music-batch-btn--primary" @click="handlePlaySelected">
+          <Button size="sm" @click="handlePlaySelected">
             <AppIcon name="play" class="h-4 w-4" />
             播放选中
-          </button>
-          <button class="music-batch-btn" @click="handleAddToPlaylist">
+          </Button>
+          <Button variant="secondary" size="sm" @click="handleAddToPlaylist">
             <AppIcon name="addToPlaylist" class="h-4 w-4" />
             加入歌单
-          </button>
-          <button class="music-batch-btn music-batch-btn--close" @click="exitSelectionMode">
+          </Button>
+          <Button variant="ghost" size="icon-sm" aria-label="退出多选" @click="exitSelectionMode">
             <AppIcon name="close" class="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
     </Transition>
@@ -58,14 +58,12 @@
       @contextmenu.prevent="handleContextMenu(track, $event)"
     >
       <div class="music-track-col music-track-col--checkbox">
-        <button
+        <MusicTrackCheckbox
           class="music-track-checkbox"
-          :class="{ 'music-track-checkbox--checked': selectedTracks.has(track.hash) }"
-          @click.stop="toggleSelect(track)"
-        >
-          <AppIcon v-if="selectedTracks.has(track.hash)" name="check" class="h-4 w-4" />
-          <AppIcon v-else name="circle" class="h-4 w-4" />
-        </button>
+          :checked="selectedTracks.has(track.hash)"
+          @click.stop
+          @toggle="toggleSelect(track)"
+        />
       </div>
 
       <div class="music-track-col music-track-col--num">
@@ -85,24 +83,28 @@
       <div class="music-track-col music-track-col--title">
         <div class="music-track-title-wrap">
           <span class="music-track-title">{{ track.title || '未知歌曲' }}</span>
-          <span v-if="isPlaying(track)" class="music-track-playing-badge">正在播放</span>
+          <Badge v-if="isPlaying(track)" class="shrink-0">正在播放</Badge>
         </div>
-        <button
+        <Button
+          variant="link"
+          size="xs"
           class="music-track-artist"
           :disabled="!track.artist_id"
           @click.stop="$emit('select-artist', track)"
         >
           {{ track.artist || '未知歌手' }}
-        </button>
+        </Button>
       </div>
 
-      <button
+      <Button
+        variant="link"
+        size="xs"
         class="music-track-col music-track-col--album"
         :disabled="!track.album_id"
         @click.stop="$emit('select-album', track)"
       >
         {{ track.album || '未知专辑' }}
-      </button>
+      </Button>
 
       <span class="music-track-col music-track-col--duration">
         {{ formatDuration(track.duration) }}
@@ -115,30 +117,32 @@
       enter-from-class="opacity-0"
       leave-to-class="opacity-0"
     >
-      <div v-if="contextMenu.visible" class="music-context-menu" :style="contextMenuStyle">
-        <button class="music-context-item" @click="handleContextPlay">
-          <AppIcon name="play" class="h-4 w-4" />
+      <AppContextMenu
+        v-if="contextMenu.visible"
+        :visible="contextMenu.visible"
+        label="歌曲操作"
+        width="11.25rem"
+        :position="contextMenuPosition"
+        @close="closeContextMenu"
+      >
+        <AppContextMenuItem icon="play" @click="handleContextPlay">
           立即播放
-        </button>
-        <button class="music-context-item" @click="handleContextInsertNext">
-          <AppIcon name="listEnd" class="h-4 w-4" />
+        </AppContextMenuItem>
+        <AppContextMenuItem icon="listEnd" @click="handleContextInsertNext">
           下一首播放
-        </button>
-        <div class="music-context-divider"></div>
-        <button class="music-context-item" @click="handleContextAddToPlaylist">
-          <AppIcon name="addToPlaylist" class="h-4 w-4" />
+        </AppContextMenuItem>
+        <AppContextMenuSeparator />
+        <AppContextMenuItem icon="addToPlaylist" @click="handleContextAddToPlaylist">
           添加到歌单
-        </button>
-        <div class="music-context-divider"></div>
-        <button class="music-context-item" @click="handleContextSelectArtist">
-          <AppIcon name="user" class="h-4 w-4" />
+        </AppContextMenuItem>
+        <AppContextMenuSeparator />
+        <AppContextMenuItem icon="user" @click="handleContextSelectArtist">
           查看歌手
-        </button>
-        <button class="music-context-item" @click="handleContextSelectAlbum">
-          <AppIcon name="playlistMusic" class="h-4 w-4" />
+        </AppContextMenuItem>
+        <AppContextMenuItem icon="playlistMusic" @click="handleContextSelectAlbum">
           查看专辑
-        </button>
-      </div>
+        </AppContextMenuItem>
+      </AppContextMenu>
     </Transition>
   </div>
 </template>
@@ -148,10 +152,16 @@ import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppContextMenu from '@/shared/components/layout/AppContextMenu.vue'
+import AppContextMenuItem from '@/shared/components/layout/AppContextMenuItem.vue'
+import AppContextMenuSeparator from '@/shared/components/layout/AppContextMenuSeparator.vue'
+import { Badge } from '@/shared/ui/badge'
+import { Button } from '@/shared/ui/button'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { useTrackSelection } from '@/features/music/composables/useTrackSelection'
 import { useTrackContextMenu } from '@/features/music/composables/useTrackContextMenu'
 import { formatDuration } from '@/features/music/lib/musicFormatters'
+import MusicTrackCheckbox from './shared/MusicTrackCheckbox.vue'
 import type { MusicTrack } from '@/shared/api/music'
 
 const props = withDefaults(defineProps<{
@@ -204,8 +214,9 @@ const {
 // from this component's emit surface.
 const {
   contextMenu,
-  contextMenuStyle,
+  contextMenuPosition,
   handleContextMenu,
+  closeContextMenu,
   handleContextPlay,
   handleContextInsertNext,
   handleContextAddToPlaylist,
@@ -258,42 +269,6 @@ const {
   gap: 0.5rem;
 }
 
-.music-batch-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.music-batch-btn:hover {
-  background: hsl(var(--muted) / 0.5);
-  border-color: hsl(var(--border));
-}
-
-.music-batch-btn--primary {
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.9) 100%);
-  color: hsl(var(--primary-foreground));
-  border-color: hsl(var(--primary));
-  box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
-}
-
-.music-batch-btn--primary:hover {
-  box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
-  transform: translateY(-1px);
-}
-
-.music-batch-btn--close {
-  padding: 0.5rem;
-}
-
 .music-track-header {
   display: grid;
   grid-template-columns: 2.5rem 2.5rem 3.25rem 1fr minmax(0, 1fr) 4.5rem;
@@ -338,33 +313,13 @@ const {
   justify-content: center;
 }
 
-.music-track-checkbox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.375rem;
-  height: 1.375rem;
-  border: none;
-  background: none;
-  color: hsl(var(--muted-foreground) / 0.4);
-  cursor: pointer;
-  border-radius: 0.375rem;
-  transition: all 0.15s ease;
-  opacity: 0;
-}
-
 .music-track-row:hover .music-track-checkbox,
-.music-track-checkbox--checked {
+:deep(.music-track-checkbox[aria-pressed="true"]) {
   opacity: 1;
 }
 
-.music-track-checkbox:hover {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.1);
-}
-
-.music-track-checkbox--checked {
-  color: hsl(var(--primary));
+.music-track-checkbox {
+  opacity: 0;
 }
 
 .music-track-col--num {
@@ -449,32 +404,20 @@ const {
   white-space: nowrap;
 }
 
-.music-track-playing-badge {
-  font-size: 0.5625rem;
-  padding: 0.1875rem 0.5rem;
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.85) 100%);
-  color: hsl(var(--primary-foreground));
-  border-radius: 0.25rem;
-  flex-shrink: 0;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
 .music-track-artist {
-  display: block;
+  display: inline-flex;
+  justify-content: flex-start;
+  height: auto;
+  max-width: 100%;
   margin-top: 0.25rem;
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
-  background: none;
-  border: none;
   padding: 0;
-  cursor: pointer;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
-  transition: color 0.15s ease;
 }
 
 .music-track-artist:hover:not(:disabled) {
@@ -486,8 +429,11 @@ const {
 }
 
 .music-track-col--album {
+  justify-content: flex-start;
+  height: auto;
   font-size: 0.8125rem;
   color: hsl(var(--muted-foreground));
+  padding: 0;
   background: none;
   border: none;
   padding: 0;
@@ -512,41 +458,4 @@ const {
   font-weight: 500;
 }
 
-.music-context-menu {
-  position: fixed;
-  z-index: 200;
-  min-width: 180px;
-  background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.95) 100%);
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.75rem;
-  box-shadow: 0 12px 32px hsl(var(--foreground) / 0.15);
-  padding: 0.5rem;
-}
-
-.music-context-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.625rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: hsl(var(--foreground));
-  background: none;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.15s ease;
-}
-
-.music-context-item:hover {
-  background: hsl(var(--muted) / 0.5);
-}
-
-.music-context-divider {
-  height: 1px;
-  background: hsl(var(--border) / 0.5);
-  margin: 0.375rem 0;
-}
 </style>

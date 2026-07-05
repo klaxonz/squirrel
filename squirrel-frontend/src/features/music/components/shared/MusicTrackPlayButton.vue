@@ -1,18 +1,22 @@
 <template>
-  <button
-    class="music-track-play-btn"
-    :class="{ 'music-track-play-btn--playing': isPlaying }"
+  <Button
+    variant="player"
+    size="player-sm"
+    :class="{ 'bg-primary/10': isPlaying }"
+    :aria-label="isPlaying ? '暂停' : '播放'"
+    :aria-pressed="isPlaying"
     @click="$emit('click')"
   >
     <AppSpinner v-if="loading" size="sm" />
     <AppIcon v-else-if="isPlaying" name="pause" class="h-4 w-4" />
     <AppIcon v-else name="play" class="h-4 w-4" />
-  </button>
+  </Button>
 </template>
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Button } from '@/shared/ui/button'
 
 withDefaults(defineProps<{
   isPlaying?: boolean
@@ -26,30 +30,3 @@ defineEmits<{
   click: []
 }>()
 </script>
-
-<style scoped>
-.music-track-play-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 9999px;
-  background: none;
-  border: none;
-  color: hsl(var(--muted-foreground) / 0.6);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.music-track-play-btn:hover {
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
-}
-
-.music-track-play-btn--playing {
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
-}
-</style>

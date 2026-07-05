@@ -4,12 +4,14 @@
     class="rss-image-lightbox"
     @click="$emit('close')"
   >
-    <button
+    <Button
+      variant="ghost"
+      size="icon"
       class="rss-image-lightbox__close"
       @click.stop="$emit('close')"
     >
       <AppIcon name="close" class="h-5 w-5" />
-    </button>
+    </Button>
 
     <div class="rss-image-lightbox__frame">
       <img
@@ -30,6 +32,7 @@
  * passed in (owned by useRssReader).
  */
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 
 defineProps<{
   src: string | null
@@ -56,19 +59,12 @@ defineEmits<{
   position: absolute;
   top: 1.25rem;
   right: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
   border: 1px solid hsl(var(--border) / 0.16);
   border-radius: 0.5rem;
   background: hsl(var(--accent) / 0.24);
   color: hsl(var(--foreground));
-  cursor: pointer;
-  transition:
-    background-color 0.16s ease,
-    border-color 0.16s ease;
 }
 
 .rss-image-lightbox__close:hover {

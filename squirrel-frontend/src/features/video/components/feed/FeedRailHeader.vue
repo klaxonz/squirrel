@@ -5,15 +5,17 @@
     </div>
 
     <div class="flex items-center gap-3">
-      <button
+      <Button
         v-if="viewMoreLabel"
         type="button"
-        class="app-tab-button group/more"
+        variant="ghost"
+        size="sm"
+        class="group/more"
         @click="$emit('viewMore')"
       >
         {{ viewMoreLabel }}
         <AppIcon name="chevronRight" class="size-3.5 transition-transform group-hover/more:translate-x-0.5" />
-      </button>
+      </Button>
 
       <div
         class="flex gap-1 opacity-0 transition-opacity duration-200 group-hover/container:opacity-100"

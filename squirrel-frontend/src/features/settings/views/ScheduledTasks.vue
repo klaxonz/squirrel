@@ -2,46 +2,34 @@
   <AppPageShell variant="compact">
     <AppTwoColumnLayout>
       <template #sidebar>
-        <div class="flex h-14 shrink-0 items-center justify-between app-divider-bottom px-4">
-          <div class="min-w-0">
-            <h1 class="app-h3 truncate">定时任务</h1>
-            <p class="mt-0.5 text-xs text-muted-foreground">{{ statistics.total_tasks }} 个任务</p>
-          </div>
-          <Button variant="ghost" size="icon-sm" @click="showCreateDialog = true">
-            <AppIcon name="plus" class="h-4 w-4" />
-          </Button>
-        </div>
+        <AppSidebarHeader title="定时任务" :subtitle="`${statistics.total_tasks} 个任务`">
+          <template #actions>
+            <Button variant="ghost" size="icon-sm" @click="showCreateDialog = true">
+              <AppIcon name="plus" class="h-4 w-4" />
+            </Button>
+          </template>
+        </AppSidebarHeader>
 
         <div class="grid shrink-0 grid-cols-2 gap-2 app-divider-bottom p-3">
-          <div class="app-stat-card">
-            <div class="app-stat-card__label">活跃</div>
-            <div class="app-stat-card__value">{{ statistics.active_tasks }}</div>
-          </div>
-          <div class="app-stat-card">
-            <div class="app-stat-card__label">运行</div>
-            <div class="app-stat-card__value">{{ statistics.running_tasks }}</div>
-          </div>
-          <div class="app-stat-card">
-            <div class="app-stat-card__label">异常</div>
-            <div class="app-stat-card__value">{{ statistics.error_tasks }}</div>
-          </div>
-          <div class="app-stat-card">
-            <div class="app-stat-card__label">今日执行</div>
-            <div class="app-stat-card__value">{{ statistics.today_executions }}</div>
-          </div>
+          <AppStatCard label="活跃" :value="statistics.active_tasks" />
+          <AppStatCard label="运行" :value="statistics.running_tasks" />
+          <AppStatCard label="异常" :value="statistics.error_tasks" />
+          <AppStatCard label="今日执行" :value="statistics.today_executions" />
         </div>
 
         <nav class="flex-1 space-y-1 overflow-y-auto p-2 custom-scrollbar">
-          <button
+          <Button
             v-for="opt in statusOptions"
             :key="opt.value"
+            variant="ghost"
+            size="sm"
             @click="setStatusFilter(opt.value)"
             class="app-filter-button"
             :class="{ 'is-active': statusFilter === opt.value }"
           >
             <span>{{ opt.label }}</span>
             <span class="text-xs font-normal text-muted-foreground tabular-nums">{{ getStatusCount(opt.value) }}</span>
-          </button>
+          </Button>
         </nav>
       </template>
 
@@ -52,21 +40,7 @@
         </div>
 
         <div class="flex shrink-0 items-center gap-2">
-          <div class="relative hidden w-80 md:block">
-            <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              v-model="searchQuery"
-              placeholder="搜索任务"
-              class="pl-9 pr-8"
-            />
-            <button
-              v-if="searchQuery"
-              @click="clearSearch"
-              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 transition-colors hover:text-foreground"
-            >
-              <AppIcon name="close" class="h-4 w-4" />
-            </button>
-          </div>
+          <AppSearchInput v-model="searchQuery" placeholder="搜索任务" class="hidden w-80 md:block" />
           <Button variant="ghost" size="icon-sm" @click="refreshData">
             <AppSpinner v-if="loading" size="sm" />
             <AppIcon v-else name="refresh" class="h-4 w-4" />
@@ -81,21 +55,7 @@
           aria-label="任务状态筛选"
           class="w-full"
         />
-        <div class="relative">
-          <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            v-model="searchQuery"
-            placeholder="搜索任务"
-            class="pl-9 pr-8"
-          />
-          <button
-            v-if="searchQuery"
-            @click="clearSearch"
-            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 transition-colors hover:text-foreground"
-          >
-            <AppIcon name="close" class="h-4 w-4" />
-          </button>
-        </div>
+        <AppSearchInput v-model="searchQuery" placeholder="搜索任务" />
       </div>
 
       <div class="app-page-content app-table-content scheduled-tasks-content">
@@ -253,12 +213,14 @@ import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
+import AppSearchInput from '@/shared/components/layout/AppSearchInput.vue'
+import AppSidebarHeader from '@/shared/components/layout/AppSidebarHeader.vue'
+import AppStatCard from '@/shared/components/layout/AppStatCard.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import TaskDialog from '@/features/settings/components/TaskDialog.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import { Button } from '@/shared/ui/button'
-import { Input } from '@/shared/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -415,12 +377,6 @@ const goToPage = (page: number) => {
 watch(searchQueryDebounced, () => {
   currentPage.value = 1
 })
-
-const clearSearch = () => {
-  searchQuery.value = ''
-  // searchQueryDebounced updates after the 350ms window → watch resets page →
-  // queryKey changes → vue-query refetches. Nothing to call manually.
-}
 
 // ponytail: status/unit/badge/datetime formatters live in the shared
 // scheduledTaskPresenters lib. getStatusCount needs the live statistics snapshot,

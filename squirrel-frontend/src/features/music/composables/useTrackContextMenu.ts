@@ -1,19 +1,11 @@
-import { computed, onMounted, onUnmounted, reactive, type ComputedRef } from 'vue'
+import { computed, reactive, type ComputedRef } from 'vue'
 import type { MusicTrack } from '@/shared/api/music'
 import type { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 
 /**
- * Right-click context menu for a track list row.
- *
- * Owns the menu's open/close + position + target-track state, the absolute
- * position style, the document-level click-outside listener that closes it
- * (lifecycle-managed on mount/unmount), and the per-action handlers. Each
- * action closes the menu after firing. The play/insert-next actions drive the
- * player store; the navigation/playlist actions are injected so this composable
- * doesn't couple to the parent's emit surface.
- *
- * Extracted from MusicTrackList.vue so the click-outside lifecycle + the
- * "close after every action" contract live in one place.
+ * Owns track-target state and menu actions. Shared AppContextMenu owns menu
+ * chrome, outside-click handling, and Escape behavior so feature components do
+ * not each implement their own popup contract.
  */
 export interface TrackContextMenuState {
   visible: boolean
@@ -31,7 +23,7 @@ export interface UseTrackContextMenuOptions {
 
 export interface UseTrackContextMenuReturn {
   contextMenu: TrackContextMenuState
-  contextMenuStyle: ComputedRef<{ left: string; top: string }>
+  contextMenuPosition: ComputedRef<{ x: number; y: number }>
   handleContextMenu: (track: MusicTrack, event: MouseEvent) => void
   closeContextMenu: () => void
   handleContextPlay: () => void
@@ -40,10 +32,6 @@ export interface UseTrackContextMenuReturn {
   handleContextSelectArtist: () => void
   handleContextSelectAlbum: () => void
 }
-
-// Selector the click-outside guard looks for; the menu element carries this
-// class so clicks inside it aren't treated as "outside".
-const MENU_SELECTOR = '.music-context-menu'
 
 export function useTrackContextMenu(options: UseTrackContextMenuOptions): UseTrackContextMenuReturn {
   const { player, onAddToPlaylist, onSelectArtist, onSelectAlbum } = options
@@ -55,9 +43,9 @@ export function useTrackContextMenu(options: UseTrackContextMenuOptions): UseTra
     track: null,
   })
 
-  const contextMenuStyle = computed(() => ({
-    left: `${contextMenu.x}px`,
-    top: `${contextMenu.y}px`,
+  const contextMenuPosition = computed(() => ({
+    x: contextMenu.x,
+    y: contextMenu.y,
   }))
 
   const handleContextMenu = (track: MusicTrack, event: MouseEvent) => {
@@ -97,23 +85,9 @@ export function useTrackContextMenu(options: UseTrackContextMenuOptions): UseTra
     closeContextMenu()
   }
 
-  const handleClickOutside = (event: MouseEvent) => {
-    if (!contextMenu.visible) return
-    const target = event.target as HTMLElement
-    if (!target.closest(MENU_SELECTOR)) closeContextMenu()
-  }
-
-  onMounted(() => {
-    document.addEventListener('click', handleClickOutside)
-  })
-
-  onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside)
-  })
-
   return {
     contextMenu,
-    contextMenuStyle,
+    contextMenuPosition,
     handleContextMenu,
     closeContextMenu,
     handleContextPlay,

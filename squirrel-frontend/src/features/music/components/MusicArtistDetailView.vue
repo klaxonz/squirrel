@@ -16,14 +16,19 @@
           <span v-if="artist.fan_count">{{ formatCount(artist.fan_count) }} 粉丝</span>
         </div>
         <div class="music-artist-actions">
-          <button class="music-action-btn music-action-btn--primary" @click="playAll">
+          <Button @click="playAll">
             <AppIcon name="play" class="h-5 w-5" />
             播放热门
-          </button>
-          <button class="music-action-btn" :class="{ 'music-action-btn--active': followed }" @click="handleFollow">
-            <AppIcon name="heart" class="h-5 w-5" :class="{ 'fill-current': followed }" />
+          </Button>
+          <Button
+            variant="secondary"
+            :loading="followLoading"
+            :class="followed && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
+            @click="handleFollow"
+          >
+            <AppIcon v-if="!followLoading" name="heart" class="h-5 w-5" :class="{ 'fill-current': followed }" />
             {{ followed ? '已关注' : '关注' }}
-          </button>
+          </Button>
         </div>
       </div>
     </header>
@@ -198,35 +203,6 @@ function handleFollow() {
   display: flex;
   gap: 0.75rem;
   margin-top: 1rem;
-}
-
-.music-action-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: hsl(var(--foreground));
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 9999px;
-  cursor: pointer;
-}
-
-.music-action-btn:hover {
-  background: hsl(var(--muted));
-}
-
-.music-action-btn--primary {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border-color: hsl(var(--primary));
-}
-
-.music-action-btn--active {
-  color: hsl(var(--primary));
-  border-color: hsl(var(--primary));
 }
 
 .music-artist-section {

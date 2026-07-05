@@ -18,6 +18,8 @@ export const buttonVariants = cva(
           'border border-border/50 bg-card/48 text-secondary-foreground shadow-surface hover:bg-card/64',
         ghost:
           'border border-transparent text-muted-foreground hover:border-border/50 hover:bg-card/50 hover:text-foreground',
+        player:
+          'border border-primary/35 bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary disabled:bg-muted-foreground/20 disabled:text-muted-foreground/40 disabled:shadow-none',
         link:
           'text-primary underline-offset-4 hover:underline',
       },
@@ -27,7 +29,12 @@ export const buttonVariants = cva(
         sm: 'h-8 px-3 text-xs rounded',
         lg: 'h-10 px-6 rounded-lg text-base',
         icon: 'h-9 w-9',
+        'icon-xs': 'h-[1.375rem] w-[1.375rem] rounded-md',
         'icon-sm': 'h-8 w-8',
+        'mini-icon': 'h-[1.625rem] w-[1.625rem] rounded-md',
+        'card-play': 'h-11 w-11 rounded-lg',
+        'player-sm': 'h-8 w-8 rounded-full',
+        'player-lg': 'h-[3.25rem] w-[3.25rem] rounded-full',
       },
     },
     defaultVariants: {

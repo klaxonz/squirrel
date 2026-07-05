@@ -2,22 +2,24 @@
   <div class="music-discovery-grid">
     <h3 class="text-sm font-semibold mb-3">热门精品歌单</h3>
     <div v-if="tags.length" class="music-tag-strip">
-      <button
-        class="music-tag-chip"
-        :class="{ 'music-tag-chip--active': selectedCategory === 0 }"
+      <Button
+        variant="secondary"
+        size="sm"
+        :class="selectedCategory === 0 && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
         @click="$emit('select-category', 0)"
       >
         推荐
-      </button>
-      <button
+      </Button>
+      <Button
         v-for="tag in tags"
         :key="tag.id"
-        class="music-tag-chip"
-        :class="{ 'music-tag-chip--active': selectedCategory === Number(tag.id) }"
+        variant="secondary"
+        size="sm"
+        :class="selectedCategory === Number(tag.id) && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
         @click="$emit('select-category', Number(tag.id))"
       >
         {{ tag.name }}
-      </button>
+      </Button>
     </div>
     <AppBlockLoader v-if="loading" />
     <AppEmptyState
@@ -92,31 +94,6 @@ defineEmits<{
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
-}
-
-.music-tag-chip {
-  padding: 0.5rem 1rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 9999px;
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.music-tag-chip:hover {
-  border-color: hsl(var(--primary) / 0.5);
-  color: hsl(var(--foreground));
-  background: hsl(var(--muted) / 0.3);
-}
-
-.music-tag-chip--active {
-  background: linear-gradient(135deg, hsl(var(--primary) / 0.15) 0%, hsl(var(--primary) / 0.08) 100%);
-  border-color: hsl(var(--primary) / 0.5);
-  color: hsl(var(--primary));
-  box-shadow: 0 2px 8px hsl(var(--primary) / 0.15);
 }
 
 .music-grid {

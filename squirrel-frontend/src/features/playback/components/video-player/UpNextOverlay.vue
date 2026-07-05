@@ -4,12 +4,14 @@
       <div class="sp-upnext-label">{{ label }}</div>
       <div class="sp-upnext-title">{{ nextTitle }}</div>
       <div class="sp-upnext-countdown">{{ countdown }}s</div>
-      <button class="sp-upnext-btn" @click.stop="$emit('startNow')">{{ startNowLabel }}</button>
+      <Button variant="player" size="sm" class="sp-upnext-btn" @click.stop="$emit('startNow')">{{ startNowLabel }}</Button>
     </div>
   </transition>
 </template>
 
 <script setup lang="ts">
+import { Button } from '@/shared/ui/button'
+
 defineProps<{
   visible: boolean
   label: string

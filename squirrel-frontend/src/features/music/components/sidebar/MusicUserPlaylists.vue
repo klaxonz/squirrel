@@ -5,9 +5,11 @@
       tag="div"
       class="music-user-playlists-list"
     >
-      <button
+      <Button
         v-for="playlist in visiblePlaylists"
         :key="playlist.listid"
+        variant="ghost"
+        size="sm"
         class="music-user-playlist-item"
         :class="{ 'music-user-playlist-item--active': selectedId === String(playlist.listid || '') }"
         @click="$emit('select', playlist)"
@@ -15,22 +17,25 @@
         <AppIcon name="playlistMusic" class="h-3.5 w-3.5" />
         <span class="truncate">{{ playlist.name }}</span>
         <span class="music-user-playlist-count">{{ playlist.m_count || playlist.count || 0 }}</span>
-      </button>
+      </Button>
     </TransitionGroup>
 
-    <button
+    <Button
       v-if="playlists.length > maxVisible"
+      variant="ghost"
+      size="sm"
       class="music-user-playlists-more"
       @click="toggleExpand"
     >
       {{ isExpanded ? '收起' : `展开全部 (${playlists.length - maxVisible}个)` }}
-    </button>
+    </Button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import type { MusicUserPlaylist } from '@/shared/api/music'
 
 const props = withDefaults(defineProps<{
@@ -70,21 +75,14 @@ function toggleExpand() {
 }
 
 .music-user-playlist-item {
-  display: flex;
-  align-items: center;
+  justify-content: flex-start;
   gap: 0.5rem;
   padding: 0.375rem 1.25rem;
   margin: 0.0625rem 0.5rem;
   width: calc(100% - 1rem);
-  border: none;
-  background: none;
   color: hsl(var(--foreground) / 0.6);
   font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
   text-align: left;
-  border-radius: 0.375rem;
 }
 
 .music-user-playlist-item:hover {
@@ -105,24 +103,17 @@ function toggleExpand() {
 }
 
 .music-user-playlists-more {
-  display: block;
   width: calc(100% - 1rem);
   margin: 0.25rem 0.5rem;
   padding: 0.375rem 1.25rem;
   font-size: 0.6875rem;
-  font-weight: 500;
   color: hsl(var(--muted-foreground));
-  background: none;
-  border: none;
-  cursor: pointer;
+  justify-content: flex-start;
   text-align: left;
-  border-radius: 0.375rem;
-  transition: all 0.15s ease;
 }
 
 .music-user-playlists-more:hover {
   color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.05);
 }
 
 .playlist-list-move,

@@ -3,29 +3,32 @@
     <slot name="time" />
 
     <div class="music-bar-buttons">
-      <button
-        class="music-bar-btn"
-        :class="{ 'music-bar-btn--active': shuffle }"
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        :class="{ 'text-primary': shuffle }"
         title="随机播放"
         aria-label="随机播放"
         :aria-pressed="shuffle"
         @click="$emit('shuffle')"
       >
         <AppIcon name="shuffle" class="h-4 w-4" />
-      </button>
+      </Button>
 
-      <button
-        class="music-bar-btn"
+      <Button
+        variant="ghost"
+        size="icon-sm"
         :disabled="!canStep"
         title="上一首"
         aria-label="上一首"
         @click="$emit('previous')"
       >
         <AppIcon name="previous" class="h-4 w-4" />
-      </button>
+      </Button>
 
-      <button
-        class="music-bar-btn music-bar-btn--play"
+      <Button
+        variant="player"
+        size="player-sm"
         :disabled="loading"
         :title="playing ? '暂停' : '播放'"
         :aria-label="playing ? '暂停' : '播放'"
@@ -35,21 +38,23 @@
         <AppSpinner v-if="loading" size="md" />
         <AppIcon v-else-if="playing" name="pause" class="h-5 w-5" />
         <AppIcon v-else name="play" class="h-5 w-5" />
-      </button>
+      </Button>
 
-      <button
-        class="music-bar-btn"
+      <Button
+        variant="ghost"
+        size="icon-sm"
         :disabled="!canStep"
         title="下一首"
         aria-label="下一首"
         @click="$emit('next')"
       >
         <AppIcon name="next" class="h-4 w-4" />
-      </button>
+      </Button>
 
-      <button
-        class="music-bar-btn"
-        :class="{ 'music-bar-btn--active': repeat !== 'none' }"
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        :class="{ 'text-primary': repeat !== 'none' }"
         :title="repeatTitle"
         :aria-label="repeatTitle"
         :aria-pressed="repeat !== 'none'"
@@ -57,7 +62,7 @@
       >
         <AppIcon v-if="repeat === 'one'" name="repeatOne" class="h-4 w-4" />
         <AppIcon v-else name="refresh" class="h-4 w-4" />
-      </button>
+      </Button>
     </div>
   </div>
 </template>
@@ -66,6 +71,7 @@
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Button } from '@/shared/ui/button'
 
 const props = withDefaults(defineProps<{
   playing?: boolean
@@ -94,6 +100,7 @@ const repeatTitle = computed(() => {
   if (props.repeat === 'one') return '单曲循环'
   return '顺序播放'
 })
+
 </script>
 
 <style scoped>
@@ -112,62 +119,4 @@ const repeatTitle = computed(() => {
   gap: 0.1875rem;
 }
 
-.music-bar-btn {
-  display: flex;
-  height: 1.875rem;
-  width: 1.875rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.375rem;
-  border: none;
-  background: none;
-  color: hsl(var(--foreground) / 0.6);
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0;
-}
-
-.music-bar-btn:hover {
-  background: hsl(var(--muted) / 0.6);
-  color: hsl(var(--foreground));
-}
-
-.music-bar-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
-}
-
-.music-bar-btn:disabled {
-  opacity: 0.25;
-  cursor: not-allowed;
-}
-
-.music-bar-btn--active {
-  color: hsl(var(--primary));
-}
-
-.music-bar-btn--play {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 9999px;
-  border: 1px solid hsl(var(--primary) / 0.35);
-  background: hsl(var(--primary) / 0.14);
-  color: hsl(var(--primary));
-}
-
-.music-bar-btn--play:hover {
-  transform: scale(1.05);
-  background: hsl(var(--primary) / 0.2);
-  color: hsl(var(--primary));
-}
-
-.music-bar-btn--play:active {
-  transform: scale(0.96);
-}
-
-.music-bar-btn--play:disabled {
-  background: hsl(var(--muted-foreground) / 0.2);
-  color: hsl(var(--muted-foreground) / 0.4);
-  box-shadow: none;
-}
 </style>

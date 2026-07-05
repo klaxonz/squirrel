@@ -28,17 +28,19 @@
             </h3>
 
             <div class="filter-section__options" :aria-label="section.title">
-              <button
+              <Button
                 v-for="opt in section.options"
                 :key="opt.value"
                 type="button"
+                variant="ghost"
+                size="sm"
                 class="filter-pill"
                 :class="{ 'is-active': section.model.value === opt.value }"
                 :aria-pressed="section.model.value === opt.value"
                 @click="section.model.value = opt.value"
               >
                 {{ opt.label }}
-              </button>
+              </Button>
             </div>
           </section>
         </div>
@@ -245,26 +247,13 @@ const sortOptions: FilterOption[] = [
 }
 
 .filter-pill {
-  display: inline-flex;
   min-width: 0;
   height: 2rem;
-  align-items: center;
-  justify-content: center;
-  border: 0;
   border-radius: 999px;
   background: hsl(var(--muted) / 0.5);
   padding: 0 0.9rem;
-  color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
   font-weight: 600;
-  white-space: nowrap;
-  transition: background-color var(--duration-fast, 150ms) var(--ease-default, ease),
-              color var(--duration-fast, 150ms) var(--ease-default, ease);
-}
-
-.filter-pill:hover {
-  background: hsl(var(--muted));
-  color: hsl(var(--foreground));
 }
 
 .filter-pill.is-active {

@@ -15,9 +15,9 @@
 
       <div class="immersive-container">
         <header class="immersive-header">
-          <button class="immersive-close-btn" title="关闭" aria-label="关闭沉浸播放" @click="$emit('close')">
+          <Button variant="ghost" size="icon" title="关闭" aria-label="关闭沉浸播放" @click="$emit('close')">
             <AppIcon name="chevronDown" class="h-5 w-5" />
-          </button>
+          </Button>
           <div class="immersive-header-title">正在播放</div>
           <div class="w-10" />
         </header>
@@ -76,30 +76,32 @@
               </div>
 
               <div class="immersive-buttons">
-                <button
-                  class="immersive-btn"
-                  :class="{ 'immersive-btn--active': shuffle }"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  :class="{ 'text-primary': shuffle }"
                   title="随机播放"
                   aria-label="随机播放"
                   :aria-pressed="shuffle"
                   @click="$emit('toggle-shuffle')"
                 >
                   <AppIcon name="shuffle" class="h-5 w-5" />
-                </button>
-                <button class="immersive-btn" :disabled="!canStep" title="上一首" aria-label="上一首" @click="$emit('previous')">
+                </Button>
+                <Button variant="ghost" size="icon" :disabled="!canStep" title="上一首" aria-label="上一首" @click="$emit('previous')">
                   <AppIcon name="previous" class="h-5 w-5" />
-                </button>
-                <button class="immersive-btn immersive-btn--play" :disabled="loading" :title="playing ? '暂停' : '播放'" :aria-label="playing ? '暂停' : '播放'" :aria-pressed="playing" @click="$emit('toggle')">
+                </Button>
+                <Button variant="default" size="player-lg" :disabled="loading" :title="playing ? '暂停' : '播放'" :aria-label="playing ? '暂停' : '播放'" :aria-pressed="playing" @click="$emit('toggle')">
                   <AppSpinner v-if="loading" size="lg" />
                   <AppIcon v-else-if="playing" name="pause" class="h-6 w-6" />
                   <AppIcon v-else name="play" class="h-6 w-6" />
-                </button>
-                <button class="immersive-btn" :disabled="!canStep" title="下一首" aria-label="下一首" @click="$emit('next')">
+                </Button>
+                <Button variant="ghost" size="icon" :disabled="!canStep" title="下一首" aria-label="下一首" @click="$emit('next')">
                   <AppIcon name="next" class="h-5 w-5" />
-                </button>
-                <button
-                  class="immersive-btn"
-                  :class="{ 'immersive-btn--active': repeat !== 'none' }"
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  :class="{ 'text-primary': repeat !== 'none' }"
                   :title="repeat === 'one' ? '单曲循环' : '列表循环'"
                   :aria-label="repeat === 'one' ? '单曲循环' : '列表循环'"
                   :aria-pressed="repeat !== 'none'"
@@ -107,32 +109,21 @@
                 >
                   <AppIcon v-if="repeat === 'one'" name="repeatOne" class="h-5 w-5" />
                   <AppIcon v-else name="refresh" class="h-5 w-5" />
-                </button>
+                </Button>
               </div>
             </div>
 
-            <div class="immersive-tabs" role="tablist" aria-label="播放详情">
-              <button
-                class="immersive-tab"
-                :class="{ 'immersive-tab--active': activeTab === 'lyrics' }"
-                role="tab"
-                :aria-selected="activeTab === 'lyrics'"
-                @click="activeTab = 'lyrics'"
-              >
-                歌词
-              </button>
-              <button
-                class="immersive-tab"
-                :class="{ 'immersive-tab--active': activeTab === 'comments' }"
-                role="tab"
-                :aria-selected="activeTab === 'comments'"
-                @click="$emit('switch-comments')"
-              >
-                评论
-                <span v-if="commentCount > 0" class="immersive-tab-badge">
-                  {{ commentCount > 999 ? '999+' : commentCount }}
-                </span>
-              </button>
+            <div class="immersive-tabs">
+              <AppSegmentedControl
+                :model-value="activeTab"
+                :options="tabOptions"
+                aria-label="播放详情"
+                size="sm"
+                @update:model-value="handleTabChange"
+              />
+              <Badge v-if="commentCount > 0" class="immersive-tab-badge">
+                {{ commentCount > 999 ? '999+' : commentCount }}
+              </Badge>
             </div>
           </div>
         </main>
@@ -145,6 +136,9 @@
 import { ref } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
+import { Badge } from '@/shared/ui/badge'
+import { Button } from '@/shared/ui/button'
 import { formatPlaybackTime as formatDuration } from '@/features/music/lib/musicFormatters'
 import MusicLyricsPanel from './MusicLyricsPanel.vue'
 import MusicCommentsPanel from './MusicCommentsPanel.vue'
@@ -193,7 +187,13 @@ withDefaults(defineProps<{
   commentCount: 0,
 })
 
-defineEmits<{
+const activeTab = ref<'lyrics' | 'comments'>('lyrics')
+const tabOptions = [
+  { label: '歌词', value: 'lyrics' },
+  { label: '评论', value: 'comments' },
+]
+
+const emit = defineEmits<{
   close: []
   seek: [time: number]
   'seek-input': [time: number]
@@ -206,7 +206,10 @@ defineEmits<{
   'load-more-comments': []
 }>()
 
-const activeTab = ref<'lyrics' | 'comments'>('lyrics')
+const handleTabChange = (value: string | number) => {
+  activeTab.value = value as 'lyrics' | 'comments'
+  if (value === 'comments') emit('switch-comments')
+}
 
 // ponytail: formatDuration is the player-surface variant (zero-padded mm:ss)
 // from the shared musicFormatters lib, deduped from 5 components.
@@ -274,29 +277,6 @@ const activeTab = ref<'lyrics' | 'comments'>('lyrics')
   height: 3rem;
   margin-bottom: 1.5rem;
   flex-shrink: 0;
-}
-
-.immersive-close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 9999px;
-  border: none;
-  background: hsl(var(--foreground) / 0.05);
-  color: hsl(var(--foreground));
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.immersive-close-btn:hover {
-  background: hsl(var(--foreground) / 0.1);
-}
-
-.immersive-close-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.5);
 }
 
 .immersive-header-title {
@@ -471,96 +451,14 @@ const activeTab = ref<'lyrics' | 'comments'>('lyrics')
   gap: 1.5rem;
 }
 
-.immersive-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 9999px;
-  border: none;
-  background: none;
-  color: hsl(var(--foreground) / 0.6);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.immersive-btn:hover {
-  color: hsl(var(--foreground));
-  background: hsl(var(--foreground) / 0.05);
-}
-
-.immersive-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.5);
-}
-
-.immersive-btn:disabled {
-  opacity: 0.25;
-  cursor: not-allowed;
-}
-
-.immersive-btn--active {
-  color: hsl(var(--primary)) !important;
-}
-
-.immersive-btn--play {
-  width: 3.25rem;
-  height: 3.25rem;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-}
-
-.immersive-btn--play:hover {
-  transform: scale(1.05);
-}
-
-.immersive-btn--play:active {
-  transform: scale(0.95);
-}
-
-.immersive-btn--play:disabled {
-  background: hsl(var(--muted-foreground) / 0.2);
-  color: hsl(var(--muted-foreground) / 0.4);
-}
-
 .immersive-tabs {
+  position: relative;
   display: flex;
   justify-content: center;
-  gap: 0.5rem;
-}
-
-.immersive-tab {
-  padding: 0.375rem 1rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: hsl(var(--foreground) / 0.5);
-  background: transparent;
-  border: 1px solid hsl(var(--border) / 0.3);
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: flex;
   align-items: center;
-  gap: 0.375rem;
-}
-
-.immersive-tab:hover {
-  color: hsl(var(--foreground) / 0.8);
-}
-
-.immersive-tab--active {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.1);
-  border-color: hsl(var(--primary) / 0.3);
 }
 
 .immersive-tab-badge {
-  font-size: 0.625rem;
-  padding: 0.0625rem 0.375rem;
-  border-radius: 9999px;
-  background: hsl(var(--primary) / 0.15);
-  color: hsl(var(--primary));
-  font-weight: 600;
+  margin-left: 0.375rem;
 }
 </style>

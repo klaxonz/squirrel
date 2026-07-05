@@ -8,9 +8,9 @@
         <div class="sp-error-title">{{ title || fallbackTitle }}</div>
         <div class="sp-error-message">{{ message }}</div>
         <div class="sp-error-actions">
-          <button v-if="canRetry" class="sp-error-retry-btn" @click.stop="$emit('retry')">
+          <Button v-if="canRetry" variant="player" size="sm" class="sp-error-retry-btn" @click.stop="$emit('retry')">
             {{ retryLabel }}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -19,6 +19,7 @@
 
 <script setup lang="ts">
 import PlayerIcon from './PlayerIcon.vue'
+import { Button } from '@/shared/ui/button'
 
 interface Props {
   visible: boolean

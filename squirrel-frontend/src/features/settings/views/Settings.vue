@@ -13,9 +13,11 @@
         </div>
 
         <nav class="settings-sidebar-nav custom-scrollbar">
-          <button
+          <Button
             v-for="tab in tabs"
             :key="tab.key"
+            variant="ghost"
+            size="sm"
             @click="navigateToTab(tab.path)"
             class="settings-nav-item"
             :class="{ 'settings-nav-item--active': currentTab === tab.key }"
@@ -23,7 +25,7 @@
             <AppIcon :name="tab.icon" class="h-4 w-4" />
             <span class="min-w-0 flex-1 truncate">{{ tab.label }}</span>
             <span v-if="tab.badge" class="settings-nav-badge">{{ tab.badge }}</span>
-          </button>
+          </Button>
         </nav>
       </template>
 
@@ -56,9 +58,10 @@
                 </div>
 
                 <div class="settings-theme-grid">
-                  <button
+                  <Button
                     v-for="option in themeOptions"
                     :key="option.value"
+                    variant="outline"
                     @click="setThemeMode(option.value)"
                     class="settings-theme-option"
                     :class="{ 'settings-theme-option--active': themeMode === option.value }"
@@ -73,7 +76,7 @@
                       <div class="text-sm font-semibold">{{ option.label }}</div>
                       <div class="mt-1 text-xs text-muted-foreground">{{ option.description }}</div>
                     </div>
-                  </button>
+                  </Button>
                 </div>
               </section>
 

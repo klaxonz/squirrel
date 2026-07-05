@@ -13,12 +13,13 @@
       <div class="space-y-6 px-6 py-5">
         <section v-if="step === 1" class="space-y-5">
           <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <button
+            <Button
               v-for="site in supportedSites"
               :key="site"
               type="button"
+              variant="ghost"
               :class="[
-                'import-dialog__site-card',
+                'import-dialog__site-card app-surface app-surface--subtle',
                 selectedSite === site && 'import-dialog__site-card--active',
               ]"
               @click="selectedSite = site"
@@ -30,7 +31,7 @@
                 class="import-dialog__site-icon"
               />
               <span class="import-dialog__site-name">{{ getSiteName(site) }}</span>
-            </button>
+            </Button>
           </div>
 
           <Alert v-if="requestError">
@@ -40,23 +41,14 @@
 
         <section v-else-if="step === 2" class="space-y-4">
           <div class="import-dialog__summary">
-            <div class="import-dialog__summary-block">
-              <span class="import-dialog__summary-label">进度</span>
-              <strong class="import-dialog__summary-value">{{ loadedCount }}</strong>
-              <p class="mt-1 text-xs text-muted-foreground">已加载 {{ loadedCount }} / {{ previewData.total ?? '未知' }} 个</p>
-            </div>
-            <div class="import-dialog__summary-block">
-              <span class="import-dialog__summary-label">已导入</span>
-              <strong class="import-dialog__summary-value">{{ importedCount }}</strong>
-            </div>
-            <div class="import-dialog__summary-block">
-              <span class="import-dialog__summary-label">未导入</span>
-              <strong class="import-dialog__summary-value">{{ notImportedCount }}</strong>
-            </div>
-            <div class="import-dialog__summary-block">
-              <span class="import-dialog__summary-label">已选</span>
-              <strong class="import-dialog__summary-value">{{ selectedCount }}</strong>
-            </div>
+            <AppStatCard
+              label="进度"
+              :value="loadedCount"
+              :description="`已加载 ${loadedCount} / ${previewData.total ?? '未知'} 个`"
+            />
+            <AppStatCard label="已导入" :value="importedCount" />
+            <AppStatCard label="未导入" :value="notImportedCount" />
+            <AppStatCard label="已选" :value="selectedCount" />
           </div>
 
           <div v-if="loadingPreview && !loadedCount" class="import-dialog__loader">
@@ -165,7 +157,7 @@
         </section>
       </div>
 
-      <DialogFooter class="border-t border-border/70 bg-secondary/24 px-6 py-4 sm:justify-end">
+      <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end px-6">
         <Button v-if="step === 1" size="sm" variant="ghost" :disabled="loadingPreview" @click="handleClose">取消</Button>
         <Button v-if="step === 1" size="sm" :loading="loadingPreview" :disabled="!selectedSite" @click="handlePreview">
           预览订阅
@@ -193,6 +185,7 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppStatCard from '@/shared/components/layout/AppStatCard.vue'
 import {
   importSubscriptions,
 } from '@/shared/api'
@@ -343,9 +336,7 @@ watch(() => props.show, (visible) => {
   gap: 0.8rem;
   place-items: center;
   padding: 1.2rem 0.9rem;
-  border: 1px solid hsl(var(--border) / 0.76);
   border-radius: calc(var(--radius-xl) + 2px);
-  background: hsl(var(--card) / 0.84);
   transition:
     transform var(--duration-normal) var(--ease-default),
     border-color var(--duration-fast) var(--ease-default),
@@ -386,26 +377,6 @@ watch(() => props.show, (visible) => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
-}
-
-.import-dialog__summary-block {
-  padding: 0.85rem 0.95rem;
-  border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 1rem;
-  background: hsl(var(--card) / 0.82);
-}
-
-.import-dialog__summary-label {
-  display: block;
-  font-size: 0.7rem;
-  color: hsl(var(--muted-foreground));
-}
-
-.import-dialog__summary-value {
-  display: block;
-  margin-top: 0.2rem;
-  font-size: 1.15rem;
-  color: hsl(var(--foreground));
 }
 
 .import-dialog__loader {

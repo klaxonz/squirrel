@@ -2,26 +2,18 @@
   <AppPageShell variant="compact">
     <AppTwoColumnLayout>
       <template #sidebar>
-        <div class="flex h-14 shrink-0 items-center justify-between app-divider-bottom px-4">
-          <div class="min-w-0">
-            <h1 class="app-h3 truncate">站点</h1>
-            <p class="mt-0.5 text-xs text-muted-foreground">{{ siteRuntimeSummary.total }} 个已安装</p>
-          </div>
-          <Button variant="ghost" size="icon-sm" :disabled="reloading || loading" @click="handleReload">
-            <AppSpinner v-if="reloading" size="sm" />
-            <AppIcon v-else name="refresh" class="h-4 w-4" />
-          </Button>
-        </div>
+        <AppSidebarHeader title="站点" :subtitle="`${siteRuntimeSummary.total} 个已安装`">
+          <template #actions>
+            <Button variant="ghost" size="icon-sm" :disabled="reloading || loading" @click="handleReload">
+              <AppSpinner v-if="reloading" size="sm" />
+              <AppIcon v-else name="refresh" class="h-4 w-4" />
+            </Button>
+          </template>
+        </AppSidebarHeader>
 
         <div class="grid shrink-0 grid-cols-2 gap-2 app-divider-bottom p-3">
-          <div class="app-stat-card">
-            <div class="app-stat-card__label">运行</div>
-            <div class="app-stat-card__value">{{ siteRuntimeSummary.running }}</div>
-          </div>
-          <div class="app-stat-card">
-            <div class="app-stat-card__label">需关注</div>
-            <div class="app-stat-card__value">{{ siteRuntimeSummary.attention }}</div>
-          </div>
+          <AppStatCard label="运行" :value="siteRuntimeSummary.running" />
+          <AppStatCard label="需关注" :value="siteRuntimeSummary.attention" />
           <div class="app-stat-card col-span-2">
             <div class="flex items-center justify-between">
               <span class="text-xs text-muted-foreground">网络连通</span>
@@ -65,21 +57,7 @@
         </div>
 
         <div class="flex shrink-0 items-center gap-2">
-          <div class="relative w-80">
-            <AppIcon name="search" class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              v-model="searchQuery"
-              placeholder="搜索站点、站点或描述"
-              class="pl-9 pr-8"
-            />
-            <button
-              v-if="searchQuery"
-              @click="searchQuery = ''"
-              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 transition-colors hover:text-foreground"
-            >
-              <AppIcon name="close" class="h-4 w-4" />
-            </button>
-          </div>
+          <AppSearchInput v-model="searchQuery" placeholder="搜索站点、站点或描述" class="w-80" />
         </div>
       </template>
 
@@ -127,11 +105,13 @@ import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
+import AppSearchInput from '@/shared/components/layout/AppSearchInput.vue'
+import AppSidebarHeader from '@/shared/components/layout/AppSidebarHeader.vue'
+import AppStatCard from '@/shared/components/layout/AppStatCard.vue'
 import SiteConfigEditorDialog from '@/features/settings/components/SiteConfigEditorDialog.vue'
 import SiteRuntimeTable from '@/features/settings/components/SiteRuntimeTable.vue'
 import YouTubeOAuthPrompt from '@/features/settings/components/YouTubeOAuthPrompt.vue'
 import { Button } from '@/shared/ui/button'
-import { Input } from '@/shared/ui/input'
 import { Logger } from '@/shared/lib/logger'
 import { shouldRefreshLoginStatusesAfterCookieImport } from '@/shared/lib/site-runtime-login-status'
 import { getDesktopBridge } from '@/shared/composables/useDesktopBridge'

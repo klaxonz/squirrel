@@ -14,9 +14,10 @@
               class="app-hero-main-card__img"
               loading="eager"
             />
-            <button
+            <Button
               v-if="heroVideo"
               type="button"
+              variant="ghost"
               class="app-hero-main-card__cover-action"
               :aria-label="`播放 ${heroVideo.title}`"
               @click="openVideo(heroVideo)"
@@ -29,42 +30,49 @@
               <p v-if="heroSub" class="home-media-hero__sub">{{ heroSub }}</p>
 
               <div v-if="heroVideo" class="home-media-hero__actions">
-                <button
+                <Button
                   type="button"
+                  variant="default"
+                  size="sm"
                   class="app-hero-cta"
                   @click="openVideo(heroVideo)"
                 >
                   <AppIcon name="play" class="app-play-icon size-4" />
                   {{ heroCtaLabel }}
                   <span v-if="heroRemainingText" class="app-hero-cta__meta">{{ heroRemainingText }}</span>
-                </button>
-                <button
+                </Button>
+                <Button
                   v-if="heroChannelId"
                   type="button"
+                  variant="outline"
+                  size="sm"
                   class="app-hero-cta app-hero-cta--ghost"
                   @click="openSubscription(heroChannelId)"
                 >
                   查看频道
-                </button>
+                </Button>
               </div>
               <div v-else class="home-media-hero__actions">
-                <button
+                <Button
                   type="button"
+                  variant="default"
+                  size="sm"
                   class="app-hero-cta"
                   @click="scrollToFirstRail"
                 >
                   <AppIcon name="chevronDown" class="size-4" />
                   开始探索
-                </button>
+                </Button>
               </div>
             </div>
           </div>
 
           <div v-if="secondaryFeaturedVideos.length > 0" class="app-hero-feature-grid" aria-label="推荐轮播">
-            <button
+            <Button
               v-for="{ video } in secondaryFeaturedVideos"
               :key="video.id"
               type="button"
+              variant="ghost"
               class="app-hero-feature-card"
               :aria-label="`播放 ${video.title}`"
               @click="openVideo(video)"
@@ -77,7 +85,7 @@
                   <span v-if="video.duration" class="app-hero-feature-card__duration">{{ formatDuration(video.duration) }}</span>
                 </span>
               </span>
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -112,6 +120,7 @@ import ContinueWatching from '@/features/video/components/feed/ContinueWatching.
 import SpecialFollowVideos from '@/features/video/components/feed/SpecialFollowVideos.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import { getFeaturedVideos } from '@/shared/api/video'
@@ -430,8 +439,8 @@ onBeforeUnmount(() => {
 
 .home-media-hero__inner {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: start;
+  grid-template-columns: minmax(0, 1.42fr) minmax(22rem, 0.88fr);
+  align-items: stretch;
   gap: 0.75rem;
   height: auto;
   min-height: 0;
@@ -441,7 +450,7 @@ onBeforeUnmount(() => {
 .app-hero-main-card {
   position: relative;
   min-width: 0;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 21 / 9;
   border-radius: var(--radius-xl);
   overflow: hidden;
   background: hsl(var(--card) / 0.58);
@@ -538,13 +547,17 @@ onBeforeUnmount(() => {
   gap: 0.75rem;
   min-width: 0;
   min-height: 0;
+  height: 100%;
 }
 
 .app-hero-feature-card {
   position: relative;
+  align-self: stretch;
+  justify-self: stretch;
   min-width: 0;
   min-height: 0;
-  aspect-ratio: 16 / 9;
+  width: 100%;
+  height: 100%;
   padding: 0;
   border: 0;
   border-radius: var(--radius-xl);
@@ -655,11 +668,16 @@ onBeforeUnmount(() => {
 
   .home-media-hero__inner {
     grid-template-columns: 1fr;
+    align-items: start;
   }
 
   .app-hero-main-card {
     aspect-ratio: auto;
     min-height: 320px;
+  }
+
+  .app-hero-feature-grid {
+    height: auto;
   }
 
   .app-hero-feature-card {

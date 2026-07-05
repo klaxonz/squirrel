@@ -59,18 +59,21 @@
       </div>
     </div>
 
-    <button
+    <Button
+      variant="ghost"
+      size="mini-icon"
       class="history-item__delete"
       @click.stop="handleDelete"
     >
       <AppIcon name="trash" class="h-4 w-4" />
-    </button>
+    </Button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'

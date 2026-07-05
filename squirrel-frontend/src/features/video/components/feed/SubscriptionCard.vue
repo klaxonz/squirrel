@@ -20,15 +20,17 @@
           <h3 class="line-clamp-2 text-sm font-semibold leading-snug tracking-normal group-hover:text-primary transition-colors">
             {{ subscription.name }}
           </h3>
-          <button
+          <Button
             type="button"
-            class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors"
-            :class="subscription.is_special_followed ? 'text-warning hover:bg-warning/10' : 'text-muted-foreground/40 hover:bg-accent/40 hover:text-foreground'"
+            variant="ghost"
+            size="mini-icon"
+            class="shrink-0"
+            :class="subscription.is_special_followed ? 'text-warning' : 'text-muted-foreground/40'"
             aria-label="切换特别关注"
             @click.stop="$emit('toggleSpecial', subscription)"
           >
             <AppIcon :name="subscription.is_special_followed ? 'bookmarkCheck' : 'bookmarkPlus'" class="h-4 w-4" />
-          </button>
+          </Button>
         </div>
         <div class="mt-1 flex items-center gap-2">
           <SiteTag :site="subscription.site" class="origin-left scale-[0.85] opacity-90" />

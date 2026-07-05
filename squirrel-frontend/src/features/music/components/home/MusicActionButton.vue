@@ -1,5 +1,5 @@
 <template>
-  <button class="music-action-button" :class="variantClass" @click="$emit('click')">
+  <Button variant="secondary" class="music-action-button" :class="variantClass" @click="$emit('click')">
     <div class="music-action-icon" :class="variantClass">
       <AppIcon :name="icon" class="h-5 w-5" />
     </div>
@@ -8,12 +8,13 @@
       <span v-if="track" class="music-action-track">{{ track.title }}</span>
     </div>
     <AppIcon name="chevronRight" class="h-4 w-4 music-action-arrow" />
-  </button>
+  </Button>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import type { AppIconName } from '@/shared/icons/app-icons'
 import type { MusicTrack } from '@/shared/api/music'
 
@@ -35,8 +36,7 @@ const variantClass = computed(() => `music-action-button--${props.variant}`)
 
 <style scoped>
 .music-action-button {
-  display: flex;
-  align-items: center;
+  justify-content: flex-start;
   gap: 0.875rem;
   min-height: 4.5rem;
   height: 100%;
@@ -44,8 +44,6 @@ const variantClass = computed(() => `music-action-button--${props.variant}`)
   background: hsl(var(--card) / 0.62);
   border: 1px solid hsl(var(--border) / 0.55);
   border-radius: 0.625rem;
-  cursor: pointer;
-  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
   text-align: left;
   position: relative;
   overflow: hidden;

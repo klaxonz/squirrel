@@ -33,9 +33,9 @@
         </div>
       </div>
       <div v-if="hasMore" class="music-comments-more">
-        <button class="music-chip" :disabled="loading" @click="$emit('load-more')">
+        <Button variant="secondary" size="sm" :disabled="loading" @click="$emit('load-more')">
           加载更多评论
-        </button>
+        </Button>
       </div>
     </div>
   </div>
@@ -45,6 +45,7 @@
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import { Button } from '@/shared/ui/button'
 import type { MusicComment } from '@/shared/api/music'
 
 defineProps<{
@@ -164,23 +165,4 @@ defineEmits<{
   padding: 0.5rem 0;
 }
 
-.music-chip {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  border: 1px solid hsl(var(--border));
-  border-radius: 9999px;
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.music-chip:hover {
-  background: hsl(var(--muted));
-}
-
-.music-chip:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 </style>

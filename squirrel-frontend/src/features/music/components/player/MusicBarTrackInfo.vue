@@ -1,5 +1,6 @@
 <template>
-  <button
+  <Button
+    variant="ghost"
     class="music-bar-track-info"
     :class="{ 'music-bar-track-info--clickable': clickable }"
     @click="clickable && $emit('click')"
@@ -18,11 +19,12 @@
       <span v-if="error" class="music-bar-error" :title="error">{{ error }}</span>
       <span v-else class="music-bar-artist">{{ track?.artist || '酷狗音乐' }}</span>
     </div>
-  </button>
+  </Button>
 </template>
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import type { MusicTrack } from '@/shared/api/music'
 
 withDefaults(defineProps<{
@@ -41,16 +43,13 @@ defineEmits<{
 
 <style scoped>
 .music-bar-track-info {
-  display: flex;
   min-width: 0;
   width: 220px;
   flex-shrink: 0;
-  align-items: center;
+  justify-content: flex-start;
   gap: 0.625rem;
   border-radius: 0.375rem;
   padding: 0.25rem;
-  border: none;
-  background: none;
   color: inherit;
   text-align: left;
   cursor: default;
@@ -58,11 +57,6 @@ defineEmits<{
 
 .music-bar-track-info--clickable {
   cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.music-bar-track-info--clickable:hover {
-  background: hsl(var(--muted) / 0.5);
 }
 
 .music-bar-cover {

@@ -42,26 +42,14 @@
                 {{ activeChannelName || '订阅动态' }}
               </h2>
               
-              <div v-if="canOpenRemoteChannel" class="app-tab-list">
-                <button
-                  type="button"
-                  class="app-tab-button"
-                  :class="{ 'is-active': channelDataMode === 'local' }"
-                  @click="openLocalChannel"
-                >
-                  <AppIcon name="library" class="h-3 w-3" />
-                  本地
-                </button>
-                <button
-                  type="button"
-                  class="app-tab-button"
-                  :class="{ 'is-active': channelDataMode === 'remote' }"
-                  @click="openRemoteChannel"
-                >
-                  <AppIcon name="siteFallback" class="h-3 w-3" />
-                  远端
-                </button>
-              </div>
+              <AppSegmentedControl
+                v-if="canOpenRemoteChannel"
+                :model-value="channelDataMode"
+                :options="channelDataModeOptions"
+                aria-label="频道内容来源"
+                size="sm"
+                @update:model-value="handleChannelDataModeChange"
+              />
 
               <Button
                 v-if="activeChannel"
@@ -86,27 +74,13 @@
         </div>
 
         <div class="flex items-center gap-1.5">
-          <!-- View toggle (feed / channels) — segmented control, aligns with FeedToolbar's pill language -->
-          <div class="app-tab-list">
-            <button
-              class="app-tab-button"
-              :class="{ 'is-active': channelDataMode === 'local' && viewMode === 'feed' }"
-              :aria-pressed="channelDataMode === 'local' && viewMode === 'feed'"
-              @click="showLocalFeed"
-            >
-              <AppIcon name="film" class="h-3.5 w-3.5" />
-              最近发布
-            </button>
-            <button
-              class="app-tab-button"
-              :class="{ 'is-active': channelDataMode === 'local' && viewMode === 'grid' }"
-              :aria-pressed="channelDataMode === 'local' && viewMode === 'grid'"
-              @click="showLocalGrid"
-            >
-              <AppIcon name="layoutGrid" class="h-3.5 w-3.5" />
-              频道
-            </button>
-          </div>
+          <AppSegmentedControl
+            :model-value="channelDataMode === 'remote' ? 'remote' : viewMode"
+            :options="mainViewOptions"
+            aria-label="订阅视图"
+            size="sm"
+            @update:model-value="handleMainViewChange"
+          />
 
           <!-- NSFW toggle — pill, size-8, clear active state + aria -->
           <Button
@@ -216,6 +190,7 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppBounceDots from '@/shared/components/AppBounceDots.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import { Button } from '@/shared/ui/button'
 import SubscriptionSidebar from '@/features/video/components/SubscriptionSidebar.vue'
 import SubscriptionCard from '@/features/video/components/feed/SubscriptionCard.vue'
@@ -534,6 +509,22 @@ const showLocalFeed = () => {
 const showLocalGrid = () => {
   channelDataMode.value = 'local'
   viewMode.value = 'grid'
+}
+const channelDataModeOptions = [
+  { value: 'local', label: '本地' },
+  { value: 'remote', label: '远端' },
+]
+const mainViewOptions = [
+  { value: 'feed', label: '最近发布' },
+  { value: 'grid', label: '频道' },
+]
+const handleChannelDataModeChange = (value: string | number) => {
+  if (value === 'remote') openRemoteChannel()
+  else openLocalChannel()
+}
+const handleMainViewChange = (value: string | number) => {
+  if (value === 'grid') showLocalGrid()
+  else showLocalFeed()
 }
 const openLocalChannel = () => {
   channelDataMode.value = 'local'

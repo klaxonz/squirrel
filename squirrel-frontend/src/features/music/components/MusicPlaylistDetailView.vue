@@ -6,15 +6,28 @@
         <span class="music-playlist-topbar-meta">{{ total }} 首</span>
       </div>
       <div class="music-playlist-topbar-actions">
-        <button class="music-playlist-icon-btn" :class="{ 'music-playlist-icon-btn--active': shuffle }" title="随机播放" @click="shuffleAll">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          :class="shuffle && 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
+          title="随机播放"
+          @click="shuffleAll"
+        >
           <AppIcon name="shuffle" class="h-4 w-4" />
-        </button>
-        <button v-if="showCollect" class="music-playlist-icon-btn" :class="{ 'music-playlist-icon-btn--active': collected }" title="收藏" @click="$emit('collect')">
+        </Button>
+        <Button
+          v-if="showCollect"
+          variant="ghost"
+          size="icon-sm"
+          :class="collected && 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
+          title="收藏"
+          @click="$emit('collect')"
+        >
           <AppIcon name="heart" class="h-4 w-4" :class="{ 'fill-current': collected }" />
-        </button>
-        <button class="music-playlist-play-btn" title="播放全部" @click="playAll">
+        </Button>
+        <Button size="player-sm" title="播放全部" @click="playAll">
           <AppIcon name="play" class="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </div>
 
@@ -149,54 +162,6 @@ function shuffleAll() {
   align-items: center;
   gap: 0.375rem;
   flex-shrink: 0;
-}
-
-.music-playlist-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border: none;
-  border-radius: 0.5rem;
-  background: none;
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.music-playlist-icon-btn:hover {
-  background: hsl(var(--muted) / 0.5);
-  color: hsl(var(--foreground));
-}
-
-.music-playlist-icon-btn--active {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.1);
-}
-
-.music-playlist-play-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border: none;
-  border-radius: 9999px;
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.85) 100%);
-  color: hsl(var(--primary-foreground));
-  cursor: pointer;
-  box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.music-playlist-play-btn:hover {
-  transform: scale(1.08);
-  box-shadow: 0 6px 16px hsl(var(--primary) / 0.35);
-}
-
-.music-playlist-play-btn:active {
-  transform: scale(0.95);
 }
 
 .music-playlist-tracks {

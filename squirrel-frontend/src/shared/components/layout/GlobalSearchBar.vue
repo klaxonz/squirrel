@@ -2,14 +2,16 @@
   <div ref="rootRef" class="global-search" @focusin="handleFocusIn" @focusout="handleFocusOut">
     <div class="global-search__box">
       <div v-if="searchModesList.length > 0" class="global-search__mode-wrap">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="xs"
           class="global-search__mode"
           @click="toggleMode"
         >
           <AppIcon :name="activeSearchMode === 'local' ? 'library' : 'siteFallback'" class="w-3.5 h-3.5" />
           {{ activeSearchModeLabel }}
-        </button>
+        </Button>
       </div>
       
       <div v-if="searchModesList.length > 0" class="global-search__divider" />
@@ -33,12 +35,14 @@
       <div class="global-search__actions">
         <AppSpinner v-if="isTyping" size="sm" />
         
-        <button v-if="inputValue" @click="clearSearch" class="global-search__icon-button">
+        <Button v-if="inputValue" variant="ghost" size="mini-icon" class="global-search__icon-button" @click="clearSearch">
           <AppIcon name="close" class="w-3.5 h-3.5" />
-        </button>
+        </Button>
         
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="mini-icon"
           class="global-search__icon-button"
           :disabled="!trimmedInputValue"
           title="搜索"
@@ -46,7 +50,7 @@
           @click="handleSearch"
         >
           <AppIcon name="search" class="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </div>
     </div>
 
@@ -62,13 +66,15 @@
       <div v-if="showSuggestions" class="global-search__suggestions">
         <div class="global-search__suggestions-header">
           <span>{{ suggestionTitle }}</span>
-          <button v-if="recentSearches.length" @click="clearRecentSearches">清空</button>
+          <Button v-if="recentSearches.length" variant="link" size="xs" class="global-search__clear-recent" @click="clearRecentSearches">清空</Button>
         </div>
 
 
 
         <div v-for="(item, index) in suggestionItems" :key="item.id" class="global-search__suggestion-row">
-          <button
+          <Button
+            variant="ghost"
+            size="default"
             class="global-search__suggestion"
             :class="{ 'is-active': index === activeSuggestionIndex }"
             @mouseenter="activeSuggestionIndex = index"
@@ -79,10 +85,10 @@
               <span class="global-search__suggestion-label">{{ item.label }}</span>
               <span v-if="item.meta" class="global-search__suggestion-meta">{{ item.meta }}</span>
             </div>
-          </button>
-          <button v-if="item.type === 'recent'" @click.stop="removeRecentSearch(item.value)" class="global-search__remove">
+          </Button>
+          <Button v-if="item.type === 'recent'" variant="ghost" size="icon-sm" class="global-search__remove" @click.stop="removeRecentSearch(item.value)">
             <AppIcon name="close" class="w-3.5 h-3.5" />
-          </button>
+          </Button>
         </div>
         
         <div v-if="!suggestionItems.length" class="global-search__empty">暂无搜索记录</div>
@@ -97,6 +103,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { LocationQueryRaw } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Button } from '@/shared/ui/button'
 import { getSearchSuggestions } from '@/shared/api/search'
 import type { SearchSuggestionItem } from '@/shared/api/search'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
@@ -420,23 +427,11 @@ onUnmounted(() => {
 }
 
 .global-search__mode {
-  display: inline-flex;
-  align-items: center;
   gap: 0.375rem;
   height: 1.75rem;
   padding: 0 0.625rem;
-  border-radius: 0.375rem;
-  color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 700;
-  transition:
-    color 0.16s ease,
-    background-color 0.16s ease;
-}
-
-.global-search__mode:hover {
-  background: hsl(var(--muted));
-  color: hsl(var(--foreground));
 }
 
 .global-search__divider {
@@ -483,27 +478,9 @@ onUnmounted(() => {
 }
 
 .global-search__icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 0.375rem;
-  color: hsl(var(--muted-foreground) / 0.68);
-  transition:
-    color 0.16s ease,
-    background-color 0.16s ease,
-    opacity 0.16s ease;
-}
-
-.global-search__icon-button:hover:not(:disabled) {
-  background: hsl(var(--muted));
-  color: hsl(var(--foreground));
-}
-
-.global-search__icon-button:disabled {
-  pointer-events: none;
-  opacity: 0.3;
 }
 
 .global-search__suggestions {
@@ -534,14 +511,11 @@ onUnmounted(() => {
   font-weight: 650;
 }
 
-.global-search__suggestions-header button {
-  color: hsl(var(--muted-foreground) / 0.58);
+.global-search__clear-recent {
+  height: auto;
+  padding: 0;
   font-size: 0.6875rem;
   font-weight: 650;
-  transition: color 0.16s ease;
-}
-
-.global-search__suggestions-header button:hover {
   color: hsl(var(--destructive));
 }
 
@@ -552,21 +526,16 @@ onUnmounted(() => {
 }
 
 .global-search__suggestion {
-  display: flex;
   min-width: 0;
   flex: 1 1 auto;
-  align-items: center;
+  justify-content: flex-start;
   gap: 0.75rem;
+  height: auto;
   padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
-  color: hsl(var(--muted-foreground));
   text-align: left;
-  transition:
-    color 0.16s ease,
-    background-color 0.16s ease;
 }
 
-.global-search__suggestion:hover,
 .global-search__suggestion.is-active {
   background: hsl(var(--secondary));
   color: hsl(var(--foreground));
@@ -599,16 +568,11 @@ onUnmounted(() => {
 }
 
 .global-search__remove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex: 0 0 auto;
   width: 2rem;
+  height: auto;
   border-radius: 0.5rem;
   color: hsl(var(--muted-foreground) / 0.48);
-  transition:
-    color 0.16s ease,
-    background-color 0.16s ease;
 }
 
 .global-search__remove:hover {
@@ -626,12 +590,8 @@ onUnmounted(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .global-search__box,
-  .global-search__mode,
   .global-search__leading-icon,
-  .global-search__icon-button,
-  .global-search__suggestions-header button,
-  .global-search__suggestion,
-  .global-search__remove {
+  .global-search__clear-recent {
     transition: none;
   }
 }

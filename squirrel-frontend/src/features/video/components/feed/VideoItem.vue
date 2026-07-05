@@ -21,30 +21,36 @@
         :blur="shouldBlurThumbnail"
       />
 
-      <div class="video-item__quick-actions">
-        <div class="video-item__quick-actions-inner">
-          <button
-            class="video-item__quick-action"
+      <div class="app-overlay-actions app-overlay-actions--top-right">
+        <div class="app-overlay-actions__bar">
+          <Button
+            variant="ghost"
+            size="mini-icon"
+            class="app-overlay-action"
             title="标记已读"
             @click.stop="toggleReadStatus(!isRead)"
           >
             <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-[15px]" />
-          </button>
-          <button
-            class="video-item__quick-action"
+          </Button>
+          <Button
+            variant="ghost"
+            size="mini-icon"
+            class="app-overlay-action"
             title="稍后再看"
             @click.stop="toggleLater"
           >
             <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-[15px]" />
-          </button>
-          <button
-            class="video-item__quick-action"
-            :class="{ 'is-liked': isLiked === 1 }"
+          </Button>
+          <Button
+            variant="ghost"
+            size="mini-icon"
+            class="app-overlay-action"
+            :class="{ 'is-active': isLiked === 1 }"
             title="喜欢"
             @click.stop="toggleLikeVideo"
           >
             <AppIcon name="heart" class="size-[15px]" :class="{ 'fill-current': isLiked === 1 }" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -106,6 +112,7 @@
         :position="menuPosition"
         :is-open="showMenu"
         :video="video"
+        :is-liked="isLiked"
         @close="showMenu = false"
         @toggleReadStatus="toggleReadStatus"
         @toggleLike="toggleLikeVideo"
@@ -117,6 +124,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import ContextMenu from './ContextMenu.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
@@ -285,56 +293,6 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   width: 100%;
 }
 
-.video-item__quick-actions {
-  position: absolute;
-  top: 0.375rem;
-  right: 0.375rem;
-  z-index: 10;
-  opacity: 0;
-  transform: translateX(0.25rem);
-  transition:
-    opacity 0.16s ease,
-    transform 0.16s ease;
-}
-
-.video-item:hover .video-item__quick-actions,
-.video-item:focus-within .video-item__quick-actions {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.video-item__quick-actions-inner {
-  display: flex;
-  align-items: center;
-  gap: 0.125rem;
-  padding: 0.125rem;
-  border: 1px solid hsl(0 0% 100% / 0.12);
-  border-radius: 0.5rem;
-  background: hsl(0 0% 0% / 0.62);
-}
-
-.video-item__quick-action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0.375rem;
-  color: hsl(0 0% 100% / 0.82);
-  transition:
-    color 0.16s ease,
-    background-color 0.16s ease;
-}
-
-.video-item__quick-action:hover {
-  background: hsl(0 0% 100% / 0.14);
-  color: hsl(0 0% 100%);
-}
-
-.video-item__quick-action.is-liked {
-  color: hsl(0 84% 68%);
-}
-
 .video-item__duration {
   position: absolute;
   right: 0.375rem;
@@ -402,8 +360,6 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 @media (prefers-reduced-motion: reduce) {
   .video-item,
   .video-item__thumb,
-  .video-item__quick-actions,
-  .video-item__quick-action,
   .video-item__duration,
   .video-item__source-name {
     transition: none;

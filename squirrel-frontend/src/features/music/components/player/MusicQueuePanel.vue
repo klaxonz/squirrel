@@ -9,13 +9,13 @@
       <header class="music-queue-header">
         <h3>播放队列</h3>
         <span class="music-queue-count">{{ queue.length }} 首</span>
-        <button v-if="queue.length" class="music-queue-clear" title="清空队列" @click="$emit('clear')">
+        <Button v-if="queue.length" variant="ghost" size="sm" class="ml-auto text-muted-foreground hover:text-destructive" title="清空队列" @click="$emit('clear')">
           <AppIcon name="trash" class="h-3.5 w-3.5" />
           清空
-        </button>
-        <button class="music-queue-close" @click="$emit('close')">
+        </Button>
+        <Button variant="ghost" size="icon-sm" class="ml-2" aria-label="关闭播放队列" @click="$emit('close')">
           <AppIcon name="close" class="h-4 w-4" />
-        </button>
+        </Button>
       </header>
 
       <div v-if="queue.length === 0" class="music-queue-empty">
@@ -27,7 +27,7 @@
         <article
           v-for="(track, index) in queue"
           :key="track.hash"
-          class="music-queue-item"
+          class="music-queue-item group"
           :class="{ 'music-queue-item--active': currentIndex === index }"
           draggable="true"
           @dragstart="$emit('drag-start', index, $event)"
@@ -47,9 +47,16 @@
             <p class="music-queue-item-title">{{ track.title || '未知歌曲' }}</p>
             <p class="music-queue-item-artist">{{ track.artist || '未知歌手' }}</p>
           </div>
-          <button class="music-queue-item-remove" @click.stop="$emit('remove', index)" title="从队列移除">
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            class="opacity-0 text-muted-foreground hover:text-destructive group-hover:opacity-100"
+            title="从队列移除"
+            aria-label="从队列移除"
+            @click.stop="$emit('remove', index)"
+          >
             <AppIcon name="close" class="h-3 w-3" />
-          </button>
+          </Button>
         </article>
       </div>
     </div>
@@ -59,6 +66,7 @@
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import MusicPlayingIndicator from '../shared/MusicPlayingIndicator.vue'
+import { Button } from '@/shared/ui/button'
 import type { MusicTrack } from '@/shared/api/music'
 
 defineProps<{
@@ -114,47 +122,6 @@ defineEmits<{
   color: hsl(var(--muted-foreground));
   margin-left: 0.625rem;
   font-weight: 500;
-}
-
-.music-queue-clear {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  margin-left: auto;
-  padding: 0.375rem 0.625rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  border: none;
-  border-radius: 0.5rem;
-  background: none;
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.music-queue-clear:hover {
-  color: hsl(var(--destructive));
-  background: hsl(var(--destructive) / 0.1);
-}
-
-.music-queue-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.5rem;
-  border: none;
-  background: none;
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  margin-left: 0.5rem;
-  transition: all 0.15s ease;
-}
-
-.music-queue-close:hover {
-  background: hsl(var(--muted));
-  color: hsl(var(--foreground));
 }
 
 .music-queue-empty {
@@ -240,27 +207,4 @@ defineEmits<{
   margin-top: 0.125rem;
 }
 
-.music-queue-item-remove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0.375rem;
-  border: none;
-  background: none;
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  opacity: 0;
-  transition: all 0.15s ease;
-}
-
-.music-queue-item:hover .music-queue-item-remove {
-  opacity: 1;
-}
-
-.music-queue-item-remove:hover {
-  background: hsl(var(--muted));
-  color: hsl(var(--destructive));
-}
 </style>

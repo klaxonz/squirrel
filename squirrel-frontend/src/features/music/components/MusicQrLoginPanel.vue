@@ -17,7 +17,7 @@
         </p>
         
         <div class="music-login-actions">
-          <Button class="music-login-btn-premium font-bold tracking-wide" @click="$emit('open')">
+          <Button size="lg" class="font-bold tracking-wide" @click="$emit('open')">
             <AppIcon name="user" class="h-4 w-4 mr-2" />
             立即扫码登录
           </Button>
@@ -27,9 +27,9 @@
       <template v-else>
         <div class="music-login-qr-inline">
           <div class="music-login-qr-header">
-            <button class="music-login-qr-back" @click="$emit('close')" title="返回">
+            <Button variant="ghost" size="icon-sm" title="返回" @click="$emit('close')">
               <AppIcon name="chevronLeft" class="h-4 w-4" />
-            </button>
+            </Button>
             
             <div class="text-center flex-1">
               <h4 class="text-base font-extrabold tracking-tight">扫码登录酷狗</h4>
@@ -39,10 +39,9 @@
               </p>
             </div>
 
-            <button class="music-login-qr-refresh" @click="$emit('refresh')" :disabled="qrLoading" title="刷新二维码">
-              <AppSpinner v-if="qrLoading" size="sm" />
-              <AppIcon v-else name="refresh" class="h-4 w-4" />
-            </button>
+            <Button variant="ghost" size="icon-sm" :loading="qrLoading" title="刷新二维码" @click="$emit('refresh')">
+              <AppIcon v-if="!qrLoading" name="refresh" class="h-4 w-4" />
+            </Button>
           </div>
 
           <div class="music-login-qr-body">
@@ -70,7 +69,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
 import { Button } from '@/shared/ui/button'
 import type { MusicQrLogin } from '@/shared/api/music'
 
@@ -143,14 +141,6 @@ defineEmits<{
   justify-content: center;
 }
 
-.music-login-btn-premium {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border: none;
-  border-radius: var(--radius);
-  padding: 0.75rem 1.5rem;
-}
-
 .music-login-qr-inline {
   width: 100%;
 }
@@ -159,26 +149,6 @@ defineEmits<{
   display: flex;
   align-items: center;
   margin-bottom: 1rem;
-}
-
-.music-login-qr-back,
-.music-login-qr-refresh {
-  width: 2rem;
-  height: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: hsl(var(--muted) / 0.4);
-  border-radius: var(--radius);
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-}
-
-.music-login-qr-back:hover,
-.music-login-qr-refresh:hover {
-  background: hsl(var(--muted) / 0.6);
-  color: hsl(var(--foreground));
 }
 
 .music-login-qr-body {

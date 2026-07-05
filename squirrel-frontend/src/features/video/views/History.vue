@@ -55,7 +55,8 @@
 
         <div v-else class="app-content-stack app-content-stack--feed">
           <section v-if="featuredVideo" class="overflow-hidden rounded-lg border border-border/70 bg-card">
-            <button
+            <Button
+              variant="ghost"
               class="app-featured-media group relative block w-full overflow-hidden text-left"
               @click="handleOpenVideo(featuredVideo)"
             >
@@ -88,7 +89,7 @@
                   <span v-if="getProgress(featuredVideo) > 0">已看 {{ Math.round(getProgress(featuredVideo) * 100) }}%</span>
                 </div>
               </div>
-            </button>
+            </Button>
           </section>
 
           <section v-for="group in groupedVideos" :key="group.date" class="app-content-stack app-content-stack--dense">

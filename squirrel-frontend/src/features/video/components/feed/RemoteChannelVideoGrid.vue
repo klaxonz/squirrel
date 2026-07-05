@@ -9,11 +9,12 @@
     </div>
 
     <div v-if="items.length" class="app-video-grid app-video-grid--feed">
-      <button
+      <Button
         v-for="item in items"
         :key="item.site + ':' + item.url"
         type="button"
-        class="group flex min-w-0 cursor-pointer flex-col gap-2.5 text-left"
+        variant="ghost"
+        class="remote-channel-video-card group"
         @click="$emit('open', item)"
       >
         <div class="relative aspect-video overflow-hidden rounded-sm bg-muted transition-colors group-hover:brightness-110">
@@ -31,7 +32,7 @@
             {{ displayDate(item) }}
           </div>
         </div>
-      </button>
+      </Button>
     </div>
 
     <div v-if="loading" class="app-video-grid app-video-grid--feed">

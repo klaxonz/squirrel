@@ -40,10 +40,12 @@
               {{ item.title }}
             </h3>
             <div class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/80">
-              <button
+              <Button
                 v-if="primarySubscription(item)?.url"
                 type="button"
-                class="flex min-w-0 items-center gap-1.5 text-left transition-colors hover:text-foreground"
+                variant="ghost"
+                size="xs"
+                class="remote-search-source-button"
                 @click.stop="openRemoteChannel(item, primarySubscription(item))"
               >
                 <SubscriptionAvatar
@@ -52,7 +54,7 @@
                   size="xs"
                 />
                 <span class="truncate">{{ primarySubscription(item)?.name }}</span>
-              </button>
+              </Button>
               <template v-else>
                 <SubscriptionAvatar
                   v-if="primarySubscription(item)"

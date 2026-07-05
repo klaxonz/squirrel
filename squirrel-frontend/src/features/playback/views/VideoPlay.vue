@@ -48,23 +48,28 @@
                     <small>{{ primarySubscription.total_videos || 0 }} 项视频</small>
                   </div>
                 </div>
-                <button
+                <Button
                   v-if="primarySubscriptionUrl"
                   type="button"
+                  variant="default"
+                  size="sm"
                   class="video-detail__subscribe-button"
                   :class="{ 'is-subscribed': isSubscriptionChecked && isSubscribed }"
                   :disabled="isCheckingSubscription || isSubscribing"
                   @click="handleSubscribe"
                 >
                   {{ subscriptionButtonText }}
-                </button>
+                </Button>
               </div>
 
               <div class="video-detail__actions">
                 <div class="video-detail__action-group">
-                  <button
+                  <Button
                     v-for="action in primaryVisibleActions"
                     :key="action.key"
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     class="video-detail__action-button"
                     :class="{ 'is-active': action.active }"
                     :aria-pressed="action.active"
@@ -73,19 +78,25 @@
                   >
                     <AppIcon :name="action.icon" class="w-4 h-4" :stroke-width="action.active ? 2.5 : 2" />
                     <span v-if="action.label && action.key === 'like'">{{ action.label }}</span>
-                  </button>
+                  </Button>
                 </div>
 
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
                   class="video-detail__icon-button"
                   title="分享链接"
                   aria-label="分享链接"
                   @click="handleShare"
                 >
                   <AppIcon name="share" class="w-4 h-4" />
-                </button>
+                </Button>
                 <div class="relative" ref="moreMenuRef">
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
                     class="video-detail__icon-button"
                     :aria-expanded="moreMenuOpen"
                     aria-haspopup="menu"
@@ -93,30 +104,34 @@
                     @click.stop="moreMenuOpen = !moreMenuOpen"
                   >
                     <AppIcon name="more" class="w-4 h-4" />
-                  </button>
+                  </Button>
                   <Transition name="fade">
-                    <div v-if="moreMenuOpen" class="video-detail__menu">
-                      <button
+                    <AppFloatingList
+                      v-if="moreMenuOpen"
+                      class="video-detail__menu"
+                      max-height="16rem"
+                    >
+                      <AppListOption
                         v-for="action in videoOverflowActions.filter(a => a.key !== 'source')"
                         :key="action.key"
-                        class="video-detail__menu-item"
+                        role="menuitem"
                         @click.stop="handleVideoAction(action); moreMenuOpen = false"
                       >
                         <AppIcon :name="action.icon" class="w-4 h-4 text-muted-foreground" />
                         {{ action.label }}
-                      </button>
+                      </AppListOption>
                       <a
                         v-if="video.url"
                         :href="video.url"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="video-detail__menu-item"
+                        class="video-detail__menu-link"
                         @click.stop="moreMenuOpen = false"
                       >
                         <AppIcon name="externalLink" class="w-4 h-4 text-muted-foreground" />
                         原视频
                       </a>
-                    </div>
+                    </AppFloatingList>
                   </Transition>
                 </div>
               </div>
@@ -124,16 +139,18 @@
 
             <div v-if="displayedVideoActors.length" class="video-detail__actors">
               <div class="video-detail__actor-list no-scrollbar">
-                <button
+                <Button
                   v-for="actor in displayedVideoActors"
                   :key="actor.url || actor.name"
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   class="video-detail__actor"
                   @click="openChannelDetail(actor)"
                 >
                   <SubscriptionAvatar :src="actor.avatar" :name="actor.name || ''" size="xs" />
                   <span class="truncate max-w-[120px]">{{ actor.name }}</span>
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -151,16 +168,18 @@
                   class="video-detail__description-fade"
                 />
               </div>
-              <button
+              <Button
                 v-if="hasLongDescription"
                 type="button"
+                variant="ghost"
+                size="xs"
                 class="video-detail__description-toggle"
                 :aria-expanded="descriptionExpanded"
                 @click="descriptionExpanded = !descriptionExpanded"
               >
                 {{ descriptionExpanded ? '收起' : '展开' }}
                 <AppIcon :name="descriptionExpanded ? 'chevronUp' : 'chevronDown'" class="w-3.5 h-3.5" />
-              </button>
+              </Button>
             </div>
           </div>
           
@@ -191,17 +210,12 @@
         class="video-play-aside"
         :class="{ 'is-widescreen': isWidescreen }"
       >
-        <div class="app-tab-list w-full">
-          <button
-            v-for="tab in asideTabs"
-            :key="tab.key"
-            @click="asideTab = tab.key"
-            class="app-tab-button flex-1 justify-center"
-            :class="{ 'is-active': asideTab === tab.key }"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
+        <AppSegmentedControl
+          v-model="asideTab"
+          :options="asideTabOptions"
+          aria-label="视频侧栏"
+          class="w-full"
+        />
 
         <div class="video-play-aside__content">
           <Transition name="fade" mode="out-in">
@@ -255,6 +269,9 @@ import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
+import AppFloatingList from '@/shared/components/layout/AppFloatingList.vue'
+import AppListOption from '@/shared/components/layout/AppListOption.vue'
 import usePlaybackOrchestrator, { mergeVideoMetadata } from '../composables/usePlaybackOrchestrator'
 import usePlaybackReporting from '../composables/usePlaybackReporting'
 import useVideoActionBar from '@/features/video/composables/useVideoActionBar'
@@ -270,6 +287,7 @@ import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/shared/stores/theme'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
+import { Button } from '@/shared/ui/button'
 import { LocalStorageAdapter } from '@/features/playback/components/video-player/core'
 import { useVideoHistory } from '@/features/video/composables/useVideoHistory'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
@@ -328,10 +346,10 @@ const { goToVideo, handleAutoplayNext, handlePrevVideoFromPlaylist, handleNextVi
 })
 
 const asideTab = ref('related')
-const asideTabs = [
-  { key: 'related', label: '相关' },
-  { key: 'clips', label: '片段' },
-  { key: 'playlist', label: '列表' },
+const asideTabOptions = [
+  { value: 'related', label: '相关' },
+  { value: 'clips', label: '片段' },
+  { value: 'playlist', label: '列表' },
 ]
 const remoteSaveByUrl = new Map<string, Promise<VideoPageVideo | null>>()
 let javdbMetadataRequestSeq = 0
@@ -857,38 +875,32 @@ const openChannelDetail = async (profile: VideoProfile) => {
 }
 
 .video-detail__menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: 50;
+  left: auto;
   width: 11rem;
-  margin-top: 0.25rem;
-  padding: 0.25rem;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.625rem;
-  background: hsl(var(--popover));
 }
 
-.video-detail__menu-item {
+.video-detail__menu-link {
   display: flex;
-  align-items: center;
-  gap: 0.625rem;
+  min-height: 2.25rem;
   width: 100%;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  color: hsl(var(--foreground) / 0.82);
-  font-size: 0.875rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 0.25rem 0.5rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
   font-weight: 500;
-  outline: none;
   transition:
-    color 0.16s ease,
-    background-color 0.16s ease;
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
 }
 
-.video-detail__menu-item:hover,
-.video-detail__menu-item:focus-visible {
-  background: hsl(var(--accent));
+.video-detail__menu-link:hover,
+.video-detail__menu-link:focus-visible {
+  background: hsl(var(--accent) / 0.48);
   color: hsl(var(--foreground));
+  outline: none;
 }
 
 .video-detail__actors {
@@ -1110,7 +1122,7 @@ const openChannelDetail = async (profile: VideoProfile) => {
   .video-detail__action-button,
   .video-detail__icon-button,
   .video-detail__actor,
-  .video-detail__menu-item,
+  .video-detail__menu-link,
   .video-detail__description-toggle,
   .video-related-item,
   .video-related-item__copy h4,

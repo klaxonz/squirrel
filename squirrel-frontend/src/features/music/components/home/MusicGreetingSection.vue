@@ -11,15 +11,16 @@
           <p class="music-greeting-subtitle">{{ subtitleText }}</p>
         </div>
       </div>
-      <button
+      <Button
         v-if="recentTrack && !hasCurrentTrack"
-        class="music-continue-button"
+        variant="secondary"
+        class="music-continue-button max-w-[22rem] min-w-0"
         @click="$emit('continue-play', recentTrack)"
       >
         <AppIcon name="play" class="h-3.5 w-3.5" />
         <span>继续播放</span>
         <strong>{{ recentTrack.title }}</strong>
-      </button>
+      </Button>
     </div>
 
     <div class="music-greeting-actions">
@@ -37,39 +38,41 @@
 
         <div class="music-fm-controls">
           <div class="music-fm-segment">
-            <button
+            <Button
               v-for="modeOption in fmModes"
               :key="modeOption.value"
-              class="music-fm-chip"
-              :class="{ 'music-fm-chip--active': fmMode === modeOption.value }"
+              variant="ghost"
+              size="xs"
+              :class="fmMode === modeOption.value && 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
               @click="$emit('switch-fm-mode', modeOption.value)"
             >
               {{ modeOption.label }}
-            </button>
+            </Button>
           </div>
           <div class="music-fm-segment">
-            <button
+            <Button
               v-for="poolOption in fmPools"
               :key="poolOption.value"
-              class="music-fm-chip"
-              :class="{ 'music-fm-chip--active': fmPoolId === poolOption.value }"
+              variant="ghost"
+              size="xs"
+              :class="fmPoolId === poolOption.value && 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
               @click="$emit('switch-fm-pool', poolOption.value)"
             >
               {{ poolOption.label }}
-            </button>
+            </Button>
           </div>
         </div>
 
-        <button
-          class="music-fm-play"
-          :class="{ 'music-fm-play--active': fmPlaying }"
+        <Button
+          :variant="fmPlaying ? 'player' : 'default'"
+          size="player-sm"
           :title="fmButtonTitle"
+          :loading="fmLoading"
           @click="$emit('fm-play')"
         >
-          <AppSpinner v-if="fmLoading" size="sm" />
-          <AppIcon v-else-if="fmPlaying" name="pause" class="h-4 w-4" />
-          <AppIcon v-else name="play" class="h-4 w-4" />
-        </button>
+          <AppIcon v-if="!fmLoading && fmPlaying" name="pause" class="h-4 w-4" />
+          <AppIcon v-else-if="!fmLoading" name="play" class="h-4 w-4" />
+        </Button>
       </div>
       <div class="music-quick-actions">
         <MusicActionButton
@@ -92,7 +95,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Button } from '@/shared/ui/button'
 import MusicActionButton from './MusicActionButton.vue'
 import type { MusicUserProfile, MusicTrack } from '@/shared/api/music'
 
@@ -230,24 +233,7 @@ const subtitleText = computed(() => {
 }
 
 .music-continue-button {
-  display: flex;
-  align-items: center;
-  max-width: 22rem;
-  min-width: 0;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.5rem;
-  background: hsl(var(--card));
-  color: hsl(var(--foreground) / 0.7);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
-}
-
-.music-continue-button:hover {
-  border-color: hsl(var(--primary) / 0.3);
-  color: hsl(var(--foreground));
-  background: hsl(var(--muted) / 0.35);
+  justify-content: flex-start;
 }
 
 .music-continue-button span {
@@ -332,33 +318,6 @@ const subtitleText = computed(() => {
   color: hsl(var(--muted-foreground) / 0.8);
 }
 
-.music-fm-play {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: none;
-  border-radius: 0.5rem;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.music-fm-play:hover {
-  background: hsl(var(--primary) / 0.9);
-}
-
-.music-fm-play--active {
-  background: hsl(var(--foreground));
-  color: hsl(var(--background));
-}
-
-.music-fm-play--active:hover {
-  background: hsl(var(--foreground) / 0.86);
-}
-
 .music-fm-controls {
   display: flex;
   align-items: center;
@@ -379,36 +338,6 @@ const subtitleText = computed(() => {
   padding: 0.125rem;
   border-radius: 0.5rem;
   background: hsl(var(--muted) / 0.34);
-}
-
-.music-fm-chip {
-  height: 1.5rem;
-  min-width: 3rem;
-  padding: 0 0.5rem;
-  border: none;
-  border-radius: 0.375rem;
-  background: transparent;
-  color: hsl(var(--foreground) / 0.68);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.music-fm-chip:hover {
-  background: hsl(var(--background) / 0.72);
-  color: hsl(var(--foreground));
-}
-
-.music-fm-chip--active {
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .music-continue-button,
-  .music-fm-chip {
-    transition: none;
-  }
 }
 
 @media (max-width: 1100px) {

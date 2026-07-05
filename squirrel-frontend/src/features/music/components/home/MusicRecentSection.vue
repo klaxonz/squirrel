@@ -2,9 +2,9 @@
   <section v-if="tracks.length" class="music-recent-section">
     <header class="music-recent-header">
       <h2 class="music-recent-title">最近播放</h2>
-      <button class="music-recent-more" @click="$emit('view-all')">
+      <Button variant="ghost" size="sm" @click="$emit('view-all')">
         查看全部
-      </button>
+      </Button>
     </header>
 
     <div class="music-recent-list">
@@ -31,6 +31,7 @@
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import type { MusicTrack } from '@/shared/api/music'
 
@@ -66,23 +67,6 @@ function isPlaying(track: MusicTrack): boolean {
   font-size: 0.9375rem;
   font-weight: 700;
   color: hsl(var(--foreground));
-}
-
-.music-recent-more {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: hsl(var(--muted-foreground));
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  transition: all 0.15s ease;
-}
-
-.music-recent-more:hover {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.06);
 }
 
 .music-recent-list {

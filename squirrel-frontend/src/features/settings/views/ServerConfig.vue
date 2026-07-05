@@ -113,13 +113,15 @@
                 <span class="auth-options__title">常用地址</span>
                 <ul class="auth-options__list">
                   <li v-for="url in quickServerUrls" :key="url">
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       class="auth-options__chip"
                       @click="applyServerUrl(url)"
                     >
                       <span class="auth-options__chip-text">{{ url }}</span>
-                    </button>
+                    </Button>
                   </li>
                 </ul>
               </div>
@@ -127,20 +129,22 @@
               <div v-if="recentServerUrls.length" class="auth-options__group">
                 <div class="auth-options__head">
                   <span class="auth-options__title">最近连接</span>
-                  <button type="button" class="auth-options__clear" @click="handleClearRecent">
+                  <Button type="button" variant="ghost" size="xs" class="auth-options__clear" @click="handleClearRecent">
                     清空
-                  </button>
+                  </Button>
                 </div>
                 <ul class="auth-options__list">
                   <li v-for="url in recentServerUrls" :key="url">
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       class="auth-options__chip"
                       :title="url"
                       @click="applyServerUrl(url)"
                     >
                       <span class="auth-options__chip-text">{{ url }}</span>
-                    </button>
+                    </Button>
                   </li>
                 </ul>
               </div>
@@ -159,13 +163,15 @@
 
           <footer class="auth-form__foot">
             <span class="auth-form__foot-text">本地开发？</span>
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="sm"
               class="auth-form__foot-link"
               @click="fillLocalhost"
             >
               快速切换至本机地址
-            </button>
+            </Button>
           </footer>
 
           <router-link to="/login" class="auth-form__back">

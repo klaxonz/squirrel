@@ -18,9 +18,11 @@
         </div>
 
         <nav class="playlist-nav custom-scrollbar">
-          <button
+          <Button
             v-for="playlist in playlists"
             :key="playlist.id"
+            variant="ghost"
+            size="sm"
             class="playlist-nav-item group"
             :class="{ 'playlist-nav-item--active': String(activePlaylist?.id) === String(playlist.id) }"
             :aria-current="String(activePlaylist?.id) === String(playlist.id) ? 'true' : undefined"
@@ -40,7 +42,7 @@
               <div class="truncate text-sm font-medium">{{ playlist.name }}</div>
               <div class="mt-0.5 text-xs text-muted-foreground">{{ playlist.video_count }} 个视频</div>
             </div>
-          </button>
+          </Button>
         </nav>
       </aside>
 

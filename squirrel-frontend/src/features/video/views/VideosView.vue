@@ -45,16 +45,17 @@
             </SelectContent>
           </Select>
 
-          <button
+          <Button
             type="button"
-            class="app-icon-button"
+            variant="ghost"
+            size="icon-sm"
             @click="refreshCurrentList"
             title="刷新内容"
             aria-label="刷新内容"
           >
             <AppSpinner v-if="isRefreshing" size="sm" />
             <AppIcon v-else name="refresh" class="w-4 h-4 shrink-0" />
-          </button>
+          </Button>
         </div>
       </div>
     </AppToolbarFrame>

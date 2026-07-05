@@ -114,15 +114,17 @@
                   autocomplete="new-password"
                   class="auth-field__input auth-field__input--with-icon auth-field__input--with-action"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="mini-icon"
                   class="auth-field__action"
                   :title="showPassword ? '隐藏密码' : '显示密码'"
                   :aria-label="showPassword ? '隐藏密码' : '显示密码'"
                   @click="showPassword = !showPassword"
                 >
                   <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             </div>
 

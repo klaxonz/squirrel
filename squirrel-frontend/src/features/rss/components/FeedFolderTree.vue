@@ -1,28 +1,34 @@
 <template>
   <div class="feed-folder-tree custom-scrollbar">
     <div class="feed-folder-tree__all" :class="{ 'is-selected': !selectedFeedId }">
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         @click="$emit('selectAll')"
         class="feed-folder-tree__all-button"
       >
         <AppIcon name="inbox" class="h-3.5 w-3.5 shrink-0" />
         <span class="truncate">全部订阅</span>
         <span class="feed-folder-tree__total">{{ totalFeeds }}</span>
-      </button>
-      <button
+      </Button>
+      <Button
         v-if="hasAccount"
+        variant="ghost"
+        size="mini-icon"
         @click="$emit('addFeed')"
         class="feed-folder-tree__add"
         title="添加订阅源"
       >
         <AppIcon name="plus" class="h-3.5 w-3.5" />
-      </button>
+      </Button>
     </div>
 
     <div class="feed-folder-tree__separator"></div>
 
     <div v-for="folder in folders" :key="folder.name" class="feed-folder-tree__folder">
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         @click="$emit('toggleFolder', folder.name)"
         class="feed-folder-tree__folder-button"
       >
@@ -35,27 +41,33 @@
           <span class="truncate">{{ folder.name }}</span>
         </div>
         <span class="feed-folder-tree__count">{{ folder.feeds.length }}</span>
-      </button>
+      </Button>
 
       <div v-if="expandedFolders[folder.name]" class="feed-folder-tree__feeds">
-        <button
+        <div
           v-for="feed in folder.feeds"
           :key="feed.id"
+          role="button"
+          tabindex="0"
           @click="$emit('selectFeed', feed.id)"
+          @keydown.enter.prevent="$emit('selectFeed', feed.id)"
+          @keydown.space.prevent="$emit('selectFeed', feed.id)"
           @contextmenu.prevent.stop="$emit('feedContextMenu', feed, $event)"
           class="feed-folder-tree__feed"
           :class="{ 'is-selected': selectedFeedId === feed.id }"
         >
           <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
           <span class="flex-1 truncate">{{ feed.title }}</span>
-          <button
+          <Button
+            variant="ghost"
+            size="icon-xs"
             @click.stop="$emit('unsubscribeFeed', feed)"
             class="feed-folder-tree__remove"
             title="取消订阅"
           >
             <AppIcon name="close" class="h-3 w-3" />
-          </button>
-        </button>
+          </Button>
+        </div>
       </div>
     </div>
 
@@ -68,6 +80,7 @@
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
+import { Button } from '@/shared/ui/button'
 import type { RssFeed } from '@/features/rss/composables/rssTypes'
 
 interface FeedFolder {
@@ -129,9 +142,8 @@ defineEmits<{
 }
 
 .feed-folder-tree__all-button {
-  display: flex;
   flex: 1 1 auto;
-  align-items: center;
+  justify-content: flex-start;
   gap: 0.75rem;
   height: 100%;
   min-width: 0;
@@ -148,16 +160,9 @@ defineEmits<{
 
 .feed-folder-tree__add,
 .feed-folder-tree__remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   flex: 0 0 auto;
   border-radius: 0.375rem;
   color: hsl(var(--muted-foreground) / 0.62);
-  transition:
-    color 0.16s ease,
-    background-color 0.16s ease,
-    opacity 0.16s ease;
 }
 
 .feed-folder-tree__add {
@@ -187,15 +192,13 @@ defineEmits<{
 }
 
 .feed-folder-tree__folder-button {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
   width: 100%;
+  height: auto;
   padding: 0.375rem 0.625rem;
   font-size: 0.75rem;
   font-weight: 650;
   color: hsl(var(--muted-foreground));
-  transition: color 0.16s ease;
 }
 
 .feed-folder-tree__folder-button:hover {
@@ -236,6 +239,7 @@ defineEmits<{
   padding: 0 0.625rem;
   overflow: hidden;
   font-size: 0.75rem;
+  cursor: pointer;
 }
 
 .feed-folder-tree__feed:not(.is-selected):hover {
@@ -244,7 +248,6 @@ defineEmits<{
 }
 
 .feed-folder-tree__remove {
-  padding: 0.125rem;
   opacity: 0;
 }
 
@@ -268,9 +271,6 @@ defineEmits<{
 @media (prefers-reduced-motion: reduce) {
   .feed-folder-tree__all,
   .feed-folder-tree__feed,
-  .feed-folder-tree__add,
-  .feed-folder-tree__remove,
-  .feed-folder-tree__folder-button,
   .feed-folder-tree__chevron {
     transition: none;
   }

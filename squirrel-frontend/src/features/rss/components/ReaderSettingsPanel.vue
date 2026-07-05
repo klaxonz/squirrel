@@ -6,30 +6,38 @@
     <div class="reader-settings-section">
       <span class="reader-settings-label">排版字体</span>
       <div class="reader-settings-grid">
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           @click="select('sans')"
           class="reader-settings-option"
           :class="{ 'is-selected': fontFamily === 'sans' }"
           title="极简现代 (Inter)"
-        >Inter</button>
-        <button
+        >Inter</Button>
+        <Button
+          variant="ghost"
+          size="sm"
           @click="select('outfit')"
           class="reader-settings-option"
           :class="{ 'is-selected': fontFamily === 'outfit' }"
           title="优雅圆润 (Outfit)"
-        >Outfit</button>
-        <button
+        >Outfit</Button>
+        <Button
+          variant="ghost"
+          size="sm"
           @click="select('serif')"
           class="reader-settings-option font-serif"
           :class="{ 'is-selected': fontFamily === 'serif' }"
           title="经典衬线 (Georgia)"
-        >Georgia</button>
-        <button
+        >Georgia</Button>
+        <Button
+          variant="ghost"
+          size="sm"
           @click="select('lora')"
           class="reader-settings-option font-serif"
           :class="{ 'is-selected': fontFamily === 'lora' }"
           title="人文阅读 (Lora)"
-        >Lora</button>
+        >Lora</Button>
       </div>
     </div>
 
@@ -39,22 +47,28 @@
         <span class="reader-settings-value">{{ fontSize }}px</span>
       </div>
       <div class="reader-settings-size-controls">
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           @click="changeSize(-1)"
           class="reader-settings-size-button"
           :disabled="fontSize <= 12"
-        >A-</button>
-        <button
+        >A-</Button>
+        <Button
+          variant="ghost"
+          size="sm"
           @click="changeSize(1)"
           class="reader-settings-size-button"
           :disabled="fontSize >= 24"
-        >A+</button>
+        >A+</Button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { Button } from '@/shared/ui/button'
+
 const props = defineProps<{
   visible: boolean
   fontFamily: string
@@ -128,14 +142,10 @@ function changeSize(delta: number) {
 .reader-settings-size-button {
   border: 1px solid transparent;
   border-radius: 0.375rem;
+  height: auto;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 650;
-  cursor: pointer;
-  transition:
-    color 0.16s ease,
-    background-color 0.16s ease,
-    border-color 0.16s ease;
 }
 
 .reader-settings-option {
@@ -174,9 +184,6 @@ function changeSize(delta: number) {
 }
 
 .reader-settings-size-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex: 1 1 0;
   min-height: 1.875rem;
   border-color: hsl(var(--border) / 0.42);

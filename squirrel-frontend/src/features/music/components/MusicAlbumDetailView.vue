@@ -11,23 +11,27 @@
         <span class="music-detail-type">专辑</span>
         <h1 class="music-detail-name">{{ album.name }}</h1>
         <div class="music-detail-meta">
-          <button v-if="album.artist_id" class="music-meta-link" @click="$emit('select-artist')">
+          <Button v-if="album.artist_id" variant="link" size="xs" class="music-meta-link" @click="$emit('select-artist')">
             {{ album.artist }}
-          </button>
+          </Button>
           <span v-else>{{ album.artist }}</span>
           <span v-if="album.publish_date">{{ album.publish_date }}</span>
           <span v-if="total">{{ total }} 首歌</span>
         </div>
         <p v-if="album.intro" class="music-detail-intro">{{ album.intro }}</p>
         <div class="music-detail-actions">
-          <button class="music-action-btn music-action-btn--primary" @click="playAll">
+          <Button @click="playAll">
             <AppIcon name="play" class="h-5 w-5" />
             播放全部
-          </button>
-          <button class="music-action-btn" :class="{ 'music-action-btn--active': shuffle }" @click="shuffleAll">
+          </Button>
+          <Button
+            variant="secondary"
+            :class="shuffle && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
+            @click="shuffleAll"
+          >
             <AppIcon name="shuffle" class="h-5 w-5" />
             随机
-          </button>
+          </Button>
         </div>
       </div>
     </header>
@@ -162,16 +166,9 @@ function shuffleAll() {
 }
 
 .music-meta-link {
-  color: hsl(var(--primary));
-  background: none;
-  border: none;
+  height: auto;
   padding: 0;
   font-size: inherit;
-  cursor: pointer;
-}
-
-.music-meta-link:hover {
-  text-decoration: underline;
 }
 
 .music-detail-intro {
@@ -189,36 +186,6 @@ function shuffleAll() {
   display: flex;
   gap: 0.75rem;
   margin-top: 1rem;
-}
-
-.music-action-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: hsl(var(--foreground));
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.music-action-btn:hover {
-  background: hsl(var(--muted));
-}
-
-.music-action-btn--primary {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border-color: hsl(var(--primary));
-}
-
-.music-action-btn--active {
-  color: hsl(var(--primary));
-  border-color: hsl(var(--primary));
 }
 
 .music-detail-load-more {

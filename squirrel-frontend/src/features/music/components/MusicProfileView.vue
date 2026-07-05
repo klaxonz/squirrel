@@ -84,26 +84,28 @@
           </TabsList>
 
           <div class="music-profile-tab-actions">
-            <button
+            <Button
               v-if="activeTab !== 'playlists' && currentProfileTracks.length > 0"
-              class="music-chip music-chip--primary"
+              size="sm"
               @click="$emit('play-all-profile', false)"
             >
               <AppIcon name="play" class="h-3.5 w-3.5" />
               播放全部
-            </button>
+            </Button>
 
             <div v-if="activeTab === 'rank'" class="music-profile-rank-pills">
-              <button
-                class="music-profile-rank-pill"
-                :class="{ 'active': rankType === 0 }"
+              <Button
+                variant="secondary"
+                size="xs"
+                :class="rankType === 0 && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
                 @click="$emit('toggle-rank-type', 0)"
-              >最近一周</button>
-              <button
-                class="music-profile-rank-pill"
-                :class="{ 'active': rankType === 1 }"
+              >最近一周</Button>
+              <Button
+                variant="secondary"
+                size="xs"
+                :class="rankType === 1 && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
                 @click="$emit('toggle-rank-type', 1)"
-              >全部累计</button>
+              >全部累计</Button>
             </div>
           </div>
         </div>
@@ -466,62 +468,9 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
   gap: 0.5rem;
 }
 
-.music-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: hsl(var(--foreground));
-  background: hsl(var(--muted) / 0.5);
-  border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: 0.375rem;
-  cursor: pointer;
-  transition:
-    color 0.15s ease,
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.music-chip:hover {
-  background: hsl(var(--muted) / 0.7);
-}
-
-.music-chip--primary {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.1);
-  border-color: hsl(var(--primary) / 0.3);
-}
-
 .music-profile-rank-pills {
   display: flex;
   gap: 0.25rem;
-}
-
-.music-profile-rank-pill {
-  padding: 0.375rem 0.625rem;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: hsl(var(--muted-foreground));
-  background: transparent;
-  border: 1px solid hsl(var(--border) / 0.3);
-  border-radius: 0.375rem;
-  cursor: pointer;
-  transition:
-    color 0.15s ease,
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.music-profile-rank-pill:hover {
-  color: hsl(var(--foreground));
-}
-
-.music-profile-rank-pill.active {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.1);
-  border-color: hsl(var(--primary) / 0.3);
 }
 
 .music-profile-panel {
@@ -646,8 +595,6 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
 
 @media (prefers-reduced-motion: reduce) {
   .music-profile-tab-btn,
-  .music-chip,
-  .music-profile-rank-pill,
   .music-source-cover-wrap,
   .music-source-play-overlay {
     transition: none;

@@ -1,18 +1,18 @@
 <template>
   <Dialog :open="open" @update:open="$emit('update:open', $event)">
-    <DialogContent class="delete-account-dialog">
-      <DialogHeader class="delete-account-dialog__header">
+    <DialogContent class="delete-account-dialog app-dialog-surface">
+      <DialogHeader class="app-dialog-form-header">
         <div class="delete-account-dialog__icon">
           <AppIcon name="trash" class="h-5 w-5" />
         </div>
-        <DialogTitle class="delete-account-dialog__title">确认删除账号？</DialogTitle>
-        <DialogDescription class="delete-account-dialog__description">
+        <DialogTitle class="app-dialog-form-title">确认删除账号？</DialogTitle>
+        <DialogDescription class="delete-account-dialog__description app-dialog-form-description">
           此操作将永久移除该 RSS 账号「{{ accountName }}」及其同步的所有订阅源和文章记录。该操作不可撤销。
         </DialogDescription>
       </DialogHeader>
-      <DialogFooter class="delete-account-dialog__footer">
-        <Button variant="outline" class="delete-account-dialog__button" @click="$emit('update:open', false)">取消</Button>
-        <Button class="delete-account-dialog__button delete-account-dialog__button--danger" @click="$emit('confirm')">确认删除</Button>
+      <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
+        <Button variant="outline" class="app-dialog-button" @click="$emit('update:open', false)">取消</Button>
+        <Button class="app-dialog-button delete-account-dialog__button--danger" @click="$emit('confirm')">确认删除</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
@@ -42,17 +42,6 @@ defineEmits<{
 <style scoped>
 .delete-account-dialog {
   max-width: 24rem;
-  overflow: hidden;
-  padding: 0;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.625rem;
-  background: hsl(var(--background));
-}
-
-.delete-account-dialog__header {
-  padding: 1.25rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.14);
-  text-align: left;
 }
 
 .delete-account-dialog__icon {
@@ -68,31 +57,9 @@ defineEmits<{
   color: hsl(var(--destructive));
 }
 
-.delete-account-dialog__title {
-  color: hsl(var(--foreground));
-  font-size: 1rem;
-  font-weight: 650;
-  line-height: 1.3;
-}
-
 .delete-account-dialog__description {
-  margin-top: 0.375rem;
-  color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
   line-height: 1.55;
-}
-
-.delete-account-dialog__footer {
-  gap: 0.5rem;
-  padding: 1rem;
-  background: hsl(var(--muted) / 0.28);
-}
-
-.delete-account-dialog__button {
-  height: 2.25rem;
-  border-radius: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 650;
 }
 
 .delete-account-dialog__button--danger {

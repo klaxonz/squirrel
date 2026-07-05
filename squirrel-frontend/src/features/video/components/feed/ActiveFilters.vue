@@ -2,24 +2,27 @@
   <div v-if="activeChips.length > 0" class="flex min-w-0 flex-wrap items-center gap-2">
     <span class="shrink-0 text-xs font-medium text-muted-foreground">已筛选</span>
     <div class="flex min-w-0 flex-wrap items-center gap-1.5">
-      <button
+      <Button
         v-for="chip in activeChips"
         :key="chip.key"
         type="button"
+        variant="outline"
+        size="xs"
         class="app-filter-button max-w-[12rem] hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
         :title="`移除 ${chip.label} 筛选`"
         @click="$emit('remove', chip.key)"
       >
         <span class="truncate">{{ chip.label }}</span>
         <AppIcon name="close" class="size-3 shrink-0 opacity-60" />
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
-        class="inline-flex h-7 items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        variant="ghost"
+        size="xs"
         @click="$emit('clearAll')"
       >
         清除
-      </button>
+      </Button>
     </div>
   </div>
 </template>
@@ -27,6 +30,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import type { TimeRange, Duration, ContentType } from '@/features/video/composables/useFeedFilters'
 
 const props = defineProps<{

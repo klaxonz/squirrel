@@ -122,9 +122,9 @@
           <div class="sp-menu-item sp-menu-item--offset">
             <span>{{ offsetLabel }}</span>
             <div class="sp-offset-controls">
-              <button class="sp-offset-btn" @click.stop="$emit('offsetChange', -0.5)">-0.5s</button>
+              <Button variant="ghost" size="xs" class="sp-offset-btn" @click.stop="$emit('offsetChange', -0.5)">-0.5s</Button>
               <span class="sp-offset-value">{{ subtitleOffset > 0 ? '+' : '' }}{{ subtitleOffset.toFixed(1) }}s</span>
-              <button class="sp-offset-btn" @click.stop="$emit('offsetChange', 0.5)">+0.5s</button>
+              <Button variant="ghost" size="xs" class="sp-offset-btn" @click.stop="$emit('offsetChange', 0.5)">+0.5s</Button>
             </div>
           </div>
         </div>
@@ -233,6 +233,7 @@
 import { computed, ref } from 'vue'
 import PlayerIcon from './PlayerIcon.vue'
 import type { SubtitleTrack } from './core'
+import { Button } from '@/shared/ui/button'
 
 interface QualityOption {
   id: string | number

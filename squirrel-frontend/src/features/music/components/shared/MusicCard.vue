@@ -30,9 +30,9 @@
         leave-to-class="opacity-0"
       >
         <div v-if="isHovered || isPlaying" class="music-card-overlay">
-          <button class="music-card-play-btn" @click.stop="$emit('play')">
+          <Button size="card-play" aria-label="播放" @click.stop="$emit('play')">
             <AppIcon name="play" class="h-5 w-5" />
-          </button>
+          </Button>
         </div>
       </Transition>
 
@@ -54,6 +54,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import type { AppIconName } from '@/shared/icons/app-icons'
 import { musicCardVariants, type MusicCardSize, type MusicCardVariant } from './music-card.variants'
 
@@ -159,24 +160,6 @@ function handleCoverError() {
   background: hsl(var(--background) / 0.48);
 }
 
-.music-card-play-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 0.625rem;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.16s ease, transform 0.16s ease;
-}
-
-.music-card-play-btn:hover {
-  transform: scale(1.03);
-}
-
 .music-card-playing-badge {
   position: absolute;
   top: 0.5rem;
@@ -242,8 +225,7 @@ function handleCoverError() {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .music-card-cover,
-  .music-card-play-btn {
+  .music-card-cover {
     transition: none;
   }
 }

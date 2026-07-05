@@ -4,9 +4,9 @@
       <div class="sp-playlist-header">
         <span class="sp-playlist-title">{{ title }}</span>
         <span class="sp-playlist-count">{{ entries.length }} videos</span>
-        <button class="sp-icon-btn" @click="$emit('close')" :title="'Close'">
+        <Button variant="ghost" size="mini-icon" class="sp-icon-btn" @click="$emit('close')" :title="'Close'">
           <span style="font-size: 14px; line-height: 1">&times;</span>
-        </button>
+        </Button>
       </div>
       <div class="sp-playlist-items">
         <div
@@ -36,6 +36,7 @@
 <script setup lang="ts">
 import { formatTime } from '@/shared/lib/dateFormat'
 import type { PlaylistEntry } from '@/features/playback/types/playerSession'
+import { Button } from '@/shared/ui/button'
 
 defineProps<{
   visible: boolean

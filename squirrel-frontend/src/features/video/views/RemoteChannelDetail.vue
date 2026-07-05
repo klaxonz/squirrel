@@ -59,10 +59,11 @@
       </section>
 
       <div v-if="items.length > 0" class="remote-channel-grid app-video-grid app-video-grid--feed">
-        <button
+        <Button
           v-for="item in items"
           :key="item.site + ':' + item.url"
           type="button"
+          variant="ghost"
           class="remote-channel-card group"
           @click="openResult(item)"
         >
@@ -81,7 +82,7 @@
               {{ displayDate(item) }}
             </div>
           </div>
-        </button>
+        </Button>
       </div>
 
       <div v-if="loading" class="app-page-section--grid app-video-grid app-video-grid--feed">

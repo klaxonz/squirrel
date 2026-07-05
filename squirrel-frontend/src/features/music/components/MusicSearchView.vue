@@ -4,37 +4,40 @@
       <section v-if="history.length" class="music-search-section">
         <div class="music-search-section-header">
           <h3 class="music-search-section-title">搜索历史</h3>
-          <button class="music-search-clear-btn" @click="clearHistory">
+          <Button variant="ghost" size="sm" @click="clearHistory">
             <AppIcon name="trash" class="h-4 w-4" />
             清空
-          </button>
+          </Button>
         </div>
         <div class="music-history-list">
-          <button
+          <Button
             v-for="(item, index) in history"
             :key="index"
-            class="music-history-item"
+            variant="secondary"
+            size="sm"
             @click="searchByKeyword(item)"
           >
             <AppIcon name="history" class="h-4 w-4" />
             <span>{{ item }}</span>
-          </button>
+          </Button>
         </div>
       </section>
 
       <section v-if="hotSearches.length" class="music-search-section">
         <h3 class="music-search-section-title">热搜榜</h3>
         <div class="music-hot-list">
-          <button
+          <Button
             v-for="(item, index) in hotSearches.slice(0, 20)"
             :key="item.keyword"
+            variant="ghost"
+            size="sm"
             class="music-hot-item"
             @click="searchByKeyword(item.keyword)"
           >
             <span class="music-hot-index" :class="{ 'music-hot-index--top': index < 3 }">{{ index + 1 }}</span>
             <span class="music-hot-keyword">{{ item.keyword }}</span>
             <span v-if="item.score" class="music-hot-score">{{ formatScore(item.score) }}</span>
-          </button>
+          </Button>
         </div>
       </section>
     </div>
@@ -84,21 +87,25 @@
                 </div>
                 <div class="music-search-col music-search-col--title music-search-song-title-cell">
                   <span class="music-search-song-title">{{ track.title || '未知歌曲' }}</span>
-                  <button
+                  <Button
+                    variant="link"
+                    size="xs"
                     class="music-search-song-artist"
                     :disabled="!track.artist_id"
                     @click.stop="$emit('select-artist', createArtistFromTrack(track))"
                   >
                     {{ track.artist || '未知歌手' }}
-                  </button>
+                  </Button>
                 </div>
-                <button
+                <Button
+                  variant="link"
+                  size="xs"
                   class="music-search-col music-search-col--album music-search-song-album"
                   :disabled="!track.album_id"
                   @click.stop="$emit('select-album', createAlbumFromTrack(track))"
                 >
                   {{ track.album || '未知专辑' }}
-                </button>
+                </Button>
                 <span class="music-search-col music-search-col--duration">{{ formatDuration(track.duration) }}</span>
               </article>
             </section>
@@ -251,39 +258,10 @@ function handlePlaySong(track: MusicTrack) {
   color: hsl(var(--foreground));
 }
 
-.music-search-clear-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
 .music-history-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-}
-
-.music-history-item {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  background: hsl(var(--muted) / 0.4);
-  border: none;
-  border-radius: 9999px;
-  font-size: 0.8125rem;
-  color: hsl(var(--foreground));
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.music-history-item:hover {
-  background: hsl(var(--muted) / 0.6);
 }
 
 .music-hot-list {
@@ -293,20 +271,10 @@ function handlePlaySong(track: MusicTrack) {
 }
 
 .music-hot-item {
-  display: flex;
-  align-items: center;
   gap: 0.75rem;
-  padding: 0.625rem 0.5rem;
-  background: none;
-  border: none;
+  justify-content: flex-start;
   text-align: left;
-  cursor: pointer;
-  transition: background 0.15s ease;
-  border-radius: 0.375rem;
-}
-
-.music-hot-item:hover {
-  background: hsl(var(--muted) / 0.3);
+  width: 100%;
 }
 
 .music-hot-index {
@@ -492,14 +460,14 @@ function handlePlaySong(track: MusicTrack) {
 }
 
 .music-search-song-artist {
-  display: block;
+  display: inline-flex;
+  justify-content: flex-start;
+  height: auto;
+  max-width: 100%;
+  margin-top: 0.125rem;
+  padding: 0;
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
-  background: none;
-  border: none;
-  padding: 0;
-  margin-top: 0.125rem;
-  cursor: pointer;
   text-align: left;
 }
 
@@ -508,16 +476,15 @@ function handlePlaySong(track: MusicTrack) {
 }
 
 .music-search-song-album {
+  justify-content: flex-start;
+  height: auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: left;
   font-size: 0.8125rem;
   color: hsl(var(--muted-foreground));
-  background: none;
-  border: 0;
   padding: 0;
-  cursor: pointer;
 }
 
 .music-search-song-album:hover:not(:disabled) {

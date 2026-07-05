@@ -29,14 +29,16 @@
       </div>
     </nav>
 
-    <button
+    <Button
+      variant="ghost"
+      size="icon-sm"
       type="button"
       class="sidebar-toggle"
       :title="isSidebarOpen ? '收起侧边栏' : '展开侧边栏'"
       @click="uiStore.toggleSidebar()"
     >
       <AppIcon :name="isSidebarOpen ? 'chevronLeft' : 'chevronRight'" class="w-3.5 h-3.5" />
-    </button>
+    </Button>
   </aside>
 </template>
 
@@ -45,6 +47,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import SidebarMenuItem from './SidebarMenuItem.vue'
+import { Button } from '@/shared/ui/button'
 import { NAV_GROUPS, isNavigationItemActive } from '@/shared/constants/sidebar'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { useUIStore } from '@/shared/stores/ui'

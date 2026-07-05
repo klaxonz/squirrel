@@ -7,15 +7,17 @@
           class="feed-toolbar__tabs-scroll no-scrollbar"
           @scroll="updateScrollState"
         >
-          <button
+          <Button
             v-for="tab in tabs"
             :key="tab.value"
-            class="feed-toolbar__tab"
+            variant="ghost"
+            size="sm"
+            class="feed-toolbar__tab app-tab-button"
             :class="{ 'is-active': localActiveTab === tab.value }"
             @click="localActiveTab = tab.value"
           >
             {{ tab.label }}
-          </button>
+          </Button>
         </div>
         <div v-if="canScrollLeft" class="feed-toolbar__fade feed-toolbar__fade--left"></div>
         <div v-if="canScrollRight" class="feed-toolbar__fade feed-toolbar__fade--right"></div>
@@ -23,23 +25,25 @@
     </div>
 
     <div class="feed-toolbar__actions">
-      <button
+      <Button
         v-if="special === 'yes'"
         type="button"
-        class="feed-toolbar__chip feed-toolbar__chip--warning"
+        variant="outline"
+        size="sm"
+        class="app-toolbar-control app-toolbar-chip app-toolbar-chip--warning"
         title="清除特别关注过滤"
         @click="emit('update:special', 'all')"
       >
         <AppIcon name="star" class="h-3.5 w-3.5 fill-current" />
         特别关注
         <AppIcon name="close" class="h-3 w-3" />
-      </button>
+      </Button>
 
       <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
-        <SelectTrigger class="feed-toolbar__select-trigger">
+        <SelectTrigger class="app-toolbar-control app-toolbar-select-trigger">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent class="min-w-44 border-border/60 bg-popover shadow-lg rounded-md">
+          <SelectContent class="min-w-44 rounded-md border-border/60 bg-popover shadow-lg">
           <SelectItem value="all" class="text-xs">全部站点</SelectItem>
           <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">
             {{ opt.label }}
@@ -49,10 +53,10 @@
 
       <div v-if="showSort" class="hidden sm:block shrink-0">
         <Select v-model="localSortBy">
-          <SelectTrigger class="feed-toolbar__select-trigger">
+          <SelectTrigger class="app-toolbar-control app-toolbar-select-trigger">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent class="min-w-36 border-border/60 bg-popover shadow-lg rounded-md">
+          <SelectContent class="min-w-36 rounded-md border-border/60 bg-popover shadow-lg">
             <SelectItem v-for="opt in sortOptions" :key="opt.value" :value="opt.value" class="text-xs">
               {{ opt.label }}
             </SelectItem>
@@ -60,10 +64,12 @@
         </Select>
       </div>
 
-      <button
+      <Button
         v-if="showFilter"
         type="button"
-        class="feed-toolbar__icon-button"
+        variant="ghost"
+        size="icon-sm"
+        class="app-toolbar-control app-toolbar-icon-button"
         :class="[
           activeFilterCount > 0
             ? 'is-active'
@@ -76,35 +82,27 @@
         <AppIcon name="filter" class="size-4 shrink-0" />
         <span
           v-if="activeFilterCount > 0"
-          class="feed-toolbar__count"
+          class="app-toolbar-count"
         >{{ activeFilterCount }}</span>
-      </button>
+      </Button>
 
-      <div class="feed-toolbar__view-toggle">
-        <button
-          class="feed-toolbar__view-button"
-          :class="{ 'is-active': uiStore.viewMode === 'grid' }"
-          @click="uiStore.setViewMode('grid')"
-          title="网格视图"
-          aria-label="网格视图"
-        >
-          <AppIcon name="layoutGrid" class="w-4 h-4" />
-        </button>
-        <button
-          class="feed-toolbar__view-button"
-          :class="{ 'is-active': uiStore.viewMode === 'list' }"
-          @click="uiStore.setViewMode('list')"
-          title="列表视图"
-          aria-label="列表视图"
-        >
-          <AppIcon name="list" class="w-4 h-4" />
-        </button>
-      </div>
-
-      <button
+      <AppSegmentedControl
+        :model-value="uiStore.viewMode"
+        :options="viewModeOptions"
+        aria-label="视频视图"
+        size="icon"
+        @update:model-value="handleViewModeChange"
+      >
+        <template #option="{ option }">
+          <AppIcon v-if="option.icon" :name="option.icon" class="h-4 w-4" />
+        </template>
+      </AppSegmentedControl>
+      <Button
         v-if="showRefresh"
         type="button"
-        class="feed-toolbar__icon-button"
+        variant="ghost"
+        size="icon-sm"
+        class="app-toolbar-control app-toolbar-icon-button"
         @click="$emit('refresh')"
         title="刷新内容"
         aria-label="刷新内容"
@@ -115,7 +113,7 @@
           name="refresh"
           class="w-4 h-4 shrink-0"
         />
-      </button>
+      </Button>
     </div>
 
     <FilterModal
@@ -148,9 +146,11 @@ import AppSpinner from '@/shared/components/AppSpinner.vue'
 import FilterModal from './FilterModal.vue'
 import type { TimeRange, Duration, ContentType } from '@/features/video/composables/useFeedFilters'
 import { useSites } from '@/features/video/composables/useSites'
+import { Button } from '@/shared/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 import { useUIStore } from '@/shared/stores/ui'
 import type { VideoTab } from '@/features/video/constants/videos'
+import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 
 const props = withDefaults(defineProps<{
   activeTab?: string, nsfw?: string, sortBy?: string, site?: string, subscriptionId?: string | number,
@@ -193,6 +193,11 @@ const updateScrollState = () => {
 
 const handleSiteChange = (val: unknown) => emit('update:site', val === 'all' ? '' : val)
 
+const handleViewModeChange = (value: string | number) => {
+  if (value !== 'grid' && value !== 'list') return
+  uiStore.setViewMode(value)
+}
+
 const activeFilterCount = computed(() => {
   let c = 0
   if (localSortBy.value !== 'publish_date') c++
@@ -219,6 +224,11 @@ const sortOptions = [
   { value: 'publish_date', label: '上传日期' },
   { value: 'created_at', label: '抓取日期' },
 ]
+
+const viewModeOptions = [
+  { value: 'grid', label: '网格视图', icon: 'layoutGrid' },
+  { value: 'list', label: '列表视图', icon: 'list' },
+] as const
 
 </script>
 
@@ -261,33 +271,8 @@ const sortOptions = [
   flex: 0 0 auto;
   height: 2rem;
   padding: 0 var(--space-3);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
   font-weight: 650;
-  white-space: nowrap;
-  outline: none;
-  transition:
-    color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-fast) var(--ease-default);
-}
-
-.feed-toolbar__tab:hover {
-  color: hsl(var(--foreground));
-  background: hsl(var(--accent) / 0.58);
-}
-
-.feed-toolbar__tab:focus-visible {
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.36);
-}
-
-.feed-toolbar__tab.is-active {
-  color: hsl(var(--foreground));
-  background: hsl(var(--card));
-  box-shadow: 0 0 0 1px hsl(var(--border) / 0.5);
 }
 
 .feed-toolbar__fade {
@@ -316,123 +301,4 @@ const sortOptions = [
   white-space: nowrap;
 }
 
-.feed-toolbar__chip,
-.feed-toolbar__select-trigger,
-.feed-toolbar__icon-button,
-.feed-toolbar__view-toggle {
-  border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: var(--radius-md);
-  background: hsl(var(--background) / 0.36);
-  color: hsl(var(--muted-foreground));
-  transition:
-    color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default),
-    border-color var(--duration-fast) var(--ease-default);
-}
-
-.feed-toolbar__chip {
-  display: inline-flex;
-  height: 2rem;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0 var(--space-3);
-  font-size: 0.75rem;
-  font-weight: 650;
-}
-
-.feed-toolbar__chip--warning {
-  border-color: hsl(var(--warning) / 0.38);
-  background: hsl(var(--warning) / 0.1);
-  color: hsl(var(--warning));
-}
-
-:deep(.feed-toolbar__select-trigger) {
-  height: 2rem;
-  width: auto;
-  min-width: 0;
-  flex-shrink: 0;
-  flex-wrap: nowrap;
-  gap: var(--space-2);
-  padding: 0 var(--space-3);
-  box-shadow: none;
-  font-size: 0.75rem;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-:deep(.feed-toolbar__select-trigger:hover),
-.feed-toolbar__icon-button:hover,
-.feed-toolbar__view-button:hover {
-  color: hsl(var(--foreground));
-  border-color: hsl(var(--border));
-  background: hsl(var(--accent) / 0.58);
-}
-
-.feed-toolbar__icon-button {
-  position: relative;
-  display: inline-flex;
-  width: 2rem;
-  height: 2rem;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  outline: none;
-}
-
-.feed-toolbar__icon-button:focus-visible,
-.feed-toolbar__view-button:focus-visible {
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.36);
-}
-
-.feed-toolbar__icon-button.is-active {
-  color: hsl(var(--primary));
-  border-color: hsl(var(--primary) / 0.28);
-  background: hsl(var(--primary) / 0.12);
-}
-
-.feed-toolbar__count {
-  position: absolute;
-  top: -0.375rem;
-  right: -0.375rem;
-  display: inline-flex;
-  min-width: 0.875rem;
-  height: 0.875rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  padding: 0 0.25rem;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  font-size: 0.5625rem;
-  font-weight: 800;
-  box-shadow: 0 0 0 2px hsl(var(--background));
-}
-
-.feed-toolbar__view-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
-}
-
-.feed-toolbar__view-button {
-  display: inline-flex;
-  width: 1.625rem;
-  height: 1.625rem;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-  outline: none;
-  transition:
-    color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default);
-}
-
-.feed-toolbar__view-button.is-active {
-  color: hsl(var(--foreground));
-  background: hsl(var(--card));
-}
 </style>
