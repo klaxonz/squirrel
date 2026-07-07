@@ -296,7 +296,9 @@ watch(() => props.subscriptionId, () => {
 
 .channel-dismiss-enter-active,
 .channel-dismiss-leave-active {
-  transition: all var(--duration-slow) var(--ease-out);
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
 }
 
 .channel-dismiss-enter-from,

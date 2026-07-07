@@ -119,7 +119,9 @@ function toggleExpand() {
 .playlist-list-move,
 .playlist-list-enter-active,
 .playlist-list-leave-active {
-  transition: all 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .playlist-list-enter-from,

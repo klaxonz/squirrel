@@ -20,12 +20,14 @@ interface Props extends PrimitiveProps {
   loading?: boolean
   /** Disable the button. */
   disabled?: boolean
+  unstyled?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   as: "button",
   loading: false,
   disabled: false,
+  unstyled: false,
 })
 
 const isDisabled = computed(() => props.disabled || props.loading)
@@ -36,7 +38,7 @@ const isDisabled = computed(() => props.disabled || props.loading)
     :as="as"
     :as-child="asChild"
     :disabled="isDisabled"
-    :class="cn(buttonVariants({ variant, size }), props.class)"
+    :class="cn(unstyled ? undefined : buttonVariants({ variant, size }), props.class)"
   >
     <AppSpinner v-if="loading" size="sm" />
     <slot />

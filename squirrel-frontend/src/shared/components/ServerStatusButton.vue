@@ -3,8 +3,9 @@
     <!-- Floating trigger: collapsed icon button anchored to the viewport
          top-right. Hidden until useServerConfig has resolved. -->
     <PopoverTrigger as-child>
-      <button
+      <Button
         type="button"
+        unstyled
         :class="['server-status-trigger', { 'server-status-trigger--open': open }]"
         :title="currentServerLabel"
         :aria-label="triggerAriaLabel"
@@ -15,7 +16,7 @@
           aria-hidden="true"
         />
         <AppIcon name="server" class="server-status-trigger__icon" />
-      </button>
+      </Button>
     </PopoverTrigger>
 
     <PopoverContent
@@ -42,24 +43,29 @@
       </div>
 
       <div class="server-status-popover__actions">
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           class="server-status-popover__action"
           :disabled="!currentServerUrl || testing"
+          :loading="testing"
           @click="handleTest"
         >
-          <AppSpinner v-if="testing" size="sm" />
-          <AppIcon v-else name="bolt" class="server-status-popover__action-icon" />
+          <AppIcon v-if="!testing" name="bolt" class="server-status-popover__action-icon" />
           <span>{{ testing ? '测试中' : '测试连接' }}</span>
-        </button>
+        </Button>
 
-        <router-link
-          to="/server-config"
+        <Button
+          as-child
+          size="sm"
           class="server-status-popover__action server-status-popover__action--primary"
         >
-          <AppIcon name="settingsPanel" class="server-status-popover__action-icon" />
-          <span>{{ currentServerUrl ? '更换服务器' : '去配置服务器' }}</span>
-        </router-link>
+          <router-link to="/server-config">
+            <AppIcon name="settingsPanel" class="server-status-popover__action-icon" />
+            <span>{{ currentServerUrl ? '更换服务器' : '去配置服务器' }}</span>
+          </router-link>
+        </Button>
       </div>
 
       <p
@@ -92,14 +98,14 @@
  *      "is the server reachable".
  *   3. Mixed two concerns (display + edit) into one clickable element.
  *
- * This component collapses to a 32px icon button anchored to the viewport
+ * This component collapses to a compact icon button anchored to the viewport
  * top-right corner, with a status dot carrying the real semantic state. Click
  * opens a popover that shows the URL, a quick "Test connection" probe, and
  * the "Change server" action.
  */
 import { computed, ref } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Button } from '@/shared/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/shared/ui/popover'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
 import { Logger } from '@/shared/lib/logger'
@@ -148,17 +154,17 @@ const handleTest = async () => {
   width: 2.25rem;
   height: 2.25rem;
   padding: 0;
-  background: hsl(var(--card) / 0.7);
-  border: 1px solid hsl(var(--border) / 0.7);
+  background: hsl(var(--card) / 0.78);
+  border: 1px solid hsl(var(--border) / 0.65);
   border-radius: 999px;
   color: hsl(var(--muted-foreground));
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.06);
   cursor: pointer;
   transition:
     color var(--duration-fast) var(--ease-default),
     background var(--duration-fast) var(--ease-default),
     border-color var(--duration-fast) var(--ease-default),
     transform var(--duration-fast) var(--ease-default);
-  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
 }
 
 @media (min-width: 640px) {
@@ -197,13 +203,8 @@ const handleTest = async () => {
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
-  /* Use brand amber (--primary) instead of --success green for the connected
-     state. The trigger is brand chrome on the auth surface — a bright green
-     dot reads as "system notification" and clashes with the warm-amber hue
-     axis of the rest of the brand. Amber says "you're home, all systems
-     good" in the same color language as the spiral mark and brand glow. */
   background: hsl(var(--primary));
-  box-shadow: 0 0 0 2px hsl(var(--card) / 0.9), 0 0 8px hsl(var(--primary) / 0.7);
+  box-shadow: 0 0 0 2px hsl(var(--card) / 0.9);
 }
 
 .server-status-trigger__dot--idle {
@@ -243,10 +244,8 @@ const handleTest = async () => {
 
 .server-status-popover__eyebrow {
   font-family: var(--font-sans);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: hsl(var(--muted-foreground));
 }
 
@@ -271,11 +270,6 @@ const handleTest = async () => {
   height: 0.4375rem;
   border-radius: 50%;
   background: currentColor;
-  box-shadow: 0 0 6px currentColor;
-}
-
-.server-status-popover__state--idle .server-status-popover__state-dot {
-  box-shadow: none;
 }
 
 .server-status-popover__url {
@@ -310,48 +304,12 @@ const handleTest = async () => {
 }
 
 .server-status-popover__action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   gap: 0.4375rem;
-  height: 2.125rem;
-  padding: 0 0.625rem;
-  border-radius: var(--radius-md);
-  border: 1px solid hsl(var(--border) / 0.8);
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    color var(--duration-fast) var(--ease-default),
-    background var(--duration-fast) var(--ease-default),
-    border-color var(--duration-fast) var(--ease-default);
-}
-
-.server-status-popover__action:hover:not(:disabled) {
-  color: hsl(var(--foreground));
-  background: hsl(var(--muted) / 0.45);
-  border-color: hsl(var(--border));
-}
-
-.server-status-popover__action:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+  width: 100%;
 }
 
 .server-status-popover__action--primary {
-  color: hsl(var(--primary-foreground));
-  background: hsl(var(--primary));
-  border-color: hsl(var(--primary));
-}
-
-.server-status-popover__action--primary:hover:not(:disabled) {
-  color: hsl(var(--primary-foreground));
-  background: hsl(var(--primary) / 0.9);
-  border-color: hsl(var(--primary) / 0.9);
-  filter: brightness(1.05);
+  justify-content: center;
 }
 
 .server-status-popover__action-icon {

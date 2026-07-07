@@ -1,9 +1,8 @@
 <template>
   <Dialog :open="visible" @update:open="!$event && $emit('close')">
-    <DialogContent class="flex max-h-[80vh] w-full max-w-xl flex-col gap-0 overflow-hidden rounded-lg p-0">
-      <!-- Header -->
-      <DialogHeader class="app-divider-bottom flex flex-row items-center justify-between space-y-0 px-4 py-3 text-left">
-        <div class="flex items-center gap-3">
+    <DialogContent class="app-dialog-surface site-editor-dialog max-w-xl">
+      <DialogHeader class="app-dialog-form-header site-editor-header">
+        <div class="site-editor-title-row">
           <SiteIcon
             :icon-url="siteEditorForm.iconUrl"
             :label="siteEditorForm.label || siteEditorForm.slug"
@@ -11,8 +10,8 @@
             rounded="sm"
           />
           <div>
-            <DialogTitle class="text-sm font-medium text-foreground">站点配置</DialogTitle>
-            <DialogDescription class="text-xs text-muted-foreground">{{ siteEditorForm.slug }}</DialogDescription>
+            <DialogTitle class="app-dialog-form-title">站点配置</DialogTitle>
+            <DialogDescription class="app-dialog-form-description">{{ siteEditorForm.slug }}</DialogDescription>
           </div>
         </div>
         <DialogClose as-child>
@@ -22,65 +21,66 @@
         </DialogClose>
       </DialogHeader>
 
-      <!-- Content -->
-      <div class="site-editor-scroll flex-1 px-4 py-4 overflow-y-auto">
-
-        <!-- 基本参数 -->
-        <section class="mb-5">
-          <h4 class="text-xs font-medium text-muted-foreground uppercase mb-3">基本参数</h4>
-          <div class="space-y-2.5">
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-muted-foreground w-16 shrink-0" for="site-editor-label">显示名称</label>
-              <Input id="site-editor-label" v-model="siteEditorForm.label" placeholder="展示给用户的名称" class="flex-1 h-7 text-xs" />
+      <div class="app-dialog-form-body app-dialog-form-body--scroll site-editor-scroll">
+        <section class="site-editor-section">
+          <div class="app-settings-section-title">
+            <h3>基本参数</h3>
+          </div>
+          <div class="site-editor-fields">
+            <div class="site-editor-field">
+              <label class="app-dialog-form-label" for="site-editor-label">显示名称</label>
+              <Input id="site-editor-label" v-model="siteEditorForm.label" placeholder="展示给用户的名称" class="app-form-input" />
             </div>
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-muted-foreground w-16 shrink-0" for="site-editor-aliases">站点别名</label>
-              <Textarea id="site-editor-aliases" v-model="siteEditorForm.aliasesText" :rows="2" placeholder="每行一个别名" class="flex-1 text-xs resize-none" />
+            <div class="site-editor-field">
+              <label class="app-dialog-form-label" for="site-editor-aliases">站点别名</label>
+              <Textarea id="site-editor-aliases" v-model="siteEditorForm.aliasesText" :rows="2" placeholder="每行一个别名" class="app-form-input site-editor-textarea" />
             </div>
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-muted-foreground w-16 shrink-0" for="site-editor-domains">域名</label>
+            <div class="site-editor-field">
+              <label class="app-dialog-form-label" for="site-editor-domains">域名</label>
               <Textarea
                 id="site-editor-domains"
                 :model-value="siteEditorForm.domainsText"
                 :rows="2"
                 readonly
-                class="flex-1 text-xs resize-none text-muted-foreground/70"
+                class="app-form-input site-editor-textarea text-muted-foreground/70"
               />
             </div>
-            <div class="flex items-center justify-between py-1">
-              <span class="text-xs text-foreground">启用站点</span>
+            <div class="site-editor-switch-row">
+              <span>启用站点</span>
               <Switch :model-value="!!siteEditorForm.enabled" @update:model-value="(v) => setSiteEditorBooleanField('enabled', v)" />
             </div>
           </div>
         </section>
 
-        <!-- 采集策略 -->
-        <section class="mb-5">
-          <h4 class="text-xs font-medium text-muted-foreground uppercase mb-3">采集策略</h4>
-          <div class="space-y-2.5">
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-muted-foreground w-16 shrink-0" for="site-editor-test-url">测试地址</label>
-              <Input id="site-editor-test-url" v-model="siteEditorForm.testUrl" placeholder="用于连通性检测的地址" class="flex-1 h-7 text-xs" />
+        <section class="site-editor-section">
+          <div class="app-settings-section-title">
+            <h3>采集策略</h3>
+          </div>
+          <div class="site-editor-fields">
+            <div class="site-editor-field">
+              <label class="app-dialog-form-label" for="site-editor-test-url">测试地址</label>
+              <Input id="site-editor-test-url" v-model="siteEditorForm.testUrl" placeholder="用于连通性检测的地址" class="app-form-input" />
             </div>
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-muted-foreground w-16 shrink-0">频率限制</label>
-              <div class="flex items-center gap-2 flex-1">
+            <div class="site-editor-rate-row">
+              <label class="app-dialog-form-label">频率限制</label>
+              <div class="site-editor-rate-controls">
                 <Switch :model-value="!!siteEditorForm.rateLimitEnabled" @update:model-value="(v) => setSiteEditorBooleanField('rateLimitEnabled', v)" />
-                <span v-if="siteEditorForm.rateLimitEnabled" class="flex items-center gap-1.5 text-xs">
-                  <Input v-model="siteEditorForm.rateLimitMin" type="number" step="0.1" class="w-16 h-6 text-xs" placeholder="最小" />
-                  <span class="text-muted-foreground/60">~</span>
-                  <Input v-model="siteEditorForm.rateLimitMax" type="number" step="0.1" class="w-16 h-6 text-xs" placeholder="最大" />
-                  <span class="text-muted-foreground/60">秒</span>
+                <span v-if="siteEditorForm.rateLimitEnabled" class="site-editor-rate-inputs">
+                  <Input v-model="siteEditorForm.rateLimitMin" type="number" step="0.1" class="app-form-input site-editor-number-input" placeholder="最小" />
+                  <span>~</span>
+                  <Input v-model="siteEditorForm.rateLimitMax" type="number" step="0.1" class="app-form-input site-editor-number-input" placeholder="最大" />
+                  <span>秒</span>
                 </span>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- 内容标记 -->
-        <section>
-          <h4 class="text-xs font-medium text-muted-foreground uppercase mb-3">内容标记</h4>
-          <div class="space-y-0.5">
+        <section class="site-editor-section">
+          <div class="app-settings-section-title">
+            <h3>内容标记</h3>
+          </div>
+          <div class="site-editor-flags">
             <label
               v-for="meta in [
                 { key: 'metadataNsfw', label: '默认标记为敏感内容' },
@@ -90,24 +90,23 @@
                 { key: 'metadataOfflineThumbnailsDisplay', label: '优先使用本地封面显示' }
               ]"
               :key="meta.key"
-              class="flex items-center justify-between py-1.5 px-1 rounded hover:bg-muted/40 transition-colors cursor-pointer"
+              class="site-editor-flag-row"
             >
-              <span class="text-xs text-foreground/80">{{ meta.label }}</span>
+              <span>{{ meta.label }}</span>
               <Switch :model-value="!!siteEditorForm[meta.key]" @update:model-value="(v) => setSiteEditorBooleanField(meta.key, v)" />
             </label>
           </div>
         </section>
 
         <Transition name="fade">
-          <div v-if="resolvedError" class="mt-4 p-2.5 rounded text-destructive text-xs flex items-center gap-2">
+          <div v-if="resolvedError" class="app-dialog-message is-error">
             <AppIcon name="warning" class="h-3.5 w-3.5 shrink-0" />
             {{ resolvedError }}
           </div>
         </Transition>
       </div>
 
-      <!-- Footer -->
-      <DialogFooter class="app-divider-top px-4 py-3 sm:justify-end">
+      <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
         <Button
           size="sm"
           variant="ghost"
@@ -180,6 +179,91 @@ const {
 .site-editor-scroll {
   scrollbar-width: thin;
   scrollbar-color: hsl(var(--muted)) transparent;
+}
+
+:deep(.site-editor-dialog) {
+  display: flex;
+  max-height: 80vh;
+  flex-direction: column;
+}
+
+.site-editor-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.site-editor-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.site-editor-section,
+.site-editor-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.site-editor-section + .site-editor-section {
+  padding-top: var(--space-2);
+}
+
+.site-editor-field {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+}
+
+.site-editor-textarea {
+  min-height: 3.5rem;
+  resize: none;
+}
+
+.site-editor-switch-row,
+.site-editor-rate-row,
+.site-editor-flag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.site-editor-switch-row,
+.site-editor-flag-row {
+  min-height: 2rem;
+  color: hsl(var(--foreground) / 0.86);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.site-editor-flag-row {
+  padding: 0.25rem 0;
+  cursor: pointer;
+}
+
+.site-editor-rate-controls,
+.site-editor-rate-inputs {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.site-editor-rate-inputs {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+.site-editor-number-input {
+  width: 4rem;
+  height: 1.875rem;
 }
 
 .site-editor-scroll::-webkit-scrollbar {

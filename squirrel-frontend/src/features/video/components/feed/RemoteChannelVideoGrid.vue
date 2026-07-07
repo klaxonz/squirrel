@@ -25,7 +25,7 @@
         </div>
 
         <div class="flex min-w-0 flex-col gap-1 px-0.5">
-          <h3 class="line-clamp-2 text-sm font-semibold leading-[1.3] tracking-tight text-foreground/90 transition-colors group-hover:text-primary">
+          <h3 class="remote-channel-video-title">
             {{ item.title }}
           </h3>
           <div class="text-xs font-medium text-muted-foreground/50">
@@ -158,3 +158,21 @@ onUnmounted(() => {
   observer?.disconnect()
 })
 </script>
+
+<style scoped>
+.remote-channel-video-title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: hsl(var(--foreground) / 0.9);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  transition: color var(--duration-fast) var(--ease-default);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.group:hover .remote-channel-video-title {
+  color: hsl(var(--primary));
+}
+</style>

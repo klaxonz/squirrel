@@ -112,7 +112,10 @@ watch(
   line-height: 1.6;
   color: hsl(var(--foreground) / 0.35);
   cursor: pointer;
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    color 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    font-size 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: center;
 }
 

@@ -121,17 +121,21 @@
                  @pointercancel="onProgressPointerUp">
               <div class="sp-progress-rail">
                 <div class="sp-progress-buffered" :style="{ width: `${store.bufferedProgress}%` }"></div>
-                <button
+                <Button
                   v-for="chapter in normalizedChapters"
                   :key="chapter.id"
+                  unstyled
+                  type="button"
                   class="sp-chapter-marker"
                   :style="{ left: `${chapter.startPercent}%` }"
                   :title="chapter.title"
                   @pointerdown.stop="handleChapterClick(chapter.startTime)"
-                ></button>
-                <button
+                />
+                <Button
                   v-for="marker in normalizedClipMarkers"
                   :key="marker.id"
+                  unstyled
+                  type="button"
                   :data-drag-id="marker.id"
                   class="sp-clip-marker"
                   :class="{ 'is-active': activeClipMarkerId === marker.id, 'is-point': marker.isPoint, 'is-dragging': draggingMarker?.markerId === marker.id }"
@@ -151,7 +155,7 @@
                       <Button variant="destructive" size="icon-xs" class="sp-clip-marker-tooltip__del" @click.stop="deleteMarkerFromPanel(marker)">×</Button>
                     </span>
                   </span>
-                </button>
+                </Button>
                 <!-- 捕获中预览区域 -->
                 <div
                   v-if="hasPendingSegment && duration > 0"
@@ -1659,7 +1663,10 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border: 1px solid transparent;
   border-radius: 3px;
   cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
+  transition:
+    color var(--duration-normal) var(--ease-default),
+    border-color var(--duration-normal) var(--ease-default),
+    background-color var(--duration-normal) var(--ease-default);
   background: transparent;
   letter-spacing: 0.05em;
   margin-right: 4px;
@@ -1684,7 +1691,9 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--duration-slow) var(--ease-out);
+  transition:
+    color var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
   position: relative;
 }
 
@@ -1697,7 +1706,9 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border-radius: 6px;
   transform: scale(0.85);
   opacity: 0;
-  transition: all var(--duration-normal) var(--ease-default);
+  transition:
+    opacity var(--duration-normal) var(--ease-default),
+    transform var(--duration-normal) var(--ease-default);
 }
 
 .sp-icon-btn:hover {
@@ -1748,7 +1759,10 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   width: 0;
   overflow: hidden;
   opacity: 0;
-  transition: all var(--duration-slow) var(--ease-out);
+  transition:
+    width var(--duration-slow) var(--ease-out),
+    opacity var(--duration-slow) var(--ease-out),
+    padding var(--duration-slow) var(--ease-out);
   height: 32px;
   display: flex;
   align-items: center;
@@ -1926,9 +1940,8 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-upnext-label {
   color: rgba(255, 255, 255, 0.5);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  font-weight: 600;
   font-family: var(--sp-font-mono);
   margin-bottom: 4px;
 }
@@ -1981,9 +1994,8 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-chapter-overlay-title {
   color: rgba(255, 255, 255, 0.5);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  font-weight: 600;
   font-family: var(--sp-font-mono);
   padding: 4px 8px 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);

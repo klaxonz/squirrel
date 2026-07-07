@@ -80,7 +80,7 @@
                     {{ formatDuration(featuredVideo.duration) }}
                   </span>
                 </div>
-                <h2 class="line-clamp-2 text-2xl font-semibold leading-tight tracking-normal lg:text-3xl">
+                <h2 class="history-featured__title">
                   {{ featuredVideo.title }}
                 </h2>
                 <div class="flex flex-wrap items-center gap-2 text-sm text-white/75">
@@ -282,5 +282,18 @@ onMounted(() => {
   inset: 0;
   background:
     linear-gradient(90deg, hsl(0 0% 0% / 0.74), hsl(0 0% 0% / 0.42) 52%, hsl(0 0% 0% / 0.12));
+}
+
+.history-featured__title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: hsl(0 0% 100%);
+  font-family: var(--app-heading-font);
+  font-size: var(--app-h1-size);
+  font-weight: var(--app-h1-weight);
+  letter-spacing: var(--app-h1-tracking);
+  line-height: var(--app-h1-leading);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 </style>

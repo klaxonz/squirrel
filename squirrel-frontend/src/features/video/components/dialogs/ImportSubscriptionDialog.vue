@@ -1,18 +1,16 @@
 <template>
   <Dialog :open="show" @update:open="handleOpenChange">
-    <DialogScrollContent class="max-w-4xl gap-0 overflow-hidden p-0">
-      <div class="import-dialog__hero">
-        <DialogHeader class="space-y-2 px-6 pb-4 pt-6">
-          <DialogTitle class="text-xl font-semibold tracking-[-0.03em]">导入订阅</DialogTitle>
-          <DialogDescription class="leading-6">
-            从站点读取已有订阅并选择要同步进来的频道。
-          </DialogDescription>
-        </DialogHeader>
-      </div>
+    <DialogScrollContent class="app-dialog-surface import-dialog max-w-4xl">
+      <DialogHeader class="app-dialog-form-header">
+        <DialogTitle class="app-dialog-form-title">导入订阅</DialogTitle>
+        <DialogDescription class="app-dialog-form-description">
+          从站点读取已有订阅并选择要同步进来的频道。
+        </DialogDescription>
+      </DialogHeader>
 
-      <div class="space-y-6 px-6 py-5">
-        <section v-if="step === 1" class="space-y-5">
-          <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div class="app-dialog-form-body import-dialog__body">
+        <section v-if="step === 1" class="import-dialog__section">
+          <div class="import-dialog__site-grid">
             <Button
               v-for="site in supportedSites"
               :key="site"
@@ -39,7 +37,7 @@
           </Alert>
         </section>
 
-        <section v-else-if="step === 2" class="space-y-4">
+        <section v-else-if="step === 2" class="import-dialog__section">
           <div class="import-dialog__summary">
             <AppStatCard
               label="进度"
@@ -57,12 +55,12 @@
           </div>
 
           <template v-else>
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div class="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="secondary" class="rounded-md" @click="selectAllNotImported">全选已加载未导入</Button>
-                <Button size="sm" variant="ghost" class="rounded-md" @click="clearSelection">清空</Button>
+            <div class="import-dialog__toolbar">
+              <div class="import-dialog__toolbar-actions">
+                <Button size="sm" variant="secondary" @click="selectAllNotImported">全选已加载未导入</Button>
+                <Button size="sm" variant="ghost" @click="clearSelection">清空</Button>
               </div>
-              <p class="text-sm text-muted-foreground">
+              <p class="import-dialog__loaded-count">
                 已加载 {{ loadedCount }} / {{ previewData.total ?? '未知' }} 个
                 <span v-if="previewData.has_more">，可继续加载</span>
               </p>
@@ -82,12 +80,11 @@
                   selectedUrlMap[sub.url] && !sub.is_imported && 'import-dialog__list-item--selected',
                 ]"
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   class="import-dialog__checkbox"
                   :disabled="sub.is_imported"
-                  :checked="!!selectedUrlMap[sub.url]"
-                  @change="toggleSelection(sub)"
+                  :model-value="!!selectedUrlMap[sub.url]"
+                  @update:model-value="toggleSelection(sub)"
                 />
 
                 <img
@@ -98,18 +95,18 @@
                   @error="(event) => handleAvatarError(event, sub.url)"
                 />
 
-                <div class="min-w-0 flex-1">
-                  <p class="truncate text-sm font-medium text-foreground">{{ sub.name || '未命名订阅' }}</p>
-                  <p class="truncate text-xs text-muted-foreground">{{ sub.url }}</p>
+                <div class="import-dialog__item-copy">
+                  <p class="import-dialog__item-title">{{ sub.name || '未命名订阅' }}</p>
+                  <p class="import-dialog__item-url">{{ sub.url }}</p>
                 </div>
 
-                <Badge :variant="sub.is_imported ? 'secondary' : 'outline'" class="rounded-md">
+                <Badge :variant="sub.is_imported ? 'secondary' : 'outline'">
                   {{ sub.is_imported ? '已导入' : '未导入' }}
                 </Badge>
               </label>
             </div>
 
-            <div v-if="previewData.has_more" class="flex justify-center pt-2">
+            <div v-if="previewData.has_more" class="import-dialog__load-more">
               <Button size="sm" variant="outline" :loading="loadingMorePreview" @click="loadMorePreview">
                 {{ loadingMorePreview ? '加载中...' : '加载更多' }}
               </Button>
@@ -117,24 +114,24 @@
           </template>
         </section>
 
-        <section v-else-if="step === 3" class="space-y-5 py-3">
+        <section v-else-if="step === 3" class="import-dialog__section import-dialog__result">
           <div class="import-dialog__result-icon">
             <AppIcon name="check" class="h-8 w-8 text-success" />
           </div>
 
-          <div class="text-center">
-            <h3 class="text-2xl font-bold tracking-[-0.04em] text-foreground">
+          <div class="import-dialog__result-copy">
+            <h3 class="app-h2">
               {{ importResult.total > 0 ? '任务已提交' : '没有需要导入的订阅' }}
             </h3>
-            <p class="mt-2 text-sm text-muted-foreground">
+            <p>
               {{ importResult.total > 0 ? '后台已经开始处理导入任务。' : '当前没有符合条件的订阅。' }}
             </p>
           </div>
 
           <div class="import-dialog__result-card">
-            <p class="text-xs font-semibold text-muted-foreground">新增导入任务</p>
-            <p class="mt-2 text-4xl font-bold tracking-[-0.05em] text-foreground">{{ importResult.total || 0 }}</p>
-            <p class="mt-3 text-xs text-muted-foreground">
+            <p class="import-dialog__result-label">新增导入任务</p>
+            <p class="import-dialog__result-value">{{ importResult.total || 0 }}</p>
+            <p class="import-dialog__result-detail">
               <span v-if="importResult.found != null">
                 拉取 {{ importResult.found }} 个，选择 {{ importResult.selected ?? 0 }} 个，跳过 {{ importResult.skipped ?? 0 }} 个。
               </span>
@@ -157,7 +154,7 @@
         </section>
       </div>
 
-      <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end px-6">
+      <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
         <Button v-if="step === 1" size="sm" variant="ghost" :disabled="loadingPreview" @click="handleClose">取消</Button>
         <Button v-if="step === 1" size="sm" :loading="loadingPreview" :disabled="!selectedSite" @click="handlePreview">
           预览订阅
@@ -193,6 +190,7 @@ import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
+import { Checkbox } from '@/shared/ui/checkbox'
 import {
   Dialog,
   DialogDescription,
@@ -325,26 +323,39 @@ watch(() => props.show, (visible) => {
 </script>
 
 <style scoped>
-.import-dialog__hero {
-  background:
-    radial-gradient(circle at top right, hsl(var(--primary) / 0.12), transparent 38%),
-    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.92));
+:deep(.import-dialog) {
+  gap: 0;
+  padding: 0;
+}
+
+.import-dialog__body {
+  gap: var(--space-5);
+}
+
+.import-dialog__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.import-dialog__site-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
 }
 
 .import-dialog__site-card {
   display: grid;
-  gap: 0.8rem;
+  gap: var(--space-3);
   place-items: center;
-  padding: 1.2rem 0.9rem;
-  border-radius: calc(var(--radius-xl) + 2px);
+  padding: 1rem 0.75rem;
+  border-radius: var(--app-card-radius);
   transition:
-    transform var(--duration-normal) var(--ease-default),
     border-color var(--duration-fast) var(--ease-default),
     background-color var(--duration-fast) var(--ease-default);
 }
 
 .import-dialog__site-card:hover {
-  transform: translateY(-2px);
   border-color: hsl(var(--primary) / 0.24);
 }
 
@@ -356,19 +367,17 @@ watch(() => props.show, (visible) => {
 
 .import-dialog__site-icon {
   display: inline-flex;
-  width: 3.15rem;
-  height: 3.15rem;
+  width: 3rem;
+  height: 3rem;
   align-items: center;
   justify-content: center;
-  border-radius: 1rem;
+  border-radius: var(--radius-lg);
   background: hsl(var(--secondary));
   color: hsl(var(--foreground));
-  font-size: 1.25rem;
-  font-weight: 700;
 }
 
 .import-dialog__site-name {
-  font-size: 0.88rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: hsl(var(--foreground));
 }
@@ -377,6 +386,24 @@ watch(() => props.show, (visible) => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
+}
+
+.import-dialog__toolbar,
+.import-dialog__toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.import-dialog__toolbar {
+  justify-content: space-between;
+}
+
+.import-dialog__loaded-count {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
 }
 
 .import-dialog__loader {
@@ -400,9 +427,9 @@ watch(() => props.show, (visible) => {
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  padding: 0.85rem 0.9rem;
+  padding: 0.75rem 0.875rem;
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 1rem;
+  border-radius: var(--app-surface-radius);
   background: hsl(var(--card) / 0.8);
   transition:
     border-color var(--duration-fast) var(--ease-default),
@@ -419,16 +446,51 @@ watch(() => props.show, (visible) => {
 }
 
 .import-dialog__checkbox {
-  width: 1rem;
-  height: 1rem;
-  accent-color: hsl(var(--primary));
+  flex: 0 0 auto;
 }
 
 .import-dialog__avatar {
   width: 2.15rem;
   height: 2.15rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-md);
   object-fit: cover;
+}
+
+.import-dialog__item-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.import-dialog__item-title,
+.import-dialog__item-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-dialog__item-title {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.import-dialog__item-url {
+  margin: 0.125rem 0 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+.import-dialog__load-more {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-2);
+}
+
+.import-dialog__result {
+  align-items: center;
+  padding: var(--space-2) 0;
+  text-align: center;
 }
 
 .import-dialog__result-icon {
@@ -438,25 +500,54 @@ watch(() => props.show, (visible) => {
   align-items: center;
   justify-content: center;
   margin: 0 auto;
-  border-radius: 9999px;
-  background: hsl(145 63% 92%);
-}
-
-.dark .import-dialog__result-icon {
-  background: hsl(145 44% 18%);
+  border-radius: var(--radius-xl);
+  background: hsl(var(--success) / 0.12);
 }
 
 .import-dialog__result-card {
-  padding: 1.4rem;
+  width: min(100%, 22rem);
+  padding: 1rem;
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 1.25rem;
-  background:
-    radial-gradient(circle at top left, hsl(var(--primary) / 0.08), transparent 36%),
-    linear-gradient(180deg, hsl(var(--card) / 0.96), hsl(var(--background) / 0.92));
+  border-radius: var(--app-surface-radius);
+  background: hsl(var(--card) / 0.72);
   text-align: center;
 }
 
+.import-dialog__result-copy p,
+.import-dialog__result-label,
+.import-dialog__result-detail {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+}
+
+.import-dialog__result-copy p {
+  margin-top: var(--space-2);
+  font-size: 0.875rem;
+}
+
+.import-dialog__result-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.import-dialog__result-value {
+  margin: var(--space-2) 0;
+  color: hsl(var(--foreground));
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.import-dialog__result-detail {
+  font-size: 0.75rem;
+}
+
 @media (min-width: 768px) {
+  .import-dialog__site-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .import-dialog__summary {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

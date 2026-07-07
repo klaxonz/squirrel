@@ -1,26 +1,25 @@
 <template>
   <Dialog :open="show" @update:open="handleOpenChange">
-    <DialogContent class="max-w-xl gap-0 overflow-hidden p-0">
-      <div class="add-channel-dialog__hero">
-        <DialogHeader class="space-y-2 px-6 pb-4 pt-6">
-          <DialogTitle class="text-xl font-semibold tracking-[-0.03em]">添加订阅</DialogTitle>
-          <DialogDescription class="leading-6">
-            输入频道、空间、播放列表或收藏夹地址，系统会自动识别并建立订阅。
-          </DialogDescription>
-        </DialogHeader>
-      </div>
+    <DialogContent class="app-dialog-surface max-w-xl">
+      <DialogHeader class="app-dialog-form-header">
+        <DialogTitle class="app-dialog-form-title">添加订阅</DialogTitle>
+        <DialogDescription class="app-dialog-form-description">
+          输入频道、空间、播放列表或收藏夹地址，系统会自动识别并建立订阅。
+        </DialogDescription>
+      </DialogHeader>
 
-      <div class="space-y-5 px-6 py-5">
-        <div class="space-y-2">
-          <label class="text-sm font-medium text-foreground" for="add-channel-url">订阅地址</label>
+      <div class="app-dialog-form-body">
+        <div class="app-dialog-form-field">
+          <label class="app-dialog-form-label" for="add-channel-url">订阅地址</label>
           <Input
             id="add-channel-url"
             v-model="channelUrl"
             type="url"
             placeholder="支持频道地址或播放列表地址"
             :disabled="loading"
+            class="app-form-input"
           />
-          <p class="text-xs leading-5 text-muted-foreground">
+          <p class="add-channel-dialog__help">
             支持：视频网站频道/播放列表、哔哩哔哩用户空间/合集/收藏夹。
           </p>
         </div>
@@ -30,7 +29,7 @@
         </Alert>
       </div>
 
-      <DialogFooter class="border-t border-border/70 bg-secondary/28 px-6 py-4 sm:justify-end">
+      <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
         <Button size="sm" variant="ghost" :disabled="loading" @click="emit('close')">取消</Button>
         <Button size="sm" :loading="loading" :disabled="!channelUrl" @click="handleSubmit">
           确认添加
@@ -98,9 +97,10 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
-.add-channel-dialog__hero {
-  background:
-    radial-gradient(circle at top right, hsl(var(--primary) / 0.12), transparent 36%),
-    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.92));
+.add-channel-dialog__help {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 </style>

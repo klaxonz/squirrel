@@ -194,6 +194,7 @@ function handleCoverError() {
 .music-card-title {
   font-size: 0.875rem;
   font-weight: 600;
+  line-height: 1.3;
   color: hsl(var(--foreground));
   overflow: hidden;
   text-overflow: ellipsis;

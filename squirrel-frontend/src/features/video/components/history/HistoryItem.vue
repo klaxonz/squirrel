@@ -27,7 +27,7 @@
 
     <div class="flex flex-1 min-w-0 py-1">
       <div class="flex-1 min-w-0 flex flex-col gap-1 justify-center">
-        <h3 class="font-semibold leading-[1.3] text-foreground/90 group-hover:text-primary transition-colors tracking-tight text-base line-clamp-2 md:line-clamp-3">
+        <h3 class="history-item__title">
           {{ video.title }}
         </h3>
 
@@ -239,6 +239,29 @@ const displayChannel = computed(() => {
   .history-item__duration,
   .history-item__delete {
     transition: none;
+  }
+}
+
+.history-item__title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: hsl(var(--foreground) / 0.9);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.history-item:hover .history-item__title,
+.history-item:focus-visible .history-item__title {
+  color: hsl(var(--primary));
+}
+
+@media (min-width: 768px) {
+  .history-item__title {
+    -webkit-line-clamp: 3;
   }
 }
 </style>

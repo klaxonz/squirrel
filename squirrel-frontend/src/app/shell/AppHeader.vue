@@ -1,16 +1,18 @@
 <template>
   <header class="app-header">
     <div class="app-header__lead">
-      <button
+      <Button
         v-if="canGoBack"
         type="button"
+        variant="ghost"
+        size="mini-icon"
         class="app-header__back"
         :title="`返回 ${backTooltipLabel}`"
         aria-label="返回上一页"
         @click="handleBack"
       >
         <AppIcon name="chevronLeft" class="size-[15px]" />
-      </button>
+      </Button>
 
       <div class="app-header__context" :title="contextTitle">
         <div class="app-header__section">{{ sectionLabel }}</div>
@@ -36,8 +38,10 @@
     </div>
 
     <div class="app-header__actions">
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         class="app-header__user"
         :title="`${userDisplayName} - 个人资料`"
         @click="goToProfile"
@@ -47,7 +51,7 @@
           <AppIcon v-else name="user" class="size-3.5" />
         </span>
         <span class="app-header__user-name">{{ userDisplayName }}</span>
-      </button>
+      </Button>
     </div>
   </header>
 </template>
@@ -60,6 +64,7 @@ import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 import { resolveRouteContext } from '@/shared/constants/sidebar'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import GlobalSearchBar from '@/shared/components/layout/GlobalSearchBar.vue'
+import { Button } from '@/shared/ui/button'
 import { useUIStore } from '@/shared/stores/ui'
 import { useUserStore } from '@/shared/stores/user'
 
@@ -161,21 +166,8 @@ function handleBack() {
 }
 
 .app-header__back {
-  width: 1.875rem;
-  height: 1.875rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   flex: 0 0 auto;
-  border: 1px solid hsl(var(--border) / 0.64);
-  border-radius: var(--radius-md);
   background: hsl(var(--secondary) / 0.58);
-  color: hsl(var(--muted-foreground));
-  transition:
-    background-color var(--duration-fast) var(--ease-default),
-    border-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default),
-    transform var(--duration-fast) var(--ease-default);
 }
 
 .app-header__back:hover {
@@ -248,16 +240,9 @@ function handleBack() {
 .app-header__user {
   min-width: 0;
   max-width: 11rem;
-  display: inline-flex;
-  align-items: center;
   gap: 0.5rem;
   height: 2rem;
   padding: 0 0.5rem 0 0.375rem;
-  border-radius: var(--radius-md);
-  color: hsl(var(--muted-foreground));
-  transition:
-    background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
 }
 
 .app-header__user:hover {

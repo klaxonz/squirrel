@@ -17,7 +17,7 @@
         </p>
         
         <div class="music-login-actions">
-          <Button size="lg" class="font-bold tracking-wide" @click="$emit('open')">
+          <Button size="lg" class="music-login-primary-action" @click="$emit('open')">
             <AppIcon name="user" class="h-4 w-4 mr-2" />
             立即扫码登录
           </Button>
@@ -32,7 +32,7 @@
             </Button>
             
             <div class="text-center flex-1">
-              <h4 class="text-base font-extrabold tracking-tight">扫码登录酷狗</h4>
+              <h4 class="music-login-qr-title">扫码登录酷狗</h4>
               <p class="mt-0.5 flex items-center justify-center gap-1 text-xs font-medium text-muted-foreground">
                 <span class="inline-block h-2.5 w-0.5 rounded-sm bg-success/50"></span>
                 {{ qrStatusText }}
@@ -51,7 +51,7 @@
               
               <div v-if="isExpired" class="music-qr-expired-overlay">
                 <AppIcon name="refresh" class="h-5 w-5 text-primary mb-1 animate-pulse" />
-                <span class="text-xs font-bold text-foreground">二维码已失效</span>
+                <span class="music-qr-expired-title">二维码已失效</span>
                 <span class="mt-0.5 text-xs text-muted-foreground">点击重试</span>
               </div>
             </div>
@@ -141,6 +141,10 @@ defineEmits<{
   justify-content: center;
 }
 
+.music-login-primary-action {
+  font-weight: 600;
+}
+
 .music-login-qr-inline {
   width: 100%;
 }
@@ -149,6 +153,13 @@ defineEmits<{
   display: flex;
   align-items: center;
   margin-bottom: 1rem;
+}
+
+.music-login-qr-title {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: hsl(var(--foreground));
 }
 
 .music-login-qr-body {
@@ -186,7 +197,9 @@ defineEmits<{
   cursor: pointer;
 }
 
-.music-login-qr-inline .text-base {
-  font-size: 1rem;
+.music-qr-expired-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
 }
 </style>

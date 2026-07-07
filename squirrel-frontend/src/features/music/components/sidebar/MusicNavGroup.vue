@@ -87,8 +87,6 @@ function toggleExpand() {
   font-size: 0.625rem;
   font-weight: 700;
   color: hsl(var(--muted-foreground) / 0.7);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 
 .music-nav-chevron {

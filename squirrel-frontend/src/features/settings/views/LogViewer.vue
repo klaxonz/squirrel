@@ -141,8 +141,8 @@
                 </span>
 
                 <!-- Level -->
-                <span 
-                  class="w-16 shrink-0 uppercase font-bold text-xs pt-0.5"
+                <span
+                  class="log-level"
                   :class="getLevelColorClass(item.level)"
                 >
                   {{ item.level }}
@@ -327,6 +327,15 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 </script>
 
 <style scoped>
+.log-level {
+  width: 4rem;
+  flex-shrink: 0;
+  padding-top: 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 .log-hero__label {
   font-size: 0.68rem;
   color: hsl(var(--muted-foreground));

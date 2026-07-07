@@ -141,8 +141,6 @@ function shuffleAll() {
   font-size: 0.6875rem;
   font-weight: 600;
   color: hsl(var(--primary));
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .music-detail-name {

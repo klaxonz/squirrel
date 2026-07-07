@@ -280,11 +280,10 @@ const handleTabChange = (value: string | number) => {
 }
 
 .immersive-header-title {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: hsl(var(--foreground) / 0.4);
+  line-height: 1.2;
+  color: hsl(var(--muted-foreground));
 }
 
 .immersive-body {

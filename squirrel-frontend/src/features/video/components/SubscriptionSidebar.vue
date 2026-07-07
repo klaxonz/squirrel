@@ -83,7 +83,7 @@
         </div>
 
         <div class="flex-1 min-w-0" :class="{'pr-8': sub.is_special_followed}">
-          <span class="block truncate" :class="activeChannelId === sub.id ? 'font-bold' : 'font-medium'">{{ sub.name }}</span>
+          <span class="subscription-sidebar__channel-name" :class="{ 'is-active': activeChannelId === sub.id }">{{ sub.name }}</span>
         </div>
 
         <Button
@@ -211,6 +211,18 @@ defineExpose({ listContainer: listContainerRef, loadMore: loadMoreRef })
   flex-direction: column;
   border-right: 1px solid hsl(var(--border) / 0.22);
   background: hsl(var(--muted) / 0.1);
+}
+
+.subscription-sidebar__channel-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.subscription-sidebar__channel-name.is-active {
+  font-weight: 600;
 }
 
 .subscription-sidebar__site-filter {

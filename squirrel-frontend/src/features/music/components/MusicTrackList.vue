@@ -245,9 +245,9 @@ const {
   align-items: center;
   justify-content: space-between;
   padding: 0.875rem 1rem;
-  background: linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--primary) / 0.05) 100%);
+  background: hsl(var(--primary) / 0.08);
   border: 1px solid hsl(var(--primary) / 0.2);
-  border-radius: 0.75rem;
+  border-radius: var(--app-surface-radius);
   margin-bottom: 1rem;
 }
 
@@ -277,10 +277,8 @@ const {
   padding: 0.625rem 1rem;
   border-bottom: 1px solid hsl(var(--border) / 0.3);
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 600;
   color: hsl(var(--muted-foreground) / 0.7);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
 
 .music-track-row {
@@ -290,9 +288,11 @@ const {
   align-items: center;
   padding: 0.625rem 1rem;
   margin: 0.125rem 0;
-  border-radius: 0.625rem;
+  border-radius: var(--app-surface-radius);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .music-track-row:hover {
@@ -300,7 +300,7 @@ const {
 }
 
 .music-track-row--playing {
-  background: linear-gradient(90deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--primary) / 0.05) 100%);
+  background: hsl(var(--primary) / 0.1);
 }
 
 .music-track-row--selected {

@@ -83,7 +83,10 @@ function isPlaying(track: MusicTrack): boolean {
   border: 1px solid hsl(var(--border) / 0.4);
   border-radius: 0.75rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
   flex: 1;
   min-width: 0;
 }

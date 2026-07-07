@@ -59,7 +59,10 @@ function badgeColor(index: number): string {
   border: 1px solid transparent;
   border-radius: 0.625rem;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
@@ -155,7 +158,10 @@ function badgeColor(index: number): string {
   background: hsl(var(--primary) / 0.08);
   color: hsl(var(--primary));
   opacity: 0;
-  transition: all 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
   flex-shrink: 0;
 }
 

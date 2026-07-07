@@ -198,14 +198,15 @@
 
             <!-- Articles List -->
             <div v-else class="app-divider-top app-divider-bottom flex flex-col divide-y divide-border/10">
-              <button
+              <AppSelectableListItem
                 v-for="entry in filteredEntries"
                 :key="entry.id"
-                type="button"
                 class="rss-entry-item group"
-                :class="readingEntry && String(readingEntry.id) === String(entry.id) ? 'bg-primary/5' : 'bg-transparent hover:bg-accent/5'"
+                :selected="readingEntry !== null && String(readingEntry.id) === String(entry.id)"
                 :aria-label="entry.is_read ? `已读：${entry.title}` : `未读：${entry.title}`"
                 @click="openReader(entry)"
+                @keydown.enter.prevent="openReader(entry)"
+                @keydown.space.prevent="openReader(entry)"
                 @contextmenu.prevent.stop="showArticleContextMenu(entry, $event)"
               >
                 <!-- Card Top: Category & Time -->
@@ -268,7 +269,7 @@
                     </span>
                   </Button>
                 </div>
-              </button>
+              </AppSelectableListItem>
             </div>
 
             <!-- Infinite Scroll Loader Anchor -->
@@ -294,7 +295,7 @@
               title="查看该订阅源的所有文章"
             >
               <SiteIcon :icon-url="getFeedIconUrl(readingEntry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
-              <span class="font-bold text-foreground/85 truncate max-w-[180px] lg:max-w-[240px]" :title="getFeedTitle(readingEntry.feed_id)">
+              <span class="rss-reader-source-title" :title="getFeedTitle(readingEntry.feed_id)">
                 {{ getFeedTitle(readingEntry.feed_id) }}
               </span>
             </Button>
@@ -384,9 +385,9 @@
             <!-- Editorial Header -->
             <div class="app-reader-width mb-8">
               <!-- Title -->
-              <h1 
+              <h1
                 @click="openInAppBrowser"
-                class="text-xl md:text-2xl font-bold text-foreground/90 hover:text-primary leading-relaxed cursor-pointer transition-colors duration-200"
+                class="rss-reader-title"
                 title="点击在应用内打开原文"
               >
                 {{ readingEntry.title }}
@@ -481,7 +482,7 @@
               
               <!-- Fallback Browser Alert for web users -->
               <div v-if="!isElectron && !iframeLoading" class="rss-browser-alert">
-                <span class="font-bold text-foreground">原文加载提示</span>
+                <span class="rss-browser-alert__title">原文加载提示</span>
                 <span class="text-muted-foreground">如果页面显示空白或拒绝连接，是由于源站安全策略限制。您可以点击右上角图标在外部浏览器中打开。</span>
               </div>
             </div>
@@ -720,6 +721,7 @@ import AppFloatingList from '@/shared/components/layout/AppFloatingList.vue'
 import AppListEmpty from '@/shared/components/layout/AppListEmpty.vue'
 import AppListOption from '@/shared/components/layout/AppListOption.vue'
 import AppListSeparator from '@/shared/components/layout/AppListSeparator.vue'
+import AppSelectableListItem from '@/shared/components/layout/AppSelectableListItem.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
@@ -1118,19 +1120,13 @@ onUnmounted(() => {
 
 .rss-entry-item {
   position: relative;
-  display: flex;
   flex-direction: column;
   justify-content: space-between;
   width: 100%;
   padding: 1rem 0.875rem;
-  background: transparent;
-  border: 0;
+  border-radius: 0;
   text-align: left;
-  cursor: pointer;
   outline: none;
-  transition:
-    background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
 }
 
 .rss-entry-item:focus-visible {
@@ -1198,6 +1194,7 @@ onUnmounted(() => {
 .rss-entry-item__title {
   margin: 0;
   font-size: 0.8125rem;
+  font-weight: 600;
   line-height: 1.4;
   text-wrap: balance;
   transition: color var(--duration-fast) var(--ease-default);
@@ -1230,6 +1227,32 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   background: hsl(var(--background));
+}
+
+.rss-reader-source-title {
+  overflow: hidden;
+  max-width: 15rem;
+  color: hsl(var(--foreground) / 0.85);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rss-reader-title {
+  margin: 0;
+  color: hsl(var(--foreground) / 0.9);
+  cursor: pointer;
+  font-family: var(--app-heading-font);
+  font-size: var(--app-h2-size);
+  font-weight: var(--app-h2-weight);
+  letter-spacing: var(--app-h2-tracking);
+  line-height: 1.35;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.rss-reader-title:hover {
+  color: hsl(var(--primary));
 }
 
 .rss-browser-overlay {
@@ -1266,6 +1289,12 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
   font-weight: 700;
+}
+
+.rss-browser-alert__title {
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .rss-browser-address {

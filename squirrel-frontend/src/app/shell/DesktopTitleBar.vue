@@ -1,8 +1,10 @@
 <template>
   <header class="titlebar">
     <div class="titlebar__lead no-drag">
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         class="titlebar__brand"
         title="归仓"
         aria-label="归仓（首页）"
@@ -10,14 +12,16 @@
       >
         <BrandLogo size="xs" />
         <span class="titlebar__brand-label">归仓</span>
-      </button>
+      </Button>
     </div>
 
     <div class="titlebar__controls no-drag">
-      <button
+      <Button
         v-for="btn in controls"
         :key="btn.label"
         type="button"
+        variant="ghost"
+        size="mini-icon"
         class="titlebar__control"
         :class="{ 'titlebar__control--close': btn.type === 'close' }"
         :title="btn.label"
@@ -25,7 +29,7 @@
         @click="btn.action"
       >
         <AppIcon :name="btn.icon" class="titlebar__control-icon" />
-      </button>
+      </Button>
     </div>
   </header>
 </template>
@@ -35,6 +39,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import BrandLogo from '@/shared/components/BrandLogo.vue'
+import { Button } from '@/shared/ui/button'
 import type { AppIconName } from '@/shared/icons/app-icons'
 
 const router = useRouter()
@@ -88,24 +93,13 @@ onUnmounted(() => {
 }
 
 .titlebar__brand {
-  display: inline-flex;
-  align-items: center;
   gap: var(--space-2);
   height: 1.75rem;
   padding: 0 var(--space-2) 0 0.375rem;
-  border: 0;
-  background: transparent;
-  border-radius: var(--radius-md);
   color: hsl(var(--foreground));
-  cursor: pointer;
-  outline: none;
-  transition: background-color var(--duration-fast) var(--ease-default);
 }
 .titlebar__brand:hover {
   background: hsl(var(--accent));
-}
-.titlebar__brand:focus-visible {
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
 }
 .titlebar__brand-label {
   font-family: var(--app-heading-font);
@@ -123,24 +117,12 @@ onUnmounted(() => {
 .titlebar__control {
   width: 2.5rem;
   height: 2rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  background: transparent;
   color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  outline: none;
-  transition:
-    background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
+  border-radius: 0;
 }
 .titlebar__control:hover {
   background: hsl(var(--accent));
   color: hsl(var(--foreground));
-}
-.titlebar__control:focus-visible {
-  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.5);
 }
 .titlebar__control--close:hover {
   background: hsl(var(--destructive));

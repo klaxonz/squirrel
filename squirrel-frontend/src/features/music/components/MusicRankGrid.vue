@@ -115,13 +115,13 @@ const restRanks = computed(() => props.ranks.slice(4))
   overflow: hidden;
   cursor: pointer;
   background: hsl(var(--muted) / 0.35);
-  box-shadow: 0 8px 28px hsl(var(--foreground) / 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid hsl(var(--border) / 0.38);
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .music-rank-featured-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 34px hsl(var(--foreground) / 0.14);
+  border-color: hsl(var(--primary) / 0.48);
 }
 
 .music-rank-featured-cover {

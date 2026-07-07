@@ -71,8 +71,8 @@
       layout === 'list' ? 'flex-1 py-1 min-w-0' : ''
     ]">
       <h3 :class="[
-        'font-semibold leading-[1.3] text-foreground/90 group-hover:text-primary transition-colors tracking-tight',
-        layout === 'list' ? 'text-base line-clamp-2 md:line-clamp-3 mb-0.5' : 'text-sm line-clamp-2'
+        'video-item__title',
+        layout === 'list' ? 'video-item__title--list' : 'video-item__title--grid'
       ]">
         {{ video.title }}
       </h3>
@@ -355,6 +355,31 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
   font-weight: 700;
+}
+
+.video-item__title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: hsl(var(--foreground) / 0.9);
+  font-weight: 600;
+  line-height: 1.3;
+  transition: color var(--duration-fast) var(--ease-default);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.video-item__title--grid {
+  font-size: 0.875rem;
+}
+
+.video-item__title--list {
+  margin-bottom: 0.125rem;
+  font-size: 1rem;
+  -webkit-line-clamp: 3;
+}
+
+.video-item:hover .video-item__title {
+  color: hsl(var(--primary));
 }
 
 @media (prefers-reduced-motion: reduce) {

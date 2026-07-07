@@ -408,7 +408,10 @@ function onOpacityPointerDown(e: PointerEvent) {
   font-family: var(--sp-font-family);
   border-radius: 6px;
   cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
+  transition:
+    color var(--duration-normal) var(--ease-default),
+    background-color var(--duration-normal) var(--ease-default),
+    transform var(--duration-normal) var(--ease-default);
   position: relative;
   z-index: 1;
   letter-spacing: 0.03em;
@@ -483,7 +486,10 @@ function onOpacityPointerDown(e: PointerEvent) {
   border: 2px solid transparent;
   border-radius: 4px;
   cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
+  transition:
+    transform var(--duration-normal) var(--ease-default),
+    border-color var(--duration-normal) var(--ease-default),
+    box-shadow var(--duration-normal) var(--ease-default);
 }
 
 .sp-subtitle-color-swatch:hover {
@@ -573,7 +579,10 @@ function onOpacityPointerDown(e: PointerEvent) {
   font-size: 11px;
   font-family: var(--sp-font-mono);
   cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-default);
+  transition:
+    color var(--duration-normal) var(--ease-default),
+    border-color var(--duration-normal) var(--ease-default),
+    background-color var(--duration-normal) var(--ease-default);
 }
 
 .sp-offset-btn:hover {

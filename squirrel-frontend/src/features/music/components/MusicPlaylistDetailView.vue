@@ -186,7 +186,10 @@ function shuffleAll() {
   border: 1px solid hsl(var(--border) / 0.6);
   border-radius: 9999px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .music-playlist-load-more-btn:hover:not(:disabled) {

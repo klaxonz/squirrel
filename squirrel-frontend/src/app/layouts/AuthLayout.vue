@@ -1,5 +1,8 @@
 <template>
-  <div class="h-screen overflow-hidden flex flex-col bg-background" :class="isDesktop ? 'app-desktop' : ''">
+  <div
+    class="auth-layout h-screen overflow-hidden flex flex-col bg-background"
+    :class="{ 'auth-layout--desktop': isDesktop }"
+  >
     <DesktopTitleBar v-if="isDesktop" />
     <div class="flex-1 overflow-auto">
       <slot />
@@ -17,3 +20,9 @@ import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 
 const isDesktop = useDesktopBridge().isDesktop()
 </script>
+
+<style scoped>
+.auth-layout--desktop :deep(.server-status-trigger) {
+  top: calc(2.75rem + env(safe-area-inset-top, 0px));
+}
+</style>

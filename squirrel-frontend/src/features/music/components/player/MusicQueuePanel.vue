@@ -93,13 +93,13 @@ defineEmits<{
   right: 1.5rem;
   width: 24rem;
   max-height: 28rem;
-  background: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background) / 0.98) 100%);
+  background: hsl(var(--background));
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 1rem;
-  box-shadow: 0 12px 40px hsl(var(--foreground) / 0.12);
+  border-radius: var(--app-surface-radius);
+  box-shadow: var(--app-floating-shadow);
   display: flex;
   flex-direction: column;
-  z-index: 55;
+  z-index: var(--z-popover);
   overflow: hidden;
 }
 
@@ -112,8 +112,10 @@ defineEmits<{
 }
 
 .music-queue-header h3 {
-  font-size: 0.9375rem;
-  font-weight: 700;
+  font-family: var(--app-heading-font);
+  font-size: var(--app-h4-size);
+  font-weight: var(--app-h4-weight);
+  letter-spacing: var(--app-h4-tracking);
   color: hsl(var(--foreground));
 }
 
