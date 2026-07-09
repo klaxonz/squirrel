@@ -58,7 +58,7 @@
               <VideoThumbnail
                 :src="featuredVideo.thumbnail"
                 :alt="featuredVideo.title"
-                fit="responsive"
+                fit="cover"
                 class="absolute inset-0 h-full w-full"
               />
               <div class="history-featured__scrim" />

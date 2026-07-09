@@ -550,14 +550,15 @@ onUnmounted(() => {
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.42);
-  border-radius: var(--radius-xl);
-  background: hsl(var(--muted));
-  transition: border-color 0.15s ease;
+  border: 0;
+  border-radius: var(--app-card-radius);
+  background: hsl(0 0% 0% / 0.55);
+  isolation: isolate;
+  transition: box-shadow 0.15s ease;
 }
 
 .remote-channel-card:hover .remote-channel-thumb {
-  border-color: hsl(var(--primary) / 0.32);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.34);
 }
 
 .remote-channel-duration {

@@ -47,7 +47,7 @@
         <div
           v-for="video in subscription.latest_videos.slice(0, 3)"
           :key="video.id"
-          class="aspect-video overflow-hidden rounded bg-muted/80 ring-1 ring-border/40 relative group/video"
+          class="video-preview-thumb relative aspect-video overflow-hidden rounded-md group/video"
         >
           <VideoThumbnail
             v-if="video.thumbnail"
@@ -59,7 +59,7 @@
             <AppIcon name="play" class="h-4 w-4 text-white" />
           </div>
         </div>
-        <div v-for="i in Math.max(0, 3 - (subscription.latest_videos?.length || 0))" :key="`p-${i}`" class="aspect-video rounded bg-muted/30 border border-border/30 border-dashed" />
+        <div v-for="i in Math.max(0, 3 - (subscription.latest_videos?.length || 0))" :key="`p-${i}`" class="aspect-video rounded-md bg-black/25 border border-dashed border-white/10" />
       </div>
     </div>
 
@@ -117,5 +117,12 @@ const lastUpdatedText = computed(() => {
   color: hsl(0 0% 100%);
   background: hsl(var(--destructive));
   border-radius: var(--radius-sm);
+}
+
+/* Mini preview thumbs — no light ring (reads as white fringe). */
+.video-preview-thumb {
+  border: 0;
+  background: hsl(0 0% 0% / 0.55);
+  isolation: isolate;
 }
 </style>

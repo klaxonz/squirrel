@@ -242,7 +242,7 @@
                   @keydown.space.prevent="related.id != null && goToVideo(related.id, related)"
                 >
                   <div class="video-related-item__thumb">
-                    <VideoThumbnail v-if="related.thumbnail" :src="(related.thumbnail as string)" fit="contain" />
+                    <VideoThumbnail v-if="related.thumbnail" :src="(related.thumbnail as string)" fit="cover" />
                     <span v-if="related.duration" class="video-related-item__duration">{{ formatDuration(related.duration as number) }}</span>
                   </div>
                   <div class="video-related-item__copy">
@@ -1010,9 +1010,10 @@ const openChannelDetail = async (profile: VideoProfile) => {
   aspect-ratio: 16 / 9;
   flex: 0 0 auto;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.28);
-  border-radius: 0.5rem;
-  background: hsl(var(--muted));
+  border: 0;
+  border-radius: var(--app-card-radius);
+  background: hsl(0 0% 0% / 0.55);
+  isolation: isolate;
 }
 
 .video-related-item__duration {

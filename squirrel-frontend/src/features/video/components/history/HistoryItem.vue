@@ -11,7 +11,7 @@
       <VideoThumbnail
         :src="video.thumbnail"
         :alt="video.title"
-        fit="responsive"
+        fit="cover"
       />
 
       <div class="history-item__scrim" />
@@ -125,10 +125,11 @@ const displayChannel = computed(() => {
   aspect-ratio: 16 / 9;
   flex: 0 0 auto;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: var(--radius-xl);
-  background: hsl(var(--muted));
-  transition: border-color 0.16s ease;
+  border: 0;
+  border-radius: var(--app-card-radius);
+  background: hsl(0 0% 0% / 0.55);
+  isolation: isolate;
+  transition: box-shadow 0.16s ease;
 }
 
 @media (min-width: 768px) {
@@ -139,7 +140,7 @@ const displayChannel = computed(() => {
 
 .history-item:hover .history-item__thumb,
 .history-item:focus-visible .history-item__thumb {
-  border-color: hsl(var(--primary) / 0.32);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.34);
 }
 
 .history-item__scrim {

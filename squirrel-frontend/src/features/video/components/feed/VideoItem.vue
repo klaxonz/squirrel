@@ -16,7 +16,7 @@
       <VideoThumbnail
         :src="thumbnailSrc"
         :alt="video.title"
-        fit="responsive"
+        fit="cover"
         interactive
         :blur="shouldBlurThumbnail"
       />
@@ -263,17 +263,18 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 .video-item__thumb {
   position: relative;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: var(--radius-xl);
-  background: hsl(var(--muted));
-  transition:
-    border-color 0.18s ease,
-    background-color 0.18s ease;
+  /* No 1px border — light-mode border/muted read as a white hairline on
+     rounded clips. Cinema black fill + cover image = clean original frame. */
+  border: 0;
+  border-radius: var(--app-card-radius);
+  background: hsl(0 0% 0% / 0.55);
+  isolation: isolate;
+  transition: box-shadow 0.18s ease;
 }
 
 .video-item:hover .video-item__thumb,
 .video-item:focus-visible .video-item__thumb {
-  border-color: hsl(var(--primary) / 0.32);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.34);
 }
 
 .video-item__thumb--list {

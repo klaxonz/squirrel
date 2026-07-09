@@ -330,8 +330,11 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  border: 0;
   border-radius: var(--app-control-radius);
-  background: hsl(var(--muted));
+  /* Cinema black — light muted fills read as a white fringe on rounded media. */
+  background: hsl(0 0% 0% / 0.55);
+  isolation: isolate;
 }
 
 .app-option-icon {

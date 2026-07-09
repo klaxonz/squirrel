@@ -111,8 +111,8 @@
 
         <div v-else-if="activePlaylist" class="app-content-stack">
           <section class="app-divider-bottom flex flex-col gap-4 pb-6 sm:flex-row sm:items-end">
-            <div class="h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
-              <div v-if="getPlaylistThumbnails(activePlaylist).length >= 4" class="grid h-full w-full grid-cols-2 grid-rows-2 gap-px">
+            <div class="playlist-cover shrink-0 overflow-hidden rounded-lg">
+              <div v-if="getPlaylistThumbnails(activePlaylist).length >= 4" class="grid h-full w-full grid-cols-2 grid-rows-2 gap-px bg-black/40">
                 <VideoThumbnail
                   v-for="(thumb, i) in getPlaylistThumbnails(activePlaylist).slice(0, 4)"
                   :key="i"
@@ -125,7 +125,7 @@
                 :src="getPlaylistThumbnails(activePlaylist)[0]"
                 fit="cover"
               />
-              <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
+              <div v-else class="flex h-full w-full items-center justify-center text-white/45">
                 <AppIcon name="playlistVideo" class="h-6 w-6" />
               </div>
             </div>
@@ -179,13 +179,13 @@
               </div>
 
               <div class="flex min-w-0 items-center gap-3">
-                <div class="relative aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-muted">
+                <div class="playlist-row-thumb relative aspect-video w-20 shrink-0 overflow-hidden rounded-md">
                   <VideoThumbnail
                     v-if="item.video?.thumbnail"
                     :src="item.video.thumbnail"
-                    fit="contain"
+                    fit="cover"
                   />
-                  <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
+                  <div v-else class="flex h-full w-full items-center justify-center text-white/45">
                     <AppIcon name="film" class="h-5 w-5" />
                   </div>
                   <span v-if="item.video?.duration" class="playlist-duration-badge">
@@ -448,6 +448,19 @@ onMounted(async () => {
 
 .playlist-nav-item {
   min-height: 3rem;
+}
+
+.playlist-cover {
+  width: 6rem;
+  height: 6rem;
+  background: hsl(0 0% 0% / 0.55);
+  isolation: isolate;
+}
+
+.playlist-row-thumb {
+  border: 0;
+  background: hsl(0 0% 0% / 0.55);
+  isolation: isolate;
 }
 
 .playlist-duration-badge {

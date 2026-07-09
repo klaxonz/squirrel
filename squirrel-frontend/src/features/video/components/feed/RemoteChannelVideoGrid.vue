@@ -17,8 +17,8 @@
         class="remote-channel-video-card group"
         @click="$emit('open', item)"
       >
-        <div class="relative aspect-video overflow-hidden rounded-sm bg-muted transition-colors group-hover:brightness-110">
-          <VideoThumbnail :src="item.thumbnail" :alt="item.title" />
+        <div class="remote-channel-video-thumb group-hover:brightness-110">
+          <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" />
           <span v-if="item.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded bg-black/80 px-1.5 text-xs font-medium tabular-nums text-white">
             {{ formatDuration(item.duration) }}
           </span>
@@ -160,6 +160,22 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.remote-channel-video-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--app-card-radius);
+  background: hsl(0 0% 0% / 0.55);
+  isolation: isolate;
+  transition: box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.remote-channel-video-card:hover .remote-channel-video-thumb,
+.remote-channel-video-card:focus-visible .remote-channel-video-thumb {
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.34);
+}
+
 .remote-channel-video-title {
   display: -webkit-box;
   overflow: hidden;

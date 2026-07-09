@@ -28,8 +28,8 @@
           @keydown.enter.prevent="openResult(item)"
           @keydown.space.prevent="openResult(item)"
         >
-          <div class="relative aspect-video overflow-hidden rounded-sm bg-muted transition-colors group-hover:brightness-110">
-            <VideoThumbnail :src="item.thumbnail" :alt="item.title" />
+          <div class="remote-search-thumb group-hover:brightness-110">
+            <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" />
             <span v-if="item.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded bg-black/80 px-1.5 text-xs font-medium tabular-nums text-white">
               {{ formatDuration(item.duration) }}
             </span>
@@ -460,6 +460,22 @@ defineExpose({ refresh })
 </script>
 
 <style scoped>
+.remote-search-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--app-card-radius);
+  background: hsl(0 0% 0% / 0.55);
+  isolation: isolate;
+  transition: box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.group:hover .remote-search-thumb,
+.group:focus-visible .remote-search-thumb {
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.34);
+}
+
 .remote-video-title {
   display: -webkit-box;
   overflow: hidden;
