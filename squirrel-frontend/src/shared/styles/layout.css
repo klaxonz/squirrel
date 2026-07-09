@@ -697,18 +697,32 @@
   color: hsl(var(--foreground));
 }
 
+/* Active filter chips: quiet selected state, not warning/amber alarm. */
 .app-toolbar-chip {
   height: 2rem;
-  gap: var(--space-2);
-  padding: 0 var(--space-3);
+  gap: var(--space-1);
+  padding: 0 var(--space-2) 0 var(--space-3);
   font-size: 0.75rem;
   font-weight: 650;
 }
 
+.app-toolbar-chip--active {
+  border-color: hsl(var(--border));
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+.app-toolbar-chip--active:hover {
+  border-color: hsl(var(--border));
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+/* Legacy alias — prefer --active for filter dismiss chips. */
 .app-toolbar-chip--warning {
-  border-color: hsl(var(--warning) / 0.38);
-  background: hsl(var(--warning) / 0.1);
-  color: hsl(var(--warning));
+  border-color: hsl(var(--border));
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
 }
 
 .app-toolbar-select-trigger {
@@ -725,6 +739,12 @@
   white-space: nowrap;
 }
 
+.app-toolbar-select-trigger.is-active {
+  border-color: hsl(var(--border));
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
 .app-toolbar-icon-button {
   position: relative;
   width: 2rem;
@@ -732,10 +752,11 @@
   flex: 0 0 auto;
 }
 
+/* Funnel / icon controls: selected = structural emphasis, not saturated amber. */
 .app-toolbar-icon-button.is-active {
-  border-color: hsl(var(--primary) / 0.28);
-  background: hsl(var(--primary) / 0.12);
-  color: hsl(var(--primary));
+  border-color: hsl(var(--border));
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
 }
 
 .app-toolbar-count {
@@ -749,8 +770,8 @@
   justify-content: center;
   border-radius: 999px;
   padding: 0 0.25rem;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
   font-size: 0.5625rem;
   font-weight: 800;
   box-shadow: 0 0 0 2px hsl(var(--background));

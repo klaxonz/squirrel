@@ -3,7 +3,7 @@
     <DialogContent class="sm:max-w-[480px] !p-0 gap-0">
       <div class="flex max-h-[82vh] flex-col overflow-hidden bg-background">
         <header class="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
-          <DialogTitle class="text-base font-semibold text-foreground">筛选</DialogTitle>
+          <DialogTitle class="text-base font-semibold text-foreground">更多筛选</DialogTitle>
           <Button
             type="button"
             variant="ghost"
@@ -50,7 +50,7 @@
             variant="ghost"
             size="sm"
             class="px-2 text-muted-foreground hover:text-foreground"
-            :disabled="draftActiveCount === 0 && localSortBy === 'publish_date'"
+            :disabled="draftActiveCount === 0"
             @click="resetAll"
           >
             重置
@@ -68,11 +68,17 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import type { AppIconName } from '@/shared/icons/app-icons'
 import { useUserSettings } from '@/shared/composables/useUserSettings'
 import type { TimeRange, Duration, ContentType } from '@/features/video/composables/useFeedFilters'
+import {
+  CONTENT_TYPE_OPTIONS,
+  DURATION_OPTIONS,
+  NSFW_OPTIONS,
+  TIME_RANGE_OPTIONS,
+  type FilterOption,
+} from '@/features/video/constants/feedFilters'
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog'
 import { Button } from '@/shared/ui/button'
 
-type FilterKey = 'sortBy' | 'timeRange' | 'duration' | 'contentType' | 'nsfw'
-type FilterOption = { value: string, label: string }
+type FilterKey = 'timeRange' | 'duration' | 'contentType' | 'nsfw'
 type FilterSection = {
   key: FilterKey
   title: string
@@ -82,15 +88,26 @@ type FilterSection = {
 }
 
 const props = withDefaults(defineProps<{
-  modelValue: boolean, timeRange: TimeRange, duration: Duration, contentType: ContentType,
-  nsfw: string, site?: string, subscriptionId?: string | number, siteLabel?: string, sortBy: string,
+  modelValue: boolean
+  timeRange: TimeRange
+  duration: Duration
+  contentType: ContentType
+  nsfw: string
+  site?: string
+  subscriptionId?: string | number
+  siteLabel?: string
+  /** @deprecated Sort lives on the toolbar only; kept optional for call-site compatibility. */
+  sortBy?: string
   scope?: 'video' | 'subscription'
 }>(), { scope: 'video' })
 
 const emit = defineEmits<{
-  'update:modelValue': [v: boolean], 'update:timeRange': [v: TimeRange], 'update:duration': [v: Duration],
-  'update:contentType': [v: ContentType], 'update:nsfw': [v: string], 'update:site': [v: string | undefined],
-  'update:sortBy': [v: string]
+  'update:modelValue': [v: boolean]
+  'update:timeRange': [v: TimeRange]
+  'update:duration': [v: Duration]
+  'update:contentType': [v: ContentType]
+  'update:nsfw': [v: string]
+  'update:site': [v: string | undefined]
 }>()
 
 const { settings, loadUserSettings } = useUserSettings()
@@ -99,31 +116,23 @@ const localTimeRange = ref<string>(props.timeRange)
 const localDuration = ref<string>(props.duration)
 const localContentType = ref<string>(props.contentType)
 const localNsfw = ref(props.nsfw)
-const localSortBy = ref(props.sortBy)
 
 const filterSections = computed<FilterSection[]>(() => {
   const sections: FilterSection[] = []
   if (props.scope === 'video') {
     sections.push({
-      key: 'sortBy',
-      title: '排序',
-      icon: 'upload',
-      model: localSortBy,
-      options: sortOptions,
-    })
-    sections.push({
       key: 'timeRange',
       title: '时间',
       icon: 'time',
       model: localTimeRange,
-      options: timeRangeOptions,
+      options: TIME_RANGE_OPTIONS,
     })
     sections.push({
       key: 'duration',
       title: '时长',
       icon: 'film',
       model: localDuration,
-      options: durationOptions,
+      options: DURATION_OPTIONS,
     })
     if (!props.subscriptionId) {
       sections.push({
@@ -131,7 +140,7 @@ const filterSections = computed<FilterSection[]>(() => {
         title: '来源类型',
         icon: 'content',
         model: localContentType,
-        options: contentTypeOptions,
+        options: CONTENT_TYPE_OPTIONS,
       })
     }
   }
@@ -141,15 +150,15 @@ const filterSections = computed<FilterSection[]>(() => {
       title: '内容分级',
       icon: 'security',
       model: localNsfw,
-      options: nsfwOptions,
+      options: NSFW_OPTIONS,
     })
   }
   return sections
 })
 
+/** Only modal-owned dimensions — sort / site / special are toolbar chrome. */
 const draftActiveCount = computed(() => {
   let c = 0
-  if (localSortBy.value !== 'publish_date') c++
   if (localTimeRange.value !== 'all') c++
   if (localDuration.value !== 'all') c++
   if (localContentType.value !== 'all' && !props.subscriptionId) c++
@@ -163,7 +172,6 @@ watch(() => props.modelValue, (open) => {
     localDuration.value = props.duration
     localContentType.value = props.contentType
     localNsfw.value = props.nsfw
-    localSortBy.value = props.sortBy
   }
 })
 
@@ -174,7 +182,6 @@ const confirm = () => {
   emit('update:duration', localDuration.value as Duration)
   emit('update:contentType', localContentType.value as ContentType)
   emit('update:nsfw', localNsfw.value)
-  emit('update:sortBy', localSortBy.value)
   close()
 }
 
@@ -183,37 +190,9 @@ const resetAll = () => {
   localDuration.value = 'all'
   localContentType.value = 'all'
   localNsfw.value = 'all'
-  localSortBy.value = 'publish_date'
 }
 
 onMounted(async () => { await loadUserSettings() })
-
-const timeRangeOptions: FilterOption[] = [
-  { value: 'all', label: '不限' },
-  { value: 'today', label: '今天' },
-  { value: 'week', label: '本周' },
-  { value: 'month', label: '本月' },
-]
-const durationOptions: FilterOption[] = [
-  { value: 'all', label: '不限' },
-  { value: 'short', label: '短片' },
-  { value: 'medium', label: '常规' },
-  { value: 'long', label: '长片' },
-]
-const contentTypeOptions: FilterOption[] = [
-  { value: 'all', label: '全部' },
-  { value: 'CHANNEL', label: '频道' },
-  { value: 'PLAYLIST', label: '列表' },
-]
-const nsfwOptions: FilterOption[] = [
-  { value: 'all', label: '全部' },
-  { value: 'yes', label: '敏感' },
-  { value: 'no', label: '安全' },
-]
-const sortOptions: FilterOption[] = [
-  { value: 'publish_date', label: '上传日期' },
-  { value: 'created_at', label: '添加日期' },
-]
 </script>
 
 <style scoped>
