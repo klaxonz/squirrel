@@ -10,6 +10,7 @@
         <SubscriptionSidebar
           ref="sidebarRef"
           :channels="filteredChannels"
+          :total="channelsTotal"
           :loading="loadingChannels"
           :loading-more="loadingMoreChannels"
           :finished="channelsFinished"
@@ -292,6 +293,7 @@ watch(gridWrapper, (node) => {
 
 // Data State (Channels)
 const list = ref<SubscriptionListItem[]>([])
+const channelsTotal = ref(0)
 const loadingChannels = ref(false)
 const loadingMoreChannels = ref(false)
 const channelsFinished = ref(false)
@@ -360,7 +362,7 @@ const remoteChannelKey = computed(() => {
 })
 const headerSubtitle = computed(() => {
   if (channelDataMode.value === 'remote') return `${remoteItems.value.length} 个远端视频`
-  return viewMode.value === 'feed' ? `${feedItems.value.length} 个视频` : `${filteredChannels.value.length} 个频道`
+  return viewMode.value === 'feed' ? `${feedItems.value.length} 个视频` : `${channelsTotal.value} 个频道`
 })
 const headerLoading = computed(() => {
   return channelDataMode.value === 'remote' ? remoteLoading.value : loadingFeed.value
@@ -384,9 +386,14 @@ const applySpecialFollowState = (subscriptionId: string | number, isSpecialFollo
   const updated = list.value.map((item) => (
     item.id === subscriptionId ? { ...item, is_special_followed: isSpecialFollowed } : item
   ))
-  list.value = specialFilter.value === 'yes' && !isSpecialFollowed
-    ? updated.filter((item) => item.id !== subscriptionId)
-    : sortChannels(updated)
+  // Special-only filter removes unfollowed channels from the current result set;
+  // keep channelsTotal in sync so the header count does not overstate.
+  if (specialFilter.value === 'yes' && !isSpecialFollowed) {
+    list.value = updated.filter((item) => item.id !== subscriptionId)
+    channelsTotal.value = Math.max(0, channelsTotal.value - 1)
+  } else {
+    list.value = sortChannels(updated)
+  }
   if (specialFilter.value === 'yes' && !isSpecialFollowed && activeChannelId.value === subscriptionId) {
     activeChannelId.value = null
     activeChannelNameCache.value = ''
@@ -418,8 +425,14 @@ const toggleSpecialFollow = async (subscription: SubscriptionListItem) => {
 
 const fetchChannels = async (isReset = false) => {
   if (!isReset && (loadingChannels.value || loadingMoreChannels.value || channelsFinished.value)) return
-  if (isReset) { channelsPage.value = 1; channelsFinished.value = false; loadingChannels.value = true; loadingMoreChannels.value = false } 
-  else { loadingMoreChannels.value = true }
+  if (isReset) {
+    channelsPage.value = 1
+    channelsFinished.value = false
+    loadingChannels.value = true
+    loadingMoreChannels.value = false
+  } else {
+    loadingMoreChannels.value = true
+  }
 
   const requestToken = ++channelsRequestToken
   const requestPage = channelsPage.value
@@ -439,14 +452,26 @@ const fetchChannels = async (isReset = false) => {
       const result = await getSubscriptions(params)
       if (requestToken !== channelsRequestToken) return
       const items = result?.data || []
-      if (isReset) list.value = items; else list.value.push(...items)
-      if (items.length < CHANNELS_PAGE_SIZE) channelsFinished.value = true
-      else channelsPage.value = requestPage + 1
+      const total = Number(result?.total)
+      // Prefer server total for the filtered query; fall back to loaded length
+      // only if the payload is missing/invalid total.
+      channelsTotal.value = Number.isFinite(total) && total >= 0
+        ? total
+        : (isReset ? items.length : list.value.length + items.length)
+      if (isReset) list.value = items
+      else list.value.push(...items)
+      // End pagination when the batch is short, or when we already hold the full total.
+      if (items.length < CHANNELS_PAGE_SIZE || list.value.length >= channelsTotal.value) {
+        channelsFinished.value = true
+      } else {
+        channelsPage.value = requestPage + 1
+      }
     } catch {
       // Channel-list errors aren't surfaced in-region (the sidebar has no error
       // branch); bail without clobbering the feed's fetchError ref, and don't
       // flip channelsFinished so the sidebar stays retryable.
       if (requestToken !== channelsRequestToken) return
+      if (isReset) channelsTotal.value = 0
     }
   } finally {
     if (requestToken === channelsRequestToken) {

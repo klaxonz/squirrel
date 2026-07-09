@@ -1,7 +1,7 @@
 <template>
   <!-- Fills AppTwoColumnLayout sidebar slot — chrome (border/bg/width) lives on the shell. -->
   <div class="subscription-sidebar">
-    <AppSidebarHeader title="订阅频道" :subtitle="`${channels.length} 个频道`">
+    <AppSidebarHeader title="订阅频道" :subtitle="`${total} 个频道`">
       <template #actions>
         <Button size="icon-sm" aria-label="添加订阅频道" title="添加订阅频道" @click="$emit('add')">
           <AppIcon name="plus" class="w-4 h-4" />
@@ -166,6 +166,8 @@ import type { SubscriptionListItem } from '@/features/video/types/subscription'
 
 defineProps<{
   channels: SubscriptionListItem[]
+  /** Server-side total for the current filter (not the currently loaded page batch). */
+  total: number
   loading: boolean
   loadingMore: boolean
   finished: boolean
