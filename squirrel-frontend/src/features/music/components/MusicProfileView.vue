@@ -257,7 +257,7 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
 
 <style scoped>
 .music-profile-view {
-  padding: 1rem;
+  width: 100%;
 }
 
 .music-empty {
@@ -265,7 +265,7 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3rem;
+  padding: var(--space-8);
 }
 
 .music-login-showcase {
@@ -273,22 +273,21 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3rem;
+  padding: var(--space-8);
 }
 
 .music-profile-layout {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .music-profile-banner {
-  padding: 1rem;
-  border: 1px solid hsl(var(--border) / 0.36);
-  border-radius: 0.625rem;
-  background:
-    linear-gradient(90deg, hsl(var(--card) / 0.96), hsl(var(--muted) / 0.28)),
-    hsl(var(--card));
+  padding: var(--space-4);
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--app-surface-radius);
+  background: hsl(var(--card) / 0.58);
+  box-shadow: var(--app-surface-shadow);
 }
 
 .music-profile-banner-content {
@@ -307,9 +306,9 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
 .music-profile-avatar {
   width: 4.5rem;
   height: 4.5rem;
-  border-radius: 0.75rem;
+  border-radius: var(--app-surface-radius);
   object-fit: cover;
-  border: 1px solid hsl(var(--primary) / 0.36);
+  border: 1px solid var(--app-surface-border-subtle);
 }
 
 .music-profile-avatar-fallback {
@@ -344,11 +343,13 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
 
 .music-profile-nickname {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: hsl(var(--foreground));
-  line-height: 1.25;
   overflow: hidden;
+  color: var(--app-heading-color);
+  font-family: var(--app-heading-font);
+  font-size: var(--app-h3-size);
+  font-weight: var(--app-h3-weight);
+  letter-spacing: var(--app-h3-tracking);
+  line-height: var(--app-h3-leading);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

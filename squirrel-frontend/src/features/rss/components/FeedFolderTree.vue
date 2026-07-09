@@ -108,9 +108,12 @@ defineEmits<{
 
 <style scoped>
 .feed-folder-tree {
+  display: flex;
+  min-height: 0;
   flex: 1 1 auto;
+  flex-direction: column;
   overflow-y: auto;
-  padding: 0.75rem;
+  padding: var(--space-2) var(--space-3) var(--space-3);
 }
 
 .feed-folder-tree__all,

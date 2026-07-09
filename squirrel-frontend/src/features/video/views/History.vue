@@ -1,18 +1,13 @@
 <template>
-  <AppPageShell variant="compact">
-    <AppToolbarFrame bordered compact>
-      <div class="flex items-center justify-between gap-3">
-        <div class="min-w-0">
-          <h1 class="app-h3 truncate">{{ pageTitle }}</h1>
-          <p class="mt-0.5 text-xs text-muted-foreground">{{ pageSubtitle }}</p>
-        </div>
-
-        <div class="flex items-center gap-1.5">
+  <AppPageShell variant="compact" :fill="false">
+    <AppToolbarFrame bordered compact sticky>
+      <AppPaneHeader :title="pageTitle" :subtitle="pageSubtitle" :level="3">
+        <template #actions>
           <Button variant="ghost" size="icon-sm" title="刷新历史" aria-label="刷新历史" @click="loadData">
             <AppSpinner v-if="loading" size="sm" />
             <AppIcon v-else name="refresh" class="h-4 w-4" />
           </Button>
-          <Button v-if="isContinueMode" variant="ghost" @click="router.push({ name: 'History' })">
+          <Button v-if="isContinueMode" variant="ghost" size="sm" @click="router.push({ name: 'History' })">
             全部历史
           </Button>
           <Button
@@ -26,8 +21,8 @@
           >
             <AppIcon name="trash" class="h-4 w-4" />
           </Button>
-        </div>
-      </div>
+        </template>
+      </AppPaneHeader>
     </AppToolbarFrame>
 
     <div class="flex-1">
@@ -147,6 +142,7 @@ import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppPaneHeader from '@/shared/components/layout/AppPaneHeader.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import HistoryItem from '@/features/video/components/history/HistoryItem.vue'

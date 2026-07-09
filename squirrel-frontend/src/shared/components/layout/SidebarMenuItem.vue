@@ -1,8 +1,7 @@
 <template>
   <RouterLink
-    v-if="!hidden"
     :to="targetPath"
-    :replace="resolvePathFn ? false : true"
+    :replace="!item.resolvePath"
     class="sidebar-item group"
     :class="[{ 'is-active': isActive }, collapsed ? 'is-collapsed' : '']"
     :title="collapsed ? item.name : undefined"
@@ -23,6 +22,10 @@ const props = defineProps<{
     path: string
     name: string
     icon: AppIconName
+    /**
+     * Optional path resolver. Return a path to override navigation, or `null`
+     * to fall back to `item.path`. Never used to hide the menu item.
+     */
     resolvePath?: (currentPath: string) => string | null
   }
   isActive: boolean
@@ -31,23 +34,11 @@ const props = defineProps<{
 
 const route = useRoute()
 
-const resolvePathFn = computed(() => props.item.resolvePath)
-
-// UI-012: caller-supplied resolvePath can return the actual target path
-// (e.g. keep current settings tab) or null to suppress the click entirely.
+// UI-012: settings keeps the current tab when already under /settings;
+// elsewhere resolvePath returns null and we fall back to the default path.
 const targetPath = computed(() => {
-  const fn = resolvePathFn.value
-  if (fn) {
-    const resolved = fn(route.path)
-    return resolved ?? props.item.path
-  }
-  return props.item.path
-})
-
-const hidden = computed(() => {
-  const fn = resolvePathFn.value
-  if (fn) return fn(route.path) === null
-  return false
+  const resolved = props.item.resolvePath?.(route.path)
+  return resolved ?? props.item.path
 })
 </script>
 

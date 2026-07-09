@@ -2,15 +2,13 @@
   <transition name="channel-dismiss">
     <div v-if="isVisible" class="app-media-header">
       <div class="app-media-header__inner channel-header__inner">
-        
-        <div class="flex items-center gap-4 min-w-0">
-          <!-- Avatar -->
+        <div class="channel-header__identity">
           <a
             v-if="detail?.url"
             :href="detail.url"
             target="_blank"
             rel="noopener noreferrer"
-            class="shrink-0 h-12 w-12 overflow-hidden rounded-lg sm:h-14 sm:w-14"
+            class="channel-header__avatar"
           >
             <SubscriptionAvatar
               :src="detail?.avatar || null"
@@ -18,7 +16,7 @@
               size="full"
             />
           </a>
-          <div v-else class="shrink-0 h-12 w-12 overflow-hidden rounded-lg sm:h-14 sm:w-14">
+          <div v-else class="channel-header__avatar">
             <SubscriptionAvatar
               :src="detail?.avatar || null"
               :name="detail?.name || '未知频道'"
@@ -26,42 +24,39 @@
             />
           </div>
 
-          <!-- Info -->
-          <div class="flex flex-col gap-1 min-w-0">
-            <div class="flex items-center gap-2 min-w-0">
+          <div class="channel-header__copy">
+            <div class="channel-header__title-row">
               <a
                 v-if="detail?.url"
                 :href="detail.url"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="hover:text-primary transition-colors min-w-0"
+                class="channel-header__name-link"
               >
-                <h2 class="app-h2 truncate">{{ detail?.name || '未知频道' }}</h2>
+                <h1 class="app-h2 truncate">{{ detail?.name || '未知频道' }}</h1>
               </a>
-              <h2 v-else class="app-h2 truncate">{{ detail?.name || '未知频道' }}</h2>
-              
-              <span v-if="detail?.is_nsfw" class="shrink-0 rounded-md border border-primary/50 px-1.5 py-0.5 text-xs font-semibold text-primary">敏感</span>
+              <h1 v-else class="app-h2 truncate">{{ detail?.name || '未知频道' }}</h1>
+              <span v-if="detail?.is_nsfw" class="channel-header__badge">敏感</span>
             </div>
-            
-            <p v-if="detail?.description" class="text-xs text-muted-foreground/80 line-clamp-1 sm:line-clamp-2 max-w-2xl leading-relaxed">
+
+            <p v-if="detail?.description" class="channel-header__desc">
               {{ detail.description }}
             </p>
+
+            <div class="channel-header__stats">
+              <span class="channel-header__stat">
+                <span class="channel-header__stat-label">总数</span>
+                <span class="channel-header__stat-value">{{ detail?.total_videos || 0 }}</span>
+              </span>
+              <span class="channel-header__stat">
+                <span class="channel-header__stat-label">解析</span>
+                <span class="channel-header__stat-value">{{ detail?.total_extract || 0 }}</span>
+              </span>
+            </div>
           </div>
         </div>
 
-        <!-- Stats & Actions -->
-        <div class="flex items-center gap-6 sm:gap-8 shrink-0 ml-16 sm:ml-0">
-          <div class="flex items-center gap-4 sm:gap-6">
-            <div class="flex flex-col items-center">
-              <span class="mb-1 text-xs font-medium text-muted-foreground">总数</span>
-              <span class="text-sm font-semibold font-mono text-foreground/80">{{ detail?.total_videos || 0 }}</span>
-            </div>
-            <div class="flex flex-col items-center">
-              <span class="mb-1 text-xs font-medium text-muted-foreground">解析</span>
-              <span class="text-sm font-semibold font-mono text-foreground/80">{{ detail?.total_extract || 0 }}</span>
-            </div>
-          </div>
-
+        <div class="channel-header__actions">
           <AppSegmentedControl
             v-if="canOpenRemote"
             :model-value="mode || 'local'"
@@ -71,58 +66,58 @@
             @update:model-value="(value) => emit('update:mode', value)"
           />
 
-          <div class="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            :class="detail?.is_special_followed ? 'text-warning' : ''"
+            :disabled="isTogglingSpecial"
+            aria-label="切换特别关注"
+            :aria-pressed="!!detail?.is_special_followed"
+            @click="handleToggleSpecialFollow"
+          >
+            <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': detail?.is_special_followed }" />
+          </Button>
+
+          <div v-if="syncMessage" class="channel-header__sync-msg" :class="syncError ? 'is-error' : ''">
+            {{ syncMessage }}
+          </div>
+
+          <div class="channel-sync-group">
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
-              :class="detail?.is_special_followed ? 'text-warning' : ''"
-              :disabled="isTogglingSpecial"
-              aria-label="切换特别关注"
-              :aria-pressed="!!detail?.is_special_followed"
-              @click="handleToggleSpecialFollow"
+              size="sm"
+              :disabled="isSyncing"
+              @click="handleDirectSync('incremental')"
             >
-              <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': detail?.is_special_followed }" />
+              <AppSpinner v-if="isSyncing" size="sm" />
+              <AppIcon v-else name="refresh" class="h-3.5 w-3.5" />
+              {{ isSyncing ? '同步中' : '同步' }}
             </Button>
-            <div v-if="syncMessage" class="hidden max-w-40 truncate text-xs font-medium sm:block" :class="syncError ? 'text-destructive' : 'text-muted-foreground'">
-              {{ syncMessage }}
-            </div>
-            <div class="channel-sync-group">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                :disabled="isSyncing"
-                @click="handleDirectSync('incremental')"
-              >
-                <AppSpinner v-if="isSyncing" size="sm" />
-                <AppIcon v-else name="refresh" class="h-3.5 w-3.5" />
-                {{ isSyncing ? '同步中' : '同步' }}
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    :disabled="isSyncing"
-                    aria-label="选择同步模式"
-                  >
-                    <AppIcon name="chevronDown" class="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="w-36">
-                  <DropdownMenuItem @click="handleDirectSync('incremental')">
-                    <AppIcon name="refresh" class="mr-2 h-3.5 w-3.5" />
-                    增量同步
-                  </DropdownMenuItem>
-                  <DropdownMenuItem @click="handleDirectSync('full')">
-                    <AppIcon name="sync" class="mr-2 h-3.5 w-3.5" />
-                    全量同步
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  :disabled="isSyncing"
+                  aria-label="选择同步模式"
+                >
+                  <AppIcon name="chevronDown" class="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" class="w-36">
+                <DropdownMenuItem @click="handleDirectSync('incremental')">
+                  <AppIcon name="refresh" class="mr-2 h-3.5 w-3.5" />
+                  增量同步
+                </DropdownMenuItem>
+                <DropdownMenuItem @click="handleDirectSync('full')">
+                  <AppIcon name="sync" class="mr-2 h-3.5 w-3.5" />
+                  全量同步
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <Button
@@ -132,7 +127,7 @@
             :disabled="isUnsubscribing"
             @click="handleUnsubscribe"
           >
-            {{ isUnsubscribing ? '取消中...' : '取消订阅' }}
+            {{ isUnsubscribing ? '取消中' : '取消订阅' }}
           </Button>
         </div>
       </div>
@@ -282,6 +277,126 @@ watch(() => props.subscriptionId, () => {
 <style scoped>
 .channel-header__inner {
   --app-page-max-width: 2400px;
+  align-items: flex-start;
+  gap: var(--space-5);
+}
+
+.channel-header__identity {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.channel-header__avatar {
+  display: block;
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--app-surface-radius);
+  background: hsl(var(--muted));
+}
+
+.channel-header__copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.channel-header__title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.channel-header__name-link {
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.channel-header__name-link:hover {
+  color: hsl(var(--primary));
+}
+
+.channel-header__badge {
+  flex: none;
+  border: 1px solid hsl(var(--primary) / 0.35);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--primary) / 0.08);
+  padding: 0.125rem 0.375rem;
+  color: hsl(var(--primary));
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+.channel-header__desc {
+  margin: 0;
+  max-width: 42rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.channel-header__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.channel-header__stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.375rem;
+}
+
+.channel-header__stat-label {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.channel-header__stat-value {
+  color: hsl(var(--foreground));
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.channel-header__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.channel-header__sync-msg {
+  max-width: 10rem;
+  overflow: hidden;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-header__sync-msg.is-error {
+  color: hsl(var(--destructive));
 }
 
 .channel-sync-group {
@@ -297,13 +412,25 @@ watch(() => props.subscriptionId, () => {
 .channel-dismiss-enter-active,
 .channel-dismiss-leave-active {
   transition:
-    opacity var(--duration-slow) var(--ease-out),
-    transform var(--duration-slow) var(--ease-out);
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
 }
 
 .channel-dismiss-enter-from,
 .channel-dismiss-leave-to {
   opacity: 0;
-  transform: translateY(-20px);
+  transform: translateY(-0.5rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .channel-dismiss-enter-active,
+  .channel-dismiss-leave-active {
+    transition: none;
+  }
+
+  .channel-dismiss-enter-from,
+  .channel-dismiss-leave-to {
+    transform: none;
+  }
 }
 </style>

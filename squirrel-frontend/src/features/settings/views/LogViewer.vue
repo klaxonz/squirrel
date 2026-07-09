@@ -1,114 +1,85 @@
 <template>
-  <AppPageShell class="log-viewer-container">
-    <AppToolbarFrame class="toolbar-container" compact>
-      <div class="flex flex-wrap items-center justify-end gap-2">
-        <div class="log-hero__pill">
-          <span class="log-hero__label">总量</span>
-          <span>共 {{ totalLogs }} 条</span>
-          <span v-if="hasActiveFilters" class="text-warning">已筛选</span>
-        </div>
-        <div class="log-hero__pill">
-          <span class="log-hero__label">自动刷新</span>
-          <span>{{ autoRefresh ? '5s' : '关闭' }}</span>
-        </div>
-        <Button
-          @click="copyAllLogs"
-          :disabled="logs.length === 0"
-          size="sm"
-          variant="outline"
-          class="log-toolbar-button"
-          :title="'复制所有显示的日志 (' + logs.length + ' 条)'"
-        >
-          <AppIcon name="clipboard" class="h-4 w-4" />
-          {{ allCopied ? '已复制全部' : '复制全部' }}
-        </Button>
-        <Button
-          @click="toggleAutoRefresh"
-          size="sm"
-          :variant="autoRefresh ? 'secondary' : 'outline'"
-          class="log-toolbar-button"
-        >
-          {{ autoRefresh ? '停止自动刷新' : '开启自动刷新' }}
-        </Button>
-        <Button
-          @click="loadLogs"
-          :disabled="loading"
-          size="sm"
-          class="log-toolbar-button"
-        >
-          <AppSpinner v-if="loading" size="sm" />
-          <span>刷新</span>
-        </Button>
-      </div>
+  <AppPageShell class="log-viewer" variant="compact" fill>
+    <AppToolbarFrame bordered compact sticky>
+      <AppPaneHeader title="系统日志" :subtitle="headerSubtitle" :level="3">
+        <template #actions>
+          <span class="log-status-chip" :class="{ 'is-active': autoRefresh }">
+            自动刷新 {{ autoRefresh ? '5s' : '关' }}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            :disabled="logs.length === 0"
+            :title="'复制所有显示的日志 (' + logs.length + ' 条)'"
+            @click="copyAllLogs"
+          >
+            <AppIcon name="clipboard" class="h-4 w-4" />
+            {{ allCopied ? '已复制全部' : '复制全部' }}
+          </Button>
+          <Button
+            size="sm"
+            :variant="autoRefresh ? 'secondary' : 'outline'"
+            @click="toggleAutoRefresh"
+          >
+            {{ autoRefresh ? '停止自动刷新' : '开启自动刷新' }}
+          </Button>
+          <Button size="sm" :disabled="loading" @click="loadLogs">
+            <AppSpinner v-if="loading" size="sm" />
+            <AppIcon v-else name="refresh" class="h-4 w-4" />
+            刷新
+          </Button>
+        </template>
+      </AppPaneHeader>
     </AppToolbarFrame>
 
     <div class="app-page-content app-log-layout">
       <div class="app-log-filter-bar">
-        <div class="flex flex-wrap gap-2 items-center">
-          <div class="flex-1 min-w-[240px]">
-            <Input
-              v-model="filters.keyword"
-              @keyup.enter="applyFilters"
-              type="text"
-              placeholder="搜索日志内容、追踪编号..."
-              class="text-xs"
-            />
-          </div>
+        <div class="log-filter-row">
+          <AppSearchInput
+            v-model="filters.keyword"
+            class="log-filter-search"
+            placeholder="搜索日志内容、追踪编号..."
+            aria-label="搜索日志"
+          />
 
-          <div class="w-28">
-            <Select :model-value="filters.level" @update:model-value="(value) => { filters.level = value; applyFilters(); }">
-              <SelectTrigger class="text-xs">
-                <SelectValue placeholder="级别" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="option in levelOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <Select :model-value="filters.level" @update:model-value="(value) => { filters.level = value; applyFilters() }">
+            <SelectTrigger class="log-filter-select app-toolbar-select-trigger app-toolbar-control">
+              <SelectValue placeholder="级别" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in levelOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
 
-          <div class="w-40">
-            <Select :model-value="filters.filename" @update:model-value="(value) => { filters.filename = value; applyFilters(); }">
-              <SelectTrigger class="text-xs">
-                <SelectValue placeholder="日志文件" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="option in fileOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <Select :model-value="filters.filename" @update:model-value="(value) => { filters.filename = value; applyFilters() }">
+            <SelectTrigger class="log-filter-select log-filter-select--file app-toolbar-select-trigger app-toolbar-control">
+              <SelectValue placeholder="日志文件" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in fileOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
 
-          <div class="flex gap-2">
-            <Button
-              @click="clearFilters"
-              size="sm"
-              variant="ghost"
-            >
-              清空
-            </Button>
-            <Button
-              @click="applyFilters"
-              size="sm"
-              variant="secondary"
-            >
-              应用
-            </Button>
-          </div>
+          <Button size="sm" variant="ghost" @click="clearFilters">清空</Button>
+          <Button size="sm" variant="secondary" @click="applyFilters">应用</Button>
         </div>
       </div>
 
-      <div class="app-log-stream">
-        <div v-if="loading && logs.length === 0" class="flex items-center justify-center py-20 text-muted-foreground">
-          <AppSpinner size="sm" class="mr-2" />
-          加载中...
+      <div class="app-log-stream app-surface app-surface--subtle">
+        <div v-if="loading && logs.length === 0" class="log-loading">
+          <AppSpinner size="sm" />
+          <span>加载中...</span>
         </div>
 
         <AppEmptyState
           v-else-if="logs.length === 0"
           class="log-empty-state"
+          variant="plain"
+          icon="inbox"
           :title="hasActiveFilters ? '没有匹配的日志' : '暂无日志'"
           :copy="hasActiveFilters ? '调整搜索条件后再试。' : '当前日志文件里还没有内容。'"
         >
@@ -123,7 +94,7 @@
           :items="logs"
           :min-item-size="28"
           key-field="id"
-          class="scroller flex-1 min-h-0"
+          class="scroller flex-1 min-h-0 custom-scrollbar"
         >
           <template v-slot="{ item, index, active }">
             <DynamicScrollerItem
@@ -132,49 +103,39 @@
               :size-dependencies="[item.message]"
               :data-index="index"
             >
-              <div
-                class="app-log-row group"
-              >
-                <!-- Time -->
-                <span class="text-muted-foreground/60 whitespace-nowrap tabular-nums shrink-0 pt-0.5">
+              <div class="app-log-row group">
+                <span class="log-time">
                   {{ formatLogTimestamp(item.timestamp) }}
                 </span>
 
-                <!-- Level -->
-                <span
-                  class="log-level"
-                  :class="getLevelColorClass(item.level)"
-                >
+                <span class="log-level" :class="getLevelColorClass(item.level)">
                   {{ item.level }}
                 </span>
 
-                <!-- Content Area -->
-                <div class="flex-1 min-w-0 flex flex-col gap-0.5">
-                  <!-- Meta -->
-                  <div class="flex items-center gap-3 text-xs text-muted-foreground/50">
-                    <span v-if="item.trace_id" 
-                          @click="filterByTraceId(item.trace_id)"
-                          class="hover:text-foreground cursor-pointer underline decoration-dotted transition-colors">
+                <div class="log-body">
+                  <div class="log-meta">
+                    <button
+                      v-if="item.trace_id"
+                      type="button"
+                      class="log-trace"
+                      @click="filterByTraceId(item.trace_id)"
+                    >
                       {{ item.trace_id.substring(0, 8) }}
-                    </span>
+                    </button>
                     <span>{{ item.logger }}</span>
                     <span>:{{ item.line_num }}</span>
                   </div>
-
-                  <!-- Message -->
-                  <div class="log-message whitespace-pre-wrap break-all leading-relaxed">
-                    {{ item.message }}
-                  </div>
+                  <div class="log-message">{{ item.message }}</div>
                 </div>
 
-                <!-- Actions -->
-                <div class="absolute right-2 top-1 flex gap-1 rounded border border-border/60 bg-background p-0.5 opacity-0 group-hover:opacity-100">
+                <div class="log-row-actions">
                   <Button
-                    @click="copyLog(item)"
                     size="xs"
                     variant="ghost"
                     class="h-6 w-6 p-0"
                     title="复制日志"
+                    aria-label="复制日志"
+                    @click="copyLog(item)"
                   >
                     <AppIcon name="clipboard" class="h-3.5 w-3.5" />
                   </Button>
@@ -189,36 +150,34 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue';
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
-import AppIcon from '@/shared/icons/AppIcon.vue';
-import AppSpinner from '@/shared/components/AppSpinner.vue';
-import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue';
-import AppPageShell from '@/shared/components/layout/AppPageShell.vue';
-import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue';
+import { computed, ref, onMounted } from 'vue'
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
+import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppPaneHeader from '@/shared/components/layout/AppPaneHeader.vue'
+import AppSearchInput from '@/shared/components/layout/AppSearchInput.vue'
+import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import { Button } from '@/shared/ui/button'
-import { Input } from '@/shared/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import { getLogFiles, queryLogs } from '@/shared/api'
 import { Logger } from '@/shared/lib/logger'
 import { useLogClipboard } from '@/features/settings/composables/useLogClipboard'
 import { useLogAutoRefresh } from '@/features/settings/composables/useLogAutoRefresh'
 import { formatLogTimestamp, getLevelColorClass, formatFileSize } from '@/features/settings/lib/logPresenters'
 
+const logs = ref([])
+const logFiles = ref([])
+const totalLogs = ref(0)
+const loading = ref(false)
 
-// 数据
-const logs = ref([]);
-const logFiles = ref([]);
-const totalLogs = ref(0);
-const loading = ref(false);
-
-// 过滤条件
 const filters = ref({
   keyword: '',
   level: '',
-  filename: 'app.log'
-});
+  filename: 'app.log',
+})
 
 const levelOptions = [
   { value: '', label: '全部级别' },
@@ -226,155 +185,228 @@ const levelOptions = [
   { value: 'INFO', label: '信息' },
   { value: 'WARNING', label: '警告' },
   { value: 'ERROR', label: '错误' },
-  { value: 'CRITICAL', label: '严重' }
-];
+  { value: 'CRITICAL', label: '严重' },
+]
 
 const fileOptions = computed(() => {
   return logFiles.value.map((file) => ({
     value: file.name,
-    label: `${file.name} (${formatFileSize(file.size)})`
-  }));
-});
+    label: `${file.name} (${formatFileSize(file.size)})`,
+  }))
+})
 
 const hasActiveFilters = computed(() => Boolean(filters.value.keyword || filters.value.level))
+const headerSubtitle = computed(() => {
+  const total = `共 ${totalLogs.value} 条`
+  return hasActiveFilters.value ? `${total} · 已筛选` : total
+})
 
-
-// 生命周期
 onMounted(() => {
-  loadLogFiles();
-  loadLogs();
-});
+  loadLogFiles()
+  loadLogs()
+})
 
-// 加载日志文件列表
 async function loadLogFiles() {
   try {
     const data = await getLogFiles()
     logFiles.value = data || []
     if (logFiles.value.length > 0 && !filters.value.filename) {
-      filters.value.filename = logFiles.value[0].name;
+      filters.value.filename = logFiles.value[0].name
     }
   } catch (error) {
-    Logger.error('Failed to load log files', error);
+    Logger.error('Failed to load log files', error)
   }
 }
 
-// 加载日志
 async function loadLogs() {
-  if (loading.value) return;
-
-  loading.value = true;
-
+  if (loading.value) return
+  loading.value = true
   try {
     const params = {
       filename: filters.value.filename,
       keyword: filters.value.keyword || undefined,
       level: filters.value.level || undefined,
       page: 1,
-      pageSize: 500
-    };
-
+      pageSize: 500,
+    }
     const data = await queryLogs(params)
     if (data) {
-      // 为每条日志添加唯一 ID
-      const logsWithId = data.logs.map((log, index) => ({
+      logs.value = data.logs.map((log, index) => ({
         ...log,
-        id: `${Date.now()}-${index}-${log.line_num}`
-      }));
-
-      logs.value = logsWithId;
-      totalLogs.value = data.total;
+        id: `${Date.now()}-${index}-${log.line_num}`,
+      }))
+      totalLogs.value = data.total
     }
   } catch (error) {
-    Logger.error('Failed to load logs', error);
+    Logger.error('Failed to load logs', error)
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
-// 应用筛选
 function applyFilters() {
-  loadLogs();
+  loadLogs()
 }
 
-// 清空筛选
 function clearFilters() {
-  filters.value.keyword = '';
-  filters.value.level = '';
-  applyFilters();
+  filters.value.keyword = ''
+  filters.value.level = ''
+  applyFilters()
 }
 
-// 按 trace_id 筛选
 function filterByTraceId(traceId) {
-  filters.value.keyword = traceId;
-  filters.value.level = '';
-  applyFilters();
+  filters.value.keyword = traceId
+  filters.value.level = ''
+  applyFilters()
 }
 
-// ponytail: clipboard formatting + write (single entry and whole filtered
-// list) lives in useLogClipboard; injected logs + filters are read-only. The
-// returned allCopied flag drives the toolbar's success label.
-const { allCopied, copyLog, copyAllLogs } = useLogClipboard({ logs, filters });
-
-// ponytail: polling-based auto-refresh (interval + lifecycle cleanup) lives in
-// useLogAutoRefresh. Declared after loadLogs so the refresh callback can
-// reference it; the composable starts polling on creation and clears on unmount.
-const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs });
-
-// ponytail: log-timestamp / level-colour / file-size formatters live in the
-// shared logPresenters lib. formatLogTimestamp is NOT named formatTime — the
-// shared dateFormat.formatTime formats a duration, this extracts the clock
-// portion of a log-line timestamp.
+const { allCopied, copyLog, copyAllLogs } = useLogClipboard({ logs, filters })
+const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs })
 </script>
 
 <style scoped>
-.log-level {
-  width: 4rem;
-  flex-shrink: 0;
-  padding-top: 0.125rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1.2;
+.log-viewer {
+  min-height: 0;
 }
 
-.log-hero__label {
-  font-size: 0.68rem;
-  color: hsl(var(--muted-foreground));
-}
-
-.log-hero__pill {
+.log-status-chip {
   display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--muted) / 0.4);
+  padding: 0 0.625rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.log-status-chip.is-active {
+  border-color: hsl(var(--primary) / 0.28);
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--foreground));
+}
+
+.log-filter-row {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  min-height: 1.75rem;
-  padding: 0 0.75rem;
-  border-radius: var(--app-control-item-radius);
-  background: hsl(var(--muted) / 0.5);
-  font-size: 0.75rem;
+}
+
+.log-filter-search {
+  flex: 1 1 15rem;
+  min-width: 12rem;
+}
+
+.log-filter-select {
+  width: 7.5rem;
+}
+
+.log-filter-select--file {
+  width: 11rem;
+}
+
+.log-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 5rem 1rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
 }
 
 .log-empty-state {
   min-height: 18rem;
 }
 
+.log-time {
+  flex: none;
+  padding-top: 0.125rem;
+  color: hsl(var(--muted-foreground) / 0.72);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.log-level {
+  width: 4rem;
+  flex: none;
+  padding-top: 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.log-body {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.log-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  color: hsl(var(--muted-foreground) / 0.6);
+  font-size: 0.75rem;
+}
+
+.log-trace {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.log-trace:hover {
+  color: hsl(var(--foreground));
+}
+
+.log-message {
+  color: hsl(var(--foreground) / 0.9);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.log-row-actions {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.125rem;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--background));
+  padding: 0.125rem;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+
+.group:hover .log-row-actions,
+.group:focus-within .log-row-actions {
+  opacity: 1;
+}
+
 .scroller {
   overflow-y: auto;
 }
 
-/* 隐藏滚动条背景 */
-.scroller::-webkit-scrollbar {
-  width: 6px;
-}
-
-.scroller::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
-  border-radius: 3px;
-}
-
-.scroller::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.4);
-}
-
-.log-message {
-  color: hsl(var(--foreground));
+@media (prefers-reduced-motion: reduce) {
+  .log-trace,
+  .log-row-actions {
+    transition: none;
+  }
 }
 </style>

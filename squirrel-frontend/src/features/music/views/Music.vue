@@ -1,242 +1,240 @@
 <template>
   <AppPageShell variant="compact" fill>
-    <div class="app-workbench">
-      <div class="app-workbench__main">
-        <div class="app-workbench__scroll custom-scrollbar">
-          <div class="app-workbench__content music-content">
-            <div class="music-nav-row">
-              <AppSegmentedControl
-                :model-value="musicActiveMode"
-                :options="musicNavItems"
-                size="sm"
-                aria-label="音乐导航"
-                @update:model-value="(value) => handleNavigate(String(value))"
-              />
-              <MusicCreatePlaylistButton
-                v-if="authStatus?.logged_in && activeView === 'profile'"
-                compact
-                class="music-top-create"
-                @create="handleCreatePlaylist"
-              />
-            </div>
-
-          <MusicHomeView
-            v-if="activeView === 'home'"
-            :playlists="homePlaylists"
-            :ranks="ranks"
-            :albums="newAlbums"
-            :playlists-loading="playlistsLoading"
-            :ranks-loading="ranksLoading"
-            :albums-loading="newAlbumsLoading"
-            :user="kugouProfile"
-            :history-tracks="profileHistory"
-            :fm-mode="fm.mode.value"
-            :fm-pool-id="fm.poolId.value"
-            :fm-loading="fm.loading.value"
-            :fm-active="fmActive"
-            :fm-playing="fmPlaying"
-            @navigate="handleNavigate"
-            @select-playlist="handleSelectPlaylist"
-            @select-rank="handleSelectRank"
-            @select-album="handleSelectAlbum"
-            @fm-play="handleHomeFmPlay"
-            @continue-play="handleContinuePlay"
-            @play-playlist="handlePlayPlaylist"
-            @switch-fm-mode="handleSwitchFmMode"
-            @switch-fm-pool="handleSwitchFmPool"
+    <AppTwoColumnLayout content-width="90rem">
+      <template #header>
+        <div class="music-nav-header">
+          <AppSegmentedControl
+            :model-value="musicActiveMode"
+            :options="musicNavItems"
+            size="sm"
+            aria-label="音乐导航"
+            @update:model-value="(value) => handleNavigate(String(value))"
           />
-
-          <MusicSearchView
-            v-else-if="activeView === 'search'"
-            :hot-searches="hotSearches"
-            :loading="searchLoading"
-            :error="searchError"
-            :result="complexResult"
-            :search-query="searchQuery"
-            @search="handleSearch"
-            @retry="searchQuery && handleSearch(searchQuery)"
-            @select-artist="handleSelectArtistDetail"
-            @select-album="handleSelectAlbumFromSearch"
+          <MusicCreatePlaylistButton
+            v-if="authStatus?.logged_in && activeView === 'profile'"
+            compact
+            class="music-top-create"
+            @create="handleCreatePlaylist"
           />
-
-          <MusicRankGrid
-            v-else-if="activeView === 'ranks'"
-            :ranks="ranks"
-            @select="handleSelectRank"
-          />
-
-          <MusicPlaylistGrid
-            v-else-if="activeView === 'playlists'"
-            :playlists="homePlaylists"
-            :tags="playlistTags"
-            :selected-category="selectedPlaylistCategory"
-            :has-more="playlistHasMore"
-            :loading="playlistsLoading"
-            @select="handleSelectPlaylist"
-            @select-category="handleSelectPlaylistCategoryLocal"
-            @load-more="handleLoadMorePlaylistsLocal"
-          />
-
-          <MusicPlaylistDetailView
-            v-else-if="activeView === 'playlist-detail' && selectedPlaylist"
-            :playlist="selectedPlaylist"
-            :tracks="tracks"
-            :total="total"
-            :loading="tracksLoading"
-            :loading-more="tracksLoadingMore"
-            :has-more="tracksHasMore"
-            :similar="similarPlaylists"
-            :show-collect="true"
-            :collected="playlistCollected"
-            @play-all="handlePlayAll"
-            @collect="handleCollectPlaylist"
-            @load-more="handleLoadMoreTracks"
-            @select-artist="handleSelectArtistFromTrack"
-            @select-album="handleSelectAlbumFromTrack"
-            @play-mv="handlePlayMv"
-            @select-related="handleSelectRelated"
-            @add-to-playlist="handleAddToPlaylist"
-            @change="handleChangePlaylist"
-          />
-
-          <MusicPlaylistDetailView
-            v-else-if="activeView === 'user-playlist-detail' && userPlaylistAsPlaylist"
-            :playlist="userPlaylistAsPlaylist"
-            :tracks="tracks"
-            :total="total"
-            :loading="tracksLoading"
-            :loading-more="tracksLoadingMore"
-            :has-more="tracksHasMore"
-            :similar="[]"
-            :show-collect="false"
-            :collected="false"
-            @play-all="handlePlayAll"
-            @load-more="handleLoadMoreTracks"
-            @select-artist="handleSelectArtistFromTrack"
-            @select-album="handleSelectAlbumFromTrack"
-            @play-mv="handlePlayMv"
-            @select-related="handleSelectRelated"
-            @add-to-playlist="handleAddToPlaylist"
-          />
-
-          <MusicArtistDetailView
-            v-else-if="activeView === 'artist-detail' && selectedArtist"
-            :artist="selectedArtist"
-            :tracks="tracks"
-            :albums="artistAlbums"
-            :videos="artistVideos"
-            :followed="artistFollowed"
-            :follow-loading="artistFollowLoading"
-            :tracks-loading="tracksLoading"
-            :loading-more="tracksLoadingMore"
-            :has-more="tracksHasMore"
-            @play-all="handlePlayAllArtistTracks"
-            @follow="handleFollowArtist"
-            @unfollow="handleUnfollowArtist"
-            @load-more="handleLoadMoreTracks"
-            @select-album="handleSelectAlbum"
-            @play-video="handlePlayArtistVideo"
-            @select-artist-track="handleSelectArtistFromTrack"
-            @play-mv="handlePlayMv"
-          />
-
-          <MusicAlbumDetailView
-            v-else-if="activeView === 'album-detail' && selectedAlbum"
-            :album="selectedAlbum"
-            :tracks="tracks"
-            :total="total"
-            :loading="tracksLoading"
-            :loading-more="tracksLoadingMore"
-            :has-more="tracksHasMore"
-            @play-all="handlePlayAll"
-            @load-more="handleLoadMoreTracks"
-            @select-artist="handleSelectArtistFromAlbum"
-            @select-artist-track="handleSelectArtistFromTrack"
-            @play-mv="handlePlayMv"
-          />
-
-          <MusicProfileView
-            v-else-if="activeView === 'profile'"
-            :profile="kugouProfile"
-            :auth-status="authStatus"
-            :user-playlists="userPlaylists"
-            :history="profileHistory"
-            :listen-rank="profileListenRank"
-            :history-loading="profileHistoryLoading"
-            :rank-loading="profileRankLoading"
-            :rank-type="profileRankType"
-            :loading="profileLoading"
-            :error="profileError"
-            :logout-loading="logoutLoading"
-            :target-playlist-id="targetUserPlaylistId"
-            @retry="handleLoadProfile"
-            @logout="handleLogout"
-            @toggle-rank-type="handleToggleRankType"
-            @play-all-profile="handlePlayAllProfile"
-            @select-playlist="handleSelectUserPlaylist"
-            @select-artist="handleSelectArtistFromTrack"
-            @add-to-playlist="handleAddToPlaylist"
-          >
-            <template #login>
-              <MusicQrLoginPanel
-                :qr-open="qrLogin.isOpen.value"
-                :qr-loading="qrLogin.loading.value"
-                :qr-login="qrLogin.qrLogin.value"
-                :qr-status="qrLogin.status.value"
-                :qr-status-text="qrLogin.statusText.value"
-                @open="qrLogin.open"
-                @close="qrLogin.close"
-                @refresh="qrLogin.open"
-              />
-            </template>
-          </MusicProfileView>
-
-          <MusicTrackList
-            v-else-if="activeView === 'new-songs'"
-            :tracks="newSongs"
-            :show-mv="false"
-            :show-related="false"
-            @select-artist="handleSelectArtistFromTrack"
-            @select-album="handleSelectAlbumFromTrack"
-          />
-
-          <MusicAlbumGrid
-            v-else-if="activeView === 'new-albums'"
-            :albums="viewAlbums"
-            :loading="newAlbumsLoading"
-            @select="handleSelectAlbum"
-          />
-
-          <MusicTrackList
-            v-else-if="activeView === 'favorites'"
-            :tracks="favoriteTracks"
-            :show-mv="false"
-            :show-related="false"
-            @select-artist="handleSelectArtistFromTrack"
-            @select-album="handleSelectAlbumFromTrack"
-          />
-
-          <MusicTrackList
-            v-else-if="activeView === 'ai-recommend'"
-            :tracks="aiRecommend"
-            :show-mv="false"
-            :show-related="false"
-            @select-artist="handleSelectArtistFromTrack"
-            @select-album="handleSelectAlbumFromTrack"
-          />
-
-          <MusicTrackList
-            v-else-if="activeView === 'everyday-recommend'"
-            :tracks="everydayRecommend"
-            :show-mv="false"
-            :show-related="false"
-            @select-artist="handleSelectArtistFromTrack"
-            @select-album="handleSelectAlbumFromTrack"
-          />
-          </div>
         </div>
+      </template>
+
+      <div class="app-workbench__content music-content">
+        <MusicHomeView
+          v-if="activeView === 'home'"
+          :playlists="homePlaylists"
+          :ranks="ranks"
+          :albums="newAlbums"
+          :playlists-loading="playlistsLoading"
+          :ranks-loading="ranksLoading"
+          :albums-loading="newAlbumsLoading"
+          :user="kugouProfile"
+          :history-tracks="profileHistory"
+          :fm-mode="fm.mode.value"
+          :fm-pool-id="fm.poolId.value"
+          :fm-loading="fm.loading.value"
+          :fm-active="fmActive"
+          :fm-playing="fmPlaying"
+          @navigate="handleNavigate"
+          @select-playlist="handleSelectPlaylist"
+          @select-rank="handleSelectRank"
+          @select-album="handleSelectAlbum"
+          @fm-play="handleHomeFmPlay"
+          @continue-play="handleContinuePlay"
+          @play-playlist="handlePlayPlaylist"
+          @switch-fm-mode="handleSwitchFmMode"
+          @switch-fm-pool="handleSwitchFmPool"
+        />
+
+        <MusicSearchView
+          v-else-if="activeView === 'search'"
+          :hot-searches="hotSearches"
+          :loading="searchLoading"
+          :error="searchError"
+          :result="complexResult"
+          :search-query="searchQuery"
+          @search="handleSearch"
+          @retry="searchQuery && handleSearch(searchQuery)"
+          @select-artist="handleSelectArtistDetail"
+          @select-album="handleSelectAlbumFromSearch"
+        />
+
+        <MusicRankGrid
+          v-else-if="activeView === 'ranks'"
+          :ranks="ranks"
+          @select="handleSelectRank"
+        />
+
+        <MusicPlaylistGrid
+          v-else-if="activeView === 'playlists'"
+          :playlists="homePlaylists"
+          :tags="playlistTags"
+          :selected-category="selectedPlaylistCategory"
+          :has-more="playlistHasMore"
+          :loading="playlistsLoading"
+          @select="handleSelectPlaylist"
+          @select-category="handleSelectPlaylistCategoryLocal"
+          @load-more="handleLoadMorePlaylistsLocal"
+        />
+
+        <MusicPlaylistDetailView
+          v-else-if="activeView === 'playlist-detail' && selectedPlaylist"
+          :playlist="selectedPlaylist"
+          :tracks="tracks"
+          :total="total"
+          :loading="tracksLoading"
+          :loading-more="tracksLoadingMore"
+          :has-more="tracksHasMore"
+          :similar="similarPlaylists"
+          :show-collect="true"
+          :collected="playlistCollected"
+          @play-all="handlePlayAll"
+          @collect="handleCollectPlaylist"
+          @load-more="handleLoadMoreTracks"
+          @select-artist="handleSelectArtistFromTrack"
+          @select-album="handleSelectAlbumFromTrack"
+          @play-mv="handlePlayMv"
+          @select-related="handleSelectRelated"
+          @add-to-playlist="handleAddToPlaylist"
+          @change="handleChangePlaylist"
+        />
+
+        <MusicPlaylistDetailView
+          v-else-if="activeView === 'user-playlist-detail' && userPlaylistAsPlaylist"
+          :playlist="userPlaylistAsPlaylist"
+          :tracks="tracks"
+          :total="total"
+          :loading="tracksLoading"
+          :loading-more="tracksLoadingMore"
+          :has-more="tracksHasMore"
+          :similar="[]"
+          :show-collect="false"
+          :collected="false"
+          @play-all="handlePlayAll"
+          @load-more="handleLoadMoreTracks"
+          @select-artist="handleSelectArtistFromTrack"
+          @select-album="handleSelectAlbumFromTrack"
+          @play-mv="handlePlayMv"
+          @select-related="handleSelectRelated"
+          @add-to-playlist="handleAddToPlaylist"
+        />
+
+        <MusicArtistDetailView
+          v-else-if="activeView === 'artist-detail' && selectedArtist"
+          :artist="selectedArtist"
+          :tracks="tracks"
+          :albums="artistAlbums"
+          :videos="artistVideos"
+          :followed="artistFollowed"
+          :follow-loading="artistFollowLoading"
+          :tracks-loading="tracksLoading"
+          :loading-more="tracksLoadingMore"
+          :has-more="tracksHasMore"
+          @play-all="handlePlayAllArtistTracks"
+          @follow="handleFollowArtist"
+          @unfollow="handleUnfollowArtist"
+          @load-more="handleLoadMoreTracks"
+          @select-album="handleSelectAlbum"
+          @play-video="handlePlayArtistVideo"
+          @select-artist-track="handleSelectArtistFromTrack"
+          @play-mv="handlePlayMv"
+        />
+
+        <MusicAlbumDetailView
+          v-else-if="activeView === 'album-detail' && selectedAlbum"
+          :album="selectedAlbum"
+          :tracks="tracks"
+          :total="total"
+          :loading="tracksLoading"
+          :loading-more="tracksLoadingMore"
+          :has-more="tracksHasMore"
+          @play-all="handlePlayAll"
+          @load-more="handleLoadMoreTracks"
+          @select-artist="handleSelectArtistFromAlbum"
+          @select-artist-track="handleSelectArtistFromTrack"
+          @play-mv="handlePlayMv"
+        />
+
+        <MusicProfileView
+          v-else-if="activeView === 'profile'"
+          :profile="kugouProfile"
+          :auth-status="authStatus"
+          :user-playlists="userPlaylists"
+          :history="profileHistory"
+          :listen-rank="profileListenRank"
+          :history-loading="profileHistoryLoading"
+          :rank-loading="profileRankLoading"
+          :rank-type="profileRankType"
+          :loading="profileLoading"
+          :error="profileError"
+          :logout-loading="logoutLoading"
+          :target-playlist-id="targetUserPlaylistId"
+          @retry="handleLoadProfile"
+          @logout="handleLogout"
+          @toggle-rank-type="handleToggleRankType"
+          @play-all-profile="handlePlayAllProfile"
+          @select-playlist="handleSelectUserPlaylist"
+          @select-artist="handleSelectArtistFromTrack"
+          @add-to-playlist="handleAddToPlaylist"
+        >
+          <template #login>
+            <MusicQrLoginPanel
+              :qr-open="qrLogin.isOpen.value"
+              :qr-loading="qrLogin.loading.value"
+              :qr-login="qrLogin.qrLogin.value"
+              :qr-status="qrLogin.status.value"
+              :qr-status-text="qrLogin.statusText.value"
+              @open="qrLogin.open"
+              @close="qrLogin.close"
+              @refresh="qrLogin.open"
+            />
+          </template>
+        </MusicProfileView>
+
+        <MusicTrackList
+          v-else-if="activeView === 'new-songs'"
+          :tracks="newSongs"
+          :show-mv="false"
+          :show-related="false"
+          @select-artist="handleSelectArtistFromTrack"
+          @select-album="handleSelectAlbumFromTrack"
+        />
+
+        <MusicAlbumGrid
+          v-else-if="activeView === 'new-albums'"
+          :albums="viewAlbums"
+          :loading="newAlbumsLoading"
+          @select="handleSelectAlbum"
+        />
+
+        <MusicTrackList
+          v-else-if="activeView === 'favorites'"
+          :tracks="favoriteTracks"
+          :show-mv="false"
+          :show-related="false"
+          @select-artist="handleSelectArtistFromTrack"
+          @select-album="handleSelectAlbumFromTrack"
+        />
+
+        <MusicTrackList
+          v-else-if="activeView === 'ai-recommend'"
+          :tracks="aiRecommend"
+          :show-mv="false"
+          :show-related="false"
+          @select-artist="handleSelectArtistFromTrack"
+          @select-album="handleSelectAlbumFromTrack"
+        />
+
+        <MusicTrackList
+          v-else-if="activeView === 'everyday-recommend'"
+          :tracks="everydayRecommend"
+          :show-mv="false"
+          :show-related="false"
+          @select-artist="handleSelectArtistFromTrack"
+          @select-album="handleSelectAlbumFromTrack"
+        />
       </div>
-    </div>
+    </AppTwoColumnLayout>
 
     <MusicVideoModal
       :visible="videoModalVisible"
@@ -252,6 +250,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
+import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import MusicCreatePlaylistButton from '@/features/music/components/sidebar/MusicCreatePlaylistButton.vue'
 import MusicHomeView from '@/features/music/components/home/MusicHomeView.vue'
 import MusicSearchView from '@/features/music/components/MusicSearchView.vue'
@@ -691,26 +690,22 @@ async function handleLogout() {
 </script>
 
 <style scoped>
-.music-content {
-  --app-workbench-content-width: 1440px;
-  min-height: 100%;
-  padding-block: 1rem 2.75rem;
-}
-
-.music-nav-row {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-sticky);
+.music-nav-header {
   display: flex;
+  width: 100%;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: 0 2rem 0.75rem;
-  background: linear-gradient(180deg, hsl(var(--background)) 72%, hsl(var(--background) / 0));
+}
+
+.music-content {
+  --app-workbench-content-width: 90rem;
+  min-height: 100%;
+  padding-block: var(--space-4) var(--space-7);
 }
 
 .music-top-create {
   flex: 0 0 auto;
-  margin-left: auto;
 }
 </style>

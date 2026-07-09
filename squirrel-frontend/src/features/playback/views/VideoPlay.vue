@@ -702,24 +702,25 @@ const openChannelDetail = async (profile: VideoProfile) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: hsl(var(--muted-foreground) / 0.68);
-  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
   font-weight: 500;
 }
 
 .video-detail__dot {
-  color: hsl(var(--muted-foreground) / 0.5);
+  color: hsl(var(--muted-foreground) / 0.55);
 }
 
 .video-detail__site {
   display: inline-flex;
   align-items: center;
   padding: 0.0625rem 0.375rem;
-  border-radius: 0.25rem;
-  background: hsl(var(--accent) / 0.5);
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--muted) / 0.4);
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.2;
 }
 
@@ -749,13 +750,13 @@ const openChannelDetail = async (profile: VideoProfile) => {
   gap: 0.75rem;
   margin: -0.25rem;
   padding: 0.25rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   cursor: pointer;
   outline: none;
 }
 
 .video-detail__channel:focus-visible {
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.45);
 }
 
 .video-detail__channel-copy {
@@ -765,11 +766,11 @@ const openChannelDetail = async (profile: VideoProfile) => {
 
 .video-detail__channel-copy span {
   color: hsl(var(--foreground));
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.9375rem;
+  font-weight: 650;
   line-height: 1.25;
   letter-spacing: -0.01em;
-  transition: color 0.16s ease;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .video-detail__channel:hover .video-detail__channel-copy span {
@@ -777,7 +778,7 @@ const openChannelDetail = async (profile: VideoProfile) => {
 }
 
 .video-detail__channel-copy small {
-  color: hsl(var(--muted-foreground) / 0.68);
+  color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 500;
 }
@@ -787,13 +788,13 @@ const openChannelDetail = async (profile: VideoProfile) => {
 .video-detail__icon-button,
 .video-detail__actor {
   border: 1px solid transparent;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   outline: none;
   transition:
-    color 0.16s ease,
-    background-color 0.16s ease,
-    border-color 0.16s ease,
-    opacity 0.16s ease;
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    opacity var(--duration-fast) var(--ease-default);
 }
 
 .video-detail__subscribe-button {

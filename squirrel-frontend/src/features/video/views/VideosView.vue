@@ -1,6 +1,6 @@
 <template>
   <AppPageShell class="videos-view-page" variant="compact" :fill="false">
-    <AppToolbarFrame v-if="searchMode !== 'remote'" bordered compact>
+    <AppToolbarFrame v-if="searchMode !== 'remote'" bordered compact sticky>
         <FeedToolbar
           :active-tab="activeTab"
           :nsfw="nsfw"
@@ -26,17 +26,15 @@
           @refresh="refreshCurrentList"
         />
     </AppToolbarFrame>
-    <AppToolbarFrame v-else bordered compact>
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex min-w-0 items-center gap-2">
-          <AppIcon name="siteFallback" class="h-4 w-4 shrink-0 text-primary opacity-80" />
-          <span class="shrink-0 text-sm font-semibold text-foreground">远端搜索</span>
-          <span v-if="searchQuery" class="min-w-0 truncate text-sm text-muted-foreground">"{{ searchQuery }}"</span>
-        </div>
-
-        <div class="flex shrink-0 items-center gap-1">
+    <AppToolbarFrame v-else bordered compact sticky>
+      <AppPaneHeader
+        title="远端搜索"
+        :subtitle="searchQuery ? `关键词：${searchQuery}` : '直接查询源站，不会写入本地库'"
+        :level="3"
+      >
+        <template #actions>
           <Select :model-value="remoteSite || 'all'" @update:model-value="updateRemoteSite">
-            <SelectTrigger class="w-auto min-w-[120px] text-xs text-muted-foreground">
+            <SelectTrigger class="app-toolbar-select-trigger app-toolbar-control w-auto min-w-[7.5rem]">
               <SelectValue placeholder="全部站点" />
             </SelectTrigger>
             <SelectContent class="min-w-44">
@@ -56,8 +54,8 @@
             <AppSpinner v-if="isRefreshing" size="sm" />
             <AppIcon v-else name="refresh" class="w-4 h-4 shrink-0" />
           </Button>
-        </div>
-      </div>
+        </template>
+      </AppPaneHeader>
     </AppToolbarFrame>
 
     <div class="app-page-content videos-view-content">
@@ -111,6 +109,7 @@ import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '@/features/video/components/feed/FeedToolbar.vue'
 import RemoteSearchResults from '@/features/video/components/feed/RemoteSearchResults.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppPaneHeader from '@/shared/components/layout/AppPaneHeader.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'

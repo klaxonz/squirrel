@@ -1,113 +1,113 @@
 <template>
   <AppPageShell class="home-view-page" variant="compact" :fill="false">
-    <div ref="contentRef" class="app-page-content home-page-content">
+    <div ref="contentRef" class="app-page-content app-page-content--media home-page-content">
+      <div class="app-content-stack app-content-stack--feed">
+        <header class="home-media-hero" aria-label="推荐内容">
+          <div class="home-media-hero__inner">
+            <div class="app-hero-main-card">
+              <img
+                v-if="activeFeaturedVideo?.thumbnail"
+                :key="activeFeaturedVideo.id"
+                :src="activeFeaturedVideo.thumbnail"
+                :alt="activeFeaturedVideo.title"
+                class="app-hero-main-card__img"
+                loading="eager"
+              />
+              <Button
+                v-if="heroVideo"
+                type="button"
+                variant="ghost"
+                class="app-hero-main-card__cover-action"
+                :aria-label="`播放 ${heroVideo.title}`"
+                @click="openVideo(heroVideo)"
+              />
+              <div class="app-hero-main-card__scrim" aria-hidden="true" />
 
-      <header class="home-media-hero">
-        <div class="home-media-hero__atmosphere" />
-        <div class="home-media-hero__inner">
-          <div class="app-hero-main-card">
-            <img
-              v-if="activeFeaturedVideo?.thumbnail"
-              :key="activeFeaturedVideo.id"
-              :src="activeFeaturedVideo.thumbnail"
-              :alt="activeFeaturedVideo.title"
-              class="app-hero-main-card__img"
-              loading="eager"
-            />
-            <Button
-              v-if="heroVideo"
-              type="button"
-              variant="ghost"
-              class="app-hero-main-card__cover-action"
-              :aria-label="`播放 ${heroVideo.title}`"
-              @click="openVideo(heroVideo)"
-            />
-            <div class="app-hero-main-card__scrim" />
+              <div class="app-hero-main-card__content">
+                <p class="home-media-hero__kicker">{{ heroEyebrow }}</p>
+                <h1 class="home-media-hero__title">{{ heroTitle }}</h1>
+                <p v-if="heroSub" class="home-media-hero__sub">{{ heroSub }}</p>
 
-            <div class="app-hero-main-card__content">
-              <p class="home-media-hero__eyebrow">{{ heroEyebrow }}</p>
-              <h1 class="home-media-hero__title">{{ heroTitle }}</h1>
-              <p v-if="heroSub" class="home-media-hero__sub">{{ heroSub }}</p>
-
-              <div v-if="heroVideo" class="home-media-hero__actions">
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  class="app-hero-cta"
-                  @click="openVideo(heroVideo)"
-                >
-                  <AppIcon name="play" class="app-play-icon size-4" />
-                  {{ heroCtaLabel }}
-                  <span v-if="heroRemainingText" class="app-hero-cta__meta">{{ heroRemainingText }}</span>
-                </Button>
-                <Button
-                  v-if="heroChannelId"
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  class="app-hero-cta app-hero-cta--ghost"
-                  @click="openSubscription(heroChannelId)"
-                >
-                  查看频道
-                </Button>
-              </div>
-              <div v-else class="home-media-hero__actions">
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  class="app-hero-cta"
-                  @click="scrollToFirstRail"
-                >
-                  <AppIcon name="chevronDown" class="size-4" />
-                  开始探索
-                </Button>
+                <div v-if="heroVideo" class="home-media-hero__actions">
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    class="app-hero-cta"
+                    @click="openVideo(heroVideo)"
+                  >
+                    <AppIcon name="play" class="app-play-icon size-4" />
+                    {{ heroCtaLabel }}
+                    <span v-if="heroRemainingText" class="app-hero-cta__meta">{{ heroRemainingText }}</span>
+                  </Button>
+                  <Button
+                    v-if="heroChannelId"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    class="app-hero-cta app-hero-cta--ghost"
+                    @click="openSubscription(heroChannelId)"
+                  >
+                    查看频道
+                  </Button>
+                </div>
+                <div v-else class="home-media-hero__actions">
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    class="app-hero-cta"
+                    @click="scrollToFirstRail"
+                  >
+                    <AppIcon name="chevronDown" class="size-4" />
+                    开始探索
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div v-if="secondaryFeaturedVideos.length > 0" class="app-hero-feature-grid" aria-label="推荐轮播">
-            <Button
-              v-for="{ video } in secondaryFeaturedVideos"
-              :key="video.id"
-              type="button"
-              variant="ghost"
-              class="app-hero-feature-card"
-              :aria-label="`播放 ${video.title}`"
-              @click="openVideo(video)"
-            >
-              <img :src="video.thumbnail || ''" :alt="video.title" class="app-hero-feature-card__img" loading="lazy" />
-              <span class="app-hero-feature-card__content">
-                <span class="app-hero-feature-card__title">{{ video.title }}</span>
-                <span class="app-hero-feature-card__meta-row">
-                  <span class="app-hero-feature-card__meta">{{ video.subscriptions?.[0]?.name || video.site || '未知' }}</span>
-                  <span v-if="video.duration" class="app-hero-feature-card__duration">{{ formatDuration(video.duration) }}</span>
+            <div v-if="secondaryFeaturedVideos.length > 0" class="app-hero-feature-grid" aria-label="更多推荐">
+              <Button
+                v-for="{ video } in secondaryFeaturedVideos"
+                :key="video.id"
+                type="button"
+                variant="ghost"
+                class="app-hero-feature-card"
+                :aria-label="`播放 ${video.title}`"
+                @click="openVideo(video)"
+              >
+                <img :src="video.thumbnail || ''" :alt="video.title" class="app-hero-feature-card__img" loading="lazy" />
+                <span class="app-hero-feature-card__content">
+                  <span class="app-hero-feature-card__title">{{ video.title }}</span>
+                  <span class="app-hero-feature-card__meta-row">
+                    <span class="app-hero-feature-card__meta">{{ video.subscriptions?.[0]?.name || video.site || '未知' }}</span>
+                    <span v-if="video.duration" class="app-hero-feature-card__duration">{{ formatDuration(video.duration) }}</span>
+                  </span>
                 </span>
-              </span>
-            </Button>
+              </Button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <SpotlightRow
-        ref="spotlightRef"
-        @openModal="openVideo"
-        @goToSubscription="openSubscription"
-      />
-      <ContinueWatching
-        ref="continueWatchingRef"
-        @openModal="openVideo"
-        @viewMore="goToContinueWatching"
-        @goToSubscription="openSubscription"
-        @heroChange="handleHeroChange"
-      />
-      <SpecialFollowVideos
-        ref="specialFollowRef"
-        @openModal="openVideo"
-        @goToSubscription="openSubscription"
-        @viewMore="goToSpecialFollowVideos"
-      />
+        <SpotlightRow
+          ref="spotlightRef"
+          @openModal="openVideo"
+          @goToSubscription="openSubscription"
+        />
+        <ContinueWatching
+          ref="continueWatchingRef"
+          @openModal="openVideo"
+          @viewMore="goToContinueWatching"
+          @goToSubscription="openSubscription"
+          @heroChange="handleHeroChange"
+        />
+        <SpecialFollowVideos
+          ref="specialFollowRef"
+          @openModal="openVideo"
+          @goToSubscription="openSubscription"
+          @viewMore="goToSpecialFollowVideos"
+        />
+      </div>
     </div>
   </AppPageShell>
 </template>
@@ -326,10 +326,10 @@ onBeforeUnmount(() => {
 
 .home-page-content {
   position: relative;
-  padding-top: 1rem;
+  padding-top: var(--space-4);
 }
 
-/* ── CTA buttons ── */
+/* Primary CTA on dark media surface */
 .app-hero-cta {
   box-sizing: border-box;
   display: inline-flex;
@@ -345,23 +345,26 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   color: hsl(var(--primary-foreground));
   background: hsl(var(--primary));
-  box-shadow: 0 1px 2px hsl(var(--primary) / 0.3);
+  box-shadow: 0 1px 2px hsl(var(--primary) / 0.28);
   transition:
-    transform var(--duration-fast) var(--ease-spring),
-    box-shadow var(--duration-fast) var(--ease-default);
-  cursor: pointer;
+    transform var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
 }
+
 .app-hero-cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px hsl(var(--primary) / 0.34);
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.32);
 }
+
 .app-hero-cta:active {
-  transform: translateY(0) scale(0.98);
+  transform: scale(0.985);
 }
+
 .app-hero-cta:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.4);
+  box-shadow: 0 0 0 2px hsl(0 0% 0% / 0.4), 0 0 0 4px hsl(var(--ring) / 0.55);
 }
+
 .app-hero-cta__meta {
   display: inline-flex;
   align-items: center;
@@ -376,47 +379,46 @@ onBeforeUnmount(() => {
   font-variant-numeric: tabular-nums;
   opacity: 0.85;
 }
+
 .app-hero-cta--ghost {
-  background: hsl(var(--card) / 0.72);
+  background: hsl(0 0% 0% / 0.35);
   color: hsl(0 0% 100%);
   border: 1px solid hsl(0 0% 100% / 0.18);
-}
-.app-hero-cta--ghost:hover {
-  background: hsl(var(--card) / 0.86);
-  border-color: hsl(0 0% 100% / 0.3);
+  box-shadow: none;
 }
 
+.app-hero-cta--ghost:hover {
+  background: hsl(0 0% 0% / 0.48);
+  border-color: hsl(0 0% 100% / 0.28);
+  box-shadow: none;
+}
+
+/* Single surface shell — no nested card chrome around the whole hero. */
 .home-media-hero {
   position: relative;
   min-height: 0;
-  height: auto;
-  padding: 1px;
   overflow: hidden;
+  border: 1px solid var(--app-surface-border-subtle);
   border-radius: var(--app-surface-radius);
-  border: 1px solid hsl(var(--border) / 0.54);
-  background: hsl(var(--card) / 0.5);
-  box-shadow: var(--app-panel-shadow);
-  isolation: isolate;
+  background: hsl(var(--card) / 0.42);
 }
 
 .home-media-hero__inner {
   display: grid;
-  grid-template-columns: minmax(0, 1.42fr) minmax(22rem, 0.88fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(18rem, 0.85fr);
   align-items: stretch;
-  gap: 0.75rem;
-  height: auto;
+  gap: var(--space-3);
   min-height: 0;
-  padding: 0.75rem;
+  padding: var(--space-3);
 }
 
 .app-hero-main-card {
   position: relative;
   min-width: 0;
   aspect-ratio: 21 / 9;
-  border-radius: var(--radius-lg);
   overflow: hidden;
-  background: hsl(var(--card) / 0.58);
-  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: var(--radius-lg);
+  background: hsl(var(--muted) / 0.55);
 }
 
 .app-hero-main-card__img {
@@ -438,7 +440,7 @@ onBeforeUnmount(() => {
 
 .app-hero-main-card__cover-action:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 3px hsl(var(--ring) / 0.58);
+  box-shadow: inset 0 0 0 3px hsl(var(--ring) / 0.55);
 }
 
 .app-hero-main-card__scrim {
@@ -446,7 +448,7 @@ onBeforeUnmount(() => {
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  background: linear-gradient(to top, hsl(0 0% 0% / 0.9), hsl(0 0% 0% / 0.24) 60%, transparent);
+  background: linear-gradient(to top, hsl(0 0% 0% / 0.88), hsl(0 0% 0% / 0.2) 55%, transparent 78%);
 }
 
 .app-hero-main-card__content {
@@ -454,51 +456,51 @@ onBeforeUnmount(() => {
   inset-inline: 0;
   bottom: 0;
   z-index: 3;
-  padding: clamp(1.25rem, 2.1vw, 2.25rem);
+  padding: var(--space-5);
 }
 
-.home-media-hero__eyebrow {
-  margin: 0 0 0.5rem;
-  font-family: var(--font-sans);
+/* Status line — not a decorative section eyebrow. */
+.home-media-hero__kicker {
+  margin: 0 0 0.375rem;
+  color: hsl(var(--primary));
   font-size: 0.75rem;
   font-weight: 650;
-  letter-spacing: 0;
-  color: hsl(var(--primary));
+  line-height: 1.25;
 }
 
 .home-media-hero__title {
   margin: 0;
-  max-width: 32rem;
-  font-family: var(--app-heading-font);
-  font-size: clamp(1.875rem, 1.3rem + 1.8vw, 3rem);
-  font-weight: var(--app-hero-weight, 650);
-  line-height: 1.08;
-  letter-spacing: -0.02em;
+  max-width: 34rem;
   color: hsl(0 0% 100%);
+  font-family: var(--app-heading-font);
+  font-size: var(--app-hero-size);
+  font-weight: var(--app-hero-weight);
+  line-height: var(--app-hero-leading);
+  letter-spacing: var(--app-hero-tracking);
   text-wrap: balance;
 }
 
 .home-media-hero__sub {
-  margin: 0.75rem 0 0;
-  max-width: 38rem;
+  margin: 0.5rem 0 0;
+  max-width: 36rem;
+  color: hsl(0 0% 100% / 0.78);
   font-size: 0.875rem;
-  line-height: 1.62;
-  color: hsl(0 0% 100% / 0.76);
+  line-height: 1.55;
   text-wrap: pretty;
 }
 
 .home-media-hero__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
+  gap: 0.625rem;
+  margin-top: var(--space-4);
 }
 
 .app-hero-feature-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: var(--space-3);
   min-width: 0;
   min-height: 0;
   height: 100%;
@@ -513,52 +515,50 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   padding: 0;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: var(--radius-lg);
   overflow: hidden;
-  background: hsl(var(--card) / 0.58);
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--radius-lg);
+  background: hsl(var(--muted) / 0.45);
   cursor: pointer;
   transition:
-    transform var(--duration-fast) var(--ease-spring),
-    box-shadow var(--duration-fast) var(--ease-default),
-    opacity var(--duration-fast) var(--ease-default);
+    border-color var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
 }
 
 .app-hero-feature-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--app-panel-shadow);
+  border-color: hsl(var(--primary) / 0.28);
+  transform: translateY(-1px);
 }
 
 .app-hero-feature-card:active {
-  transform: scale(0.98);
+  transform: scale(0.985);
 }
 
 .app-hero-feature-card:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.55);
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.5);
 }
 
 .app-hero-feature-card__img {
   display: block;
   position: absolute;
-  inset: -1px;
-  width: calc(100% + 2px);
-  height: calc(100% + 2px);
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  transition: transform var(--duration-normal) var(--ease-default), filter var(--duration-normal) var(--ease-default);
+  transition: transform var(--duration-base) var(--ease-default);
 }
 
 .app-hero-feature-card:hover .app-hero-feature-card__img {
-  filter: brightness(1.08);
-  transform: scale(1.04);
+  transform: scale(1.03);
 }
 
 .app-hero-feature-card__meta-row {
   display: inline-flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  min-width: 0;
+  gap: 0.5rem;
 }
 
 .app-hero-feature-card__duration {
@@ -580,12 +580,12 @@ onBeforeUnmount(() => {
 .app-hero-feature-card__content {
   position: absolute;
   inset-inline: 0;
-  bottom: -1px;
+  bottom: 0;
   display: grid;
   gap: 0.25rem;
-  padding: 3.2rem 0.75rem 1.15rem;
+  padding: 2.75rem 0.75rem 0.875rem;
   color: hsl(0 0% 100%);
-  background: linear-gradient(to top, hsl(0 0% 0% / 0.88), hsl(0 0% 0% / 0.5) 48%, transparent);
+  background: linear-gradient(to top, hsl(0 0% 0% / 0.88), hsl(0 0% 0% / 0.4) 55%, transparent);
   text-align: left;
 }
 
@@ -601,7 +601,7 @@ onBeforeUnmount(() => {
 .app-hero-feature-card__meta {
   overflow: hidden;
   min-width: 0;
-  color: hsl(0 0% 100% / 0.7);
+  color: hsl(0 0% 100% / 0.72);
   font-size: 0.6875rem;
   font-weight: 500;
   line-height: 1.2;
@@ -609,19 +609,14 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-@media (max-width: 960px) {
-  .home-media-hero {
-    height: auto;
-  }
-
+@media (max-width: 1100px) {
   .home-media-hero__inner {
     grid-template-columns: 1fr;
-    align-items: start;
   }
 
   .app-hero-main-card {
-    aspect-ratio: auto;
-    min-height: 320px;
+    aspect-ratio: 16 / 9;
+    min-height: 18rem;
   }
 
   .app-hero-feature-grid {
@@ -630,21 +625,20 @@ onBeforeUnmount(() => {
 
   .app-hero-feature-card {
     aspect-ratio: 16 / 9;
+    min-height: 8.5rem;
   }
 }
 
-@media (max-width: 640px) {
-  .home-page-content {
-    padding-top: 0.5rem;
+@media (prefers-reduced-motion: reduce) {
+  .app-hero-cta,
+  .app-hero-feature-card,
+  .app-hero-feature-card__img {
+    transition: none;
   }
 
-  .home-media-hero__inner,
-  .app-hero-feature-grid {
-    gap: 0.5rem;
-  }
-
-  .app-hero-main-card {
-    min-height: 300px;
+  .app-hero-feature-card:hover,
+  .app-hero-feature-card:hover .app-hero-feature-card__img {
+    transform: none;
   }
 }
 </style>

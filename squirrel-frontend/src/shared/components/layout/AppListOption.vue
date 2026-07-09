@@ -42,12 +42,12 @@ const props = withDefaults(defineProps<{
   min-height: 2.25rem;
   width: 100%;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
   border: 1px solid transparent;
   border-radius: var(--radius-md);
-  padding: 0.25rem 0.5rem;
+  padding: 0.375rem 0.5rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
@@ -57,10 +57,10 @@ const props = withDefaults(defineProps<{
     border-color var(--duration-fast) var(--ease-default);
 }
 
-/* Slightly taller & uses body-text size for primary sidebars (Settings).
-   Padding stays the same; the height bump comes from the larger font. */
+/* Dense nav rows (settings tabs, filter lists). */
 .app-list-option--compact {
   min-height: 2rem;
+  gap: 0.5rem;
   padding: 0.25rem 0.625rem;
   font-size: 0.8125rem;
 }

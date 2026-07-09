@@ -1,70 +1,68 @@
 <template>
   <div class="music-artist-detail">
-    <header class="music-artist-header">
-      <div class="music-artist-cover">
-        <img v-if="artist.avatar" :src="artist.avatar" :alt="artist.name" loading="lazy" />
-        <div v-else class="music-artist-cover-placeholder">
-          <AppIcon name="user" class="h-16 w-16" />
-        </div>
-      </div>
-      <div class="music-artist-info">
-        <span class="music-artist-type">歌手</span>
-        <h1 class="music-artist-name">{{ artist.name }}</h1>
-        <div class="music-artist-meta">
-          <span>{{ artist.song_count || 0 }} 首歌曲</span>
-          <span>{{ artist.album_count || 0 }} 张专辑</span>
-          <span v-if="artist.fan_count">{{ formatCount(artist.fan_count) }} 粉丝</span>
-        </div>
-        <div class="music-artist-actions">
-          <Button @click="playAll">
-            <AppIcon name="play" class="h-5 w-5" />
-            播放热门
-          </Button>
-          <Button
-            variant="secondary"
-            :loading="followLoading"
-            :class="followed && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
-            @click="handleFollow"
-          >
-            <AppIcon v-if="!followLoading" name="heart" class="h-5 w-5" :class="{ 'fill-current': followed }" />
-            {{ followed ? '已关注' : '关注' }}
-          </Button>
-        </div>
-      </div>
-    </header>
+    <MusicDetailHeader
+      kicker="歌手"
+      :title="artist.name"
+      :cover="artist.avatar"
+      cover-shape="circle"
+      fallback-icon="user"
+    >
+      <template #meta>
+        <span>{{ artist.song_count || 0 }} 首歌曲</span>
+        <span>{{ artist.album_count || 0 }} 张专辑</span>
+        <span v-if="artist.fan_count">{{ formatCount(artist.fan_count) }} 粉丝</span>
+      </template>
+      <template #actions>
+        <Button @click="playAll">
+          <AppIcon name="play" class="h-4 w-4" />
+          播放热门
+        </Button>
+        <Button
+          variant="secondary"
+          :loading="followLoading"
+          :class="followed && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
+          @click="handleFollow"
+        >
+          <AppIcon v-if="!followLoading" name="heart" class="h-4 w-4" :class="{ 'fill-current': followed }" />
+          {{ followed ? '已关注' : '关注' }}
+        </Button>
+      </template>
+    </MusicDetailHeader>
 
-    <section v-if="albums.length" class="music-artist-section">
-      <h2 class="music-section-title">专辑</h2>
-      <div class="music-album-grid">
-        <article
+    <section v-if="albums.length" class="music-detail-section">
+      <h2 class="music-detail-section-title">专辑</h2>
+      <div class="music-detail-grid music-detail-grid--albums">
+        <button
           v-for="album in albums"
           :key="album.id"
-          class="music-album-card"
+          type="button"
+          class="music-detail-tile"
           @click="$emit('select-album', album)"
         >
           <img :src="album.cover" :alt="album.name" loading="lazy" />
-          <h3 class="music-album-name">{{ album.name }}</h3>
-        </article>
+          <span class="music-detail-tile__title">{{ album.name }}</span>
+        </button>
       </div>
     </section>
 
-    <section v-if="videos.length" class="music-artist-section">
-      <h2 class="music-section-title">MV</h2>
-      <div class="music-video-grid">
-        <article
+    <section v-if="videos.length" class="music-detail-section">
+      <h2 class="music-detail-section-title">MV</h2>
+      <div class="music-detail-grid music-detail-grid--videos">
+        <button
           v-for="video in videos"
           :key="video.id"
-          class="music-video-card"
+          type="button"
+          class="music-detail-tile music-detail-tile--video"
           @click="$emit('play-video', video)"
         >
           <img :src="video.cover" :alt="video.name" loading="lazy" />
-          <h3 class="music-video-name">{{ video.name }}</h3>
-        </article>
+          <span class="music-detail-tile__title">{{ video.name }}</span>
+        </button>
       </div>
     </section>
 
-    <section class="music-artist-section">
-      <h2 class="music-section-title">热门歌曲</h2>
+    <section class="music-detail-section">
+      <h2 class="music-detail-section-title">热门歌曲</h2>
       <AppBlockLoader v-if="tracksLoading" size="sm" />
       <MusicTrackList
         v-else
@@ -73,7 +71,7 @@
         @select-artist="$emit('select-artist', $event)"
         @play-mv="$emit('play-mv', $event)"
       />
-      <div v-if="hasMore" class="music-load-more">
+      <div v-if="hasMore" class="music-detail-load-more">
         <Button variant="outline" :loading="loadingMore" @click="$emit('load-more')">
           加载更多
         </Button>
@@ -86,6 +84,7 @@
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
+import MusicDetailHeader from './shared/MusicDetailHeader.vue'
 import MusicTrackList from './MusicTrackList.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { formatCount } from '@/shared/lib/dateFormat'
@@ -121,174 +120,89 @@ function playAll() {
 }
 
 function handleFollow() {
-  if (props.followed) {
-    emit('unfollow')
-  } else {
-    emit('follow')
-  }
+  if (props.followed) emit('unfollow')
+  else emit('follow')
 }
 </script>
 
 <style scoped>
 .music-artist-detail {
-  padding: 1.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.music-artist-header {
-  display: flex;
-  gap: 2rem;
-  margin-bottom: 2rem;
-}
-
-.music-artist-cover {
-  width: 200px;
-  height: 200px;
-  border-radius: 9999px;
-  overflow: hidden;
-  background: hsl(var(--muted) / 0.3);
-}
-
-.music-artist-cover img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
-.music-artist-cover-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: hsl(var(--muted-foreground));
+.music-detail-section {
+  margin-bottom: var(--space-6);
 }
 
-.music-artist-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.music-artist-type {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: hsl(var(--primary));
-}
-
-.music-artist-name {
-  /* Aligns with the app-wide heading system: display font + h1 scale token. */
-  font-family: var(--app-heading-font);
-  font-size: var(--app-h1-size);
-  font-weight: var(--app-h1-weight);
-  letter-spacing: var(--app-h1-tracking);
-  line-height: var(--app-h1-leading);
-  color: var(--app-heading-color);
-  margin-top: 0.5rem;
-}
-
-.music-artist-meta {
-  display: flex;
-  gap: 1rem;
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-  margin-top: 0.5rem;
-}
-
-.music-artist-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.music-artist-section {
-  margin-bottom: 2rem;
-}
-
-.music-section-title {
-  font-size: 1rem;
-  font-weight: 600;
+.music-detail-section-title {
+  margin: 0 0 var(--space-3);
   color: hsl(var(--foreground));
-  margin-bottom: 1rem;
+  font-family: var(--app-heading-font);
+  font-size: var(--app-h3-size);
+  font-weight: var(--app-h3-weight);
+  letter-spacing: var(--app-h3-tracking);
+  line-height: var(--app-h3-leading);
 }
 
-.music-album-grid {
+.music-detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 1rem;
+  gap: var(--space-3);
 }
 
-.music-album-card {
+.music-detail-grid--albums {
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+}
+
+.music-detail-grid--videos {
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+}
+
+.music-detail-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
   cursor: pointer;
 }
 
-.music-album-card img {
+.music-detail-tile:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.5);
+  border-radius: var(--radius-md);
+}
+
+.music-detail-tile img {
+  display: block;
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
-  border-radius: 0.5rem;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--radius-md);
+  background: hsl(var(--muted) / 0.4);
 }
 
-.music-album-name {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: hsl(var(--foreground));
-  margin-top: 0.5rem;
+.music-detail-tile--video img {
+  aspect-ratio: 16 / 9;
+}
+
+.music-detail-tile__title {
   overflow: hidden;
+  color: hsl(var(--foreground));
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.music-video-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.music-video-card {
-  cursor: pointer;
-}
-
-.music-video-card img {
-  width: 100%;
-  aspect-ratio: 16/9;
-  object-fit: cover;
-  border-radius: 0.5rem;
-}
-
-.music-video-name {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: hsl(var(--foreground));
-  margin-top: 0.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.music-load-more {
+.music-detail-load-more {
   display: flex;
   justify-content: center;
-  padding: 1rem 0;
-}
-
-.music-load-more-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-  background: none;
-  border: 1px solid hsl(var(--border));
-  border-radius: 9999px;
-  cursor: pointer;
-}
-
-.music-load-more-btn:hover:not(:disabled) {
-  color: hsl(var(--foreground));
-  border-color: hsl(var(--primary));
+  padding: var(--space-4) 0;
 }
 </style>

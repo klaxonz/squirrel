@@ -360,10 +360,10 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  /* UI-035 + UI-057: chrome is flat. The previous linear-gradient on the workbench
-     floor was a UI-mood decision that conflicted with the panel's flat brief. */
+  /* Flat chrome — amber is state, not atmosphere (DESIGN.md). */
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+  --app-workbench-header-height: 3.5rem;
 }
 
 .app-workbench__sidebar {
@@ -373,7 +373,7 @@
   flex-direction: column;
   width: var(--app-workbench-sidebar-width, 17.5rem);
   border-right: 1px solid var(--app-surface-border-subtle);
-  background: hsl(var(--card) / 0.42);
+  background: hsl(var(--card) / 0.35);
 }
 
 .app-workbench__sidebar--always {
@@ -382,12 +382,12 @@
 
 .app-workbench__sidebar-header {
   display: flex;
-  min-height: var(--app-workbench-header-height, 4.25rem);
+  min-height: var(--app-workbench-header-height);
   flex: none;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  border-bottom: 1px solid var(--app-surface-border-subtle);
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--app-hairline);
   padding-inline: var(--space-4);
 }
 
@@ -403,16 +403,13 @@
   position: relative;
   z-index: var(--z-content);
   display: flex;
-  min-height: var(--app-workbench-header-height, 4.25rem);
+  min-height: var(--app-workbench-header-height);
   flex: none;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  border-bottom: 1px solid var(--app-surface-border-subtle);
-  /* UI-035: header is flat — the prior linear-gradient implied a glass/elevated
-     card. With hairline border + transparent panel the workbench already has
-     enough separation. */
-  background: transparent;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--app-hairline);
+  background: hsl(var(--background) / 0.92);
   padding-inline: var(--space-5);
 }
 
@@ -430,15 +427,26 @@
   padding: var(--space-5);
 }
 
+/* Sidebar list scroll region — shared by playlist / settings / tasks navs. */
+.app-workbench__nav {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+
 .app-pane {
   position: relative;
-  z-index: 10;
+  z-index: var(--z-content);
   display: flex;
   height: 100%;
   min-height: 0;
   flex: none;
   flex-direction: column;
-  border-right: 1px solid var(--app-surface-border-subtle);
+  border-right: 1px solid var(--app-hairline);
   background: hsl(var(--background));
 }
 
@@ -449,23 +457,68 @@
   border-right: 0;
 }
 
+.app-pane--list {
+  width: var(--app-pane-list-width, 25rem);
+  max-width: 100%;
+}
+
 .app-pane__header {
   position: relative;
   z-index: var(--z-content);
   display: flex;
   flex: none;
   flex-direction: column;
-  border-bottom: 1px solid var(--app-surface-border-subtle);
-  background: hsl(var(--background));
-  padding: var(--space-4);
+  gap: var(--space-3);
+  min-height: var(--app-workbench-header-height, 3.5rem);
+  border-bottom: 1px solid var(--app-hairline);
+  background: hsl(var(--background) / 0.92);
+  padding: var(--space-3) var(--space-4);
+}
+
+.app-pane__header-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.app-pane__header-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.125rem;
+}
+
+.app-pane__header-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.app-pane__header-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.app-pane__header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .app-pane__controls {
   position: relative;
   z-index: var(--z-content);
   flex: none;
-  border-bottom: 1px solid var(--app-surface-border-subtle);
-  padding: var(--space-4);
+  border-bottom: 1px solid var(--app-hairline);
+  padding: var(--space-3) var(--space-4);
 }
 
 .app-pane__controls > * + * {
@@ -547,7 +600,7 @@
   position: relative;
   overflow: hidden;
   border-bottom: 1px solid var(--app-hairline);
-  background: hsl(var(--background));
+  background: hsl(var(--background) / 0.92);
 }
 
 .app-media-header__inner {
@@ -559,7 +612,7 @@
   justify-content: space-between;
   gap: var(--space-4);
   margin-inline: auto;
-  padding: var(--space-5);
+  padding: var(--space-5) var(--app-page-gutter-lg, 2rem);
 }
 
 .app-surface {
@@ -1000,11 +1053,9 @@
 }
 
 .app-filter-button.is-active {
-  background:
-    radial-gradient(ellipse 88% 140% at 0% 50%, hsl(var(--primary) / 0.16), transparent 72%),
-    hsl(var(--primary) / 0.1);
+  background: hsl(var(--primary) / 0.1);
   color: hsl(var(--foreground));
-  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.14) inset;
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.16) inset;
 }
 
 .app-table-shell {
@@ -1140,12 +1191,15 @@
   flex-direction: column;
   gap: var(--space-3);
   overflow: hidden;
+  height: 100%;
   padding-top: var(--space-2);
+  padding-bottom: var(--space-4);
 }
 
 .app-log-filter-bar {
+  flex: none;
   border-bottom: 1px solid var(--app-hairline);
-  padding-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
 }
 
 .app-log-stream {
@@ -1154,6 +1208,7 @@
   flex: 1;
   flex-direction: column;
   overflow: hidden;
+  border-radius: var(--app-surface-radius);
   font-family: var(--font-mono);
   font-size: 0.875rem;
 }
@@ -1164,12 +1219,12 @@
   align-items: flex-start;
   gap: 0.75rem;
   border-bottom: 1px solid hsl(var(--border) / 0.2);
-  padding: 0.25rem 0.5rem;
+  padding: 0.375rem 0.75rem;
   transition: background-color var(--duration-fast) var(--ease-default);
 }
 
 .app-log-row:hover {
-  background: hsl(var(--muted) / 0.3);
+  background: var(--app-row-hover-bg);
 }
 
 .app-stat-strip {

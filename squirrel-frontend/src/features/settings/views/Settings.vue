@@ -1,18 +1,14 @@
 <template>
-  <AppPageShell variant="compact">
-    <AppTwoColumnLayout>
+  <AppPageShell variant="compact" fill>
+    <AppTwoColumnLayout content-width="60rem">
       <template #sidebar>
-        <div class="settings-sidebar-header">
-          <div class="min-w-0">
-            <h1 class="app-h3 truncate">设置</h1>
-            <p>{{ activeTab.label }}</p>
-          </div>
-          <span v-if="hasUnsavedChanges" class="settings-save-state">
-            保存中
-          </span>
-        </div>
+        <AppSidebarHeader title="设置" :subtitle="activeTab.label">
+          <template #actions>
+            <span v-if="hasUnsavedChanges" class="settings-save-state">保存中</span>
+          </template>
+        </AppSidebarHeader>
 
-        <nav class="settings-sidebar-nav custom-scrollbar">
+        <nav class="app-workbench__nav custom-scrollbar" aria-label="设置分区">
           <AppListOption
             v-for="tab in tabs"
             :key="tab.key"
@@ -28,52 +24,49 @@
       </template>
 
       <template #header>
-        <PageHeader :title="activeTab.label" :description="activeTabDescription">
+        <AppPaneHeader :title="activeTab.label" :subtitle="activeTabDescription">
           <template #actions>
-            <span v-if="hasUnsavedChanges" class="settings-save-state settings-save-state--header">
-              保存中
-            </span>
+            <span v-if="hasUnsavedChanges" class="settings-save-state">保存中</span>
           </template>
-        </PageHeader>
+        </AppPaneHeader>
       </template>
 
-        <div class="app-workbench__scroll custom-scrollbar">
-          <main class="app-workbench__content settings-main">
-            <div v-if="pageLoading" class="space-y-3">
-              <AppSkeleton height="3rem" rounded="var(--radius-lg)" shimmer />
-              <AppSkeleton height="12rem" rounded="var(--radius-lg)" shimmer />
-              <AppSkeleton height="9rem" rounded="var(--radius-lg)" shimmer />
+      <main class="app-workbench__content">
+        <div v-if="pageLoading" class="app-content-stack app-content-stack--dense">
+          <AppSkeleton height="3rem" rounded="var(--radius-lg)" shimmer />
+          <AppSkeleton height="12rem" rounded="var(--radius-lg)" shimmer />
+          <AppSkeleton height="9rem" rounded="var(--radius-lg)" shimmer />
+        </div>
+
+        <div v-else class="app-settings-stack">
+          <section v-if="currentTab === 'appearance'" class="app-settings-section">
+            <div class="app-settings-section-title">
+              <h3>界面外观</h3>
+              <p>选择偏好的视觉主题。</p>
             </div>
 
-            <div v-else class="app-settings-stack">
-              <section v-if="currentTab === 'appearance'" class="app-settings-section">
-                <div class="app-settings-section-title">
-                  <h3>界面外观</h3>
-                  <p>选择偏好的视觉主题。</p>
+            <div class="settings-theme-grid">
+              <Button
+                v-for="option in themeOptions"
+                :key="option.value"
+                variant="outline"
+                @click="setThemeMode(option.value)"
+                class="settings-theme-option"
+                :class="{ 'settings-theme-option--active': themeMode === option.value }"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="app-option-icon">
+                    <AppIcon :name="option.icon" class="h-5 w-5" />
+                  </span>
+                  <AppIcon v-if="themeMode === option.value" name="statusSuccess" class="h-4 w-4 text-foreground" />
                 </div>
-
-                <div class="settings-theme-grid">
-                  <Button
-                    v-for="option in themeOptions"
-                    :key="option.value"
-                    variant="outline"
-                    @click="setThemeMode(option.value)"
-                    class="settings-theme-option"
-                    :class="{ 'settings-theme-option--active': themeMode === option.value }"
-                  >
-                    <div class="flex items-center justify-between">
-                      <span class="app-option-icon">
-                        <AppIcon :name="option.icon" class="h-5 w-5" />
-                      </span>
-                      <AppIcon v-if="themeMode === option.value" name="statusSuccess" class="h-4 w-4 text-foreground" />
-                    </div>
-                    <div>
-                      <div class="text-sm font-semibold">{{ option.label }}</div>
-                      <div class="mt-1 text-xs text-muted-foreground">{{ option.description }}</div>
-                    </div>
-                  </Button>
+                <div>
+                  <div class="text-sm font-semibold">{{ option.label }}</div>
+                  <div class="mt-1 text-xs text-muted-foreground">{{ option.description }}</div>
                 </div>
-              </section>
+              </Button>
+            </div>
+          </section>
 
               <section v-if="currentTab === 'content'" class="app-settings-section">
                 <div class="app-settings-section-title">
@@ -191,7 +184,6 @@
               </section>
             </div>
           </main>
-        </div>
     </AppTwoColumnLayout>
   </AppPageShell>
 </template>
@@ -204,7 +196,8 @@ import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppListOption from '@/shared/components/layout/AppListOption.vue'
-import PageHeader from '@/shared/components/layout/PageHeader.vue'
+import AppPaneHeader from '@/shared/components/layout/AppPaneHeader.vue'
+import AppSidebarHeader from '@/shared/components/layout/AppSidebarHeader.vue'
 import { Button } from '@/shared/ui/button'
 import { Switch } from '@/shared/ui/switch'
 import { Input } from '@/shared/ui/input'
@@ -342,80 +335,22 @@ const onSystemToggle = async (key: string, val: boolean) => {
 </script>
 
 <style scoped>
-.settings-sidebar-header {
-  display: flex;
-  min-height: 4.25rem;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.48);
-  padding: 0 1rem;
-}
-
-.settings-sidebar-header p,
-.settings-header-copy p {
-  margin-top: 0.25rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  line-height: 1.35;
-}
-
 .settings-save-state {
   display: inline-flex;
   height: 1.75rem;
   align-items: center;
   border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.45);
   padding: 0 0.5rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
 }
 
-.settings-save-state--header {
-  display: none;
-}
-
-.settings-sidebar-nav {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
 .settings-nav-badge {
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 500;
-}
-
-.settings-main {
-  --app-workbench-content-width: 960px;
-}
-
-.settings-alert {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid hsl(var(--border) / 0.5);
-  padding: 0.75rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.settings-alert--error {
-  border-color: hsl(var(--destructive) / 0.2);
-  background: hsl(var(--destructive) / 0.08);
-  color: hsl(var(--destructive));
-}
-
-.settings-alert--success {
-  background: hsl(var(--muted) / 0.5);
-  color: hsl(var(--foreground));
 }
 
 .settings-theme-grid {
@@ -430,25 +365,21 @@ const onSystemToggle = async (key: string, val: boolean) => {
   min-height: 7rem;
   flex-direction: column;
   justify-content: space-between;
-  border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 0.625rem;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--app-surface-radius);
   background: hsl(var(--card) / 0.58);
   padding: 1rem;
   color: hsl(var(--foreground));
   text-align: left;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
 }
 
 .settings-theme-option:hover,
 .settings-theme-option--active {
   border-color: hsl(var(--primary) / 0.32);
   background: hsl(var(--accent) / 0.45);
-}
-
-@media (min-width: 640px) {
-  .settings-save-state--header {
-    display: inline-flex;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -170,35 +170,36 @@ const subtitleText = computed(() => {
 
 <style scoped>
 .music-greeting {
-  padding: 0.75rem 0 1.5rem;
   width: 100%;
-  max-width: 1440px;
+  padding: var(--space-2) 0 var(--space-5);
 }
 
 .music-greeting-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 .music-greeting-left {
   display: flex;
-  align-items: center;
-  gap: 1rem;
   min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .music-greeting-avatar {
-  width: 2.625rem;
-  height: 2.625rem;
-  border-radius: 0.625rem;
-  background: hsl(var(--muted) / 0.5);
   display: flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--app-surface-radius);
+  background: hsl(var(--muted) / 0.5);
   color: hsl(var(--muted-foreground));
 }
 
@@ -209,25 +210,26 @@ const subtitleText = computed(() => {
 }
 
 .music-greeting-text {
-  flex: 1;
   min-width: 0;
+  flex: 1;
 }
 
 .music-greeting-title {
-  font-family: var(--app-heading-font);
-  font-size: 1.3125rem;
-  font-weight: var(--app-h1-weight);
+  margin: 0;
   color: var(--app-heading-color);
-  letter-spacing: var(--app-h1-tracking);
-  line-height: var(--app-h1-leading);
+  font-family: var(--app-heading-font);
+  font-size: var(--app-h2-size);
+  font-weight: var(--app-h2-weight);
+  letter-spacing: var(--app-h2-tracking);
+  line-height: var(--app-h2-leading);
 }
 
 .music-greeting-subtitle {
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground) / 0.85);
-  margin-top: 0.25rem;
-  font-weight: 500;
+  margin: 0.25rem 0 0;
   overflow: hidden;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -266,8 +268,8 @@ const subtitleText = computed(() => {
   gap: 0.75rem;
   min-height: 4.5rem;
   padding: 0.75rem;
-  border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 0.625rem;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--app-surface-radius);
   background: hsl(var(--card) / 0.54);
 }
 

@@ -37,6 +37,13 @@ defineProps<{
   min-height: 0;
 }
 
+/* Stretch the primary workbench child only — dialogs / portals may also be
+   direct children and must not receive flex:1. */
+.app-page-shell--fill > :deep(*:first-child) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .app-page-shell--scrollable {
   overflow-y: auto;
 }

@@ -1,13 +1,43 @@
 <template>
-  <div class="app-two-column">
-    <aside v-if="$slots.sidebar" class="app-two-column__sidebar">
+  <div
+    class="app-workbench app-two-column"
+    :class="{
+      'app-two-column--sidebar-always': sidebarAlways,
+      'app-two-column--fill': fill,
+      'app-two-column--no-main-scroll': !mainScroll,
+    }"
+    :style="rootStyle"
+  >
+    <aside
+      v-if="$slots.sidebar"
+      class="app-workbench__sidebar"
+      :class="{ 'app-workbench__sidebar--always': sidebarAlways }"
+    >
       <slot name="sidebar" />
     </aside>
-    <main class="app-two-column__main">
-      <header v-if="$slots.header" class="app-two-column__header">
+
+    <main class="app-workbench__main">
+      <header v-if="$slots.header" class="app-workbench__header">
         <slot name="header" />
       </header>
-      <div class="app-two-column__content">
+
+      <!--
+        mainScroll=true (default): single scroll region for feed / settings content.
+        mainScroll=false: body fills remaining height so multi-pane children
+        (RSS entry list + reader) own their own scroll roots.
+      -->
+      <div
+        v-if="mainScroll"
+        ref="scrollEl"
+        class="app-workbench__scroll custom-scrollbar"
+      >
+        <slot />
+      </div>
+      <div
+        v-else
+        ref="scrollEl"
+        class="app-workbench__body"
+      >
         <slot />
       </div>
     </main>
@@ -15,69 +45,81 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
+import { computed, ref } from 'vue'
+
+const props = withDefaults(defineProps<{
+  /** Sidebar width CSS value (default 17.5rem). */
   sidebarWidth?: string
+  /** Always show sidebar (desktop + smaller widths). Default false = lg+ only. */
+  sidebarAlways?: boolean
+  /** Content max-width inside main scroll (CSS value or null for token default). */
+  contentWidth?: string | null
+  /** Stretch to parent height (default true for workbench pages). */
+  fill?: boolean
+  /**
+   * When true (default), main content scrolls as one pane.
+   * When false, main body is a non-scrolling flex host for multi-pane layouts.
+   */
+  mainScroll?: boolean
 }>(), {
   sidebarWidth: '17.5rem',
+  sidebarAlways: false,
+  contentWidth: null,
+  fill: true,
+  mainScroll: true,
+})
+
+/** Main pane scroll/body root — used by infinite-scroll observers when mainScroll. */
+const scrollEl = ref<HTMLElement | null>(null)
+defineExpose({ scrollEl })
+
+const rootStyle = computed(() => {
+  const style: Record<string, string> = {
+    '--app-workbench-sidebar-width': props.sidebarWidth,
+  }
+  if (props.contentWidth) {
+    style['--app-workbench-content-width'] = props.contentWidth
+  }
+  return style
 })
 </script>
 
 <style scoped>
+/*
+  Single workbench shell. All two-column product pages (settings, tasks,
+  site runtimes, playlists, music, rss, etc.) share this component so chrome,
+  borders, and scroll regions stay identical. Visual tokens live on
+  .app-workbench* in layout.css — this file only owns component-level flags.
+*/
 .app-two-column {
-  display: flex;
+  width: 100%;
+}
+
+.app-two-column--fill {
   height: 100%;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, hsl(var(--muted) / 0.12), transparent 12rem),
-    hsl(var(--background));
-  color: hsl(var(--foreground));
-}
-
-.app-two-column__sidebar {
-  display: none;
-  flex-direction: column;
-  flex: none;
-  width: v-bind(sidebarWidth);
-  border-right: 1px solid var(--app-surface-border-subtle);
-  background:
-    radial-gradient(ellipse 120% 28% at 0% 0%, hsl(var(--primary) / 0.055), transparent 64%),
-    hsl(var(--card) / 0.42);
-}
-
-.app-two-column__main {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  flex-direction: column;
-  background: transparent;
-}
-
-.app-two-column__header {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 4.25rem;
-  border-bottom: 1px solid var(--app-surface-border-subtle);
-  background:
-    linear-gradient(180deg, hsl(var(--card) / 0.48), hsl(var(--background) / 0.72));
-  padding-inline: 1rem;
-}
-
-.app-two-column__content {
-  flex: 1;
   min-height: 0;
-  overflow-y: auto;
+}
+
+/* Default: hide sidebar below lg; --always keeps it visible. */
+.app-workbench__sidebar {
+  display: none;
+}
+
+.app-workbench__sidebar--always {
+  display: flex;
+}
+
+.app-workbench__body {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 @media (min-width: 1024px) {
-  .app-two-column__sidebar {
+  .app-workbench__sidebar {
     display: flex;
-  }
-
-  .app-two-column__header {
-    padding-inline: 1.5rem;
   }
 }
 </style>

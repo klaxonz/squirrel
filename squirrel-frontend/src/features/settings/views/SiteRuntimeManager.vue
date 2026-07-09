@@ -1,6 +1,6 @@
 <template>
-  <AppPageShell variant="compact">
-    <AppTwoColumnLayout>
+  <AppPageShell variant="compact" fill>
+    <AppTwoColumnLayout content-width="87.5rem">
       <template #sidebar>
         <AppSidebarHeader title="站点" :subtitle="`${siteRuntimeSummary.total} 个已安装`">
           <template #actions>
@@ -23,8 +23,8 @@
           </div>
         </div>
 
-        <div class="space-y-4 app-divider-bottom p-3">
-          <div class="space-y-2">
+        <div class="app-workbench__nav app-content-stack app-content-stack--dense">
+          <div class="app-content-stack app-content-stack--dense">
             <div class="text-xs font-medium text-muted-foreground">登录凭据</div>
             <Button as-child variant="outline" class="w-full justify-start">
               <label class="cursor-pointer">
@@ -39,9 +39,7 @@
               导入凭据
             </Button>
           </div>
-        </div>
 
-        <div class="space-y-2 p-3">
           <Button variant="outline" class="w-full justify-start" :disabled="testingAll" @click="handleTestAll">
             <AppSpinner v-if="testingAll" size="sm" />
             <AppIcon v-else name="sync" class="h-4 w-4" />
@@ -51,14 +49,14 @@
       </template>
 
       <template #header>
-        <div class="min-w-0">
-          <h2 class="app-h2 truncate">站点</h2>
-          <p class="mt-0.5 text-xs text-muted-foreground">{{ siteRuntimeSummary.total }} 个站点 · {{ siteRuntimeSummary.running }} 个运行</p>
-        </div>
-
-        <div class="flex shrink-0 items-center gap-2">
-          <AppSearchInput v-model="searchQuery" placeholder="搜索站点、站点或描述" class="w-80" />
-        </div>
+        <AppPaneHeader
+          title="站点"
+          :subtitle="`${siteRuntimeSummary.total} 个站点 · ${siteRuntimeSummary.running} 个运行`"
+        >
+          <template #actions>
+            <AppSearchInput v-model="searchQuery" placeholder="搜索站点或描述" class="w-80" />
+          </template>
+        </AppPaneHeader>
       </template>
 
       <SiteRuntimeTable
@@ -107,6 +105,7 @@ import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import AppSearchInput from '@/shared/components/layout/AppSearchInput.vue'
 import AppSidebarHeader from '@/shared/components/layout/AppSidebarHeader.vue'
+import AppPaneHeader from '@/shared/components/layout/AppPaneHeader.vue'
 import AppStatCard from '@/shared/components/layout/AppStatCard.vue'
 import SiteConfigEditorDialog from '@/features/settings/components/SiteConfigEditorDialog.vue'
 import SiteRuntimeTable from '@/features/settings/components/SiteRuntimeTable.vue'

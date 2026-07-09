@@ -1,40 +1,41 @@
 <template>
   <div class="music-album-detail">
-    <header class="music-detail-header">
-      <div class="music-detail-cover">
-        <img v-if="album.cover" :src="album.cover" :alt="album.name" loading="lazy" />
-        <div v-else class="music-detail-cover-placeholder">
-          <AppIcon name="playlistMusic" class="h-12 w-12 text-muted-foreground" />
-        </div>
-      </div>
-      <div class="music-detail-info">
-        <span class="music-detail-type">专辑</span>
-        <h1 class="music-detail-name">{{ album.name }}</h1>
-        <div class="music-detail-meta">
-          <Button v-if="album.artist_id" variant="link" size="xs" class="music-meta-link" @click="$emit('select-artist')">
-            {{ album.artist }}
-          </Button>
-          <span v-else>{{ album.artist }}</span>
-          <span v-if="album.publish_date">{{ album.publish_date }}</span>
-          <span v-if="total">{{ total }} 首歌</span>
-        </div>
-        <p v-if="album.intro" class="music-detail-intro">{{ album.intro }}</p>
-        <div class="music-detail-actions">
-          <Button @click="playAll">
-            <AppIcon name="play" class="h-5 w-5" />
-            播放全部
-          </Button>
-          <Button
-            variant="secondary"
-            :class="shuffle && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
-            @click="shuffleAll"
-          >
-            <AppIcon name="shuffle" class="h-5 w-5" />
-            随机
-          </Button>
-        </div>
-      </div>
-    </header>
+    <MusicDetailHeader
+      kicker="专辑"
+      :title="album.name"
+      :cover="album.cover"
+      :description="album.intro || ''"
+      fallback-icon="playlistMusic"
+    >
+      <template #meta>
+        <Button
+          v-if="album.artist_id"
+          variant="link"
+          size="xs"
+          class="music-meta-link"
+          @click="$emit('select-artist')"
+        >
+          {{ album.artist }}
+        </Button>
+        <span v-else>{{ album.artist }}</span>
+        <span v-if="album.publish_date">{{ album.publish_date }}</span>
+        <span v-if="total">{{ total }} 首歌</span>
+      </template>
+      <template #actions>
+        <Button @click="playAll">
+          <AppIcon name="play" class="h-4 w-4" />
+          播放全部
+        </Button>
+        <Button
+          variant="secondary"
+          :class="shuffle && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
+          @click="shuffleAll"
+        >
+          <AppIcon name="shuffle" class="h-4 w-4" />
+          随机
+        </Button>
+      </template>
+    </MusicDetailHeader>
 
     <AppBlockLoader v-if="loading" text="加载歌曲中..." />
 
@@ -59,6 +60,7 @@ import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
+import MusicDetailHeader from './shared/MusicDetailHeader.vue'
 import MusicTrackList from './MusicTrackList.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import type { MusicAlbum, MusicTrack } from '@/shared/api/music'
@@ -96,71 +98,7 @@ function shuffleAll() {
 
 <style scoped>
 .music-album-detail {
-  padding: 1.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.music-detail-header {
-  display: flex;
-  gap: 2rem;
-  margin-bottom: 2rem;
-}
-
-.music-detail-cover {
-  width: 200px;
-  height: 200px;
-  border-radius: 0.75rem;
-  overflow: hidden;
-  background: hsl(var(--muted) / 0.3);
-  flex-shrink: 0;
-}
-
-.music-detail-cover img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.music-detail-cover-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.music-detail-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.music-detail-type {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: hsl(var(--primary));
-}
-
-.music-detail-name {
-  /* Aligns with the app-wide heading system: display font + h1 scale token. */
-  font-family: var(--app-heading-font);
-  font-size: var(--app-h1-size);
-  font-weight: var(--app-h1-weight);
-  letter-spacing: var(--app-h1-tracking);
-  line-height: var(--app-h1-leading);
-  color: var(--app-heading-color);
-  margin-top: 0.5rem;
-}
-
-.music-detail-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-  margin-top: 0.5rem;
 }
 
 .music-meta-link {
@@ -169,49 +107,9 @@ function shuffleAll() {
   font-size: inherit;
 }
 
-.music-detail-intro {
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground) / 0.8);
-  margin-top: 0.75rem;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.music-detail-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
 .music-detail-load-more {
   display: flex;
   justify-content: center;
-  padding: 1rem 0;
-}
-
-.music-load-more-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-  background: none;
-  border: 1px solid hsl(var(--border));
-  border-radius: 9999px;
-  cursor: pointer;
-}
-
-.music-load-more-btn:hover:not(:disabled) {
-  color: hsl(var(--foreground));
-  border-color: hsl(var(--primary));
-}
-
-.music-load-more-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  padding: var(--space-4) 0;
 }
 </style>

@@ -1,24 +1,20 @@
 <template>
   <AppPageShell variant="compact" fill>
-    <div class="app-workbench rss-workbench">
-      <!-- 1. Left Sidebar: Accounts & Feeds -->
-      <aside class="app-workbench__sidebar app-workbench__sidebar--always rss-sidebar">
-        <!-- Header -->
-        <div class="app-workbench__sidebar-header rss-sidebar-header">
-          <div class="min-w-0 flex flex-col justify-center">
-            <h1 class="app-h2 truncate">RSS 内容源</h1>
-            <p class="mt-0.5 text-xs font-medium text-muted-foreground/70">{{ accounts.length }} 个服务账号</p>
-          </div>
-          <Button
-            size="icon-sm"
-            @click="openAddAccount"
-          >
-            <AppIcon name="plus" class="h-5 w-5" />
-          </Button>
-        </div>
+    <AppTwoColumnLayout
+      sidebar-always
+      sidebar-width="20rem"
+      :main-scroll="false"
+    >
+      <template #sidebar>
+        <AppSidebarHeader title="RSS 内容源" :subtitle="`${accounts.length} 个服务账号`">
+          <template #actions>
+            <Button size="icon-sm" aria-label="添加账号" @click="openAddAccount">
+              <AppIcon name="plus" class="h-4 w-4" />
+            </Button>
+          </template>
+        </AppSidebarHeader>
 
-        <!-- Controls: Dropdown & Search -->
-        <div class="app-pane__controls">
+        <div class="app-pane__controls app-pane__controls--compact">
           <div ref="accountDropdownRef">
             <AccountDropdown
               :accounts="accounts"
@@ -33,12 +29,11 @@
             />
           </div>
 
-          <!-- Selected Account Sync Info -->
-          <div 
-            v-if="selectedAccount" 
+          <div
+            v-if="selectedAccount"
             class="rss-sync-status"
           >
-            <span 
+            <span
               class="truncate pr-1 flex-1 min-w-0"
               :class="{ 'rss-sync-status__text--active': syncing, 'text-destructive': statusError }"
               :title="statusMessage"
@@ -80,17 +75,11 @@
             </div>
           </div>
 
-          <!-- Feed Search input -->
-          <div class="relative group">
-            <AppIcon name="search" class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary pointer-events-none" />
-            <Input
-              v-model="feedSearch"
-              type="text"
-              placeholder="搜索订阅源..."
-              aria-label="搜索订阅源"
-              class="h-8 pl-7 text-xs rounded-lg"
-            />
-          </div>
+          <AppSearchInput
+            v-model="feedSearch"
+            placeholder="搜索订阅源..."
+            aria-label="搜索订阅源"
+          />
         </div>
 
         <FeedFolderTree
@@ -106,14 +95,14 @@
           @feed-context-menu="showFeedContextMenu"
           @unsubscribe-feed="handleUnsubscribeFeed"
         />
-      </aside>
+      </template>
 
-      <!-- 2. Middle Column: Article List Flow -->
-      <section class="app-pane rss-entry-pane">
-        <header class="app-pane__header rss-entry-header">
-          <div class="flex items-center justify-between w-full">
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
+      <!-- Middle: article list -->
+      <section class="app-pane app-pane--list rss-entry-pane">
+        <header class="app-pane__header">
+          <div class="app-pane__header-row">
+            <div class="app-pane__header-copy">
+              <div class="app-pane__header-title-row">
                 <Button
                   v-if="hasFeedNavStack"
                   variant="outline"
@@ -130,40 +119,33 @@
                   {{ selectedFeedTitle || selectedAccount?.name || 'RSS 阅读器' }}
                 </h2>
               </div>
-              <div class="rss-entry-header__subtitle">
+              <div class="app-pane__header-subtitle">
                 <span>{{ selectedFeedSubtitle }}</span>
-                <div v-if="loading" class="flex items-center gap-1 ml-1">
-                  <AppBounceDots />
-                </div>
+                <AppBounceDots v-if="loading" />
               </div>
             </div>
 
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              :disabled="loading"
-              title="刷新文章"
-              aria-label="刷新文章"
-              @click="loadAll"
-            >
-              <AppSpinner v-if="loading" size="sm" />
-              <AppIcon v-else name="refresh" class="h-3.5 w-3.5" />
-            </Button>
+            <div class="app-pane__header-actions">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                :disabled="loading"
+                title="刷新文章"
+                aria-label="刷新文章"
+                @click="loadAll"
+              >
+                <AppSpinner v-if="loading" size="sm" />
+                <AppIcon v-else name="refresh" class="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
 
-          <!-- Controls Toolbar Row -->
-          <div class="flex flex-col gap-2 mt-3 w-full">
-            <!-- Entry Search -->
-            <div class="relative w-full group">
-              <AppIcon name="search" class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 transition-colors group-focus-within:text-primary pointer-events-none" />
-              <Input
-                v-model="entrySearch"
-                type="text"
-                placeholder="搜索文章..."
-                aria-label="搜索文章"
-                class="h-8 pl-7 text-xs rounded-lg"
-              />
-            </div>
+          <div class="rss-entry-tools">
+            <AppSearchInput
+              v-model="entrySearch"
+              placeholder="搜索文章..."
+              aria-label="搜索文章"
+            />
 
             <AppSegmentedControl
               v-model="activeFilter"
@@ -175,9 +157,8 @@
           </div>
         </header>
 
-        <!-- Main Body Scroll Container -->
-        <div ref="entriesContainer" class="min-h-0 flex-1 overflow-y-auto overscroll-contain custom-scrollbar bg-background">
-          <div class="w-full p-4 space-y-4">
+        <div ref="entriesContainer" class="app-pane__list custom-scrollbar rss-entry-list">
+          <div class="rss-entry-list__inner">
 
             <div
               v-if="loading && filteredEntries.length === 0"
@@ -285,8 +266,8 @@
         <!-- If an article is selected, render it -->
         <div v-if="readingEntry" class="rss-reader-active">
           <!-- Reader Header (Clean compact toolbar) -->
-          <header class="app-divider-bottom relative z-20 flex h-14 shrink-0 items-center justify-between bg-background px-6">
-            <!-- Left Side: Source badge (clickable to view feed) -->
+          <header class="app-pane__header rss-reader-toolbar">
+            <div class="app-pane__header-row">
             <Button
               variant="ghost"
               size="xs"
@@ -300,8 +281,7 @@
               </span>
             </Button>
 
-            <!-- Right Side: Action buttons -->
-            <div class="flex items-center gap-1 shrink-0">
+            <div class="app-pane__header-actions">
               <!-- 应用内预览原文 -->
               <Button
                 variant="ghost"
@@ -375,12 +355,13 @@
                 />
               </div>
             </div>
+            </div>
           </header>
-          
+
           <!-- Reader Body Scroll Container -->
-          <div 
+          <div
             ref="readerScrollContainer"
-            class="min-h-0 flex-1 overflow-y-auto overscroll-contain custom-scrollbar px-5 md:px-16 lg:px-28 py-8 bg-background relative"
+            class="app-scroll-pane custom-scrollbar rss-reader-body"
           >
             <!-- Editorial Header -->
             <div class="app-reader-width mb-8">
@@ -499,7 +480,7 @@
           />
         </div>
       </main>
-    </div>
+    </AppTwoColumnLayout>
 
     <!-- 3. Add / Edit RSS Account Dialog -->
     <AccountEditDialog
@@ -716,7 +697,10 @@ import AccountEditDialog from '@/features/rss/components/AccountEditDialog.vue'
 import DeleteAccountDialog from '@/features/rss/components/DeleteAccountDialog.vue'
 import RssImageLightbox from '@/features/rss/components/RssImageLightbox.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppSearchInput from '@/shared/components/layout/AppSearchInput.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
+import AppSidebarHeader from '@/shared/components/layout/AppSidebarHeader.vue'
+import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import AppFloatingList from '@/shared/components/layout/AppFloatingList.vue'
 import AppListEmpty from '@/shared/components/layout/AppListEmpty.vue'
 import AppListOption from '@/shared/components/layout/AppListOption.vue'
@@ -1064,25 +1048,13 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.rss-workbench {
-  selection-color: hsl(var(--foreground));
-}
-
-.rss-sidebar {
-  --app-workbench-sidebar-width: 20rem;
-}
-
-.rss-sidebar-header {
-  --app-workbench-header-height: 4.75rem;
-}
-
 .rss-sync-status {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  border: 1px solid hsl(var(--border) / 0.45);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--radius-md);
   background: hsl(var(--muted) / 0.24);
   padding: 0.5rem;
   color: hsl(var(--muted-foreground));
@@ -1095,19 +1067,35 @@ onUnmounted(() => {
 }
 
 .rss-entry-pane {
-  width: 25rem;
+  --app-pane-list-width: 25rem;
+  border-right: 1px solid var(--app-hairline);
 }
 
-.rss-entry-header {
-  padding: 0.875rem;
+.rss-entry-list {
+  padding: 0;
+  background: hsl(var(--background));
+}
+
+.rss-entry-list__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
 }
 
 .rss-back-button {
   flex: none;
   gap: 0.25rem;
   padding: 0.25rem 0.5rem;
-  font-size: 0.625rem;
-  font-weight: 700;
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+.rss-entry-tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
 }
 
 .rss-filter-tabs {
@@ -1116,6 +1104,15 @@ onUnmounted(() => {
 
 .rss-filter-tabs :deep(.app-segmented-control__item) {
   flex: 1;
+}
+
+.rss-reader-toolbar {
+  padding-inline: var(--space-5);
+}
+
+.rss-reader-body {
+  padding: var(--space-6) var(--space-8);
+  background: hsl(var(--background));
 }
 
 .rss-entry-item {
@@ -1138,16 +1135,6 @@ onUnmounted(() => {
   gap: 0.25rem;
   color: hsl(var(--primary));
   font-weight: 650;
-}
-
-.rss-entry-header__subtitle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.125rem;
-  color: hsl(var(--muted-foreground) / 0.8);
-  font-size: 0.6875rem;
-  font-weight: 500;
 }
 
 .rss-entry-item__meta-row {
@@ -1216,7 +1203,16 @@ onUnmounted(() => {
 }
 
 .rss-reader-pane {
-  border-inline-start: 0;
+  border-inline-start: 1px solid var(--app-hairline);
+}
+
+.rss-reader-empty {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
 }
 
 .rss-reader-active {

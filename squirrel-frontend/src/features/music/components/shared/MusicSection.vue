@@ -28,24 +28,26 @@ defineEmits<{
 
 <style scoped>
 .music-section {
-  margin-bottom: 1.875rem;
+  margin-bottom: var(--space-6);
 }
 
 .music-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.875rem;
-  padding-bottom: 0.625rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.35);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--app-hairline);
 }
 
 .music-section-title {
-  font-family: var(--app-heading-font);
-  font-size: 1.0625rem;
-  font-weight: 600;
+  margin: 0;
   color: hsl(var(--foreground));
-  letter-spacing: -0.01em;
+  font-family: var(--app-heading-font);
+  font-size: var(--app-h3-size);
+  font-weight: var(--app-h3-weight);
+  letter-spacing: var(--app-h3-tracking);
+  line-height: var(--app-h3-leading);
 }
 
 .music-section-content {

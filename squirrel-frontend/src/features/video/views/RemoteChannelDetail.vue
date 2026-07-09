@@ -9,37 +9,28 @@
         </AppEmptyState>
       </div>
 
-      <section class="remote-channel-header-section">
-        <div class="remote-channel-header">
-          <SubscriptionAvatar :src="profile.avatar" :name="profile.name || siteLabel" size="xl" />
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <h1 class="app-h2 truncate">{{ profile.name || siteLabel }}</h1>
-              <span class="remote-channel-site-badge">
-                {{ siteLabel }}
-              </span>
+      <section class="app-media-header remote-channel-header">
+        <div class="app-media-header__inner remote-channel-header__inner">
+          <div class="remote-channel-header__identity">
+            <SubscriptionAvatar :src="profile.avatar" :name="profile.name || siteLabel" size="xl" class="remote-channel-header__avatar" />
+            <div class="remote-channel-header__copy">
+              <div class="remote-channel-header__title-row">
+                <h1 class="app-h2 truncate">{{ profile.name || siteLabel }}</h1>
+                <span class="remote-channel-site-badge">{{ siteLabel }}</span>
+              </div>
+              <p v-if="profile.description" class="remote-channel-header__desc">
+                {{ profile.description }}
+              </p>
             </div>
-            <p v-if="profile.description" class="app-copy-wide mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-              {{ profile.description }}
-            </p>
           </div>
-          <div class="flex items-center gap-3">
+
+          <div class="remote-channel-header__actions">
             <div v-if="localSubscriptionRoute" class="remote-channel-switch">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                @click="openLocalChannel"
-              >
+              <Button type="button" variant="ghost" size="sm" @click="openLocalChannel">
                 <AppIcon name="library" class="h-3.5 w-3.5" />
                 本地
               </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled
-              >
+              <Button type="button" variant="secondary" size="sm" disabled>
                 <AppIcon name="siteFallback" class="h-3.5 w-3.5" />
                 远端
               </Button>
@@ -460,28 +451,74 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.remote-channel-header-section {
-  padding: 1.5rem 1.5rem 0;
+.remote-channel-header {
+  margin-inline: calc(var(--app-page-gutter-lg, 2rem) * -1);
 }
 
-.remote-channel-header {
+.remote-channel-header__inner {
+  --app-page-max-width: 2400px;
+  align-items: flex-start;
+}
+
+.remote-channel-header__identity {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.remote-channel-header__avatar {
+  flex: none;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--app-surface-radius);
+}
+
+.remote-channel-header__copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.remote-channel-header__title-row {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 1rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.42);
-  padding-bottom: 1.5rem;
+  gap: var(--space-2);
+}
+
+.remote-channel-header__desc {
+  margin: 0;
+  max-width: 42rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.remote-channel-header__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 
 .remote-channel-site-badge {
   flex: none;
-  border: 1px solid hsl(var(--border) / 0.45);
-  border-radius: 0.375rem;
-  background: hsl(var(--muted) / 0.34);
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--muted) / 0.4);
   padding: 0.125rem 0.375rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.625rem;
-  font-weight: 700;
+  font-size: 0.6875rem;
+  font-weight: 650;
 }
 
 .remote-channel-switch {
@@ -495,7 +532,7 @@ onUnmounted(() => {
 }
 
 .remote-channel-grid {
-  padding: 1.5rem;
+  padding-block: var(--space-5);
 }
 
 .remote-channel-card {

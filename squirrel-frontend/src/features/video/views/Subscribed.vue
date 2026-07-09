@@ -1,185 +1,199 @@
 <template>
-  <div class="app-workbench subscribed-workbench">
-    <SubscriptionSidebar
-      ref="sidebarRef"
-      :channels="filteredChannels"
-      :loading="loadingChannels"
-      :loading-more="loadingMoreChannels"
-      :finished="channelsFinished"
-      :search="sidebarSearch"
-      :site="site || ''"
-      :site-options="siteOptionsList"
-      :active-site-label="activeSiteLabel"
-      :site-dropdown-open="showSiteDropdown"
-      :special-filter="specialFilter"
-      :active-channel-id="activeChannelId"
-      @add="showAddDialog = true"
-      @import="showImportDialog = true"
-      @select-channel="handleChannelClick"
-      @toggle-special="toggleSpecialFollow"
-      @toggle-special-filter="toggleSpecialFilter"
-      @update:search="sidebarSearch = $event"
-      @update:site="site = $event"
-      @update:site-dropdown-open="showSiteDropdown = $event"
-    />
+  <AppPageShell variant="compact" fill>
+    <AppTwoColumnLayout
+      ref="layoutRef"
+      sidebar-always
+      sidebar-width="17.5rem"
+      content-width="112.5rem"
+    >
+      <template #sidebar>
+        <SubscriptionSidebar
+          ref="sidebarRef"
+          :channels="filteredChannels"
+          :loading="loadingChannels"
+          :loading-more="loadingMoreChannels"
+          :finished="channelsFinished"
+          :search="sidebarSearch"
+          :site="site || ''"
+          :site-options="siteOptionsList"
+          :active-site-label="activeSiteLabel"
+          :site-dropdown-open="showSiteDropdown"
+          :special-filter="specialFilter"
+          :active-channel-id="activeChannelId"
+          @add="showAddDialog = true"
+          @import="showImportDialog = true"
+          @select-channel="handleChannelClick"
+          @toggle-special="toggleSpecialFollow"
+          @toggle-special-filter="toggleSpecialFilter"
+          @update:search="sidebarSearch = $event"
+          @update:site="site = $event"
+          @update:site-dropdown-open="showSiteDropdown = $event"
+        />
+      </template>
 
-    <main class="app-workbench__main">
-      <header class="app-workbench__header">
-        <div class="flex min-w-0 items-center gap-3">
-          <div v-if="activeChannel" class="shrink-0 relative group cursor-pointer" @click="openActiveChannelDetail">
-            <SubscriptionAvatar :src="activeChannel.avatar" :name="activeChannel.name" size="lg" class="subscribed-avatar" />
-            <div v-if="activeChannel.is_special_followed" class="subscribed-star-badge">
-              <AppIcon name="star" class="h-2.5 w-2.5 fill-current" />
+      <template #header>
+        <div class="subscribed-header">
+          <div class="subscribed-header__identity">
+            <button
+              v-if="activeChannel"
+              type="button"
+              class="subscribed-header__avatar-btn"
+              :aria-label="`打开 ${activeChannel.name}`"
+              @click="openActiveChannelDetail"
+            >
+              <SubscriptionAvatar :src="activeChannel.avatar" :name="activeChannel.name" size="lg" class="subscribed-avatar" />
+              <span v-if="activeChannel.is_special_followed" class="subscribed-star-badge">
+                <AppIcon name="star" class="h-2.5 w-2.5 fill-current" />
+              </span>
+            </button>
+            <div v-else class="subscribed-empty-avatar" aria-hidden="true">
+              <AppIcon name="library" class="h-4 w-4" />
             </div>
-          </div>
-          <div v-else class="subscribed-empty-avatar">
-            <AppIcon name="library" class="h-4 w-4" />
-          </div>
 
-          <div class="min-w-0 flex flex-col justify-center">
-            <div class="flex min-w-0 items-center gap-2">
-              <h2 class="app-h3 max-w-[400px] truncate cursor-pointer hover:text-primary transition-colors" @click="activeChannel && openActiveChannelDetail()">
-                {{ activeChannelName || '订阅动态' }}
-              </h2>
-              
-              <AppSegmentedControl
-                v-if="canOpenRemoteChannel"
-                :model-value="channelDataMode"
-                :options="channelDataModeOptions"
-                aria-label="频道内容来源"
-                size="sm"
-                @update:model-value="handleChannelDataModeChange"
-              />
+            <div class="subscribed-header__copy">
+              <div class="subscribed-header__title-row">
+                <button
+                  type="button"
+                  class="subscribed-header__title"
+                  :disabled="!activeChannel"
+                  @click="activeChannel && openActiveChannelDetail()"
+                >
+                  {{ activeChannelName || '订阅动态' }}
+                </button>
 
-              <Button
-                v-if="activeChannel"
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                :class="activeChannel.is_special_followed ? 'text-warning' : ''"
-                :aria-pressed="activeChannel.is_special_followed"
-                aria-label="切换特别关注"
-                @click="toggleSpecialFollow(activeChannel)"
-              >
-                <AppIcon name="star" class="h-3.5 w-3.5 mx-1.5" :class="{ 'fill-current': activeChannel.is_special_followed }" />
-              </Button>
-            </div>
-            
-            <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground/80 font-medium">
-              <span>{{ headerSubtitle }}</span>
-              <div v-if="headerLoading" class="flex items-center gap-1 ml-2">
-                <AppBounceDots />
+                <AppSegmentedControl
+                  v-if="canOpenRemoteChannel"
+                  :model-value="channelDataMode"
+                  :options="channelDataModeOptions"
+                  aria-label="频道内容来源"
+                  size="sm"
+                  @update:model-value="handleChannelDataModeChange"
+                />
+
+                <Button
+                  v-if="activeChannel"
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  :class="activeChannel.is_special_followed ? 'text-warning' : ''"
+                  :aria-pressed="activeChannel.is_special_followed"
+                  aria-label="切换特别关注"
+                  @click="toggleSpecialFollow(activeChannel)"
+                >
+                  <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': activeChannel.is_special_followed }" />
+                </Button>
+              </div>
+
+              <div class="subscribed-header__subtitle">
+                <span>{{ headerSubtitle }}</span>
+                <AppBounceDots v-if="headerLoading" class="ml-1" />
               </div>
             </div>
           </div>
+
+          <div class="subscribed-header__actions">
+            <AppSegmentedControl
+              :model-value="channelDataMode === 'remote' ? 'remote' : viewMode"
+              :options="mainViewOptions"
+              aria-label="订阅视图"
+              size="sm"
+              @update:model-value="handleMainViewChange"
+            />
+
+            <Button
+              class="subscribed-nsfw-toggle"
+              :variant="nsfw !== 'all' ? 'secondary' : 'ghost'"
+              size="sm"
+              :aria-pressed="nsfw !== 'all'"
+              :title="nsfw === 'all' ? '显示成年内容' : '隐藏成年内容'"
+              @click="nsfw = nsfw === 'all' ? 'yes' : 'all'"
+            >
+              <span class="h-2.5 w-0.5 rounded-sm" :class="nsfw === 'all' ? 'bg-muted-foreground/50' : 'bg-destructive'" />
+              成年内容
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              :disabled="headerLoading"
+              title="刷新内容"
+              aria-label="刷新内容"
+              @click="handleRefresh"
+            >
+              <AppSpinner v-if="headerLoading" size="sm" />
+              <AppIcon v-else name="refresh" class="h-4 w-4" />
+            </Button>
+          </div>
         </div>
+      </template>
 
-        <div class="flex items-center gap-1.5">
-          <AppSegmentedControl
-            :model-value="channelDataMode === 'remote' ? 'remote' : viewMode"
-            :options="mainViewOptions"
-            aria-label="订阅视图"
-            size="sm"
-            @update:model-value="handleMainViewChange"
-          />
+      <div ref="gridWrapper" class="app-workbench__content subscribed-content">
+        <RemoteChannelVideoGrid
+          v-if="channelDataMode === 'remote'"
+          :items="remoteItems"
+          :loading="remoteLoading"
+          :all-loaded="remoteAllLoaded"
+          :error="remoteError"
+          :scroll-root="feedContainer"
+          @open="openRemoteResult"
+          @load-more="loadMoreRemote"
+        />
 
-          <!-- NSFW toggle — pill, size-8, clear active state + aria -->
-          <Button
-            class="subscribed-nsfw-toggle"
-            :variant="nsfw !== 'all' ? 'secondary' : 'ghost'"
-            size="sm"
-            :aria-pressed="nsfw !== 'all'"
-            :title="nsfw === 'all' ? '显示成年内容' : '隐藏成年内容'"
-            @click="nsfw = nsfw === 'all' ? 'yes' : 'all'"
-          >
-            <span class="h-2.5 w-0.5 rounded-sm" :class="nsfw === 'all' ? 'bg-muted-foreground/50' : 'bg-destructive'" />
-            成年内容
-          </Button>
-
-          <!-- Refresh — size-8 icon pill, matches FeedToolbar refresh -->
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            :disabled="headerLoading"
-            title="刷新内容"
-            aria-label="刷新内容"
-            @click="handleRefresh"
-          >
-            <AppSpinner v-if="headerLoading" size="sm" />
-            <AppIcon v-else name="refresh" class="h-4 w-4" />
-          </Button>
-        </div>
-      </header>
-
-      <div ref="feedContainer" class="app-workbench__scroll custom-scrollbar">
-        <div ref="gridWrapper" class="app-workbench__content subscribed-content">
-          <RemoteChannelVideoGrid
-            v-if="channelDataMode === 'remote'"
-            :items="remoteItems"
-            :loading="remoteLoading"
-            :all-loaded="remoteAllLoaded"
-            :error="remoteError"
-            :scroll-root="feedContainer"
-            @open="openRemoteResult"
-            @load-more="loadMoreRemote"
-          />
-
-          <div v-else-if="viewMode === 'feed'" class="app-content-stack app-content-stack--feed">
-            <div v-if="fetchError && !loadingFeed" class="app-page-empty">
-              <AppEmptyState variant="error" title="加载失败" :copy="fetchError">
-                <template #actions>
-                  <Button variant="outline" size="sm" @click="fetchFeed(true)">重试</Button>
-                </template>
-              </AppEmptyState>
-            </div>
-
-            <div v-else-if="!feedItems.length && !loadingFeed" class="app-page-empty">
-              <AppEmptyState variant="plain" icon="inbox" title="暂无内容" copy="订阅频道更新后会显示在这里。" />
-            </div>
-
-            <div v-if="loadingFeed && !feedItems.length" class="app-video-grid app-video-grid--feed">
-              <VideoSkeleton v-for="i in videoSkeletonCount" :key="i" :delay="(i - 1) * 50" />
-            </div>
-
-            <div v-else class="app-video-grid app-video-grid--feed">
-              <VideoItem
-                v-for="video in feedItems"
-                :key="video.id"
-                :video="video"
-                show-avatar
-                @openModal="openVideo"
-                @goToSubscription="openSubscription"
-              />
-            </div>
-
-            <div v-if="loadingMoreFeed" class="app-video-grid app-video-grid--feed">
-              <VideoSkeleton v-for="i in videoSkeletonCount" :key="i" :delay="(i - 1) * 50" />
-            </div>
-            <div ref="feedTrigger" class="h-20" />
+        <div v-else-if="viewMode === 'feed'" class="app-content-stack app-content-stack--feed">
+          <div v-if="fetchError && !loadingFeed" class="app-page-empty">
+            <AppEmptyState variant="error" title="加载失败" :copy="fetchError">
+              <template #actions>
+                <Button variant="outline" size="sm" @click="fetchFeed(true)">重试</Button>
+              </template>
+            </AppEmptyState>
           </div>
 
-          <div v-else class="app-content-stack">
-            <div class="app-video-grid app-video-grid--compact">
-              <SubscriptionCard
-                v-for="sub in filteredChannels"
-                :key="sub.id"
-                :subscription="sub"
-                @click="handleChannelClick(sub.id)"
-                @toggleSpecial="toggleSpecialFollow"
-              />
-            </div>
-            <div v-if="loadingChannels && !list.length" class="app-video-grid app-video-grid--compact">
-              <SubscriptionCardSkeleton v-for="i in channelSkeletonCount" :key="i" />
-            </div>
-            <div v-if="!channelsFinished" ref="gridMoreTrigger" class="h-20" />
+          <div v-else-if="!feedItems.length && !loadingFeed" class="app-page-empty">
+            <AppEmptyState variant="plain" icon="inbox" title="暂无内容" copy="订阅频道更新后会显示在这里。" />
           </div>
+
+          <div v-if="loadingFeed && !feedItems.length" class="app-video-grid app-video-grid--feed">
+            <VideoSkeleton v-for="i in videoSkeletonCount" :key="i" :delay="(i - 1) * 50" />
+          </div>
+
+          <div v-else class="app-video-grid app-video-grid--feed">
+            <VideoItem
+              v-for="video in feedItems"
+              :key="video.id"
+              :video="video"
+              show-avatar
+              @openModal="openVideo"
+              @goToSubscription="openSubscription"
+            />
+          </div>
+
+          <div v-if="loadingMoreFeed" class="app-video-grid app-video-grid--feed">
+            <VideoSkeleton v-for="i in videoSkeletonCount" :key="i" :delay="(i - 1) * 50" />
+          </div>
+          <div ref="feedTrigger" class="h-20" />
+        </div>
+
+        <div v-else class="app-content-stack">
+          <div class="app-video-grid app-video-grid--compact">
+            <SubscriptionCard
+              v-for="sub in filteredChannels"
+              :key="sub.id"
+              :subscription="sub"
+              @click="handleChannelClick(sub.id)"
+              @toggleSpecial="toggleSpecialFollow"
+            />
+          </div>
+          <div v-if="loadingChannels && !list.length" class="app-video-grid app-video-grid--compact">
+            <SubscriptionCardSkeleton v-for="i in channelSkeletonCount" :key="i" />
+          </div>
+          <div v-if="!channelsFinished" ref="gridMoreTrigger" class="h-20" />
         </div>
       </div>
-    </main>
+    </AppTwoColumnLayout>
 
     <AddChannelDialog :show="showAddDialog" @added="handleRefresh" @close="showAddDialog = false" />
     <ImportSubscriptionDialog :show="showImportDialog" @close="showImportDialog = false" @imported="handleRefresh" />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
@@ -191,9 +205,12 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppBounceDots from '@/shared/components/AppBounceDots.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
+import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import { Button } from '@/shared/ui/button'
 import SubscriptionSidebar from '@/features/video/components/SubscriptionSidebar.vue'
+import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import SubscriptionCard from '@/features/video/components/feed/SubscriptionCard.vue'
 import SubscriptionCardSkeleton from '@/features/video/components/feed/SubscriptionCardSkeleton.vue'
 import RemoteChannelVideoGrid from '@/features/video/components/feed/RemoteChannelVideoGrid.vue'
@@ -233,7 +250,9 @@ const activeChannelId = ref<string | number | null>(null)
 const activeChannelNameCache = ref('')
 const showAddDialog = ref(false)
 const showImportDialog = ref(false)
-const feedContainer = ref<HTMLElement | null>(null)
+// Main-pane scroll lives inside AppTwoColumnLayout; expose it for infinite scroll.
+const layoutRef = ref<{ scrollEl: HTMLElement | null } | null>(null)
+const feedContainer = computed(() => layoutRef.value?.scrollEl ?? null)
 // The sidebar exposes its list container + load-more sentinel via defineExpose
 // so this view's IntersectionObserver + scroll-reset can reach the DOM nodes
 // inside the extracted component.
@@ -588,9 +607,12 @@ onMounted(async () => {
   nextTick(() => initObservers())
 })
 
-// Re-init observers when view mode changes to bind new triggers
+// Re-init observers when view mode changes or the workbench scroll root mounts.
 watch(viewMode, () => {
   nextTick(() => initObservers())
+})
+watch(feedContainer, (el) => {
+  if (el) nextTick(() => initObservers())
 })
 
 watch([nsfw, site, specialFilter], () => { fetchChannels(true); fetchFeed(true); resetAllScroll() })
@@ -623,9 +645,100 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.subscribed-header {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.subscribed-header__identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.subscribed-header__avatar-btn {
+  position: relative;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--app-control-radius);
+}
+
+.subscribed-header__avatar-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.45);
+}
+
+.subscribed-header__copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.subscribed-header__title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.subscribed-header__title {
+  max-width: 25rem;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: hsl(var(--foreground));
+  font-family: var(--app-heading-font);
+  font-size: var(--app-h3-size);
+  font-weight: var(--app-h3-weight);
+  line-height: var(--app-h3-leading);
+  letter-spacing: var(--app-h3-tracking);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.subscribed-header__title:hover:not(:disabled) {
+  color: hsl(var(--primary));
+}
+
+.subscribed-header__title:disabled {
+  cursor: default;
+}
+
+.subscribed-header__subtitle {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.subscribed-header__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+}
+
 .subscribed-avatar {
-  border: 1px solid hsl(var(--border) / 0.55);
-  transition: opacity 0.15s ease;
+  border: 1px solid var(--app-surface-border-subtle);
+  transition: opacity var(--duration-fast) var(--ease-default);
 }
 
 .subscribed-avatar:hover {
@@ -642,7 +755,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   border: 1px solid hsl(var(--background));
-  border-radius: 0.3125rem;
+  border-radius: var(--radius-sm);
   background: hsl(var(--warning) / 0.12);
   color: hsl(var(--warning));
 }
@@ -659,12 +772,12 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   border-radius: var(--app-control-radius);
-  background: hsl(var(--primary) / 0.10);
+  background: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
 }
 
 .subscribed-content {
-  --app-workbench-content-width: 1800px;
+  --app-workbench-content-width: 112.5rem;
 }
 
 @media (min-width: 768px) {
@@ -674,7 +787,8 @@ onUnmounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .subscribed-avatar {
+  .subscribed-avatar,
+  .subscribed-header__title {
     transition: none;
   }
 }

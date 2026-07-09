@@ -1,9 +1,11 @@
 <template>
   <AppPageShell variant="default" scrollable>
-    <div class="profile-page">
-      <div class="profile-header">
-        <div 
+    <div class="app-page-content app-page-content--narrow profile-page">
+      <header class="profile-header">
+        <button
+          type="button"
           class="profile-avatar-control"
+          :aria-label="form.nickname ? `编辑 ${form.nickname} 的头像` : '编辑头像'"
           @click="focusAvatarInput"
         >
           <img
@@ -12,143 +14,136 @@
             :alt="form.nickname ? `${form.nickname}的头像` : '用户头像'"
             class="profile-avatar-image"
           />
-          <div 
-            v-else 
-            class="profile-avatar-fallback"
-          >
+          <div v-else class="profile-avatar-fallback">
             <template v-if="userInitial">{{ userInitial }}</template>
             <AppIcon v-else name="user" class="h-6 w-6 text-primary/75" />
           </div>
-          <div class="profile-avatar-mask">
+          <span class="profile-avatar-mask" aria-hidden="true">
             <AppIcon name="camera" class="h-3.5 w-3.5 text-white" />
-          </div>
-        </div>
+          </span>
+        </button>
 
         <div class="profile-identity">
-          <h2 class="app-h2">
+          <h1 class="app-h2">
             {{ userStore.currentUser?.nickname || '未设置昵称' }}
-          </h2>
+          </h1>
           <div v-if="createdAt" class="profile-created-at">
             <AppIcon name="time" class="h-3 w-3" />
             <span>注册于 {{ createdAt }}</span>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div class="profile-sections">
-        <div class="profile-section">
-          <div class="profile-section-title">
+      <div class="app-settings-stack">
+        <section class="app-settings-section">
+          <div class="app-settings-section-title">
             <h3>基本资料</h3>
+            <p>更新昵称与头像，保存后同步到所有设备。</p>
           </div>
-          
-          <div class="profile-section-body">
-            <div class="profile-form-grid">
-              <div class="profile-field">
-                <div class="profile-label-row">
-                  <label>昵称</label>
-                  <span>{{ form.nickname.length }}/50</span>
-                </div>
-                <div class="profile-input-wrap">
-                  <AppIcon name="user" class="profile-input-icon" />
-                  <Input
-                    v-model="form.nickname"
-                    placeholder="请输入昵称"
-                    class="profile-input"
-                    maxlength="50"
-                  />
-                </div>
+
+          <div class="app-settings-panel profile-form-panel">
+            <div class="profile-field">
+              <div class="profile-label-row">
+                <label for="profile-nickname">昵称</label>
+                <span>{{ form.nickname.length }}/50</span>
+              </div>
+              <div class="app-icon-field">
+                <AppIcon name="user" class="app-icon-field__icon" />
+                <Input
+                  id="profile-nickname"
+                  v-model="form.nickname"
+                  placeholder="请输入昵称"
+                  class="app-form-input app-form-input--with-icon"
+                  maxlength="50"
+                />
               </div>
             </div>
 
             <div class="profile-field">
-              <label>头像图片链接 (URL)</label>
-              <div class="profile-input-wrap">
-                <AppIcon name="link" class="profile-input-icon" />
+              <label for="profile-avatar">头像图片链接</label>
+              <div class="app-icon-field">
+                <AppIcon name="link" class="app-icon-field__icon" />
                 <Input
+                  id="profile-avatar"
                   ref="avatarInput"
                   v-model="form.avatar"
                   placeholder="输入图片链接 (HTTPS)"
-                  class="profile-input"
+                  class="app-form-input app-form-input--with-icon"
                 />
               </div>
             </div>
 
             <div v-if="form.avatar" class="profile-avatar-preview">
               <div class="profile-avatar-preview-image">
-                  <img
-                    :src="form.avatar"
-                    :alt="form.nickname ? `${form.nickname}的头像` : '用户头像'"
-                    class="h-full w-full object-cover"
-                    @error="avatarError = true"
-                    @load="avatarError = false"
-                  />
+                <img
+                  :src="form.avatar"
+                  :alt="form.nickname ? `${form.nickname}的头像` : '用户头像'"
+                  class="h-full w-full object-cover"
+                  @error="avatarError = true"
+                  @load="avatarError = false"
+                />
               </div>
               <div class="profile-avatar-preview-copy">
-                  <p>头像实时预览</p>
-                  <span 
-                    v-if="avatarError" 
-                    class="profile-status profile-status--error"
-                  >
-                    <AppIcon name="warning" class="h-2.5 w-2.5" />
-                    图片加载失败，请检查链接
-                  </span>
-                  <span 
-                    v-else 
-                    class="profile-status profile-status--success"
-                  >
-                    <AppIcon name="check" class="h-2.5 w-2.5" />
-                    图片加载成功
-                  </span>
+                <p>头像实时预览</p>
+                <span
+                  v-if="avatarError"
+                  class="profile-status profile-status--error"
+                >
+                  <AppIcon name="warning" class="h-2.5 w-2.5" />
+                  图片加载失败，请检查链接
+                </span>
+                <span
+                  v-else
+                  class="profile-status profile-status--success"
+                >
+                  <AppIcon name="check" class="h-2.5 w-2.5" />
+                  图片加载成功
+                </span>
               </div>
             </div>
 
-            <div v-if="saveError" class="profile-error">
-              <AppIcon name="warning" class="h-3.5 w-3.5 shrink-0" />
+            <div v-if="saveError" class="app-dialog-message is-error">
+              <AppIcon name="warning" class="app-dialog-message__icon" />
               <span>{{ saveError }}</span>
             </div>
 
             <div class="profile-actions">
               <Button
-                class="profile-save-button"
-                :class="{ 'is-disabled': !hasChanges }"
                 :loading="saving"
                 :disabled="!hasChanges"
                 @click="handleSave"
               >
                 保存修改
               </Button>
-              
-              <span 
-                v-if="saved" 
-                class="profile-saved"
-              >
+
+              <span v-if="saved" class="profile-saved">
                 <AppIcon name="check" class="h-3.5 w-3.5" />
                 所有更改已保存
               </span>
             </div>
-
           </div>
-        </div>
+        </section>
 
-        <div class="profile-section">
-          <div class="profile-section-title">
+        <section class="app-settings-section">
+          <div class="app-settings-section-title">
             <h3>会话管理</h3>
+            <p>退出后需要重新登录才能访问媒体库。</p>
           </div>
-          
-          <div class="profile-section-body">
-            <Button
-              variant="outline"
-              class="profile-logout-button"
-              @click="handleLogout"
-            >
-              <AppIcon name="logout" class="h-3.5 w-3.5" />
-              退出当前账号
-            </Button>
-          </div>
-        </div>
 
+          <div class="app-settings-panel">
+            <div class="app-settings-row">
+              <div class="min-w-0">
+                <div class="app-settings-row__title">退出当前账号</div>
+                <div class="app-settings-row__desc">清除本机会话并返回登录页。</div>
+              </div>
+              <Button variant="outline" class="profile-logout-button" @click="handleLogout">
+                <AppIcon name="logout" class="h-3.5 w-3.5" />
+                退出登录
+              </Button>
+            </div>
+          </div>
+        </section>
       </div>
-
     </div>
   </AppPageShell>
 </template>
@@ -178,21 +173,21 @@ const avatarInput = ref<{ $el?: HTMLElement } | null>(null)
 
 const userInitial = computed(() => {
   const name = userStore.currentUser?.nickname || ''
-  return name ? name.charAt(0).toUpperCase() : ''
+  return name ? name.slice(0, 1).toUpperCase() : ''
 })
 
 const createdAt = computed(() => {
-  const date = userStore.currentUser?.created_at
-  if (!date) return ''
+  const raw = userStore.currentUser?.created_at
+  if (!raw) return ''
   try {
-    return new Date(date).toLocaleDateString('zh-CN', {
+    return new Date(raw).toLocaleDateString('zh-CN', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     })
   } catch (err) {
-    Logger.warn('[Profile] Failed to format date', err)
-    return String(date).slice(0, 10)
+    Logger.warn('[Profile] Failed to format created_at', err)
+    return ''
   }
 })
 
@@ -202,8 +197,8 @@ onMounted(() => {
 
 const focusAvatarInput = () => {
   if (avatarInput.value) {
-    const inputEl = (avatarInput.value.$el?.querySelector?.('input') as HTMLElement | null) ?? avatarInput.value.$el;
-    inputEl?.focus?.();
+    const inputEl = (avatarInput.value.$el?.querySelector?.('input') as HTMLElement | null) ?? avatarInput.value.$el
+    inputEl?.focus?.()
   }
 }
 
@@ -215,19 +210,17 @@ const handleLogout = async () => {
 
 <style scoped>
 .profile-page {
-  width: 100%;
-  max-width: 45rem;
-  margin: 0 auto;
-  padding: 2rem 0;
-  color: hsl(var(--foreground));
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-8);
 }
 
 .profile-header {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.4);
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--app-hairline);
 }
 
 .profile-avatar-control {
@@ -236,16 +229,17 @@ const handleLogout = async () => {
   height: 4rem;
   flex: 0 0 auto;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.75rem;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--app-surface-radius);
   background: hsl(var(--muted));
   cursor: pointer;
   transition:
-    border-color 0.16s ease,
-    background-color 0.16s ease;
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
 }
 
-.profile-avatar-control:hover {
+.profile-avatar-control:hover,
+.profile-avatar-control:focus-visible {
   border-color: hsl(var(--primary) / 0.28);
   background: hsl(var(--primary) / 0.06);
 }
@@ -277,10 +271,11 @@ const handleLogout = async () => {
   justify-content: center;
   background: hsl(0 0% 0% / 0.44);
   opacity: 0;
-  transition: opacity 0.16s ease;
+  transition: opacity var(--duration-fast) var(--ease-default);
 }
 
-.profile-avatar-control:hover .profile-avatar-mask {
+.profile-avatar-control:hover .profile-avatar-mask,
+.profile-avatar-control:focus-visible .profile-avatar-mask {
   opacity: 1;
 }
 
@@ -295,51 +290,20 @@ const handleLogout = async () => {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  color: hsl(var(--muted-foreground) / 0.68);
+  color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
 }
 
-.profile-sections {
+.profile-form-panel {
   display: flex;
   flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
 }
 
-.profile-section {
-  display: grid;
-  grid-template-columns: minmax(0, 9rem) minmax(0, 1fr);
-  gap: 1.5rem;
-  padding: 1.5rem 0;
-  border-bottom: 1px solid hsl(var(--border) / 0.4);
-}
-
-.profile-section:last-child {
-  border-bottom: 0;
-}
-
-.profile-section-title h3 {
-  margin: 0;
-  color: hsl(var(--foreground));
-  font-size: 0.875rem;
-  font-weight: 650;
-}
-
-.profile-section-body,
 .profile-field {
   display: flex;
   flex-direction: column;
-}
-
-.profile-section-body {
-  gap: 1rem;
-}
-
-.profile-form-grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-}
-
-.profile-field {
   gap: 0.375rem;
 }
 
@@ -358,43 +322,19 @@ const handleLogout = async () => {
 }
 
 .profile-label-row span {
-  color: hsl(var(--muted-foreground) / 0.58);
+  color: hsl(var(--muted-foreground) / 0.72);
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
-}
-
-.profile-input-wrap {
-  position: relative;
-}
-
-.profile-input-icon {
-  position: absolute;
-  top: 50%;
-  left: 0.75rem;
-  width: 0.875rem;
-  height: 0.875rem;
-  color: hsl(var(--muted-foreground) / 0.55);
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.profile-input {
-  height: 2.25rem;
-  padding-left: 2.25rem;
-  border-color: hsl(var(--border) / 0.6);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  box-shadow: none;
 }
 
 .profile-avatar-preview {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.75rem;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.625rem;
-  background: hsl(var(--muted) / 0.08);
+  gap: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--radius-md);
+  background: hsl(var(--muted) / 0.12);
 }
 
 .profile-avatar-preview-image {
@@ -402,8 +342,8 @@ const handleLogout = async () => {
   height: 3rem;
   flex: 0 0 auto;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.3);
-  border-radius: 0.5rem;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--radius-md);
   background: hsl(var(--muted));
 }
 
@@ -424,7 +364,7 @@ const handleLogout = async () => {
   gap: 0.25rem;
   padding: 0.125rem 0.375rem;
   border: 1px solid;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   font-size: 0.6875rem;
   font-weight: 500;
 }
@@ -441,43 +381,11 @@ const handleLogout = async () => {
   color: hsl(var(--success));
 }
 
-.profile-error {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border: 1px solid hsl(var(--destructive) / 0.2);
-  border-radius: 0.5rem;
-  background: hsl(var(--destructive) / 0.05);
-  color: hsl(var(--destructive));
-  font-size: 0.75rem;
-}
-
 .profile-actions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding-top: 0.25rem;
-}
-
-.profile-save-button,
-.profile-logout-button {
-  height: 2.25rem;
-  border-radius: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  transition:
-    color 0.16s ease,
-    background-color 0.16s ease,
-    border-color 0.16s ease,
-    opacity 0.16s ease;
-}
-
-.profile-save-button.is-disabled {
-  border: 1px solid hsl(var(--border) / 0.3);
-  background: hsl(var(--muted));
-  color: hsl(var(--muted-foreground) / 0.6);
-  cursor: not-allowed;
 }
 
 .profile-saved {
@@ -490,28 +398,18 @@ const handleLogout = async () => {
 }
 
 .profile-logout-button {
-  border-color: hsl(var(--border) / 0.8);
-  color: hsl(var(--muted-foreground));
+  flex-shrink: 0;
 }
 
 .profile-logout-button:hover {
-  border-color: hsl(var(--destructive));
-  background: hsl(var(--destructive));
-  color: hsl(var(--destructive-foreground));
-}
-
-@media (max-width: 760px) {
-  .profile-section {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
+  border-color: hsl(var(--destructive) / 0.4);
+  background: hsl(var(--destructive) / 0.08);
+  color: hsl(var(--destructive));
 }
 
 @media (prefers-reduced-motion: reduce) {
   .profile-avatar-control,
-  .profile-avatar-mask,
-  .profile-save-button,
-  .profile-logout-button {
+  .profile-avatar-mask {
     transition: none;
   }
 }

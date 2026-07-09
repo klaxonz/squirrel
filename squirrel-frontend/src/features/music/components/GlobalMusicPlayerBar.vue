@@ -288,16 +288,18 @@ function removeQueueItem(index: number) {
   position: fixed;
   bottom: 0.875rem;
   left: 50%;
+  z-index: var(--z-header);
   width: calc(100vw - 2rem);
-  max-width: 1480px;
-  z-index: 60;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.75rem;
-  background: hsl(var(--background));
-  transform: translateX(-50%);
-  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 10px 32px hsl(var(--foreground) / 0.1);
+  max-width: 90rem;
   overflow: hidden;
+  border: 1px solid var(--app-hairline);
+  border-radius: var(--app-surface-radius);
+  background: hsl(var(--background) / 0.96);
+  box-shadow: var(--app-panel-shadow);
+  transform: translateX(-50%);
+  transition:
+    width var(--duration-base) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
 }
 
 .music-bar--immersive {
@@ -311,25 +313,31 @@ function removeQueueItem(index: number) {
   width: var(--sidebar-width);
   max-width: none;
   transform: none;
-  border-top: 1px solid hsl(var(--border) / 0.5);
-  border-right: 1px solid hsl(var(--border));
+  border: 0;
+  border-top: 1px solid var(--app-hairline);
+  border-right: 1px solid var(--app-hairline);
   border-radius: 0;
-  background: hsl(var(--background) / 0.82);
+  background: hsl(var(--background) / 0.92);
   box-shadow: none;
   overflow: hidden;
 }
 
 @media (min-width: 768px) {
   .music-bar {
-    /* 50vw keeps the bar horizontally centered in the viewport regardless of
-       sidebar width. No resize needed — CSS variable drives it reactively. */
+    /* Center relative to the main workspace, not the full viewport. */
     left: calc(50vw - var(--sidebar-width) / 2);
-    width: min(1480px, calc(100vw - var(--sidebar-width) - 2rem));
+    width: min(90rem, calc(100vw - var(--sidebar-width) - 2rem));
   }
 
   .music-bar--mini {
     left: 0;
     width: var(--sidebar-width);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-bar {
+    transition: none;
   }
 }
 

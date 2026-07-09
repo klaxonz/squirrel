@@ -29,7 +29,7 @@ const props = defineProps<{
   justify-content: space-between;
   gap: var(--space-3);
   border-bottom: 1px solid var(--app-hairline);
-  background: hsl(var(--background) / 0.52);
+  background: transparent;
   padding-inline: var(--space-4);
 }
 

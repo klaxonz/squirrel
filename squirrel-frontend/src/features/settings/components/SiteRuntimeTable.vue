@@ -1,13 +1,12 @@
 <template>
-  <div class="flex-1 overflow-y-auto custom-scrollbar">
-    <div class="app-page-content app-table-content site-runtime-content">
-      <Alert v-if="discoveryErrors.length" variant="error" class="mb-3 py-2.5">
-        <AppIcon name="error" class="h-4 w-4" />
-        <AlertTitle>发现 {{ discoveryErrors.length }} 个站点失败</AlertTitle>
-        <AlertDescription class="truncate text-xs">{{ discoveryErrors[0].metadata_path }} · {{ discoveryErrors[0].reason }}</AlertDescription>
-      </Alert>
-      <div class="app-table-shell">
-        <div class="app-table-frame">
+  <div class="app-workbench__content app-table-content site-runtime-content">
+    <Alert v-if="discoveryErrors.length" variant="error" class="mb-3 py-2.5">
+      <AppIcon name="error" class="h-4 w-4" />
+      <AlertTitle>发现 {{ discoveryErrors.length }} 个站点失败</AlertTitle>
+      <AlertDescription class="truncate text-xs">{{ discoveryErrors[0].metadata_path }} · {{ discoveryErrors[0].reason }}</AlertDescription>
+    </Alert>
+    <div class="app-table-shell">
+      <div class="app-table-frame">
         <div class="app-table-head site-runtime-grid">
           <div>站点</div>
           <div>状态</div>
@@ -181,7 +180,6 @@
               </Button>
             </div>
           </div>
-        </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 <template>
-  <AppPageShell variant="compact">
-    <AppTwoColumnLayout>
+  <AppPageShell variant="compact" fill>
+    <AppTwoColumnLayout content-width="87.5rem">
       <template #sidebar>
         <AppSidebarHeader title="定时任务" :subtitle="`${statistics.total_tasks} 个任务`">
           <template #actions>
@@ -17,35 +17,30 @@
           <AppStatCard label="今日执行" :value="statistics.today_executions" />
         </div>
 
-        <nav class="flex-1 space-y-1 overflow-y-auto p-2 custom-scrollbar">
-          <Button
+        <nav class="app-workbench__nav custom-scrollbar" aria-label="任务状态">
+          <AppListOption
             v-for="opt in statusOptions"
             :key="opt.value"
-            variant="ghost"
-            size="sm"
+            compact
+            :selected="statusFilter === opt.value"
             @click="setStatusFilter(opt.value)"
-            class="app-filter-button"
-            :class="{ 'is-active': statusFilter === opt.value }"
           >
-            <span>{{ opt.label }}</span>
+            <span class="min-w-0 flex-1 truncate">{{ opt.label }}</span>
             <span class="text-xs font-normal text-muted-foreground tabular-nums">{{ getStatusCount(opt.value) }}</span>
-          </Button>
+          </AppListOption>
         </nav>
       </template>
 
       <template #header>
-        <div class="min-w-0">
-          <h2 class="app-h2 truncate">{{ activeStatusLabel }}</h2>
-          <p class="mt-0.5 text-xs text-muted-foreground">{{ taskSummary }}</p>
-        </div>
-
-        <div class="flex shrink-0 items-center gap-2">
-          <AppSearchInput v-model="searchQuery" placeholder="搜索任务" class="hidden w-80 md:block" />
-          <Button variant="ghost" size="icon-sm" @click="refreshData">
-            <AppSpinner v-if="loading" size="sm" />
-            <AppIcon v-else name="refresh" class="h-4 w-4" />
-          </Button>
-        </div>
+        <AppPaneHeader :title="activeStatusLabel" :subtitle="taskSummary">
+          <template #actions>
+            <AppSearchInput v-model="searchQuery" placeholder="搜索任务" class="hidden w-80 md:block" />
+            <Button variant="ghost" size="icon-sm" @click="refreshData">
+              <AppSpinner v-if="loading" size="sm" />
+              <AppIcon v-else name="refresh" class="h-4 w-4" />
+            </Button>
+          </template>
+        </AppPaneHeader>
       </template>
 
       <div class="shrink-0 space-y-2 app-divider-bottom p-3 md:hidden">
@@ -58,7 +53,7 @@
         <AppSearchInput v-model="searchQuery" placeholder="搜索任务" />
       </div>
 
-      <div class="app-page-content app-table-content scheduled-tasks-content">
+      <div class="app-workbench__content app-table-content scheduled-tasks-content">
         <div class="app-table-shell">
           <div class="app-table-frame">
           <div class="app-table-head task-grid">
@@ -212,6 +207,8 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppListOption from '@/shared/components/layout/AppListOption.vue'
+import AppPaneHeader from '@/shared/components/layout/AppPaneHeader.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import AppSearchInput from '@/shared/components/layout/AppSearchInput.vue'
 import AppSidebarHeader from '@/shared/components/layout/AppSidebarHeader.vue'

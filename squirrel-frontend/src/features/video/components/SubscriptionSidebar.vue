@@ -1,5 +1,6 @@
 <template>
-  <aside class="subscription-sidebar">
+  <!-- Fills AppTwoColumnLayout sidebar slot — chrome (border/bg/width) lives on the shell. -->
+  <div class="subscription-sidebar">
     <AppSidebarHeader title="订阅频道" :subtitle="`${channels.length} 个频道`">
       <template #actions>
         <Button size="icon-sm" aria-label="添加订阅频道" title="添加订阅频道" @click="$emit('add')">
@@ -135,7 +136,7 @@
         导入订阅
       </Button>
     </div>
-  </aside>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -206,11 +207,10 @@ defineExpose({ listContainer: listContainerRef, loadMore: loadMoreRef })
 <style scoped>
 .subscription-sidebar {
   display: flex;
-  flex: 0 0 280px;
-  width: 280px;
+  min-height: 0;
+  flex: 1 1 auto;
   flex-direction: column;
-  border-right: 1px solid hsl(var(--border) / 0.22);
-  background: hsl(var(--muted) / 0.1);
+  width: 100%;
 }
 
 .subscription-sidebar__channel-name {
