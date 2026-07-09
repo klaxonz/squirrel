@@ -414,8 +414,9 @@ onUnmounted(() => {
 .global-search__box {
   display: flex;
   align-items: center;
+  gap: 0.125rem;
   height: 2.25rem;
-  padding: 0.25rem;
+  padding: 0.1875rem 0.25rem 0.1875rem 0.1875rem;
   border: 1px solid hsl(var(--border) / 0.45);
   border-radius: var(--radius-md);
   background: hsl(var(--card) / 0.55);
@@ -425,34 +426,56 @@ onUnmounted(() => {
     box-shadow var(--duration-fast) var(--ease-default);
 }
 
+/* Single outer focus affordance for the composite control.
+   Nested input/button focus rings are suppressed below so they do not
+   stack with this ring (global :focus-visible + Button ring utilities). */
 .global-search__box:focus-within {
   border-color: hsl(var(--ring));
   background: hsl(var(--card) / 0.78);
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.25);
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.22);
 }
 
-.global-search__box.is-open {
+/* is-open only while the panel is visible; never override focus chrome. */
+.global-search__box.is-open:not(:focus-within) {
   border-color: hsl(var(--border) / 0.65);
 }
 
 .global-search__mode-wrap {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
 }
 
 .global-search__mode {
-  gap: 0.375rem;
-  height: 1.75rem;
-  padding: 0 0.625rem;
+  gap: 0.3125rem;
+  height: 1.875rem;
+  padding: 0 0.5rem;
+  border-radius: calc(var(--radius-md) - 1px);
+  border-color: transparent;
+  background: hsl(var(--secondary) / 0.72);
+  color: hsl(var(--foreground) / 0.88);
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.global-search__mode:hover {
+  border-color: transparent;
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+.global-search__mode:active {
+  transform: none;
 }
 
 .global-search__divider {
   flex: 0 0 auto;
   width: 1px;
-  height: 0.75rem;
-  margin: 0 0.375rem;
-  background: hsl(var(--border) / 0.42);
+  height: 1rem;
+  margin: 0 0.25rem 0 0.125rem;
+  background: hsl(var(--border) / 0.72);
+  border-radius: 1px;
 }
 
 .global-search__leading-icon {
@@ -460,7 +483,7 @@ onUnmounted(() => {
   height: 0.875rem;
   margin: 0 0.375rem 0 0.5rem;
   color: hsl(var(--muted-foreground) / 0.48);
-  transition: color 0.16s ease;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .global-search__box:focus-within .global-search__leading-icon {
@@ -470,13 +493,22 @@ onUnmounted(() => {
 .global-search__input {
   min-width: 0;
   flex: 1 1 auto;
-  padding: 0 0.25rem;
+  height: 100%;
+  padding: 0 0.375rem;
   border: 0;
   background: transparent;
   color: hsl(var(--foreground));
   font-size: 0.875rem;
   font-weight: 500;
   outline: none;
+  box-shadow: none;
+}
+
+/* Kill global input :focus-visible ring — parent owns focus chrome. */
+.global-search__input:focus,
+.global-search__input:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .global-search__input::placeholder {
@@ -486,14 +518,27 @@ onUnmounted(() => {
 .global-search__actions {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  padding-right: 0.25rem;
+  gap: 0.25rem;
+  padding-right: 0.125rem;
 }
 
 .global-search__icon-button {
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 0.375rem;
+  color: hsl(var(--muted-foreground) / 0.72);
+}
+
+.global-search__icon-button:hover:not(:disabled) {
+  color: hsl(var(--foreground));
+}
+
+/* Composite control: internal buttons never paint their own focus ring. */
+.global-search__box :deep(button:focus-visible) {
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+  outline: none;
+  box-shadow: none;
 }
 
 .global-search__suggestions {
