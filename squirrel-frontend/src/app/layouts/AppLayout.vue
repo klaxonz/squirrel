@@ -102,6 +102,12 @@ function isEditableTarget(target: EventTarget | null): boolean {
 function handleKeydown(e: KeyboardEvent) {
   if (isEditableTarget(e.target)) return
   const mod = e.metaKey || e.ctrlKey
+  // Sidebar: Ctrl/Cmd+B — VS Code / Notion / most desktop shells
+  if (mod && (e.key === 'b' || e.key === 'B')) {
+    e.preventDefault()
+    uiStore.toggleSidebar()
+    return
+  }
   // Back: Alt+← (cross-platform) or Cmd/Ctrl+[ (macOS-standard)
   if ((e.altKey && e.key === 'ArrowLeft') || (mod && e.key === '[')) {
     if (nav.canGoBack.value) {

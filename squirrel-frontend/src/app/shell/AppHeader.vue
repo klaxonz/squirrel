@@ -73,6 +73,7 @@ const router = useRouter()
 const uiStore = useUIStore()
 const userStore = useUserStore()
 const nav = useNavigationHistory()
+const { isDesktop: isDesktopEnv } = useDesktopBridge()
 
 const userDisplayName = computed(() => {
   if (!userStore.currentUser) return '未登录'
@@ -88,7 +89,6 @@ const goToProfile = () => {
 }
 
 const showSearch = computed(() => !!route.meta?.showSearch)
-const { isDesktop: isDesktopEnv } = useDesktopBridge()
 const isVideosRoute = computed(() => route.matched.some((record) => record.name === 'VideosView'))
 const showVideoSearchMode = computed(() => {
   return isDesktopEnv()
