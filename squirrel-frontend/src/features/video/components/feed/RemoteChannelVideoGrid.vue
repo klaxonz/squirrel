@@ -13,13 +13,17 @@
     </div>
 
     <div v-if="items.length" class="app-video-grid app-video-grid--feed">
-      <Button
+      <!-- Native article card — do not use shared Button here; its default h-9
+           collapses the media frame and makes remote thumbnails look missing. -->
+      <article
         v-for="item in items"
         :key="item.site + ':' + item.url"
-        type="button"
-        variant="ghost"
         class="remote-channel-video-card group"
+        role="button"
+        tabindex="0"
         @click="$emit('open', item)"
+        @keydown.enter.prevent="$emit('open', item)"
+        @keydown.space.prevent="$emit('open', item)"
       >
         <div class="remote-channel-video-thumb group-hover:brightness-110">
           <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" />
@@ -36,7 +40,7 @@
             {{ displayDate(item) }}
           </div>
         </div>
-      </Button>
+      </article>
     </div>
 
     <div v-if="loading" class="app-video-grid app-video-grid--feed">
@@ -165,6 +169,21 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.remote-channel-video-card {
+  display: flex;
+  min-width: 0;
+  cursor: pointer;
+  flex-direction: column;
+  gap: 0.625rem;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.remote-channel-video-card:focus-visible {
+  outline: none;
+}
+
 .remote-channel-video-thumb {
   position: relative;
   aspect-ratio: 16 / 9;
@@ -184,6 +203,13 @@ onUnmounted(() => {
     0 8px 20px hsl(0 0% 0% / 0.22);
 }
 
+.remote-channel-video-card:focus-visible .remote-channel-video-thumb {
+  box-shadow:
+    0 0 0 2px hsl(var(--background)),
+    0 0 0 4px hsl(var(--ring) / 0.45),
+    0 8px 20px hsl(0 0% 0% / 0.22);
+}
+
 .remote-channel-video-title {
   display: -webkit-box;
   overflow: hidden;
@@ -198,5 +224,12 @@ onUnmounted(() => {
 
 .group:hover .remote-channel-video-title {
   color: hsl(var(--primary));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .remote-channel-video-thumb,
+  .remote-channel-video-title {
+    transition: none;
+  }
 }
 </style>

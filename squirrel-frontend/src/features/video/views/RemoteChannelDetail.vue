@@ -50,16 +50,19 @@
       </section>
 
       <div v-if="items.length > 0" class="remote-channel-grid app-video-grid app-video-grid--feed">
-        <Button
+        <!-- Native article card — shared Button defaults to h-9 and collapses media. -->
+        <article
           v-for="item in items"
           :key="item.site + ':' + item.url"
-          type="button"
-          variant="ghost"
           class="remote-channel-card group"
+          role="button"
+          tabindex="0"
           @click="openResult(item)"
+          @keydown.enter.prevent="openResult(item)"
+          @keydown.space.prevent="openResult(item)"
         >
           <div class="remote-channel-thumb">
-            <VideoThumbnail :src="item.thumbnail" :alt="item.title" />
+            <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" />
             <span v-if="item.duration" class="remote-channel-duration">
               {{ formatDuration(item.duration) }}
             </span>
@@ -73,7 +76,7 @@
               {{ displayDate(item) }}
             </div>
           </div>
-        </Button>
+        </article>
       </div>
 
       <div v-if="loading" class="app-page-section--grid app-video-grid app-video-grid--feed">
@@ -546,6 +549,10 @@ onUnmounted(() => {
   text-align: left;
 }
 
+.remote-channel-card:focus-visible {
+  outline: none;
+}
+
 .remote-channel-thumb {
   position: relative;
   aspect-ratio: 16 / 9;
@@ -557,10 +564,18 @@ onUnmounted(() => {
   transition: box-shadow var(--duration-base) var(--ease-default);
 }
 
-.remote-channel-card:hover .remote-channel-thumb {
+.remote-channel-card:hover .remote-channel-thumb,
+.remote-channel-card:focus-visible .remote-channel-thumb {
   /* Soft lift only — no amber outline ring (matches VideoItem). */
   box-shadow:
     0 1px 2px hsl(0 0% 0% / 0.12),
+    0 8px 20px hsl(0 0% 0% / 0.22);
+}
+
+.remote-channel-card:focus-visible .remote-channel-thumb {
+  box-shadow:
+    0 0 0 2px hsl(var(--background)),
+    0 0 0 4px hsl(var(--ring) / 0.45),
     0 8px 20px hsl(0 0% 0% / 0.22);
 }
 
