@@ -756,57 +756,71 @@
   box-shadow: 0 0 0 2px hsl(var(--background));
 }
 
+/* Media-card overlay actions — discrete circular chips (no shared pill bar).
+   Prefer component-scoped styles for video cards; these shared classes remain
+   for light reuse on other thumbnail surfaces. */
 .app-overlay-actions {
   position: absolute;
   z-index: var(--z-content);
-  opacity: 0;
-  transform: translateX(0.25rem);
-  transition:
-    opacity var(--duration-fast) var(--ease-default),
-    transform var(--duration-fast) var(--ease-default);
-}
-
-.group:hover .app-overlay-actions,
-.group:focus-within .app-overlay-actions {
-  opacity: 1;
-  transform: translateX(0);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  pointer-events: none;
 }
 
 .app-overlay-actions--top-right {
-  top: 0.375rem;
-  right: 0.375rem;
+  top: 0.4rem;
+  right: 0.4rem;
 }
 
+/* Legacy bar wrapper: keep layout, drop the bordered pill chrome */
 .app-overlay-actions__bar {
   display: flex;
   align-items: center;
-  gap: 0.125rem;
-  padding: 0.125rem;
-  border: 1px solid hsl(0 0% 100% / 0.12);
-  border-radius: var(--radius-md);
-  background: hsl(0 0% 0% / 0.62);
+  gap: 0.3rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .app-overlay-action {
-  display: flex;
+  display: inline-flex;
   width: 1.75rem;
   height: 1.75rem;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-sm);
-  color: hsl(0 0% 100% / 0.82);
+  border-radius: 999px;
+  background: hsl(0 0% 0% / 0.58);
+  color: hsl(0 0% 100% / 0.9);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-0.2rem) scale(0.92);
   transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default);
+    background-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
+}
+
+.group:hover .app-overlay-action,
+.group:focus-within .app-overlay-action,
+.app-overlay-action.is-active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
 }
 
 .app-overlay-action:hover {
-  background: hsl(0 0% 100% / 0.14);
+  background: hsl(0 0% 0% / 0.78);
   color: hsl(0 0% 100%);
+  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.28);
 }
 
 .app-overlay-action.is-active {
-  color: hsl(var(--destructive));
+  background: hsl(var(--primary) / 0.92);
+  color: hsl(var(--primary-foreground));
 }
 
 .app-dialog-surface {

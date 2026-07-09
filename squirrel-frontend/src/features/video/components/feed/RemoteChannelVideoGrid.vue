@@ -168,12 +168,15 @@ onUnmounted(() => {
   border-radius: var(--app-card-radius);
   background: hsl(0 0% 0% / 0.55);
   isolation: isolate;
-  transition: box-shadow 0.15s ease, filter 0.15s ease;
+  transition: box-shadow var(--duration-base) var(--ease-default), filter var(--duration-fast) var(--ease-default);
 }
 
 .remote-channel-video-card:hover .remote-channel-video-thumb,
 .remote-channel-video-card:focus-visible .remote-channel-video-thumb {
-  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.34);
+  /* Soft lift only — no amber outline ring (matches VideoItem). */
+  box-shadow:
+    0 1px 2px hsl(0 0% 0% / 0.12),
+    0 8px 20px hsl(0 0% 0% / 0.22);
 }
 
 .remote-channel-video-title {

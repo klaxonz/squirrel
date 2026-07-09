@@ -21,47 +21,64 @@
         :blur="shouldBlurThumbnail"
       />
 
-      <div class="app-overlay-actions app-overlay-actions--top-right">
-        <div class="app-overlay-actions__bar">
-          <Button
-            variant="ghost"
-            size="mini-icon"
-            class="app-overlay-action"
-            title="标记已读"
-            @click.stop="toggleReadStatus(!isRead)"
-          >
-            <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-[15px]" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="mini-icon"
-            class="app-overlay-action"
-            title="稍后再看"
-            @click.stop="toggleLater"
-          >
-            <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-[15px]" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="mini-icon"
-            class="app-overlay-action"
-            :class="{ 'is-active': isLiked === 1 }"
-            title="喜欢"
-            @click.stop="toggleLikeVideo"
-          >
-            <AppIcon name="heart" class="size-[15px]" :class="{ 'fill-current': isLiked === 1 }" />
-          </Button>
-        </div>
+      <!-- Discrete action chips: no shared pill bar. Active states stay visible
+           so liked / later / read can be scanned without hovering. -->
+      <div class="video-item__actions" role="group" aria-label="视频快捷操作">
+        <button
+          type="button"
+          class="video-item__action"
+          :class="{ 'is-active': isRead, 'is-pinned': isRead }"
+          :title="isRead ? '标记未读' : '标记已读'"
+          :aria-pressed="isRead"
+          @click.stop="toggleReadStatus(!isRead)"
+        >
+          <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-[14px]" />
+        </button>
+        <button
+          type="button"
+          class="video-item__action"
+          :class="{ 'is-active': isLater === 1, 'is-later': isLater === 1, 'is-pinned': isLater === 1 }"
+          :title="isLater === 1 ? '取消稍后再看' : '稍后再看'"
+          :aria-pressed="isLater === 1"
+          @click.stop="toggleLater"
+        >
+          <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-[14px]" />
+        </button>
+        <button
+          type="button"
+          class="video-item__action"
+          :class="{ 'is-active': isLiked === 1, 'is-liked': isLiked === 1, 'is-pinned': isLiked === 1 }"
+          :title="isLiked === 1 ? '取消喜欢' : '喜欢'"
+          :aria-pressed="isLiked === 1"
+          @click.stop="toggleLikeVideo"
+        >
+          <AppIcon name="heart" class="size-[14px]" :class="{ 'fill-current': isLiked === 1 }" />
+        </button>
       </div>
 
-      <span v-if="video.duration && showDuration" class="video-item__duration">
+      <span
+        v-if="video.duration && showDuration"
+        class="video-item__duration"
+        :class="{ 'video-item__duration--with-progress': progressRatio > 0 }"
+      >
         {{ formatDuration(video.duration) }}
       </span>
 
       <div class="video-item__scrim" />
 
-      <div v-if="progressRatio > 0" class="video-item__progress">
-        <div class="h-full bg-primary transition-[width] duration-500 ease-out" :style="{ width: `${progressRatio * 100}%` }" />
+      <div
+        v-if="progressRatio > 0"
+        class="video-item__progress"
+        role="progressbar"
+        :aria-valuenow="Math.round(progressRatio * 100)"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        :aria-label="`已观看 ${Math.round(progressRatio * 100)}%`"
+      >
+        <div
+          class="video-item__progress-fill"
+          :style="{ width: `${progressRatio * 100}%` }"
+        />
       </div>
     </div>
 
@@ -124,7 +141,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import { Button } from '@/shared/ui/button'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import ContextMenu from './ContextMenu.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
@@ -252,8 +268,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   cursor: pointer;
   border-radius: var(--radius-lg);
   outline: none;
-  transition:
-    color var(--duration-fast) var(--ease-default);
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .video-item:focus-visible {
@@ -263,18 +278,21 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 .video-item__thumb {
   position: relative;
   overflow: hidden;
-  /* No 1px border — light-mode border/muted read as a white hairline on
+  /* No resting border — light-mode border/muted reads as a white hairline on
      rounded clips. Cinema black fill + cover image = clean original frame. */
   border: 0;
   border-radius: var(--app-card-radius);
   background: hsl(0 0% 0% / 0.55);
   isolation: isolate;
-  transition: box-shadow 0.18s ease;
+  /* Hover is media-first: soft lift only. No amber ring / outline. */
+  transition: box-shadow var(--duration-base) var(--ease-default);
 }
 
 .video-item:hover .video-item__thumb,
 .video-item:focus-visible .video-item__thumb {
-  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.34);
+  box-shadow:
+    0 1px 2px hsl(0 0% 0% / 0.12),
+    0 8px 20px hsl(0 0% 0% / 0.22);
 }
 
 .video-item__thumb--list {
@@ -294,6 +312,120 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   width: 100%;
 }
 
+/* ── Quick actions: independent chips, not a shared toolbar pill ─────────── */
+.video-item__actions {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  z-index: var(--z-content);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  pointer-events: none;
+}
+
+.video-item__action {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: hsl(0 0% 0% / 0.58);
+  color: hsl(0 0% 100% / 0.9);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-0.2rem) scale(0.92);
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
+}
+
+/* Staggered reveal on card hover / keyboard focus-within */
+.video-item:hover .video-item__action,
+.video-item:focus-within .video-item__action {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+.video-item:hover .video-item__action:nth-child(1),
+.video-item:focus-within .video-item__action:nth-child(1) {
+  transition-delay: 0ms;
+}
+
+.video-item:hover .video-item__action:nth-child(2),
+.video-item:focus-within .video-item__action:nth-child(2) {
+  transition-delay: 30ms;
+}
+
+.video-item:hover .video-item__action:nth-child(3),
+.video-item:focus-within .video-item__action:nth-child(3) {
+  transition-delay: 55ms;
+}
+
+/* Active state remains scannable without hover */
+.video-item__action.is-pinned {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+.video-item__action:hover {
+  background: hsl(0 0% 0% / 0.78);
+  color: hsl(0 0% 100%);
+  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.28);
+}
+
+.video-item__action:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px hsl(0 0% 0% / 0.55),
+    0 0 0 4px hsl(var(--ring) / 0.55);
+}
+
+.video-item__action:active {
+  transform: scale(0.94);
+}
+
+.video-item__action.is-active {
+  background: hsl(0 0% 0% / 0.72);
+  color: hsl(0 0% 100%);
+}
+
+/* Identity accent for the two affinity actions */
+.video-item__action.is-liked {
+  background: hsl(var(--primary) / 0.92);
+  color: hsl(var(--primary-foreground));
+  box-shadow: 0 2px 10px hsl(var(--primary) / 0.28);
+}
+
+.video-item__action.is-liked:hover {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.video-item__action.is-later {
+  background: hsl(0 0% 100% / 0.92);
+  color: hsl(0 0% 8%);
+  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.2);
+}
+
+.video-item__action.is-later:hover {
+  background: hsl(0 0% 100%);
+  color: hsl(0 0% 6%);
+}
+
+.video-item__action.is-active:not(.is-liked):not(.is-later) {
+  color: hsl(var(--primary));
+}
+
 .video-item__duration {
   position: absolute;
   right: 0.375rem;
@@ -303,13 +435,20 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   align-items: center;
   height: 1.25rem;
   padding: 0 0.375rem;
-  border-radius: 0.375rem;
+  border-radius: 0.25rem;
   background: hsl(0 0% 0% / 0.72);
   color: white;
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
-  transition: opacity 0.16s ease;
+  letter-spacing: 0.01em;
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    bottom var(--duration-fast) var(--ease-default);
+}
+
+.video-item__duration--with-progress {
+  bottom: 0.55rem;
 }
 
 .video-item:hover .video-item__duration {
@@ -322,26 +461,35 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   bottom: 0;
   left: 0;
   z-index: 10;
-  height: 2.5rem;
+  height: 2.75rem;
   pointer-events: none;
-  background: linear-gradient(to top, hsl(0 0% 0% / 0.6), transparent);
+  background: linear-gradient(to top, hsl(0 0% 0% / 0.55), transparent);
 }
 
+/* Progress: edge-to-edge media scrub indicator (not a 1px hairline) */
 .video-item__progress {
   position: absolute;
   right: 0;
   bottom: 0;
   left: 0;
   z-index: 20;
-  height: 1px;
-  background: hsl(0 0% 100% / 0.16);
+  height: 3px;
+  overflow: hidden;
+  background: hsl(0 0% 0% / 0.45);
+}
+
+.video-item__progress-fill {
+  height: 100%;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 10px hsl(var(--primary) / 0.35);
+  transition: width var(--duration-slow) var(--ease-out);
 }
 
 .video-item__source-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: color 0.16s ease;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .video-item__source-name:hover {
@@ -387,8 +535,14 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   .video-item,
   .video-item__thumb,
   .video-item__duration,
-  .video-item__source-name {
+  .video-item__source-name,
+  .video-item__action,
+  .video-item__progress-fill {
     transition: none;
+  }
+
+  .video-item__action {
+    transform: none;
   }
 }
 </style>

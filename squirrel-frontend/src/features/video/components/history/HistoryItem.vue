@@ -16,11 +16,23 @@
 
       <div class="history-item__scrim" />
 
-      <div v-if="progress > 0" class="history-item__progress">
-        <div class="h-full bg-primary transition-[width] duration-500 ease-out" :style="{ width: `${progress * 100}%` }" />
+      <div
+        v-if="progress > 0"
+        class="history-item__progress"
+        role="progressbar"
+        :aria-valuenow="Math.round(progress * 100)"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        :aria-label="`已观看 ${Math.round(progress * 100)}%`"
+      >
+        <div class="history-item__progress-fill" :style="{ width: `${progress * 100}%` }" />
       </div>
 
-      <div v-if="video.duration" class="history-item__duration">
+      <div
+        v-if="video.duration"
+        class="history-item__duration"
+        :class="{ 'history-item__duration--with-progress': progress > 0 }"
+      >
         {{ formatDuration(video.duration) }}
       </div>
     </div>
@@ -129,7 +141,8 @@ const displayChannel = computed(() => {
   border-radius: var(--app-card-radius);
   background: hsl(0 0% 0% / 0.55);
   isolation: isolate;
-  transition: box-shadow 0.16s ease;
+  /* Match video cards: soft lift on hover, no amber outline ring. */
+  transition: box-shadow var(--duration-base) var(--ease-default);
 }
 
 @media (min-width: 768px) {
@@ -140,7 +153,9 @@ const displayChannel = computed(() => {
 
 .history-item:hover .history-item__thumb,
 .history-item:focus-visible .history-item__thumb {
-  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.34);
+  box-shadow:
+    0 1px 2px hsl(0 0% 0% / 0.12),
+    0 8px 20px hsl(0 0% 0% / 0.22);
 }
 
 .history-item__scrim {
@@ -149,9 +164,9 @@ const displayChannel = computed(() => {
   bottom: 0;
   left: 0;
   z-index: 10;
-  height: 2.5rem;
+  height: 2.75rem;
   pointer-events: none;
-  background: linear-gradient(to top, hsl(0 0% 0% / 0.6), transparent);
+  background: linear-gradient(to top, hsl(0 0% 0% / 0.55), transparent);
 }
 
 .history-item__progress {
@@ -160,8 +175,16 @@ const displayChannel = computed(() => {
   bottom: 0;
   left: 0;
   z-index: 20;
-  height: 1px;
-  background: hsl(0 0% 100% / 0.16);
+  height: 3px;
+  overflow: hidden;
+  background: hsl(0 0% 0% / 0.45);
+}
+
+.history-item__progress-fill {
+  height: 100%;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 10px hsl(var(--primary) / 0.35);
+  transition: width var(--duration-slow) var(--ease-out);
 }
 
 .history-item__duration {
@@ -173,13 +196,20 @@ const displayChannel = computed(() => {
   align-items: center;
   height: 1.25rem;
   padding: 0 0.375rem;
-  border-radius: 0.375rem;
+  border-radius: 0.25rem;
   background: hsl(0 0% 0% / 0.72);
   color: white;
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
-  transition: opacity 0.16s ease;
+  letter-spacing: 0.01em;
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    bottom var(--duration-fast) var(--ease-default);
+}
+
+.history-item__duration--with-progress {
+  bottom: 0.55rem;
 }
 
 .history-item:hover .history-item__duration {
