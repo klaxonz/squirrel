@@ -2,14 +2,17 @@
   <AppPageShell class="home-view-page" variant="compact" :fill="false">
     <div ref="contentRef" class="app-page-content app-page-content--media home-page-content">
       <div class="app-content-stack app-content-stack--feed">
-        <header class="home-media-hero" aria-label="推荐内容">
+        <header class="home-media-hero" :aria-label="heroAriaLabel">
           <div class="home-media-hero__inner">
-            <div class="app-hero-main-card">
+            <div
+              class="app-hero-main-card"
+              :class="{ 'app-hero-main-card--continue': heroMode === 'continue' }"
+            >
               <img
-                v-if="activeFeaturedVideo?.thumbnail"
-                :key="activeFeaturedVideo.id"
-                :src="activeFeaturedVideo.thumbnail"
-                :alt="activeFeaturedVideo.title"
+                v-if="heroThumbnail"
+                :key="heroVideoKey"
+                :src="heroThumbnail"
+                :alt="heroTitle"
                 class="app-hero-main-card__img"
                 loading="eager"
               />
@@ -18,44 +21,65 @@
                 type="button"
                 variant="ghost"
                 class="app-hero-main-card__cover-action"
-                :aria-label="`播放 ${heroVideo.title}`"
+                :aria-label="`${heroCtaLabel} ${heroTitle}`"
                 @click="openVideo(heroVideo)"
               />
               <div class="app-hero-main-card__scrim" aria-hidden="true" />
 
               <div class="app-hero-main-card__content">
-                <p class="home-media-hero__kicker">{{ heroEyebrow }}</p>
+                <div class="home-media-hero__topline">
+                  <p class="home-media-hero__kicker">{{ heroEyebrow }}</p>
+                  <button
+                    v-if="heroMode === 'continue'"
+                    type="button"
+                    class="home-media-hero__skip"
+                    @click.stop="skipContinueHero"
+                  >
+                    换推荐
+                  </button>
+                </div>
+
                 <h1 class="home-media-hero__title">{{ heroTitle }}</h1>
                 <p v-if="heroSub" class="home-media-hero__sub">{{ heroSub }}</p>
+
+                <div
+                  v-if="heroProgress"
+                  class="home-media-hero__progress"
+                  role="progressbar"
+                  :aria-valuenow="heroProgress.percent"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  :aria-label="`已观看 ${heroProgress.percent}%`"
+                >
+                  <div
+                    class="home-media-hero__progress-fill"
+                    :style="{ width: `${heroProgress.percent}%` }"
+                  />
+                </div>
 
                 <div v-if="heroVideo" class="home-media-hero__actions">
                   <Button
                     type="button"
                     variant="default"
-                    size="sm"
                     class="app-hero-cta"
                     @click="openVideo(heroVideo)"
                   >
                     <AppIcon name="play" class="app-play-icon size-4" />
                     {{ heroCtaLabel }}
-                    <span v-if="heroRemainingText" class="app-hero-cta__meta">{{ heroRemainingText }}</span>
                   </Button>
-                  <Button
+                  <button
                     v-if="heroChannelId"
                     type="button"
-                    variant="outline"
-                    size="sm"
-                    class="app-hero-cta app-hero-cta--ghost"
-                    @click="openSubscription(heroChannelId)"
+                    class="home-media-hero__channel-link"
+                    @click.stop="openSubscription(heroChannelId)"
                   >
                     查看频道
-                  </Button>
+                  </button>
                 </div>
                 <div v-else class="home-media-hero__actions">
                   <Button
                     type="button"
                     variant="default"
-                    size="sm"
                     class="app-hero-cta"
                     @click="scrollToFirstRail"
                   >
@@ -96,6 +120,7 @@
         />
         <ContinueWatching
           ref="continueWatchingRef"
+          :exclude-video-id="continueExcludeId"
           @openModal="openVideo"
           @viewMore="goToContinueWatching"
           @goToSubscription="openSubscription"
@@ -113,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onActivated, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import SpotlightRow from '@/features/video/components/feed/SpotlightRow.vue'
 import ContinueWatching from '@/features/video/components/feed/ContinueWatching.vue'
@@ -121,7 +146,7 @@ import SpecialFollowVideos from '@/features/video/components/feed/SpecialFollowV
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
-import { formatDuration } from '@/shared/lib/dateFormat'
+import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import { getFeaturedVideos } from '@/shared/api/video'
 import { Logger } from '@/shared/lib/logger'
@@ -129,6 +154,8 @@ import type { VideoHistoryEntry, VideoListItem } from '@/features/video/types/vi
 
 // Home view: recommendation rows + media hero. The full tabbed feed lives in VideosView (/videos).
 defineOptions({ name: 'HomeView' })
+
+type HeroMode = 'continue' | 'featured' | 'empty'
 
 const router = useRouter()
 const { openVideo, openSubscription } = useVideoCardNavigation(router)
@@ -170,48 +197,98 @@ const cached = readCachedFeatured()
 const featuredVideos = ref<VideoListItem[]>(cached?.items ?? [])
 const activeFeaturedIndex = ref(0)
 
-// History-based hero (from ContinueWatching)
+// History-based hero (from ContinueWatching). Takes priority over featured when valid.
 const historyHero = ref<VideoHistoryEntry | null>(null)
+/** User dismissed this continue-hero id for the current session. */
+const dismissedContinueId = ref<number | null>(null)
 
 const handleHeroChange = (video: VideoHistoryEntry | null) => {
   if (video?.id === historyHero.value?.id) return
   historyHero.value = video
 }
 
-// Composite hero: centre featured card takes priority, history as fallback
-const activeFeaturedVideo = computed(() => featuredVideos.value[activeFeaturedIndex.value] ?? null)
-const secondaryFeaturedVideos = computed(() =>
-  featuredVideos.value
-    .map((video, index) => ({ video, index }))
-    .filter(({ index }) => index !== activeFeaturedIndex.value)
-    .slice(0, 4),
-)
+const skipContinueHero = () => {
+  const id = historyHero.value?.id
+  if (id != null) dismissedContinueId.value = id
+  // Keep historyHero so rail exclusion / later refresh can re-evaluate;
+  // mode gate below ignores the dismissed id.
+}
 
-const heroVideo = computed<VideoHistoryEntry | VideoListItem | null>(() => {
-  const active = activeFeaturedVideo.value
-  if (active?.thumbnail) return active
-  return historyHero.value
+const isResumable = (video: VideoHistoryEntry | null | undefined): video is VideoHistoryEntry => {
+  if (!video) return false
+  if (dismissedContinueId.value === video.id) return false
+  return Number(video.last_position || 0) > 0
+}
+
+const activeFeaturedVideo = computed(() => featuredVideos.value[activeFeaturedIndex.value] ?? null)
+
+const secondaryFeaturedVideos = computed(() => {
+  // When continue owns the main card, all featured slots can fill the side grid.
+  // When featured owns the main card, hide the active featured item from the side grid.
+  const continueId = isResumable(historyHero.value) ? historyHero.value.id : null
+  const hideMainFeatured = continueId == null
+
+  return featuredVideos.value
+    .map((video, index) => ({ video, index }))
+    .filter(({ video, index }) => {
+      if (continueId != null && video.id === continueId) return false
+      if (hideMainFeatured && index === activeFeaturedIndex.value) return false
+      return true
+    })
+    .slice(0, 4)
 })
 
-// ── Auto-rotation ──
-const AUTO_ROTATE_INTERVAL = 6_000 // 6 seconds
+/**
+ * Mode split is intentional:
+ * - continue: unfinished history item owns the main card (no featured auto-rotate)
+ * - featured: curated pool owns the main card
+ * - empty: no media to spotlight
+ */
+const heroMode = computed<HeroMode>(() => {
+  if (isResumable(historyHero.value)) return 'continue'
+  if (activeFeaturedVideo.value) return 'featured'
+  return 'empty'
+})
+
+const heroVideo = computed<VideoHistoryEntry | VideoListItem | null>(() => {
+  if (heroMode.value === 'continue') return historyHero.value
+  if (heroMode.value === 'featured') return activeFeaturedVideo.value
+  return null
+})
+
+const heroThumbnail = computed(() => heroVideo.value?.thumbnail || null)
+const heroVideoKey = computed(() => heroVideo.value?.id ?? 'empty')
+const continueExcludeId = computed(() =>
+  heroMode.value === 'continue' ? (historyHero.value?.id ?? null) : null,
+)
+
+// ── Progress (continue mode only; requires real position, not full duration) ──
+const heroProgress = computed(() => {
+  if (heroMode.value !== 'continue' || !heroVideo.value) return null
+  const dur = Number(heroVideo.value.duration || 0)
+  const pos = Number(heroVideo.value.last_position || 0)
+  if (dur <= 0 || pos <= 0) return null
+  // Treat near-start (<2%) as not-yet-meaningful progress for the bar.
+  if (pos / dur < 0.02) return null
+  const ratio = Math.min(1, pos / dur)
+  const remaining = Math.max(0, Math.floor(dur - pos))
+  if (remaining <= 0) return null
+  return {
+    ratio,
+    percent: Math.max(1, Math.min(100, Math.round(ratio * 100))),
+    remaining,
+    remainingText: `剩 ${formatDuration(remaining)}`,
+  }
+})
+
+// ── Auto-rotation (featured mode only) ──
+const AUTO_ROTATE_INTERVAL = 6_000
 let autoRotateTimer: ReturnType<typeof setInterval> | null = null
 
-// Respect user's reduced-motion preference: skip auto-rotate entirely.
 const prefersReducedMotion = () =>
   typeof window !== 'undefined'
   && typeof window.matchMedia === 'function'
   && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-const startAutoRotate = () => {
-  stopAutoRotate()
-  if (featuredVideos.value.length <= 1) return
-  if (prefersReducedMotion()) return
-  autoRotateTimer = setInterval(() => {
-    const next = (activeFeaturedIndex.value + 1) % featuredVideos.value.length
-    activeFeaturedIndex.value = next
-  }, AUTO_ROTATE_INTERVAL)
-}
 
 const stopAutoRotate = () => {
   if (autoRotateTimer !== null) {
@@ -220,37 +297,79 @@ const stopAutoRotate = () => {
   }
 }
 
-// ── Hero text ──
-const heroEyebrow = computed(() =>
-  heroVideo.value ? '继续观看' : '今日概览',
-)
+const startAutoRotate = () => {
+  stopAutoRotate()
+  if (heroMode.value === 'continue') return
+  if (featuredVideos.value.length <= 1) return
+  if (prefersReducedMotion()) return
+  autoRotateTimer = setInterval(() => {
+    if (heroMode.value === 'continue') {
+      stopAutoRotate()
+      return
+    }
+    const next = (activeFeaturedIndex.value + 1) % featuredVideos.value.length
+    activeFeaturedIndex.value = next
+  }, AUTO_ROTATE_INTERVAL)
+}
+
+watch(heroMode, (mode) => {
+  if (mode === 'continue') stopAutoRotate()
+  else startAutoRotate()
+})
+
+// ── Hero copy ──
+const heroAriaLabel = computed(() => {
+  if (heroMode.value === 'continue') return '继续观看'
+  if (heroMode.value === 'featured') return '精选推荐'
+  return '推荐内容'
+})
+
+const heroEyebrow = computed(() => {
+  if (heroMode.value === 'continue') return '继续观看'
+  if (heroMode.value === 'featured') return '精选'
+  return '今日概览'
+})
+
 const heroTitle = computed(() =>
   heroVideo.value ? heroVideo.value.title : '今天看点什么',
 )
+
+const heroChannelName = computed(() => {
+  const subs = heroVideo.value?.subscriptions
+  return subs?.[0]?.name || null
+})
+
 const heroSub = computed(() => {
-  if (heroVideo.value) {
-    const subs = heroVideo.value.subscriptions
-    const who = subs?.[0]?.name
-    return who ? `来自 ${who} · 从你离开的地方继续` : '从你离开的地方继续这段旅程'
+  if (heroMode.value === 'continue' && heroVideo.value) {
+    const parts: string[] = []
+    if (heroChannelName.value) parts.push(heroChannelName.value)
+    if (heroProgress.value) {
+      parts.push(`已看 ${heroProgress.value.percent}%`)
+      parts.push(heroProgress.value.remainingText)
+    } else {
+      const pos = Number(heroVideo.value.last_position || 0)
+      if (pos > 0) parts.push(`看到 ${formatDuration(pos)}`)
+    }
+    const playedAt = 'played_at' in heroVideo.value ? heroVideo.value.played_at : null
+    if (playedAt) parts.push(`上次 ${formatDate(playedAt)}`)
+    return parts.length > 0 ? parts.join(' · ') : '从上次离开的位置继续'
   }
+
+  if (heroMode.value === 'featured' && heroVideo.value) {
+    const parts: string[] = []
+    if (heroChannelName.value) parts.push(heroChannelName.value)
+    const dur = Number(heroVideo.value.duration || 0)
+    if (dur > 0) parts.push(formatDuration(dur))
+    return parts.length > 0 ? parts.join(' · ') : '为你挑选的内容'
+  }
+
   return '在右侧添加第一个订阅频道，开始建立你的观看队列。'
 })
 
 const heroCtaLabel = computed(() => {
-  const v = heroVideo.value
-  if (!v) return '开始观看'
-  const pos = Number(v.last_position || 0)
-  return pos > 0 ? '继续观看' : '开始观看'
-})
-
-const heroRemainingText = computed(() => {
-  const v = heroVideo.value
-  if (!v) return ''
-  const dur = Number(v.duration || 0)
-  const pos = Number(v.last_position || 0)
-  const remaining = dur - pos
-  if (remaining > 0) return `剩 ${formatDuration(remaining)}`
-  return ''
+  if (heroMode.value === 'continue') return '继续播放'
+  if (heroMode.value === 'featured') return '立即播放'
+  return '开始观看'
 })
 
 const heroChannelId = computed(() => heroVideo.value?.subscriptions?.[0]?.id ?? null)
@@ -279,14 +398,12 @@ const refresh = () => {
   })
 }
 
-// Load featured hero pool. Uses local cache to avoid fallback flash on refresh.
 const loadFeaturedVideos = async () => {
   try {
     const items = await getFeaturedVideos()
     if (Array.isArray(items) && items.length > 0) {
       featuredVideos.value = items.slice(0, 5)
       writeCachedFeatured(featuredVideos.value)
-      // Reset active index if it's now out of bounds
       if (activeFeaturedIndex.value >= featuredVideos.value.length) {
         activeFeaturedIndex.value = 0
       }
@@ -307,7 +424,6 @@ onActivated(() => {
 
 onMounted(() => {
   lastRefreshedAt = Date.now()
-  // If we have cached data, show it immediately; API refresh happens in background
   if (featuredVideos.value.length > 0) {
     startAutoRotate()
   }
@@ -335,12 +451,12 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  height: 2.25rem;
-  padding: 0 1rem;
+  height: 2.5rem;
+  padding: 0 1.15rem;
   border: 0;
   border-radius: var(--radius-md);
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 650;
   line-height: 1;
   white-space: nowrap;
   color: hsl(var(--primary-foreground));
@@ -365,57 +481,38 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 0 2px hsl(0 0% 0% / 0.4), 0 0 0 4px hsl(var(--ring) / 0.55);
 }
 
-.app-hero-cta__meta {
-  display: inline-flex;
-  align-items: center;
-  align-self: stretch;
-  padding-left: 0.5rem;
-  margin-left: 0.25rem;
-  border-inline-start: 1px solid hsl(0 0% 100% / 0.25);
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  font-weight: 500;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.85;
-}
-
-.app-hero-cta--ghost {
-  background: hsl(0 0% 0% / 0.35);
-  color: hsl(0 0% 100%);
-  border: 1px solid hsl(0 0% 100% / 0.18);
-  box-shadow: none;
-}
-
-.app-hero-cta--ghost:hover {
-  background: hsl(0 0% 0% / 0.48);
-  border-color: hsl(0 0% 100% / 0.28);
-  box-shadow: none;
-}
-
-/* Single surface shell — no nested card chrome around the whole hero. */
+/*
+ * Hero is media tiles on the page canvas — not a nested surface card.
+ * No tray background, border, or outer padding (that reads as a boxed section).
+ */
 .home-media-hero {
   position: relative;
   min-height: 0;
-  overflow: hidden;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--app-surface-radius);
-  background: hsl(var(--card) / 0.42);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .home-media-hero__inner {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(18rem, 0.85fr);
+  /*
+   * Equal columns + stretch: main is 16:9 and sets the row height; the side
+   * 2×2 fills that same height. With equal column widths each side cell is
+   * also ~16:9 ((W-g)/2) / ((H-g)/2) ≈ W/H = 16/9.
+   */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;
   gap: var(--space-3);
   min-height: 0;
-  padding: var(--space-3);
+  padding: 0;
 }
 
 .app-hero-main-card {
   position: relative;
   min-width: 0;
-  aspect-ratio: 21 / 9;
+  width: 100%;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: var(--radius-lg);
   background: hsl(var(--muted) / 0.55);
@@ -426,6 +523,7 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
 }
 
 .app-hero-main-card__cover-action {
@@ -443,12 +541,41 @@ onBeforeUnmount(() => {
   box-shadow: inset 0 0 0 3px hsl(var(--ring) / 0.55);
 }
 
+/* Softer scrim: keep faces readable while anchoring text at the bottom. */
 .app-hero-main-card__scrim {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  background: linear-gradient(to top, hsl(0 0% 0% / 0.88), hsl(0 0% 0% / 0.2) 55%, transparent 78%);
+  background:
+    linear-gradient(
+      to top,
+      hsl(0 0% 0% / 0.86) 0%,
+      hsl(0 0% 0% / 0.52) 34%,
+      hsl(0 0% 0% / 0.16) 58%,
+      transparent 78%
+    ),
+    linear-gradient(
+      to right,
+      hsl(0 0% 0% / 0.28) 0%,
+      transparent 42%
+    );
+}
+
+.app-hero-main-card--continue .app-hero-main-card__scrim {
+  background:
+    linear-gradient(
+      to top,
+      hsl(0 0% 0% / 0.9) 0%,
+      hsl(0 0% 0% / 0.55) 36%,
+      hsl(0 0% 0% / 0.18) 60%,
+      transparent 80%
+    ),
+    linear-gradient(
+      to right,
+      hsl(0 0% 0% / 0.32) 0%,
+      transparent 48%
+    );
 }
 
 .app-hero-main-card__content {
@@ -456,16 +583,58 @@ onBeforeUnmount(() => {
   inset-inline: 0;
   bottom: 0;
   z-index: 3;
+  display: grid;
+  gap: 0;
+  max-width: 40rem;
   padding: var(--space-5);
+  pointer-events: none;
 }
 
-/* Status line — not a decorative section eyebrow. */
+.app-hero-main-card__content > * {
+  pointer-events: auto;
+}
+
+.home-media-hero__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.375rem;
+}
+
+/* Status line — mode label, not a decorative section eyebrow. */
 .home-media-hero__kicker {
-  margin: 0 0 0.375rem;
+  margin: 0;
   color: hsl(var(--primary));
   font-size: 0.75rem;
   font-weight: 650;
   line-height: 1.25;
+}
+
+.home-media-hero__skip {
+  margin: 0;
+  padding: 0.2rem 0.45rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: hsl(0 0% 0% / 0.28);
+  color: hsl(0 0% 100% / 0.72);
+  font-size: 0.6875rem;
+  font-weight: 550;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
+}
+
+.home-media-hero__skip:hover {
+  background: hsl(0 0% 0% / 0.42);
+  color: hsl(0 0% 100% / 0.92);
+}
+
+.home-media-hero__skip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.55);
 }
 
 .home-media-hero__title {
@@ -478,22 +647,72 @@ onBeforeUnmount(() => {
   line-height: var(--app-hero-leading);
   letter-spacing: var(--app-hero-tracking);
   text-wrap: balance;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .home-media-hero__sub {
   margin: 0.5rem 0 0;
   max-width: 36rem;
   color: hsl(0 0% 100% / 0.78);
-  font-size: 0.875rem;
-  line-height: 1.55;
+  font-size: 0.8125rem;
+  line-height: 1.5;
   text-wrap: pretty;
+}
+
+.home-media-hero__progress {
+  margin-top: 0.875rem;
+  width: min(100%, 18rem);
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: hsl(0 0% 100% / 0.18);
+}
+
+.home-media-hero__progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: hsl(var(--primary));
+  transition: width var(--duration-base) var(--ease-default);
 }
 
 .home-media-hero__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.625rem;
+  align-items: center;
+  gap: 0.75rem 1rem;
   margin-top: var(--space-4);
+}
+
+.home-media-hero__channel-link {
+  margin: 0;
+  padding: 0.25rem 0;
+  border: 0;
+  background: transparent;
+  color: hsl(0 0% 100% / 0.78);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  line-height: 1.2;
+  text-decoration: underline;
+  text-decoration-color: hsl(0 0% 100% / 0.28);
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    text-decoration-color var(--duration-fast) var(--ease-default);
+}
+
+.home-media-hero__channel-link:hover {
+  color: hsl(0 0% 100%);
+  text-decoration-color: hsl(0 0% 100% / 0.55);
+}
+
+.home-media-hero__channel-link:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.55);
 }
 
 .app-hero-feature-grid {
@@ -503,30 +722,29 @@ onBeforeUnmount(() => {
   gap: var(--space-3);
   min-width: 0;
   min-height: 0;
+  width: 100%;
+  /* Stretch to the main card’s 16:9 height (parent row). */
   height: 100%;
+  align-self: stretch;
 }
 
 .app-hero-feature-card {
   position: relative;
-  align-self: stretch;
-  justify-self: stretch;
   min-width: 0;
   min-height: 0;
   width: 100%;
   height: 100%;
+  /* Ratio comes from the equal-column + shared-height layout, not a local aspect-ratio. */
   padding: 0;
   overflow: hidden;
-  border: 1px solid var(--app-surface-border-subtle);
+  border: 0;
   border-radius: var(--radius-lg);
-  background: hsl(var(--muted) / 0.45);
+  background: hsl(var(--muted) / 0.35);
   cursor: pointer;
-  transition:
-    border-color var(--duration-fast) var(--ease-default),
-    transform var(--duration-fast) var(--ease-default);
+  transition: transform var(--duration-fast) var(--ease-default);
 }
 
 .app-hero-feature-card:hover {
-  border-color: hsl(var(--primary) / 0.28);
   transform: translateY(-1px);
 }
 
@@ -546,6 +764,7 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   transition: transform var(--duration-base) var(--ease-default);
 }
 
@@ -612,27 +831,30 @@ onBeforeUnmount(() => {
 @media (max-width: 1100px) {
   .home-media-hero__inner {
     grid-template-columns: 1fr;
+    align-items: start;
   }
 
   .app-hero-main-card {
-    aspect-ratio: 16 / 9;
-    min-height: 18rem;
+    min-height: 0;
   }
 
+  /* Stacked: no shared row height — restore intrinsic 16:9 on side cards. */
   .app-hero-feature-grid {
     height: auto;
+    grid-template-rows: auto auto;
   }
 
   .app-hero-feature-card {
+    height: auto;
     aspect-ratio: 16 / 9;
-    min-height: 8.5rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .app-hero-cta,
   .app-hero-feature-card,
-  .app-hero-feature-card__img {
+  .app-hero-feature-card__img,
+  .home-media-hero__progress-fill {
     transition: none;
   }
 

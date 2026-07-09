@@ -1,5 +1,5 @@
 <template>
-  <div v-if="historyItems.length > 0 || loading" class="mb-6 pt-4 px-6 overflow-hidden relative group/container">
+  <div v-if="railItems.length > 0 || loading" class="mb-6 pt-4 px-6 overflow-hidden relative group/container">
     <FeedRailHeader
       title="继续观看"
       view-more-label="查看全部"
@@ -14,9 +14,9 @@
       class="no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x"
       @scroll="updateScrollState"
     >
-      <RecommendationSkeleton v-if="loading && historyItems.length === 0" :count="6" />
+      <RecommendationSkeleton v-if="loading && railItems.length === 0" :count="6" />
       <VideoItem
-        v-for="item in historyItems"
+        v-for="item in railItems"
         :key="item.id"
         :video="item as VideoListItem"
         show-avatar
@@ -50,13 +50,20 @@ export function getRecentHeroIds(): readonly number[] {
 </script>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { computed, ref, onMounted, nextTick, watch } from 'vue'
 import FeedRailHeader from '@/features/video/components/feed/FeedRailHeader.vue'
 import VideoItem from '@/features/video/components/feed/VideoItem.vue'
 import RecommendationSkeleton from '@/features/video/components/feed/RecommendationSkeleton.vue'
 import { useVideoHistory } from '@/features/video/composables/useVideoHistory'
 import { Logger } from '@/shared/lib/logger'
 import type { VideoListItem } from '@/features/video/types/video'
+
+const props = withDefaults(defineProps<{
+  /** Video already featured in the home hero — omit from this rail to avoid adjacent duplicates. */
+  excludeVideoId?: number | null
+}>(), {
+  excludeVideoId: null,
+})
 
 const emit = defineEmits<{
   openModal: [video: VideoHistoryEntry]
@@ -68,6 +75,13 @@ const emit = defineEmits<{
 const { getWatchHistory } = useVideoHistory()
 const historyItems = ref<VideoHistoryEntry[]>([])
 const loading = ref(false)
+
+/** Full history minus the hero item currently owned by HomeView. */
+const railItems = computed(() => {
+  const excludeId = props.excludeVideoId
+  if (excludeId == null) return historyItems.value
+  return historyItems.value.filter((item) => item.id !== excludeId)
+})
 
 const scrollContainer = ref<HTMLElement | null>(null)
 const canScrollLeft = ref(false)
@@ -177,6 +191,11 @@ const load = async () => {
     loading.value = false
   }
 }
+
+watch(railItems, async () => {
+  await nextTick()
+  updateScrollState()
+})
 
 onMounted(load)
 
