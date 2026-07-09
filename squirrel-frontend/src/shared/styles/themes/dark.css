@@ -5,7 +5,9 @@
      light used H26/H36 — two independently-tuned palettes that made the
      whole UI feel inconsistent across themes. */
 
-  /* Aligned to DESIGN.md: Projection Black / Panel Charcoal / Rail Black. */
+  /* Aligned to DESIGN.md: Projection Black / Panel Charcoal.
+     Sidebar shares the canvas color (not a darker "Rail Black") so chrome
+     and content stay on one temperature; hierarchy comes from border/structure. */
   --background: 28 10% 7%;
   --foreground: 28 10% 95%;
 
@@ -44,9 +46,10 @@
   /* Modal / sheet scrims — consumed by bg-overlay / bg-overlay-strong. */
   --overlay: 0 0% 0%;
 
-  --sidebar: 28 10% 5%;
+  /* Same as --background: one canvas temperature; rail edge via border. */
+  --sidebar: 28 10% 7%;
   --sidebar-foreground: 28 10% 95%;
-  --sidebar-border: 28 7% 11%;
+  --sidebar-border: 28 7% 16%;
 
   --shadow-xs: 0 1px 0 hsl(0 0% 0% / 0.25);
   --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.4);
@@ -107,9 +110,10 @@
 
   --overlay: 0 0% 0%;
 
-  --sidebar: 28 20% 97%;
+  /* Same as --background: one canvas temperature; rail edge via border. */
+  --sidebar: 28 30% 99%;
   --sidebar-foreground: 28 10% 10%;
-  --sidebar-border: 28 12% 90%;
+  --sidebar-border: 28 12% 89%;
 
   /* Light-mode brand badge stops — slightly more saturated and warmer than
      the dark-mode defaults so the polished-enamel effect survives against a

@@ -24,6 +24,7 @@ defineProps<{
 <style scoped>
 .app-page-shell {
   display: flex;
+  width: 100%;
   min-height: 100%;
   flex-direction: column;
   color: hsl(var(--foreground));
@@ -31,9 +32,16 @@ defineProps<{
   background: transparent;
 }
 
+/*
+  Fill = contained workbench page. Height is bound to the layout stage so
+  the outer app scrollport does not become the document scroller; the first
+  child (usually AppTwoColumnLayout) owns the internal scroll roots.
+*/
 .app-page-shell--fill {
+  flex: 1 1 auto;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* Stretch the primary workbench child only — dialogs / portals may also be
@@ -41,6 +49,7 @@ defineProps<{
 .app-page-shell--fill > :deep(*:first-child) {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
 }
 
 .app-page-shell--scrollable {

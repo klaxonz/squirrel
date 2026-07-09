@@ -319,6 +319,8 @@ export function resolveRouteContext(route: RouteLocationNormalizedLoaded): Route
     || '工作台',
   )
 
+  // Prefer explicit meta, then nav item name. Keep section distinct from page
+  // title when possible so the header can drop redundant double labels.
   const sectionLabel = String(route.meta?.sectionLabel || navItem?.name || '工作台')
   const breadcrumbs: BreadcrumbItem[] = []
 
@@ -345,6 +347,8 @@ export function resolveRouteContext(route: RouteLocationNormalizedLoaded): Route
   }
 
   const backTarget = route.meta?.backTarget as RouteLocationRaw | undefined
+  // Top-level = landed on the nav item's own path (e.g. /home, /videos/all).
+  // Nested detail routes keep section hierarchy in the header.
   const isTopLevel = Boolean(navItem && route.path === navItem.path)
 
   return {

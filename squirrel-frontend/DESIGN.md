@@ -5,7 +5,7 @@ colors:
   background-dark: "hsl(28 10% 7%)"
   foreground-dark: "hsl(28 10% 95%)"
   card-dark: "hsl(28 8% 9%)"
-  sidebar-dark: "hsl(28 10% 5%)"
+  sidebar-dark: "hsl(28 10% 7%)"
   primary-amber-dark: "hsl(28 90% 58%)"
   muted-foreground-dark: "hsl(28 6% 62%)"
   border-dark: "hsl(28 7% 16%)"
@@ -109,8 +109,7 @@ The palette runs on one warm amber hue axis: near-black warm neutrals for dark m
 - **Archive Amber** (`hsl(28 90% 58%)` dark, `hsl(28 88% 50%)` light): primary buttons, active navigation icons, focus rings, connected status emphasis, brand badge, and rare high-value highlights.
 
 ### Neutral
-- **Projection Black** (`hsl(28 10% 7%)`): dark-mode app background and main reading surface.
-- **Rail Black** (`hsl(28 10% 5%)`): sidebar surface, visually lower than the content area.
+- **Projection Black** (`hsl(28 10% 7%)`): dark-mode app background, main reading surface, and sidebar canvas. Sidebar matches the content temperature so chrome does not read as a separate brown rail; hierarchy comes from hairline border / structure, not a darker fill.
 - **Panel Charcoal** (`hsl(28 8% 9%)`): cards, inputs, popovers, and table containers in dark mode.
 - **Warm White** (`hsl(28 30% 99%)`): light-mode background without changing the amber identity.
 - **Muted Ink** (`hsl(28 6% 62%)` dark, `hsl(28 5% 42%)` light): secondary labels, inactive icons, metadata, and placeholder text.
@@ -152,14 +151,25 @@ The palette runs on one warm amber hue axis: near-black warm neutrals for dark m
 
 Squirrel uses a hybrid of tonal layering and small structural shadows. Resting surfaces rely on background, border, and subtle tonal contrast. Shadows appear for popovers, hover lift, brand badges, and transient overlays where depth clarifies stacking.
 
+### Shell Canvas
+
+The desktop shell is **one continuous canvas**, not a stack of floating cards.
+
+- Title bar, primary sidebar, workspace, workbench secondary panes, headers, and toolbars all rest on `--background` (or transparent over it).
+- Regional hierarchy is hairline borders only (`--app-hairline` / sidebar border). Do not tint secondary panes with `--card` to invent depth.
+- No outer frame padding + gap that turns sidebar and workspace into two floating islands.
+- No full border + radius + panel shadow on shell chrome. Those treatments are reserved for true overlays (menus, dialogs, popovers) and media item cards.
+
 ### Shadow Vocabulary
-- **Surface Hairline** (`0 1px 2px hsl(var(--foreground) / 0.04)`): default app surfaces and tables.
+- **Surface Hairline** (`0 1px 2px hsl(var(--foreground) / 0.04)`): tables and small resting content surfaces — not shell regions.
 - **Primary Button Lift** (`0 1px 2px hsl(var(--primary)/0.3), 0 0 0 1px hsl(var(--primary)/0.5) inset`): primary action at rest.
 - **Primary Button Hover** (`0 2px 8px hsl(var(--primary)/0.35)`): primary action hover only.
 - **Popover Lift** (`0 8px 24px hsl(var(--foreground) / 0.14), 0 24px 56px hsl(var(--foreground) / 0.10)`): menus, search suggestions, and dropdowns.
 - **Brand Glow** (`0 8px 24px hsl(var(--primary) / 0.32)` plus hairline): brand badge only.
 
 ### Named Rules
+
+**The Single Canvas Rule.** Shell regions share one surface temperature. Split structure with hairlines, not nested cards, inset panels, or dual floating columns.
 
 **The Flat Until It Moves Rule.** Keep cards and panels nearly flat at rest. Use elevation to explain overlays, focus, hover, or brand identity, not to decorate every container.
 
@@ -190,8 +200,10 @@ Squirrel uses a hybrid of tonal layering and small structural shadows. Resting s
 - **State:** status variants use success, warning, destructive, or amber with text plus context; never rely on color alone.
 
 ### Navigation
-- **Sidebar:** fixed desktop rail with expanded/collapsed widths driven by `--sidebar-width`; active item uses amber icon plus low-alpha amber background.
-- **Header:** fixed height with history controls, current page title, contextual search, and user entry point. It should not repeat breadcrumbs already represented by the sidebar.
+- **Sidebar:** fixed desktop rail with expanded/collapsed widths driven by `--sidebar-width`. Flush to the shell edge (not a rounded floating card). Surface matches `--background`; separation is a single right hairline, not a full border + shadow. Active item uses amber icon plus low-alpha amber background.
+- **Workspace:** continuous with the shell background. No outer card frame, radius, or panel shadow around the main content column.
+- **Workbench panes:** secondary sidebars (订阅频道, 播放列表, RSS entry list, settings nav) stay transparent on the same canvas; only a vertical hairline divides list from content.
+- **Header:** fixed height with history controls, current page title, contextual search, and user entry point. Flat `--background`, single bottom hairline. It should not repeat breadcrumbs already represented by the sidebar.
 - **Tabs / Segmented Controls:** use shared `Tabs` / `TabsList` / `TabsTrigger` or `AppSegmentedControl`. Compact height, secondary track, active card surface, focus-visible ring. Do not invent a third tab look per feature.
 
 ### Skeletons
@@ -215,6 +227,8 @@ Squirrel uses a hybrid of tonal layering and small structural shadows. Resting s
 
 ### Don't:
 - **Don't** add mobile-first breakpoints unless the task explicitly asks for mobile behavior.
+- **Don't** float the sidebar and workspace as separate padded cards with gap, radius, and panel shadow.
+- **Don't** tint workbench/secondary panes with `--card` just to mark regions; hairlines are enough.
 - **Don't** use decorative gradient text, glassmorphism, diagonal stripes, or generic dashboard hero metrics.
 - **Don't** create colored side-stripe cards or alert stripes; use full borders, icons, badges, or semantic copy.
 - **Don't** make inactive UI saturated or high contrast; reserve emphasis for current state and action.

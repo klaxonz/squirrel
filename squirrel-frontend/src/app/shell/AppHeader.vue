@@ -15,7 +15,7 @@
       </Button>
 
       <div class="app-header__context" :title="contextTitle">
-        <div class="app-header__section">{{ sectionLabel }}</div>
+        <div v-if="showSection" class="app-header__section">{{ sectionLabel }}</div>
         <h1 class="app-header__page-title">{{ pageTitle }}</h1>
       </div>
     </div>
@@ -129,7 +129,24 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 const routeContext = computed(() => resolveRouteContext(route))
 const pageTitle = computed(() => routeContext.value.pageTitle)
 const sectionLabel = computed(() => routeContext.value.sectionLabel)
-const contextTitle = computed(() => `${sectionLabel.value} / ${pageTitle.value}`)
+/**
+ * Section label is only useful when it adds hierarchy beyond the page title.
+ * Top-level nav pages already expose their identity in the sidebar, so
+ * repeating the same string as both section + title (e.g. 首页 / 首页) is noise.
+ */
+const showSection = computed(() => {
+  const section = sectionLabel.value.trim()
+  const title = pageTitle.value.trim()
+  if (!section) return false
+  if (section === title) return false
+  if (routeContext.value.isTopLevel) return false
+  return true
+})
+const contextTitle = computed(() => (
+  showSection.value
+    ? `${sectionLabel.value} / ${pageTitle.value}`
+    : pageTitle.value
+))
 
 const canGoBack = computed(() => nav.canGoBack.value)
 const backTooltipLabel = computed(() => {
@@ -152,7 +169,8 @@ function handleBack() {
   gap: var(--space-4);
   padding: 0 var(--space-5);
   border-bottom: 1px solid var(--app-hairline);
-  background: hsl(var(--card) / 0.88);
+  /* Flat chrome on the shared canvas — no card band that reads as a third box. */
+  background: hsl(var(--background));
   position: relative;
   z-index: var(--z-header);
   user-select: none;
@@ -161,19 +179,18 @@ function handleBack() {
 .app-header__lead {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   min-width: 0;
 }
 
 .app-header__back {
   flex: 0 0 auto;
-  background: hsl(var(--secondary) / 0.58);
+  color: hsl(var(--muted-foreground));
 }
 
 .app-header__back:hover {
-  border-color: hsl(var(--primary) / 0.38);
-  background: hsl(var(--accent));
   color: hsl(var(--foreground));
+  background: hsl(var(--accent));
 }
 
 .app-header__back:active {
@@ -183,7 +200,8 @@ function handleBack() {
 .app-header__context {
   min-width: 0;
   display: grid;
-  gap: 0.125rem;
+  gap: 0.1rem;
+  align-content: center;
 }
 
 .app-header__section {

@@ -185,17 +185,19 @@ onUnmounted(() => {
   z-index: var(--z-sidebar);
 }
 
+/*
+  Single continuous canvas — no floating dual cards.
+  Sidebar and workspace share one surface temperature; hierarchy is only a
+  hairline edge (owned by .sidebar-rail), not gap + radius + panel shadow.
+  Floating-card chrome was the main source of 割裂感 across workbench pages.
+*/
 .app-layout__frame {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
-  gap: var(--space-3);
-  padding: var(--space-3);
+  gap: 0;
+  padding: 0;
   overflow: hidden;
-}
-
-.app-layout--desktop .app-layout__frame {
-  padding-top: var(--space-3);
 }
 
 .app-layout__sidebar {
@@ -210,10 +212,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--app-hairline);
-  border-radius: var(--app-surface-radius);
-  background: hsl(var(--card) / 0.5);
-  box-shadow: var(--app-panel-shadow);
+  background: transparent;
 }
 
 .app-layout__header {
@@ -229,13 +228,36 @@ onUnmounted(() => {
   scroll-behavior: auto;
 }
 
+/*
+  Stage is a fixed-height flex host equal to the scrollport. Document-style
+  pages (fill=false) still outer-scroll because their content overflows the
+  stage box. Workbench pages (AppPageShell fill) consume the full host and
+  own their own scroll regions — see :has(.app-page-shell--fill) below.
+*/
 .app-layout__stage {
+  display: flex;
+  height: 100%;
   min-height: 100%;
+  flex-direction: column;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .app-layout__workspace {
-    box-shadow: 0 1px 0 hsl(var(--foreground) / 0.04) inset;
-  }
+/*
+  Contained workbench (订阅 / 歌单 / 设置 / 音乐 / RSS …): lock the outer
+  scrollport so only the workbench header stays pinned and
+  .app-workbench__scroll / sidebar lists move. Without this, percentage
+  height on fill pages fails against a min-height-only ancestor and the
+  entire workspace scrolls as one document.
+*/
+.app-layout__scroll:has(:deep(.app-page-shell--fill)) {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
 }
+
+.app-layout__scroll:has(:deep(.app-page-shell--fill)) .app-layout__stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
 </style>

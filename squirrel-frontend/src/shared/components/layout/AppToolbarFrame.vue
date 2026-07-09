@@ -35,9 +35,9 @@ withDefaults(defineProps<{
   width: 100%;
   margin: 0 auto;
   padding-inline: var(--app-page-gutter);
-  /* UI-068: solid-enough background replaces the previous `backdrop-filter: blur`
-     glassmorphism; meets DESIGN.md's "flat until it moves" rule. */
-  background: hsl(var(--background) / 0.92);
+  /* Opaque on the shared canvas so sticky toolbars cover scroll content
+     without a frosted or card-tinted band. */
+  background: hsl(var(--background));
 }
 
 .app-toolbar-frame--sticky {

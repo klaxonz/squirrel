@@ -92,9 +92,10 @@ const showSidebarMusicPlayer = computed(() =>
 
 <style scoped>
 /*
-  Boring on purpose.
-  - Brand + collapse share one top row inside the card (not edge, not app header).
-  - Collapse is a normal icon button; chevron rotates — no icon-set swap.
+  Rail on the shared canvas — not a floating card.
+  - Same surface temperature as the app background (DESIGN.md).
+  - Only a right hairline separates nav from workspace.
+  - Brand + collapse share one top row; chevron rotates on collapse.
   - Collapsed: brand hides, toggle centers, nav is icon-only.
 */
 .sidebar-rail {
@@ -103,10 +104,11 @@ const showSidebarMusicPlayer = computed(() =>
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid hsl(var(--sidebar-border) / 0.82);
-  border-radius: var(--radius-xl);
+  border: 0;
+  border-right: 1px solid hsl(var(--sidebar-border) / 0.55);
+  border-radius: 0;
   background: hsl(var(--sidebar));
-  box-shadow: var(--app-surface-shadow);
+  box-shadow: none;
   user-select: none;
   transition: width var(--duration-base) var(--ease-out);
 }

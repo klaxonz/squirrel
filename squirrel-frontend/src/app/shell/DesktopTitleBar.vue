@@ -68,7 +68,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: flex-end;
   padding: 0;
-  background: hsl(var(--card) / 0.6);
+  /* Same canvas as the shell — no floating title strip. */
+  background: hsl(var(--background));
   border-bottom: 1px solid var(--app-hairline);
   user-select: none;
   -webkit-app-region: drag;
