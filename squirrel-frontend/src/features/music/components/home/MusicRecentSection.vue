@@ -2,9 +2,18 @@
   <section v-if="tracks.length" class="music-recent-section">
     <header class="music-recent-header">
       <h2 class="music-recent-title">最近播放</h2>
-      <Button variant="ghost" size="sm" @click="$emit('view-all')">
-        查看全部
-      </Button>
+      <button
+        type="button"
+        class="music-recent-more"
+        @click="$emit('view-all')"
+      >
+        <span class="music-recent-more-label">查看全部</span>
+        <AppIcon
+          name="chevronRight"
+          class="music-recent-more-icon h-3.5 w-3.5"
+          aria-hidden="true"
+        />
+      </button>
     </header>
 
     <div class="music-recent-list">
@@ -31,7 +40,6 @@
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import { Button } from '@/shared/ui/button'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import type { MusicTrack } from '@/shared/api/music'
 
@@ -58,8 +66,9 @@ function isPlaying(track: MusicTrack): boolean {
 
 .music-recent-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 1rem;
 }
 
@@ -67,6 +76,52 @@ function isPlaying(track: MusicTrack): boolean {
   font-size: 0.9375rem;
   font-weight: 700;
   color: hsl(var(--foreground));
+  margin: 0;
+}
+
+.music-recent-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  border-radius: 0.25rem;
+  transition: color 150ms ease;
+}
+
+.music-recent-more-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.music-recent-more-icon {
+  display: block;
+  flex-shrink: 0;
+  transform: translateY(0.5px);
+}
+
+.music-recent-more:hover,
+.music-recent-more:focus-visible {
+  color: hsl(var(--foreground));
+}
+
+.music-recent-more:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px hsl(var(--background)),
+    0 0 0 4px hsl(var(--ring) / 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-recent-more {
+    transition: none;
+  }
 }
 
 .music-recent-list {

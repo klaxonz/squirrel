@@ -1,18 +1,18 @@
 <template>
-  <div v-if="railItems.length > 0 || loading" class="mb-6 pt-4 px-6 overflow-hidden relative group/container">
+  <div v-if="railItems.length > 0 || loading" class="group/container relative mb-6 overflow-hidden px-6 pt-4">
     <FeedRailHeader
       title="继续观看"
-      view-more-label="查看全部"
+      view-more
       :can-scroll-left="canScrollLeft"
       :can-scroll-right="canScrollRight"
       @view-more="$emit('viewMore')"
-      @scroll="scroll"
+      @scroll="onScroll"
     />
 
-    <div
-      ref="scrollContainer"
-      class="no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x"
-      @scroll="updateScrollState"
+    <FeedRailTrack
+      ref="track"
+      :content-key="railItems.length"
+      @scroll-state="onScrollState"
     >
       <RecommendationSkeleton v-if="loading && railItems.length === 0" :count="6" />
       <VideoItem
@@ -25,7 +25,7 @@
         @openModal="$emit('openModal', item)"
         @goToSubscription="(id) => $emit('goToSubscription', id)"
       />
-    </div>
+    </FeedRailTrack>
   </div>
 </template>
 
@@ -50,8 +50,9 @@ export function getRecentHeroIds(): readonly number[] {
 </script>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, nextTick, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import FeedRailHeader from '@/features/video/components/feed/FeedRailHeader.vue'
+import FeedRailTrack from '@/features/video/components/feed/FeedRailTrack.vue'
 import VideoItem from '@/features/video/components/feed/VideoItem.vue'
 import RecommendationSkeleton from '@/features/video/components/feed/RecommendationSkeleton.vue'
 import { useVideoHistory } from '@/features/video/composables/useVideoHistory'
@@ -75,6 +76,9 @@ const emit = defineEmits<{
 const { getWatchHistory } = useVideoHistory()
 const historyItems = ref<VideoHistoryEntry[]>([])
 const loading = ref(false)
+const track = ref<InstanceType<typeof FeedRailTrack> | null>(null)
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
 
 /** Full history minus the hero item currently owned by HomeView. */
 const railItems = computed(() => {
@@ -83,28 +87,13 @@ const railItems = computed(() => {
   return historyItems.value.filter((item) => item.id !== excludeId)
 })
 
-const scrollContainer = ref<HTMLElement | null>(null)
-const canScrollLeft = ref(false)
-const canScrollRight = ref(false)
-
-const updateScrollState = () => {
-  if (!scrollContainer.value) return
-  const { scrollLeft, scrollWidth, clientWidth } = scrollContainer.value
-  canScrollLeft.value = scrollLeft > 0
-  // Use a small threshold (e.g., 2px) to account for fractional pixel rounding errors
-  canScrollRight.value = scrollLeft < scrollWidth - clientWidth - 2
+const onScrollState = (state: { canScrollLeft: boolean; canScrollRight: boolean }) => {
+  canScrollLeft.value = state.canScrollLeft
+  canScrollRight.value = state.canScrollRight
 }
 
-const scroll = (direction: 'left' | 'right') => {
-  if (!scrollContainer.value) return
-
-  // Scroll by roughly 2 items worth of width (288px card + 16px gap = 304px per item)
-  const scrollAmount = 304 * 2
-  const targetScroll = scrollContainer.value.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount)
-
-  scrollContainer.value.scrollTo({
-    left: targetScroll,
-  })
+const onScroll = (direction: 'left' | 'right') => {
+  track.value?.scroll(direction)
 }
 
 const getProgress = (video: VideoHistoryEntry) => {
@@ -131,7 +120,6 @@ function weightedRandomPick<T>(items: T[], weightFn: (item: T) => number): T | n
 const pickHeroVideo = (items: VideoHistoryEntry[]): VideoHistoryEntry | null => {
   if (items.length === 0) return null
 
-  // Build candidate pools with progressive fallback
   const sweet = items.filter((v) => {
     const p = getProgress(v)
     return p >= HERO_PROGRESS_MIN && p <= HERO_PROGRESS_MAX && v.thumbnail
@@ -145,18 +133,14 @@ const pickHeroVideo = (items: VideoHistoryEntry[]): VideoHistoryEntry | null => 
     pool = withThumb.length > 0 ? withThumb : items
   }
 
-  // Single candidate – use it directly
   if (pool.length === 1) {
     pushRecentHero(pool[0])
     return pool[0]
   }
 
-  // Exclude recently shown videos, but keep at least one candidate
   const freshCandidates = pool.filter((v) => !recentHeroIds.includes(v.id))
   const candidates = freshCandidates.length > 0 ? freshCandidates : pool
 
-  // Weighted random: progress weight (1–9) + recency position weight (0–5).
-  // `items` arrives sorted by played_at desc, so lower index = more recently watched.
   const weightFn = (item: VideoHistoryEntry): number => {
     const p = getProgress(item)
     const progressWeight = p > 0 ? Math.min(9, Math.max(1, p * 10)) : 1
@@ -175,16 +159,10 @@ const load = async () => {
   loading.value = true
   try {
     const { items } = await getWatchHistory(1, { pageSize: 30 })
-    // Keep anything the user has actually started watching (progress > 0);
-    // drop only items that were never played.
     historyItems.value = items.filter((item) => getProgress(item) > 0).slice(0, 12)
 
     const hero = pickHeroVideo(historyItems.value)
     emit('heroChange', hero)
-
-    // Check scroll state after items are rendered
-    await nextTick()
-    updateScrollState()
   } catch (e) {
     Logger.error('Failed to load continue watching history:', e)
   } finally {
@@ -192,9 +170,8 @@ const load = async () => {
   }
 }
 
-watch(railItems, async () => {
-  await nextTick()
-  updateScrollState()
+watch(railItems, () => {
+  track.value?.updateScrollState()
 })
 
 onMounted(load)
