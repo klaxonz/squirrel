@@ -38,17 +38,6 @@
         </section>
 
         <section v-else-if="step === 2" class="import-dialog__section">
-          <div class="import-dialog__summary">
-            <AppStatCard
-              label="进度"
-              :value="loadedCount"
-              :description="`已加载 ${loadedCount} / ${previewData.total ?? '未知'} 个`"
-            />
-            <AppStatCard label="已导入" :value="importedCount" />
-            <AppStatCard label="未导入" :value="notImportedCount" />
-            <AppStatCard label="已选" :value="selectedCount" />
-          </div>
-
           <div v-if="loadingPreview && !loadedCount" class="import-dialog__loader">
             <AppSpinner size="lg" class="text-primary" />
             <span class="text-sm text-muted-foreground">正在读取订阅列表...</span>
@@ -60,9 +49,12 @@
                 <Button size="sm" variant="secondary" @click="selectAllNotImported">全选已加载未导入</Button>
                 <Button size="sm" variant="ghost" @click="clearSelection">清空</Button>
               </div>
-              <p class="import-dialog__loaded-count">
-                已加载 {{ loadedCount }} / {{ previewData.total ?? '未知' }} 个
-                <span v-if="previewData.has_more">，可继续加载</span>
+              <p class="import-dialog__loaded-count app-mono">
+                已加载 {{ loadedCount }} / {{ previewData.total ?? '未知' }}
+                · 已导入 {{ importedCount }}
+                · 未导入 {{ notImportedCount }}
+                · 已选 {{ selectedCount }}
+                <span v-if="previewData.has_more"> · 可继续加载</span>
               </p>
             </div>
 
@@ -90,7 +82,7 @@
                 <img
                   :src="getAvatarSrc(sub.avatar, sub.url)"
                   class="import-dialog__avatar"
-                  alt="avatar"
+                  :alt="sub.name || '未命名订阅'"
                   referrerpolicy="no-referrer"
                   @error="(event) => handleAvatarError(event, sub.url)"
                 />
@@ -115,42 +107,27 @@
         </section>
 
         <section v-else-if="step === 3" class="import-dialog__section import-dialog__result">
-          <div class="import-dialog__result-icon">
-            <AppIcon name="check" class="h-8 w-8 text-success" />
-          </div>
-
           <div class="import-dialog__result-copy">
             <h3 class="app-h2">
-              {{ importResult.total > 0 ? '任务已提交' : '没有需要导入的订阅' }}
+              {{ importResult.total > 0 ? '导入任务已提交' : '没有需要导入的订阅' }}
             </h3>
             <p>
-              {{ importResult.total > 0 ? '后台已经开始处理导入任务。' : '当前没有符合条件的订阅。' }}
-            </p>
-          </div>
-
-          <div class="import-dialog__result-card">
-            <p class="import-dialog__result-label">新增导入任务</p>
-            <p class="import-dialog__result-value">{{ importResult.total || 0 }}</p>
-            <p class="import-dialog__result-detail">
-              <span v-if="importResult.found != null">
-                拉取 {{ importResult.found }} 个，选择 {{ importResult.selected ?? 0 }} 个，跳过 {{ importResult.skipped ?? 0 }} 个。
-              </span>
-              <span v-else>
-                选择 {{ importResult.selected ?? 0 }} 个，跳过 {{ importResult.skipped ?? 0 }} 个。
-              </span>
-            </p>
-          </div>
-
-          <Alert>
-            <AlertDescription>
-              <span v-if="importResult.total > 0">
-                导入任务已提交，处理完成后订阅列表会自动更新。
-              </span>
-              <span v-else>
+              <template v-if="importResult.total > 0">
+                已提交 {{ importResult.total }} 个导入任务，后台处理完成后列表会自动更新。
+              </template>
+              <template v-else>
                 可能都已导入，或者当前没有勾选任何未导入项。
+              </template>
+            </p>
+            <p v-if="importResult.total > 0" class="import-dialog__result-detail app-mono">
+              <span v-if="importResult.found != null">
+                拉取 {{ importResult.found }} · 选择 {{ importResult.selected ?? 0 }} · 跳过 {{ importResult.skipped ?? 0 }}
               </span>
-            </AlertDescription>
-          </Alert>
+              <span v-else>
+                选择 {{ importResult.selected ?? 0 }} · 跳过 {{ importResult.skipped ?? 0 }}
+              </span>
+            </p>
+          </div>
         </section>
       </div>
 
@@ -180,9 +157,7 @@
 <script setup>
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
-import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
-import AppStatCard from '@/shared/components/layout/AppStatCard.vue'
 import {
   importSubscriptions,
 } from '@/shared/api'
@@ -382,12 +357,6 @@ watch(() => props.show, (visible) => {
   color: hsl(var(--foreground));
 }
 
-.import-dialog__summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
 .import-dialog__toolbar,
 .import-dialog__toolbar-actions {
   display: flex;
@@ -403,7 +372,8 @@ watch(() => props.show, (visible) => {
 .import-dialog__loaded-count {
   margin: 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .import-dialog__loader {
@@ -412,12 +382,12 @@ watch(() => props.show, (visible) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.85rem;
+  gap: var(--space-3);
 }
 
 .import-dialog__list {
   display: grid;
-  gap: 0.55rem;
+  gap: var(--space-2);
   max-height: 24rem;
   overflow-y: auto;
   padding-right: 0.15rem;
@@ -426,7 +396,7 @@ watch(() => props.show, (visible) => {
 .import-dialog__list-item {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
+  gap: var(--space-3);
   padding: 0.75rem 0.875rem;
   border: 1px solid hsl(var(--border) / 0.72);
   border-radius: var(--app-surface-radius);
@@ -450,8 +420,8 @@ watch(() => props.show, (visible) => {
 }
 
 .import-dialog__avatar {
-  width: 2.15rem;
-  height: 2.15rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: var(--radius-md);
   object-fit: cover;
 }
@@ -488,33 +458,12 @@ watch(() => props.show, (visible) => {
 }
 
 .import-dialog__result {
-  align-items: center;
+  align-items: flex-start;
   padding: var(--space-2) 0;
-  text-align: center;
-}
-
-.import-dialog__result-icon {
-  display: flex;
-  width: 4rem;
-  height: 4rem;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-  border-radius: var(--radius-xl);
-  background: hsl(var(--success) / 0.12);
-}
-
-.import-dialog__result-card {
-  width: min(100%, 22rem);
-  padding: 1rem;
-  border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: var(--app-surface-radius);
-  background: hsl(var(--card) / 0.72);
-  text-align: center;
+  text-align: left;
 }
 
 .import-dialog__result-copy p,
-.import-dialog__result-label,
 .import-dialog__result-detail {
   margin: 0;
   color: hsl(var(--muted-foreground));
@@ -523,32 +472,17 @@ watch(() => props.show, (visible) => {
 .import-dialog__result-copy p {
   margin-top: var(--space-2);
   font-size: 0.875rem;
-}
-
-.import-dialog__result-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.import-dialog__result-value {
-  margin: var(--space-2) 0;
-  color: hsl(var(--foreground));
-  font-family: var(--font-mono);
-  font-size: 2rem;
-  font-weight: 700;
-  line-height: 1;
+  line-height: 1.5;
 }
 
 .import-dialog__result-detail {
+  margin-top: var(--space-3);
   font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (min-width: 768px) {
   .import-dialog__site-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .import-dialog__summary {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

@@ -10,7 +10,6 @@
     >
     <div v-else class="avatar-placeholder">
       <span class="placeholder-char font-mono">{{ displayChar }}</span>
-      <div class="placeholder-grid"></div>
     </div>
     <slot name="indicator"></slot>
   </div>
@@ -62,7 +61,7 @@ const sizeClass = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: 9999px;
+  border-radius: 50%;
 }
 
 .avatar--xs { width: 1.25rem; height: 1.25rem; }
@@ -94,15 +93,6 @@ const sizeClass = computed(() => {
   color: hsl(var(--muted-foreground));
   z-index: 1;
   letter-spacing: 0;
-}
-
-.placeholder-grid {
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(hsl(var(--foreground) / 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--foreground) / 0.03) 1px, transparent 1px);
-  background-size: 4px 4px;
 }
 
 .avatar--xs .placeholder-char { font-size: 0.6em; }

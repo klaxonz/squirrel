@@ -1,7 +1,11 @@
 <template>
   <div ref="root" class="space-y-6">
     <div v-if="error" class="app-page-empty app-page-empty--compact">
-      <AppEmptyState variant="error" title="加载失败" :copy="error" />
+      <AppEmptyState variant="error" title="加载失败" :copy="error">
+        <template #actions>
+          <Button variant="outline" size="sm" :disabled="loading" @click="$emit('retry')">重试</Button>
+        </template>
+      </AppEmptyState>
     </div>
 
     <div v-if="!items.length && !loading && !error" class="app-page-empty app-page-empty--compact">
@@ -28,7 +32,7 @@
           <h3 class="remote-channel-video-title">
             {{ item.title }}
           </h3>
-          <div class="text-xs font-medium text-muted-foreground/50">
+          <div class="text-xs font-medium text-muted-foreground">
             {{ displayDate(item) }}
           </div>
         </div>
@@ -82,6 +86,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   open: [item: RemoteSearchItem]
   loadMore: []
+  retry: []
 }>()
 
 const loadMoreTrigger = ref<HTMLElement | null>(null)

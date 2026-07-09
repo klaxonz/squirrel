@@ -1,26 +1,19 @@
 <template>
-  <div class="app-surface app-surface--subtle space-y-2.5 p-3">
-    <div class="flex items-start gap-2.5">
-      <AppSkeleton width="2.25rem" height="2.25rem" rounded="var(--radius-md)" shimmer />
-      <div class="flex-1 space-y-2 py-0.5">
-        <AppSkeleton width="66%" height="0.875rem" rounded="var(--radius-md)" shimmer />
-        <div class="flex gap-2">
-          <AppSkeleton width="3.5rem" height="0.75rem" rounded="var(--radius)" shimmer />
-          <AppSkeleton width="4rem" height="0.75rem" rounded="var(--radius)" shimmer />
-        </div>
-      </div>
-    </div>
-    <div class="grid grid-cols-3 gap-1.5">
-      <div
-        v-for="i in 3"
-        :key="i"
-        class="relative aspect-video overflow-hidden rounded-md bg-[var(--app-skeleton-base)]"
-      >
+  <div class="subscription-card-skeleton">
+    <div class="subscription-card-skeleton__media">
+      <div v-for="i in 3" :key="i" class="subscription-card-skeleton__thumb">
         <span class="app-shimmer" />
       </div>
     </div>
-    <div class="app-divider-top pt-2">
-      <AppSkeleton width="5rem" height="0.75rem" rounded="var(--radius)" shimmer />
+    <div class="subscription-card-skeleton__body">
+      <div class="subscription-card-skeleton__identity">
+        <AppSkeleton width="1.75rem" height="1.75rem" rounded="999px" shimmer />
+        <div class="subscription-card-skeleton__copy">
+          <AppSkeleton width="72%" height="0.875rem" rounded="var(--radius-md)" shimmer />
+          <AppSkeleton width="48%" height="0.7rem" rounded="var(--radius-sm)" shimmer />
+        </div>
+      </div>
+      <AppSkeleton width="5rem" height="0.65rem" rounded="var(--radius-sm)" shimmer />
     </div>
   </div>
 </template>
@@ -28,3 +21,47 @@
 <script setup lang="ts">
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 </script>
+
+<style scoped>
+.subscription-card-skeleton {
+  overflow: hidden;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--app-card-radius);
+  background: hsl(var(--card));
+}
+
+.subscription-card-skeleton__media {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: hsl(0 0% 0% / 0.45);
+}
+
+.subscription-card-skeleton__thumb {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  background: var(--app-skeleton-base);
+}
+
+.subscription-card-skeleton__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.75rem 0.875rem;
+}
+
+.subscription-card-skeleton__identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+
+.subscription-card-skeleton__copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-top: 0.15rem;
+}
+</style>

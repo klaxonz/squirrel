@@ -9,11 +9,12 @@
       <template #sidebar>
         <SubscriptionSidebar
           ref="sidebarRef"
-          :channels="filteredChannels"
+          :channels="list"
           :total="channelsTotal"
           :loading="loadingChannels"
           :loading-more="loadingMoreChannels"
           :finished="channelsFinished"
+          :error="channelsError"
           :search="sidebarSearch"
           :site="site || ''"
           :site-options="siteOptionsList"
@@ -21,8 +22,11 @@
           :site-dropdown-open="showSiteDropdown"
           :special-filter="specialFilter"
           :active-channel-id="activeChannelId"
+          :toggling-ids="togglingSpecialIds"
           @add="showAddDialog = true"
           @import="showImportDialog = true"
+          @retry="fetchChannels(true)"
+          @clear-filters="clearSidebarFilters"
           @select-channel="handleChannelClick"
           @toggle-special="toggleSpecialFollow"
           @toggle-special-filter="toggleSpecialFilter"
@@ -42,7 +46,7 @@
               :aria-label="`打开 ${activeChannel.name}`"
               @click="openActiveChannelDetail"
             >
-              <SubscriptionAvatar :src="activeChannel.avatar" :name="activeChannel.name" size="lg" class="subscribed-avatar" />
+              <SubscriptionAvatar :src="activeChannel.avatar" :name="activeChannel.name" size="xl" class="subscribed-avatar" />
               <span v-if="activeChannel.is_special_followed" class="subscribed-star-badge">
                 <AppIcon name="star" class="h-2.5 w-2.5 fill-current" />
               </span>
@@ -62,39 +66,57 @@
                   {{ activeChannelName || '订阅动态' }}
                 </button>
 
-                <AppSegmentedControl
-                  v-if="canOpenRemoteChannel"
-                  :model-value="channelDataMode"
-                  :options="channelDataModeOptions"
-                  aria-label="频道内容来源"
-                  size="sm"
-                  @update:model-value="handleChannelDataModeChange"
-                />
-
                 <Button
                   v-if="activeChannel"
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  :class="activeChannel.is_special_followed ? 'text-warning' : ''"
+                  class="subscribed-header__star"
+                  :class="{ 'is-active': activeChannel.is_special_followed }"
+                  :disabled="togglingSpecialIds.has(activeChannel.id)"
                   :aria-pressed="activeChannel.is_special_followed"
                   aria-label="切换特别关注"
                   @click="toggleSpecialFollow(activeChannel)"
                 >
-                  <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': activeChannel.is_special_followed }" />
+                  <AppSpinner v-if="togglingSpecialIds.has(activeChannel.id)" size="sm" />
+                  <AppIcon
+                    v-else
+                    name="star"
+                    class="h-3.5 w-3.5"
+                    :class="{ 'fill-current': activeChannel.is_special_followed }"
+                  />
                 </Button>
               </div>
 
               <div class="subscribed-header__subtitle">
-                <span>{{ headerSubtitle }}</span>
-                <AppBounceDots v-if="headerLoading" class="ml-1" />
+                <template v-for="(part, index) in headerMetaParts" :key="`${part}-${index}`">
+                  <span v-if="index > 0" class="subscribed-header__sep" aria-hidden="true">·</span>
+                  <span>{{ part }}</span>
+                </template>
+                <span
+                  v-if="activeChannel && isSubscriptionSyncFailed(activeChannel)"
+                  class="subscribed-header__health subscribed-header__health--error"
+                  :title="subscriptionSyncErrorLabel(activeChannel)"
+                >
+                  <span class="subscribed-header__sep" aria-hidden="true">·</span>
+                  <AppIcon name="warning" class="h-3 w-3" />
+                  同步异常
+                </span>
+                <span
+                  v-else-if="activeChannel && isSubscriptionSyncBusy(activeChannel)"
+                  class="subscribed-header__health"
+                >
+                  <span class="subscribed-header__sep" aria-hidden="true">·</span>
+                  同步中
+                </span>
+                <AppBounceDots v-if="headerLoading" class="subscribed-header__loading" />
               </div>
             </div>
           </div>
 
           <div class="subscribed-header__actions">
             <AppSegmentedControl
-              :model-value="channelDataMode === 'remote' ? 'remote' : viewMode"
+              :model-value="mainView"
               :options="mainViewOptions"
               aria-label="订阅视图"
               size="sm"
@@ -106,7 +128,8 @@
               :variant="nsfw !== 'all' ? 'secondary' : 'ghost'"
               size="sm"
               :aria-pressed="nsfw !== 'all'"
-              :title="nsfw === 'all' ? '显示成年内容' : '隐藏成年内容'"
+              :aria-label="nsfwLabel"
+              :title="nsfwLabel"
               @click="nsfw = nsfw === 'all' ? 'yes' : 'all'"
             >
               <AppIcon
@@ -134,7 +157,7 @@
 
       <div ref="gridWrapper" class="app-workbench__content subscribed-content">
         <RemoteChannelVideoGrid
-          v-if="channelDataMode === 'remote'"
+          v-if="mainView === 'remote'"
           :items="remoteItems"
           :loading="remoteLoading"
           :all-loaded="remoteAllLoaded"
@@ -142,9 +165,10 @@
           :scroll-root="feedContainer"
           @open="openRemoteResult"
           @load-more="loadMoreRemote"
+          @retry="fetchRemoteChannel(true)"
         />
 
-        <div v-else-if="viewMode === 'feed'" class="app-content-stack app-content-stack--feed">
+        <div v-else-if="mainView === 'feed'" class="app-content-stack app-content-stack--feed">
           <div v-if="fetchError && !loadingFeed" class="app-page-empty">
             <AppEmptyState variant="error" title="加载失败" :copy="fetchError">
               <template #actions>
@@ -154,14 +178,24 @@
           </div>
 
           <div v-else-if="!feedItems.length && !loadingFeed" class="app-page-empty">
-            <AppEmptyState variant="plain" icon="inbox" title="暂无内容" copy="订阅频道更新后会显示在这里。" />
+            <AppEmptyState
+              variant="plain"
+              icon="inbox"
+              :title="feedEmptyTitle"
+              :copy="feedEmptyCopy"
+            >
+              <template v-if="!list.length && !hasSidebarFilters" #actions>
+                <Button size="sm" @click="showAddDialog = true">添加订阅</Button>
+                <Button size="sm" variant="outline" @click="showImportDialog = true">导入订阅</Button>
+              </template>
+            </AppEmptyState>
           </div>
 
           <div v-if="loadingFeed && !feedItems.length" class="app-video-grid app-video-grid--feed">
             <VideoSkeleton v-for="i in videoSkeletonCount" :key="i" :delay="(i - 1) * 50" />
           </div>
 
-          <div v-else class="app-video-grid app-video-grid--feed">
+          <div v-else-if="feedItems.length" class="app-video-grid app-video-grid--feed">
             <VideoItem
               v-for="video in feedItems"
               :key="video.id"
@@ -179,11 +213,37 @@
         </div>
 
         <div v-else class="app-content-stack">
-          <div class="app-video-grid app-video-grid--compact">
+          <div v-if="channelsError && !list.length && !loadingChannels" class="app-page-empty">
+            <AppEmptyState variant="error" title="加载失败" :copy="channelsError">
+              <template #actions>
+                <Button variant="outline" size="sm" @click="fetchChannels(true)">重试</Button>
+              </template>
+            </AppEmptyState>
+          </div>
+
+          <div v-else-if="!list.length && !loadingChannels" class="app-page-empty">
+            <AppEmptyState
+              variant="plain"
+              icon="inbox"
+              :title="hasSidebarFilters ? '暂无匹配频道' : '还没有订阅频道'"
+              :copy="hasSidebarFilters ? '请尝试更换筛选条件。' : '添加频道或导入订阅后，会显示在这里。'"
+            >
+              <template v-if="!hasSidebarFilters" #actions>
+                <Button size="sm" @click="showAddDialog = true">添加订阅</Button>
+                <Button size="sm" variant="outline" @click="showImportDialog = true">导入订阅</Button>
+              </template>
+              <template v-else #actions>
+                <Button size="sm" variant="outline" @click="clearSidebarFilters">清除筛选</Button>
+              </template>
+            </AppEmptyState>
+          </div>
+
+          <div v-else class="app-video-grid app-video-grid--compact">
             <SubscriptionCard
-              v-for="sub in filteredChannels"
+              v-for="sub in list"
               :key="sub.id"
               :subscription="sub"
+              :toggling="togglingSpecialIds.has(sub.id)"
               @click="handleChannelClick(sub.id)"
               @toggleSpecial="toggleSpecialFollow"
             />
@@ -214,6 +274,7 @@ import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import { Button } from '@/shared/ui/button'
+import { useToast } from '@/shared/components/toast/useToast'
 import SubscriptionSidebar from '@/features/video/components/SubscriptionSidebar.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import SubscriptionCard from '@/features/video/components/feed/SubscriptionCard.vue'
@@ -230,6 +291,11 @@ import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useRemoteVideoMapping } from '@/features/video/composables/useRemoteVideoMapping'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import { sortSubscriptions } from '@/features/video/lib/subscriptionSort'
+import {
+  isSubscriptionSyncBusy,
+  isSubscriptionSyncFailed,
+  subscriptionSyncErrorLabel,
+} from '@/features/video/lib/subscriptionPresenters'
 import { getSubscriptions, getVideoList, updateSpecialFollowStatus } from '@/shared/api'
 import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
 import type { SubscriptionListItem } from '@/features/video/types/subscription'
@@ -237,16 +303,18 @@ import type { VideoListItem } from '@/features/video/types/video'
 
 defineOptions({ name: 'Subscribed' })
 
+type MainView = 'feed' | 'grid' | 'remote'
+
 const router = useRouter()
 const uiStore = useUIStore()
+const toast = useToast()
 const { openVideo, openSubscription } = useVideoCardNavigation(router)
 const { nsfw, site } = useFeedFilters()
 const { options: siteOptions, fetchSites } = useSites()
 const desktopBridge = useDesktopBridge()
 
-// UI State
-const viewMode = ref<'feed' | 'grid'>('feed')
-const channelDataMode = ref<'local' | 'remote'>('local')
+// Single view axis: feed (recent) | grid (channels) | remote (desktop channel source)
+const mainView = ref<MainView>('feed')
 const sidebarSearch = ref('')
 const feedSearch = ref('')
 const showSiteDropdown = ref(false)
@@ -255,37 +323,24 @@ const activeChannelId = ref<string | number | null>(null)
 const activeChannelNameCache = ref('')
 const showAddDialog = ref(false)
 const showImportDialog = ref(false)
-// Main-pane scroll lives inside AppTwoColumnLayout; expose it for infinite scroll.
 const layoutRef = ref<{ scrollEl: HTMLElement | null } | null>(null)
 const feedContainer = computed(() => layoutRef.value?.scrollEl ?? null)
-// The sidebar exposes its list container + load-more sentinel via defineExpose
-// so this view's IntersectionObserver + scroll-reset can reach the DOM nodes
-// inside the extracted component.
 const sidebarRef = ref<{ listContainer: HTMLElement | null; loadMore: HTMLElement | null } | null>(null)
 
-// --- Adaptive skeleton counts ---------------------------------------------
-// Shared width measurement on the centered content wrapper. Two configs,
-// one per branch (feed videos vs subscription channel cards).
 const gridWrapper = ref<HTMLElement | null>(null)
 
-// Skeleton counts mirror the auto-fill grids via the same minCardWidth/gap
-// formula (no breakpoint tables to keep in sync with the CSS classes).
-// Feed grid: `.app-video-grid--feed` (min 280px, gap-y 40px).
 const { count: videoSkeletonCount, attachRef: videoGridRef } = useSkeletonCount({
   minCardWidth: 280,
   gap: 40,
   cardHeight: 220,
 })
 
-// Subscription card grid: `.app-video-grid` with --app-grid-min: 240px, gap 24px.
 const { count: channelSkeletonCount, attachRef: channelGridRef } = useSkeletonCount({
   minCardWidth: 240,
   gap: 24,
   cardHeight: 220,
 })
 
-// Both branches render inside the same centered wrapper; point each composable's
-// observer at it so column counts track the real container width.
 watch(gridWrapper, (node) => {
   videoGridRef.value = node
   channelGridRef.value = node
@@ -297,6 +352,7 @@ const channelsTotal = ref(0)
 const loadingChannels = ref(false)
 const loadingMoreChannels = ref(false)
 const channelsFinished = ref(false)
+const channelsError = ref<string | null>(null)
 const channelsPage = ref(1)
 const CHANNELS_PAGE_SIZE = 100
 let channelsRequestToken = 0
@@ -327,17 +383,11 @@ const loadMoreRemote = () => {
 }
 let loadedRemoteChannelKey = ''
 
-// Observers
 const feedTrigger = ref<HTMLElement | null>(null)
 const gridMoreTrigger = ref<HTMLElement | null>(null)
 let feedObserver: IntersectionObserver | null = null
 let channelsObserver: IntersectionObserver | null = null
 let gridObserver: IntersectionObserver | null = null
-
-// Site-filter dropdown click-outside is now handled inside SubscriptionSidebar
-// (the dropdown trigger lives there). showSiteDropdown is still owned here so
-// the header/view can react to it, but the outside-click close is local to the
-// sidebar component.
 
 const activeChannelName = computed(() => {
   if (!activeChannelId.value) return ''
@@ -348,9 +398,6 @@ const activeChannel = computed(() => {
   return list.value.find(c => c.id === activeChannelId.value) || null
 })
 
-// ponytail: remote-video → playback-seed mapping + playability gating live in
-// useRemoteVideoMapping. The url-hash id scheme + the playability pattern table
-// are reusable by any surface that renders remote videos (search, detail, feed).
 const { openRemoteResult } = useRemoteVideoMapping({ activeChannel })
 
 const canOpenRemoteChannel = computed(() => {
@@ -360,12 +407,46 @@ const remoteChannelKey = computed(() => {
   const channel = activeChannel.value
   return channel ? `${channel.site || ''}::${channel.url || ''}` : ''
 })
-const headerSubtitle = computed(() => {
-  if (channelDataMode.value === 'remote') return `${remoteItems.value.length} 个远端视频`
-  return viewMode.value === 'feed' ? `${feedItems.value.length} 个视频` : `${channelsTotal.value} 个频道`
+
+const hasSidebarFilters = computed(() => {
+  return Boolean(site.value) || specialFilter.value === 'yes' || Boolean(sidebarSearch.value.trim())
 })
+
+/** Quiet meta fragments for the header subtitle — joined with middots in template. */
+const headerMetaParts = computed(() => {
+  if (mainView.value === 'remote') return [`${remoteItems.value.length} 远端视频`]
+  if (mainView.value === 'grid') return [`${channelsTotal.value} 个频道`]
+  if (activeChannel.value) {
+    const parts = [`${feedItems.value.length} 个视频`]
+    if (activeChannel.value.unread_count > 0) parts.push(`${activeChannel.value.unread_count} 未读`)
+    return parts
+  }
+  return [`${feedItems.value.length} 个视频`, `${channelsTotal.value} 个频道`]
+})
+
 const headerLoading = computed(() => {
-  return channelDataMode.value === 'remote' ? remoteLoading.value : loadingFeed.value
+  if (mainView.value === 'remote') return remoteLoading.value
+  if (mainView.value === 'grid') return loadingChannels.value || loadingMoreChannels.value
+  return loadingFeed.value || loadingMoreFeed.value
+})
+
+const nsfwLabel = computed(() => {
+  return nsfw.value === 'all'
+    ? '当前显示全部内容（含成年），点击仅看成年内容'
+    : '当前仅显示成年内容，点击显示全部'
+})
+
+const feedEmptyTitle = computed(() => {
+  if (activeChannel.value) return '该频道暂无内容'
+  if (!list.value.length && !hasSidebarFilters.value) return '还没有订阅内容'
+  return '暂无内容'
+})
+
+const feedEmptyCopy = computed(() => {
+  if (activeChannel.value) return '同步完成后，新视频会出现在这里。'
+  if (!list.value.length && !hasSidebarFilters.value) return '添加频道地址，或从站点导入已有订阅。'
+  if (hasSidebarFilters.value) return '当前筛选下没有视频，可更换来源或特别关注条件。'
+  return '订阅频道更新后会显示在这里。'
 })
 
 const siteOptionsList = computed(() => siteOptions.value || [])
@@ -374,20 +455,23 @@ const activeSiteLabel = computed(() => {
   return siteOptionsList.value.find(opt => opt.value === site.value)?.label || '未知来源'
 })
 
-const filteredChannels = computed(() => {
-  return list.value
+const mainViewOptions = computed(() => {
+  const options: { value: MainView; label: string }[] = [
+    { value: 'feed', label: '最近发布' },
+    { value: 'grid', label: '频道' },
+  ]
+  if (canOpenRemoteChannel.value) {
+    options.push({ value: 'remote', label: '远端' })
+  }
+  return options
 })
 
-// ponytail: the "special-followed first, then recency" ordering lives in the
-// shared sortSubscriptions util (reusable by any subscription-list surface).
 const sortChannels = sortSubscriptions
 
 const applySpecialFollowState = (subscriptionId: string | number, isSpecialFollowed: boolean) => {
   const updated = list.value.map((item) => (
     item.id === subscriptionId ? { ...item, is_special_followed: isSpecialFollowed } : item
   ))
-  // Special-only filter removes unfollowed channels from the current result set;
-  // keep channelsTotal in sync so the header count does not overstate.
   if (specialFilter.value === 'yes' && !isSpecialFollowed) {
     list.value = updated.filter((item) => item.id !== subscriptionId)
     channelsTotal.value = Math.max(0, channelsTotal.value - 1)
@@ -397,12 +481,20 @@ const applySpecialFollowState = (subscriptionId: string | number, isSpecialFollo
   if (specialFilter.value === 'yes' && !isSpecialFollowed && activeChannelId.value === subscriptionId) {
     activeChannelId.value = null
     activeChannelNameCache.value = ''
+    if (mainView.value === 'remote') mainView.value = 'feed'
     fetchFeed(true)
   }
 }
 
 const toggleSpecialFilter = () => {
   specialFilter.value = specialFilter.value === 'yes' ? 'all' : 'yes'
+}
+
+const clearSidebarFilters = () => {
+  sidebarSearch.value = ''
+  site.value = ''
+  specialFilter.value = 'all'
+  showSiteDropdown.value = false
 }
 
 const toggleSpecialFollow = async (subscription: SubscriptionListItem) => {
@@ -414,8 +506,8 @@ const toggleSpecialFollow = async (subscription: SubscriptionListItem) => {
   try {
     await updateSpecialFollowStatus(subscription.id, nextValue)
     applySpecialFollowState(subscription.id, nextValue)
-  } catch {
-    // silent — toggle failure leaves the prior special-follow state
+  } catch (err) {
+    toast.error(errorMessage(err, nextValue ? '设为特别关注失败' : '取消特别关注失败'))
   } finally {
     const nextIds = new Set(togglingSpecialIds.value)
     nextIds.delete(subscription.id)
@@ -428,6 +520,7 @@ const fetchChannels = async (isReset = false) => {
   if (isReset) {
     channelsPage.value = 1
     channelsFinished.value = false
+    channelsError.value = null
     loadingChannels.value = true
     loadingMoreChannels.value = false
   } else {
@@ -451,39 +544,46 @@ const fetchChannels = async (isReset = false) => {
     try {
       const result = await getSubscriptions(params)
       if (requestToken !== channelsRequestToken) return
+      channelsError.value = null
       const items = result?.data || []
       const total = Number(result?.total)
-      // Prefer server total for the filtered query; fall back to loaded length
-      // only if the payload is missing/invalid total.
       channelsTotal.value = Number.isFinite(total) && total >= 0
         ? total
         : (isReset ? items.length : list.value.length + items.length)
       if (isReset) list.value = items
       else list.value.push(...items)
-      // End pagination when the batch is short, or when we already hold the full total.
       if (items.length < CHANNELS_PAGE_SIZE || list.value.length >= channelsTotal.value) {
         channelsFinished.value = true
       } else {
         channelsPage.value = requestPage + 1
       }
-    } catch {
-      // Channel-list errors aren't surfaced in-region (the sidebar has no error
-      // branch); bail without clobbering the feed's fetchError ref, and don't
-      // flip channelsFinished so the sidebar stays retryable.
+    } catch (err) {
       if (requestToken !== channelsRequestToken) return
-      if (isReset) channelsTotal.value = 0
+      channelsError.value = errorMessage(err, '订阅列表加载失败')
+      if (isReset) {
+        channelsTotal.value = 0
+        list.value = []
+      }
+      // Keep finished=false on failure so the user can retry from empty/error UI.
     }
   } finally {
     if (requestToken === channelsRequestToken) {
-      loadingChannels.value = false; loadingMoreChannels.value = false
+      loadingChannels.value = false
+      loadingMoreChannels.value = false
     }
   }
 }
 
 const fetchFeed = async (isReset = false) => {
   if (!isReset && (loadingFeed.value || loadingMoreFeed.value || feedFinished.value)) return
-  if (isReset) { feedCursor.value = null; feedFinished.value = false; loadingFeed.value = true; loadingMoreFeed.value = false }
-  else { loadingMoreFeed.value = true }
+  if (isReset) {
+    feedCursor.value = null
+    feedFinished.value = false
+    loadingFeed.value = true
+    loadingMoreFeed.value = false
+  } else {
+    loadingMoreFeed.value = true
+  }
 
   const requestToken = ++feedRequestToken
   const wasReset = isReset
@@ -503,8 +603,8 @@ const fetchFeed = async (isReset = false) => {
     if (requestToken !== feedRequestToken) return
     fetchError.value = null
     const items = data?.data || []
-    if (wasReset) feedItems.value = items; else feedItems.value.push(...items)
-    // 推进游标；next_cursor 为 null 表示无更多
+    if (wasReset) feedItems.value = items
+    else feedItems.value.push(...items)
     feedCursor.value = data?.next_cursor ?? null
     if (items.length < FEED_PAGE_SIZE || !data?.next_cursor) feedFinished.value = true
   } catch (err) {
@@ -513,7 +613,8 @@ const fetchFeed = async (isReset = false) => {
     feedFinished.value = true
   } finally {
     if (requestToken === feedRequestToken) {
-      loadingFeed.value = false; loadingMoreFeed.value = false
+      loadingFeed.value = false
+      loadingMoreFeed.value = false
     }
   }
 }
@@ -531,12 +632,16 @@ const handleChannelClick = (id: string | number) => {
   if (activeChannelId.value === id) {
     activeChannelId.value = null
     activeChannelNameCache.value = ''
+    if (mainView.value === 'remote') mainView.value = 'feed'
   } else {
     activeChannelId.value = id
     activeChannelNameCache.value = list.value.find(c => c.id === id)?.name || ''
   }
-  channelDataMode.value = 'local'
-  viewMode.value = 'feed'; fetchFeed(true)
+  // Selecting a channel is a feed triage action; leave remote only when still valid.
+  if (mainView.value !== 'remote') {
+    mainView.value = 'feed'
+  }
+  fetchFeed(true)
   scrollToTop(feedContainer.value)
 }
 
@@ -547,42 +652,30 @@ const openActiveChannelDetail = () => {
 
 const handleRefresh = () => {
   fetchChannels(true)
-  if (channelDataMode.value === 'remote') fetchRemoteChannel(true)
-  else fetchFeed(true)
+  if (mainView.value === 'remote') fetchRemoteChannel(true)
+  else if (mainView.value === 'feed') fetchFeed(true)
   resetAllScroll()
 }
-const showLocalFeed = () => {
-  channelDataMode.value = 'local'
-  viewMode.value = 'feed'
-}
-const showLocalGrid = () => {
-  channelDataMode.value = 'local'
-  viewMode.value = 'grid'
-}
-const channelDataModeOptions = [
-  { value: 'local', label: '本地' },
-  { value: 'remote', label: '远端' },
-]
-const mainViewOptions = [
-  { value: 'feed', label: '最近发布' },
-  { value: 'grid', label: '频道' },
-]
-const handleChannelDataModeChange = (value: string | number) => {
-  if (value === 'remote') openRemoteChannel()
-  else openLocalChannel()
-}
+
 const handleMainViewChange = (value: string | number) => {
-  if (value === 'grid') showLocalGrid()
-  else showLocalFeed()
+  if (value === 'remote') {
+    void openRemoteChannel()
+    return
+  }
+  if (value === 'grid') {
+    mainView.value = 'grid'
+    nextTick(() => initObservers())
+    return
+  }
+  mainView.value = 'feed'
+  nextTick(() => initObservers())
 }
-const openLocalChannel = () => {
-  channelDataMode.value = 'local'
-}
+
 const openRemoteChannel = async () => {
   const channel = activeChannel.value
   if (!canOpenRemoteChannel.value || !channel) return
 
-  channelDataMode.value = 'remote'
+  mainView.value = 'remote'
   if (loadedRemoteChannelKey !== remoteChannelKey.value) await fetchRemoteChannel(true)
   scrollToTop(feedContainer.value)
 }
@@ -600,7 +693,6 @@ const fetchRemoteChannel = async (isReset = false) => {
 }
 
 const initObservers = () => {
-  // Cleanup existing
   feedObserver?.disconnect()
   channelsObserver?.disconnect()
   gridObserver?.disconnect()
@@ -608,56 +700,68 @@ const initObservers = () => {
   const scrollContainer = feedContainer.value
   const channelsEl = sidebarRef.value?.listContainer ?? null
 
-  // 1. Feed Observer
   feedObserver = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && !loadingFeed.value && !loadingMoreFeed.value && !feedFinished.value) fetchFeed()
+    if (entries[0].isIntersecting && mainView.value === 'feed' && !loadingFeed.value && !loadingMoreFeed.value && !feedFinished.value) {
+      fetchFeed()
+    }
   }, { root: scrollContainer, rootMargin: '800px' })
   if (feedTrigger.value) feedObserver.observe(feedTrigger.value)
 
-  // 2. Channels Sidebar Observer — sentinel + scroll root both live inside the
-  // extracted SubscriptionSidebar, reached via its defineExpose'd refs.
   channelsObserver = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && !loadingChannels.value && !loadingMoreChannels.value && !channelsFinished.value) fetchChannels()
+    if (entries[0].isIntersecting && !loadingChannels.value && !loadingMoreChannels.value && !channelsFinished.value) {
+      fetchChannels()
+    }
   }, { root: channelsEl, rootMargin: '200px' })
   const channelsSentinel = sidebarRef.value?.loadMore ?? null
   if (channelsSentinel) channelsObserver.observe(channelsSentinel)
 
-  // 3. Grid Mode Observer
-  if (viewMode.value === 'grid') {
+  if (mainView.value === 'grid') {
     gridObserver = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !loadingChannels.value && !loadingMoreChannels.value && !channelsFinished.value) fetchChannels()
+      if (entries[0].isIntersecting && !loadingChannels.value && !loadingMoreChannels.value && !channelsFinished.value) {
+        fetchChannels()
+      }
     }, { root: scrollContainer, rootMargin: '400px' })
     if (gridMoreTrigger.value) gridObserver.observe(gridMoreTrigger.value)
   }
 }
 
 onMounted(async () => {
-  fetchSites(); fetchChannels(true); await fetchFeed(true)
+  fetchSites()
+  fetchChannels(true)
+  await fetchFeed(true)
   nextTick(() => initObservers())
 })
 
-// Re-init observers when view mode changes or the workbench scroll root mounts.
-watch(viewMode, () => {
+watch(mainView, () => {
   nextTick(() => initObservers())
 })
 watch(feedContainer, (el) => {
   if (el) nextTick(() => initObservers())
 })
 
-watch([nsfw, site, specialFilter], () => { fetchChannels(true); fetchFeed(true); resetAllScroll() })
+watch([nsfw, site, specialFilter], () => {
+  fetchChannels(true)
+  if (mainView.value === 'feed') fetchFeed(true)
+  resetAllScroll()
+})
 
 watch(() => uiStore.searchTrigger, () => {
   const query = uiStore.searchQuery.trim()
   feedSearch.value = query
-  channelDataMode.value = 'local'
-  viewMode.value = 'feed'
+  mainView.value = 'feed'
   fetchFeed(true)
   nextTick(resetAllScroll)
 })
 
 watch(remoteChannelKey, () => {
   loadedRemoteChannelKey = ''
-  if (channelDataMode.value === 'remote') fetchRemoteChannel(true)
+  if (mainView.value === 'remote') fetchRemoteChannel(true)
+})
+
+watch(canOpenRemoteChannel, (ok) => {
+  if (!ok && mainView.value === 'remote') {
+    mainView.value = 'feed'
+  }
 })
 
 watch(sidebarSearch, () => {
@@ -667,9 +771,12 @@ watch(sidebarSearch, () => {
     nextTick(() => scrollToTop(sidebarRef.value?.listContainer ?? null))
   }, 250)
 })
+
 onUnmounted(() => {
   if (sidebarSearchTimer !== null) window.clearTimeout(sidebarSearchTimer)
-  feedObserver?.disconnect(); channelsObserver?.disconnect(); gridObserver?.disconnect()
+  feedObserver?.disconnect()
+  channelsObserver?.disconnect()
+  gridObserver?.disconnect()
 })
 </script>
 
@@ -697,7 +804,7 @@ onUnmounted(() => {
   border: 0;
   background: transparent;
   cursor: pointer;
-  border-radius: var(--app-control-radius);
+  border-radius: 999px;
 }
 
 .subscribed-header__avatar-btn:focus-visible {
@@ -709,18 +816,18 @@ onUnmounted(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.2rem;
 }
 
 .subscribed-header__title-row {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
 .subscribed-header__title {
-  max-width: 25rem;
+  max-width: min(28rem, 48vw);
   overflow: hidden;
   border: 0;
   background: transparent;
@@ -742,18 +849,53 @@ onUnmounted(() => {
   color: hsl(var(--primary));
 }
 
+.subscribed-header__title:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.45);
+}
+
 .subscribed-header__title:disabled {
   cursor: default;
 }
 
+.subscribed-header__star {
+  color: hsl(var(--muted-foreground) / 0.55);
+}
+
+.subscribed-header__star.is-active {
+  color: hsl(var(--warning));
+}
+
 .subscribed-header__subtitle {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+
+.subscribed-header__sep {
+  color: hsl(var(--muted-foreground) / 0.45);
+}
+
+.subscribed-header__health {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.subscribed-header__health--error {
+  color: hsl(var(--destructive) / 0.92);
+}
+
+.subscribed-header__loading {
+  margin-left: 0.15rem;
 }
 
 .subscribed-header__actions {
@@ -762,7 +904,7 @@ onUnmounted(() => {
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.375rem;
+  gap: var(--space-2);
 }
 
 .subscribed-avatar {
@@ -771,48 +913,43 @@ onUnmounted(() => {
 }
 
 .subscribed-avatar:hover {
-  opacity: 0.88;
+  opacity: 0.9;
 }
 
 .subscribed-star-badge {
   position: absolute;
-  right: -0.125rem;
-  bottom: -0.125rem;
+  right: -0.05rem;
+  bottom: -0.05rem;
   display: flex;
-  width: 1rem;
-  height: 1rem;
+  width: 1.05rem;
+  height: 1.05rem;
   align-items: center;
   justify-content: center;
   border: 1px solid hsl(var(--background));
-  border-radius: var(--radius-sm);
-  background: hsl(var(--warning) / 0.12);
+  border-radius: 999px;
+  background: hsl(var(--warning) / 0.16);
   color: hsl(var(--warning));
 }
 
 .subscribed-nsfw-toggle {
-  display: none;
+  display: inline-flex;
 }
 
 .subscribed-empty-avatar {
   display: flex;
-  width: 2rem;
-  height: 2rem;
+  width: 3rem;
+  height: 3rem;
   flex: none;
   align-items: center;
   justify-content: center;
-  border-radius: var(--app-control-radius);
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.55);
+  color: hsl(var(--muted-foreground));
+  box-shadow: 0 0 0 1px var(--app-surface-border-subtle);
 }
 
 .subscribed-content {
   --app-workbench-content-width: 112.5rem;
-}
-
-@media (min-width: 768px) {
-  .subscribed-nsfw-toggle {
-    display: inline-flex;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
