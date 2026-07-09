@@ -111,7 +111,7 @@ const displayChannel = computed(() => {
   display: flex;
   gap: 1rem;
   cursor: pointer;
-  border-radius: 0.625rem;
+  border-radius: var(--radius-xl);
   outline: none;
 }
 
@@ -126,7 +126,7 @@ const displayChannel = computed(() => {
   flex: 0 0 auto;
   overflow: hidden;
   border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: 0.625rem;
+  border-radius: var(--radius-xl);
   background: hsl(var(--muted));
   transition: border-color 0.16s ease;
 }

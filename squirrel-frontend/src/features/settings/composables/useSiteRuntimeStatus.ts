@@ -22,11 +22,15 @@ const CAPABILITY_LABELS: Record<string, string> = {
   rewrite_proxy_playlist: '代理播放',
 }
 
+export type SiteRuntimeBadgeVariant = 'outline' | 'muted' | 'active' | 'error' | 'success' | 'warning'
+
 export interface UseSiteRuntimeStatusReturn {
   getSiteRuntimeStatusText: (plugin: RuntimeRow) => string
-  getSiteRuntimeStatusClass: (plugin: RuntimeRow) => string
+  getSiteRuntimeStatusVariant: (plugin: RuntimeRow) => SiteRuntimeBadgeVariant
   getNetworkText: (plugin: RuntimeRow) => string
+  getNetworkVariant: (plugin: RuntimeRow) => SiteRuntimeBadgeVariant
   getLoginText: (plugin: RuntimeRow) => string
+  getLoginVariant: (plugin: RuntimeRow) => SiteRuntimeBadgeVariant
   getCapabilityLabel: (name: string) => string
   formatTime: (value: string | null | undefined) => string
 }
@@ -41,15 +45,29 @@ export function useSiteRuntimeStatus(): UseSiteRuntimeStatusReturn {
     return '待检查'
   }
 
-  const getSiteRuntimeStatusClass = (plugin: RuntimeRow): string => {
+  const getSiteRuntimeStatusVariant = (plugin: RuntimeRow): SiteRuntimeBadgeVariant => {
     const state = (plugin.active_runtime as Record<string, unknown> | undefined)?.state
-    if (!plugin.enabled) return 'border-border/50 bg-muted text-muted-foreground'
-    if (state === 'running') return 'border-border/50 bg-background text-foreground'
+    if (!plugin.enabled) return 'muted'
+    if (state === 'running') return 'active'
     const health = plugin.health as { healthy?: boolean } | undefined
-    if (health?.healthy === false || state === 'failed') {
-      return 'border-destructive/20 bg-destructive/10 text-destructive'
-    }
-    return 'border-border/50 bg-muted text-muted-foreground'
+    if (health?.healthy === false || state === 'failed') return 'error'
+    return 'muted'
+  }
+
+  const getNetworkVariant = (plugin: RuntimeRow): SiteRuntimeBadgeVariant => {
+    if (plugin.siteAccessible === true) return 'success'
+    if (plugin.siteAccessible === false) return 'error'
+    return 'muted'
+  }
+
+  const getLoginVariant = (plugin: RuntimeRow): SiteRuntimeBadgeVariant => {
+    if (plugin.siteOAuthStatus === 'authenticated') return 'success'
+    if (plugin.siteOAuthStatus === 'pending') return 'warning'
+    const loginStatus = plugin.siteLoginStatus as Record<string, unknown> | undefined
+    if (loginStatus?.supported === false) return 'muted'
+    if (loginStatus?.logged_in) return 'success'
+    if (loginStatus) return 'error'
+    return 'muted'
   }
 
   const getNetworkText = (plugin: RuntimeRow): string => {
@@ -85,9 +103,11 @@ export function useSiteRuntimeStatus(): UseSiteRuntimeStatusReturn {
 
   return {
     getSiteRuntimeStatusText,
-    getSiteRuntimeStatusClass,
+    getSiteRuntimeStatusVariant,
     getNetworkText,
+    getNetworkVariant,
     getLoginText,
+    getLoginVariant,
     getCapabilityLabel,
     formatTime,
   }

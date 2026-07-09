@@ -74,10 +74,8 @@ const showSidebarMusicPlayer = computed(() =>
   overflow: hidden;
   border: 1px solid hsl(var(--sidebar-border) / 0.82);
   border-radius: var(--radius-xl);
-  background:
-    radial-gradient(ellipse 120% 38% at 0% 0%, hsl(var(--primary) / 0.09), transparent 62%),
-    linear-gradient(180deg, hsl(var(--sidebar)), hsl(var(--background) / 0.88));
-  box-shadow: var(--app-panel-shadow);
+  background: hsl(var(--sidebar));
+  box-shadow: var(--app-surface-shadow);
   user-select: none;
   transition:
     width var(--duration-base) var(--ease-default),

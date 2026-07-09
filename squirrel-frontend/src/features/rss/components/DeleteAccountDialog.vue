@@ -11,8 +11,8 @@
         </DialogDescription>
       </DialogHeader>
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
-        <Button variant="outline" class="app-dialog-button" @click="$emit('update:open', false)">取消</Button>
-        <Button class="app-dialog-button delete-account-dialog__button--danger" @click="$emit('confirm')">确认删除</Button>
+        <Button variant="outline" size="sm" @click="$emit('update:open', false)">取消</Button>
+        <Button variant="destructive" size="sm" @click="$emit('confirm')">确认删除</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

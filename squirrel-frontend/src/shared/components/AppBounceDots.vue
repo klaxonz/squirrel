@@ -57,4 +57,11 @@ withDefaults(defineProps<{
     opacity: 1;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .app-bounce-dots__dot {
+    animation: none;
+    opacity: 0.7;
+  }
+}
 </style>

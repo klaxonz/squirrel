@@ -124,7 +124,7 @@
         <Button
           type="button"
           variant="outline"
-          class="app-dialog-button account-dialog__button--test"
+          size="sm"
           :disabled="!canTestForm"
           :loading="testing"
           @click="$emit('test')"
@@ -136,14 +136,14 @@
           <Button
             type="button"
             variant="outline"
-            class="app-dialog-button"
+            size="sm"
             @click="open = false"
           >
             取消
           </Button>
           <Button
             type="button"
-            class="app-dialog-button app-dialog-button--primary"
+            size="sm"
             :disabled="!canSaveForm"
             :loading="saving"
             @click="$emit('save')"

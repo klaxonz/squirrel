@@ -1,12 +1,14 @@
 <template>
   <div ref="rootRef" class="global-search" @focusin="handleFocusIn" @focusout="handleFocusOut">
-    <div class="global-search__box">
+    <div class="global-search__box" :class="{ 'is-open': showSuggestions }">
       <div v-if="searchModesList.length > 0" class="global-search__mode-wrap">
         <Button
           type="button"
           variant="ghost"
           size="xs"
           class="global-search__mode"
+          :aria-pressed="activeSearchMode === 'remote'"
+          :aria-label="`搜索范围：${activeSearchModeLabel}`"
           @click="toggleMode"
         >
           <AppIcon :name="activeSearchMode === 'local' ? 'library' : 'siteFallback'" class="w-3.5 h-3.5" />
@@ -56,14 +58,19 @@
 
     <!-- Suggestions Dropdown -->
     <transition 
-      enter-active-class="transition duration-200 ease-out" 
+      enter-active-class="transition duration-base ease-out" 
       enter-from-class="opacity-0 translate-y-1" 
       enter-to-class="opacity-100 translate-y-0" 
-      leave-active-class="transition duration-150 ease-in" 
+      leave-active-class="transition duration-fast ease-default" 
       leave-from-class="opacity-100 translate-y-0" 
       leave-to-class="opacity-0 translate-y-1"
     >
-      <div v-if="showSuggestions" class="global-search__suggestions">
+      <div
+        v-if="showSuggestions"
+        class="global-search__suggestions"
+        role="listbox"
+        :aria-label="suggestionTitle"
+      >
         <div class="global-search__suggestions-header">
           <span>{{ suggestionTitle }}</span>
           <Button v-if="recentSearches.length" variant="link" size="xs" class="global-search__clear-recent" @click="clearRecentSearches">清空</Button>
@@ -409,17 +416,23 @@ onUnmounted(() => {
   align-items: center;
   height: 2.25rem;
   padding: 0.25rem;
-  border: 1px solid hsl(var(--border) / 0.26);
-  border-radius: 0.5rem;
-  background: hsl(var(--accent) / 0.28);
+  border: 1px solid hsl(var(--border) / 0.45);
+  border-radius: var(--radius-md);
+  background: hsl(var(--card) / 0.55);
   transition:
-    background-color 0.18s ease,
-    border-color 0.18s ease;
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
 }
 
 .global-search__box:focus-within {
-  border-color: hsl(var(--border) / 0.46);
-  background: hsl(var(--background));
+  border-color: hsl(var(--ring));
+  background: hsl(var(--card) / 0.78);
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.25);
+}
+
+.global-search__box.is-open {
+  border-color: hsl(var(--border) / 0.65);
 }
 
 .global-search__mode-wrap {
@@ -488,16 +501,17 @@ onUnmounted(() => {
   top: 100%;
   right: 0;
   left: 0;
-  z-index: 50;
+  z-index: var(--z-popover);
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
   margin-top: 0.5rem;
   padding: 0.375rem;
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: 0.625rem;
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: var(--radius-lg);
   background: hsl(var(--popover));
   color: hsl(var(--popover-foreground));
+  box-shadow: var(--app-floating-shadow);
 }
 
 .global-search__suggestions-header {

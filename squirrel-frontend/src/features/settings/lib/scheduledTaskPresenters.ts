@@ -25,14 +25,13 @@ const STATUS_LABELS: Record<string, string> = {
   error: '异常',
 }
 
-const STATUS_BADGE_CLASSES: Record<string, string> = {
-  enabled: 'border-border/50 bg-background text-foreground',
-  disabled: 'border-border/50 bg-muted text-muted-foreground',
-  running: 'border-primary/20 bg-primary/10 text-primary',
-  error: 'border-destructive/20 bg-destructive/10 text-destructive',
+/** Maps scheduler status → shared Badge variant (single chip vocabulary). */
+const STATUS_BADGE_VARIANTS: Record<string, 'outline' | 'muted' | 'active' | 'error'> = {
+  enabled: 'outline',
+  disabled: 'muted',
+  running: 'active',
+  error: 'error',
 }
-
-const DEFAULT_BADGE_CLASS = 'border-border/50 bg-muted text-muted-foreground'
 
 /** Full label for an interval unit (seconds/minutes/hours/days). */
 export const getUnitFull = (unit: string): string => UNIT_LABELS[unit] || unit
@@ -40,9 +39,11 @@ export const getUnitFull = (unit: string): string => UNIT_LABELS[unit] || unit
 /** Chinese label for a task status (enabled/disabled/running/error). */
 export const getStatusText = (status: string): string => STATUS_LABELS[status] || status
 
-/** Tailwind badge classes for a task status. */
-export const getStatusBadgeClass = (status: string): string =>
-  STATUS_BADGE_CLASSES[status] || DEFAULT_BADGE_CLASS
+/** Badge variant for a task status — use with shared `Badge`. */
+export const getStatusBadgeVariant = (
+  status: string,
+): 'outline' | 'muted' | 'active' | 'error' =>
+  STATUS_BADGE_VARIANTS[status] || 'muted'
 
 /** Count of tasks in a given status filter ('all' returns the total). */
 export const getStatusCount = (status: string, stats: SchedulerStatistics): number => {

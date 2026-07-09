@@ -11,6 +11,7 @@
       danger && 'app-list-option--danger',
       props.class,
     )"
+    @keydown="onKeydown"
   >
     <slot />
   </component>
@@ -34,6 +35,14 @@ const props = withDefaults(defineProps<{
   compact: false,
   role: 'option',
 })
+
+/** For `as="div"` options: Space/Enter activate like a button. */
+const onKeydown = (event: KeyboardEvent) => {
+  if (props.as !== 'div') return
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  ;(event.currentTarget as HTMLElement | null)?.click()
+}
 </script>
 
 <style scoped>
@@ -65,11 +74,16 @@ const props = withDefaults(defineProps<{
   font-size: 0.8125rem;
 }
 
-.app-list-option:hover,
+.app-list-option:hover {
+  background: hsl(var(--accent) / 0.48);
+  color: hsl(var(--foreground));
+}
+
 .app-list-option:focus-visible {
   background: hsl(var(--accent) / 0.48);
   color: hsl(var(--foreground));
   outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.45);
 }
 
 .app-list-option.is-selected {

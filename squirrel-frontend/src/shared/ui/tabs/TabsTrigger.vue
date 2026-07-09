@@ -16,7 +16,7 @@ const forwardedProps = useForwardProps(delegatedProps)
   <TabsTrigger
     v-bind="forwardedProps"
     :class="cn(
-      'inline-flex min-h-7 items-center justify-center whitespace-nowrap rounded-sm px-2 py-0.5 text-xs font-medium text-muted-foreground ring-offset-background transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground',
+      'inline-flex min-h-7 items-center justify-center whitespace-nowrap rounded-sm px-2.5 py-0.5 text-xs font-medium text-muted-foreground ring-offset-background transition-colors duration-fast ease-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-40 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs motion-reduce:transition-none',
       props.class,
     )"
   >

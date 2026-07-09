@@ -11,7 +11,7 @@ export { default as SheetTitle } from "./SheetTitle.vue"
 export { default as SheetTrigger } from "./SheetTrigger.vue"
 
 export const sheetVariants = cva(
-  'fixed z-sheet gap-4 border-border/80 bg-card p-5 shadow-dialog transition-transform ease-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:duration-200',
+  'fixed z-sheet gap-4 border-border/80 bg-card p-5 shadow-dialog transition-transform ease-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-base data-[state=open]:duration-base',
   {
     variants: {
       side: {

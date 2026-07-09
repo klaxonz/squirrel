@@ -78,13 +78,13 @@ const variantClass = computed(() => `music-action-button--${props.variant}`)
 }
 
 .music-action-icon--daily {
-  background: hsl(25, 95%, 53% / 0.12);
-  color: hsl(25, 95%, 52%);
+  background: hsl(var(--warning) / 0.12);
+  color: hsl(var(--warning));
 }
 
 .music-action-icon--rank {
-  background: hsl(199, 89%, 48% / 0.12);
-  color: hsl(199, 89%, 46%);
+  background: hsl(var(--info) / 0.12);
+  color: hsl(var(--info));
 }
 
 .music-action-content {

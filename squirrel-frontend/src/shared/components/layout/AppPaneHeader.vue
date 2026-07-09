@@ -25,7 +25,7 @@ const props = withDefaults(defineProps<{
   title: string
   /** Compact workbench subtitle (preferred). */
   subtitle?: string
-  /** Alias for subtitle — matches PageHeader API. */
+  /** Alias for subtitle. */
   description?: string
   /** Heading element / scale. Default h2 uses .app-h2. */
   level?: 1 | 2 | 3

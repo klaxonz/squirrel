@@ -52,4 +52,11 @@ withDefaults(defineProps<{
 .app-spinner--muted {
   color: var(--app-spinner-muted-color);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .app-spinner.animate-spin {
+    animation: none;
+    opacity: 0.72;
+  }
+}
 </style>

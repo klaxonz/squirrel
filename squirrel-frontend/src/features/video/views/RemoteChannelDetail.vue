@@ -551,7 +551,7 @@ onUnmounted(() => {
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border: 1px solid hsl(var(--border) / 0.42);
-  border-radius: 0.625rem;
+  border-radius: var(--radius-xl);
   background: hsl(var(--muted));
   transition: border-color 0.15s ease;
 }

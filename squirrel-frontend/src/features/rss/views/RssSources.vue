@@ -621,14 +621,14 @@
           <Button
             type="button"
             variant="outline"
-            class="app-dialog-button"
+            size="sm"
             @click="closeSubscribeModal"
           >
             取消
           </Button>
           <Button
             type="button"
-            class="app-dialog-button app-dialog-button--primary"
+            size="sm"
             :disabled="!subscribeForm.feedUrl.trim()"
             :loading="subscribingFeed"
             @click="handleSubscribeFeed"

@@ -2,27 +2,29 @@
   <article
     v-for="i in count"
     :key="i"
-    class="w-[18rem] shrink-0 snap-start animate-pulse"
+    class="w-[18rem] shrink-0 snap-start"
     :style="{ animationDelay: `${i * 60}ms` }"
   >
     <div
-      class="relative aspect-video overflow-hidden bg-muted"
+      class="relative aspect-video overflow-hidden"
       :style="{ borderRadius: 'var(--app-card-radius)' }"
     >
-      <span class="app-shimmer" />
+      <AppSkeleton width="100%" height="100%" rounded="var(--app-card-radius)" shimmer />
     </div>
     <div class="mt-2 space-y-2">
-      <div class="h-4 w-full rounded-md bg-muted" />
-      <div class="h-4 w-2/3 rounded-md bg-muted" />
+      <AppSkeleton height="1rem" width="100%" />
+      <AppSkeleton height="1rem" width="66%" />
     </div>
     <div class="mt-2 flex items-center gap-1.5">
-      <div class="size-4 shrink-0 rounded-md bg-muted" />
-      <div class="h-3 w-20 rounded-md bg-muted" />
+      <AppSkeleton width="1rem" height="1rem" rounded="var(--radius-md)" />
+      <AppSkeleton height="0.75rem" width="5rem" />
     </div>
   </article>
 </template>
 
 <script setup lang="ts">
+import AppSkeleton from '@/shared/components/AppSkeleton.vue'
+
 withDefaults(defineProps<{
   count?: number
 }>(), {

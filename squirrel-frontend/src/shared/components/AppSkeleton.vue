@@ -61,4 +61,12 @@ const skeletonStyle = computed(() => ({
     transform: translateX(100%);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .app-skeleton--shimmer::after {
+    animation: none;
+    transform: none;
+    opacity: 0.35;
+  }
+}
 </style>

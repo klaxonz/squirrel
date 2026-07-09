@@ -429,28 +429,31 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
   gap: 0.25rem;
 }
 
+/* Match shared Tabs / AppSegmentedControl: secondary track + card active. */
 .music-profile-tabs-list {
   display: inline-flex;
-  gap: 0.25rem;
+  gap: 2px;
   border: none;
-  background: transparent;
+  background: hsl(var(--secondary));
   box-shadow: none;
-  padding: 0;
+  padding: 2px;
+  border-radius: var(--radius-md);
 }
 
 .music-profile-tab-btn {
-  padding: 0.5rem 1rem;
+  padding: 0.25rem 0.75rem;
+  min-height: 1.75rem;
   font-size: 0.8125rem;
   font-weight: 500;
   color: hsl(var(--muted-foreground));
   background: transparent;
-  border: 1px solid hsl(var(--border) / 0.3);
-  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition:
-    color 0.15s ease,
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
 }
 
 .music-profile-tab-btn:hover {
@@ -458,9 +461,15 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
 }
 
 .music-profile-tab-btn[data-state="active"] {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.1);
-  border-color: hsl(var(--primary) / 0.3);
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-profile-tab-btn {
+    transition: none;
+  }
 }
 
 .music-profile-tab-actions {

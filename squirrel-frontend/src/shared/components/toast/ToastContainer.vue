@@ -44,8 +44,9 @@ const iconName = computed(() => (props.toast.variant === 'error' ? 'warning' : '
 }
 
 .app-toast--info {
-  background: var(--app-toast-success-bg);
-  color: var(--app-toast-success-fg);
+  background: var(--app-toast-info-bg);
+  color: var(--app-toast-info-fg);
+  border: 1px solid var(--app-toast-info-border);
 }
 
 .app-toast__icon {

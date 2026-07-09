@@ -43,6 +43,10 @@ export default {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
+        overlay: {
+          DEFAULT: 'hsl(var(--overlay) / 0.45)',
+          strong: 'hsl(var(--overlay) / 0.62)',
+        },
         sidebar: { DEFAULT: 'hsl(var(--sidebar))', foreground: 'hsl(var(--sidebar-foreground))', border: 'hsl(var(--sidebar-border))' },
       },
       borderRadius: {

@@ -13,9 +13,9 @@
           <slot name="description">{{ description }}</slot>
         </DialogDescription>
       </DialogHeader>
-      <DialogFooter class="gap-2 bg-muted/30 p-4">
-        <Button variant="outline" @click="open = false">{{ cancelLabel }}</Button>
-        <Button :variant="confirmVariant" @click="$emit('confirm')">{{ confirmLabel }}</Button>
+      <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
+        <Button variant="outline" size="sm" @click="open = false">{{ cancelLabel }}</Button>
+        <Button size="sm" :variant="confirmVariant" @click="$emit('confirm')">{{ confirmLabel }}</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

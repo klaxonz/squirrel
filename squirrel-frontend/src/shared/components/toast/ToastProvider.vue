@@ -18,7 +18,7 @@ import { toasts } from './useToast'
   left: auto;
   bottom: 1.5rem;
   right: 1.5rem;
-  z-index: var(--app-toast-z);
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: var(--app-toast-gap);

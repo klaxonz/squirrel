@@ -264,7 +264,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   position: relative;
   overflow: hidden;
   border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: 0.625rem;
+  border-radius: var(--radius-xl);
   background: hsl(var(--muted));
   transition:
     border-color 0.18s ease,

@@ -2,7 +2,7 @@
   <div
     class="app-segmented-control"
     :class="[`app-segmented-control--${size}`]"
-    role="tablist"
+    role="radiogroup"
     :aria-label="ariaLabel"
   >
     <Button
@@ -13,8 +13,8 @@
       type="button"
       class="app-segmented-control__item"
       :class="{ 'is-active': modelValue === option.value }"
-      role="tab"
-      :aria-selected="modelValue === option.value"
+      role="radio"
+      :aria-checked="modelValue === option.value"
       :title="option.label"
       :aria-label="option.label"
       @click="selectOption(option.value)"
@@ -87,6 +87,10 @@ const selectOption = (value: string | number) => {
   font-size: 0.8125rem;
   font-weight: 500;
   white-space: nowrap;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
 }
 
 .app-segmented-control__item:hover {
@@ -97,6 +101,12 @@ const selectOption = (value: string | number) => {
   color: hsl(var(--foreground));
   background: hsl(var(--card));
   box-shadow: var(--shadow-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-segmented-control__item {
+    transition: none;
+  }
 }
 
 .app-segmented-control--sm .app-segmented-control__item {

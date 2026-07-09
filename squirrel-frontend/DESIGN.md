@@ -192,7 +192,7 @@ Squirrel uses a hybrid of tonal layering and small structural shadows. Resting s
 ### Navigation
 - **Sidebar:** fixed desktop rail with expanded/collapsed widths driven by `--sidebar-width`; active item uses amber icon plus low-alpha amber background.
 - **Header:** fixed height with history controls, current page title, contextual search, and user entry point. It should not repeat breadcrumbs already represented by the sidebar.
-- **Tabs / Segmented Controls:** use shared `app-tab-list` and `app-tab-button` vocabulary, compact height, active card background, and focus-visible ring.
+- **Tabs / Segmented Controls:** use shared `Tabs` / `TabsList` / `TabsTrigger` or `AppSegmentedControl`. Compact height, secondary track, active card surface, focus-visible ring. Do not invent a third tab look per feature.
 
 ### Skeletons
 - **Style:** `AppSkeleton` is the single placeholder primitive. Use `--app-skeleton-base`, `--app-skeleton-shimmer`, and `--app-skeleton-radius`.

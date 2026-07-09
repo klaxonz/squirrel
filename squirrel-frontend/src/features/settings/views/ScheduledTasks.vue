@@ -91,9 +91,9 @@
                   </div>
 
                   <div>
-                    <span class="inline-flex h-7 items-center rounded-md border px-2 text-xs font-medium" :class="getStatusBadgeClass(task.status)">
+                    <Badge :variant="getStatusBadgeVariant(task.status)" class="h-7 px-2.5">
                       {{ getStatusText(task.status) }}
-                    </span>
+                    </Badge>
                   </div>
 
                   <div class="flex items-center gap-2 text-sm text-muted-foreground">
@@ -218,6 +218,7 @@ import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import TaskDialog from '@/features/settings/components/TaskDialog.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import { Button } from '@/shared/ui/button'
+import { Badge } from '@/shared/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -230,7 +231,7 @@ import {
   getUnitFull,
   getStatusText,
   getStatusCount as getStatusCountFor,
-  getStatusBadgeClass,
+  getStatusBadgeVariant,
   formatDateTime,
 } from '@/features/settings/lib/scheduledTaskPresenters'
 import { useScheduledTaskQueries } from '@/features/settings/composables/useScheduledTaskQueries'

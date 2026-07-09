@@ -70,10 +70,8 @@ const variantClass = computed(() =>
 
 .app-empty-state--bordered {
   border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: calc(var(--app-surface-radius) + 4px);
-  background:
-    radial-gradient(420px 180px at 50% -80px, hsl(var(--primary) / 0.08), transparent 70%),
-    hsl(var(--card) / 0.38);
+  border-radius: var(--app-surface-radius);
+  background: hsl(var(--card) / 0.42);
 }
 
 .app-empty-state__icon-wrap {

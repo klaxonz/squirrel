@@ -53,39 +53,44 @@
             </div>
 
             <div>
-              <span class="inline-flex h-7 items-center rounded-md border px-2 text-xs font-medium" :class="getSiteRuntimeStatusClass(runtime)">
+              <Badge :variant="getSiteRuntimeStatusVariant(runtime)" class="h-7 px-2.5">
                 {{ getSiteRuntimeStatusText(runtime) }}
-              </span>
+              </Badge>
             </div>
 
             <div class="flex min-w-0 flex-wrap gap-1">
-              <span
+              <Badge
                 v-for="cap in runtime.capabilities.slice(0, 3)"
                 :key="cap.name"
-                class="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
+                variant="muted"
+                class="px-1.5 py-0.5 font-normal"
                 :title="cap.name"
               >
                 {{ getCapabilityLabel(cap.name) }}
-              </span>
+              </Badge>
               <span v-if="runtime.capabilities.length > 3" class="text-xs text-muted-foreground">
                 +{{ runtime.capabilities.length - 3 }}
               </span>
             </div>
 
-            <div class="text-sm text-muted-foreground">
-              <span v-if="runtime.siteTesting" class="inline-flex items-center gap-1">
+            <div>
+              <span v-if="runtime.siteTesting" class="inline-flex items-center gap-1 text-sm text-muted-foreground">
                 <AppSpinner size="sm" />
                 检测中
               </span>
-              <span v-else>{{ getNetworkText(runtime) }}</span>
+              <Badge v-else :variant="getNetworkVariant(runtime)" class="h-7 px-2.5">
+                {{ getNetworkText(runtime) }}
+              </Badge>
             </div>
 
-            <div class="text-sm text-muted-foreground">
-              <span v-if="runtime.siteLoginTesting" class="inline-flex items-center gap-1">
+            <div>
+              <span v-if="runtime.siteLoginTesting" class="inline-flex items-center gap-1 text-sm text-muted-foreground">
                 <AppSpinner size="sm" />
                 检测中
               </span>
-              <span v-else>{{ getLoginText(runtime) }}</span>
+              <Badge v-else :variant="getLoginVariant(runtime)" class="h-7 px-2.5">
+                {{ getLoginText(runtime) }}
+              </Badge>
             </div>
 
             <div class="flex items-center justify-end gap-1">
@@ -205,6 +210,7 @@ import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Button } from '@/shared/ui/button'
+import { Badge } from '@/shared/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert'
 import {
   DropdownMenu,
@@ -234,9 +240,11 @@ defineEmits([
 
 const {
   getSiteRuntimeStatusText,
-  getSiteRuntimeStatusClass,
+  getSiteRuntimeStatusVariant,
   getNetworkText,
+  getNetworkVariant,
   getLoginText,
+  getLoginVariant,
   getCapabilityLabel,
 } = useSiteRuntimeStatus()
 

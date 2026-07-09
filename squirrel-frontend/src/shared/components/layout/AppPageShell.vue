@@ -27,9 +27,8 @@ defineProps<{
   min-height: 100%;
   flex-direction: column;
   color: hsl(var(--foreground));
-  background:
-    linear-gradient(180deg, hsl(var(--card) / 0.22), transparent 12rem),
-    hsl(var(--background) / 0.3);
+  /* Flat resting surface — media and content carry visual richness. */
+  background: transparent;
 }
 
 .app-page-shell--fill {

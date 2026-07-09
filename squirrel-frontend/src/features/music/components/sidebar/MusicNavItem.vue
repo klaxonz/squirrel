@@ -1,7 +1,9 @@
 <template>
   <Button
+    variant="ghost"
     class="music-nav-item"
     :class="{ 'music-nav-item--active': active }"
+    :aria-current="active ? 'page' : undefined"
     @click="$emit('click')"
   >
     <AppIcon :name="item.icon" class="h-4 w-4" />
@@ -40,12 +42,13 @@ defineEmits<{
   color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
   text-align: left;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   position: relative;
 }
 
 .music-nav-item--active {
-  background: hsl(var(--foreground) / 0.06);
+  border-color: hsl(var(--primary) / 0.18);
+  background: hsl(var(--primary) / 0.08);
   color: hsl(var(--foreground));
   font-weight: 600;
 }

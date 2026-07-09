@@ -187,8 +187,7 @@
   --app-skeleton-shimmer: hsl(var(--foreground) / 0.05);
   --app-skeleton-radius: var(--radius-md);
 
-  /* Toast — single global toast stack, bottom-right. */
-  --app-toast-z: 100;
+  /* Toast — single global toast stack, bottom-right. Stacks at --z-toast. */
   --app-toast-inset: bottom 1.5rem right 1.5rem;
   --app-toast-gap: 0.5rem;
   --app-toast-radius: var(--radius-lg);
@@ -200,6 +199,16 @@
   --app-toast-error-bg: hsl(var(--background));
   --app-toast-error-fg: hsl(var(--destructive));
   --app-toast-error-border: hsl(var(--destructive) / 0.2);
+  --app-toast-info-bg: hsl(var(--card));
+  --app-toast-info-fg: hsl(var(--foreground));
+  --app-toast-info-border: hsl(var(--border) / 0.7);
+
+  /* Shared form-field surface — Input / Textarea / Select share this recipe. */
+  --app-field-bg: hsl(var(--card) / 0.6);
+  --app-field-bg-hover: hsl(var(--card) / 0.72);
+  --app-field-border: hsl(var(--border) / 0.65);
+  --app-field-border-hover: hsl(var(--border) / 0.85);
+  --app-field-disabled-opacity: 0.4;
 }
 
 .app-page-content {
@@ -665,39 +674,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.app-icon-button {
-  display: inline-flex;
-  width: 2rem;
-  height: 2rem;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: var(--app-control-radius);
-  color: hsl(var(--muted-foreground));
-  transition:
-    background-color var(--duration-fast) var(--ease-default),
-    border-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-fast) var(--ease-default);
-}
-
-.app-icon-button:hover {
-  border-color: hsl(var(--border) / 0.52);
-  background: hsl(var(--card) / 0.58);
-  color: hsl(var(--foreground));
-}
-
-.app-icon-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.45);
-}
-
-.app-icon-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
 .app-toolbar-control {
   border: 1px solid hsl(var(--border) / 0.58);
   border-radius: var(--radius-md);
@@ -824,15 +800,15 @@
 }
 
 .app-overlay-action.is-active {
-  color: hsl(0 84% 68%);
+  color: hsl(var(--destructive));
 }
 
 .app-dialog-surface {
   overflow: hidden;
   padding: 0;
   border: 1px solid hsl(var(--border) / 0.36);
-  border-radius: 0.625rem;
-  background: hsl(var(--background));
+  border-radius: var(--radius-lg);
+  background: hsl(var(--card));
   box-shadow: none;
 }
 
@@ -1002,30 +978,6 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
-}
-
-.app-dialog-button {
-  height: 2.25rem;
-  padding: 0 0.75rem;
-  border: 1px solid hsl(var(--border) / 0.42);
-  border-radius: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 650;
-  transition:
-    color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default),
-    border-color var(--duration-fast) var(--ease-default),
-    opacity var(--duration-fast) var(--ease-default);
-}
-
-.app-dialog-button:hover {
-  background: hsl(var(--accent) / 0.4);
-}
-
-.app-dialog-button--primary {
-  padding-right: 1rem;
-  padding-left: 1rem;
-  border-color: hsl(var(--primary) / 0.42);
 }
 
 .app-filter-button {

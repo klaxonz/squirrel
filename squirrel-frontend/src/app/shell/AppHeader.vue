@@ -201,10 +201,10 @@ function handleBack() {
   overflow: hidden;
   color: hsl(var(--foreground));
   font-family: var(--app-heading-font);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  font-size: var(--app-h3-size);
+  font-weight: var(--app-h3-weight);
+  line-height: var(--app-h3-leading);
+  letter-spacing: var(--app-h3-tracking);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

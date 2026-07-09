@@ -108,7 +108,11 @@
               :title="nsfw === 'all' ? '显示成年内容' : '隐藏成年内容'"
               @click="nsfw = nsfw === 'all' ? 'yes' : 'all'"
             >
-              <span class="h-2.5 w-0.5 rounded-sm" :class="nsfw === 'all' ? 'bg-muted-foreground/50' : 'bg-destructive'" />
+              <AppIcon
+                name="warning"
+                class="h-3.5 w-3.5"
+                :class="nsfw === 'all' ? 'text-muted-foreground/70' : 'text-destructive'"
+              />
               成年内容
             </Button>
 
