@@ -1,4 +1,4 @@
-/** Shared feed filter / sort option labels for toolbar chips and FilterModal. */
+/** Shared option labels for the video feed filter popover and sort control. */
 
 export type FilterOption = { value: string; label: string }
 
@@ -33,7 +33,3 @@ export const SORT_OPTIONS: FilterOption[] = [
   { value: 'publish_date', label: '按上传日期' },
   { value: 'created_at', label: '按抓取日期' },
 ]
-
-export function labelForOption(options: FilterOption[], value: string): string {
-  return options.find((opt) => opt.value === value)?.label ?? value
-}

@@ -5,7 +5,7 @@ import { ref, type Ref } from 'vue'
  *
  * Owns the recent-queries list (add/remove/clear + persistence), capped at a
  * max length with most-recent-first ordering and de-dup. Mirrors the
- * useMusicSearchHistory pattern but for the generic global search bar, whose
+ * useMusicSearchHistory pattern but for the generic page search bar, whose
  * history lives under a different storage key ('search-history').
  *
  * Extracted from GlobalSearchBar.vue so the persistence round-trip + the

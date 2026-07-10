@@ -1,5 +1,5 @@
 <template>
-  <section v-if="items.length > 0 || loading" class="group/container mb-6 px-6 pt-2">
+  <section v-if="items.length > 0 || loading" class="home-feed-rail group/container">
     <FeedRailHeader
       title="特别关注"
       view-more

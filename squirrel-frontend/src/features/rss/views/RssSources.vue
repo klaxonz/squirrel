@@ -938,8 +938,8 @@ const {
 })
 
 // 单一来源仍是 useNavigationHistory：RSS 内部的 "feed → feed" 二级栈
-// 通过 registerInternalBackHandler 暴露给全局，让 AppHeader.back 按钮、
-// Alt+← 快捷键、页内"返回"按钮三个入口行为完全一致。
+// 通过 registerInternalBackHandler 暴露给应用导航，让鼠标侧键、
+// Alt+← 快捷键和页内"返回"按钮保持一致。
 const appNavigation = useNavigationHistory()
 
 const handleFeedBack = (): boolean => goBackFromFeed()

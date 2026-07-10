@@ -18,7 +18,7 @@ import type { RssEntry, RssFeed, RecentEntry, ReadBatchMode } from './rssTypes'
 //
 // 实现是栈：连续多次「跳到 feed」中间不丢状态；栈空时返回按钮自动消失。
 // 上层 (RssSources.vue) 通过 useNavigationHistory.registerInternalBackHandler
-// 把「出栈」接进 AppHeader.back / Alt+← / 快捷键，让三个入口行为一致。
+// 把「出栈」接进应用导航，让鼠标、Alt+← 和快捷键行为一致。
 export interface FeedNavSnapshot {
   selectedFeedId: number | null
   activeFilter: 'all' | 'unread' | 'starred' | 'recent'

@@ -1,30 +1,30 @@
 <template>
   <AppPageShell class="videos-view-page" variant="compact" :fill="false">
     <AppToolbarFrame v-if="searchMode !== 'remote'" bordered compact sticky>
-        <FeedToolbar
-          :active-tab="activeTab"
-          :nsfw="nsfw"
-          :sort-by="sortBy"
-          :site="site"
-          :special="special"
-          :time-range="timeRange"
-          :duration="duration"
-          :content-type="contentType"
-          :tabs="tabs"
-          :is-refreshing="isRefreshing"
-          :show-tabs="true"
-          :show-sort="true"
-          :show-filter="true"
-          @update:activeTab="activeTab = $event"
-          @update:nsfw="nsfw = $event"
-          @update:sortBy="sortBy = $event"
-          @update:site="site = $event"
-          @update:timeRange="timeRange = $event"
-          @update:duration="duration = $event"
-          @update:contentType="contentType = $event"
-          @update:special="setSpecialFilter"
-          @refresh="refreshCurrentList"
-        />
+      <FeedToolbar
+        :active-tab="activeTab"
+        :nsfw="nsfw"
+        :sort-by="sortBy"
+        :site="site"
+        :special="special"
+        :time-range="timeRange"
+        :duration="duration"
+        :content-type="contentType"
+        :tabs="tabs"
+        :is-refreshing="isRefreshing"
+        :show-tabs="true"
+        :show-sort="true"
+        :show-filter="true"
+        @update:activeTab="activeTab = $event"
+        @update:nsfw="nsfw = $event"
+        @update:sortBy="sortBy = $event"
+        @update:site="site = $event"
+        @update:timeRange="timeRange = $event"
+        @update:duration="duration = $event"
+        @update:contentType="contentType = $event"
+        @update:special="setSpecialFilter"
+        @refresh="refreshCurrentList"
+      />
     </AppToolbarFrame>
     <AppToolbarFrame v-else bordered compact sticky>
       <AppPaneHeader

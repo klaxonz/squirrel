@@ -1,45 +1,44 @@
 <template>
   <section v-if="tracks.length" class="music-recent-section">
     <header class="music-recent-header">
-      <h2 class="music-recent-title">最近播放</h2>
-      <button
-        type="button"
-        class="music-recent-more"
-        @click="$emit('view-all')"
-      >
-        <span class="music-recent-more-label">查看全部</span>
-        <AppIcon
-          name="chevronRight"
-          class="music-recent-more-icon h-3.5 w-3.5"
-          aria-hidden="true"
-        />
-      </button>
+      <div>
+        <h2 class="music-recent-title">最近播放</h2>
+        <p class="music-recent-description">继续刚才的收听</p>
+      </div>
+      <Button variant="ghost" size="xs" @click="$emit('view-all')">
+        查看全部
+        <AppIcon name="chevronRight" class="h-3.5 w-3.5" />
+      </Button>
     </header>
 
     <div class="music-recent-list">
-      <article
+      <Button
         v-for="(track, index) in tracks"
         :key="track.hash"
+        unstyled
         class="music-recent-item"
         :class="{ 'music-recent-item--playing': isPlaying(track) }"
         @click="$emit('play-track', track)"
       >
-        <div class="music-recent-cover">
+        <span class="music-recent-cover">
           <img v-if="track.cover" :src="track.cover" :alt="track.title || '封面'" loading="lazy" />
           <AppIcon v-else name="playlistMusic" class="h-4 w-4" />
-        </div>
-        <div class="music-recent-info">
+        </span>
+        <span class="music-recent-info">
           <span class="music-recent-name">{{ track.title || '未知歌曲' }}</span>
           <span class="music-recent-artist">{{ track.artist || '未知歌手' }}</span>
-        </div>
-        <span class="music-recent-index">{{ index + 1 }}</span>
-      </article>
+        </span>
+        <MusicPlayingIndicator v-if="isPlaying(track)" />
+        <span v-else class="music-recent-index">{{ String(index + 1).padStart(2, '0') }}</span>
+      </Button>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
+import MusicPlayingIndicator from '../shared/MusicPlayingIndicator.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import type { MusicTrack } from '@/shared/api/music'
 
@@ -61,114 +60,81 @@ function isPlaying(track: MusicTrack): boolean {
 
 <style scoped>
 .music-recent-section {
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-7);
 }
 
 .music-recent-header {
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 .music-recent-title {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: hsl(var(--foreground));
   margin: 0;
+  color: hsl(var(--foreground));
+  font-family: var(--app-heading-font);
+  font-size: var(--app-h3-size);
+  font-weight: var(--app-h3-weight);
+  letter-spacing: 0;
+  line-height: var(--app-h3-leading);
 }
 
-.music-recent-more {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.125rem;
-  flex-shrink: 0;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
+.music-recent-description {
+  margin: 0.2rem 0 0;
   color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  border-radius: 0.25rem;
-  transition: color 150ms ease;
-}
-
-.music-recent-more-label {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1;
-}
-
-.music-recent-more-icon {
-  display: block;
-  flex-shrink: 0;
-  transform: translateY(0.5px);
-}
-
-.music-recent-more:hover,
-.music-recent-more:focus-visible {
-  color: hsl(var(--foreground));
-}
-
-.music-recent-more:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px hsl(var(--background)),
-    0 0 0 4px hsl(var(--ring) / 0.5);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .music-recent-more {
-    transition: none;
-  }
+  font-size: 0.75rem;
 }
 
 .music-recent-list {
-  display: flex;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--radius-lg);
+  background: hsl(var(--card) / 0.38);
 }
 
 .music-recent-item {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0.875rem;
-  background: hsl(var(--card) / 0.6);
-  border: 1px solid hsl(var(--border) / 0.4);
-  border-radius: 0.75rem;
-  cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
-  flex: 1;
   min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-right: 1px solid var(--app-surface-border-subtle);
+  color: hsl(var(--foreground));
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.music-recent-item:last-child {
+  border-right: 0;
 }
 
 .music-recent-item:hover {
-  border-color: hsl(var(--primary) / 0.2);
-  background: hsl(var(--card));
-  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.06);
+  background: hsl(var(--muted) / 0.36);
 }
 
-.music-recent-item--playing {
-  border-color: hsl(var(--primary) / 0.25);
-  background: hsl(var(--primary) / 0.04);
+.music-recent-item:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: -2px;
 }
 
 .music-recent-cover {
+  display: flex;
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 0.5rem;
-  overflow: hidden;
-  background: hsl(var(--muted) / 0.3);
-  display: flex;
+  flex: none;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  color: hsl(var(--muted-foreground) / 0.5);
-  box-shadow: 0 2px 8px hsl(var(--foreground) / 0.06);
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: hsl(var(--muted) / 0.42);
+  color: hsl(var(--muted-foreground) / 0.52);
 }
 
 .music-recent-cover img {
@@ -178,18 +144,22 @@ function isPlaying(track: MusicTrack): boolean {
 }
 
 .music-recent-info {
-  flex: 1;
+  display: block;
   min-width: 0;
+  flex: 1;
 }
 
-.music-recent-name {
+.music-recent-name,
+.music-recent-artist {
   display: block;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.music-recent-name {
+  font-size: 0.75rem;
+  font-weight: 650;
 }
 
 .music-recent-item--playing .music-recent-name {
@@ -197,19 +167,35 @@ function isPlaying(track: MusicTrack): boolean {
 }
 
 .music-recent-artist {
-  display: block;
-  font-size: 0.6875rem;
-  color: hsl(var(--muted-foreground));
   margin-top: 0.125rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
 }
 
 .music-recent-index {
+  flex: none;
+  color: hsl(var(--muted-foreground) / 0.52);
+  font-family: var(--font-mono);
   font-size: 0.625rem;
-  font-weight: 600;
-  color: hsl(var(--muted-foreground) / 0.5);
-  flex-shrink: 0;
+}
+
+@media (max-width: 1180px) {
+  .music-recent-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .music-recent-item:nth-child(3) {
+    border-right: 0;
+  }
+
+  .music-recent-item:nth-child(n + 4) {
+    border-top: 1px solid var(--app-surface-border-subtle);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-recent-item {
+    transition: none;
+  }
 }
 </style>

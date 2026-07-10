@@ -74,7 +74,6 @@ const musicBarPadding = computed(() =>
 
 const mainScrollRef = ref<HTMLElement | null>(null)
 let scrollSaveTimer: ReturnType<typeof setTimeout> | null = null
-let detachIpcListener: (() => void) | null = null
 let detachDesktopNavListener: (() => void) | null = null
 
 function handleScroll() {
@@ -106,7 +105,6 @@ function isEditableTarget(target: EventTarget | null): boolean {
 function handleKeydown(e: KeyboardEvent) {
   if (isEditableTarget(e.target)) return
   const mod = e.metaKey || e.ctrlKey
-  // Sidebar: Ctrl/Cmd+B — VS Code / Notion / most desktop shells
   if (mod && (e.key === 'b' || e.key === 'B')) {
     e.preventDefault()
     uiStore.toggleSidebar()
@@ -164,9 +162,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
   if (scrollSaveTimer) clearTimeout(scrollSaveTimer)
-  detachIpcListener?.()
   detachDesktopNavListener?.()
-  detachIpcListener = null
   detachDesktopNavListener = null
 })
 </script>
@@ -178,8 +174,6 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   color: hsl(var(--foreground));
-  /* UI-057: chrome is flat. The previous twin radial gradients against the
-     primary hue violated DESIGN.md's "amber is state, not atmosphere" rule. */
   background: hsl(var(--background));
 }
 
@@ -189,17 +183,10 @@ onUnmounted(() => {
   z-index: var(--z-sidebar);
 }
 
-/*
-  Single continuous canvas — no floating dual cards.
-  Sidebar and workspace share one surface temperature; hierarchy is only a
-  hairline edge (owned by .sidebar-rail), not gap + radius + panel shadow.
-  Floating-card chrome was the main source of 割裂感 across workbench pages.
-*/
 .app-layout__frame {
   flex: 1 1 auto;
   min-height: 0;
   position: relative;
-  padding: 0;
   overflow: hidden;
 }
 

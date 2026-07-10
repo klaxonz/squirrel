@@ -33,7 +33,7 @@ import { suppressNextStackUpdate } from '@/app/router'
  *
  * 兼容旧调用点的轻量 shim：
  *   - `registerInternalBackHandler` / `setInternalBackAvailable` 仍然存在，
- *     但只是给视频页等场景提供"详情内部栈压栈"的逃生口；不再被 AppHeader 当成
+ *     但只是给视频页等场景提供"详情内部栈压栈"的入口；应用历史栈仍是
  *     唯一可信的回退信号。
  */
 export function useNavigationHistory() {

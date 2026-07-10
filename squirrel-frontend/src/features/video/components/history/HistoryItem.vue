@@ -1,72 +1,57 @@
 <template>
-  <div
-    class="history-item"
-    role="button"
-    tabindex="0"
-    @click="$emit('open', video)"
-    @keydown.enter.prevent="$emit('open', video)"
-    @keydown.space.prevent="$emit('open', video)"
-  >
-    <div class="history-item__thumb">
-      <VideoThumbnail
-        :src="video.thumbnail"
-        :alt="video.title"
-        fit="cover"
-      />
+  <article class="history-item">
+    <div
+      class="history-item__open"
+      role="button"
+      tabindex="0"
+      @click="emit('open', video)"
+      @keydown.enter.prevent="emit('open', video)"
+      @keydown.space.prevent="emit('open', video)"
+    >
+      <div class="history-item__thumb">
+        <VideoThumbnail :src="video.thumbnail" :alt="video.title" fit="cover" interactive />
 
-      <div class="history-item__scrim" />
+        <span class="history-item__play" aria-hidden="true">
+          <AppIcon name="playback" class="size-5" />
+        </span>
 
-      <div
-        v-if="progress > 0"
-        class="history-item__progress"
-        role="progressbar"
-        :aria-valuenow="Math.round(progress * 100)"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        :aria-label="`已观看 ${Math.round(progress * 100)}%`"
-      >
-        <div class="history-item__progress-fill" :style="{ width: `${progress * 100}%` }" />
+        <span v-if="video.duration" class="history-item__duration">
+          {{ formatDuration(video.duration) }}
+        </span>
+
+        <div
+          v-if="progress > 0"
+          class="history-item__progress"
+          role="progressbar"
+          :aria-valuenow="progressPercent"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`已观看 ${progressPercent}%`"
+        >
+          <div class="history-item__progress-fill" :style="{ width: `${progressPercent}%` }" />
+        </div>
       </div>
 
-      <div
-        v-if="video.duration"
-        class="history-item__duration"
-        :class="{ 'history-item__duration--with-progress': progress > 0 }"
-      >
-        {{ formatDuration(video.duration) }}
-      </div>
-    </div>
+      <div class="history-item__body">
+        <h3 class="history-item__title">{{ video.title }}</h3>
 
-    <div class="flex flex-1 min-w-0 py-1">
-      <div class="flex-1 min-w-0 flex flex-col gap-1 justify-center">
-        <h3 class="history-item__title">
-          {{ video.title }}
-        </h3>
+        <div class="history-item__source">
+          <SubscriptionAvatar
+            v-if="displaySource"
+            :src="displaySource.avatar"
+            :name="displaySource.name"
+            size="xs"
+          />
+          <span class="history-item__channel">{{ displayChannel }}</span>
+          <span v-if="video.site" class="history-item__site">{{ video.site }}</span>
+        </div>
 
-        <div class="flex flex-col gap-1.5">
-          <div class="flex items-center gap-2 text-xs text-muted-foreground/80 font-medium">
-            <SubscriptionAvatar
-              v-if="displayAvatar"
-              :src="displayAvatar.avatar"
-              :name="displayAvatar.name"
-              size="sm"
-              class="shrink-0"
-            />
-            <span class="truncate">
-              {{ displayChannel || '未知作者' }}
-            </span>
-            <span v-if="video.site" class="history-item__site">
-              {{ video.site }}
-            </span>
-          </div>
-
-          <div class="flex items-center gap-2 text-xs text-muted-foreground/70 font-medium">
-            <span>{{ formatDate(video.played_at) }}</span>
-            <span v-if="progress > 0" class="history-item__watch-progress">
-              <span class="h-2.5 w-0.5 rounded-sm bg-primary" />
-              已观看 {{ (progress * 100).toFixed(0) }}%
-            </span>
-          </div>
+        <div class="history-item__meta">
+          <span>{{ playedTime }}</span>
+          <span aria-hidden="true">·</span>
+          <span :class="{ 'history-item__status--active': isUnfinished }">
+            {{ progressLabel }}
+          </span>
         </div>
       </div>
     </div>
@@ -75,98 +60,152 @@
       variant="ghost"
       size="mini-icon"
       class="history-item__delete"
-      @click.stop="handleDelete"
+      title="删除此条历史"
+      aria-label="删除此条历史"
+      @click="emit('delete', video.history_id)"
     >
-      <AppIcon name="trash" class="h-4 w-4" />
+      <AppIcon name="trash" class="size-4" />
     </Button>
-  </div>
+  </article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import AppIcon from '@/shared/icons/AppIcon.vue'
-import { Button } from '@/shared/ui/button'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
-import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
 import type { VideoHistoryEntry } from '@/features/video/types/video'
+import AppIcon from '@/shared/icons/AppIcon.vue'
+import { formatDuration } from '@/shared/lib/dateFormat'
+import { Button } from '@/shared/ui/button'
 
 const props = defineProps<{
   video: VideoHistoryEntry
 }>()
 
-const emit = defineEmits(['open', 'delete'])
+const emit = defineEmits<{
+  open: [video: VideoHistoryEntry]
+  delete: [historyId: number]
+}>()
 
-const handleDelete = () => {
-  emit('delete', props.video.history_id || props.video.id)
-}
+const timeFormatter = new Intl.DateTimeFormat('zh-CN', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
 
 const progress = computed(() => {
-  const d = Number(props.video.duration || 0)
-  return d > 0 ? Math.min(1, Number(props.video.last_position || 0) / d) : 0
+  const duration = Number(props.video.duration)
+  return duration > 0
+    ? Math.max(0, Math.min(1, Number(props.video.last_position) / duration))
+    : 0
 })
 
-const displayAvatar = computed(() => {
-  const source = (props.video.subscriptions || props.video.actors || [])[0] || null
-  return source ? { name: source.name, avatar: source.avatar ?? '' } : null
+const progressPercent = computed(() => Math.round(progress.value * 100))
+const isUnfinished = computed(() => progress.value > 0.01 && progress.value < 0.95)
+
+const progressLabel = computed(() => {
+  if (progress.value >= 0.95) return '已看完'
+  if (progress.value > 0.01) return `继续观看 · ${progressPercent.value}%`
+  return '已播放'
 })
 
-const displayChannel = computed(() => {
-  const sources = props.video.subscriptions || props.video.actors || []
-  return sources.map((s) => s.name).join(' / ')
+const playedTime = computed(() => {
+  if (!props.video.played_at) return '时间未知'
+  const date = new Date(props.video.played_at)
+  return Number.isNaN(date.getTime()) ? '时间未知' : timeFormatter.format(date)
 })
+
+const videoSources = computed(() => {
+  return props.video.subscriptions.length > 0 ? props.video.subscriptions : props.video.actors
+})
+
+const displaySource = computed(() => videoSources.value[0] ?? null)
+
+const displayChannel = computed(
+  () => videoSources.value.map((source) => source.name).filter(Boolean).join(' / ') || '未知作者',
+)
 </script>
 
 <style scoped>
 .history-item {
   position: relative;
-  display: flex;
-  gap: 1rem;
+  min-width: 0;
+  border-bottom: 1px solid var(--app-hairline);
+  background: transparent;
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.history-item:hover,
+.history-item:focus-within {
+  background: hsl(var(--foreground) / 0.025);
+}
+
+.history-item__open {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: 11.5rem minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: 0.75rem 2.75rem 0.75rem 0;
   cursor: pointer;
-  border-radius: var(--radius-xl);
   outline: none;
 }
 
-.history-item:focus-visible {
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+.history-item__open:focus-visible {
+  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.62);
 }
 
 .history-item__thumb {
   position: relative;
-  width: 12rem;
   aspect-ratio: 16 / 9;
-  flex: 0 0 auto;
+  min-width: 0;
   overflow: hidden;
-  border: 0;
-  border-radius: var(--app-card-radius);
+  border-radius: var(--radius-md);
   background: hsl(0 0% 0% / 0.55);
   isolation: isolate;
-  /* Match video cards: soft lift on hover, no amber outline ring. */
-  transition: box-shadow var(--duration-base) var(--ease-default);
 }
 
-@media (min-width: 768px) {
-  .history-item__thumb {
-    width: 16rem;
-  }
-}
-
-.history-item:hover .history-item__thumb,
-.history-item:focus-visible .history-item__thumb {
-  box-shadow:
-    0 1px 2px hsl(0 0% 0% / 0.12),
-    0 8px 20px hsl(0 0% 0% / 0.22);
-}
-
-.history-item__scrim {
+.history-item__play {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  top: 50%;
+  left: 50%;
   z-index: 10;
-  height: 2.75rem;
-  pointer-events: none;
-  background: linear-gradient(to top, hsl(0 0% 0% / 0.55), transparent);
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 1px solid hsl(0 0% 100% / 0.2);
+  border-radius: 50%;
+  background: hsl(0 0% 0% / 0.66);
+  color: hsl(0 0% 100%);
+  opacity: 0;
+  transform: translate(-50%, -45%);
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
+}
+
+.history-item:hover .history-item__play,
+.history-item__open:focus-visible .history-item__play {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+.history-item__duration {
+  position: absolute;
+  right: 0.375rem;
+  bottom: 0.5rem;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: var(--radius-sm);
+  background: hsl(0 0% 0% / 0.74);
+  color: hsl(0 0% 100%);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
 
 .history-item__progress {
@@ -177,82 +216,80 @@ const displayChannel = computed(() => {
   z-index: 20;
   height: 3px;
   overflow: hidden;
-  background: hsl(0 0% 0% / 0.45);
+  background: hsl(0 0% 0% / 0.48);
 }
 
 .history-item__progress-fill {
   height: 100%;
-  background: hsl(var(--primary));
-  box-shadow: 0 0 10px hsl(var(--primary) / 0.35);
-  transition: width var(--duration-slow) var(--ease-out);
+  background: hsl(0 0% 100% / 0.76);
 }
 
-.history-item__duration {
-  position: absolute;
-  right: 0.375rem;
-  bottom: 0.375rem;
-  z-index: 20;
-  display: inline-flex;
+.history-item__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.history-item__title {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.history-item__source,
+.history-item__meta {
+  display: flex;
+  min-width: 0;
   align-items: center;
-  height: 1.25rem;
-  padding: 0 0.375rem;
-  border-radius: 0.25rem;
-  background: hsl(0 0% 0% / 0.72);
-  color: white;
-  font-size: 0.6875rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  transition:
-    opacity var(--duration-fast) var(--ease-default),
-    bottom var(--duration-fast) var(--ease-default);
+  gap: 0.375rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  line-height: 1.3;
 }
 
-.history-item__duration--with-progress {
-  bottom: 0.55rem;
-}
-
-.history-item:hover .history-item__duration {
-  opacity: 0;
+.history-item__channel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .history-item__site {
   flex: 0 0 auto;
   padding: 0.0625rem 0.3125rem;
-  border-radius: 0.25rem;
-  background: hsl(var(--accent) / 0.5);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--secondary));
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
-.history-item__watch-progress {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.375rem;
-  background: hsl(var(--muted) / 0.7);
-  color: hsl(var(--muted-foreground));
+.history-item__meta {
+  font-variant-numeric: tabular-nums;
+}
+
+.history-item__status--active {
+  color: hsl(var(--primary));
+  font-weight: 600;
 }
 
 .history-item__delete {
   position: absolute;
-  top: 0.375rem;
-  right: 0.375rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0.375rem;
-  background: hsl(var(--background) / 0.92);
+  top: 0.75rem;
+  right: 0;
   color: hsl(var(--muted-foreground));
   opacity: 0;
   transition:
-    color 0.16s ease,
-    background-color 0.16s ease,
-    opacity 0.16s ease;
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    opacity var(--duration-fast) var(--ease-default);
 }
 
 .history-item:hover .history-item__delete,
@@ -261,38 +298,15 @@ const displayChannel = computed(() => {
 }
 
 .history-item__delete:hover {
-  background: hsl(var(--destructive));
-  color: hsl(var(--destructive-foreground));
+  background: hsl(var(--destructive) / 0.12);
+  color: hsl(var(--destructive));
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .history-item__thumb,
-  .history-item__duration,
+  .history-item,
+  .history-item__play,
   .history-item__delete {
     transition: none;
-  }
-}
-
-.history-item__title {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.3;
-  color: hsl(var(--foreground) / 0.9);
-  transition: color var(--duration-fast) var(--ease-out);
-}
-
-.history-item:hover .history-item__title,
-.history-item:focus-visible .history-item__title {
-  color: hsl(var(--primary));
-}
-
-@media (min-width: 768px) {
-  .history-item__title {
-    -webkit-line-clamp: 3;
   }
 }
 </style>

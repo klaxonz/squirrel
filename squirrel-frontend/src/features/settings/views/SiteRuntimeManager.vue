@@ -1,65 +1,86 @@
 <template>
-  <AppPageShell variant="compact" fill>
-    <AppTwoColumnLayout content-width="87.5rem">
-      <template #sidebar>
-        <AppSidebarHeader title="站点" :subtitle="`${siteRuntimeSummary.total} 个已安装`">
-          <template #actions>
-            <Button variant="ghost" size="icon-sm" :disabled="reloading || loading" @click="handleReload">
-              <AppSpinner v-if="reloading" size="sm" />
-              <AppIcon v-else name="refresh" class="h-4 w-4" />
-            </Button>
-          </template>
-        </AppSidebarHeader>
-
-        <div class="grid shrink-0 grid-cols-2 gap-2 app-divider-bottom p-3">
-          <AppStatCard label="运行" :value="siteRuntimeSummary.running" />
-          <AppStatCard label="需关注" :value="siteRuntimeSummary.attention" />
-          <div class="app-stat-card col-span-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs text-muted-foreground">网络连通</span>
-              <span class="text-sm font-semibold tabular-nums">{{ connectivitySummary.accessible }}/{{ connectivitySummary.total }}</span>
-            </div>
-            <p v-if="lastTestedAt" class="mt-1 text-xs text-muted-foreground">最近检测 {{ formatTime(lastTestedAt) }}</p>
-          </div>
+  <AppPageShell class="site-runtime-page" variant="compact" :fill="false">
+    <AppToolbarFrame bordered compact sticky>
+      <div class="site-runtime-toolbar">
+        <div class="site-runtime-overview" aria-label="站点运行概览">
+          <span class="site-runtime-overview__lead">{{ siteRuntimeSummary.total }} 个站点</span>
+          <span>
+            运行 <strong>{{ siteRuntimeSummary.running }}</strong>
+          </span>
+          <span :data-tone="siteRuntimeSummary.attention > 0 ? 'warning' : 'muted'">
+            需关注 <strong>{{ siteRuntimeSummary.attention }}</strong>
+          </span>
+          <span :data-tone="connectivitySummary.failed > 0 ? 'warning' : 'muted'">
+            网络 <strong>{{ connectivitySummary.accessible }}/{{ connectivitySummary.total }}</strong>
+          </span>
+          <span
+            v-if="lastTestedAt"
+            class="site-runtime-overview__timestamp"
+            :title="`最近检测 ${formatTime(lastTestedAt)}`"
+          >
+            {{ formatTime(lastTestedAt) }}
+          </span>
         </div>
 
-        <div class="app-workbench__nav app-content-stack app-content-stack--dense">
-          <div class="app-content-stack app-content-stack--dense">
-            <div class="text-xs font-medium text-muted-foreground">登录凭据</div>
-            <Button as-child variant="outline" class="w-full justify-start">
-              <label class="cursor-pointer">
-                <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
-                <AppIcon name="cookie" class="h-4 w-4" />
-                <span class="truncate">{{ cookiesFileName || '选择凭据文件' }}</span>
-              </label>
-            </Button>
-            <Button v-if="selectedCookiesFile" class="w-full" :disabled="importingCookies" @click="handleImportAllCookies">
-              <AppSpinner v-if="importingCookies" size="sm" />
-              <AppIcon v-else name="refresh" class="h-4 w-4" />
-              导入凭据
-            </Button>
-          </div>
+        <div class="site-runtime-toolbar__actions">
+          <AppSearchInput v-model="searchQuery" placeholder="搜索站点或描述" class="site-runtime-search" />
+          <div class="site-runtime-toolbar__divider" aria-hidden="true" />
 
-          <Button variant="outline" class="w-full justify-start" :disabled="testingAll" @click="handleTestAll">
+          <Button
+            as-child
+            variant="ghost"
+            size="sm"
+            class="site-runtime-file-button"
+            :class="{ 'is-active': selectedCookiesFile }"
+          >
+            <label>
+              <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
+              <AppIcon name="cookie" class="h-4 w-4" />
+              <span>{{ cookiesFileName || '选择凭据' }}</span>
+            </label>
+          </Button>
+
+          <Button
+            v-if="selectedCookiesFile"
+            size="sm"
+            :disabled="importingCookies"
+            @click="handleImportAllCookies"
+          >
+            <AppSpinner v-if="importingCookies" size="sm" />
+            <AppIcon v-else name="upload" class="h-4 w-4" />
+            导入
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            class="site-runtime-toolbar__action"
+            :disabled="testingAll"
+            @click="handleTestAll"
+          >
             <AppSpinner v-if="testingAll" size="sm" />
             <AppIcon v-else name="sync" class="h-4 w-4" />
-            测试全部
+            全量检测
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            class="app-toolbar-control app-toolbar-icon-button"
+            :disabled="reloading || loading"
+            title="重新加载站点"
+            aria-label="重新加载站点"
+            @click="handleReload"
+          >
+            <AppSpinner v-if="reloading" size="sm" />
+            <AppIcon v-else name="refresh" class="h-4 w-4" />
           </Button>
         </div>
-      </template>
+      </div>
+    </AppToolbarFrame>
 
-      <template #header>
-        <AppPaneHeader
-          title="站点"
-          :subtitle="`${siteRuntimeSummary.total} 个站点 · ${siteRuntimeSummary.running} 个运行`"
-        >
-          <template #actions>
-            <AppSearchInput v-model="searchQuery" placeholder="搜索站点或描述" class="w-80" />
-          </template>
-        </AppPaneHeader>
-      </template>
-
-      <SiteRuntimeTable
+    <div class="app-page-content app-page-content--media site-runtime-page__content">
+      <SiteRuntimeGrid
         :runtimes="displaySiteRuntimes"
         :loading="isInitialLoading"
         :actioning="actioning"
@@ -67,7 +88,7 @@
         :discovery-errors="discoveryErrors"
         @enable="handleEnable"
         @disable="handleDisable"
-        @test-connectivity="handleTestSingleBySite"
+        @test-runtime="handleTestRuntime"
         @test-login="handleTestLoginBySite"
         @desktop-login="handleDesktopSiteLogin"
         @clear-desktop-session="handleClearDesktopSiteSession"
@@ -75,24 +96,24 @@
         @revoke-oauth="handleRevokeYouTubeOAuth"
         @edit-site="openSiteEditorByRuntime"
       />
+    </div>
 
-      <SiteConfigEditorDialog
-        :visible="siteEditorVisible"
-        :site="editingSite"
-        :catalog="siteCatalog"
-        :saving="siteEditorSaving"
-        :error-message="siteEditorError"
-        @close="closeSiteEditor"
-        @save="saveSiteEditor"
-      />
+    <SiteConfigEditorDialog
+      :visible="siteEditorVisible"
+      :site="editingSite"
+      :catalog="siteCatalog"
+      :saving="siteEditorSaving"
+      :error-message="siteEditorError"
+      @close="closeSiteEditor"
+      @save="saveSiteEditor"
+    />
 
-      <YouTubeOAuthPrompt
-        :prompt="youtubeOAuthPrompt"
-        @dismiss="hideYouTubeOAuthPrompt"
-        @copy="copyYouTubeOAuthCode"
-        @open="openExternalUrl"
-      />
-    </AppTwoColumnLayout>
+    <YouTubeOAuthPrompt
+      :prompt="youtubeOAuthPrompt"
+      @dismiss="hideYouTubeOAuthPrompt"
+      @copy="copyYouTubeOAuthCode"
+      @open="openExternalUrl"
+    />
   </AppPageShell>
 </template>
 
@@ -102,13 +123,10 @@ import { errorMessage } from '@/shared/lib/errorMessage'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
-import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
+import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppSearchInput from '@/shared/components/layout/AppSearchInput.vue'
-import AppSidebarHeader from '@/shared/components/layout/AppSidebarHeader.vue'
-import AppPaneHeader from '@/shared/components/layout/AppPaneHeader.vue'
-import AppStatCard from '@/shared/components/layout/AppStatCard.vue'
 import SiteConfigEditorDialog from '@/features/settings/components/SiteConfigEditorDialog.vue'
-import SiteRuntimeTable from '@/features/settings/components/SiteRuntimeTable.vue'
+import SiteRuntimeGrid from '@/features/settings/components/SiteRuntimeGrid.vue'
 import YouTubeOAuthPrompt from '@/features/settings/components/YouTubeOAuthPrompt.vue'
 import { Button } from '@/shared/ui/button'
 import { Logger } from '@/shared/lib/logger'
@@ -361,6 +379,21 @@ const handleTestSingleBySite = async (siteName) => {
   }
 }
 
+const handleTestRuntime = async (runtime) => {
+  const siteName = runtime?.siteName
+  if (!siteName) return
+
+  const checks = [handleTestSingleBySite(siteName)]
+  if (
+    runtime.siteSupportsLogin
+    || runtime.siteDesktopLoginSupported
+    || siteName === 'youtube'
+  ) {
+    checks.push(handleTestLoginBySite(siteName))
+  }
+  await Promise.allSettled(checks)
+}
+
 const handleTestLoginBySite = async (siteName) => {
   if (!siteName) return
   loginStatusTesting.value[siteName] = true
@@ -487,3 +520,113 @@ onMounted(() => {
   fetchSupportedSites()
 })
 </script>
+
+<style scoped>
+.site-runtime-page {
+  --app-page-max-width: 2400px;
+}
+
+.site-runtime-toolbar {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.site-runtime-overview {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-3);
+  color: hsl(var(--muted-foreground) / 0.78);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.site-runtime-overview > span + span {
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--app-hairline);
+}
+
+.site-runtime-overview__lead {
+  color: hsl(var(--foreground) / 0.88);
+  font-weight: 650;
+}
+
+.site-runtime-overview strong {
+  margin-left: 0.2rem;
+  color: hsl(var(--foreground) / 0.86);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.site-runtime-overview [data-tone='warning'] strong {
+  color: hsl(var(--primary));
+}
+
+.site-runtime-overview__timestamp {
+  color: hsl(var(--muted-foreground) / 0.58);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+}
+
+.site-runtime-toolbar__actions {
+  display: flex;
+  min-width: 0;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.site-runtime-search {
+  width: 18rem;
+}
+
+.site-runtime-file-button {
+  max-width: 10rem;
+  cursor: pointer;
+  color: hsl(var(--muted-foreground) / 0.84);
+}
+
+.site-runtime-file-button.is-active {
+  background: hsl(var(--foreground) / 0.045);
+  color: hsl(var(--foreground) / 0.82);
+}
+
+.site-runtime-file-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-runtime-toolbar__action {
+  color: hsl(var(--muted-foreground) / 0.84);
+}
+
+.site-runtime-toolbar__divider {
+  width: 1px;
+  height: 1rem;
+  flex: 0 0 auto;
+  background: var(--app-hairline);
+}
+
+.site-runtime-page__content {
+  padding-top: var(--space-5);
+  padding-bottom: var(--space-8);
+}
+
+@media (max-width: 1360px) {
+  .site-runtime-overview__timestamp {
+    display: none;
+  }
+
+  .site-runtime-search {
+    width: 15rem;
+  }
+}
+</style>

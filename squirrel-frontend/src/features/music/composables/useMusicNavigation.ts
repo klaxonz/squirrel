@@ -40,7 +40,7 @@ const DETAIL_VIEWS: ReadonlyArray<MusicView> = [
  *   - "返回上一层"通过 useNavigationHistory.goBack() 一次性弹出栈顶；
  *   - useMusicNavigation 只负责 view 字段的解析 / 派发，不再持有自己的栈。
  *
- * AppHeader 因此能正确显示"音乐 / 歌单 / XXX"这种面包屑，并能响应 back/forward。
+ * 应用历史因此能正确记录音乐内部视图，并响应 back/forward。
  */
 export function useMusicNavigation() {
   const route = useRoute()

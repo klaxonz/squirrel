@@ -1,40 +1,36 @@
 <template>
   <article
     class="music-card"
-    :class="[sizeClass, variantClass]"
-    role="button"
-    tabindex="0"
-    :aria-label="title"
-    @click="$emit('select')"
-    @keydown.enter.prevent="$emit('select')"
-    @keydown.space.prevent="$emit('select')"
-    @mouseenter="isHovered = true"
-    @mouseleave="isHovered = false"
+    :class="[sizeClass, variantClass, { 'music-card--playing': isPlaying }]"
   >
-    <div class="music-card-cover" :style="coverStyle">
-      <img
-        v-if="cover"
-        :src="cover"
-        :alt="title"
-        loading="lazy"
-        @error="handleCoverError"
-      />
-      <div v-else class="music-card-placeholder">
-        <AppIcon :name="placeholderIcon" class="h-8 w-8" />
-      </div>
-
-      <Transition
-        enter-active-class="transition-opacity duration-200"
-        leave-active-class="transition-opacity duration-150"
-        enter-from-class="opacity-0"
-        leave-to-class="opacity-0"
+    <div class="music-card-cover">
+      <Button
+        unstyled
+        class="music-card-cover-button"
+        :aria-label="`打开 ${title}`"
+        @click="$emit('select')"
       >
-        <div v-if="isHovered || isPlaying" class="music-card-overlay">
-          <Button size="card-play" aria-label="播放" @click.stop="$emit('play')">
-            <AppIcon name="play" class="h-5 w-5" />
-          </Button>
-        </div>
-      </Transition>
+        <img
+          v-if="cover && !coverError"
+          :src="cover"
+          :alt="title"
+          loading="lazy"
+          @error="handleCoverError"
+        />
+        <span v-else class="music-card-placeholder">
+          <AppIcon :name="placeholderIcon" class="h-7 w-7" />
+        </span>
+      </Button>
+
+      <Button
+        v-if="playable"
+        unstyled
+        class="music-card-play"
+        :aria-label="`播放 ${title}`"
+        @click.stop="$emit('play')"
+      >
+        <AppIcon name="play" class="h-3.5 w-3.5 fill-current" />
+      </Button>
 
       <span v-if="isPlaying" class="music-card-playing-badge">
         <AppIcon name="volumeHigh" class="h-3 w-3" />
@@ -43,16 +39,16 @@
       <span v-if="badge" class="music-card-badge">{{ badge }}</span>
     </div>
 
-    <div class="music-card-info">
-      <h3 class="music-card-title" :title="title">{{ title }}</h3>
-      <p v-if="subtitle" class="music-card-subtitle" :title="subtitle">{{ subtitle }}</p>
-      <p v-if="meta" class="music-card-meta">{{ meta }}</p>
-    </div>
+    <Button unstyled class="music-card-info" @click="$emit('select')">
+      <span class="music-card-title" :title="title">{{ title }}</span>
+      <span v-if="subtitle" class="music-card-subtitle" :title="subtitle">{{ subtitle }}</span>
+      <span v-if="meta" class="music-card-meta">{{ meta }}</span>
+    </Button>
   </article>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import type { AppIconName } from '@/shared/icons/app-icons'
@@ -67,10 +63,12 @@ const props = withDefaults(defineProps<{
   size?: MusicCardSize
   variant?: MusicCardVariant
   isPlaying?: boolean
+  playable?: boolean
 }>(), {
   size: 'md',
   variant: 'playlist',
   isPlaying: false,
+  playable: false,
 })
 
 defineEmits<{
@@ -78,22 +76,10 @@ defineEmits<{
   play: []
 }>()
 
-const isHovered = ref(false)
 const coverError = ref(false)
 
 const sizeClass = computed(() => musicCardVariants({ size: props.size }))
 const variantClass = computed(() => musicCardVariants({ variant: props.variant }))
-
-const coverStyle = computed(() => {
-  const radii: Record<MusicCardSize, string> = {
-    xs: '6px',
-    sm: '8px',
-    md: '12px',
-    lg: '14px',
-    xl: '16px',
-  }
-  return { '--card-radius': radii[props.size] }
-})
 
 const placeholderIcon = computed(() => {
   const icons: Record<MusicCardVariant, AppIconName> = {
@@ -105,6 +91,10 @@ const placeholderIcon = computed(() => {
   return icons[props.variant]
 })
 
+watch(() => props.cover, () => {
+  coverError.value = false
+})
+
 function handleCoverError() {
   coverError.value = true
 }
@@ -112,121 +102,188 @@ function handleCoverError() {
 
 <style scoped>
 .music-card {
-  cursor: pointer;
-  outline: none;
+  min-width: 0;
 }
 
-.music-card--xs .music-card-info { padding: 0.375rem 0; }
-.music-card--sm .music-card-info { padding: 0.5rem 0; }
-.music-card--md .music-card-info { padding: 0.625rem 0; }
-.music-card--lg .music-card-info { padding: 0.75rem 0; }
-.music-card--xl .music-card-info { padding: 0.875rem 0; }
+.music-card--xs { --music-card-radius: var(--radius-sm); }
+.music-card--sm { --music-card-radius: var(--radius-md); }
+.music-card--md,
+.music-card--lg,
+.music-card--xl { --music-card-radius: var(--radius-lg); }
 
 .music-card-cover {
   position: relative;
   aspect-ratio: 1;
-  border-radius: var(--card-radius, 12px);
   overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.45);
+  border-radius: var(--music-card-radius, var(--radius-lg));
   background: hsl(var(--muted) / 0.3);
-  border: 1px solid hsl(var(--border) / 0.42);
-  transition: border-color 0.16s ease;
+  transition: border-color var(--duration-fast) var(--ease-default);
 }
 
-.music-card:hover .music-card-cover {
-  border-color: hsl(var(--primary) / 0.28);
-}
-
-.music-card-cover img {
+.music-card-cover-button {
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  cursor: pointer;
 }
 
+.music-card-cover-button img,
 .music-card-placeholder {
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: hsl(var(--muted-foreground) / 0.4);
 }
 
-.music-card-overlay {
-  position: absolute;
-  inset: 0;
+.music-card-cover-button img {
+  display: block;
+  object-fit: cover;
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.music-card:hover .music-card-cover {
+  border-color: hsl(var(--border));
+}
+
+.music-card:hover .music-card-cover-button img {
+  transform: scale(1.025);
+}
+
+.music-card-cover-button:focus-visible,
+.music-card-info:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.music-card-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: hsl(var(--background) / 0.48);
+  color: hsl(var(--muted-foreground) / 0.42);
+}
+
+.music-card-play {
+  position: absolute;
+  right: 0.625rem;
+  bottom: 0.625rem;
+  z-index: 2;
+  display: flex;
+  width: 1.875rem;
+  height: 1.875rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(0 0% 100% / 0.16);
+  border-radius: 999px;
+  background: hsl(0 0% 6% / 0.82);
+  color: hsl(0 0% 100% / 0.92);
+  box-shadow: 0 3px 10px hsl(0 0% 0% / 0.28);
+  opacity: 0;
+  transform: translateY(0.2rem);
+  cursor: pointer;
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.music-card:hover .music-card-play,
+.music-card:focus-within .music-card-play,
+.music-card--playing .music-card-play {
+  opacity: 1;
+  transform: none;
+}
+
+.music-card-play:hover {
+  border-color: hsl(0 0% 100% / 0.72);
+  background: hsl(0 0% 96%);
+  color: hsl(0 0% 8%);
+  transform: scale(1.04);
+}
+
+.music-card-play:active {
+  transform: scale(0.94);
+}
+
+.music-card-play:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }
 
 .music-card-playing-badge {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 2;
   display: flex;
-  align-items: center;
-  justify-content: center;
   width: 1.5rem;
   height: 1.5rem;
-  border-radius: 0.4375rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
 }
 
 .music-card-badge {
   position: absolute;
-  bottom: 0.5rem;
-  left: 0.5rem;
-  padding: 0.125rem 0.5rem;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  z-index: 2;
+  border: 1px solid hsl(0 0% 100% / 0.16);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.45rem;
+  background: hsl(0 0% 5% / 0.76);
+  color: hsl(0 0% 100% / 0.92);
   font-size: 0.625rem;
-  font-weight: 600;
-  background: hsl(var(--background) / 0.88);
-  color: hsl(var(--foreground));
-  border-radius: 0.25rem;
-  border: 1px solid hsl(var(--border) / 0.35);
+  font-weight: 650;
 }
 
 .music-card-info {
+  display: block;
+  width: 100%;
   min-width: 0;
+  padding: 0.625rem 0 0;
+  color: hsl(var(--foreground));
+  text-align: left;
+  cursor: pointer;
+}
+
+.music-card-title,
+.music-card-subtitle,
+.music-card-meta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .music-card-title {
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.8125rem;
+  font-weight: 650;
   line-height: 1.3;
-  color: hsl(var(--foreground));
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.music-card:focus-visible .music-card-cover {
-  border-color: hsl(var(--ring));
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.28);
 }
 
 .music-card--xs .music-card-title { font-size: 0.75rem; }
-.music-card--lg .music-card-title { font-size: 0.9375rem; }
-.music-card--xl .music-card-title { font-size: 1rem; }
+.music-card--lg .music-card-title { font-size: 0.875rem; }
+.music-card--xl .music-card-title { font-size: 0.9375rem; }
 
 .music-card-subtitle {
-  font-size: 0.75rem;
+  margin-top: 0.2rem;
   color: hsl(var(--muted-foreground));
-  margin-top: 0.125rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.75rem;
 }
 
 .music-card-meta {
-  font-size: 0.6875rem;
-  color: hsl(var(--muted-foreground) / 0.7);
   margin-top: 0.25rem;
+  color: hsl(var(--muted-foreground) / 0.76);
+  font-size: 0.6875rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .music-card-cover {
+  .music-card-cover,
+  .music-card-cover-button img,
+  .music-card-play {
     transition: none;
   }
 }

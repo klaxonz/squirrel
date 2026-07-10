@@ -1,53 +1,79 @@
 <template>
-  <section class="app-settings-section">
-    <div class="app-settings-section-title">
-      <h3>账户安全</h3>
-      <p>修改密码并管理当前账户的登录会话。</p>
-    </div>
-
-    <div v-if="securityError" class="settings-alert settings-alert--error">
+  <div class="security-settings">
+    <Alert
+      v-if="securityError"
+      variant="error"
+    >
       <AppIcon name="warning" class="h-4 w-4" />
-      {{ securityError }}
-    </div>
-    <div v-if="securitySuccess" class="settings-alert settings-alert--success">
+      <AlertDescription>{{ securityError }}</AlertDescription>
+    </Alert>
+    <Alert
+      v-if="securitySuccess"
+      variant="success"
+    >
       <AppIcon name="statusSuccess" class="h-4 w-4" />
-      {{ securitySuccess }}
-    </div>
+      <AlertDescription>{{ securitySuccess }}</AlertDescription>
+    </Alert>
 
-    <div class="app-settings-panel p-4">
-      <div class="mb-4 flex items-center gap-2 text-sm font-semibold">
-        <AppIcon name="securityAlert" class="h-4 w-4 text-muted-foreground" />
-        修改登录密码
+    <section class="app-settings-section">
+      <div class="app-settings-section-title">
+        <h2>登录密码</h2>
+        <p>更新当前账户的登录密码，修改成功后继续保留当前会话。</p>
       </div>
-      <form @submit.prevent="handlePasswordUpdate" class="max-w-md space-y-4">
-        <div v-for="field in passwordFields" :key="field.key" class="space-y-2">
-          <label class="text-xs font-medium text-muted-foreground">{{ field.label }}</label>
-          <Input
-            v-model="securityForm[field.key]"
-            :type="field.type"
-            :placeholder="field.placeholder"
-            :disabled="passwordSubmitting"
-          />
+
+      <form class="app-settings-panel security-password-form" @submit.prevent="handlePasswordUpdate">
+        <div class="security-password-grid">
+          <div
+            v-for="field in passwordFields"
+            :key="field.key"
+            class="security-field"
+            :class="{ 'security-field--full': field.key === 'currentPassword' }"
+          >
+            <label :for="`security-${field.key}`" class="security-field__label">
+              {{ field.label }}
+            </label>
+            <Input
+              :id="`security-${field.key}`"
+              v-model="securityForm[field.key]"
+              :type="field.type"
+              :placeholder="field.placeholder"
+              :disabled="passwordSubmitting"
+              :autocomplete="field.autocomplete"
+            />
+          </div>
         </div>
-        <Button type="submit" :loading="passwordSubmitting">
-          {{ passwordSubmitting ? '更新中' : '更新密码' }}
-        </Button>
+        <div class="security-form-actions">
+          <Button type="submit" :loading="passwordSubmitting">
+            更新密码
+          </Button>
+        </div>
       </form>
-    </div>
+    </section>
 
-    <div class="app-settings-panel">
-      <div class="app-settings-row">
-        <div class="min-w-0">
-          <div class="app-settings-row__title">注销其他会话</div>
-          <div class="app-settings-row__desc">使除当前设备外所有已登录的设备失效。</div>
-        </div>
-        <Button variant="destructive" :disabled="sessionSubmitting" @click="handleRevokeSessions">
-          <AppIcon name="logout" class="h-4 w-4" />
-          撤销会话
-        </Button>
+    <section class="app-settings-section">
+      <div class="app-settings-section-title">
+        <h2>登录会话</h2>
+        <p>管理当前设备之外仍然有效的账户会话。</p>
       </div>
-    </div>
-  </section>
+
+      <div class="app-settings-panel">
+        <div class="app-settings-row">
+          <div class="app-settings-row__copy">
+            <div class="app-settings-row__title">注销其他设备</div>
+            <div class="app-settings-row__desc">使除当前设备外的所有登录会话立即失效。</div>
+          </div>
+          <Button
+            variant="destructive"
+            :loading="sessionSubmitting"
+            @click="handleRevokeSessions"
+          >
+            <AppIcon name="logout" class="h-4 w-4" />
+            注销其他设备
+          </Button>
+        </div>
+      </div>
+    </section>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -55,16 +81,32 @@ import { ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { revokeUserSessions, updateUserPassword } from '@/shared/api'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 
-// ponytail: the security tab owns all of its state and talks to its own two
-// API endpoints directly; it has zero cross-tab dependencies, so it needs no
-// props or emits. Extracted verbatim from Settings.vue's security section.
 const passwordFields = [
-  { key: 'currentPassword', label: '当前密码', placeholder: '输入旧密码', type: 'password' },
-  { key: 'newPassword', label: '新密码', placeholder: '至少 8 位字符', type: 'password' },
-  { key: 'confirmPassword', label: '确认新密码', placeholder: '再次输入新密码', type: 'password' },
+  {
+    key: 'currentPassword',
+    label: '当前密码',
+    placeholder: '输入旧密码',
+    type: 'password',
+    autocomplete: 'current-password',
+  },
+  {
+    key: 'newPassword',
+    label: '新密码',
+    placeholder: '至少 8 位字符',
+    type: 'password',
+    autocomplete: 'new-password',
+  },
+  {
+    key: 'confirmPassword',
+    label: '确认新密码',
+    placeholder: '再次输入新密码',
+    type: 'password',
+    autocomplete: 'new-password',
+  },
 ] as const
 
 interface SecurityForm {
@@ -131,3 +173,55 @@ const handleRevokeSessions = async () => {
   }
 }
 </script>
+
+<style scoped>
+.security-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.security-password-form {
+  padding: var(--space-4);
+}
+
+.security-password-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.security-field {
+  min-width: 0;
+}
+
+.security-field--full {
+  grid-column: 1 / -1;
+}
+
+.security-field__label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.security-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--app-surface-border-subtle);
+  margin: var(--space-4) calc(var(--space-4) * -1) calc(var(--space-4) * -1);
+  padding: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .security-password-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .security-field--full {
+    grid-column: auto;
+  }
+}
+</style>

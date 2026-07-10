@@ -1,7 +1,7 @@
 <template>
-  <section v-if="items.length > 0 || loading" class="group/container mb-10 px-6 pt-8">
+  <section v-if="items.length > 0 || loading" class="home-feed-rail group/container">
     <FeedRailHeader
-      title="精选推荐"
+      title="最新更新"
       :can-scroll-left="canScrollLeft"
       :can-scroll-right="canScrollRight"
       @scroll="onScroll"

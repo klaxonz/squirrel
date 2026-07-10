@@ -11,7 +11,7 @@
         :aria-expanded="isSidebarOpen"
         @click="uiStore.toggleSidebar()"
       >
-        <AppIcon :name="isSidebarOpen ? 'panelClose' : 'panelOpen'" class="titlebar__navigation-icon" />
+        <AppIcon name="panelLeft" class="titlebar__navigation-icon" />
       </Button>
 
       <span class="titlebar__navigation-divider" aria-hidden="true" />
@@ -123,7 +123,6 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0;
-  /* Same canvas as the shell — no floating title strip. */
   background: hsl(var(--background));
   border-bottom: 1px solid var(--app-hairline);
   user-select: none;
@@ -188,14 +187,17 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground));
   border-radius: 0;
 }
+
 .titlebar__control:hover {
   background: hsl(var(--accent));
   color: hsl(var(--foreground));
 }
+
 .titlebar__control--close:hover {
   background: hsl(var(--destructive));
   color: hsl(var(--destructive-foreground));
 }
+
 .titlebar__control-icon {
   width: 0.875rem;
   height: 0.875rem;

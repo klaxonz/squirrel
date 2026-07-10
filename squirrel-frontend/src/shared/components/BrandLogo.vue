@@ -62,7 +62,7 @@
  * 归仓 (return-to-warehouse) and the English brand "Squirrel" (a storer).
  *
  * Sizes:
- *   xs (20px) — DesktopTitleBar
+ *   xs (20px) — compact navigation surfaces
  *   sm (32px) — auth pages (Login/Register/ServerConfig) brand panel
  *   md (48px) — reserved for hero/feature surfaces (currently unused)
  *

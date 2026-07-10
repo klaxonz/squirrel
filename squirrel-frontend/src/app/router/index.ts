@@ -90,8 +90,6 @@ const routes: RouteRecordRaw[] = [
     path: '/home',
     name: 'HomeView',
     component: HomeView,
-    // Page title is content identity ("推荐"), not the sidebar nav label ("首页").
-    // Header should not restate the active sidebar item as both section + title.
     meta: createSearchMeta('推荐', {
       navKey: 'home',
       sectionLabel: '首页',
@@ -160,6 +158,7 @@ const routes: RouteRecordRaw[] = [
     meta: createNoSearchMeta('系统设置', {
       navKey: 'settings',
       sectionLabel: '设置',
+      transitionKey: 'settings',
     }),
     children: [
       ...SETTINGS_TABS.map((tab) => ({
@@ -169,6 +168,7 @@ const routes: RouteRecordRaw[] = [
         meta: createNoSearchMeta(tab.label, {
           navKey: 'settings',
           sectionLabel: '设置',
+          transitionKey: 'settings',
           historyStrategy: 'replace',
         }),
       })),

@@ -156,7 +156,7 @@ Squirrel uses a hybrid of tonal layering and small structural shadows. Resting s
 
 The desktop shell is **one continuous canvas**, not a stack of floating cards.
 
-- Title bar, workspace, workbench secondary panes, headers, and toolbars rest on `--background` (or transparent over it). The primary sidebar may use the quiet `--sidebar` tint to distinguish persistent navigation.
+- Title bar, workspace, workbench secondary panes, page headers, and toolbars rest on `--background` (or transparent over it). The primary sidebar may use the quiet `--sidebar` tint to distinguish persistent navigation.
 - Regional hierarchy is hairline borders only (`--app-hairline` / sidebar border). Do not tint secondary panes with `--card` to invent depth.
 - No outer frame padding + gap that turns sidebar and workspace into two floating islands.
 - No full border + radius + panel shadow on shell chrome. Those treatments are reserved for true overlays (menus, dialogs, popovers) and media item cards.
@@ -205,7 +205,8 @@ The desktop shell is **one continuous canvas**, not a stack of floating cards.
 - **Sidebar:** fixed `15rem` desktop rail that never resizes, reflows, or changes its internal menu geometry. Sidebar visibility is controlled by the workspace layer: expanded state positions the workspace at the rail's right edge; collapsed state moves the opaque workspace to `left: 0`, progressively covering the stationary rail. Covered sidebar content is inert and removed from the accessibility tree. Brand sits at the top, home is the immediate navigation entry, grouped navigation scrolls as one list, and settings stays fixed at the bottom. Search remains a header-level global action and is not duplicated in the sidebar.
 - **Workspace:** continuous with the shell background. No outer card frame, radius, or panel shadow around the main content column.
 - **Workbench panes:** secondary sidebars (订阅频道, 播放列表, RSS entry list, settings nav) stay transparent on the same canvas; only a vertical hairline divides list from content.
-- **Header:** fixed height with history controls, current page title, contextual search, and user entry point. Flat `--background`, single bottom hairline. It should not repeat breadcrumbs already represented by the sidebar.
+- **Header:** fixed height with current page title, contextual search, and user entry point. Flat `--background`, single bottom hairline. It should not repeat breadcrumbs already represented by the sidebar.
+- **History:** back and forward behavior stays application-bounded through keyboard, mouse, and contextual page controls; never expose browser history as product navigation.
 - **Tabs / Segmented Controls:** use shared `Tabs` / `TabsList` / `TabsTrigger` or `AppSegmentedControl`. Compact height, secondary track, active card surface, focus-visible ring. Do not invent a third tab look per feature.
 
 ### Skeletons

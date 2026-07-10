@@ -49,8 +49,8 @@
   --z-base: 0;
   --z-content: 10;            /* sticky toolbars, sticky table heads */
   --z-sticky: 20;             /* page-level sticky bands (music nav-row, toolbar-frame--sticky) */
-  --z-header: 40;             /* AppHeader */
-  --z-sidebar: 50;            /* AppSidebar + DesktopTitleBar (same layer, DOM order wins) */
+  --z-header: 40;             /* pinned page toolbars */
+  --z-sidebar: 50;            /* persistent navigation and docked player */
   --z-dropdown: 1000;         /* dropdown-menu, context-menu */
   --z-popover: 1100;          /* popover, tooltip, command palette */
   --z-sheet: 1200;            /* sheet / slide-over */
@@ -1122,7 +1122,8 @@
   gap: 0.25rem;
 }
 
-.app-settings-section-title h3 {
+.app-settings-section-title :is(h2, h3) {
+  margin: 0;
   color: hsl(var(--foreground));
   font-family: var(--app-heading-font);
   font-size: 1rem;
@@ -1131,8 +1132,10 @@
 }
 
 .app-settings-section-title p {
+  margin: 0;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
+  line-height: 1.5;
 }
 
 .app-table-head {

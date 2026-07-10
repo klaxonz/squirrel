@@ -10,10 +10,11 @@
           <Button
             v-for="tab in tabs"
             :key="tab.value"
-            variant="ghost"
-            size="sm"
+            unstyled
+            type="button"
             class="feed-toolbar__tab"
             :class="{ 'is-active': localActiveTab === tab.value }"
+            :aria-current="localActiveTab === tab.value ? 'page' : undefined"
             @click="localActiveTab = tab.value"
           >
             {{ tab.label }}
@@ -25,58 +26,155 @@
     </div>
 
     <div class="feed-toolbar__actions">
-      <!-- Filters: active chips + site + more-filters -->
-      <div class="feed-toolbar__group" role="group" aria-label="筛选">
-        <Button
-          v-for="chip in activeFilterChips"
-          :key="chip.key"
-          type="button"
-          variant="outline"
-          size="sm"
-          class="app-toolbar-control app-toolbar-chip app-toolbar-chip--active"
-          :title="chip.clearTitle"
-          :aria-label="chip.clearTitle"
-          @click="chip.clear"
-        >
-          <AppIcon v-if="chip.icon" :name="chip.icon" class="h-3.5 w-3.5" :class="chip.iconClass" />
-          <span>{{ chip.label }}</span>
-          <AppIcon name="close" class="h-3 w-3 opacity-70" />
-        </Button>
-
-        <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
-          <SelectTrigger
-            class="app-toolbar-control app-toolbar-select-trigger"
-            :class="{ 'is-active': !!site }"
+      <Popover v-if="showFilter">
+        <PopoverTrigger as-child>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            class="feed-toolbar__filter"
+            :class="{ 'is-active': activeFilterCount > 0 }"
+            :aria-label="filterButtonLabel"
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent class="min-w-44 rounded-md border-border/60 bg-popover shadow-lg">
-            <SelectItem value="all" class="text-xs">全部站点</SelectItem>
-            <SelectItem
-              v-for="opt in siteOptions"
-              :key="opt.value"
-              :value="opt.value"
-              class="text-xs"
+            <AppIcon name="filter" class="h-3.5 w-3.5" />
+            <span>筛选</span>
+            <span
+              v-if="activeFilterCount > 0"
+              class="feed-toolbar__filter-count app-mono"
             >
-              {{ opt.label }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+              {{ activeFilterCount }}
+            </span>
+          </Button>
+        </PopoverTrigger>
 
-        <Button
-          v-if="showFilter"
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          class="app-toolbar-control app-toolbar-icon-button"
-          :class="{ 'is-active': hiddenFilterCount > 0 }"
-          :title="filterButtonTitle"
-          :aria-label="filterButtonTitle"
-          @click="filterModalOpen = true"
-        >
-          <AppIcon name="filter" class="size-4 shrink-0" />
-        </Button>
-      </div>
+        <PopoverContent align="end" :side-offset="8" class="w-80 p-0">
+          <div class="feed-filter-panel">
+            <header class="feed-filter-panel__header">
+              <div>
+                <strong>筛选</strong>
+                <span>{{ filterDescription }}</span>
+              </div>
+              <Button
+                v-if="activeFilterCount > 0"
+                type="button"
+                variant="ghost"
+                size="xs"
+                @click="clearAllFilters"
+              >
+                重置
+              </Button>
+            </header>
+
+            <div class="feed-filter-panel__fields">
+              <label v-if="!subscriptionId" class="feed-filter-panel__field">
+                <span>来源</span>
+                <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
+                  <SelectTrigger aria-label="按来源筛选">
+                    <SelectValue placeholder="全部来源" />
+                  </SelectTrigger>
+                  <SelectContent class="min-w-48">
+                    <SelectItem value="all">全部来源</SelectItem>
+                    <SelectItem
+                      v-for="option in siteOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      <span class="feed-filter-panel__site-option">
+                        <SiteIcon :site="option.value" class="h-4 w-4 rounded-sm" />
+                        <span>{{ option.label }}</span>
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+
+              <label class="feed-filter-panel__field">
+                <span>时间范围</span>
+                <Select :model-value="timeRange" @update:model-value="handleTimeRangeChange">
+                  <SelectTrigger aria-label="按时间范围筛选">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      v-for="option in timeRangeOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+
+              <label class="feed-filter-panel__field">
+                <span>视频时长</span>
+                <Select :model-value="duration" @update:model-value="handleDurationChange">
+                  <SelectTrigger aria-label="按视频时长筛选">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      v-for="option in durationOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+
+              <label v-if="!subscriptionId" class="feed-filter-panel__field">
+                <span>来源类型</span>
+                <Select :model-value="contentType" @update:model-value="handleContentTypeChange">
+                  <SelectTrigger aria-label="按来源类型筛选">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      v-for="option in contentTypeOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+
+              <label v-if="settings.showNsfw" class="feed-filter-panel__field">
+                <span>内容分级</span>
+                <Select :model-value="nsfw" @update:model-value="handleNsfwChange">
+                  <SelectTrigger aria-label="按内容分级筛选">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      v-for="option in nsfwOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+
+              <label v-if="!subscriptionId" class="feed-filter-panel__toggle">
+                <span>
+                  <strong>特别关注</strong>
+                  <small>只显示特别关注频道的视频</small>
+                </span>
+                <Switch
+                  :model-value="special === 'yes'"
+                  aria-label="只显示特别关注频道的视频"
+                  @update:model-value="handleSpecialChange"
+                />
+              </label>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       <div v-if="showSort" class="feed-toolbar__divider" aria-hidden="true" />
 
@@ -136,38 +234,21 @@
         </Button>
       </div>
     </div>
-
-    <FilterModal
-      v-if="filterModalOpen"
-      :model-value="filterModalOpen"
-      @update:modelValue="filterModalOpen = $event"
-      :time-range="timeRange"
-      :duration="duration"
-      :content-type="contentType"
-      :nsfw="nsfw"
-      :site="site"
-      :subscription-id="subscriptionId"
-      :site-label="siteLabel"
-      :scope="props.filterScope"
-      @update:time-range="(v) => emit('update:timeRange', v)"
-      @update:duration="(v) => emit('update:duration', v)"
-      @update:content-type="(v) => emit('update:contentType', v)"
-      @update:nsfw="(v) => emit('update:nsfw', v)"
-      @update:site="(v) => emit('update:site', v)"
-    />
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import type { AppIconName } from '@/shared/icons/app-icons'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
-import FilterModal from './FilterModal.vue'
+import SiteIcon from '@/shared/components/SiteIcon.vue'
 import type { TimeRange, Duration, ContentType } from '@/features/video/composables/useFeedFilters'
 import { useSites } from '@/features/video/composables/useSites'
+import { useUserSettings } from '@/shared/composables/useUserSettings'
 import { Button } from '@/shared/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
+import { Switch } from '@/shared/ui/switch'
 import { useUIStore } from '@/shared/stores/ui'
 import type { VideoTab } from '@/features/video/constants/videos'
 import {
@@ -176,18 +257,8 @@ import {
   NSFW_OPTIONS,
   SORT_OPTIONS,
   TIME_RANGE_OPTIONS,
-  labelForOption,
 } from '@/features/video/constants/feedFilters'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
-
-type ActiveFilterChip = {
-  key: string
-  label: string
-  clearTitle: string
-  icon?: AppIconName
-  iconClass?: string
-  clear: () => void
-}
 
 const props = withDefaults(defineProps<{
   activeTab?: string
@@ -205,8 +276,6 @@ const props = withDefaults(defineProps<{
   duration?: Duration
   contentType?: ContentType
   special?: string
-  siteLabel?: string
-  filterScope?: 'video' | 'subscription'
 }>(), {
   activeTab: 'all',
   nsfw: 'all',
@@ -221,7 +290,6 @@ const props = withDefaults(defineProps<{
   duration: 'all',
   contentType: 'all',
   special: 'all',
-  filterScope: 'video',
 })
 
 const emit = defineEmits([
@@ -237,16 +305,17 @@ const emit = defineEmits([
 ])
 
 const { options: siteOptions, fetchSites } = useSites()
+const { settings, loadUserSettings } = useUserSettings()
 const uiStore = useUIStore()
 
-onMounted(() => {
-  fetchSites()
-  nextTick(updateScrollState)
+onMounted(async () => {
+  await Promise.all([fetchSites(), loadUserSettings()])
+  await nextTick()
+  updateScrollState()
 })
 
 const localActiveTab = ref(props.activeTab)
 const localSortBy = ref(props.sortBy)
-const filterModalOpen = ref(false)
 
 const tabsScroll = ref<HTMLElement | null>(null)
 const canScrollLeft = ref(false)
@@ -259,91 +328,68 @@ const updateScrollState = () => {
   canScrollRight.value = el.scrollLeft < el.scrollWidth - el.clientWidth - 2
 }
 
-const handleSiteChange = (val: unknown) => emit('update:site', val === 'all' ? '' : val)
+const handleSiteChange = (value: unknown) => {
+  emit('update:site', value === 'all' ? '' : String(value))
+}
+
+const handleTimeRangeChange = (value: unknown) => {
+  emit('update:timeRange', String(value) as TimeRange)
+}
+
+const handleDurationChange = (value: unknown) => {
+  emit('update:duration', String(value) as Duration)
+}
+
+const handleContentTypeChange = (value: unknown) => {
+  emit('update:contentType', String(value) as ContentType)
+}
+
+const handleNsfwChange = (value: unknown) => {
+  emit('update:nsfw', String(value))
+}
+
+const handleSpecialChange = (value: boolean) => {
+  emit('update:special', value ? 'yes' : 'all')
+}
 
 const handleViewModeChange = (value: string | number) => {
   if (value !== 'grid' && value !== 'list') return
   uiStore.setViewMode(value)
 }
 
-/**
- * Modal-owned dimensions only (time, duration, content type, nsfw).
- * Special / site / sort live in toolbar chrome and are never mixed in here.
- * Active values also render as dismissible chips — funnel uses is-active only,
- * not a numeric badge (avoids double-counting).
- */
-const hiddenFilterCount = computed(() => {
-  let c = 0
-  if (props.timeRange !== 'all') c++
-  if (props.duration !== 'all') c++
-  if (!props.subscriptionId && props.contentType !== 'all') c++
-  if (props.nsfw !== 'all') c++
-  return c
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (!props.subscriptionId && props.site) count++
+  if (props.timeRange !== 'all') count++
+  if (props.duration !== 'all') count++
+  if (!props.subscriptionId && props.contentType !== 'all') count++
+  if (props.nsfw !== 'all') count++
+  if (!props.subscriptionId && props.special === 'yes') count++
+  return count
 })
 
-const filterButtonTitle = computed(() => (
-  hiddenFilterCount.value > 0
-    ? `更多筛选（${hiddenFilterCount.value} 项已启用）`
-    : '更多筛选'
+const filterDescription = computed(() => (
+  activeFilterCount.value > 0
+    ? `已启用 ${activeFilterCount.value} 项条件`
+    : props.subscriptionId
+      ? '按时间和内容范围筛选'
+      : '按来源、时间和内容范围筛选'
 ))
 
-/**
- * Dismissible chips for active non-default filters that would otherwise only
- * live in the modal or as a boolean toggle. Site stays a Select (shows value +
- * can reset to 全部站点). Sort is not a filter chip.
- */
-const activeFilterChips = computed<ActiveFilterChip[]>(() => {
-  const chips: ActiveFilterChip[] = []
+const filterButtonLabel = computed(() => (
+  activeFilterCount.value > 0
+    ? `筛选，已启用 ${activeFilterCount.value} 项`
+    : '筛选'
+))
 
-  if (!props.subscriptionId && props.special === 'yes') {
-    chips.push({
-      key: 'special',
-      label: '特别关注',
-      clearTitle: '清除特别关注过滤',
-      icon: 'star',
-      iconClass: 'fill-current',
-      clear: () => emit('update:special', 'all'),
-    })
-  }
-
-  if (props.timeRange !== 'all') {
-    chips.push({
-      key: 'timeRange',
-      label: labelForOption(TIME_RANGE_OPTIONS, props.timeRange),
-      clearTitle: '清除时间筛选',
-      clear: () => emit('update:timeRange', 'all'),
-    })
-  }
-
-  if (props.duration !== 'all') {
-    chips.push({
-      key: 'duration',
-      label: labelForOption(DURATION_OPTIONS, props.duration),
-      clearTitle: '清除时长筛选',
-      clear: () => emit('update:duration', 'all'),
-    })
-  }
-
-  if (!props.subscriptionId && props.contentType !== 'all') {
-    chips.push({
-      key: 'contentType',
-      label: labelForOption(CONTENT_TYPE_OPTIONS, props.contentType),
-      clearTitle: '清除来源类型筛选',
-      clear: () => emit('update:contentType', 'all'),
-    })
-  }
-
-  if (props.nsfw !== 'all') {
-    chips.push({
-      key: 'nsfw',
-      label: labelForOption(NSFW_OPTIONS, props.nsfw),
-      clearTitle: '清除内容分级筛选',
-      clear: () => emit('update:nsfw', 'all'),
-    })
-  }
-
-  return chips
-})
+const clearAllFilters = () => {
+  if (!props.subscriptionId) emit('update:site', '')
+  emit('update:timeRange', 'all')
+  emit('update:duration', 'all')
+  if (!props.subscriptionId) emit('update:contentType', 'all')
+  emit('update:nsfw', 'all')
+  if (!props.subscriptionId) emit('update:special', 'all')
+}
 
 watch(() => props.activeTab, (v) => { localActiveTab.value = v })
 watch(() => props.sortBy, (v) => { localSortBy.value = v })
@@ -353,6 +399,10 @@ watch(() => props.tabs, () => nextTick(updateScrollState), { deep: true })
 watch(() => tabsScroll.value?.scrollWidth, () => nextTick(updateScrollState))
 
 const sortOptions = SORT_OPTIONS
+const timeRangeOptions = TIME_RANGE_OPTIONS
+const durationOptions = DURATION_OPTIONS
+const contentTypeOptions = CONTENT_TYPE_OPTIONS
+const nsfwOptions = NSFW_OPTIONS
 
 const viewModeOptions = [
   { value: 'grid', label: '网格视图', icon: 'layoutGrid' },
@@ -367,8 +417,10 @@ const viewModeOptions = [
   display: flex;
   width: 100%;
   min-width: 0;
+  min-height: 2.5rem;
   align-items: center;
-  gap: var(--space-3);
+  justify-content: space-between;
+  gap: var(--space-5);
 }
 
 .feed-toolbar__primary {
@@ -388,59 +440,87 @@ const viewModeOptions = [
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 2px;
+  gap: 0.25rem;
   overflow-x: auto;
-  padding: 2px;
-  border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: var(--radius-lg);
-  background: hsl(var(--secondary) / 0.72);
 }
 
 .feed-toolbar__tab {
+  display: inline-flex;
   flex: 0 0 auto;
-  height: 2rem;
-  padding: 0 var(--space-3);
-  font-size: 0.8125rem;
-  font-weight: 600;
+  height: 2.5rem;
+  align-items: center;
+  padding: 0 0.625rem;
   color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
-.feed-toolbar__tab:hover {
+.feed-toolbar__tab:hover,
+.feed-toolbar__tab:focus-visible {
+  background: hsl(var(--muted) / 0.28);
   color: hsl(var(--foreground));
+  outline: none;
 }
 
 .feed-toolbar__tab.is-active {
   color: hsl(var(--foreground));
-  background: hsl(var(--card));
-  box-shadow: var(--shadow-xs);
-  font-weight: 650;
+  background: transparent;
+  box-shadow: inset 0 -2px 0 hsl(var(--foreground) / 0.58);
 }
 
 .feed-toolbar__fade {
   pointer-events: none;
   position: absolute;
-  top: 2px;
-  bottom: 2px;
+  top: 0;
+  bottom: 0;
   width: 1.25rem;
 }
 
 .feed-toolbar__fade--left {
-  left: 2px;
+  left: 0;
   background: linear-gradient(to right, hsl(var(--background)), transparent);
 }
 
 .feed-toolbar__fade--right {
-  right: 2px;
+  right: 0;
   background: linear-gradient(to left, hsl(var(--background)), transparent);
 }
 
 .feed-toolbar__actions {
   display: flex;
-  flex: 0 1 auto;
+  flex: none;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
   margin-left: auto;
+}
+
+.feed-toolbar__filter {
+  gap: 0.4rem;
+  color: hsl(var(--muted-foreground) / 0.84);
+  font-size: 0.75rem;
+}
+
+.feed-toolbar__filter.is-active {
+  border-color: hsl(var(--foreground) / 0.1);
+  background: hsl(var(--foreground) / 0.045);
+  color: hsl(var(--foreground) / 0.82);
+}
+
+.feed-toolbar__filter-count {
+  display: grid;
+  min-width: 1rem;
+  height: 1rem;
+  place-items: center;
+  border-radius: 999px;
+  background: hsl(var(--foreground) / 0.08);
+  color: hsl(var(--foreground) / 0.72);
+  font-size: 0.5625rem;
+  line-height: 1;
 }
 
 .feed-toolbar__group {
@@ -454,7 +534,86 @@ const viewModeOptions = [
 .feed-toolbar__divider {
   flex: 0 0 auto;
   width: 1px;
-  height: 1.25rem;
-  background: hsl(var(--border) / 0.7);
+  height: 1rem;
+  background: var(--app-hairline);
+}
+
+.feed-filter-panel {
+  padding: var(--space-4);
+}
+
+.feed-filter-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+}
+
+.feed-filter-panel__header > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.feed-filter-panel__header strong {
+  color: hsl(var(--foreground));
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.feed-filter-panel__header span {
+  color: hsl(var(--muted-foreground) / 0.72);
+  font-size: 0.6875rem;
+}
+
+.feed-filter-panel__fields {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.feed-filter-panel__field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.feed-filter-panel__field > span {
+  color: hsl(var(--muted-foreground) / 0.82);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.feed-filter-panel__site-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.feed-filter-panel__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-top: 1px solid var(--app-hairline);
+  padding-top: var(--space-4);
+}
+
+.feed-filter-panel__toggle > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.feed-filter-panel__toggle strong {
+  color: hsl(var(--foreground) / 0.9);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.feed-filter-panel__toggle small {
+  color: hsl(var(--muted-foreground) / 0.68);
+  font-size: 0.6875rem;
 }
 </style>

@@ -39,4 +39,10 @@
     transform: scaleY(1);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .music-playing-indicator i {
+    animation: none;
+  }
+}
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="railItems.length > 0 || loading" class="group/container relative mb-6 overflow-hidden px-6 pt-4">
+  <section v-if="railItems.length > 0 || loading" class="home-feed-rail group/container">
     <FeedRailHeader
       title="继续观看"
       view-more
@@ -26,7 +26,7 @@
         @goToSubscription="(id) => $emit('goToSubscription', id)"
       />
     </FeedRailTrack>
-  </div>
+  </section>
 </template>
 
 <script lang="ts">

@@ -331,7 +331,6 @@ function removeQueueItem(index: number) {
 
 @media (min-width: 768px) {
   .music-bar {
-    /* Center relative to the main workspace, not the full viewport. */
     left: calc(50vw + var(--workspace-offset) / 2);
     width: min(90rem, calc(100vw - var(--workspace-offset) - 2rem));
   }

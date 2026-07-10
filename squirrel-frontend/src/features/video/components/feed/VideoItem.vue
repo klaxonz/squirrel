@@ -480,8 +480,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 
 .video-item__progress-fill {
   height: 100%;
-  background: hsl(var(--primary));
-  box-shadow: 0 0 10px hsl(var(--primary) / 0.35);
+  background: hsl(0 0% 100% / 0.76);
   transition: width var(--duration-slow) var(--ease-out);
 }
 
