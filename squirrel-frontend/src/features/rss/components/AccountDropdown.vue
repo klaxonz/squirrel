@@ -7,9 +7,16 @@
       class="account-dropdown__trigger"
       :class="{ 'is-selected': selectedId }"
     >
-      <div class="account-dropdown__trigger-label">
-        <AppIcon name="rss" class="h-3.5 w-3.5 shrink-0 text-primary" />
-        <span class="truncate">{{ selectedName || '选择账号...' }}</span>
+      <div class="account-dropdown__identity">
+        <span class="account-dropdown__mark">
+          <AppIcon name="rss" class="h-3.5 w-3.5" />
+        </span>
+        <span class="account-dropdown__copy">
+          <span class="account-dropdown__name">{{ selectedName || '选择服务账号' }}</span>
+          <span class="account-dropdown__provider">
+            {{ selectedProvider || '连接 RSS 服务' }}
+          </span>
+        </span>
       </div>
       <AppIcon
         name="chevronDown"
@@ -84,6 +91,7 @@ defineProps<{
   accounts: RssAccount[]
   selectedId: number | null
   selectedName: string
+  selectedProvider: string
   open: boolean
 }>()
 
@@ -105,29 +113,59 @@ defineEmits<{
 .account-dropdown__trigger {
   justify-content: space-between;
   width: 100%;
-  min-height: 2rem;
-  padding: 0 0.625rem;
-  background: hsl(var(--accent) / 0.4);
-  font-size: 0.75rem;
-  font-weight: 650;
+  height: auto;
+  min-height: 3rem;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.46);
+  background: hsl(var(--background) / 0.24);
+  text-align: left;
 }
 
 .account-dropdown__trigger:hover {
-  background: hsl(var(--accent) / 0.58);
+  border-color: hsl(var(--border) / 0.72);
+  background: hsl(var(--accent) / 0.38);
   color: hsl(var(--foreground));
 }
 
 .account-dropdown__trigger.is-selected {
-  border-color: hsl(var(--primary) / 0.22);
-  background: hsl(var(--primary) / 0.07);
+  border-color: hsl(var(--border) / 0.62);
+  background: hsl(var(--accent) / 0.28);
   color: hsl(var(--foreground));
 }
 
-.account-dropdown__trigger-label {
+.account-dropdown__identity {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
+}
+
+.account-dropdown__mark {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: hsl(var(--accent) / 0.72);
+  color: hsl(var(--foreground) / 0.72);
+}
+
+.account-dropdown__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.account-dropdown__name {
+  overflow: hidden;
+  color: hsl(var(--foreground) / 0.92);
+  font-size: 0.75rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .account-dropdown__chevron {
@@ -149,10 +187,13 @@ defineEmits<{
 }
 
 .account-dropdown__provider {
+  overflow: hidden;
   color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 500;
   line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .account-dropdown__icon-button {
@@ -176,13 +217,20 @@ defineEmits<{
   width: 100%;
   min-height: 2.25rem;
   padding: 0 0.75rem;
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground) / 0.82);
   font-size: 0.8125rem;
   font-weight: 650;
 }
 
 .account-dropdown__add:hover {
-  background: hsl(var(--primary) / 0.07);
+  background: hsl(var(--accent) / 0.46);
+  color: hsl(var(--foreground));
+}
+
+.account-dropdown :deep(.app-selectable-list-item.is-selected) {
+  border-color: hsl(var(--border) / 0.58);
+  background: hsl(var(--accent) / 0.68);
+  color: hsl(var(--foreground));
 }
 
 @media (prefers-reduced-motion: reduce) {

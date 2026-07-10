@@ -241,8 +241,8 @@ defineEmits<{
 }
 
 .account-dialog__provider.is-selected {
-  border-color: hsl(var(--primary) / 0.24);
-  background: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--border) / 0.68);
+  background: hsl(var(--accent) / 0.72);
   color: hsl(var(--foreground));
 }
 

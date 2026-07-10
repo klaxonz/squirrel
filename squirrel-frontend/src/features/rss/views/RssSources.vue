@@ -2,24 +2,35 @@
   <AppPageShell variant="compact" fill>
     <AppTwoColumnLayout
       sidebar-always
-      sidebar-width="20rem"
+      sidebar-width="18rem"
       :main-scroll="false"
+      class="rss-workspace"
     >
       <template #sidebar>
-        <AppSidebarHeader title="RSS 内容源" :subtitle="`${accounts.length} 个服务账号`">
+        <AppSidebarHeader
+          title="订阅库"
+          :subtitle="`${accounts.length} 个账号 · ${filteredFeeds.length} 个订阅源`"
+        >
           <template #actions>
-            <Button size="icon-sm" aria-label="添加账号" @click="openAddAccount">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              class="rss-add-account-button"
+              aria-label="添加账号"
+              @click="openAddAccount"
+            >
               <AppIcon name="plus" class="h-4 w-4" />
             </Button>
           </template>
         </AppSidebarHeader>
 
-        <div class="app-pane__controls app-pane__controls--compact">
+        <div class="app-pane__controls app-pane__controls--compact rss-source-controls">
           <div ref="accountDropdownRef">
             <AccountDropdown
               :accounts="accounts"
               :selected-id="selectedAccountId"
               :selected-name="selectedAccount?.name || ''"
+              :selected-provider="selectedAccount?.provider || ''"
               :open="showAccountDropdown"
               @toggle="showAccountDropdown = !showAccountDropdown"
               @select="(id) => { selectAccount(id); showAccountDropdown = false }"
@@ -32,25 +43,27 @@
           <div
             v-if="selectedAccount"
             class="rss-sync-status"
+            :class="{
+              'is-active': syncing,
+              'is-error': statusError,
+            }"
           >
-            <span
-              class="truncate pr-1 flex-1 min-w-0"
-              :class="{ 'rss-sync-status__text--active': syncing, 'text-destructive': statusError }"
-              :title="statusMessage"
-            >
-              {{ statusMessage || (selectedAccount.last_sync_at ? '同步于 ' + formatDate(selectedAccount.last_sync_at) : '从未同步') }}
+            <span class="rss-sync-status__indicator" aria-hidden="true" />
+            <span class="rss-sync-status__copy" :title="statusMessage">
+              {{ statusMessage || (selectedAccount.last_sync_at ? '上次同步 ' + formatDate(selectedAccount.last_sync_at) : '尚未同步') }}
             </span>
-            <div class="relative flex items-center gap-0.5 shrink-0" ref="syncDropdownRef">
+            <div ref="syncDropdownRef" class="rss-sync-status__actions">
               <Button
                 variant="ghost"
-                size="xs"
+                size="icon-xs"
                 @click="syncSelectedAccount(false)"
                 class="rss-sync-status__button"
                 :disabled="syncing"
+                title="轻量同步"
+                aria-label="轻量同步"
               >
                 <AppSpinner v-if="syncing" size="sm" />
                 <AppIcon v-else name="refresh" class="h-3 w-3" />
-                <span>轻量</span>
               </Button>
               <Button
                 variant="ghost"
@@ -77,7 +90,7 @@
 
           <AppSearchInput
             v-model="feedSearch"
-            placeholder="搜索订阅源..."
+            placeholder="搜索订阅源"
             aria-label="搜索订阅源"
           />
         </div>
@@ -99,23 +112,22 @@
 
       <!-- Middle: article list -->
       <section class="app-pane app-pane--list rss-entry-pane">
-        <header class="app-pane__header">
+        <header class="app-pane__header rss-entry-header">
           <div class="app-pane__header-row">
             <div class="app-pane__header-copy">
               <div class="app-pane__header-title-row">
                 <Button
                   v-if="hasFeedNavStack"
-                  variant="outline"
-                  size="xs"
+                  variant="ghost"
+                  size="icon-xs"
                   class="rss-back-button"
                   title="返回之前的列表"
                   aria-label="返回之前的列表"
                   @click="handleFeedBack"
                 >
                   <AppIcon name="back" class="h-3 w-3" />
-                  <span>返回</span>
                 </Button>
-                <h2 class="app-h3 truncate">
+                <h2 class="app-h4 truncate">
                   {{ selectedFeedTitle || selectedAccount?.name || 'RSS 阅读器' }}
                 </h2>
               </div>
@@ -143,7 +155,7 @@
           <div class="rss-entry-tools">
             <AppSearchInput
               v-model="entrySearch"
-              placeholder="搜索文章..."
+              placeholder="搜索文章"
               aria-label="搜索文章"
             />
 
@@ -153,7 +165,12 @@
               aria-label="文章筛选"
               size="sm"
               class="rss-filter-tabs"
-            />
+            >
+              <template #option="{ option }">
+                <AppIcon v-if="option.icon" :name="option.icon" class="h-3 w-3" />
+                <span>{{ option.label }}</span>
+              </template>
+            </AppSegmentedControl>
           </div>
         </header>
 
@@ -162,9 +179,11 @@
 
             <div
               v-if="loading && filteredEntries.length === 0"
-              class="app-page-empty app-page-empty--compact flex-col text-center"
+              class="rss-entry-skeleton-list"
+              aria-label="正在加载文章"
+              aria-busy="true"
             >
-              <AppSpinner size="lg" />
+              <RssEntrySkeleton v-for="index in 6" :key="index" />
             </div>
 
             <!-- Empty view -->
@@ -178,7 +197,7 @@
             </div>
 
             <!-- Articles List -->
-            <div v-else class="app-divider-top app-divider-bottom flex flex-col divide-y divide-border/10">
+            <div v-else class="rss-entry-stack">
               <AppSelectableListItem
                 v-for="entry in filteredEntries"
                 :key="entry.id"
@@ -190,41 +209,49 @@
                 @keydown.space.prevent="openReader(entry)"
                 @contextmenu.prevent.stop="showArticleContextMenu(entry, $event)"
               >
-                <!-- Card Top: Category & Time -->
                 <div class="rss-entry-item__meta-row">
-                  <span class="rss-entry-item__category-row">
-                    <span
-                      v-if="!entry.is_read"
-                      class="rss-entry-item__unread-dot"
-                      aria-hidden="true"
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    type="button"
+                    class="rss-entry-item__source"
+                    title="查看该订阅源"
+                    @click.stop="pushFeedNavStack(); selectFeed(entry.feed_id)"
+                  >
+                    <SiteIcon
+                      :icon-url="getFeedIconUrl(entry.feed_id)"
+                      size="xs"
+                      rounded="sm"
+                      class="shrink-0"
                     />
-                    <span
-                      class="rss-entry-item__category"
-                      :class="entry.is_read ? 'text-muted-foreground/55' : 'text-primary'"
-                    >
-                      {{ getFeedCategory(entry.feed_id) }}
-                    </span>
-                  </span>
-                  <div class="flex items-center gap-1.5">
+                    <span>{{ getFeedTitle(entry.feed_id) }}</span>
+                  </Button>
+                  <div class="rss-entry-item__status">
                     <AppIcon v-if="entry.is_starred" name="star" class="h-3 w-3 text-warning fill-warning" />
                     <span class="rss-entry-item__date">{{ activeFilter === 'recent' ? formatRelativeTime((entry as RecentEntry).viewed_at) : formatDate(entry.published_at) }}</span>
                   </div>
                 </div>
 
-                <!-- Title & Summary -->
-                <div class="flex-1 space-y-1 mb-3 text-left">
-                  <h4
-                    class="rss-entry-item__title"
-                    :class="[
-                      readingEntry && String(readingEntry.id) === String(entry.id)
-                        ? 'text-primary'
-                        : entry.is_read
-                          ? 'text-muted-foreground/75 group-hover:text-foreground/80'
-                          : 'text-foreground/90 group-hover:text-primary font-semibold',
-                    ]"
-                  >
-                    {{ entry.title }}
-                  </h4>
+                <div class="rss-entry-item__content">
+                  <div class="rss-entry-item__title-row">
+                    <span
+                      v-if="!entry.is_read"
+                      class="rss-entry-item__unread-dot"
+                      aria-hidden="true"
+                    />
+                    <h4
+                      class="rss-entry-item__title"
+                      :class="[
+                        readingEntry && String(readingEntry.id) === String(entry.id)
+                          ? 'text-foreground'
+                          : entry.is_read
+                            ? 'text-muted-foreground/75 group-hover:text-foreground/80'
+                            : 'text-foreground/90 group-hover:text-foreground font-semibold',
+                      ]"
+                    >
+                      {{ entry.title }}
+                    </h4>
+                  </div>
                   <p
                     v-if="entry.summary"
                     class="rss-entry-item__summary"
@@ -232,30 +259,25 @@
                   >{{ stripHtmlTags(entry.summary) }}</p>
                 </div>
 
-                <!-- Card Bottom: Source & Media indicator (clickable to view feed) -->
-                <div class="flex items-center pt-1">
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    type="button"
-                    @click.stop="pushFeedNavStack(); selectFeed(entry.feed_id)"
-                    class="rss-feed-link"
-                  >
-                    <SiteIcon :icon-url="getFeedIconUrl(entry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
-                    <span
-                      class="text-xs font-semibold truncate transition-colors"
-                      :class="entry.is_read ? 'text-muted-foreground/55' : 'text-muted-foreground/90'"
-                    >
-                      {{ getFeedTitle(entry.feed_id) }}
-                    </span>
-                  </Button>
+                <div
+                  v-if="entry.author || getFeedCategory(entry.feed_id)"
+                  class="rss-entry-item__footer"
+                >
+                  <span v-if="entry.author" class="truncate">{{ entry.author }}</span>
+                  <span v-if="entry.author && getFeedCategory(entry.feed_id)" aria-hidden="true">·</span>
+                  <span v-if="getFeedCategory(entry.feed_id)" class="truncate">
+                    {{ getFeedCategory(entry.feed_id) }}
+                  </span>
                 </div>
               </AppSelectableListItem>
             </div>
 
             <!-- Infinite Scroll Loader Anchor -->
-            <div ref="loadMoreTrigger" class="h-20 flex items-center justify-center w-full">
-              <AppSpinner v-if="loadingMoreEntries" />
+            <div ref="loadMoreTrigger" class="rss-entry-load-more">
+              <div v-if="loadingMoreEntries" class="rss-entry-load-more__status">
+                <AppBounceDots />
+                <span>加载更多</span>
+              </div>
             </div>
           </div>
         </div>
@@ -268,20 +290,25 @@
           <!-- Reader Header (Clean compact toolbar) -->
           <header class="app-pane__header rss-reader-toolbar">
             <div class="app-pane__header-row">
-            <Button
-              variant="ghost"
-              size="xs"
-              @click="pushFeedNavStack(); selectFeed(readingEntry.feed_id)"
-              class="rss-reader-source-button"
-              title="查看该订阅源的所有文章"
-            >
-              <SiteIcon :icon-url="getFeedIconUrl(readingEntry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
-              <span class="rss-reader-source-title" :title="getFeedTitle(readingEntry.feed_id)">
-                {{ getFeedTitle(readingEntry.feed_id) }}
-              </span>
-            </Button>
+              <div class="rss-reader-toolbar__identity">
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  @click="pushFeedNavStack(); selectFeed(readingEntry.feed_id)"
+                  class="rss-reader-source-button"
+                  title="查看该订阅源的所有文章"
+                >
+                  <SiteIcon :icon-url="getFeedIconUrl(readingEntry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
+                  <span class="rss-reader-source-title" :title="getFeedTitle(readingEntry.feed_id)">
+                    {{ getFeedTitle(readingEntry.feed_id) }}
+                  </span>
+                </Button>
+                <span class="rss-reader-toolbar__domain">
+                  {{ getDisplayDomain(readingEntry.canonical_url) }}
+                </span>
+              </div>
 
-            <div class="app-pane__header-actions">
+              <div class="app-pane__header-actions rss-reader-actions">
               <!-- 应用内预览原文 -->
               <Button
                 variant="ghost"
@@ -354,7 +381,7 @@
                   @save="saveReaderPrefs()"
                 />
               </div>
-            </div>
+              </div>
             </div>
           </header>
 
@@ -363,31 +390,33 @@
             ref="readerScrollContainer"
             class="app-scroll-pane custom-scrollbar rss-reader-body"
           >
-            <!-- Editorial Header -->
-            <div class="app-reader-width mb-8">
-              <!-- Title -->
-              <h1
-                @click="openInAppBrowser"
-                class="rss-reader-title"
-                title="点击在应用内打开原文"
-              >
-                {{ readingEntry.title }}
-              </h1>
+            <article class="rss-reader-article app-reader-width">
+              <header class="rss-reader-article__header">
+                <span class="rss-reader-article__category">
+                  {{ getFeedCategory(readingEntry.feed_id) || '未分类' }}
+                </span>
+                <h1
+                  @click="openInAppBrowser"
+                  class="rss-reader-title"
+                  title="点击在应用内打开原文"
+                >
+                  {{ readingEntry.title }}
+                </h1>
+                <div class="rss-reader-meta">
+                  <span v-if="readingEntry.author">{{ readingEntry.author }}</span>
+                  <span v-if="readingEntry.author" aria-hidden="true">·</span>
+                  <time>{{ formatDate(readingEntry.published_at) }}</time>
+                </div>
+              </header>
 
-              <!-- Date -->
-              <div class="mt-2 text-xs text-muted-foreground/50 tabular-nums">
-                {{ formatDate(readingEntry.published_at) }}
-              </div>
-            </div>
-
-            <!-- Content -->
-            <div 
-              class="reader-content app-reader-width prose prose-neutral dark:prose-invert text-foreground/80 py-2 space-y-0"
-              :class="readerFontClass"
-              :style="{ fontSize: readerFontSize + 'px' }"
-              @click="handleContentClick"
-              v-html="cleanAndDecodeHtml(readingEntry.summary) || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
-            />
+              <div
+                class="reader-content prose prose-neutral dark:prose-invert"
+                :class="readerFontClass"
+                :style="{ fontSize: readerFontSize + 'px' }"
+                @click="handleContentClick"
+                v-html="cleanAndDecodeHtml(readingEntry.summary) || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
+              />
+            </article>
           </div>
 
           <!-- Reeder-style Slide-over In-App Browser Overlay -->
@@ -476,7 +505,7 @@
             variant="plain"
             icon="library"
             title="选择文章开始阅读"
-            copy="从中间列表挑选感兴趣的文章，或在右侧搜索特定内容。"
+            copy="从文章列表选择一篇内容，正文会在这里保持专注地展开。"
           />
         </div>
       </main>
@@ -693,6 +722,7 @@ import SiteIcon from '@/shared/components/SiteIcon.vue'
 import ReaderSettingsPanel from '@/features/rss/components/ReaderSettingsPanel.vue'
 import AccountDropdown from '@/features/rss/components/AccountDropdown.vue'
 import FeedFolderTree from '@/features/rss/components/FeedFolderTree.vue'
+import RssEntrySkeleton from '@/features/rss/components/RssEntrySkeleton.vue'
 import AccountEditDialog from '@/features/rss/components/AccountEditDialog.vue'
 import DeleteAccountDialog from '@/features/rss/components/DeleteAccountDialog.vue'
 import RssImageLightbox from '@/features/rss/components/RssImageLightbox.vue'
@@ -722,14 +752,15 @@ import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 import RssFeedContextMenu from '@/features/rss/components/RssFeedContextMenu.vue'
 import RssArticleContextMenu from '@/features/rss/components/RssArticleContextMenu.vue'
 import type { RssEntry, RecentEntry } from '@/features/rss/composables/rssTypes'
+import type { AppIconName } from '@/shared/icons/app-icons'
 
 // Cross-cutting UI state
 const loading = ref(false)
-const rssFilterOptions = [
-  { value: 'all', label: '全部' },
-  { value: 'unread', label: '未读' },
-  { value: 'starred', label: '星标' },
-  { value: 'recent', label: '最近浏览' },
+const rssFilterOptions: Array<{ value: string; label: string; icon: AppIconName }> = [
+  { value: 'all', label: '全部', icon: 'list' },
+  { value: 'unread', label: '未读', icon: 'inbox' },
+  { value: 'starred', label: '星标', icon: 'star' },
+  { value: 'recent', label: '最近', icon: 'history' },
 ]
 
 // ponytail: status banner state + auto-dismiss timer live in useRssStatus so
@@ -1048,53 +1079,110 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.rss-workspace {
+  --app-workbench-header-height: 3.25rem;
+}
+
+.rss-source-controls {
+  background: hsl(var(--muted) / 0.08);
+}
+
+.rss-add-account-button {
+  border-color: hsl(var(--border) / 0.58);
+  background: hsl(var(--accent) / 0.24);
+  color: hsl(var(--foreground) / 0.82);
+}
+
+.rss-add-account-button:hover {
+  border-color: hsl(var(--border) / 0.78);
+  background: hsl(var(--accent) / 0.58);
+  color: hsl(var(--foreground));
+}
+
 .rss-sync-status {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--radius-md);
-  background: hsl(var(--muted) / 0.24);
-  padding: 0.5rem;
+  gap: 0.4375rem;
+  min-height: 2rem;
+  padding-left: 0.5rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
 }
 
-.rss-sync-status__text--active {
-  color: hsl(var(--primary));
-  font-weight: 650;
+.rss-sync-status__indicator {
+  width: 0.375rem;
+  height: 0.375rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: hsl(var(--muted-foreground) / 0.42);
+}
+
+.rss-sync-status.is-active .rss-sync-status__indicator {
+  background: hsl(var(--foreground) / 0.72);
+  box-shadow: 0 0 0 3px hsl(var(--foreground) / 0.08);
+}
+
+.rss-sync-status.is-error .rss-sync-status__indicator {
+  background: hsl(var(--destructive));
+  box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.1);
+}
+
+.rss-sync-status__copy {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rss-sync-status.is-active .rss-sync-status__copy {
+  color: hsl(var(--foreground) / 0.82);
+}
+
+.rss-sync-status.is-error .rss-sync-status__copy {
+  color: hsl(var(--destructive));
+}
+
+.rss-sync-status__actions {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.125rem;
 }
 
 .rss-entry-pane {
-  --app-pane-list-width: 25rem;
-  border-right: 1px solid var(--app-hairline);
+  --app-pane-list-width: clamp(22rem, 24vw, 27rem);
+  background: hsl(var(--muted) / 0.045);
 }
 
 .rss-entry-list {
   padding: 0;
-  background: hsl(var(--background));
+  background: transparent;
 }
 
 .rss-entry-list__inner {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  min-height: 100%;
+  padding: 0;
+}
+
+.rss-entry-header {
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: hsl(var(--background) / 0.48);
 }
 
 .rss-back-button {
   flex: none;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.6875rem;
-  font-weight: 650;
+  color: hsl(var(--muted-foreground));
 }
 
 .rss-entry-tools {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 0.375rem;
   width: 100%;
 }
 
@@ -1103,87 +1191,162 @@ onUnmounted(() => {
 }
 
 .rss-filter-tabs :deep(.app-segmented-control__item) {
+  gap: 0.3rem;
   flex: 1;
+  min-width: 0;
+  padding-inline: 0.375rem;
 }
 
 .rss-reader-toolbar {
-  padding-inline: var(--space-5);
+  justify-content: center;
+  min-height: var(--app-workbench-header-height);
+  padding: 0 var(--space-4);
+  background: hsl(var(--background) / 0.48);
 }
 
 .rss-reader-body {
-  padding: var(--space-6) var(--space-8);
+  padding: clamp(2.5rem, 5vh, 4.5rem) clamp(2rem, 5vw, 5rem) 6rem;
   background: hsl(var(--background));
+}
+
+.rss-entry-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.rss-entry-skeleton-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.rss-entry-load-more {
+  display: flex;
+  min-height: 4rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.rss-entry-load-more__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: hsl(var(--muted-foreground) / 0.68);
+  font-size: 0.6875rem;
 }
 
 .rss-entry-item {
   position: relative;
   flex-direction: column;
-  justify-content: space-between;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
   width: 100%;
-  padding: 1rem 0.875rem;
+  min-height: 0;
+  padding: 0.875rem 1rem;
+  border: 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.2);
   border-radius: 0;
   text-align: left;
   outline: none;
 }
 
+.rss-entry-item:hover,
 .rss-entry-item:focus-visible {
-  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.35);
+  background: hsl(var(--accent) / 0.32);
+}
+
+.rss-entry-item.is-selected {
+  border-color: hsl(var(--border) / 0.2);
+  background: hsl(var(--accent) / 0.58);
+  color: inherit;
+}
+
+.rss-entry-item:focus-visible {
+  box-shadow: inset 0 0 0 1px hsl(var(--ring) / 0.42);
 }
 
 .rss-sync-status__button {
   flex: 0 0 auto;
-  gap: 0.25rem;
-  color: hsl(var(--primary));
-  font-weight: 650;
+  color: hsl(var(--muted-foreground));
+}
+
+.rss-sync-status__button:hover {
+  color: hsl(var(--foreground));
 }
 
 .rss-entry-item__meta-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
   margin-bottom: 0.5rem;
-  color: hsl(var(--muted-foreground) / 0.85);
-  font-size: 0.75rem;
 }
 
-.rss-entry-item__category-row {
-  display: inline-flex;
-  align-items: center;
+.rss-entry-item__source {
+  justify-content: flex-start;
   gap: 0.375rem;
+  min-width: 0;
+  max-width: calc(100% - 5.5rem);
+  height: auto;
+  padding: 0;
+  color: hsl(var(--muted-foreground) / 0.78);
+  font-size: 0.6875rem;
+  font-weight: 600;
 }
 
-/* Unread indicator — only colour is not enough (UI-045). Pair the amber dot
-   with `font-semibold` on the title + `aria-label="未读：..."` so screen readers
-   and monochrome viewers also perceive state. */
+.rss-entry-item__source:hover {
+  background: transparent;
+  color: hsl(var(--foreground));
+}
+
+.rss-entry-item__source span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rss-entry-item__status {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rss-entry-item__content {
+  min-width: 0;
+}
+
+.rss-entry-item__title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
 .rss-entry-item__unread-dot {
   display: inline-block;
   width: 0.375rem;
   height: 0.375rem;
+  margin-top: 0.45rem;
   border-radius: 50%;
-  background: hsl(var(--primary));
+  background: hsl(var(--foreground) / 0.62);
   flex: 0 0 auto;
-}
-
-.rss-entry-item__category {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .rss-entry-item__date {
   color: hsl(var(--muted-foreground) / 0.6);
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .rss-entry-item__title {
+  min-width: 0;
   margin: 0;
-  font-size: 0.8125rem;
+  color: hsl(var(--foreground) / 0.9);
+  font-size: 0.875rem;
   font-weight: 600;
-  line-height: 1.4;
-  text-wrap: balance;
+  line-height: 1.45;
   transition: color var(--duration-fast) var(--ease-default);
   overflow: hidden;
   display: -webkit-box;
@@ -1192,9 +1355,9 @@ onUnmounted(() => {
 }
 
 .rss-entry-item__summary {
-  margin: 0;
+  margin: 0.375rem 0 0;
   font-size: 0.75rem;
-  line-height: 1.55;
+  line-height: 1.5;
   transition: color var(--duration-fast) var(--ease-default);
   overflow: hidden;
   display: -webkit-box;
@@ -1202,17 +1365,32 @@ onUnmounted(() => {
   -webkit-box-orient: vertical;
 }
 
+.rss-entry-item__footer {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  margin-top: 0.625rem;
+  color: hsl(var(--muted-foreground) / 0.58);
+  font-size: 0.625rem;
+}
+
 .rss-reader-pane {
-  border-inline-start: 1px solid var(--app-hairline);
+  background: hsl(var(--background));
 }
 
 .rss-reader-empty {
   display: flex;
+  height: 100%;
   min-height: 0;
   flex: 1;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
+  background: hsl(var(--background));
+  text-align: center;
+  user-select: none;
 }
 
 .rss-reader-active {
@@ -1225,30 +1403,87 @@ onUnmounted(() => {
   background: hsl(var(--background));
 }
 
+.rss-reader-toolbar__identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.rss-reader-source-button {
+  min-width: 0;
+  max-width: 16rem;
+  gap: 0.4375rem;
+  padding-inline: 0.375rem;
+}
+
 .rss-reader-source-title {
   overflow: hidden;
-  max-width: 15rem;
+  max-width: 13rem;
   color: hsl(var(--foreground) / 0.85);
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.rss-reader-toolbar__domain {
+  overflow: hidden;
+  max-width: 12rem;
+  color: hsl(var(--muted-foreground) / 0.58);
+  font-size: 0.625rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rss-reader-actions {
+  gap: 0.125rem;
+}
+
+.rss-reader-article {
+  max-width: 46rem;
+}
+
+.rss-reader-article__header {
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.22);
+}
+
+.rss-reader-article__category {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: hsl(var(--muted-foreground) / 0.82);
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
 .rss-reader-title {
   margin: 0;
-  color: hsl(var(--foreground) / 0.9);
+  color: hsl(var(--foreground) / 0.94);
   cursor: pointer;
   font-family: var(--app-heading-font);
-  font-size: var(--app-h2-size);
-  font-weight: var(--app-h2-weight);
-  letter-spacing: var(--app-h2-tracking);
-  line-height: 1.35;
+  font-size: 2rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.22;
   transition: color var(--duration-fast) var(--ease-default);
+  text-wrap: balance;
 }
 
 .rss-reader-title:hover {
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground) / 0.78);
+}
+
+.rss-reader-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 1rem;
+  color: hsl(var(--muted-foreground) / 0.7);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .rss-browser-overlay {
@@ -1332,9 +1567,14 @@ onUnmounted(() => {
   width: 100%;
   min-height: 2rem;
   padding: 0 0.625rem;
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground) / 0.82);
   font-size: 0.75rem;
   font-weight: 650;
+}
+
+.rss-subscribe-dialog__new-category:hover {
+  background: hsl(var(--accent) / 0.46);
+  color: hsl(var(--foreground));
 }
 
 .rss-subscribe-dialog__custom-input {
@@ -1348,8 +1588,8 @@ onUnmounted(() => {
   right: 0.25rem;
   width: 1.5rem;
   height: 1.5rem;
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
+  background: hsl(var(--accent) / 0.62);
+  color: hsl(var(--foreground));
   transform: translateY(-50%);
 }
 
@@ -1376,19 +1616,6 @@ onUnmounted(() => {
   font-size: 0.6875rem;
   line-height: 1.55;
   box-shadow: 0 8px 24px hsl(var(--foreground) / 0.12);
-}
-
-.rss-reader-empty {
-  display: flex;
-  height: 100%;
-  flex: 1;
-  user-select: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: hsl(var(--background));
-  padding: 2rem;
-  text-align: center;
 }
 
 /* Scoped stylesheet for reader content typography — WeRead-inspired */

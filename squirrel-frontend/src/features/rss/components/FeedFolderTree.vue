@@ -1,5 +1,10 @@
 <template>
   <div class="feed-folder-tree custom-scrollbar">
+    <div class="feed-folder-tree__heading">
+      <span>订阅目录</span>
+      <span>{{ folders.length }} 个分类</span>
+    </div>
+
     <div class="feed-folder-tree__all" :class="{ 'is-selected': !selectedFeedId }">
       <Button
         variant="ghost"
@@ -25,48 +30,50 @@
 
     <div class="feed-folder-tree__separator"></div>
 
-    <div v-for="folder in folders" :key="folder.name" class="feed-folder-tree__folder">
-      <Button
-        variant="ghost"
-        size="sm"
-        @click="$emit('toggleFolder', folder.name)"
-        class="feed-folder-tree__folder-button"
-      >
-        <div class="flex items-center gap-1.5 min-w-0">
-          <AppIcon
-            name="chevronRight"
-            class="feed-folder-tree__chevron"
-            :class="{ 'rotate-90': expandedFolders[folder.name] }"
-          />
-          <span class="truncate">{{ folder.name }}</span>
-        </div>
-        <span class="feed-folder-tree__count">{{ folder.feeds.length }}</span>
-      </Button>
-
-      <div v-if="expandedFolders[folder.name]" class="feed-folder-tree__feeds">
-        <div
-          v-for="feed in folder.feeds"
-          :key="feed.id"
-          role="button"
-          tabindex="0"
-          @click="$emit('selectFeed', feed.id)"
-          @keydown.enter.prevent="$emit('selectFeed', feed.id)"
-          @keydown.space.prevent="$emit('selectFeed', feed.id)"
-          @contextmenu.prevent.stop="$emit('feedContextMenu', feed, $event)"
-          class="feed-folder-tree__feed"
-          :class="{ 'is-selected': selectedFeedId === feed.id }"
+    <div class="feed-folder-tree__folders">
+      <div v-for="folder in folders" :key="folder.name" class="feed-folder-tree__folder">
+        <Button
+          variant="ghost"
+          size="sm"
+          @click="$emit('toggleFolder', folder.name)"
+          class="feed-folder-tree__folder-button"
         >
-          <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
-          <span class="flex-1 truncate">{{ feed.title }}</span>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            @click.stop="$emit('unsubscribeFeed', feed)"
-            class="feed-folder-tree__remove"
-            title="取消订阅"
+          <div class="flex items-center gap-1.5 min-w-0">
+            <AppIcon
+              name="chevronRight"
+              class="feed-folder-tree__chevron"
+              :class="{ 'rotate-90': expandedFolders[folder.name] }"
+            />
+            <span class="truncate">{{ folder.name }}</span>
+          </div>
+          <span class="feed-folder-tree__count">{{ folder.feeds.length }}</span>
+        </Button>
+
+        <div v-if="expandedFolders[folder.name]" class="feed-folder-tree__feeds">
+          <div
+            v-for="feed in folder.feeds"
+            :key="feed.id"
+            role="button"
+            tabindex="0"
+            @click="$emit('selectFeed', feed.id)"
+            @keydown.enter.prevent="$emit('selectFeed', feed.id)"
+            @keydown.space.prevent="$emit('selectFeed', feed.id)"
+            @contextmenu.prevent.stop="$emit('feedContextMenu', feed, $event)"
+            class="feed-folder-tree__feed"
+            :class="{ 'is-selected': selectedFeedId === feed.id }"
           >
-            <AppIcon name="close" class="h-3 w-3" />
-          </Button>
+            <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
+            <span class="flex-1 truncate">{{ feed.title }}</span>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              @click.stop="$emit('unsubscribeFeed', feed)"
+              class="feed-folder-tree__remove"
+              title="取消订阅"
+            >
+              <AppIcon name="close" class="h-3 w-3" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -113,30 +120,39 @@ defineEmits<{
   flex: 1 1 auto;
   flex-direction: column;
   overflow-y: auto;
-  padding: var(--space-2) var(--space-3) var(--space-3);
+  padding: var(--space-3);
+}
+
+.feed-folder-tree__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.125rem 0.5rem 0.5rem;
+  color: hsl(var(--muted-foreground) / 0.68);
+  font-size: 0.625rem;
+  font-weight: 650;
 }
 
 .feed-folder-tree__all,
 .feed-folder-tree__feed {
+  position: relative;
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 2rem;
-  border: 1px solid transparent;
-  border-radius: 0.5rem;
+  min-height: 2.125rem;
+  border: 0;
+  border-radius: var(--radius-md);
   color: hsl(var(--muted-foreground));
   transition:
     color 0.16s ease,
-    background-color 0.16s ease,
-    border-color 0.16s ease;
+    background-color 0.16s ease;
 }
 
 .feed-folder-tree__all.is-selected,
 .feed-folder-tree__feed.is-selected {
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground));
   font-weight: 650;
-  background: hsl(var(--primary) / 0.08);
-  border-color: hsl(var(--primary) / 0.18);
+  background: hsl(var(--accent) / 0.62);
 }
 
 .feed-folder-tree__all-button,
@@ -150,7 +166,7 @@ defineEmits<{
   gap: 0.75rem;
   height: 100%;
   min-width: 0;
-  padding: 0 0.625rem;
+  padding: 0 0.625rem 0 0.75rem;
   overflow: hidden;
   font-size: 0.75rem;
 }
@@ -174,37 +190,40 @@ defineEmits<{
 }
 
 .feed-folder-tree__add:hover {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent) / 0.58);
 }
 
 .feed-folder-tree__separator {
   height: 1px;
-  margin: 0.625rem 0;
+  margin: 0.75rem 0;
   background: hsl(var(--border) / 0.22);
+}
+
+.feed-folder-tree__folders {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
 .feed-folder-tree__folder {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-}
-
-.feed-folder-tree__folder + .feed-folder-tree__folder {
-  margin-top: 0.25rem;
+  gap: 0.125rem;
 }
 
 .feed-folder-tree__folder-button {
   justify-content: space-between;
   width: 100%;
-  height: auto;
-  padding: 0.375rem 0.625rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.625rem;
   font-size: 0.75rem;
-  font-weight: 650;
+  font-weight: 600;
   color: hsl(var(--muted-foreground));
 }
 
 .feed-folder-tree__folder-button:hover {
+  background: hsl(var(--accent) / 0.35);
   color: hsl(var(--foreground));
 }
 
@@ -218,28 +237,24 @@ defineEmits<{
 
 .feed-folder-tree__count {
   flex: 0 0 auto;
-  min-width: 1.375rem;
-  padding: 0.125rem 0.375rem;
-  border: 1px solid hsl(var(--border) / 0.28);
-  border-radius: 0.375rem;
-  background: hsl(var(--accent) / 0.42);
-  color: hsl(var(--muted-foreground));
+  min-width: 1.25rem;
+  color: hsl(var(--muted-foreground) / 0.7);
   font-size: 0.6875rem;
   line-height: 1.1;
-  text-align: center;
+  text-align: right;
 }
 
 .feed-folder-tree__feeds {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
-  padding-left: 0.75rem;
+  padding: 0.125rem 0 0.25rem 0.75rem;
 }
 
 .feed-folder-tree__feed {
   position: relative;
   gap: 0.625rem;
-  padding: 0 0.625rem;
+  padding: 0 0.5rem 0 0.75rem;
   overflow: hidden;
   font-size: 0.75rem;
   cursor: pointer;
