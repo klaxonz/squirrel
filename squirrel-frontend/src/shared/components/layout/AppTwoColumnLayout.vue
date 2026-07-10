@@ -9,7 +9,7 @@
     :style="rootStyle"
   >
     <aside
-      v-if="showSidebar && $slots.sidebar"
+      v-if="$slots.sidebar"
       class="app-workbench__sidebar"
       :class="{ 'app-workbench__sidebar--always': sidebarAlways }"
     >
@@ -52,8 +52,6 @@ const props = withDefaults(defineProps<{
   sidebarWidth?: string
   /** Always show sidebar (desktop + smaller widths). Default false = lg+ only. */
   sidebarAlways?: boolean
-  /** Whether to render the sidebar region. */
-  showSidebar?: boolean
   /** Content max-width inside main scroll (CSS value or null for token default). */
   contentWidth?: string | null
   /** Stretch to parent height (default true for workbench pages). */
@@ -66,7 +64,6 @@ const props = withDefaults(defineProps<{
 }>(), {
   sidebarWidth: '17.5rem',
   sidebarAlways: false,
-  showSidebar: true,
   contentWidth: null,
   fill: true,
   mainScroll: true,

@@ -1,7 +1,10 @@
 <template>
   <article
     class="subscription-row"
-    :class="{ 'subscription-row--error': syncFailed }"
+    :class="{
+      'subscription-row--error': syncFailed,
+      'subscription-row--selected': selected,
+    }"
   >
     <Button
       unstyled
@@ -111,6 +114,7 @@ import type { SubscriptionListItem } from '@/features/video/types/subscription'
 const props = defineProps<{
   subscription: SubscriptionListItem
   toggling?: boolean
+  selected?: boolean
 }>()
 
 defineEmits<{
@@ -162,6 +166,11 @@ const cardTitle = computed(() => {
 
 .subscription-row--error {
   background: hsl(var(--destructive) / 0.025);
+}
+
+.subscription-row--selected {
+  background: hsl(var(--foreground) / 0.045);
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.08);
 }
 
 .subscription-row__identity {
@@ -301,13 +310,13 @@ const cardTitle = computed(() => {
 }
 
 .subscription-row__star.is-active {
-  opacity: 0.72;
-  color: hsl(var(--foreground) / 0.72);
+  opacity: 0.56;
+  color: hsl(var(--muted-foreground) / 0.78);
 }
 
 .subscription-row:hover .subscription-row__star,
 .subscription-row:focus-within .subscription-row__star {
-  opacity: 1;
+  opacity: 0.78;
 }
 
 @media (prefers-reduced-motion: reduce) {

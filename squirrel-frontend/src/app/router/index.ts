@@ -138,7 +138,7 @@ const routes: RouteRecordRaw[] = [
       keepAliveComponent: 'Subscribed',
       search: 'subscribed',
       searchEvent: 'search:subscribed',
-      searchPlaceholder: '搜索订阅源',
+      searchPlaceholder: '搜索订阅内容',
       historyStrategy: 'push',
     }),
   },
