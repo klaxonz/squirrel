@@ -28,6 +28,7 @@ class RssEntryListQuery:
         feed_id: int | None = Query(None, alias='feedId'),
         is_read: bool | None = Query(None, alias='isRead'),
         is_starred: bool | None = Query(None, alias='isStarred'),
+        query: str | None = Query(None),
         page: int = Query(1, ge=1),
         page_size: int = Query(30, ge=1, le=100, alias='pageSize'),
     ) -> None:
@@ -35,6 +36,7 @@ class RssEntryListQuery:
         self.feed_id = feed_id
         self.is_read = is_read
         self.is_starred = is_starred
+        self.query = query
         self.page = page
         self.page_size = page_size
 
@@ -52,6 +54,7 @@ def list_rss_entries(
             feed_id=params.feed_id,
             is_read=params.is_read,
             is_starred=params.is_starred,
+            query=params.query,
             page=params.page,
             page_size=params.page_size,
         )

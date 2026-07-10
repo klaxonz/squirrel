@@ -1,5 +1,6 @@
 import type { Component } from 'vue'
 import {
+  Activity,
   AlertCircle,
   AlertTriangle,
   ArrowLeft,
@@ -142,6 +143,7 @@ export const APP_ICON_MAP = {
   content: ShieldCheck,
   cookie: Cookie,
   cube: Box,
+  diagnostics: Activity,
   dislike: ThumbsDown,
   download: Download,
   disc: Disc3,

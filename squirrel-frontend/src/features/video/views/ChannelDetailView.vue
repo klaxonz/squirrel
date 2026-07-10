@@ -40,7 +40,7 @@
     <div class="app-page-content app-page-content--media">
 
       <!-- Error -->
-      <div v-if="loadError" class="app-page-section">
+      <div v-if="loadError">
         <AppEmptyState variant="error" title="加载失败" :copy="loadError">
           <template #actions>
             <Button variant="outline" size="sm" @click="refreshCurrentList">重试</Button>
@@ -51,7 +51,6 @@
       <!-- Remote mode: external channel grid -->
       <RemoteChannelVideoGrid
         v-if="channelDataMode === 'remote'"
-        class="app-page-section--grid"
         :items="remoteItems"
         :loading="remoteLoading"
         :all-loaded="remoteAllLoaded"

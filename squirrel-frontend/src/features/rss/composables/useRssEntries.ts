@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue'
+import { computed, onScopeDispose, ref, watch, type Ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { copyToClipboard } from '@/shared/lib/clipboard'
 import { useContextMenuPosition } from '@/shared/composables/useContextMenuPosition'
@@ -32,21 +32,24 @@ export function useRssEntries(options: {
   selectedAccountId: Ref<number | null>
   selectedFeedId: Ref<number | null>
   feeds: Ref<RssFeed[]>
+  searchQuery: Readonly<Ref<string>>
+  searchTrigger: Readonly<Ref<number>>
   getFeedTitle: (feedId: number) => string
   readingEntry?: Ref<RssEntry | null>
   onStatus?: (message: string, isError?: boolean) => void
 }) {
   const entries = ref<RssEntry[]>([])
   const activeFilter = ref<'all' | 'unread' | 'starred' | 'recent'>('all')
-  const entrySearch = ref('')
   const page = ref(1)
   const pageSize = ref(30)
   const totalEntries = ref(0)
+  const loadingEntries = ref(true)
   const loadingMoreEntries = ref(false)
   const recentlyViewed = ref<RecentEntry[]>([])
   const entriesContainer = ref<HTMLElement | null>(null)
   const loadMoreTrigger = ref<HTMLElement | null>(null)
   let entriesObserver: IntersectionObserver | null = null
+  let entriesRequestToken = 0
 
   // Context Menu States
   const showContextMenu = ref(false)
@@ -55,18 +58,19 @@ export function useRssEntries(options: {
   const contextMenuEntry = ref<RssEntry | null>(null)
 
   const feedNavStack = ref<FeedNavSnapshot[]>([])
+  let searchTimer: ReturnType<typeof setTimeout> | undefined
 
   const hasFeedNavStack = computed(() => feedNavStack.value.length > 0)
 
   const hasMoreEntries = computed(() => {
-    if (activeFilter.value === 'recent') return false
+    if (loadingEntries.value || activeFilter.value === 'recent') return false
     return entries.value.length < totalEntries.value
   })
 
   const filteredEntries = computed(() => {
     if (activeFilter.value === 'recent') {
       let list = recentlyViewed.value
-      const query = entrySearch.value.trim().toLowerCase()
+      const query = options.searchQuery.value.trim().toLowerCase()
       if (query) {
         list = list.filter((entry) => {
           return entry.title.toLowerCase().includes(query) ||
@@ -75,15 +79,7 @@ export function useRssEntries(options: {
       }
       return list
     }
-    let list = entries.value
-    const query = entrySearch.value.trim().toLowerCase()
-    if (query) {
-      list = list.filter((entry) => {
-        return entry.title.toLowerCase().includes(query) ||
-          (entry.summary ? entry.summary.toLowerCase().includes(query) : false)
-      })
-    }
-    return list
+    return entries.value
   })
 
   const resetScroll = () => {
@@ -112,6 +108,8 @@ export function useRssEntries(options: {
     } else if (activeFilter.value === 'starred') {
       params.isStarred = true
     }
+    const query = options.searchQuery.value.trim()
+    if (query) params.query = query
     return params
   }
 
@@ -126,18 +124,27 @@ export function useRssEntries(options: {
   }
 
   const loadEntries = async (isReset = false) => {
-    if (activeFilter.value === 'recent') {
-      await loadRecentlyViewed()
-      if (isReset) resetScroll()
-      return
-    }
+    const requestToken = ++entriesRequestToken
+
     if (isReset) {
       page.value = 1
       entries.value = []
+      totalEntries.value = 0
+      loadingEntries.value = true
+      loadingMoreEntries.value = false
       resetScroll()
     }
 
+    if (activeFilter.value === 'recent') {
+      await loadRecentlyViewed()
+      if (requestToken !== entriesRequestToken) return
+      loadingEntries.value = false
+      return
+    }
+
     const result = await fetchEntriesPage()
+    if (requestToken !== entriesRequestToken) return
+    loadingEntries.value = false
     if (!result) return
 
     totalEntries.value = result.total
@@ -145,13 +152,19 @@ export function useRssEntries(options: {
   }
 
   const loadMore = async () => {
-    if (loadingMoreEntries.value || !hasMoreEntries.value) return
-    page.value += 1
+    if (loadingEntries.value || loadingMoreEntries.value || !hasMoreEntries.value) return
+    const requestToken = ++entriesRequestToken
+    const previousPage = page.value
+    page.value = previousPage + 1
     loadingMoreEntries.value = true
 
     const result = await fetchEntriesPage()
+    if (requestToken !== entriesRequestToken) return
     loadingMoreEntries.value = false
-    if (!result) return
+    if (!result) {
+      page.value = previousPage
+      return
+    }
 
     totalEntries.value = result.total
     const existingIds = new Set(entries.value.map((entry) => String(entry.id)))
@@ -345,13 +358,32 @@ export function useRssEntries(options: {
     loadEntries(true)
   })
 
+  watch(options.searchQuery, () => {
+    if (activeFilter.value === 'recent') return
+    entriesRequestToken += 1
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(() => {
+      loadEntries(true)
+    }, 250)
+  })
+
+  watch(options.searchTrigger, () => {
+    if (activeFilter.value === 'recent') return
+    clearTimeout(searchTimer)
+    loadEntries(true)
+  })
+
+  onScopeDispose(() => {
+    clearTimeout(searchTimer)
+  })
+
   return {
     entries,
     activeFilter,
-    entrySearch,
     page,
     pageSize,
     totalEntries,
+    loadingEntries,
     loadingMoreEntries,
     recentlyViewed,
     entriesContainer,

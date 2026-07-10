@@ -11,10 +11,6 @@
       <div class="history-item__thumb">
         <VideoThumbnail :src="video.thumbnail" :alt="video.title" fit="cover" interactive />
 
-        <span class="history-item__play" aria-hidden="true">
-          <AppIcon name="playback" class="size-5" />
-        </span>
-
         <span v-if="video.duration" class="history-item__duration">
           {{ formatDuration(video.duration) }}
         </span>
@@ -128,8 +124,11 @@ const displayChannel = computed(
 
 <style scoped>
 .history-item {
-  position: relative;
+  display: grid;
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr) 2rem;
+  align-items: center;
+  column-gap: var(--space-2);
   border-bottom: 1px solid var(--app-hairline);
   background: transparent;
   transition: background-color var(--duration-fast) var(--ease-default);
@@ -146,7 +145,7 @@ const displayChannel = computed(
   min-width: 0;
   grid-template-columns: 11.5rem minmax(0, 1fr);
   gap: var(--space-3);
-  padding: 0.75rem 2.75rem 0.75rem 0;
+  padding: 0.75rem 0;
   cursor: pointer;
   outline: none;
 }
@@ -163,32 +162,6 @@ const displayChannel = computed(
   border-radius: var(--radius-md);
   background: hsl(0 0% 0% / 0.55);
   isolation: isolate;
-}
-
-.history-item__play {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 10;
-  display: grid;
-  width: 2.25rem;
-  height: 2.25rem;
-  place-items: center;
-  border: 1px solid hsl(0 0% 100% / 0.2);
-  border-radius: 50%;
-  background: hsl(0 0% 0% / 0.66);
-  color: hsl(0 0% 100%);
-  opacity: 0;
-  transform: translate(-50%, -45%);
-  transition:
-    opacity var(--duration-fast) var(--ease-default),
-    transform var(--duration-fast) var(--ease-default);
-}
-
-.history-item:hover .history-item__play,
-.history-item__open:focus-visible .history-item__play {
-  opacity: 1;
-  transform: translate(-50%, -50%);
 }
 
 .history-item__duration {
@@ -276,14 +249,12 @@ const displayChannel = computed(
 }
 
 .history-item__status--active {
-  color: hsl(var(--primary));
+  color: hsl(var(--muted-foreground));
   font-weight: 600;
 }
 
 .history-item__delete {
-  position: absolute;
-  top: 0.75rem;
-  right: 0;
+  justify-self: end;
   color: hsl(var(--muted-foreground));
   opacity: 0;
   transition:
@@ -304,7 +275,6 @@ const displayChannel = computed(
 
 @media (prefers-reduced-motion: reduce) {
   .history-item,
-  .history-item__play,
   .history-item__delete {
     transition: none;
   }

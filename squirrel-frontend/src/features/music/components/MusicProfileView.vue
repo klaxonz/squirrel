@@ -113,10 +113,25 @@
       <div class="music-profile-panel">
         <TabsContent value="playlists" class="music-profile-playlists">
           <div class="music-profile-playlist-section">
-            <h3 class="music-profile-section-title">创建的歌单 ({{ createdPlaylists.length }})</h3>
-            <div v-if="createdPlaylists.length === 0" class="music-profile-playlist-empty">
-              暂无自建歌单，您可以在顶部创建歌单
+            <div class="music-profile-section-header">
+              <h3 class="music-profile-section-title">创建的歌单 ({{ createdPlaylists.length }})</h3>
+              <MusicCreatePlaylistDialog
+                v-if="createdPlaylists.length > 0"
+                :on-create="createPlaylist"
+              />
             </div>
+            <AppEmptyState
+              v-if="createdPlaylists.length === 0"
+              class="music-profile-playlist-empty"
+              variant="plain"
+              icon="playlistMusic"
+              title="还没有创建歌单"
+              copy="创建一个歌单，用来整理和持续收听喜欢的歌曲。"
+            >
+              <template #actions>
+                <MusicCreatePlaylistDialog :on-create="createPlaylist" />
+              </template>
+            </AppEmptyState>
             <div v-else class="music-grid">
               <div
                 v-for="playlist in createdPlaylists"
@@ -216,6 +231,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import MusicTrackList from './MusicTrackList.vue'
+import MusicCreatePlaylistDialog from './profile/MusicCreatePlaylistDialog.vue'
 import { formatMusicImageUrl, formatRegTime } from '@/features/music/lib/musicFormatters'
 import type { MusicUserProfile, MusicUserPlaylist, MusicTrack, MusicAuthStatus } from '@/shared/api/music'
 
@@ -232,6 +248,7 @@ const props = defineProps<{
   error: string
   logoutLoading: boolean
   targetPlaylistId: string
+  createPlaylist: (name: string) => Promise<boolean>
 }>()
 
 defineEmits<{
@@ -499,18 +516,26 @@ const currentProfileTracks = computed(() => activeTab.value === 'history' ? prop
   gap: 0.75rem;
 }
 
+.music-profile-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 2rem;
+}
+
 .music-profile-section-title {
+  margin: 0;
   font-size: 0.875rem;
   font-weight: 600;
   color: hsl(var(--foreground));
 }
 
 .music-profile-playlist-empty {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  padding: 1rem;
-  background: hsl(var(--muted) / 0.2);
-  border-radius: 0.375rem;
+  min-height: 13rem;
+  border: 1px dashed hsl(var(--border) / 0.5);
+  border-radius: var(--app-surface-radius);
+  background: hsl(var(--muted) / 0.12);
 }
 
 .music-grid {

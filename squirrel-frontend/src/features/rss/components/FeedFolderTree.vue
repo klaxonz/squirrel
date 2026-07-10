@@ -1,20 +1,25 @@
 <template>
-  <div class="feed-folder-tree custom-scrollbar">
-    <div class="feed-folder-tree__heading">
-      <span>订阅目录</span>
-      <span>{{ folders.length }} 个分类</span>
-    </div>
-
+  <div class="feed-folder-tree custom-scrollbar" :aria-busy="loading">
     <div class="feed-folder-tree__all" :class="{ 'is-selected': !selectedFeedId }">
       <Button
         variant="ghost"
         size="sm"
+        :disabled="loading"
         @click="$emit('selectAll')"
         class="feed-folder-tree__all-button"
       >
         <AppIcon name="inbox" class="h-3.5 w-3.5 shrink-0" />
         <span class="truncate">全部订阅</span>
-        <span class="feed-folder-tree__total">{{ totalFeeds }}</span>
+        <span class="feed-folder-tree__total">
+          <AppSkeleton
+            v-if="loading"
+            width="0.875rem"
+            height="0.625rem"
+            rounded="var(--radius-sm)"
+            shimmer
+          />
+          <template v-else>{{ totalFeeds }}</template>
+        </span>
       </Button>
       <Button
         v-if="hasAccount"
@@ -30,65 +35,71 @@
 
     <div class="feed-folder-tree__separator"></div>
 
-    <div class="feed-folder-tree__folders">
-      <div v-for="folder in folders" :key="folder.name" class="feed-folder-tree__folder">
-        <Button
-          variant="ghost"
-          size="sm"
-          @click="$emit('toggleFolder', folder.name)"
-          class="feed-folder-tree__folder-button"
-        >
-          <div class="flex items-center gap-1.5 min-w-0">
-            <AppIcon
-              name="chevronRight"
-              class="feed-folder-tree__chevron"
-              :class="{ 'rotate-90': expandedFolders[folder.name] }"
-            />
-            <span class="truncate">{{ folder.name }}</span>
-          </div>
-          <span class="feed-folder-tree__count">{{ folder.feeds.length }}</span>
-        </Button>
+    <FeedFolderTreeSkeleton v-if="loading" />
 
-        <div v-if="expandedFolders[folder.name]" class="feed-folder-tree__feeds">
-          <div
-            v-for="feed in folder.feeds"
-            :key="feed.id"
-            role="button"
-            tabindex="0"
-            @click="$emit('selectFeed', feed.id)"
-            @keydown.enter.prevent="$emit('selectFeed', feed.id)"
-            @keydown.space.prevent="$emit('selectFeed', feed.id)"
-            @contextmenu.prevent.stop="$emit('feedContextMenu', feed, $event)"
-            class="feed-folder-tree__feed"
-            :class="{ 'is-selected': selectedFeedId === feed.id }"
+    <template v-else>
+      <div class="feed-folder-tree__folders">
+        <div v-for="folder in folders" :key="folder.name" class="feed-folder-tree__folder">
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="$emit('toggleFolder', folder.name)"
+            class="feed-folder-tree__folder-button"
           >
-            <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
-            <span class="flex-1 truncate">{{ feed.title }}</span>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              @click.stop="$emit('unsubscribeFeed', feed)"
-              class="feed-folder-tree__remove"
-              title="取消订阅"
+            <div class="flex items-center gap-1.5 min-w-0">
+              <AppIcon
+                name="chevronRight"
+                class="feed-folder-tree__chevron"
+                :class="{ 'rotate-90': expandedFolders[folder.name] }"
+              />
+              <span class="truncate">{{ folder.name }}</span>
+            </div>
+            <span class="feed-folder-tree__count">{{ folder.feeds.length }}</span>
+          </Button>
+
+          <div v-if="expandedFolders[folder.name]" class="feed-folder-tree__feeds">
+            <div
+              v-for="feed in folder.feeds"
+              :key="feed.id"
+              role="button"
+              tabindex="0"
+              @click="$emit('selectFeed', feed.id)"
+              @keydown.enter.prevent="$emit('selectFeed', feed.id)"
+              @keydown.space.prevent="$emit('selectFeed', feed.id)"
+              @contextmenu.prevent.stop="$emit('feedContextMenu', feed, $event)"
+              class="feed-folder-tree__feed"
+              :class="{ 'is-selected': selectedFeedId === feed.id }"
             >
-              <AppIcon name="close" class="h-3 w-3" />
-            </Button>
+              <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
+              <span class="flex-1 truncate">{{ feed.title }}</span>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                @click.stop="$emit('unsubscribeFeed', feed)"
+                class="feed-folder-tree__remove"
+                title="取消订阅"
+              >
+                <AppIcon name="close" class="h-3 w-3" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div v-if="!folders.length" class="feed-folder-tree__empty">
-      暂无匹配订阅源
-    </div>
+      <div v-if="!folders.length" class="feed-folder-tree__empty">
+        暂无匹配订阅源
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Button } from '@/shared/ui/button'
 import type { RssFeed } from '@/features/rss/composables/rssTypes'
+import FeedFolderTreeSkeleton from './FeedFolderTreeSkeleton.vue'
 
 interface FeedFolder {
   name: string
@@ -101,6 +112,7 @@ defineProps<{
   selectedFeedId: number | null
   totalFeeds: number
   hasAccount: boolean
+  loading: boolean
 }>()
 
 defineEmits<{
@@ -121,16 +133,6 @@ defineEmits<{
   flex-direction: column;
   overflow-y: auto;
   padding: var(--space-3);
-}
-
-.feed-folder-tree__heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.125rem 0.5rem 0.5rem;
-  color: hsl(var(--muted-foreground) / 0.68);
-  font-size: 0.625rem;
-  font-weight: 650;
 }
 
 .feed-folder-tree__all,

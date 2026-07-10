@@ -192,7 +192,7 @@ export function useMusicDetail() {
     }
   }
 
-  async function selectAlbum(album: MusicAlbum) {
+  async function selectAlbum(album: MusicAlbum): Promise<boolean> {
     selectedAlbum.value = album
     selectedPlaylist.value = null
     selectedUserPlaylist.value = null
@@ -209,11 +209,13 @@ export function useMusicDetail() {
       tracksHasMore.value = tracks.value.length < total.value
 
       loadFavoriteCounts(tracks.value)
+      return tracks.value.length > 0
     } catch (err) {
       Logger.warn('selectAlbum failed', err)
       tracks.value = []
       total.value = 0
       tracksHasMore.value = false
+      return false
     } finally {
       tracksLoading.value = false
     }

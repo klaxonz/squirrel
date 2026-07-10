@@ -2,41 +2,15 @@
   <AppPageShell variant="compact" fill>
     <div class="subscription-page">
       <div class="subscription-control-bar">
-        <div
-          class="subscription-control-bar__inner"
-          :class="{ 'is-library-view': activeView === 'channels' }"
-        >
-          <nav class="subscription-view-nav" aria-label="订阅视图">
-            <Button
-              v-for="option in viewOptions"
-              :key="option.value"
-              unstyled
-              type="button"
-              class="subscription-view-nav__item"
-              :class="{ 'is-active': activeView === option.value }"
-              :aria-current="activeView === option.value ? 'page' : undefined"
-              @click="activeView = option.value"
-            >
-              <span>{{ option.label }}</span>
-              <span
-                v-if="option.count != null && option.count > 0"
-                class="subscription-view-nav__count app-mono"
-              >
-                {{ option.count > 999 ? '999+' : option.count }}
-              </span>
-            </Button>
-          </nav>
+        <div class="subscription-control-bar__inner">
+          <AppSectionNav
+            v-model="activeView"
+            class="app-section-nav--optical"
+            :options="viewOptions"
+            aria-label="订阅视图"
+          />
 
           <section class="subscription-toolbar" aria-label="订阅筛选和操作">
-            <AppSearchInput
-              v-if="activeView === 'channels'"
-              :model-value="channelSearch"
-              class="subscription-toolbar__search"
-              placeholder="搜索频道..."
-              aria-label="搜索频道"
-              @update:model-value="channelSearch = $event"
-            />
-
             <Popover>
               <PopoverTrigger as-child>
                 <Button
@@ -353,7 +327,7 @@ import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
-import AppSearchInput from '@/shared/components/layout/AppSearchInput.vue'
+import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
@@ -421,7 +395,7 @@ const { openVideo, openSubscription } = useVideoCardNavigation(router)
 const { options: siteOptions, fetchSites } = useSites()
 
 const activeView = ref<SubscriptionView>('inbox')
-const feedSearch = ref('')
+const feedSearch = ref(uiStore.getSearchQuery('subscribed').trim())
 const channelSearch = ref('')
 const site = ref<string | undefined>()
 const nsfw = ref<'all' | 'yes' | 'no'>('all')
@@ -434,8 +408,6 @@ const feedTrigger = ref<HTMLElement | null>(null)
 const channelTrigger = ref<HTMLElement | null>(null)
 let feedObserver: IntersectionObserver | null = null
 let channelObserver: IntersectionObserver | null = null
-let feedSearchTimer: number | null = null
-let channelSearchTimer: number | null = null
 
 const channels = ref<SubscriptionListItem[]>([])
 const channelsTotal = ref(0)
@@ -494,24 +466,28 @@ const contentLevelOptions = [
 const viewOptions = computed<{
   value: SubscriptionView
   label: string
-  count: number | null
+  badge: string | null
 }[]>(() => [
   {
     value: 'inbox',
     label: '收件箱',
-    count: null,
+    badge: null,
   },
-  { value: 'activity', label: '全部动态', count: null },
-  { value: 'special', label: '特别关注', count: null },
+  { value: 'activity', label: '全部动态', badge: null },
+  { value: 'special', label: '特别关注', badge: null },
   {
     value: 'issues',
     label: '需要处理',
-    count: channelsFinished.value ? issueChannels.value.length : null,
+    badge: channelsFinished.value && issueChannels.value.length > 0
+      ? issueChannels.value.length > 999
+        ? '999+'
+        : String(issueChannels.value.length)
+      : null,
   },
   {
     value: 'channels',
     label: '频道库',
-    count: null,
+    badge: null,
   },
 ])
 
@@ -941,6 +917,14 @@ const initObservers = () => {
 
 watch(activeView, async () => {
   scrollToTop()
+  if (activeView.value === 'channels') {
+    uiStore.setSearchQuery('subscribed', channelSearch.value)
+  } else if (isFeedView.value) {
+    uiStore.setSearchQuery('subscribed', feedSearch.value)
+  } else {
+    uiStore.setSearchQuery('subscribed', '')
+  }
+
   if (isFeedView.value) {
     await Promise.all([fetchChannels(true), fetchFeed(true)])
   } else {
@@ -967,38 +951,21 @@ watch(librarySpecialOnly, () => {
   if (activeView.value === 'channels') void fetchChannels(true)
 })
 
-watch(feedSearch, () => {
-  if (feedSearchTimer !== null) window.clearTimeout(feedSearchTimer)
-  feedSearchTimer = window.setTimeout(() => {
-    if (isFeedView.value) void fetchFeed(true)
-  }, 250)
-})
+watch(() => uiStore.getSearchTrigger('subscribed'), async () => {
+  const query = uiStore.getSearchQuery('subscribed').trim()
 
-watch(channelSearch, () => {
-  if (channelSearchTimer !== null) window.clearTimeout(channelSearchTimer)
-  channelSearchTimer = window.setTimeout(() => {
-    if (activeView.value === 'channels') void fetchChannels(true)
-  }, 250)
-})
-
-watch(() => uiStore.searchTrigger, async () => {
-  const viewChanged = activeView.value !== 'activity'
-
-  if (feedSearchTimer !== null) {
-    window.clearTimeout(feedSearchTimer)
-    feedSearchTimer = null
+  scrollToTop()
+  if (activeView.value === 'channels') {
+    channelSearch.value = query
+    await fetchChannels(true)
+    return
   }
 
-  feedSearch.value = uiStore.searchQuery.trim()
+  const viewChanged = activeView.value !== 'activity'
+  feedSearch.value = query
   activeView.value = 'activity'
 
-  await nextTick()
-  if (feedSearchTimer !== null) {
-    window.clearTimeout(feedSearchTimer)
-    feedSearchTimer = null
-  }
-
-  if (!viewChanged) void fetchFeed(true)
+  if (!viewChanged) await fetchFeed(true)
 })
 
 watch(contentScroll, () => {
@@ -1013,8 +980,6 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (feedSearchTimer !== null) window.clearTimeout(feedSearchTimer)
-  if (channelSearchTimer !== null) window.clearTimeout(channelSearchTimer)
   feedObserver?.disconnect()
   channelObserver?.disconnect()
 })
@@ -1022,6 +987,7 @@ onUnmounted(() => {
 
 <style scoped>
 .subscription-page {
+  --subscription-content-width: 88rem;
   display: flex;
   width: 100%;
   height: 100%;
@@ -1033,64 +999,18 @@ onUnmounted(() => {
 .subscription-control-bar {
   min-height: 3.5rem;
   flex: none;
+  border-bottom: 1px solid var(--app-hairline);
 }
 
 .subscription-control-bar__inner {
   display: flex;
-  width: min(100%, 72rem);
+  width: min(100%, var(--subscription-content-width));
   min-height: 3.5rem;
   margin: 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-  border-bottom: 1px solid var(--app-hairline);
   padding: 0 var(--space-6);
-}
-
-.subscription-control-bar__inner.is-library-view {
-  width: min(100%, 88rem);
-}
-
-.subscription-view-nav {
-  display: flex;
-  min-width: 0;
-  flex: none;
-  align-items: center;
-  gap: var(--space-5);
-}
-
-.subscription-view-nav__item {
-  display: inline-flex;
-  height: 3.5rem;
-  align-items: center;
-  gap: 0.325rem;
-  padding: 0;
-  color: hsl(var(--muted-foreground) / 0.86);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
-}
-
-.subscription-view-nav__item:hover,
-.subscription-view-nav__item:focus-visible {
-  color: hsl(var(--foreground));
-  outline: none;
-}
-
-.subscription-view-nav__item.is-active {
-  color: hsl(var(--foreground));
-  font-weight: 620;
-}
-
-.subscription-view-nav__count {
-  min-width: 0.75rem;
-  color: hsl(var(--muted-foreground) / 0.76);
-  font-size: 0.625rem;
-  line-height: 1;
-  text-align: center;
 }
 
 .subscription-toolbar {
@@ -1100,11 +1020,6 @@ onUnmounted(() => {
   flex: none;
   align-items: center;
   gap: var(--space-2);
-}
-
-.subscription-toolbar__search {
-  width: 15rem;
-  flex: 0 1 15rem;
 }
 
 .subscription-toolbar__filter {
@@ -1240,6 +1155,7 @@ onUnmounted(() => {
   min-height: 0;
   flex: 1 1 auto;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .subscription-content__empty {
@@ -1252,13 +1168,13 @@ onUnmounted(() => {
 
 .subscription-feed,
 .subscription-feed-skeletons {
-  width: min(100%, 72rem);
+  width: min(100%, var(--subscription-content-width));
   margin: 0 auto;
   padding: var(--space-5) var(--space-6) var(--app-content-padding-bottom);
 }
 
 .subscription-list-view {
-  width: min(100%, 88rem);
+  width: min(100%, var(--subscription-content-width));
   margin: 0 auto;
   padding: var(--space-5) var(--space-6) var(--app-content-padding-bottom);
 }
@@ -1354,26 +1270,11 @@ onUnmounted(() => {
     padding-inline: var(--space-4);
   }
 
-  .subscription-view-nav__item {
-    padding-inline: 0.5rem;
-  }
-
   .subscription-feed,
   .subscription-feed-skeletons,
   .subscription-list-view {
     padding-inline: var(--space-4);
   }
 
-  .subscription-toolbar__search {
-    width: 12rem;
-    flex-basis: 12rem;
-  }
-
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .subscription-view-nav__item {
-    transition: none;
-  }
 }
 </style>

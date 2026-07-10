@@ -4,9 +4,12 @@
       <Transition name="fade" mode="out-in">
         <div v-if="showSearch" key="search" class="app-header__search-wrap">
           <GlobalSearchBar
+            :key="searchScope"
             class="app-header__search"
+            :search-scope="searchScope"
             :placeholder="String(route.meta.searchPlaceholder || '搜索或输入命令...')"
             :suggestion-scope="String(route.meta.search || 'home')"
+            :suggestions-enabled="searchSuggestionsEnabled"
             :search-modes="showVideoSearchMode ? searchModeOptions : []"
             :active-search-mode="videoSearchMode"
             :search-redirect-name="searchRedirectName"
@@ -66,6 +69,8 @@ const goToProfile = () => {
 }
 
 const showSearch = computed(() => !!route.meta?.showSearch)
+const searchScope = computed(() => String(route.meta.searchPersistKey || route.meta.search))
+const searchSuggestionsEnabled = computed(() => route.meta.searchSuggestions !== false)
 const isVideosRoute = computed(() => route.matched.some((record) => record.name === 'VideosView'))
 const showVideoSearchMode = computed(() => {
   return isDesktopEnv()

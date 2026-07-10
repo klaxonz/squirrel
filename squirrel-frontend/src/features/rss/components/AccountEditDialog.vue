@@ -43,47 +43,56 @@
         </div>
 
         <div class="app-dialog-form-field">
-          <label class="app-dialog-form-label">服务接口地址 (URL)</label>
+          <label class="app-dialog-form-label">
+            服务接口地址 (URL)
+            <span class="account-dialog__required-marker" aria-hidden="true">*</span>
+          </label>
           <div class="app-icon-field">
             <AppIcon name="link" class="app-icon-field__icon" />
             <Input
               v-model="form.base_url"
               class="app-form-input app-form-input--with-icon"
               :placeholder="baseUrlPlaceholder"
+              required
+              aria-required="true"
             />
           </div>
         </div>
 
         <div class="app-dialog-form-field">
-          <div class="app-dialog-form-label-row">
-            <label class="app-dialog-form-label">用户名</label>
+          <label class="app-dialog-form-label">
+            用户名
             <span
-              v-if="form.provider === 'greader' || form.provider === 'fever'"
-              class="app-dialog-form-required"
+              v-if="requiresUsername"
+              class="account-dialog__required-marker"
+              aria-hidden="true"
             >
-              * 必填
+              *
             </span>
-          </div>
+          </label>
           <div class="app-icon-field">
             <AppIcon name="user" class="app-icon-field__icon" />
             <Input
               v-model="form.username"
               class="app-form-input app-form-input--with-icon"
-              placeholder="用户名 (Google Reader 与 Fever 需要)"
+              placeholder="用户名"
+              :required="requiresUsername"
+              :aria-required="requiresUsername"
             />
           </div>
         </div>
 
         <div class="app-dialog-form-field">
-          <div class="app-dialog-form-label-row">
-            <label class="app-dialog-form-label">{{ credentialPlaceholder }}</label>
+          <label class="app-dialog-form-label">
+            {{ credentialPlaceholder }}
             <span
               v-if="!form.id"
-              class="app-dialog-form-required"
+              class="account-dialog__required-marker"
+              aria-hidden="true"
             >
-              * 必填
+              *
             </span>
-          </div>
+          </label>
           <div class="app-icon-field">
             <AppIcon name="security" class="app-icon-field__icon" />
             <Input
@@ -91,6 +100,8 @@
               type="password"
               class="app-form-input app-form-input--with-icon"
               :placeholder="form.id ? '留空表示不修改密码或 Token' : '密码或 API Token'"
+              :required="!form.id"
+              :aria-required="!form.id"
             />
           </div>
         </div>
@@ -129,7 +140,7 @@
           :loading="testing"
           @click="$emit('test')"
         >
-          <AppIcon v-if="!testing" name="sync" class="h-3.5 w-3.5 mr-1.5 opacity-70" />
+          <AppIcon v-if="!testing" name="diagnostics" class="h-3.5 w-3.5 mr-1.5 opacity-70" />
           测试连接
         </Button>
         <div class="app-dialog-actions">
@@ -143,7 +154,9 @@
           </Button>
           <Button
             type="button"
+            variant="outline"
             size="sm"
+            class="account-dialog__confirm"
             :disabled="!canSaveForm"
             :loading="saving"
             @click="$emit('save')"
@@ -199,6 +212,7 @@ interface Props {
   credentialPlaceholder: string
   formMessage: string
   formError: boolean
+  requiresUsername: boolean
   canSaveForm: boolean
   canTestForm: boolean
   saving: boolean
@@ -274,8 +288,26 @@ defineEmits<{
   line-height: 1.45;
 }
 
+.account-dialog__required-marker {
+  margin-left: 0.1875rem;
+  color: hsl(var(--destructive) / 0.78);
+  font-weight: 500;
+}
+
 .account-dialog__button--test {
   flex: 0 0 auto;
+}
+
+.account-dialog__confirm {
+  border-color: hsl(var(--border) / 0.58);
+  background: hsl(var(--accent) / 0.24);
+  color: hsl(var(--foreground) / 0.82);
+}
+
+.account-dialog__confirm:hover {
+  border-color: hsl(var(--border) / 0.78);
+  background: hsl(var(--accent) / 0.58);
+  color: hsl(var(--foreground));
 }
 
 @media (prefers-reduced-motion: reduce) {

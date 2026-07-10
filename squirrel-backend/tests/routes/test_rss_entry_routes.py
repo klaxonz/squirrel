@@ -12,7 +12,7 @@ class FakeRssService:
     def __init__(self):
         self.calls = []
 
-    def list_entries(self, user_id, *, account_id, feed_id, is_read, is_starred, page, page_size):
+    def list_entries(self, user_id, *, account_id, feed_id, is_read, is_starred, query, page, page_size):
         self.calls.append(
             {
                 'user_id': user_id,
@@ -20,6 +20,7 @@ class FakeRssService:
                 'feed_id': feed_id,
                 'is_read': is_read,
                 'is_starred': is_starred,
+                'query': query,
                 'page': page,
                 'page_size': page_size,
             }
@@ -43,6 +44,7 @@ def test_list_rss_entries_forwards_query_model_values():
             'feedId': 22,
             'isRead': 'true',
             'isStarred': 'false',
+            'query': 'security',
             'page': 3,
             'pageSize': 40,
         },
@@ -57,6 +59,7 @@ def test_list_rss_entries_forwards_query_model_values():
             'feed_id': 22,
             'is_read': True,
             'is_starred': False,
+            'query': 'security',
             'page': 3,
             'page_size': 40,
         }

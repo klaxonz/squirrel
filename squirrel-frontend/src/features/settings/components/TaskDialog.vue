@@ -1,14 +1,11 @@
 <template>
   <Dialog :open="true" @update:open="!$event && $emit('close')">
     <DialogContent class="flex max-h-[90vh] w-full max-w-xl flex-col gap-0 overflow-hidden rounded-lg p-0">
-      <DialogHeader class="app-divider-bottom flex shrink-0 flex-row items-start justify-between space-y-0 p-5 text-left">
+      <DialogHeader class="app-divider-bottom flex shrink-0 flex-row items-center justify-between space-y-0 p-5 text-left">
         <div class="min-w-0">
           <DialogTitle class="text-base font-semibold text-foreground">
             {{ isEditing ? '编辑任务' : '新建任务' }}
           </DialogTitle>
-          <DialogDescription class="mt-1 text-sm text-muted-foreground">
-            配置任务逻辑、调度间隔和运行参数。
-          </DialogDescription>
         </div>
         <DialogClose as-child>
           <Button variant="ghost" size="icon-sm">
@@ -138,7 +135,7 @@
 
       <DialogFooter class="app-divider-top flex shrink-0 items-center justify-end gap-2 bg-muted/30 p-4 sm:justify-end">
         <Button variant="outline" @click="$emit('close')">取消</Button>
-        <Button :loading="loading" :disabled="!!jsonError" @click="handleSubmit">
+        <Button variant="contrast" :loading="loading" :disabled="!!jsonError" @click="handleSubmit">
           {{ isEditing ? '保存' : '创建' }}
         </Button>
       </DialogFooter>
@@ -157,7 +154,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,

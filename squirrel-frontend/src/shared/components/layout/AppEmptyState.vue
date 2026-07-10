@@ -81,8 +81,8 @@ const variantClass = computed(() =>
   width: 3.25rem;
   height: 3.25rem;
   border-radius: var(--radius-xl);
-  background: hsl(var(--primary) / 0.1);
-  border: 1px solid hsl(var(--primary) / 0.18);
+  background: hsl(var(--muted) / 0.52);
+  border: 1px solid hsl(var(--border) / 0.62);
   margin-bottom: var(--space-1);
 }
 
@@ -90,20 +90,20 @@ const variantClass = computed(() =>
   width: 3.5rem;
   height: 3.5rem;
   border-radius: var(--radius-xl);
-  background: hsl(var(--primary) / 0.1);
+  background: hsl(var(--muted) / 0.52);
   box-shadow: inset 0 0 0 4px hsl(var(--background) / 0.58);
 }
 
 .app-empty-state__icon {
   width: 1.5rem;
   height: 1.5rem;
-  color: hsl(var(--primary));
+  color: hsl(var(--muted-foreground) / 0.84);
 }
 
 .app-empty-state--icon-circle .app-empty-state__icon {
   width: 1.25rem;
   height: 1.25rem;
-  color: hsl(var(--primary));
+  color: hsl(var(--muted-foreground) / 0.84);
 }
 
 .app-empty-state__title {
@@ -137,6 +137,7 @@ const variantClass = computed(() =>
    visually distinct from a genuinely-empty list. Layout reuses `--plain`. */
 .app-empty-state--error .app-empty-state__icon-wrap {
   background: hsl(var(--destructive) / 0.12);
+  border-color: hsl(var(--destructive) / 0.22);
 }
 
 .app-empty-state--error .app-empty-state__icon {

@@ -12,8 +12,8 @@ from domains.rss.application.services.client._greader import (
     G_READER_QUICK_ENTRIES_PER_FEED,
     G_READER_READING_LIST_STATE,
     GReaderClient,
-    _greader_normalize_item_id,
     _greader_entry_to_remote,
+    _greader_normalize_item_id,
 )
 from domains.rss.application.services.client._miniflux import MinifluxClient
 from domains.rss.application.services.credential import decrypt_credential
@@ -109,6 +109,9 @@ def test_sync_account_upserts_feeds_and_entries(engine, session_factory, account
     assert account_svc.list_feeds(1)[0]['title'] == 'Feed One'
     assert entries['total'] == 1
     assert entries['data'][0]['title'] == 'Entry One'
+    assert account_svc.list_entries(1, query='entry one')['total'] == 1
+    assert account_svc.list_entries(1, query='body')['total'] == 1
+    assert account_svc.list_entries(1, query='missing')['total'] == 0
 
 
 def test_bulk_update_entries_read_status_updates_user_entries_only(engine, session_factory, account_svc, sync_svc):

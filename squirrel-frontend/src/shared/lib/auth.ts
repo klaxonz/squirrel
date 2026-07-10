@@ -6,7 +6,7 @@ export const clearAuthStorage = () => {
 const redirectToLogin = () => {
   if (typeof window === 'undefined') return
   if (window.location.pathname === '/login') return
-  window.location.href = '/login'
+  window.location.replace('/login')
 }
 
 export const logoutAndRedirect = async () => {

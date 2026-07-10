@@ -29,7 +29,7 @@
         :aria-label="`播放 ${title}`"
         @click.stop="$emit('play')"
       >
-        <AppIcon name="play" class="h-3.5 w-3.5 fill-current" />
+        <AppIcon name="play" class="music-card-play-icon" />
       </Button>
 
       <span v-if="isPlaying" class="music-card-playing-badge">
@@ -121,6 +121,17 @@ function handleCoverError() {
   transition: border-color var(--duration-fast) var(--ease-default);
 }
 
+.music-card-cover::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: hsl(0 0% 0% / 0.28);
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
 .music-card-cover-button {
   display: block;
   width: 100%;
@@ -163,51 +174,62 @@ function handleCoverError() {
 
 .music-card-play {
   position: absolute;
-  right: 0.625rem;
-  bottom: 0.625rem;
+  top: 50%;
+  left: 50%;
   z-index: 2;
   display: flex;
-  width: 1.875rem;
-  height: 1.875rem;
+  width: 2.75rem;
+  height: 2.75rem;
   align-items: center;
   justify-content: center;
-  border: 1px solid hsl(0 0% 100% / 0.16);
-  border-radius: 999px;
-  background: hsl(0 0% 6% / 0.82);
-  color: hsl(0 0% 100% / 0.92);
-  box-shadow: 0 3px 10px hsl(0 0% 0% / 0.28);
+  border: 0;
+  background: transparent;
+  color: hsl(0 0% 100%);
   opacity: 0;
-  transform: translateY(0.2rem);
+  transform: translate(-50%, -50%) scale(0.88);
   cursor: pointer;
   transition:
     opacity var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out),
-    border-color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default),
     color var(--duration-fast) var(--ease-default);
+}
+
+.music-card-play-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: currentColor;
+  filter: drop-shadow(0 2px 5px hsl(0 0% 0% / 0.42));
+  transform: translateX(0.075rem);
+}
+
+.music-card:hover .music-card-cover::after,
+.music-card:focus-within .music-card-cover::after,
+.music-card--playing .music-card-cover::after,
+.music-card:hover .music-card-play,
+.music-card:focus-within .music-card-play,
+.music-card--playing .music-card-play {
+  opacity: 1;
 }
 
 .music-card:hover .music-card-play,
 .music-card:focus-within .music-card-play,
 .music-card--playing .music-card-play {
-  opacity: 1;
-  transform: none;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 .music-card-play:hover {
-  border-color: hsl(0 0% 100% / 0.72);
-  background: hsl(0 0% 96%);
-  color: hsl(0 0% 8%);
-  transform: scale(1.04);
+  color: hsl(0 0% 100% / 0.84);
+  transform: translate(-50%, -50%) scale(1.08);
 }
 
 .music-card-play:active {
-  transform: scale(0.94);
+  transform: translate(-50%, -50%) scale(0.92);
 }
 
 .music-card-play:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
+  border-radius: var(--radius-md);
+  outline: 2px solid hsl(0 0% 100% / 0.9);
+  outline-offset: 0;
 }
 
 .music-card-playing-badge {
@@ -282,6 +304,7 @@ function handleCoverError() {
 
 @media (prefers-reduced-motion: reduce) {
   .music-card-cover,
+  .music-card-cover::after,
   .music-card-cover-button img,
   .music-card-play {
     transition: none;

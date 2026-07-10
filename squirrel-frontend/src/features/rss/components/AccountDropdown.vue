@@ -64,16 +64,6 @@
           </div>
         </AppSelectableListItem>
         <AppListEmpty v-if="!accounts.length">暂无账号</AppListEmpty>
-        <AppListSeparator />
-        <Button
-          variant="ghost"
-          size="sm"
-          @click="$emit('add')"
-          class="account-dropdown__add"
-        >
-          <AppIcon name="plus" class="h-4 w-4" />
-          添加服务账号
-        </Button>
     </AppFloatingList>
   </div>
 </template>
@@ -83,7 +73,6 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppFloatingList from '@/shared/components/layout/AppFloatingList.vue'
 import AppListEmpty from '@/shared/components/layout/AppListEmpty.vue'
 import AppSelectableListItem from '@/shared/components/layout/AppSelectableListItem.vue'
-import AppListSeparator from '@/shared/components/layout/AppListSeparator.vue'
 import { Button } from '@/shared/ui/button'
 import type { RssAccount } from '@/features/rss/composables/rssTypes'
 
@@ -100,7 +89,6 @@ defineEmits<{
   select: [id: number]
   edit: [acc: RssAccount]
   delete: [acc: RssAccount]
-  add: []
 }>()
 </script>
 
@@ -210,21 +198,6 @@ defineEmits<{
 .account-dropdown__icon-button--danger:hover {
   background: hsl(var(--destructive) / 0.12);
   color: hsl(var(--destructive));
-}
-
-.account-dropdown__add {
-  gap: 0.5rem;
-  width: 100%;
-  min-height: 2.25rem;
-  padding: 0 0.75rem;
-  color: hsl(var(--foreground) / 0.82);
-  font-size: 0.8125rem;
-  font-weight: 650;
-}
-
-.account-dropdown__add:hover {
-  background: hsl(var(--accent) / 0.46);
-  color: hsl(var(--foreground));
 }
 
 .account-dropdown :deep(.app-selectable-list-item.is-selected) {

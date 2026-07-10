@@ -144,20 +144,21 @@ type SeedSubscription = {
 }
 
 const props = defineProps<{
-  modelValue?: string
+  searchScope: string
   placeholder?: string
-  suggestionScope?: string
+  suggestionScope: string
+  suggestionsEnabled: boolean
   searchModes?: readonly SearchModeOption[]
   activeSearchMode?: string
   searchRedirectName?: string
 }>()
 
-const emit = defineEmits(['update:modelValue', 'search', 'clear', 'search-mode-change'])
+const emit = defineEmits(['search', 'clear', 'search-mode-change'])
 const uiStore = useUIStore()
 const route = useRoute()
 const router = useRouter()
 
-const inputValue = ref(uiStore.searchQuery)
+const inputValue = ref(uiStore.getSearchQuery(props.searchScope))
 const isFocused = ref(false)
 const isTyping = ref(false)
 const isComposing = ref(false)
@@ -174,20 +175,20 @@ const {
   addRecentSearch,
   removeRecentSearch,
   clearRecentSearches,
-} = useSearchHistory()
+} = useSearchHistory(props.searchScope)
 
 let typingTimeout: ReturnType<typeof setTimeout> | undefined
 let suggestionTimeout: ReturnType<typeof setTimeout> | undefined
 
 const trimmedInputValue = computed(() => inputValue.value.trim())
-const showSuggestions = computed(() => isPanelOpen.value && isFocused.value)
+const showSuggestions = computed(() => props.suggestionsEnabled && isPanelOpen.value && isFocused.value)
 const searchModesList = computed(() => props.searchModes ?? [])
 const activeSearchModeLabel = computed(() => {
   return searchModesList.value.find((mode) => mode.value === props.activeSearchMode)?.label || ''
 })
 const selectableItems = computed<SuggestionItem[]>(() => [...suggestionItems.value])
 
-watch(() => uiStore.searchQuery, (newVal) => {
+watch(() => uiStore.getSearchQuery(props.searchScope), (newVal) => {
   if (newVal !== inputValue.value) inputValue.value = newVal
 })
 
@@ -216,9 +217,14 @@ const suggestionTitle = computed(() => trimmedInputValue.value ? '搜索建议' 
 const matchedPlaybackProvider = computed(() => findDesktopPlaybackProvider(trimmedInputValue.value))
 
 const handleInput = () => {
-  uiStore.searchQuery = inputValue.value
-  emit('update:modelValue', inputValue.value)
+  uiStore.setSearchQuery(props.searchScope, inputValue.value)
   activeSuggestionIndex.value = -1
+  if (!props.suggestionsEnabled) {
+    isPanelOpen.value = false
+    isTyping.value = false
+    remoteSuggestions.value = []
+    return
+  }
   isPanelOpen.value = true
   isTyping.value = true
   clearTimeout(typingTimeout)
@@ -229,7 +235,7 @@ const handleInput = () => {
 }
 
 async function loadRemoteSuggestions() {
-  if (!trimmedInputValue.value) {
+  if (!props.suggestionsEnabled || !trimmedInputValue.value) {
     remoteSuggestions.value = []
     return
   }
@@ -253,8 +259,7 @@ function handleEnterKey() {
 
 function selectSuggestion(val: string) {
   inputValue.value = val
-  uiStore.searchQuery = val
-  emit('update:modelValue', val)
+  uiStore.setSearchQuery(props.searchScope, val)
   handleSearch()
 }
 
@@ -319,7 +324,7 @@ async function handleSearch() {
     }
     await router.push({ name: props.searchRedirectName, query })
   }
-  uiStore.triggerSearch(inputValue.value)
+  uiStore.triggerSearch(props.searchScope, inputValue.value)
   emit('search')
   isPanelOpen.value = false
   inputRef.value?.blur()
@@ -341,8 +346,7 @@ function toggleMode() {
 
 function clearSearch() {
   inputValue.value = ''
-  uiStore.searchQuery = ''
-  emit('update:modelValue', '')
+  uiStore.setSearchQuery(props.searchScope, '')
   emit('clear')
   if (route.query.q) {
     const query = { ...route.query }
@@ -351,7 +355,7 @@ function clearSearch() {
     delete query.site
     router.replace({ query })
   }
-  uiStore.triggerSearch('')
+  uiStore.triggerSearch(props.searchScope, '')
   inputRef.value?.focus()
 }
 

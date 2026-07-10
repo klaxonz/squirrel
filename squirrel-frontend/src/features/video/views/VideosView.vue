@@ -27,38 +27,32 @@
       />
     </AppToolbarFrame>
     <AppToolbarFrame v-else bordered compact sticky>
-      <AppPaneHeader
-        title="远端搜索"
-        :subtitle="searchQuery ? `关键词：${searchQuery}` : '直接查询源站，不会写入本地库'"
-        :level="3"
-      >
-        <template #actions>
-          <Select :model-value="remoteSite || 'all'" @update:model-value="updateRemoteSite">
-            <SelectTrigger class="app-toolbar-select-trigger app-toolbar-control w-auto min-w-[7.5rem]">
-              <SelectValue placeholder="全部站点" />
-            </SelectTrigger>
-            <SelectContent class="min-w-44">
-              <SelectItem value="all" class="text-xs">全部站点</SelectItem>
-              <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">{{ opt.label }}</SelectItem>
-            </SelectContent>
-          </Select>
+      <div class="videos-view-remote-toolbar">
+        <Select :model-value="remoteSite || 'all'" @update:model-value="updateRemoteSite">
+          <SelectTrigger class="app-toolbar-select-trigger app-toolbar-control w-auto min-w-[7.5rem]">
+            <SelectValue placeholder="全部站点" />
+          </SelectTrigger>
+          <SelectContent class="min-w-44">
+            <SelectItem value="all" class="text-xs">全部站点</SelectItem>
+            <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">{{ opt.label }}</SelectItem>
+          </SelectContent>
+        </Select>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            @click="refreshCurrentList"
-            title="刷新内容"
-            aria-label="刷新内容"
-          >
-            <AppSpinner v-if="isRefreshing" size="sm" />
-            <AppIcon v-else name="refresh" class="w-4 h-4 shrink-0" />
-          </Button>
-        </template>
-      </AppPaneHeader>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          @click="refreshCurrentList"
+          title="刷新内容"
+          aria-label="刷新内容"
+        >
+          <AppSpinner v-if="isRefreshing" size="sm" />
+          <AppIcon v-else name="refresh" class="w-4 h-4 shrink-0" />
+        </Button>
+      </div>
     </AppToolbarFrame>
 
-    <div class="app-page-content videos-view-content">
+    <div class="app-page-content">
 
       <!-- Error -->
       <div v-if="loadError" class="videos-view-error">
@@ -109,7 +103,6 @@ import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '@/features/video/components/feed/FeedToolbar.vue'
 import RemoteSearchResults from '@/features/video/components/feed/RemoteSearchResults.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
-import AppPaneHeader from '@/shared/components/layout/AppPaneHeader.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
@@ -127,6 +120,7 @@ defineOptions({ name: 'VideosView' })
 const router = useRouter()
 const route = useRoute()
 const uiStore = useUIStore()
+const VIDEO_SEARCH_SCOPE = 'VideosView'
 const { openVideo, openSubscription } = useVideoCardNavigation(router)
 
 const { activeTab, nsfw, sortBy, site, searchQuery, special, timeRange, duration, contentType, filters } = useFeedFilters()
@@ -175,18 +169,18 @@ const setSpecialFilter = (value: string) => {
 useRefreshTriggers({ onRefresh: refreshCurrentList })
 useRouteTabSync(router, route, activeTab, undefined)
 
-watch(() => uiStore.searchTrigger, () => {
+watch(() => uiStore.getSearchTrigger(VIDEO_SEARCH_SCOPE), () => {
   if (!isActiveVideosRoute.value) return
-  if (route.meta.search === 'home' || !route.meta.search) {
-    searchQuery.value = uiStore.searchQuery
-  }
+  searchQuery.value = uiStore.getSearchQuery(VIDEO_SEARCH_SCOPE)
 })
 
 watch(() => route.query.q, (value) => {
   if (!isActiveVideosRoute.value) return
   const query = typeof value === 'string' ? value : ''
   searchQuery.value = query
-  if (uiStore.searchQuery !== query) uiStore.searchQuery = query
+  if (uiStore.getSearchQuery(VIDEO_SEARCH_SCOPE) !== query) {
+    uiStore.setSearchQuery(VIDEO_SEARCH_SCOPE, query)
+  }
 }, { immediate: true })
 
 watch(() => route.query.mode, (value) => {
@@ -212,8 +206,11 @@ watch(() => route.query.special, (value) => {
   --app-page-max-width: 2400px;
 }
 
-.videos-view-content {
-  padding-top: var(--space-5);
+.videos-view-remote-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 
 .videos-view-error {

@@ -12,7 +12,7 @@
       <AppSkeleton
         v-for="i in 5"
         :key="i"
-        height="16rem"
+        height="13rem"
         rounded="var(--radius-lg)"
         shimmer
       />
@@ -48,104 +48,104 @@
 
             <div class="site-runtime-card__copy">
               <h3>{{ runtime.display_name }}</h3>
-              <p>{{ runtime.description || runtime.runtime_id }}</p>
             </div>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger as-child>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                class="site-runtime-card__menu"
-                :aria-label="`${runtime.display_name} 管理操作`"
-                title="更多操作"
-              >
-                <AppIcon name="more" class="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" class="w-52">
-              <DropdownMenuItem
-                v-if="supportsLogin(runtime)"
-                :disabled="runtime.siteLoginTesting"
-                @click="$emit('test-login', runtime.siteName)"
-              >
-                <AppIcon name="security" class="h-4 w-4" />
-                <span>刷新登录状态</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                v-if="isDesktopApp && runtime.siteDesktopLoginSupported"
-                :disabled="runtime.siteLoginTesting"
-                @click="$emit('desktop-login', runtime.siteName)"
-              >
-                <AppIcon name="user" class="h-4 w-4" />
-                <span>{{ runtime.siteLoginStatus?.logged_in ? '重新登录桌面会话' : '打开桌面登录' }}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                v-if="isDesktopApp && runtime.siteDesktopLoginSupported && runtime.siteLoginStatus?.logged_in"
-                class="text-destructive focus:text-destructive"
-                @click="$emit('clear-desktop-session', runtime.siteName)"
-              >
-                <AppIcon name="logout" class="h-4 w-4" />
-                <span>清除桌面会话</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                v-if="runtime.siteName === 'youtube'"
-                @click="$emit(runtime.siteOAuthStatus === 'authenticated' || runtime.siteOAuthStatus === 'pending' ? 'revoke-oauth' : 'start-oauth')"
-              >
-                <AppIcon
-                  :name="runtime.siteOAuthStatus === 'authenticated' ? 'unlink' : 'link'"
-                  class="h-4 w-4"
-                />
-                <span>
-                  {{ runtime.siteOAuthStatus === 'authenticated' || runtime.siteOAuthStatus === 'pending'
-                    ? '撤销 YouTube 授权'
-                    : '授权 YouTube' }}
-                </span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator
-                v-if="supportsLogin(runtime) || (isDesktopApp && runtime.siteDesktopLoginSupported) || runtime.siteName === 'youtube'"
+          <div class="site-runtime-card__header-actions">
+            <div class="site-runtime-card__enable">
+              <span>启用</span>
+              <AppSpinner v-if="actioning === runtime.runtime_id" size="sm" />
+              <Switch
+                :model-value="runtime.enabled"
+                :disabled="actioning === runtime.runtime_id"
+                :aria-label="runtime.enabled ? `停用 ${runtime.display_name}` : `启用 ${runtime.display_name}`"
+                @update:model-value="(enabled) => $emit(enabled ? 'enable' : 'disable', runtime)"
               />
-              <DropdownMenuItem @click="$emit('edit-site', runtime)">
-                <AppIcon name="settingsPanel" class="h-4 w-4" />
-                <span>站点配置</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  class="site-runtime-card__menu"
+                  :aria-label="`${runtime.display_name} 管理操作`"
+                  title="更多操作"
+                >
+                  <AppIcon name="more" class="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" class="w-52">
+                <DropdownMenuItem
+                  :disabled="!runtime.siteName || runtime.siteTesting || runtime.siteLoginTesting"
+                  @click="$emit('test-runtime', runtime)"
+                >
+                  <AppSpinner v-if="runtime.siteTesting || runtime.siteLoginTesting" size="sm" />
+                  <AppIcon v-else name="diagnostics" class="h-4 w-4" />
+                  <span>
+                    {{ runtime.siteTesting || runtime.siteLoginTesting ? '检测中' : '检测站点' }}
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  v-if="supportsLogin(runtime)"
+                  :disabled="runtime.siteLoginTesting"
+                  @click="$emit('test-login', runtime.siteName)"
+                >
+                  <AppIcon name="security" class="h-4 w-4" />
+                  <span>刷新登录状态</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  v-if="isDesktopApp && runtime.siteDesktopLoginSupported"
+                  :disabled="runtime.siteLoginTesting"
+                  @click="$emit('desktop-login', runtime.siteName)"
+                >
+                  <AppIcon name="user" class="h-4 w-4" />
+                  <span>{{ runtime.siteLoginStatus?.logged_in ? '重新登录桌面会话' : '打开桌面登录' }}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  v-if="isDesktopApp && runtime.siteDesktopLoginSupported && runtime.siteLoginStatus?.logged_in"
+                  class="text-destructive focus:text-destructive"
+                  @click="$emit('clear-desktop-session', runtime.siteName)"
+                >
+                  <AppIcon name="logout" class="h-4 w-4" />
+                  <span>清除桌面会话</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  v-if="runtime.siteName === 'youtube'"
+                  @click="$emit(runtime.siteOAuthStatus === 'authenticated' || runtime.siteOAuthStatus === 'pending' ? 'revoke-oauth' : 'start-oauth')"
+                >
+                  <AppIcon
+                    :name="runtime.siteOAuthStatus === 'authenticated' ? 'unlink' : 'link'"
+                    class="h-4 w-4"
+                  />
+                  <span>
+                    {{ runtime.siteOAuthStatus === 'authenticated' || runtime.siteOAuthStatus === 'pending'
+                      ? '撤销 YouTube 授权'
+                      : '授权 YouTube' }}
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem @click="$emit('edit-site', runtime)">
+                  <AppIcon name="settingsPanel" class="h-4 w-4" />
+                  <span>站点配置</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
 
-        <div class="site-runtime-card__meta">
-          <span class="site-runtime-card__runtime-id">{{ runtime.runtime_id }}</span>
-          <span
-            class="site-runtime-card__runtime-state"
-            :data-tone="getSiteRuntimeStatusVariant(runtime)"
-          >
-            <span class="site-runtime-card__status-dot" />
-            {{ getSiteRuntimeStatusText(runtime) }}
-          </span>
-        </div>
-
-        <dl class="site-runtime-card__statuses">
+        <dl class="site-runtime-card__statuses" aria-label="站点状态">
           <div class="site-runtime-card__status">
-            <dt>运行</dt>
-            <dd :data-tone="getSiteRuntimeStatusVariant(runtime)">
-              <span class="site-runtime-card__status-dot" />
-              {{ runtime.enabled ? '已启用' : '已停用' }}
-            </dd>
-          </div>
-          <div class="site-runtime-card__status">
-            <dt>网络</dt>
+            <dt>网络连通</dt>
             <dd :data-tone="getNetworkVariant(runtime)">
               <AppSpinner v-if="runtime.siteTesting" size="sm" />
-              <span v-else class="site-runtime-card__status-dot" />
               {{ runtime.siteTesting ? '检测中' : getNetworkText(runtime) }}
             </dd>
           </div>
           <div class="site-runtime-card__status">
-            <dt>登录</dt>
+            <dt>登录状态</dt>
             <dd :data-tone="supportsLogin(runtime) ? getLoginVariant(runtime) : 'muted'">
               <AppSpinner v-if="runtime.siteLoginTesting" size="sm" />
-              <span v-else class="site-runtime-card__status-dot" />
               {{ runtime.siteLoginTesting
                 ? '检测中'
                 : supportsLogin(runtime)
@@ -156,47 +156,28 @@
         </dl>
 
         <div class="site-runtime-card__capabilities">
-          <span class="site-runtime-card__section-label">支持能力</span>
+          <div class="site-runtime-card__section-heading">
+            <span class="site-runtime-card__section-label">能力</span>
+            <span v-if="runtime.capabilities.length" class="site-runtime-card__capability-count">
+              {{ runtime.capabilities.length }} 项
+            </span>
+          </div>
           <div v-if="runtime.capabilities.length" class="site-runtime-card__capability-list">
             <span
-              v-for="cap in runtime.capabilities.slice(0, 5)"
+              v-for="cap in runtime.capabilities.slice(0, 4)"
               :key="cap.name"
               class="site-runtime-card__capability"
               :title="cap.name"
             >
               {{ getCapabilityLabel(cap.name) }}
             </span>
-            <span v-if="runtime.capabilities.length > 5" class="site-runtime-card__capability-more">
-              +{{ runtime.capabilities.length - 5 }}
+            <span v-if="runtime.capabilities.length > 4" class="site-runtime-card__capability-more">
+              +{{ runtime.capabilities.length - 4 }}
             </span>
           </div>
           <span v-else class="site-runtime-card__capability-empty">未声明能力</span>
         </div>
 
-        <footer class="site-runtime-card__footer">
-          <div class="site-runtime-card__enable">
-            <AppSpinner v-if="actioning === runtime.runtime_id" size="sm" />
-            <span v-else>{{ runtime.enabled ? '已启用' : '已停用' }}</span>
-            <Switch
-              :model-value="runtime.enabled"
-              :disabled="actioning === runtime.runtime_id"
-              :aria-label="runtime.enabled ? `停用 ${runtime.display_name}` : `启用 ${runtime.display_name}`"
-              @update:model-value="(enabled) => $emit(enabled ? 'enable' : 'disable', runtime)"
-            />
-          </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            class="site-runtime-card__test"
-            :disabled="!runtime.siteName || runtime.siteTesting || runtime.siteLoginTesting"
-            @click="$emit('test-runtime', runtime)"
-          >
-            <AppSpinner v-if="runtime.siteTesting || runtime.siteLoginTesting" size="sm" />
-            <AppIcon v-else name="sync" class="h-4 w-4" />
-            {{ runtime.siteTesting || runtime.siteLoginTesting ? '检测中' : '检测站点' }}
-          </Button>
-        </footer>
       </article>
     </div>
   </div>
@@ -243,8 +224,6 @@ defineEmits([
 ])
 
 const {
-  getSiteRuntimeStatusText,
-  getSiteRuntimeStatusVariant,
   getNetworkText,
   getNetworkVariant,
   getLoginText,
@@ -268,36 +247,34 @@ const supportsLogin = runtime => Boolean(
 
 .site-runtime-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--app-video-grid-min), 1fr));
-  gap: var(--app-video-grid-gap);
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: var(--space-4);
 }
 
 .site-runtime-card {
   display: flex;
   min-width: 0;
-  min-height: 16rem;
+  min-height: 13rem;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.6);
+  border: 1px solid hsl(var(--border) / 0.58);
   border-radius: var(--radius-lg);
-  background: hsl(var(--card));
-  transition:
-    border-color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default);
+  background: hsl(var(--card) / 0.72);
+  transition: border-color var(--duration-fast) var(--ease-default);
 }
 
-.site-runtime-card:hover {
+.site-runtime-card:hover,
+.site-runtime-card:focus-within {
   border-color: hsl(var(--border));
-  background: hsl(var(--card) / 0.96);
 }
 
 .site-runtime-card__header {
   display: flex;
   min-width: 0;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-4) var(--space-3);
+  padding: var(--space-4);
 }
 
 .site-runtime-card__identity {
@@ -309,8 +286,8 @@ const supportsLogin = runtime => Boolean(
 
 .site-runtime-card__icon,
 .site-runtime-card__placeholder {
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
   flex: 0 0 auto;
   border: 1px solid hsl(var(--border) / 0.6);
   border-radius: var(--radius-md);
@@ -339,15 +316,11 @@ const supportsLogin = runtime => Boolean(
   white-space: nowrap;
 }
 
-.site-runtime-card__copy p {
-  display: -webkit-box;
-  overflow: hidden;
-  margin: 0.3rem 0 0;
-  color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.75rem;
-  line-height: 1.35;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+.site-runtime-card__header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .site-runtime-card__menu {
@@ -355,78 +328,40 @@ const supportsLogin = runtime => Boolean(
   color: hsl(var(--muted-foreground) / 0.72);
 }
 
-.site-runtime-card__meta {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: 0 var(--space-4) var(--space-3);
+.site-runtime-card__status dd[data-tone='critical'] {
+  color: hsl(var(--destructive) / 0.82);
 }
 
-.site-runtime-card__runtime-id {
-  overflow: hidden;
-  color: hsl(var(--muted-foreground) / 0.56);
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.site-runtime-card__runtime-state {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 0.4rem;
-  color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.6875rem;
-  font-weight: 600;
-}
-
-.site-runtime-card__status-dot {
-  width: 0.4rem;
-  height: 0.4rem;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: hsl(var(--muted-foreground) / 0.42);
-}
-
-[data-tone='active'] > .site-runtime-card__status-dot,
-[data-tone='success'] > .site-runtime-card__status-dot {
-  background: hsl(var(--success));
-}
-
-[data-tone='warning'] > .site-runtime-card__status-dot {
-  background: hsl(var(--primary));
-}
-
-[data-tone='error'] > .site-runtime-card__status-dot {
-  background: hsl(var(--destructive));
+.site-runtime-card__status dd[data-tone='muted'] {
+  color: hsl(var(--muted-foreground) / 0.68);
 }
 
 .site-runtime-card__statuses {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   margin: 0 var(--space-4);
-  border-top: 1px solid var(--app-hairline);
-  border-bottom: 1px solid var(--app-hairline);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-3);
+  background: hsl(var(--muted) / 0.34);
 }
 
 .site-runtime-card__status {
+  display: flex;
   min-width: 0;
-  padding: var(--space-3) 0;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .site-runtime-card__status + .site-runtime-card__status {
-  margin-left: var(--space-3);
-  padding-left: var(--space-3);
-  border-left: 1px solid var(--app-hairline);
+  border-top: 1px solid hsl(var(--border) / 0.42);
 }
 
 .site-runtime-card__status dt {
-  color: hsl(var(--muted-foreground) / 0.62);
-  font-size: 0.625rem;
-  font-weight: 600;
+  color: hsl(var(--muted-foreground) / 0.72);
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .site-runtime-card__status dd {
@@ -435,81 +370,82 @@ const supportsLogin = runtime => Boolean(
   align-items: center;
   gap: 0.4rem;
   overflow: hidden;
-  margin: 0.3rem 0 0;
-  color: hsl(var(--foreground) / 0.84);
+  margin: 0;
+  color: hsl(var(--muted-foreground) / 0.92);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 550;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .site-runtime-card__capabilities {
   display: flex;
-  min-height: 5rem;
+  min-height: 4.25rem;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
+  gap: 0.45rem;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.site-runtime-card__section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .site-runtime-card__section-label {
-  color: hsl(var(--muted-foreground) / 0.62);
-  font-size: 0.625rem;
+  color: hsl(var(--foreground) / 0.72);
+  font-size: 0.6875rem;
   font-weight: 600;
+}
+
+.site-runtime-card__capability-count {
+  color: hsl(var(--muted-foreground) / 0.54);
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .site-runtime-card__capability-list {
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
-  gap: 0.375rem;
+  align-items: center;
+  gap: 0.2rem 0.45rem;
 }
 
-.site-runtime-card__capability,
-.site-runtime-card__capability-more {
-  display: inline-flex;
-  min-height: 1.45rem;
-  align-items: center;
-  border-radius: var(--radius-sm);
-  padding: 0.125rem 0.4rem;
-  background: hsl(var(--accent) / 0.48);
+.site-runtime-card__capability {
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
-  font-weight: 550;
+  line-height: 1.55;
+  white-space: nowrap;
+}
+
+.site-runtime-card__capability:not(:last-child)::after {
+  margin-left: 0.45rem;
+  color: hsl(var(--muted-foreground) / 0.38);
+  content: '·';
 }
 
 .site-runtime-card__capability-more {
-  color: hsl(var(--foreground) / 0.68);
+  color: hsl(var(--foreground) / 0.62);
+  font-size: 0.6875rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .site-runtime-card__capability-empty {
   color: hsl(var(--muted-foreground) / 0.64);
-  font-size: 0.75rem;
-}
-
-.site-runtime-card__footer {
-  display: flex;
-  min-height: 3.25rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  border-top: 1px solid var(--app-hairline);
-  padding: 0.625rem var(--space-3) 0.625rem var(--space-4);
+  font-size: 0.6875rem;
 }
 
 .site-runtime-card__enable {
   display: flex;
-  min-width: 0;
+  flex: 0 0 auto;
   align-items: center;
   gap: var(--space-2);
   color: hsl(var(--muted-foreground) / 0.72);
   font-size: 0.6875rem;
-}
-
-.site-runtime-card__test {
-  flex: 0 0 auto;
-  color: hsl(var(--muted-foreground) / 0.84);
 }
 
 @media (prefers-reduced-motion: reduce) {

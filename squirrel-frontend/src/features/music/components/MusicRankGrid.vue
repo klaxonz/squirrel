@@ -78,8 +78,7 @@ const restRanks = computed(() => props.ranks.slice(4))
 <style scoped>
 .music-discovery-grid {
   width: 100%;
-  max-width: 1480px;
-  padding: 1rem 2rem 2.5rem;
+  min-width: 0;
 }
 
 .music-rank-header {
@@ -103,19 +102,21 @@ const restRanks = computed(() => props.ranks.slice(4))
 
 .music-rank-featured {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.875rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 16rem));
+  justify-content: start;
+  gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
 .music-rank-featured-card {
   position: relative;
-  min-height: 8.25rem;
-  border-radius: 0.875rem;
+  aspect-ratio: 8 / 5;
+  min-width: 0;
   overflow: hidden;
-  cursor: pointer;
-  background: hsl(var(--muted) / 0.35);
   border: 1px solid hsl(var(--border) / 0.38);
+  border-radius: var(--radius-lg);
+  background: hsl(var(--muted) / 0.35);
+  cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
@@ -127,7 +128,7 @@ const restRanks = computed(() => props.ranks.slice(4))
 .music-rank-featured-cover {
   width: 100%;
   height: 100%;
-  min-height: 8.25rem;
+  min-height: 0;
   object-fit: cover;
   display: flex;
   align-items: center;
@@ -274,7 +275,7 @@ const restRanks = computed(() => props.ranks.slice(4))
 
 @media (min-width: 769px) and (max-width: 1180px) {
   .music-rank-featured {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(13rem, 16rem));
   }
 }
 </style>

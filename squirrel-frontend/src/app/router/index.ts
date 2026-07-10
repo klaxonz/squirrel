@@ -34,7 +34,6 @@ const Profile = () => import('@/features/profile/views/Profile.vue')
 const baseSearchMeta = {
   showSearch: true,
   search: 'home',
-  searchEvent: 'search:home',
   searchPlaceholder: '搜索',
 }
 
@@ -106,6 +105,7 @@ const routes: RouteRecordRaw[] = [
     meta: createSearchMeta('视频', {
       navKey: 'videos',
       sectionLabel: '视频',
+      searchPersistKey: 'VideosView',
       keepAlive: true,
       keepAliveComponent: 'VideosView',
       transitionKey: 'videos',
@@ -135,8 +135,7 @@ const routes: RouteRecordRaw[] = [
       keepAlive: true,
       keepAliveComponent: 'Subscribed',
       search: 'subscribed',
-      searchEvent: 'search:subscribed',
-      searchPlaceholder: '搜索订阅内容',
+      searchPlaceholder: '搜索订阅内容或频道',
       historyStrategy: 'push',
     }),
   },
@@ -144,9 +143,12 @@ const routes: RouteRecordRaw[] = [
     path: '/rss',
     name: 'RssSources',
     component: RssSources,
-    meta: createNoSearchMeta('RSS 内容源', {
+    meta: createSearchMeta('RSS 内容源', {
       navKey: 'rss-sources',
       sectionLabel: '内容源',
+      search: 'rss',
+      searchPlaceholder: '搜索文章',
+      searchSuggestions: false,
       historyStrategy: 'push',
     }),
   },
@@ -178,9 +180,12 @@ const routes: RouteRecordRaw[] = [
     path: '/site-runtimes',
     name: 'SiteRuntimes',
     component: SiteRuntimeManager,
-    meta: createNoSearchMeta('站点', {
+    meta: createSearchMeta('站点', {
       navKey: 'site-runtimes',
       sectionLabel: '站点',
+      search: 'site-runtimes',
+      searchPlaceholder: '搜索站点或描述',
+      searchSuggestions: false,
       historyStrategy: 'push',
     }),
   },
@@ -188,9 +193,12 @@ const routes: RouteRecordRaw[] = [
     path: '/logs',
     name: 'Logs',
     component: LogViewer,
-    meta: createNoSearchMeta('日志查看器', {
+    meta: createSearchMeta('日志查看器', {
       navKey: 'logs',
       sectionLabel: '日志',
+      search: 'logs',
+      searchPlaceholder: '搜索日志内容或追踪编号',
+      searchSuggestions: false,
       historyStrategy: 'push',
     }),
   },
@@ -208,9 +216,12 @@ const routes: RouteRecordRaw[] = [
     path: '/scheduled-tasks',
     name: 'ScheduledTasks',
     component: ScheduledTasks,
-    meta: createNoSearchMeta('计划任务', {
+    meta: createSearchMeta('计划任务', {
       navKey: 'scheduled-tasks',
       sectionLabel: '定时',
+      search: 'scheduled-tasks',
+      searchPlaceholder: '搜索任务名称或描述',
+      searchSuggestions: false,
       historyStrategy: 'push',
     }),
   },
@@ -293,7 +304,6 @@ const routes: RouteRecordRaw[] = [
       navKey: 'history',
       sectionLabel: '历史',
       search: 'history',
-      searchEvent: 'search:history',
       searchPlaceholder: '搜索历史',
       historyStrategy: 'push',
     }),
@@ -318,7 +328,6 @@ const routes: RouteRecordRaw[] = [
       scrollable: true,
       hideScrollbar: true,
       search: 'music',
-      searchEvent: 'search:music',
       searchPlaceholder: '搜索歌曲、歌手、专辑',
       historyStrategy: 'push',
     }),

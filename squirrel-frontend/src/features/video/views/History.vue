@@ -1,18 +1,15 @@
 <template>
   <AppPageShell class="history-page" variant="compact" :fill="false">
-    <AppToolbarFrame bordered compact sticky>
+    <AppToolbarFrame bordered sticky>
       <div class="history-toolbar">
-        <div class="history-toolbar__lead">
-          <p class="history-toolbar__summary" aria-live="polite">{{ pageSubtitle }}</p>
-        </div>
+        <AppSectionNav
+          class="app-section-nav--optical"
+          :model-value="historyMode"
+          :options="modeOptions"
+          aria-label="历史记录范围"
+          @change="handleModeChange"
+        />
         <div class="history-toolbar__actions">
-          <AppSegmentedControl
-            :model-value="historyMode"
-            :options="modeOptions"
-            aria-label="历史记录范围"
-            size="sm"
-            @change="handleModeChange"
-          />
           <Button
             variant="ghost"
             size="icon-sm"
@@ -28,7 +25,7 @@
             v-if="videos.length && !isContinueMode"
             variant="ghost"
             size="icon-sm"
-            class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            class="history-toolbar__clear"
             title="清空历史"
             aria-label="清空历史"
             @click="showClearConfirm = true"
@@ -41,19 +38,15 @@
 
     <main class="app-page-content history-content">
       <div v-if="loading && videos.length === 0" class="history-groups" aria-label="正在加载历史记录">
-        <section v-for="groupIndex in 2" :key="groupIndex" class="history-day">
+        <section class="history-day">
           <div class="history-day__header">
-            <AppSkeleton width="7rem" height="1.25rem" rounded="var(--radius-sm)" shimmer />
-            <AppSkeleton width="2.5rem" height="1rem" rounded="var(--radius-sm)" shimmer />
+            <div class="history-day__heading">
+              <AppSkeleton width="3rem" height="1.25rem" rounded="var(--radius-sm)" shimmer />
+              <AppSkeleton width="7rem" height="0.875rem" rounded="var(--radius-sm)" shimmer />
+            </div>
           </div>
           <div class="history-day__items">
-            <AppSkeleton
-              v-for="itemIndex in 4"
-              :key="itemIndex"
-              height="8.125rem"
-              rounded="var(--radius-lg)"
-              shimmer
-            />
+            <HistoryItemSkeleton v-for="itemIndex in 6" :key="itemIndex" />
           </div>
         </section>
       </div>
@@ -77,7 +70,6 @@
               <h2 class="history-day__title">{{ group.label }}</h2>
               <span v-if="group.detail" class="history-day__detail">{{ group.detail }}</span>
             </div>
-            <span class="history-day__count">{{ group.items.length }} 条</span>
           </header>
 
           <div class="history-day__items">
@@ -121,15 +113,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { storeToRefs } from 'pinia'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
-import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
+import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import HistoryItem from '@/features/video/components/history/HistoryItem.vue'
+import HistoryItemSkeleton from '@/features/video/components/history/HistoryItemSkeleton.vue'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import type { VideoHistoryEntry } from '@/features/video/types/video'
 import AppIcon from '@/shared/icons/AppIcon.vue'
@@ -166,7 +158,8 @@ const fullDateFormatter = new Intl.DateTimeFormat('zh-CN', {
 const router = useRouter()
 const route = useRoute()
 const uiStore = useUIStore()
-const { searchQuery, searchTrigger } = storeToRefs(uiStore)
+const searchQuery = computed(() => uiStore.getSearchQuery('history'))
+const searchTrigger = computed(() => uiStore.getSearchTrigger('history'))
 const { getWatchHistory, clearHistory, deleteHistoryEntry } = useVideoHistory()
 
 const videos = ref<VideoHistoryEntry[]>([])
@@ -192,14 +185,6 @@ const displayVideos = computed(() => {
     const progress = getProgress(video)
     return progress > 0.01 && progress < 0.95
   })
-})
-
-const pageSubtitle = computed(() => {
-  if (loading.value && videos.value.length === 0) return '正在加载观看记录'
-  const loadedText = isContinueMode.value
-    ? `已加载 ${displayVideos.value.length} 条未看完记录`
-    : `共 ${total.value} 条记录，已加载 ${videos.value.length} 条`
-  return query.value ? `${loadedText} · 搜索“${query.value}”` : loadedText
 })
 
 const emptyTitle = computed(() => {
@@ -336,7 +321,7 @@ onMounted(() => {
 
 <style scoped>
 .history-page {
-  --app-page-max-width: 94rem;
+  --app-page-max-width: 88rem;
 }
 
 .history-content {
@@ -348,27 +333,7 @@ onMounted(() => {
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.history-toolbar__lead {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.history-toolbar__summary {
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  gap: var(--space-5);
 }
 
 .history-toolbar__actions {
@@ -376,6 +341,17 @@ onMounted(() => {
   flex: 0 0 auto;
   align-items: center;
   gap: var(--space-2);
+}
+
+.history-toolbar__clear {
+  color: hsl(var(--muted-foreground) / 0.78);
+}
+
+.history-toolbar__clear:hover,
+.history-toolbar__clear:focus-visible {
+  border-color: hsl(var(--destructive) / 0.18);
+  background: hsl(var(--destructive) / 0.08);
+  color: hsl(var(--destructive));
 }
 
 .history-groups {
@@ -392,7 +368,6 @@ onMounted(() => {
   display: flex;
   min-width: 0;
   align-items: baseline;
-  justify-content: space-between;
   gap: var(--space-4);
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--app-hairline);
@@ -414,8 +389,7 @@ onMounted(() => {
   line-height: 1.3;
 }
 
-.history-day__detail,
-.history-day__count {
+.history-day__detail {
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   line-height: 1.3;
@@ -425,11 +399,6 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.history-day__count {
-  flex: 0 0 auto;
-  font-variant-numeric: tabular-nums;
 }
 
 .history-day__items {

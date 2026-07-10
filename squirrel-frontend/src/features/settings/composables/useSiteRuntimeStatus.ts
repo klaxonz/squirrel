@@ -22,15 +22,15 @@ const CAPABILITY_LABELS: Record<string, string> = {
   rewrite_proxy_playlist: '代理播放',
 }
 
-export type SiteRuntimeBadgeVariant = 'outline' | 'muted' | 'active' | 'error' | 'success' | 'warning'
+export type SiteRuntimeTone = 'default' | 'muted' | 'critical'
 
 export interface UseSiteRuntimeStatusReturn {
   getSiteRuntimeStatusText: (plugin: RuntimeRow) => string
-  getSiteRuntimeStatusVariant: (plugin: RuntimeRow) => SiteRuntimeBadgeVariant
+  getSiteRuntimeStatusVariant: (plugin: RuntimeRow) => SiteRuntimeTone
   getNetworkText: (plugin: RuntimeRow) => string
-  getNetworkVariant: (plugin: RuntimeRow) => SiteRuntimeBadgeVariant
+  getNetworkVariant: (plugin: RuntimeRow) => SiteRuntimeTone
   getLoginText: (plugin: RuntimeRow) => string
-  getLoginVariant: (plugin: RuntimeRow) => SiteRuntimeBadgeVariant
+  getLoginVariant: (plugin: RuntimeRow) => SiteRuntimeTone
   getCapabilityLabel: (name: string) => string
   formatTime: (value: string | null | undefined) => string
 }
@@ -45,28 +45,28 @@ export function useSiteRuntimeStatus(): UseSiteRuntimeStatusReturn {
     return '待检查'
   }
 
-  const getSiteRuntimeStatusVariant = (plugin: RuntimeRow): SiteRuntimeBadgeVariant => {
+  const getSiteRuntimeStatusVariant = (plugin: RuntimeRow): SiteRuntimeTone => {
     const state = (plugin.active_runtime as Record<string, unknown> | undefined)?.state
     if (!plugin.enabled) return 'muted'
-    if (state === 'running') return 'active'
+    if (state === 'running') return 'default'
     const health = plugin.health as { healthy?: boolean } | undefined
-    if (health?.healthy === false || state === 'failed') return 'error'
+    if (health?.healthy === false || state === 'failed') return 'critical'
     return 'muted'
   }
 
-  const getNetworkVariant = (plugin: RuntimeRow): SiteRuntimeBadgeVariant => {
-    if (plugin.siteAccessible === true) return 'success'
-    if (plugin.siteAccessible === false) return 'error'
+  const getNetworkVariant = (plugin: RuntimeRow): SiteRuntimeTone => {
+    if (plugin.siteAccessible === true) return 'default'
+    if (plugin.siteAccessible === false) return 'critical'
     return 'muted'
   }
 
-  const getLoginVariant = (plugin: RuntimeRow): SiteRuntimeBadgeVariant => {
-    if (plugin.siteOAuthStatus === 'authenticated') return 'success'
-    if (plugin.siteOAuthStatus === 'pending') return 'warning'
+  const getLoginVariant = (plugin: RuntimeRow): SiteRuntimeTone => {
+    if (plugin.siteOAuthStatus === 'authenticated') return 'default'
+    if (plugin.siteOAuthStatus === 'pending') return 'muted'
     const loginStatus = plugin.siteLoginStatus as Record<string, unknown> | undefined
     if (loginStatus?.supported === false) return 'muted'
-    if (loginStatus?.logged_in) return 'success'
-    if (loginStatus) return 'error'
+    if (loginStatus?.logged_in) return 'default'
+    if (loginStatus) return 'critical'
     return 'muted'
   }
 
@@ -82,7 +82,7 @@ export function useSiteRuntimeStatus(): UseSiteRuntimeStatusReturn {
     const loginStatus = plugin.siteLoginStatus as Record<string, unknown> | undefined
     if (loginStatus?.supported === false) return '不支持'
     if (loginStatus?.source === 'desktop') {
-      return loginStatus?.logged_in ? '桌面已登录' : '桌面未登录'
+      return loginStatus?.logged_in ? '已登录' : '未登录'
     }
     if (loginStatus?.logged_in) return '有效'
     if (loginStatus) return '失效'

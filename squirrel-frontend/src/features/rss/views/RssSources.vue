@@ -9,7 +9,6 @@
       <template #sidebar>
         <AppSidebarHeader
           title="订阅库"
-          :subtitle="`${accounts.length} 个账号 · ${filteredFeeds.length} 个订阅源`"
         >
           <template #actions>
             <Button
@@ -36,7 +35,6 @@
               @select="(id) => { selectAccount(id); showAccountDropdown = false }"
               @edit="(acc) => { openEditAccount(acc); showAccountDropdown = false }"
               @delete="(acc) => { confirmDeleteAccount(acc); showAccountDropdown = false }"
-              @add="openAddAccount(); showAccountDropdown = false"
             />
           </div>
 
@@ -52,39 +50,28 @@
             <span class="rss-sync-status__copy" :title="statusMessage">
               {{ statusMessage || (selectedAccount.last_sync_at ? '上次同步 ' + formatDate(selectedAccount.last_sync_at) : '尚未同步') }}
             </span>
-            <div ref="syncDropdownRef" class="rss-sync-status__actions">
+            <div class="rss-sync-status__actions" role="group" aria-label="同步方式">
               <Button
                 variant="ghost"
-                size="icon-xs"
+                size="xs"
                 @click="syncSelectedAccount(false)"
-                class="rss-sync-status__button"
+                class="rss-sync-status__action"
                 :disabled="syncing"
                 title="轻量同步"
-                aria-label="轻量同步"
               >
-                <AppSpinner v-if="syncing" size="sm" />
-                <AppIcon v-else name="refresh" class="h-3 w-3" />
+                <span>轻量</span>
               </Button>
+              <span class="rss-sync-status__action-separator" aria-hidden="true" />
               <Button
                 variant="ghost"
-                size="icon-xs"
-                @click="showSyncMenu = !showSyncMenu"
+                size="xs"
+                @click="syncSelectedAccount(true)"
+                class="rss-sync-status__action"
                 :disabled="syncing"
-                aria-label="更多同步选项"
+                title="全量同步"
               >
-                <AppIcon name="chevronDown" class="h-3 w-3" />
+                <span>全量</span>
               </Button>
-              <AppFloatingList v-if="showSyncMenu" class="rss-sync-menu">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  @click="syncSelectedAccount(true); showSyncMenu = false"
-                  class="w-full justify-start"
-                >
-                  <AppIcon name="refresh" class="h-3 w-3" />
-                  <span>全量同步</span>
-                </Button>
-              </AppFloatingList>
             </div>
           </div>
 
@@ -101,6 +88,7 @@
           :selected-feed-id="selectedFeedId"
           :total-feeds="filteredFeeds.length"
           :has-account="!!selectedAccount"
+          :loading="loadingFeeds"
           @select-all="selectedFeedId = null; loadEntries(true)"
           @add-feed="showSubscribeModal = true"
           @toggle-folder="toggleFolder"
@@ -115,7 +103,10 @@
         <header class="app-pane__header rss-entry-header">
           <div class="app-pane__header-row">
             <div class="app-pane__header-copy">
-              <div class="app-pane__header-title-row">
+              <div
+                v-if="hasFeedNavStack || selectedFeedTitle"
+                class="app-pane__header-title-row"
+              >
                 <Button
                   v-if="hasFeedNavStack"
                   variant="ghost"
@@ -127,13 +118,12 @@
                 >
                   <AppIcon name="back" class="h-3 w-3" />
                 </Button>
-                <h2 class="app-h4 truncate">
-                  {{ selectedFeedTitle || selectedAccount?.name || 'RSS 阅读器' }}
+                <h2 v-if="selectedFeedTitle" class="app-h4 truncate">
+                  {{ selectedFeedTitle }}
                 </h2>
               </div>
               <div class="app-pane__header-subtitle">
                 <span>{{ selectedFeedSubtitle }}</span>
-                <AppBounceDots v-if="loading" />
               </div>
             </div>
 
@@ -153,12 +143,6 @@
           </div>
 
           <div class="rss-entry-tools">
-            <AppSearchInput
-              v-model="entrySearch"
-              placeholder="搜索文章"
-              aria-label="搜索文章"
-            />
-
             <AppSegmentedControl
               v-model="activeFilter"
               :options="rssFilterOptions"
@@ -178,7 +162,7 @@
           <div class="rss-entry-list__inner">
 
             <div
-              v-if="loading && filteredEntries.length === 0"
+              v-if="loadingEntries"
               class="rss-entry-skeleton-list"
               aria-label="正在加载文章"
               aria-busy="true"
@@ -233,25 +217,18 @@
                 </div>
 
                 <div class="rss-entry-item__content">
-                  <div class="rss-entry-item__title-row">
-                    <span
-                      v-if="!entry.is_read"
-                      class="rss-entry-item__unread-dot"
-                      aria-hidden="true"
-                    />
-                    <h4
-                      class="rss-entry-item__title"
-                      :class="[
-                        readingEntry && String(readingEntry.id) === String(entry.id)
-                          ? 'text-foreground'
-                          : entry.is_read
-                            ? 'text-muted-foreground/75 group-hover:text-foreground/80'
-                            : 'text-foreground/90 group-hover:text-foreground font-semibold',
-                      ]"
-                    >
-                      {{ entry.title }}
-                    </h4>
-                  </div>
+                  <h4
+                    class="rss-entry-item__title"
+                    :class="[
+                      readingEntry && String(readingEntry.id) === String(entry.id)
+                        ? 'text-foreground'
+                        : entry.is_read
+                          ? 'text-muted-foreground/75 group-hover:text-foreground/80'
+                          : 'text-foreground/90 group-hover:text-foreground font-semibold',
+                    ]"
+                  >
+                    {{ entry.title }}
+                  </h4>
                   <p
                     v-if="entry.summary"
                     class="rss-entry-item__summary"
@@ -274,7 +251,10 @@
 
             <!-- Infinite Scroll Loader Anchor -->
             <div ref="loadMoreTrigger" class="rss-entry-load-more">
-              <div v-if="loadingMoreEntries" class="rss-entry-load-more__status">
+              <div
+                v-if="!loadingEntries && filteredEntries.length > 0 && loadingMoreEntries"
+                class="rss-entry-load-more__status"
+              >
                 <AppBounceDots />
                 <span>加载更多</span>
               </div>
@@ -520,6 +500,7 @@
       :credential-placeholder="credentialPlaceholder"
       :form-message="formMessage"
       :form-error="formError"
+      :requires-username="requiresUsername"
       :can-save-form="canSaveForm"
       :can-test-form="canTestForm"
       :saving="saving"
@@ -713,7 +694,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppBounceDots from '@/shared/components/AppBounceDots.vue'
@@ -749,6 +730,7 @@ import { useRssStatus } from '@/features/rss/composables/useRssStatus'
 import { useRssFeedHeader } from '@/features/rss/composables/useRssFeedHeader'
 import { useRssContextMenu } from '@/features/rss/composables/useRssContextMenu'
 import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
+import { useUIStore } from '@/shared/stores/ui'
 import RssFeedContextMenu from '@/features/rss/components/RssFeedContextMenu.vue'
 import RssArticleContextMenu from '@/features/rss/components/RssArticleContextMenu.vue'
 import type { RssEntry, RecentEntry } from '@/features/rss/composables/rssTypes'
@@ -756,6 +738,9 @@ import type { AppIconName } from '@/shared/icons/app-icons'
 
 // Cross-cutting UI state
 const loading = ref(false)
+const uiStore = useUIStore()
+const rssArticleSearch = computed(() => uiStore.getSearchQuery('rss'))
+const rssArticleSearchTrigger = computed(() => uiStore.getSearchTrigger('rss'))
 const rssFilterOptions: Array<{ value: string; label: string; icon: AppIconName }> = [
   { value: 'all', label: '全部', icon: 'list' },
   { value: 'unread', label: '未读', icon: 'inbox' },
@@ -797,6 +782,7 @@ const {
   selectedAccount,
   baseUrlPlaceholder,
   credentialPlaceholder,
+  requiresUsername,
   canSaveForm,
   canTestForm,
   openAddAccount,
@@ -814,6 +800,7 @@ const {
 const {
   feeds,
   selectedFeedId,
+  loadingFeeds,
   showSubscribeModal,
   subscribingFeed,
   showCategoryDropdown,
@@ -901,7 +888,7 @@ const {
 
 const {
   activeFilter,
-  entrySearch,
+  loadingEntries,
   totalEntries,
   loadingMoreEntries,
   recentlyViewed,
@@ -932,6 +919,8 @@ const {
   selectedAccountId,
   selectedFeedId,
   feeds,
+  searchQuery: rssArticleSearch,
+  searchTrigger: rssArticleSearchTrigger,
   getFeedTitle,
   readingEntry,
   onStatus,
@@ -944,12 +933,9 @@ const appNavigation = useNavigationHistory()
 
 const handleFeedBack = (): boolean => goBackFromFeed()
 
-// ponytail: sync polling owns its own state + onClickOutside + timer cleanup;
-// injects selectedAccountId, onStatus, and the three completion loaders.
+// Sync polling owns its request state and timer cleanup.
 const {
   syncing,
-  showSyncMenu,
-  syncDropdownRef,
   syncSelectedAccount,
   resumeSyncPollingIfRunning,
   stopSyncPolling,
@@ -992,10 +978,15 @@ const {
 
 loadAllImpl = async () => {
   loading.value = true
-  await loadAccounts()
-  await loadFeeds()
-  await loadEntries(true)
-  loading.value = false
+  try {
+    await loadAccounts()
+    await Promise.all([
+      loadFeeds(),
+      loadEntries(true),
+    ])
+  } finally {
+    loading.value = false
+  }
 }
 
 const loadAll = loadAllImpl
@@ -1045,8 +1036,10 @@ const unsubscribeCurrentFeed = async (entry: RssEntry) => {
 const selectAccount = async (accountId: number) => {
   selectedAccountId.value = accountId
   selectedFeedId.value = null
-  await loadFeeds()
-  await loadEntries(true)
+  await Promise.all([
+    loadFeeds(),
+    loadEntries(true),
+  ])
 }
 
 // Watchers
@@ -1144,11 +1137,17 @@ onUnmounted(() => {
 }
 
 .rss-sync-status__actions {
-  position: relative;
-  display: flex;
+  display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0.125rem;
+  gap: 0.1875rem;
+  margin-left: auto;
+}
+
+.rss-sync-status__action-separator {
+  width: 1px;
+  height: 0.75rem;
+  background: hsl(var(--border) / 0.58);
 }
 
 .rss-entry-pane {
@@ -1265,12 +1264,21 @@ onUnmounted(() => {
   box-shadow: inset 0 0 0 1px hsl(var(--ring) / 0.42);
 }
 
-.rss-sync-status__button {
+.rss-sync-status__action {
   flex: 0 0 auto;
-  color: hsl(var(--muted-foreground));
+  height: 1.375rem;
+  padding-inline: 0.375rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: hsl(var(--muted-foreground) / 0.82);
+  font-size: 0.625rem;
+  font-weight: 600;
 }
 
-.rss-sync-status__button:hover {
+.rss-sync-status__action:hover {
+  border-color: transparent;
+  background: hsl(var(--accent) / 0.42);
   color: hsl(var(--foreground));
 }
 
@@ -1315,22 +1323,6 @@ onUnmounted(() => {
 
 .rss-entry-item__content {
   min-width: 0;
-}
-
-.rss-entry-item__title-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-
-.rss-entry-item__unread-dot {
-  display: inline-block;
-  width: 0.375rem;
-  height: 0.375rem;
-  margin-top: 0.45rem;
-  border-radius: 50%;
-  background: hsl(var(--foreground) / 0.62);
-  flex: 0 0 auto;
 }
 
 .rss-entry-item__date {

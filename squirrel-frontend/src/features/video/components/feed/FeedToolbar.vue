@@ -1,28 +1,13 @@
 <template>
   <section class="feed-toolbar">
     <div class="feed-toolbar__primary">
-      <nav v-if="showTabs" class="feed-toolbar__tabs" aria-label="视频分类">
-        <div
-          ref="tabsScroll"
-          class="feed-toolbar__tabs-scroll no-scrollbar"
-          @scroll="updateScrollState"
-        >
-          <Button
-            v-for="tab in tabs"
-            :key="tab.value"
-            unstyled
-            type="button"
-            class="feed-toolbar__tab"
-            :class="{ 'is-active': localActiveTab === tab.value }"
-            :aria-current="localActiveTab === tab.value ? 'page' : undefined"
-            @click="localActiveTab = tab.value"
-          >
-            {{ tab.label }}
-          </Button>
-        </div>
-        <div v-if="canScrollLeft" class="feed-toolbar__fade feed-toolbar__fade--left" />
-        <div v-if="canScrollRight" class="feed-toolbar__fade feed-toolbar__fade--right" />
-      </nav>
+      <AppSectionNav
+        v-if="showTabs"
+        v-model="localActiveTab"
+        class="feed-toolbar__tabs no-scrollbar"
+        :options="tabs"
+        aria-label="视频分类"
+      />
     </div>
 
     <div class="feed-toolbar__actions">
@@ -238,10 +223,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
+import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import type { TimeRange, Duration, ContentType } from '@/features/video/composables/useFeedFilters'
 import { useSites } from '@/features/video/composables/useSites'
 import { useUserSettings } from '@/shared/composables/useUserSettings'
@@ -310,23 +296,10 @@ const uiStore = useUIStore()
 
 onMounted(async () => {
   await Promise.all([fetchSites(), loadUserSettings()])
-  await nextTick()
-  updateScrollState()
 })
 
 const localActiveTab = ref(props.activeTab)
 const localSortBy = ref(props.sortBy)
-
-const tabsScroll = ref<HTMLElement | null>(null)
-const canScrollLeft = ref(false)
-const canScrollRight = ref(false)
-
-const updateScrollState = () => {
-  const el = tabsScroll.value
-  if (!el) return
-  canScrollLeft.value = el.scrollLeft > 0
-  canScrollRight.value = el.scrollLeft < el.scrollWidth - el.clientWidth - 2
-}
 
 const handleSiteChange = (value: unknown) => {
   emit('update:site', value === 'all' ? '' : String(value))
@@ -395,8 +368,6 @@ watch(() => props.activeTab, (v) => { localActiveTab.value = v })
 watch(() => props.sortBy, (v) => { localSortBy.value = v })
 watch(localActiveTab, (v) => emit('update:activeTab', v))
 watch(localSortBy, (v) => emit('update:sortBy', v))
-watch(() => props.tabs, () => nextTick(updateScrollState), { deep: true })
-watch(() => tabsScroll.value?.scrollWidth, () => nextTick(updateScrollState))
 
 const sortOptions = SORT_OPTIONS
 const timeRangeOptions = TIME_RANGE_OPTIONS
@@ -431,63 +402,9 @@ const viewModeOptions = [
 }
 
 .feed-toolbar__tabs {
-  position: relative;
   min-width: 0;
   max-width: 100%;
-}
-
-.feed-toolbar__tabs-scroll {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0.25rem;
   overflow-x: auto;
-}
-
-.feed-toolbar__tab {
-  display: inline-flex;
-  flex: 0 0 auto;
-  height: 2.5rem;
-  align-items: center;
-  padding: 0 0.625rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 550;
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
-}
-
-.feed-toolbar__tab:hover,
-.feed-toolbar__tab:focus-visible {
-  background: hsl(var(--muted) / 0.28);
-  color: hsl(var(--foreground));
-  outline: none;
-}
-
-.feed-toolbar__tab.is-active {
-  color: hsl(var(--foreground));
-  background: transparent;
-  box-shadow: inset 0 -2px 0 hsl(var(--foreground) / 0.58);
-}
-
-.feed-toolbar__fade {
-  pointer-events: none;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1.25rem;
-}
-
-.feed-toolbar__fade--left {
-  left: 0;
-  background: linear-gradient(to right, hsl(var(--background)), transparent);
-}
-
-.feed-toolbar__fade--right {
-  right: 0;
-  background: linear-gradient(to left, hsl(var(--background)), transparent);
 }
 
 .feed-toolbar__actions {

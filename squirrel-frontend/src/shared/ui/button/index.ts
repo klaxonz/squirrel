@@ -16,6 +16,8 @@ export const buttonVariants = cva(
           'border border-border/65 bg-card/35 text-foreground shadow-surface hover:border-border/80 hover:bg-card/58',
         secondary:
           'border border-border/50 bg-card/48 text-secondary-foreground shadow-surface hover:bg-card/64',
+        contrast:
+          'border border-foreground/80 bg-foreground text-background shadow-sm hover:border-foreground/90 hover:bg-foreground/88 hover:text-background',
         ghost:
           'border border-transparent text-muted-foreground hover:border-border/50 hover:bg-card/50 hover:text-foreground',
         player:

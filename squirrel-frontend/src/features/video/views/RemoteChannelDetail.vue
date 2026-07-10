@@ -1,7 +1,7 @@
 <template>
   <AppPageShell variant="compact" :fill="false">
     <div ref="root" class="app-page-content app-page-content--media">
-      <div v-if="errorMessage" class="app-page-section">
+      <div v-if="errorMessage">
         <AppEmptyState variant="error" title="加载失败" :copy="errorMessage">
           <template #actions>
             <Button variant="outline" size="sm" @click="refresh">重试</Button>
@@ -79,7 +79,7 @@
         </article>
       </div>
 
-      <div v-if="loading" class="app-page-section--grid app-video-grid app-video-grid--feed">
+      <div v-if="loading" class="app-video-grid app-video-grid--feed">
         <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" />
       </div>
 

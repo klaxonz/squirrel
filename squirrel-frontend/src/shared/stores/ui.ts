@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 
 export const useUIStore = defineStore('ui', () => {
   const SIDEBAR_OPEN_KEY = 'ui.sidebarOpen'
@@ -10,8 +10,8 @@ export const useUIStore = defineStore('ui', () => {
   const isSidebarOpen = ref(readPersistedSidebarOpen())
   const isVideoWidescreen = ref(false)
   const isVideoSidebarOpen = ref(true)
-  const searchQuery = ref('')
-  const searchTrigger = ref(0)
+  const searchQueries = reactive<Record<string, string>>({})
+  const searchTriggers = reactive<Record<string, number>>({})
   const homeSearchMode = ref<'local' | 'remote'>('local')
 
   const VIEW_MODE_KEY = 'ui.viewMode'
@@ -35,11 +35,19 @@ export const useUIStore = defineStore('ui', () => {
     }
   }
 
-  const triggerSearch = (query?: string) => {
+  const getSearchQuery = (scope: string) => searchQueries[scope] ?? ''
+
+  const setSearchQuery = (scope: string, query: string) => {
+    searchQueries[scope] = query
+  }
+
+  const getSearchTrigger = (scope: string) => searchTriggers[scope] ?? 0
+
+  const triggerSearch = (scope: string, query?: string) => {
     if (query !== undefined) {
-      searchQuery.value = query
+      setSearchQuery(scope, query)
     }
-    searchTrigger.value++
+    searchTriggers[scope] = getSearchTrigger(scope) + 1
   }
 
   const setHomeSearchMode = (mode: 'local' | 'remote') => {
@@ -64,12 +72,13 @@ export const useUIStore = defineStore('ui', () => {
     isSidebarOpen,
     isVideoWidescreen,
     isVideoSidebarOpen,
-    searchQuery,
-    searchTrigger,
     homeSearchMode,
     viewMode,
     toggleSidebar,
     setSidebarOpen,
+    getSearchQuery,
+    setSearchQuery,
+    getSearchTrigger,
     triggerSearch,
     setHomeSearchMode,
     setViewMode,

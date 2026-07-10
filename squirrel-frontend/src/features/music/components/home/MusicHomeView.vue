@@ -1,16 +1,12 @@
 <template>
   <div class="music-home">
-    <MusicGreetingSection
-      :user="user"
-      :recent-track="lastPlayedTrack"
-      :has-current-track="Boolean(player.currentTrack)"
+    <MusicHomeHero
       :featured-playlist="featuredPlaylist"
       :fm-mode="fmMode"
       :fm-pool-id="fmPoolId"
       :fm-loading="fmLoading"
       :fm-active="fmActive"
       :fm-playing="fmPlaying"
-      @continue-play="$emit('continue-play', $event)"
       @fm-play="$emit('fm-play')"
       @everyday="$emit('navigate', 'everyday')"
       @new-songs="$emit('navigate', 'new-songs')"
@@ -42,14 +38,14 @@
           icon="playlistMusic"
           title="暂无推荐歌单"
         />
-        <MusicCardGrid v-else layout="grid-5">
+        <MusicCardGrid v-else layout="grid-compact">
           <MusicCard
             v-for="item in recommendedPlaylists"
             :key="item.specialid"
             :cover="item.imgurl"
             :title="item.specialname || item.name || '未命名歌单'"
             :meta="item.play_count ? formatCount(item.play_count) + ' 次播放' : item.nickname"
-            size="md"
+            size="sm"
             variant="playlist"
             playable
             @select="$emit('select-playlist', item)"
@@ -98,7 +94,9 @@
           :subtitle="album.artist"
           size="md"
           variant="album"
+          playable
           @select="$emit('select-album', album)"
+          @play="$emit('play-album', album)"
         />
       </MusicCardGrid>
     </MusicSection>
@@ -107,7 +105,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import MusicGreetingSection from './MusicGreetingSection.vue'
+import MusicHomeHero from './MusicHomeHero.vue'
 import MusicRecentSection from './MusicRecentSection.vue'
 import MusicSection from '../shared/MusicSection.vue'
 import MusicCard from '../shared/MusicCard.vue'
@@ -116,7 +114,7 @@ import MusicRankRow from '../shared/MusicRankRow.vue'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { formatCount } from '@/shared/lib/dateFormat'
-import type { MusicPlaylist, MusicRank, MusicAlbum, MusicTrack, MusicUserProfile } from '@/shared/api/music'
+import type { MusicPlaylist, MusicRank, MusicAlbum, MusicTrack } from '@/shared/api/music'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 
 type FmMode = 'normal' | 'small' | 'peak'
@@ -128,7 +126,6 @@ const props = defineProps<{
   playlistsLoading: boolean
   ranksLoading: boolean
   albumsLoading: boolean
-  user?: MusicUserProfile | null
   historyTracks?: MusicTrack[]
   fmMode: FmMode
   fmPoolId: string
@@ -143,8 +140,8 @@ defineEmits<{
   'select-rank': [rank: MusicRank]
   'select-album': [album: MusicAlbum]
   'play-playlist': [playlist: MusicPlaylist]
+  'play-album': [album: MusicAlbum]
   'fm-play': []
-  'continue-play': [track: MusicTrack]
   'switch-fm-mode': [mode: FmMode]
   'switch-fm-pool': [poolId: string]
 }>()
@@ -152,9 +149,8 @@ defineEmits<{
 const player = useMusicPlayerStore()
 
 const recentTracks = computed(() => props.historyTracks?.slice(0, 5) || [])
-const lastPlayedTrack = computed(() => player.lastSessionTrack)
 const featuredPlaylist = computed(() => props.playlists[0] || null)
-const recommendedPlaylists = computed(() => props.playlists.slice(1, 11))
+const recommendedPlaylists = computed(() => props.playlists.slice(1, 8))
 
 function handlePlayTrack(track: MusicTrack) {
   player.playTrack(track)

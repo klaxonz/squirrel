@@ -15,7 +15,7 @@ const recentServerUrls = ref<string[]>([])
 let initPromise: Promise<string> | null = null
 let hasBoundDesktopListener = false
 
-const normalizeServerUrl = (value: unknown): string => {
+export const normalizeServerUrl = (value: unknown): string => {
   const normalized = String(value || '').trim()
   if (!normalized) return ''
 

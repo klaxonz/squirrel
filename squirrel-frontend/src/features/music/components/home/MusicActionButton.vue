@@ -31,13 +31,13 @@ defineEmits<{
 .music-action-button {
   display: flex;
   min-width: 0;
-  min-height: 3.75rem;
+  min-height: 3.5rem;
   align-items: center;
-  gap: var(--space-3);
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--radius-lg);
-  padding: 0.625rem var(--space-3);
-  background: hsl(var(--card) / 0.5);
+  gap: var(--space-2);
+  border: 0;
+  border-radius: 0;
+  padding: 0.5rem var(--space-3);
+  background: transparent;
   color: hsl(var(--foreground));
   text-align: left;
   cursor: pointer;
@@ -47,7 +47,6 @@ defineEmits<{
 }
 
 .music-action-button:hover {
-  border-color: hsl(var(--border));
   background: hsl(var(--muted) / 0.34);
 }
 
@@ -58,8 +57,8 @@ defineEmits<{
 
 .music-action-icon {
   display: flex;
-  width: 1.875rem;
-  height: 1.875rem;
+  width: 1.75rem;
+  height: 1.75rem;
   flex: none;
   align-items: center;
   justify-content: center;
@@ -88,9 +87,9 @@ defineEmits<{
 }
 
 .music-action-description {
-  margin-top: 0.2rem;
+  margin-top: 0.125rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
 }
 
 .music-action-arrow {

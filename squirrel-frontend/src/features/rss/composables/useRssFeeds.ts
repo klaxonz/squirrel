@@ -20,6 +20,8 @@ export function useRssFeeds(options: {
 }) {
   const feeds = ref<RssFeed[]>([])
   const selectedFeedId = ref<number | null>(null)
+  const loadingFeeds = ref(true)
+  let feedsRequestToken = 0
 
   const showSubscribeModal = ref(false)
   const subscribingFeed = ref(false)
@@ -84,13 +86,23 @@ export function useRssFeeds(options: {
   })
 
   const loadFeeds = async () => {
+    const requestToken = ++feedsRequestToken
+    const accountId = options.selectedAccountId.value
+    loadingFeeds.value = true
+
     try {
       const data = await getRssFeeds(
-        options.selectedAccountId.value ? { accountId: options.selectedAccountId.value } : {}
+        accountId ? { accountId } : {}
       )
+      if (requestToken !== feedsRequestToken) return
       feeds.value = data?.data || []
     } catch (err) {
+      if (requestToken !== feedsRequestToken) return
       options?.onStatus?.(errorMessage(err, '加载订阅源失败'), true)
+    } finally {
+      if (requestToken === feedsRequestToken) {
+        loadingFeeds.value = false
+      }
     }
   }
 
@@ -259,6 +271,7 @@ export function useRssFeeds(options: {
   return {
     feeds,
     selectedFeedId,
+    loadingFeeds,
     showSubscribeModal,
     subscribingFeed,
     showCategoryDropdown,

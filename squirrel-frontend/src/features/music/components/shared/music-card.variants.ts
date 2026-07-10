@@ -31,6 +31,7 @@ export const musicCardGridVariants = cva('music-card-grid', {
       'grid-3': 'music-card-grid--cols-3',
       'grid-4': 'music-card-grid--cols-4',
       'grid-5': 'music-card-grid--cols-5',
+      'grid-compact': 'music-card-grid--compact',
       'grid-auto': 'music-card-grid--auto',
       'scroll-x': 'music-card-grid--scroll-x',
     },

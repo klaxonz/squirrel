@@ -1,7 +1,6 @@
 import { ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import type { Ref } from 'vue'
-import { usePointerOutside } from '@/shared/composables/usePointerOutside'
 import { getRssSyncStatus, syncRssAccount } from '@/shared/api'
 import type { RssSyncStatus } from '@/features/rss/types/rss'
 
@@ -18,8 +17,6 @@ export interface UseRssSyncOptions {
 
 export interface UseRssSyncReturn {
   syncing: Ref<boolean>
-  showSyncMenu: Ref<boolean>
-  syncDropdownRef: Ref<HTMLElement | null>
   getRssSyncModeLabel: (syncMode?: string) => string
   pollSyncProgress: () => void
   syncSelectedAccount: (forceFullSync?: boolean) => Promise<void>
@@ -35,13 +32,7 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
   const { selectedAccountId, onStatus, loadAccounts, loadFeeds, loadEntries } = options
 
   const syncing = ref(false)
-  const showSyncMenu = ref(false)
-  const syncDropdownRef = ref<HTMLElement | null>(null)
   let syncPollTimer: ReturnType<typeof setInterval> | null = null
-
-  usePointerOutside(syncDropdownRef, () => {
-    showSyncMenu.value = false
-  })
 
   const pollSyncProgress = () => {
     if (syncPollTimer) clearInterval(syncPollTimer)
@@ -134,8 +125,6 @@ export function useRssSync(options: UseRssSyncOptions): UseRssSyncReturn {
 
   return {
     syncing,
-    showSyncMenu,
-    syncDropdownRef,
     getRssSyncModeLabel,
     pollSyncProgress,
     syncSelectedAccount,

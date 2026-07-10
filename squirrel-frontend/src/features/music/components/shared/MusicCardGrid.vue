@@ -9,7 +9,7 @@ import { computed } from 'vue'
 import { musicCardGridVariants } from './music-card.variants'
 
 const props = withDefaults(defineProps<{
-  layout?: 'grid-2' | 'grid-3' | 'grid-4' | 'grid-5' | 'grid-auto' | 'scroll-x'
+  layout?: 'grid-2' | 'grid-3' | 'grid-4' | 'grid-5' | 'grid-compact' | 'grid-auto' | 'scroll-x'
 }>(), {
   layout: 'grid-auto',
 })
@@ -37,6 +37,11 @@ const layoutClass = computed(() => musicCardGridVariants({ layout: props.layout 
 
 .music-card-grid--cols-5 {
   grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.music-card-grid--compact {
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 9.25rem));
+  justify-content: start;
 }
 
 .music-card-grid--auto {

@@ -1,29 +1,5 @@
 <template>
-  <section class="music-greeting">
-    <header class="music-greeting-header">
-      <div class="music-greeting-identity">
-        <div class="music-greeting-avatar">
-          <img v-if="user?.avatar" :src="user.avatar" :alt="user?.nickname ? `${user.nickname}的头像` : '用户头像'" />
-          <AppIcon v-else name="user" class="h-5 w-5" />
-        </div>
-        <div class="music-greeting-copy">
-          <h1 class="music-greeting-title">{{ greetingText }}</h1>
-          <p class="music-greeting-subtitle">{{ subtitleText }}</p>
-        </div>
-      </div>
-
-      <Button
-        v-if="recentTrack && !hasCurrentTrack"
-        variant="secondary"
-        class="music-continue-button"
-        @click="$emit('continue-play', recentTrack)"
-      >
-        <AppIcon name="play" class="h-3.5 w-3.5" />
-        <span>继续播放</span>
-        <strong>{{ recentTrack.title }}</strong>
-      </Button>
-    </header>
-
+  <section class="music-home-hero">
     <div class="music-hero-grid" :class="{ 'music-hero-grid--fm-only': !featuredPlaylist }">
       <article v-if="featuredPlaylist" class="music-featured">
         <Button
@@ -62,11 +38,6 @@
                 {{ formatCount(featuredPlaylist.play_count) }} 次播放
               </span>
             </div>
-            <div v-if="featuredPlaylist.tags?.length" class="music-featured-tags" aria-label="歌单标签">
-              <span v-for="tag in featuredPlaylist.tags.slice(0, 3)" :key="tag.tag_name">
-                {{ tag.tag_name }}
-              </span>
-            </div>
             <div class="music-featured-actions">
               <Button
                 variant="secondary"
@@ -90,7 +61,7 @@
         </div>
       </article>
 
-      <div class="music-hero-utility">
+      <section class="music-control-panel" aria-label="音乐快捷控制">
         <section class="music-fm-panel" :class="{ 'music-fm-panel--active': fmActive }">
           <header class="music-fm-header">
             <div class="music-fm-heading">
@@ -152,7 +123,7 @@
           </div>
         </section>
 
-        <div class="music-quick-actions">
+        <div class="music-quick-actions" aria-label="快捷入口">
           <MusicActionButton
             icon="time"
             label="每日推荐"
@@ -166,7 +137,7 @@
             @click="$emit('new-songs')"
           />
         </div>
-      </div>
+      </section>
     </div>
   </section>
 </template>
@@ -177,14 +148,11 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import MusicActionButton from './MusicActionButton.vue'
 import { formatCount } from '@/shared/lib/dateFormat'
-import type { MusicPlaylist, MusicUserProfile, MusicTrack } from '@/shared/api/music'
+import type { MusicPlaylist } from '@/shared/api/music'
 
 type FmMode = 'normal' | 'small' | 'peak'
 
 const props = defineProps<{
-  user?: MusicUserProfile | null
-  recentTrack?: MusicTrack | null
-  hasCurrentTrack?: boolean
   featuredPlaylist?: MusicPlaylist | null
   fmMode: FmMode
   fmPoolId: string
@@ -194,7 +162,6 @@ const props = defineProps<{
 }>()
 
 defineEmits<{
-  'continue-play': [track: MusicTrack]
   'open-featured': [playlist: MusicPlaylist]
   'play-featured': [playlist: MusicPlaylist]
   'fm-play': []
@@ -232,115 +199,17 @@ const fmButtonTitle = computed(() => {
   if (props.fmActive) return '继续私人 FM'
   return '播放私人 FM'
 })
-
-const greetingText = computed(() => {
-  const hour = new Date().getHours()
-  const name = props.user?.nickname || ''
-  if (hour < 6) return name ? `${name}，夜深了` : '夜深了，还在听歌吗'
-  if (hour < 12) return name ? `${name}，早上好` : '早上好'
-  if (hour < 14) return name ? `${name}，中午好` : '中午好'
-  if (hour < 18) return name ? `${name}，下午好` : '下午好'
-  if (hour < 22) return name ? `${name}，晚上好` : '晚上好'
-  return name ? `${name}，夜深了` : '夜深了'
-})
-
-const subtitleText = computed(() => {
-  if (props.recentTrack && !props.hasCurrentTrack) {
-    return `上次播放：${props.recentTrack.title}`
-  }
-  return '从熟悉的声音开始，或发现一些新的。'
-})
 </script>
 
 <style scoped>
-.music-greeting {
+.music-home-hero {
   width: 100%;
-  padding: var(--space-2) 0 var(--space-6);
-}
-
-.music-greeting-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-5);
-  margin-bottom: var(--space-4);
-}
-
-.music-greeting-identity {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.music-greeting-avatar {
-  display: flex;
-  width: 2.75rem;
-  height: 2.75rem;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--radius-lg);
-  background: hsl(var(--muted) / 0.45);
-  color: hsl(var(--muted-foreground));
-}
-
-.music-greeting-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.music-greeting-copy {
-  min-width: 0;
-}
-
-.music-greeting-title {
-  margin: 0;
-  color: var(--app-heading-color);
-  font-family: var(--app-heading-font);
-  font-size: var(--app-h1-size);
-  font-weight: var(--app-h1-weight);
-  letter-spacing: 0;
-  line-height: var(--app-h1-leading);
-}
-
-.music-greeting-subtitle {
-  margin: 0.25rem 0 0;
-  overflow: hidden;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.music-continue-button {
-  max-width: 24rem;
-  min-width: 0;
-  justify-content: flex-start;
-}
-
-.music-continue-button span {
-  flex: none;
-  font-size: 0.75rem;
-  font-weight: 650;
-}
-
-.music-continue-button strong {
-  min-width: 0;
-  overflow: hidden;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding-bottom: var(--space-5);
 }
 
 .music-hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.48fr) minmax(22rem, 1.02fr);
+  grid-template-columns: minmax(0, 1.55fr) minmax(28rem, 0.95fr);
   gap: var(--space-3);
   align-items: stretch;
 }
@@ -351,8 +220,8 @@ const subtitleText = computed(() => {
 
 .music-featured {
   display: grid;
-  grid-template-columns: 15rem minmax(0, 1fr);
-  min-height: 13rem;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  min-height: 11rem;
   overflow: hidden;
   border: 1px solid var(--app-surface-border-subtle);
   border-radius: var(--radius-xl);
@@ -373,7 +242,7 @@ const subtitleText = computed(() => {
 .music-featured-cover-placeholder {
   width: 100%;
   height: 100%;
-  min-height: 13rem;
+  min-height: 11rem;
 }
 
 .music-featured-cover img {
@@ -402,13 +271,13 @@ const subtitleText = computed(() => {
   display: flex;
   min-width: 0;
   align-items: center;
-  padding: var(--space-5);
+  padding: var(--space-4);
 }
 
 .music-featured-copy {
-  min-width: 0;
   width: 100%;
-  max-width: 36rem;
+  min-width: 0;
+  max-width: 34rem;
 }
 
 .music-featured-kicker {
@@ -419,34 +288,34 @@ const subtitleText = computed(() => {
 
 .music-featured-title {
   display: -webkit-box;
-  margin: var(--space-2) 0 0;
+  margin: var(--space-1) 0 0;
   overflow: hidden;
   color: hsl(var(--foreground));
   font-family: var(--app-heading-font);
-  font-size: 1.375rem;
+  font-size: 1.25rem;
   font-weight: 650;
   letter-spacing: 0;
-  line-height: 1.15;
+  line-height: 1.2;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
 .music-featured-description {
   display: -webkit-box;
-  margin: var(--space-2) 0 0;
+  margin: var(--space-1) 0 0;
   overflow: hidden;
   color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
-  line-height: 1.5;
+  line-height: 1.4;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
 }
 
 .music-featured-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-top: var(--space-3);
+  gap: var(--space-2);
+  margin-top: var(--space-2);
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
 }
@@ -457,27 +326,11 @@ const subtitleText = computed(() => {
   gap: var(--space-1);
 }
 
-.music-featured-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
-
-.music-featured-tags span {
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: var(--radius-sm);
-  padding: 0.2rem 0.45rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
-  line-height: 1.2;
-}
-
 .music-featured-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
 }
 
 .music-featured-details {
@@ -489,27 +342,27 @@ const subtitleText = computed(() => {
   color: hsl(var(--foreground));
 }
 
-.music-hero-utility {
+.music-control-panel {
   display: grid;
   min-width: 0;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: var(--space-2);
+  grid-template-rows: minmax(0, 1fr) 3.5rem;
+  overflow: hidden;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--radius-xl);
+  background: hsl(var(--card) / 0.56);
 }
 
 .music-fm-panel {
   display: flex;
-  min-height: 8.5rem;
+  min-height: 0;
   flex-direction: column;
   justify-content: space-between;
-  gap: var(--space-4);
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--radius-xl);
+  gap: var(--space-3);
   padding: var(--space-4);
-  background: hsl(var(--card) / 0.56);
 }
 
 .music-fm-panel--active {
-  border-color: hsl(var(--foreground) / 0.18);
+  background: hsl(var(--foreground) / 0.018);
 }
 
 .music-fm-header,
@@ -531,8 +384,8 @@ const subtitleText = computed(() => {
 
 .music-fm-icon {
   display: flex;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
   flex: none;
   align-items: center;
   justify-content: center;
@@ -594,13 +447,14 @@ const subtitleText = computed(() => {
 
 .music-fm-options {
   display: grid;
-  gap: var(--space-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
 }
 
 .music-fm-option-row {
+  display: grid;
   min-width: 0;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-1);
 }
 
 .music-fm-option-label {
@@ -611,13 +465,19 @@ const subtitleText = computed(() => {
 }
 
 .music-fm-segment {
-  display: inline-flex;
+  display: grid;
   min-width: 0;
-  align-items: center;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.125rem;
   padding: 0.125rem;
   border-radius: var(--radius-md);
   background: hsl(var(--muted) / 0.34);
+}
+
+.music-fm-segment :deep(button) {
+  min-width: 0;
+  justify-content: center;
+  padding-inline: 0.375rem;
 }
 
 .music-fm-segment :deep(.is-active) {
@@ -629,7 +489,11 @@ const subtitleText = computed(() => {
 .music-quick-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
+  border-top: 1px solid var(--app-surface-border-subtle);
+}
+
+.music-quick-actions > * + * {
+  border-left: 1px solid var(--app-surface-border-subtle);
 }
 
 @media (max-width: 1180px) {
@@ -637,13 +501,47 @@ const subtitleText = computed(() => {
     grid-template-columns: 1fr;
   }
 
-  .music-hero-utility {
-    grid-template-columns: minmax(20rem, 1fr) minmax(20rem, 1fr);
+  .music-control-panel {
+    grid-template-columns: minmax(0, 1fr) 20rem;
     grid-template-rows: auto;
   }
 
   .music-quick-actions {
-    align-content: stretch;
+    grid-template-columns: 1fr;
+    border-top: 0;
+    border-left: 1px solid var(--app-surface-border-subtle);
+  }
+
+  .music-quick-actions > * + * {
+    border-top: 1px solid var(--app-surface-border-subtle);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .music-featured {
+    grid-template-columns: 9rem minmax(0, 1fr);
+  }
+
+  .music-featured-cover img,
+  .music-featured-cover-placeholder {
+    min-height: 9rem;
+  }
+
+  .music-control-panel {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 3.5rem;
+  }
+
+  .music-quick-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid var(--app-surface-border-subtle);
+    border-left: 0;
+  }
+
+  .music-quick-actions > * + * {
+    border-top: 0;
+    border-left: 1px solid var(--app-surface-border-subtle);
   }
 }
 

@@ -34,7 +34,6 @@ withDefaults(defineProps<{
 .app-toolbar-frame {
   width: 100%;
   margin: 0 auto;
-  padding-inline: var(--app-page-gutter);
   /* Opaque on the shared canvas so sticky toolbars cover scroll content
      without a frosted or card-tinted band. */
   background: hsl(var(--background));
@@ -58,6 +57,7 @@ withDefaults(defineProps<{
   max-width: var(--app-page-max-width);
   margin: 0 auto;
   padding-block: var(--app-toolbar-padding-block);
+  padding-inline: var(--app-page-gutter);
 }
 
 .app-toolbar-frame--compact .app-toolbar-frame__inner {
@@ -65,13 +65,13 @@ withDefaults(defineProps<{
 }
 
 @media (min-width: 640px) {
-  .app-toolbar-frame {
+  .app-toolbar-frame__inner {
     padding-inline: var(--app-page-gutter-sm);
   }
 }
 
 @media (min-width: 1024px) {
-  .app-toolbar-frame {
+  .app-toolbar-frame__inner {
     padding-inline: var(--app-page-gutter-lg);
   }
 }

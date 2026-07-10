@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from domains.rss.application.services.account.serialization import serialize_entry, serialize_feed
 from domains.rss.application.services.client._base import RssServiceError
@@ -55,6 +55,7 @@ class RssLibraryService:
         feed_id: int | None = None,
         is_read: bool | None = None,
         is_starred: bool | None = None,
+        query: str | None = None,
         page: int = 1,
         page_size: int = 30,
     ) -> dict[str, Any]:
@@ -68,6 +69,16 @@ class RssLibraryService:
                 conditions.append(RssEntry.is_read == is_read)
             if is_starred is not None:
                 conditions.append(RssEntry.is_starred == is_starred)
+            search_query = query.strip() if query else ''
+            if search_query:
+                escaped_query = search_query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+                pattern = f'%{escaped_query}%'
+                conditions.append(
+                    or_(
+                        RssEntry.title.ilike(pattern, escape='\\'),
+                        RssEntry.summary.ilike(pattern, escape='\\'),
+                    )
+                )
 
             entry_page = paginate(
                 session,

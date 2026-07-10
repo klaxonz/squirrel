@@ -2,30 +2,7 @@
   <AppPageShell class="site-runtime-page" variant="compact" :fill="false">
     <AppToolbarFrame bordered compact sticky>
       <div class="site-runtime-toolbar">
-        <div class="site-runtime-overview" aria-label="站点运行概览">
-          <span class="site-runtime-overview__lead">{{ siteRuntimeSummary.total }} 个站点</span>
-          <span>
-            运行 <strong>{{ siteRuntimeSummary.running }}</strong>
-          </span>
-          <span :data-tone="siteRuntimeSummary.attention > 0 ? 'warning' : 'muted'">
-            需关注 <strong>{{ siteRuntimeSummary.attention }}</strong>
-          </span>
-          <span :data-tone="connectivitySummary.failed > 0 ? 'warning' : 'muted'">
-            网络 <strong>{{ connectivitySummary.accessible }}/{{ connectivitySummary.total }}</strong>
-          </span>
-          <span
-            v-if="lastTestedAt"
-            class="site-runtime-overview__timestamp"
-            :title="`最近检测 ${formatTime(lastTestedAt)}`"
-          >
-            {{ formatTime(lastTestedAt) }}
-          </span>
-        </div>
-
         <div class="site-runtime-toolbar__actions">
-          <AppSearchInput v-model="searchQuery" placeholder="搜索站点或描述" class="site-runtime-search" />
-          <div class="site-runtime-toolbar__divider" aria-hidden="true" />
-
           <Button
             as-child
             variant="ghost"
@@ -59,7 +36,7 @@
             @click="handleTestAll"
           >
             <AppSpinner v-if="testingAll" size="sm" />
-            <AppIcon v-else name="sync" class="h-4 w-4" />
+            <AppIcon v-else name="diagnostics" class="h-4 w-4" />
             全量检测
           </Button>
 
@@ -124,7 +101,6 @@ import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
-import AppSearchInput from '@/shared/components/layout/AppSearchInput.vue'
 import SiteConfigEditorDialog from '@/features/settings/components/SiteConfigEditorDialog.vue'
 import SiteRuntimeGrid from '@/features/settings/components/SiteRuntimeGrid.vue'
 import YouTubeOAuthPrompt from '@/features/settings/components/YouTubeOAuthPrompt.vue'
@@ -136,7 +112,7 @@ import { useSiteCatalog } from '@/features/video/composables/useSites'
 import { useYouTubeOAuth } from '@/features/settings/composables/useYouTubeOAuth'
 import { useSiteConnectivityCache } from '@/features/settings/composables/useSiteConnectivityCache'
 import { useSiteDesktopLogin } from '@/features/settings/composables/useSiteDesktopLogin'
-import { useSiteRuntimeStatus } from '@/features/settings/composables/useSiteRuntimeStatus'
+import { useUIStore } from '@/shared/stores/ui'
 import {
   disableSiteRuntime,
   enableSiteRuntime,
@@ -158,6 +134,7 @@ const isInitialLoading = computed(() => loading.value && !siteRuntimes.value.len
 
 const testingAll = ref(false)
 const supportedSites = ref([])
+const uiStore = useUIStore()
 
 const { catalog: siteCatalog, loadCatalog, saveCatalog } = useSiteCatalog()
 
@@ -168,7 +145,6 @@ const {
   connectivityResults,
   loginStatusResults,
   loginStatusTesting,
-  lastTestedAt,
   clearLoginStatusCache,
   saveResultsToCache,
   loadResultsFromCache,
@@ -188,12 +164,6 @@ const {
   saveResultsToCache,
 })
 
-// ponytail: status/network/login badge text + Tailwind classes + capability
-// labels + time formatting live in useSiteRuntimeStatus. Only formatTime is
-// needed by the sidebar (last-tested timestamp); the table owns its own badge
-// formatters via its own useSiteRuntimeStatus instance.
-const { formatTime } = useSiteRuntimeStatus()
-
 const selectedCookiesFile = ref(null)
 const cookiesFileName = ref('')
 const importingCookies = ref(false)
@@ -204,7 +174,7 @@ const siteEditorSaving = ref(false)
 const siteEditorError = ref('')
 
 const siteCatalogMap = computed(() => siteCatalog.value || {})
-const searchQuery = ref('')
+const searchQuery = computed(() => uiStore.getSearchQuery('site-runtimes'))
 
 const enrichedSiteRuntimes = computed(() => {
   const resultsMap = new Map()
@@ -254,25 +224,6 @@ const displaySiteRuntimes = computed(() => {
   }
 
   return list
-})
-
-const siteRuntimeSummary = computed(() => ({
-  total: enrichedSiteRuntimes.value.length,
-  running: enrichedSiteRuntimes.value.filter(runtime => runtime.enabled && runtime.active_runtime?.state === 'running').length,
-  attention: enrichedSiteRuntimes.value.filter((runtime) => {
-    if (!runtime.enabled) return true
-    if (!runtime.active_runtime) return true
-    if (runtime.health?.healthy === false) return true
-    return ['failed', 'degraded', 'disabled', 'stopped'].includes(runtime.status)
-      || ['failed', 'stopped', 'draining'].includes(runtime.active_runtime?.state)
-  }).length,
-}))
-
-const connectivitySummary = computed(() => {
-  if (connectivityResults.value.length === 0) {
-    return { total: 0, accessible: 0, failed: 0, success_rate: 0 }
-  }
-  return connectivityResults.value[0]?.summary || { total: 0, accessible: 0, failed: 0, success_rate: 0 }
 })
 
 const handleCookiesFileChange = (event) => {
@@ -532,46 +483,8 @@ onMounted(() => {
   min-width: 0;
   min-height: 2.5rem;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--space-5);
-}
-
-.site-runtime-overview {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: var(--space-3);
-  color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-.site-runtime-overview > span + span {
-  padding-left: var(--space-3);
-  border-left: 1px solid var(--app-hairline);
-}
-
-.site-runtime-overview__lead {
-  color: hsl(var(--foreground) / 0.88);
-  font-weight: 650;
-}
-
-.site-runtime-overview strong {
-  margin-left: 0.2rem;
-  color: hsl(var(--foreground) / 0.86);
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-
-.site-runtime-overview [data-tone='warning'] strong {
-  color: hsl(var(--primary));
-}
-
-.site-runtime-overview__timestamp {
-  color: hsl(var(--muted-foreground) / 0.58);
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
 }
 
 .site-runtime-toolbar__actions {
@@ -581,10 +494,6 @@ onMounted(() => {
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
-}
-
-.site-runtime-search {
-  width: 18rem;
 }
 
 .site-runtime-file-button {
@@ -608,25 +517,9 @@ onMounted(() => {
   color: hsl(var(--muted-foreground) / 0.84);
 }
 
-.site-runtime-toolbar__divider {
-  width: 1px;
-  height: 1rem;
-  flex: 0 0 auto;
-  background: var(--app-hairline);
-}
-
 .site-runtime-page__content {
   padding-top: var(--space-5);
   padding-bottom: var(--space-8);
 }
 
-@media (max-width: 1360px) {
-  .site-runtime-overview__timestamp {
-    display: none;
-  }
-
-  .site-runtime-search {
-    width: 15rem;
-  }
-}
 </style>

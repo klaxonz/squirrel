@@ -9,7 +9,7 @@
     </div>
 
     <div v-else>
-      <div v-if="errorMessage" class="app-page-section">
+      <div v-if="errorMessage">
         <AppEmptyState variant="error" title="搜索失败" :copy="errorMessage">
           <template #actions>
             <Button variant="outline" size="sm" @click="refresh">重试</Button>
@@ -17,7 +17,7 @@
         </AppEmptyState>
       </div>
 
-      <div v-if="items.length > 0" class="app-page-section--grid app-video-grid app-video-grid--feed">
+      <div v-if="items.length > 0" class="app-video-grid app-video-grid--feed">
         <article
           v-for="item in items"
           :key="item.site + ':' + item.url"
@@ -80,7 +80,7 @@
         </article>
       </div>
 
-      <div v-if="loading" class="app-page-section--grid app-video-grid app-video-grid--feed">
+      <div v-if="loading" class="app-video-grid app-video-grid--feed">
         <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" />
       </div>
 

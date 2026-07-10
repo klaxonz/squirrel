@@ -3,18 +3,12 @@
     <AppTwoColumnLayout content-width="90rem">
       <template #header>
         <div class="music-nav-header">
-          <AppSegmentedControl
+          <AppSectionNav
+            class="app-section-nav--optical"
             :model-value="musicActiveMode"
             :options="musicNavItems"
-            size="sm"
-            aria-label="音乐导航"
-            @update:model-value="(value) => handleNavigate(String(value))"
-          />
-          <MusicCreatePlaylistButton
-            v-if="authStatus?.logged_in && activeView === 'profile'"
-            compact
-            class="music-top-create"
-            @create="handleCreatePlaylist"
+            aria-label="音乐分类"
+            @update:model-value="(value) => handleMusicNavSelect(String(value))"
           />
         </div>
       </template>
@@ -28,7 +22,6 @@
           :playlists-loading="playlistsLoading"
           :ranks-loading="ranksLoading"
           :albums-loading="newAlbumsLoading"
-          :user="kugouProfile"
           :history-tracks="profileHistory"
           :fm-mode="fm.mode.value"
           :fm-pool-id="fm.poolId.value"
@@ -40,8 +33,8 @@
           @select-rank="handleSelectRank"
           @select-album="handleSelectAlbum"
           @fm-play="handleHomeFmPlay"
-          @continue-play="handleContinuePlay"
           @play-playlist="handlePlayPlaylist"
+          @play-album="handlePlayAlbum"
           @switch-fm-mode="handleSwitchFmMode"
           @switch-fm-pool="handleSwitchFmPool"
         />
@@ -169,6 +162,7 @@
           :error="profileError"
           :logout-loading="logoutLoading"
           :target-playlist-id="targetUserPlaylistId"
+          :create-playlist="handleCreatePlaylist"
           @retry="handleLoadProfile"
           @logout="handleLogout"
           @toggle-rank-type="handleToggleRankType"
@@ -205,6 +199,7 @@
           :albums="viewAlbums"
           :loading="newAlbumsLoading"
           @select="handleSelectAlbum"
+          @play="handlePlayAlbum"
         />
 
         <MusicTrackList
@@ -249,9 +244,8 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
-import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
+import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
-import MusicCreatePlaylistButton from '@/features/music/components/sidebar/MusicCreatePlaylistButton.vue'
 import MusicHomeView from '@/features/music/components/home/MusicHomeView.vue'
 import MusicSearchView from '@/features/music/components/MusicSearchView.vue'
 import MusicRankGrid from '@/features/music/components/MusicRankGrid.vue'
@@ -457,9 +451,9 @@ const favoriteTracks = computed(() => {
   return []
 })
 
-watch(() => uiStore.searchTrigger, () => {
+watch(() => uiStore.getSearchTrigger('music'), () => {
   if (route.name === 'Music') {
-    const query = uiStore.searchQuery.trim()
+    const query = uiStore.getSearchQuery('music').trim()
     if (!query) {
       resetSearch()
       return
@@ -515,6 +509,11 @@ function handleNavigate(mode: string) {
   } else if (mode === 'profile') {
     handleLoadProfile()
   }
+}
+
+function handleMusicNavSelect(mode: string) {
+  if (musicActiveMode.value === mode) return
+  handleNavigate(mode)
 }
 
 function handleNavigateFavorites() {
@@ -594,11 +593,10 @@ function handlePlayPlaylist(playlist: MusicPlaylist) {
   })
 }
 
-function handleContinuePlay(track: MusicTrack) {
-  if (playerStore.continueLastSession()) {
-    return
+async function handlePlayAlbum(album: MusicAlbum) {
+  if (await selectAlbum(album)) {
+    playAll(false)
   }
-  if (track) playerStore.playTrack(track)
 }
 
 function handleHomeFmPlay() {
@@ -660,7 +658,7 @@ async function handleLoadMorePlaylistsLocal() {
 }
 
 async function handleCreatePlaylist(name: string) {
-  await createPlaylist(name)
+  return createPlaylist(name)
 }
 
 async function handleAddToPlaylist(track: MusicTrack) {
@@ -695,7 +693,7 @@ async function handleLogout() {
   width: 100%;
   min-width: 0;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--space-3);
 }
 
@@ -705,7 +703,4 @@ async function handleLogout() {
   padding-block: var(--space-4) var(--space-7);
 }
 
-.music-top-create {
-  flex: 0 0 auto;
-}
 </style>

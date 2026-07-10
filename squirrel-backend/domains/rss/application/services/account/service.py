@@ -163,6 +163,7 @@ class RssAccountService:
         feed_id: int | None = None,
         is_read: bool | None = None,
         is_starred: bool | None = None,
+        query: str | None = None,
         page: int = 1,
         page_size: int = 30,
     ) -> dict[str, Any]:
@@ -172,6 +173,7 @@ class RssAccountService:
             feed_id=feed_id,
             is_read=is_read,
             is_starred=is_starred,
+            query=query,
             page=page,
             page_size=page_size,
         )

@@ -419,11 +419,20 @@
   display: flex;
   min-height: var(--app-workbench-header-height);
   flex: none;
+  border-bottom: 1px solid var(--app-hairline);
+  background: transparent;
+}
+
+.app-workbench__header-content {
+  display: flex;
+  width: 100%;
+  max-width: var(--app-workbench-content-width, var(--app-page-max-width));
+  min-width: 0;
+  min-height: var(--app-workbench-header-height);
+  margin-inline: auto;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  border-bottom: 1px solid var(--app-hairline);
-  background: transparent;
   padding-inline: var(--space-5);
 }
 
@@ -431,6 +440,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   background: transparent;
 }
 
@@ -891,22 +901,9 @@
   gap: 0.375rem;
 }
 
-.app-dialog-form-label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
 .app-dialog-form-label {
   color: hsl(var(--foreground) / 0.86);
   font-size: 0.75rem;
-  font-weight: 650;
-}
-
-.app-dialog-form-required {
-  color: hsl(var(--destructive));
-  font-size: 0.6875rem;
   font-weight: 650;
 }
 

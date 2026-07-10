@@ -84,9 +84,8 @@ defineEmits<{
 
 <style scoped>
 .music-discovery-grid {
-  padding: 1.5rem 2rem 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
+  min-width: 0;
 }
 
 .music-tag-strip {

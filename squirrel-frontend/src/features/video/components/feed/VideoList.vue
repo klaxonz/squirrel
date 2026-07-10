@@ -3,8 +3,8 @@
     <!-- List/Grid Container -->
     <div v-if="videos.length > 0"
          :class="uiStore.viewMode === 'grid'
-           ? 'app-video-grid app-page-section--grid'
-           : 'app-page-section--list'">
+           ? 'app-video-grid'
+           : 'video-list__list'">
       <VideoItem
         v-for="video in videos"
         :key="video.id"
@@ -23,8 +23,8 @@
          skeleton block alongside the stale items. -->
     <div v-if="loading && !refreshing"
          :class="uiStore.viewMode === 'grid'
-           ? 'app-video-grid app-page-section--grid'
-           : 'app-page-section--list'">
+           ? 'app-video-grid'
+           : 'video-list__list'">
       <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" :layout="uiStore.viewMode" />
     </div>
 
@@ -87,4 +87,11 @@ useInfiniteScrollSentinel({
 </script>
 
 <style scoped>
+.video-list__list {
+  display: flex;
+  max-width: 56rem;
+  margin-inline: auto;
+  flex-direction: column;
+  gap: var(--space-4);
+}
 </style>

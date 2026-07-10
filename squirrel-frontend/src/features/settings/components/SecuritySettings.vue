@@ -18,7 +18,6 @@
     <section class="app-settings-section">
       <div class="app-settings-section-title">
         <h2>登录密码</h2>
-        <p>更新当前账户的登录密码，修改成功后继续保留当前会话。</p>
       </div>
 
       <form class="app-settings-panel security-password-form" @submit.prevent="handlePasswordUpdate">
@@ -53,15 +52,11 @@
     <section class="app-settings-section">
       <div class="app-settings-section-title">
         <h2>登录会话</h2>
-        <p>管理当前设备之外仍然有效的账户会话。</p>
       </div>
 
       <div class="app-settings-panel">
         <div class="app-settings-row">
-          <div class="app-settings-row__copy">
-            <div class="app-settings-row__title">注销其他设备</div>
-            <div class="app-settings-row__desc">使除当前设备外的所有登录会话立即失效。</div>
-          </div>
+          <div class="app-settings-row__title">注销其他设备</div>
           <Button
             variant="destructive"
             :loading="sessionSubmitting"

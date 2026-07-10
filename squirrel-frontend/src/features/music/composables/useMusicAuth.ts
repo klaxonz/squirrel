@@ -121,12 +121,14 @@ export function useMusicAuth() {
     userPlaylists.value = []
   }
 
-  async function createPlaylist(name: string) {
+  async function createPlaylist(name: string): Promise<boolean> {
     try {
       await createMusicUserPlaylist({ name, is_private: false })
-      loadUserPlaylists()
+      await loadUserPlaylists()
+      return true
     } catch (err) {
       Logger.warn('createPlaylist failed', err)
+      return false
     }
   }
 

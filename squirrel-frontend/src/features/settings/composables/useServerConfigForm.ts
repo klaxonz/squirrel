@@ -1,30 +1,21 @@
-import { ref, type Ref } from 'vue'
-import { useServerConfig } from '@/shared/composables/useServerConfig'
+import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
+import {
+  normalizeServerUrl,
+  useServerConfig,
+} from '@/shared/composables/useServerConfig'
 import { useToast } from '@/shared/components/toast/useToast'
 import { Logger } from '@/shared/lib/logger'
+import { logoutAndRedirect } from '@/shared/lib/auth'
 
-/**
- * Server-URL config form: test-connection + save flow.
- *
- * Owns the form url field, the test/save loading flags, and the test result
- * (ok + message). `handleTestServer` probes the entered URL and surfaces the
- * outcome; `handleSaveServer` persists it via the shared useServerConfig,
- * rejecting empty/invalid urls. The saved url field is re-synced from the
- * shared config after a successful save so it tracks the canonical value.
- *
- * Extracted from Settings.vue so the test→result→save state machine + its
- * loading guards + error mapping live in one place rather than interleaved
- * with theme / user-settings / system-config wiring. The host still owns the
- * initial `initServerConfig()` mount call (it coordinates parallel loads).
- */
 export interface UseServerConfigFormReturn {
   serverForm: Ref<{ url: string }>
   serverSaving: Ref<boolean>
   serverTesting: Ref<boolean>
   serverTestResult: Ref<boolean | null>
   serverTestMessage: Ref<string>
+  canSwitchServer: ComputedRef<boolean>
   handleTestServer: () => Promise<void>
-  handleSaveServer: () => Promise<void>
+  handleSwitchServer: () => Promise<void>
 }
 
 export function useServerConfigForm(): UseServerConfigFormReturn {
@@ -36,39 +27,88 @@ export function useServerConfigForm(): UseServerConfigFormReturn {
   const serverTesting = ref(false)
   const serverTestResult = ref<boolean | null>(null)
   const serverTestMessage = ref('')
+  const testedServerUrl = ref('')
 
-  const handleTestServer = async () => {
-    if (!serverForm.value.url.trim()) return
-    serverTesting.value = true
+  const targetServerUrl = computed(() => normalizeServerUrl(serverForm.value.url))
+  const canSwitchServer = computed(() => {
+    return Boolean(targetServerUrl.value && targetServerUrl.value !== currentServerUrl.value)
+  })
+
+  const resetTestResult = () => {
     serverTestResult.value = null
+    serverTestMessage.value = ''
+    testedServerUrl.value = ''
+  }
+
+  watch(
+    () => serverForm.value.url,
+    () => {
+      if (targetServerUrl.value !== testedServerUrl.value) {
+        resetTestResult()
+      }
+    },
+  )
+
+  const testTargetServer = async (url: string): Promise<boolean> => {
     try {
-      const result = await testServerConnection(serverForm.value.url)
+      const result = await testServerConnection(url)
       serverTestResult.value = result.ok
       serverTestMessage.value = result.message
+      testedServerUrl.value = url
+      return result.ok
     } catch (err) {
       Logger.warn('[Settings] Server test failed', err)
       serverTestResult.value = false
       serverTestMessage.value = '无法连接'
+      testedServerUrl.value = url
+      return false
+    }
+  }
+
+  const handleTestServer = async () => {
+    const url = targetServerUrl.value
+    if (!url) {
+      serverTestResult.value = false
+      serverTestMessage.value = '无效的地址格式'
+      return
+    }
+
+    serverTesting.value = true
+    try {
+      await testTargetServer(url)
     } finally {
       serverTesting.value = false
     }
   }
 
-  const handleSaveServer = async () => {
-    if (!serverForm.value.url.trim()) return
+  const handleSwitchServer = async () => {
+    const url = targetServerUrl.value
+    if (!url) {
+      toast.error('无效的服务器地址')
+      return
+    }
+    if (url === currentServerUrl.value) {
+      return
+    }
+
     serverSaving.value = true
     try {
-      const ok = await setServerUrl(serverForm.value.url)
+      const hasValidTest = testedServerUrl.value === url && serverTestResult.value === true
+      if (!hasValidTest && !(await testTargetServer(url))) {
+        toast.error(serverTestMessage.value || '无法连接到服务器')
+        return
+      }
+
+      const ok = await setServerUrl(url)
       if (!ok) {
         toast.error('无效的服务器地址')
         return
       }
-      toast.success('服务器已更新')
-      // Re-sync from the canonical shared value so the field never drifts.
-      serverForm.value.url = currentServerUrl.value || ''
+
+      await logoutAndRedirect()
     } catch (err) {
-      Logger.warn('[Settings] Failed to save server', err)
-      toast.error('保存失败')
+      Logger.warn('[Settings] Failed to switch server', err)
+      toast.error('切换服务器失败')
     } finally {
       serverSaving.value = false
     }
@@ -80,7 +120,8 @@ export function useServerConfigForm(): UseServerConfigFormReturn {
     serverTesting,
     serverTestResult,
     serverTestMessage,
+    canSwitchServer,
     handleTestServer,
-    handleSaveServer,
+    handleSwitchServer,
   }
 }

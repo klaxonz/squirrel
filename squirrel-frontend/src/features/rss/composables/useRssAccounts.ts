@@ -66,12 +66,19 @@ export function useRssAccounts(options?: {
     return 'API 密码或 Token'
   })
 
+  const requiresUsername = computed(() => {
+    return accountForm.value.provider === 'greader' || accountForm.value.provider === 'fever'
+  })
+
   const canSaveForm = computed(() => {
-    return !!accountForm.value.base_url.trim() && (!!accountForm.value.id || !!accountForm.value.credential.trim())
+    const hasRequiredUsername = !requiresUsername.value || !!accountForm.value.username.trim()
+    const hasRequiredCredential = !!accountForm.value.id || !!accountForm.value.credential.trim()
+    return !!accountForm.value.base_url.trim() && hasRequiredUsername && hasRequiredCredential
   })
 
   const canTestForm = computed(() => {
-    return !!accountForm.value.base_url.trim() && !!accountForm.value.credential.trim()
+    const hasRequiredUsername = !requiresUsername.value || !!accountForm.value.username.trim()
+    return !!accountForm.value.base_url.trim() && hasRequiredUsername && !!accountForm.value.credential.trim()
   })
 
   usePointerOutside(accountDropdownRef, () => {
@@ -217,6 +224,7 @@ export function useRssAccounts(options?: {
     defaultAccountName,
     baseUrlPlaceholder,
     credentialPlaceholder,
+    requiresUsername,
     canSaveForm,
     canTestForm,
     resetForm,

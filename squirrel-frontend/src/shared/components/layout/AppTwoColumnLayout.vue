@@ -18,7 +18,9 @@
 
     <main class="app-workbench__main">
       <header v-if="$slots.header" class="app-workbench__header">
-        <slot name="header" />
+        <div class="app-workbench__header-content">
+          <slot name="header" />
+        </div>
       </header>
 
       <!--

@@ -4,15 +4,15 @@ import { ref, type Ref } from 'vue'
  * Recent-search history persisted to localStorage.
  *
  * Owns the recent-queries list (add/remove/clear + persistence), capped at a
- * max length with most-recent-first ordering and de-dup. Mirrors the
- * useMusicSearchHistory pattern but for the generic page search bar, whose
- * history lives under a different storage key ('search-history').
+ * max length with most-recent-first ordering and de-dup. Each search scope
+ * owns an independent history so unrelated modules never suggest each
+ * other's queries.
  *
  * Extracted from GlobalSearchBar.vue so the persistence round-trip + the
  * cap/dedup policy live in one reusable place rather than inline with the
  * suggestion-panel + desktop-playback wiring.
  */
-const STORAGE_KEY = 'search-history'
+const STORAGE_KEY_PREFIX = 'search-history'
 const MAX_HISTORY = 10
 
 export interface UseSearchHistoryReturn {
@@ -22,20 +22,21 @@ export interface UseSearchHistoryReturn {
   clearRecentSearches: () => void
 }
 
-const loadHistory = (): string[] => {
+const loadHistory = (storageKey: string): string[] => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(storageKey)
     return raw ? JSON.parse(raw) : []
   } catch {
     return []
   }
 }
 
-export function useSearchHistory(): UseSearchHistoryReturn {
-  const recentSearches = ref<string[]>(loadHistory())
+export function useSearchHistory(scope: string): UseSearchHistoryReturn {
+  const storageKey = `${STORAGE_KEY_PREFIX}:${scope}`
+  const recentSearches = ref<string[]>(loadHistory(storageKey))
 
   const persist = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(recentSearches.value))
+    localStorage.setItem(storageKey, JSON.stringify(recentSearches.value))
   }
 
   const addRecentSearch = (query: string) => {
@@ -53,7 +54,7 @@ export function useSearchHistory(): UseSearchHistoryReturn {
 
   const clearRecentSearches = () => {
     recentSearches.value = []
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(storageKey)
   }
 
   return {
