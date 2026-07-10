@@ -12,6 +12,8 @@
         'music-bar--mini': !isMusicPage,
         'music-bar--immersive': showImmersive,
       }"
+      :inert="!isMusicPage && !isSidebarOpen"
+      :aria-hidden="!isMusicPage && !isSidebarOpen ? 'true' : undefined"
     >
       <audio
         ref="audioEl"
@@ -180,8 +182,10 @@ import { useMusicComments } from '@/features/music/composables/useMusicComments'
 import { useImmersivePlayer } from '@/features/music/composables/useImmersivePlayer'
 import { useAudioElementBridge } from '@/features/music/composables/useAudioElementBridge'
 import { useQueueReorder } from '@/features/music/composables/useQueueReorder'
+import { useUIStore } from '@/shared/stores/ui'
 
 const store = useMusicPlayerStore()
+const uiStore = useUIStore()
 const route = useRoute()
 
 // ponytail: the <audio> element <-> store bridge (ref registration + the
@@ -209,6 +213,7 @@ const { showImmersive, openImmersive, closeImmersive } = useImmersivePlayer()
 const commentsState = useMusicComments()
 
 const isMusicPage = computed(() => route.name === 'Music')
+const isSidebarOpen = computed(() => uiStore.isSidebarOpen)
 const canStep = computed(() => store.queue.length > 1)
 
 // ponytail: formatDuration is the player-surface variant (zero-padded mm:ss)
@@ -288,7 +293,7 @@ function removeQueueItem(index: number) {
   position: fixed;
   bottom: 0.875rem;
   left: 50%;
-  z-index: var(--z-header);
+  z-index: var(--z-sidebar);
   width: calc(100vw - 2rem);
   max-width: 90rem;
   overflow: hidden;
@@ -298,7 +303,8 @@ function removeQueueItem(index: number) {
   box-shadow: var(--app-panel-shadow);
   transform: translateX(-50%);
   transition:
-    width var(--duration-base) var(--ease-default),
+    left var(--duration-base) var(--ease-out),
+    width var(--duration-base) var(--ease-out),
     border-color var(--duration-fast) var(--ease-default);
 }
 
@@ -310,7 +316,8 @@ function removeQueueItem(index: number) {
 .music-bar--mini {
   left: 0;
   bottom: 0;
-  width: var(--sidebar-width);
+  z-index: var(--z-header);
+  width: var(--sidebar-expanded-width);
   max-width: none;
   transform: none;
   border: 0;
@@ -325,13 +332,13 @@ function removeQueueItem(index: number) {
 @media (min-width: 768px) {
   .music-bar {
     /* Center relative to the main workspace, not the full viewport. */
-    left: calc(50vw - var(--sidebar-width) / 2);
-    width: min(90rem, calc(100vw - var(--sidebar-width) - 2rem));
+    left: calc(50vw + var(--workspace-offset) / 2);
+    width: min(90rem, calc(100vw - var(--workspace-offset) - 2rem));
   }
 
   .music-bar--mini {
     left: 0;
-    width: var(--sidebar-width);
+    width: var(--sidebar-expanded-width);
   }
 }
 

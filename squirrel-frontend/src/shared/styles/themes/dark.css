@@ -46,8 +46,8 @@
   /* Modal / sheet scrims — consumed by bg-overlay / bg-overlay-strong. */
   --overlay: 0 0% 0%;
 
-  /* Same as --background: one canvas temperature; rail edge via border. */
-  --sidebar: 28 10% 7%;
+  /* Navigation uses a slightly lifted neutral, like a desktop workspace rail. */
+  --sidebar: 28 8% 8%;
   --sidebar-foreground: 28 10% 95%;
   --sidebar-border: 28 7% 16%;
 
@@ -110,8 +110,8 @@
 
   --overlay: 0 0% 0%;
 
-  /* Same as --background: one canvas temperature; rail edge via border. */
-  --sidebar: 28 30% 99%;
+  /* Navigation uses a quiet warm tint instead of blending into content. */
+  --sidebar: 28 22% 96%;
   --sidebar-foreground: 28 10% 10%;
   --sidebar-border: 28 12% 89%;
 

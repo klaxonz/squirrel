@@ -3,8 +3,11 @@
     :to="targetPath"
     :replace="!item.resolvePath"
     class="sidebar-item"
-    :class="{ 'is-active': isActive, 'is-collapsed': collapsed }"
-    :title="collapsed ? item.name : undefined"
+    :class="{
+      'is-active': isActive,
+      'is-nested': nested,
+    }"
+    :aria-current="isActive ? 'page' : undefined"
   >
     <AppIcon
       :name="item.icon"
@@ -12,10 +15,7 @@
       :class="{ 'is-active': isActive }"
       :stroke-width="1.75"
     />
-    <span
-      v-if="!collapsed"
-      class="sidebar-item__label"
-    >
+    <span class="sidebar-item__label">
       {{ item.name }}
     </span>
   </RouterLink>
@@ -25,17 +25,12 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import type { AppIconName } from '@/shared/icons/app-icons'
+import type { NavigationItem } from '@/shared/constants/sidebar'
 
 const props = defineProps<{
-  item: {
-    path: string
-    name: string
-    icon: AppIconName
-    resolvePath?: (currentPath: string) => string | null
-  }
+  item: NavigationItem
   isActive: boolean
-  collapsed?: boolean
+  nested?: boolean
 }>()
 
 const route = useRoute()
@@ -48,50 +43,56 @@ const targetPath = computed(() => {
 
 <style scoped>
 .sidebar-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.625rem;
+  gap: 0.75rem;
   width: 100%;
-  height: 2.25rem;
+  height: var(--sidebar-item-height);
   padding: 0 0.625rem;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
+  text-decoration: none;
   font-size: 0.8125rem;
   font-weight: 500;
   color: hsl(var(--muted-foreground));
+  overflow: hidden;
   outline: none;
   transition:
     background-color var(--duration-fast) var(--ease-default),
     color var(--duration-fast) var(--ease-default);
 }
 
-.sidebar-item.is-collapsed {
-  width: 2.25rem;
-  margin-inline: auto;
-  padding: 0;
-  justify-content: center;
-  gap: 0;
+.sidebar-item.is-nested {
+  padding-left: 1.5rem;
 }
 
 .sidebar-item:hover {
-  background: hsl(var(--card) / 0.55);
+  background: hsl(var(--foreground) / 0.055);
   color: hsl(var(--foreground));
 }
 
 .sidebar-item:focus-visible {
-  box-shadow: 0 0 0 2px hsl(var(--sidebar)), 0 0 0 4px hsl(var(--ring) / 0.4);
+  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.65);
 }
 
 .sidebar-item.is-active {
-  background: hsl(var(--primary) / 0.12);
+  border-color: transparent;
+  background: hsl(var(--foreground) / 0.08);
   color: hsl(var(--foreground));
-  font-weight: 600;
+  font-weight: 500;
+}
+
+.sidebar-item.is-active:hover {
+  background: hsl(var(--foreground) / 0.1);
 }
 
 .sidebar-item__icon {
-  width: 1.0625rem;
-  height: 1.0625rem;
+  width: 1.125rem;
+  height: 1.125rem;
   flex-shrink: 0;
   color: hsl(var(--muted-foreground));
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .sidebar-item:hover .sidebar-item__icon {
@@ -99,7 +100,7 @@ const targetPath = computed(() => {
 }
 
 .sidebar-item__icon.is-active {
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground));
 }
 
 .sidebar-item__label {
@@ -107,5 +108,11 @@ const targetPath = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-item {
+    transition: none;
+  }
 }
 </style>

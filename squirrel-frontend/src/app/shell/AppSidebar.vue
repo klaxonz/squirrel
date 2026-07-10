@@ -1,8 +1,6 @@
 <template>
-  <!-- Width + chrome are owned by <Sidebar>'s <aside>, driven by the
-       --sidebar-width token that AppLayout sets from isSidebarOpen. Keeping
-       this wrapper chrome-free avoids the duplicate border/bg that used to
-       fight Sidebar.vue's own border-r/bg-sidebar. -->
+  <!-- AppLayout keeps this full-width rail stationary and moves the workspace
+       over it. This wrapper stays chrome-free so Sidebar owns the rail surface. -->
   <Sidebar class="h-full" />
 </template>
 

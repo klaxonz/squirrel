@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, nextTick, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { LocationQueryRaw } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
@@ -189,6 +189,17 @@ const selectableItems = computed<SuggestionItem[]>(() => [...suggestionItems.val
 
 watch(() => uiStore.searchQuery, (newVal) => {
   if (newVal !== inputValue.value) inputValue.value = newVal
+})
+
+async function focusFromSidebarRequest() {
+  if (!uiStore.shouldFocusGlobalSearch) return
+  uiStore.consumeGlobalSearchFocus()
+  await nextTick()
+  inputRef.value?.focus()
+}
+
+watch(() => uiStore.shouldFocusGlobalSearch, (requested) => {
+  if (requested) void focusFromSidebarRequest()
 })
 
 const suggestionItems = computed<SuggestionItem[]>(() => {
@@ -397,6 +408,7 @@ const handleGlobalKeydown = (e: KeyboardEvent) => {
 
 onMounted(() => {
   window.addEventListener('keydown', handleGlobalKeydown)
+  void focusFromSidebarRequest()
 })
 
 onUnmounted(() => {

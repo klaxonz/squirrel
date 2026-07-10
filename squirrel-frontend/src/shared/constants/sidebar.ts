@@ -19,13 +19,15 @@ export type AppNavKey =
   | 'logs'
   | 'settings'
 
+export type NavigationGroupKey = 'media' | 'library' | 'system'
+
 export interface NavigationItem {
   key: AppNavKey
   name: string
   title: string
   path: string
   icon: AppIconName
-  group: 'content' | 'system'
+  group: NavigationGroupKey
   activePrefixes?: string[]
   activeRouteNames?: string[]
   /**
@@ -36,8 +38,9 @@ export interface NavigationItem {
 }
 
 export interface NavigationGroup {
-  key: NavigationItem['group']
+  key: NavigationGroupKey
   label: string
+  icon: AppIconName
   items: NavigationItem[]
 }
 
@@ -123,7 +126,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '推荐',
     path: '/home',
     icon: 'home',
-    group: 'content',
+    group: 'media',
     activeRouteNames: ['HomeView'],
   },
   {
@@ -132,7 +135,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '全部视频',
     path: '/videos/all',
     icon: 'film',
-    group: 'content',
+    group: 'media',
     activePrefixes: ['/videos', '/video/'],
     activeRouteNames: [
       'VideosView',
@@ -151,7 +154,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '订阅中心',
     path: '/subscribed',
     icon: 'subscriptions',
-    group: 'content',
+    group: 'media',
     activePrefixes: ['/subscribed', '/subscription/'],
     activeRouteNames: [
       'Subscribed',
@@ -171,7 +174,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: 'RSS 内容源',
     path: '/rss',
     icon: 'rss',
-    group: 'content',
+    group: 'media',
     activeRouteNames: ['RssSources'],
   },
   {
@@ -180,7 +183,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '音乐',
     path: '/music',
     icon: 'playlistMusic',
-    group: 'content',
+    group: 'media',
     activeRouteNames: ['Music'],
   },
   {
@@ -189,7 +192,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '历史记录',
     path: '/history',
     icon: 'history',
-    group: 'content',
+    group: 'library',
     activeRouteNames: ['History'],
   },
   {
@@ -198,17 +201,8 @@ export const NAV_ITEMS: NavigationItem[] = [
     title: '播放列表',
     path: '/playlists',
     icon: 'playlists',
-    group: 'content',
+    group: 'library',
     activeRouteNames: ['Playlists'],
-  },
-  {
-    key: 'scheduled-tasks',
-    name: '定时',
-    title: '计划任务',
-    path: '/scheduled-tasks',
-    icon: 'scheduledTasks',
-    group: 'system',
-    activeRouteNames: ['ScheduledTasks'],
   },
   {
     key: 'site-runtimes',
@@ -218,6 +212,15 @@ export const NAV_ITEMS: NavigationItem[] = [
     icon: 'plugins',
     group: 'system',
     activeRouteNames: ['SiteRuntimes'],
+  },
+  {
+    key: 'scheduled-tasks',
+    name: '定时',
+    title: '计划任务',
+    path: '/scheduled-tasks',
+    icon: 'scheduledTasks',
+    group: 'system',
+    activeRouteNames: ['ScheduledTasks'],
   },
   {
     key: 'logs',
@@ -242,17 +245,27 @@ export const NAV_ITEMS: NavigationItem[] = [
   },
 ]
 
+export const SIDEBAR_TOP_ITEMS = NAV_ITEMS.filter((item) => item.key === 'home')
+export const SIDEBAR_FOOTER_ITEMS = NAV_ITEMS.filter((item) => item.key === 'settings')
+
 export const NAV_GROUPS: NavigationGroup[] = [
   {
-    key: 'content',
-    label: '内容',
-    items: NAV_ITEMS.filter((item) => item.group === 'content'),
+    key: 'media',
+    label: '媒体',
+    icon: 'layoutGrid',
+    items: NAV_ITEMS.filter((item) => item.group === 'media' && item.key !== 'home'),
   },
-
+  {
+    key: 'library',
+    label: '资料库',
+    icon: 'library',
+    items: NAV_ITEMS.filter((item) => item.group === 'library'),
+  },
   {
     key: 'system',
-    label: '系统',
-    items: NAV_ITEMS.filter((item) => item.group === 'system'),
+    label: '管理',
+    icon: 'settingsPanel',
+    items: NAV_ITEMS.filter((item) => item.group === 'system' && item.key !== 'settings'),
   },
 ]
 

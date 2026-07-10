@@ -2,12 +2,16 @@
   <div
     class="app-layout"
     :class="{ 'app-layout--desktop': isDesktop }"
-    :style="{ '--sidebar-width': isSidebarOpen ? 'var(--sidebar-expanded-width)' : 'var(--sidebar-collapsed-width)' }"
+    :style="{ '--workspace-offset': isSidebarOpen ? 'var(--sidebar-expanded-width)' : '0rem' }"
   >
     <DesktopTitleBar v-if="isDesktop" class="app-layout__titlebar" />
 
     <div class="app-layout__frame">
-      <AppSidebar class="app-layout__sidebar" />
+      <AppSidebar
+        class="app-layout__sidebar"
+        :inert="!isSidebarOpen"
+        :aria-hidden="!isSidebarOpen ? 'true' : undefined"
+      />
 
       <main class="app-layout__workspace">
         <AppHeader class="app-layout__header" />
@@ -194,25 +198,30 @@ onUnmounted(() => {
 .app-layout__frame {
   flex: 1 1 auto;
   min-height: 0;
-  display: flex;
-  gap: 0;
+  position: relative;
   padding: 0;
   overflow: hidden;
 }
 
 .app-layout__sidebar {
-  flex: 0 0 var(--sidebar-width);
-  position: relative;
-  z-index: var(--z-sidebar);
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-expanded-width);
+  overflow: hidden;
+  z-index: 1;
 }
 
 .app-layout__workspace {
-  flex: 1 1 auto;
+  position: absolute;
+  inset: 0 0 0 var(--workspace-offset);
+  z-index: var(--z-sidebar);
   min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: transparent;
+  background: hsl(var(--background));
+  transition: left var(--duration-base) var(--ease-out);
+  will-change: left;
 }
 
 .app-layout__header {
@@ -258,6 +267,12 @@ onUnmounted(() => {
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-layout__workspace {
+    transition: none;
+  }
 }
 
 </style>

@@ -1,19 +1,6 @@
 <template>
   <header class="app-header">
     <div class="app-header__lead">
-      <Button
-        v-if="canGoBack"
-        type="button"
-        variant="ghost"
-        size="mini-icon"
-        class="app-header__back"
-        :title="`返回 ${backTooltipLabel}`"
-        aria-label="返回上一页"
-        @click="handleBack"
-      >
-        <AppIcon name="chevronLeft" class="size-[15px]" />
-      </Button>
-
       <div class="app-header__context" :title="contextTitle">
         <div v-if="showSection" class="app-header__section">{{ sectionLabel }}</div>
         <h1 class="app-header__page-title">{{ pageTitle }}</h1>
@@ -60,7 +47,6 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
-import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 import { resolveRouteContext } from '@/shared/constants/sidebar'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import GlobalSearchBar from '@/shared/components/layout/GlobalSearchBar.vue'
@@ -72,7 +58,6 @@ const route = useRoute()
 const router = useRouter()
 const uiStore = useUIStore()
 const userStore = useUserStore()
-const nav = useNavigationHistory()
 const { isDesktop: isDesktopEnv } = useDesktopBridge()
 
 const userDisplayName = computed(() => {
@@ -148,16 +133,6 @@ const contextTitle = computed(() => (
     : pageTitle.value
 ))
 
-const canGoBack = computed(() => nav.canGoBack.value)
-const backTooltipLabel = computed(() => {
-  const list = nav.backCandidates.value
-  const last = list[list.length - 1]
-  return last?.title || last?.sectionLabel || '上一页'
-})
-
-function handleBack() {
-  void nav.goBack()
-}
 </script>
 
 <style scoped>
@@ -181,20 +156,6 @@ function handleBack() {
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-}
-
-.app-header__back {
-  flex: 0 0 auto;
-  color: hsl(var(--muted-foreground));
-}
-
-.app-header__back:hover {
-  color: hsl(var(--foreground));
-  background: hsl(var(--accent));
-}
-
-.app-header__back:active {
-  transform: translateY(1px);
 }
 
 .app-header__context {
@@ -311,7 +272,6 @@ function handleBack() {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-header__back,
   .app-header__user,
   .fade-enter-active,
   .fade-leave-active {

@@ -5,11 +5,12 @@ colors:
   background-dark: "hsl(28 10% 7%)"
   foreground-dark: "hsl(28 10% 95%)"
   card-dark: "hsl(28 8% 9%)"
-  sidebar-dark: "hsl(28 10% 7%)"
+  sidebar-dark: "hsl(28 8% 8%)"
   primary-amber-dark: "hsl(28 90% 58%)"
   muted-foreground-dark: "hsl(28 6% 62%)"
   border-dark: "hsl(28 7% 16%)"
   background-light: "hsl(28 30% 99%)"
+  sidebar-light: "hsl(28 22% 96%)"
   foreground-light: "hsl(28 10% 10%)"
   card-light: "hsl(0 0% 100%)"
   primary-amber-light: "hsl(28 88% 50%)"
@@ -109,7 +110,7 @@ The palette runs on one warm amber hue axis: near-black warm neutrals for dark m
 - **Archive Amber** (`hsl(28 90% 58%)` dark, `hsl(28 88% 50%)` light): primary buttons, active navigation icons, focus rings, connected status emphasis, brand badge, and rare high-value highlights.
 
 ### Neutral
-- **Projection Black** (`hsl(28 10% 7%)`): dark-mode app background, main reading surface, and sidebar canvas. Sidebar matches the content temperature so chrome does not read as a separate brown rail; hierarchy comes from hairline border / structure, not a darker fill.
+- **Projection Black** (`hsl(28 10% 7%)`): dark-mode app background and main reading surface. The sidebar uses a subtly lifted warm neutral so navigation remains scannable without becoming a floating panel.
 - **Panel Charcoal** (`hsl(28 8% 9%)`): cards, inputs, popovers, and table containers in dark mode.
 - **Warm White** (`hsl(28 30% 99%)`): light-mode background without changing the amber identity.
 - **Muted Ink** (`hsl(28 6% 62%)` dark, `hsl(28 5% 42%)` light): secondary labels, inactive icons, metadata, and placeholder text.
@@ -155,7 +156,7 @@ Squirrel uses a hybrid of tonal layering and small structural shadows. Resting s
 
 The desktop shell is **one continuous canvas**, not a stack of floating cards.
 
-- Title bar, primary sidebar, workspace, workbench secondary panes, headers, and toolbars all rest on `--background` (or transparent over it).
+- Title bar, workspace, workbench secondary panes, headers, and toolbars rest on `--background` (or transparent over it). The primary sidebar may use the quiet `--sidebar` tint to distinguish persistent navigation.
 - Regional hierarchy is hairline borders only (`--app-hairline` / sidebar border). Do not tint secondary panes with `--card` to invent depth.
 - No outer frame padding + gap that turns sidebar and workspace into two floating islands.
 - No full border + radius + panel shadow on shell chrome. Those treatments are reserved for true overlays (menus, dialogs, popovers) and media item cards.
@@ -169,7 +170,7 @@ The desktop shell is **one continuous canvas**, not a stack of floating cards.
 
 ### Named Rules
 
-**The Single Canvas Rule.** Shell regions share one surface temperature. Split structure with hairlines, not nested cards, inset panels, or dual floating columns.
+**The Single Canvas Rule.** Shell regions remain flush and structurally continuous. A subtle sidebar tint is allowed, but split structure still comes from alignment and hairlines rather than nested cards, inset panels, or dual floating columns.
 
 **The Flat Until It Moves Rule.** Keep cards and panels nearly flat at rest. Use elevation to explain overlays, focus, hover, or brand identity, not to decorate every container.
 
@@ -200,7 +201,8 @@ The desktop shell is **one continuous canvas**, not a stack of floating cards.
 - **State:** status variants use success, warning, destructive, or amber with text plus context; never rely on color alone.
 
 ### Navigation
-- **Sidebar:** fixed desktop rail with expanded/collapsed widths driven by `--sidebar-width`. Flush to the shell edge (not a rounded floating card). Surface matches `--background`; separation is a single right hairline, not a full border + shadow. Active item uses amber icon plus low-alpha amber background.
+- **System title bar:** owns shell-level navigation controls: sidebar visibility, application back, application forward, and window controls. These actions do not belong inside page headers or sidebar content.
+- **Sidebar:** fixed `15rem` desktop rail that never resizes, reflows, or changes its internal menu geometry. Sidebar visibility is controlled by the workspace layer: expanded state positions the workspace at the rail's right edge; collapsed state moves the opaque workspace to `left: 0`, progressively covering the stationary rail. Covered sidebar content is inert and removed from the accessibility tree. Brand sits at the top, search and home are immediate commands, grouped navigation scrolls as one list, and settings stays fixed at the bottom.
 - **Workspace:** continuous with the shell background. No outer card frame, radius, or panel shadow around the main content column.
 - **Workbench panes:** secondary sidebars (订阅频道, 播放列表, RSS entry list, settings nav) stay transparent on the same canvas; only a vertical hairline divides list from content.
 - **Header:** fixed height with history controls, current page title, contextual search, and user entry point. Flat `--background`, single bottom hairline. It should not repeat breadcrumbs already represented by the sidebar.
