@@ -66,28 +66,15 @@
       <Button
         type="button"
         variant="ghost"
-        size="icon-sm"
+        size="xs"
+        class="subscription-inbox-item__read-action"
         :loading="readBusy"
         :title="isRead ? '标记未读' : '标记已读'"
         :aria-label="isRead ? '标记未读' : '标记已读'"
         :aria-pressed="isRead"
         @click="toggleRead"
       >
-        <AppIcon
-          v-if="!readBusy"
-          :name="isRead ? 'statusSuccess' : 'check'"
-          class="h-4 w-4"
-        />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        title="播放视频"
-        aria-label="播放视频"
-        @click="openVideo"
-      >
-        <AppIcon name="chevronRight" class="h-4 w-4" />
+        {{ isRead ? '标为未读' : '标为已读' }}
       </Button>
     </div>
   </article>
@@ -173,20 +160,28 @@ const openVideo = () => {
 .subscription-inbox-item {
   display: grid;
   min-width: 0;
-  grid-template-columns: 9rem minmax(0, 1fr) auto;
+  grid-template-columns: 10rem minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-4);
-  padding: 0.75rem 0;
+  gap: var(--space-5);
+  margin: 0 -0.75rem;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) 0.75rem;
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.subscription-inbox-item:hover,
+.subscription-inbox-item:focus-within {
+  background: var(--app-row-hover-bg);
 }
 
 .subscription-inbox-item--read {
-  opacity: 0.72;
+  opacity: 1;
 }
 
 .subscription-inbox-item__thumbnail {
   position: relative;
   overflow: hidden;
-  width: 9rem;
+  width: 10rem;
   aspect-ratio: 16 / 9;
   border-radius: var(--radius-lg);
   background: hsl(0 0% 0% / 0.55);
@@ -216,19 +211,29 @@ const openVideo = () => {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: var(--space-2);
 }
 
 .subscription-inbox-item__title {
+  display: -webkit-box;
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.45;
   text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   cursor: pointer;
+}
+
+.subscription-inbox-item--read .subscription-inbox-item__thumbnail {
+  opacity: 0.78;
+}
+
+.subscription-inbox-item--read .subscription-inbox-item__title {
+  color: hsl(var(--foreground) / 0.7);
+  font-weight: 550;
 }
 
 .subscription-inbox-item__title:hover {
@@ -284,19 +289,26 @@ button.subscription-inbox-item__channel:focus-visible {
 .subscription-inbox-item__actions {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
   opacity: 0;
+  pointer-events: none;
   transition: opacity var(--duration-fast) var(--ease-default);
 }
 
 .subscription-inbox-item:hover .subscription-inbox-item__actions,
 .subscription-inbox-item:focus-within .subscription-inbox-item__actions {
   opacity: 1;
+  pointer-events: auto;
+}
+
+.subscription-inbox-item__read-action {
+  color: hsl(var(--muted-foreground) / 0.82);
+  font-weight: 550;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .subscription-inbox-item__actions {
     opacity: 1;
+    pointer-events: auto;
     transition: none;
   }
 }
