@@ -4,17 +4,6 @@
     :class="{ 'has-player': showSidebarMusicPlayer }"
     aria-label="应用侧边栏"
   >
-    <header class="sidebar-header">
-      <RouterLink
-        to="/home"
-        class="sidebar-brand"
-        aria-label="归仓（首页）"
-      >
-        <BrandLogo size="xs" />
-        <span class="sidebar-brand__name">归仓</span>
-      </RouterLink>
-    </header>
-
     <nav class="sidebar-top-nav" aria-label="主要入口">
       <SidebarMenuItem
         v-for="item in SIDEBAR_TOP_ITEMS"
@@ -69,7 +58,6 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import BrandLogo from '@/shared/components/BrandLogo.vue'
 import SidebarMenuItem from './SidebarMenuItem.vue'
 import {
   NAV_GROUPS,
@@ -113,47 +101,6 @@ const showSidebarMusicPlayer = computed(() =>
 
 .sidebar-rail.has-player {
   padding-bottom: var(--sidebar-player-space);
-}
-
-.sidebar-header {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  height: 3.5rem;
-  padding: 0 0.625rem;
-}
-
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 2rem;
-  padding: 0 0.625rem;
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  color: hsl(var(--foreground));
-  outline: none;
-}
-
-.sidebar-brand:hover {
-  color: hsl(var(--foreground));
-}
-
-.sidebar-brand:focus-visible {
-  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.65);
-}
-
-.sidebar-brand__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-display);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.2;
 }
 
 .sidebar-top-nav {
