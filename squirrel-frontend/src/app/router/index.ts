@@ -131,7 +131,7 @@ const routes: RouteRecordRaw[] = [
     path: '/subscribed',
     name: 'Subscribed',
     component: Subscribed,
-    meta: createSearchMeta('订阅中心', {
+    meta: createSearchMeta('订阅', {
       navKey: 'subscribed',
       sectionLabel: '订阅',
       keepAlive: true,

@@ -23,11 +23,6 @@
       <span class="subscription-row__copy">
         <span class="subscription-row__title-line">
           <strong class="subscription-row__title">{{ subscription.name }}</strong>
-          <span
-            v-if="subscription.is_special_followed"
-            class="subscription-row__special"
-            title="特别关注"
-          />
           <span v-if="subscription.is_nsfw" class="subscription-row__nsfw">18+</span>
         </span>
         <span v-if="subscription.site" class="subscription-row__site">{{ subscription.site }}</span>
@@ -228,14 +223,6 @@ const cardTitle = computed(() => {
   white-space: nowrap;
 }
 
-.subscription-row__special {
-  width: 0.35rem;
-  height: 0.35rem;
-  flex: none;
-  border-radius: 999px;
-  background: hsl(var(--muted-foreground) / 0.56);
-}
-
 .subscription-row__nsfw {
   flex: none;
   color: hsl(var(--destructive));
@@ -256,14 +243,14 @@ const cardTitle = computed(() => {
 
 .subscription-row__metric {
   justify-self: end;
-  color: hsl(var(--foreground) / 0.78);
+  color: hsl(var(--muted-foreground) / 0.88);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 550;
   white-space: nowrap;
 }
 
 .subscription-row__metric--active {
-  color: hsl(var(--foreground));
+  color: hsl(var(--foreground) / 0.82);
 }
 
 .subscription-row__updated {

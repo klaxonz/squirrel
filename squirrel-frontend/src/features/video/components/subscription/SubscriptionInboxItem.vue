@@ -31,6 +31,29 @@
         {{ video.title }}
       </Button>
       <div class="subscription-inbox-item__meta">
+        <Button
+          v-if="subscriptionId != null"
+          unstyled
+          type="button"
+          class="subscription-inbox-item__channel"
+          @click="openChannel"
+        >
+          <SubscriptionAvatar
+            :src="channelAvatar"
+            :name="channelName"
+            size="xs"
+          />
+          <span>{{ channelName }}</span>
+        </Button>
+        <span v-else class="subscription-inbox-item__channel">
+          <SubscriptionAvatar
+            :src="channelAvatar"
+            :name="channelName"
+            size="xs"
+          />
+          <span>{{ channelName }}</span>
+        </span>
+        <span class="subscription-inbox-item__meta-separator" aria-hidden="true">·</span>
         <span>{{ displayDate }}</span>
         <span v-if="isRead" class="subscription-inbox-item__read-state">
           <AppIcon name="check" class="h-3 w-3" />
@@ -78,15 +101,20 @@ import { useToast } from '@/shared/components/toast/useToast'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
+import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import { useVideoHistory } from '@/features/video/composables/useVideoHistory'
 import type { VideoListItem } from '@/features/video/types/video'
 
 const props = defineProps<{
   video: VideoListItem
+  channelName: string
+  channelAvatar: string | null
+  subscriptionId: string | number | null
 }>()
 
 const emit = defineEmits<{
   open: [video: VideoListItem]
+  'open-channel': [subscriptionId: string | number]
   'read-change': [payload: { videoId: number; isRead: boolean }]
 }>()
 
@@ -131,6 +159,10 @@ const toggleRead = () => {
   void setReadState(!isRead.value)
 }
 
+const openChannel = () => {
+  if (props.subscriptionId != null) emit('open-channel', props.subscriptionId)
+}
+
 const openVideo = () => {
   if (!isRead.value) void setReadState(true)
   emit('open', props.video)
@@ -144,8 +176,7 @@ const openVideo = () => {
   grid-template-columns: 9rem minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-4);
-  padding: 0.625rem 0;
-  border-top: 1px solid var(--app-hairline);
+  padding: 0.75rem 0;
 }
 
 .subscription-inbox-item--read {
@@ -206,11 +237,42 @@ const openVideo = () => {
 
 .subscription-inbox-item__meta {
   display: flex;
+  min-width: 0;
   align-items: center;
-  gap: var(--space-3);
+  gap: 0.375rem;
   color: hsl(var(--muted-foreground) / 0.74);
   font-size: 0.6875rem;
   font-weight: 500;
+}
+
+.subscription-inbox-item__channel {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: var(--radius-sm);
+  color: hsl(var(--muted-foreground) / 0.88);
+}
+
+.subscription-inbox-item__channel > span {
+  overflow: hidden;
+  max-width: 16rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.subscription-inbox-item__channel {
+  cursor: pointer;
+}
+
+button.subscription-inbox-item__channel:hover,
+button.subscription-inbox-item__channel:focus-visible {
+  color: hsl(var(--foreground) / 0.86);
+  outline: none;
+}
+
+.subscription-inbox-item__meta-separator {
+  color: hsl(var(--muted-foreground) / 0.42);
 }
 
 .subscription-inbox-item__read-state {

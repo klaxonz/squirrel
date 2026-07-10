@@ -1,64 +1,32 @@
 <template>
   <AppPageShell variant="compact" fill>
     <div class="subscription-page">
-      <header class="subscription-page__header">
-        <div class="subscription-page__heading">
-          <h1>订阅</h1>
-          <p>{{ pageSubtitle }}</p>
-        </div>
-        <div class="subscription-page__header-actions">
+      <div class="subscription-control-bar">
+        <nav class="subscription-view-nav" aria-label="订阅视图">
           <Button
+            v-for="option in viewOptions"
+            :key="option.value"
+            unstyled
             type="button"
-            variant="ghost"
-            size="icon-sm"
-            :loading="pageLoading"
-            title="刷新当前视图"
-            aria-label="刷新当前视图"
-            @click="refreshCurrentView"
+            class="subscription-view-nav__item"
+            :class="{ 'is-active': activeView === option.value }"
+            :aria-current="activeView === option.value ? 'page' : undefined"
+            @click="activeView = option.value"
           >
-            <AppIcon v-if="!pageLoading" name="refresh" class="h-4 w-4" />
+            <AppIcon :name="option.icon" class="h-4 w-4" />
+            <span>{{ option.label }}</span>
+            <span
+              v-if="option.count != null && option.count > 0"
+              class="subscription-view-nav__count app-mono"
+            >
+              {{ option.count > 999 ? '999+' : option.count }}
+            </span>
           </Button>
-          <Button size="sm" @click="showAddDialog = true">
-            <AppIcon name="plus" class="h-4 w-4" />
-            添加订阅
-          </Button>
-        </div>
-      </header>
+        </nav>
 
-      <nav class="subscription-view-nav" aria-label="订阅视图">
-        <Button
-          v-for="option in viewOptions"
-          :key="option.value"
-          unstyled
-          type="button"
-          class="subscription-view-nav__item"
-          :class="{ 'is-active': activeView === option.value }"
-          :aria-current="activeView === option.value ? 'page' : undefined"
-          @click="activeView = option.value"
-        >
-          <AppIcon :name="option.icon" class="h-4 w-4" />
-          <span>{{ option.label }}</span>
-          <span
-            v-if="option.count != null && option.count > 0"
-            class="subscription-view-nav__count app-mono"
-          >
-            {{ option.count > 999 ? '999+' : option.count }}
-          </span>
-        </Button>
-      </nav>
-
-      <section class="subscription-toolbar" aria-label="订阅筛选和操作">
-        <div class="subscription-toolbar__filters">
+        <section class="subscription-toolbar" aria-label="订阅筛选和操作">
           <AppSearchInput
-            v-if="isFeedView"
-            :model-value="feedSearch"
-            class="subscription-toolbar__search"
-            placeholder="搜索订阅内容..."
-            aria-label="搜索订阅内容"
-            @update:model-value="feedSearch = $event"
-          />
-          <AppSearchInput
-            v-else-if="activeView === 'channels'"
+            v-if="activeView === 'channels'"
             :model-value="channelSearch"
             class="subscription-toolbar__search"
             placeholder="搜索频道..."
@@ -66,95 +34,152 @@
             @update:model-value="channelSearch = $event"
           />
 
-          <Select
-            :model-value="site || 'all'"
-            @update:model-value="handleSiteFilterChange"
-          >
-            <SelectTrigger
-              class="subscription-toolbar__select"
-              :class="{ 'is-active': site }"
-              aria-label="按来源筛选"
-            >
-              <SelectValue placeholder="全部来源" />
-            </SelectTrigger>
-            <SelectContent class="min-w-48">
-              <SelectItem value="all">全部来源</SelectItem>
-              <SelectItem
-                v-for="option in siteOptionsList"
-                :key="option.value"
-                :value="option.value"
+          <Popover>
+            <PopoverTrigger as-child>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                class="subscription-toolbar__filter"
+                :class="{ 'is-active': activeFilterCount > 0 }"
+                :aria-label="activeFilterCount > 0 ? `筛选，已启用 ${activeFilterCount} 项` : '筛选'"
               >
-                <span class="subscription-toolbar__site-option">
-                  <SiteIcon :site="option.value" class="h-4 w-4 rounded-sm" />
-                  <span>{{ option.label }}</span>
+                <AppIcon name="filter" class="h-3.5 w-3.5" />
+                <span>筛选</span>
+                <span
+                  v-if="activeFilterCount > 0"
+                  class="subscription-toolbar__filter-count app-mono"
+                >
+                  {{ activeFilterCount }}
                 </span>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+              </Button>
+            </PopoverTrigger>
 
-          <Select
-            v-if="isFeedView"
-            :model-value="nsfw"
-            @update:model-value="handleNsfwFilterChange"
-          >
-            <SelectTrigger
-              class="subscription-toolbar__select"
-              :class="{ 'is-active': nsfw !== 'all' }"
-              aria-label="内容分级"
+            <PopoverContent
+              align="end"
+              :side-offset="8"
+              class="w-80 p-0"
             >
-              <SelectValue placeholder="全部内容" />
-            </SelectTrigger>
-            <SelectContent class="min-w-36">
-              <SelectItem
-                v-for="option in contentLevelOptions"
-                :key="option.value"
-                :value="option.value"
-              >
-                {{ option.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+              <div class="subscription-filter-panel">
+                <header class="subscription-filter-panel__header">
+                  <div>
+                    <strong>筛选</strong>
+                    <span>{{ filterDescription }}</span>
+                  </div>
+                  <Button
+                    v-if="activeFilterCount > 0"
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    @click="clearToolbarFilters"
+                  >
+                    重置
+                  </Button>
+                </header>
+
+                <div class="subscription-filter-panel__fields">
+                  <label class="subscription-filter-panel__field">
+                    <span>来源</span>
+                    <Select
+                      :model-value="site || 'all'"
+                      @update:model-value="handleSiteFilterChange"
+                    >
+                      <SelectTrigger aria-label="按来源筛选">
+                        <SelectValue placeholder="全部来源" />
+                      </SelectTrigger>
+                      <SelectContent class="min-w-48">
+                        <SelectItem value="all">全部来源</SelectItem>
+                        <SelectItem
+                          v-for="option in siteOptionsList"
+                          :key="option.value"
+                          :value="option.value"
+                        >
+                          <span class="subscription-filter-panel__site-option">
+                            <SiteIcon :site="option.value" class="h-4 w-4 rounded-sm" />
+                            <span>{{ option.label }}</span>
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
+
+                  <label v-if="isFeedView" class="subscription-filter-panel__field">
+                    <span>内容分级</span>
+                    <Select
+                      :model-value="nsfw"
+                      @update:model-value="handleNsfwFilterChange"
+                    >
+                      <SelectTrigger aria-label="内容分级">
+                        <SelectValue placeholder="全部内容" />
+                      </SelectTrigger>
+                      <SelectContent class="min-w-36">
+                        <SelectItem
+                          v-for="option in contentLevelOptions"
+                          :key="option.value"
+                          :value="option.value"
+                        >
+                          {{ option.label }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
+
+                  <label
+                    v-else-if="activeView === 'channels'"
+                    class="subscription-filter-panel__toggle"
+                  >
+                    <span>
+                      <strong>特别关注</strong>
+                      <small>只显示特别关注的频道</small>
+                    </span>
+                    <Switch
+                      :model-value="librarySpecialOnly"
+                      aria-label="只显示特别关注的频道"
+                      @update:model-value="librarySpecialOnly = $event"
+                    />
+                  </label>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <span class="subscription-toolbar__divider" aria-hidden="true" />
 
           <Button
-            v-if="activeView === 'channels'"
-            type="button"
-            variant="outline"
-            size="sm"
-            class="subscription-toolbar__special"
-            :class="{ 'is-active': librarySpecialOnly }"
-            :aria-pressed="librarySpecialOnly"
-            @click="librarySpecialOnly = !librarySpecialOnly"
-          >
-            <AppIcon name="star" class="h-3.5 w-3.5" />
-            特别关注
-          </Button>
-
-          <Button
-            v-if="hasActiveToolbarFilters"
             type="button"
             variant="ghost"
             size="icon-sm"
-            title="清除筛选"
-            aria-label="清除筛选"
-            @click="clearToolbarFilters"
+            class="subscription-toolbar__icon-action"
+            :loading="pageLoading"
+            title="刷新当前视图"
+            aria-label="刷新当前视图"
+            @click="refreshCurrentView"
           >
-            <AppIcon name="close" class="h-4 w-4" />
+            <AppIcon v-if="!pageLoading" name="refresh" class="h-4 w-4" />
           </Button>
-        </div>
-
-        <div class="subscription-toolbar__actions">
-          <span class="subscription-toolbar__summary">{{ toolbarSummary }}</span>
           <Button
             v-if="activeView === 'channels'"
-            variant="outline"
-            size="sm"
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            class="subscription-toolbar__icon-action"
+            title="导入订阅"
+            aria-label="导入订阅"
             @click="showImportDialog = true"
           >
             <AppIcon name="download" class="h-4 w-4" />
-            导入
           </Button>
-        </div>
-      </section>
+          <Button
+            type="button"
+            size="sm"
+            class="subscription-toolbar__add"
+            @click="showAddDialog = true"
+          >
+            <AppIcon name="plus" class="h-4 w-4" />
+            添加订阅
+          </Button>
+        </section>
+      </div>
 
       <div class="subscription-workspace">
         <main ref="contentScroll" class="subscription-content custom-scrollbar">
@@ -202,46 +227,19 @@
                   <span>{{ day.count }} 条更新</span>
                 </header>
 
-                <section
-                  v-for="group in day.channels"
-                  :key="group.key"
-                  class="subscription-channel-group"
-                >
-                  <header class="subscription-channel-group__header">
-                    <Button
-                      unstyled
-                      type="button"
-                      class="subscription-channel-group__identity"
-                      :disabled="group.subscriptionId == null"
-                      @click="inspectChannelById(group.subscriptionId)"
-                    >
-                      <SubscriptionAvatar
-                        :src="group.avatar"
-                        :name="group.name"
-                        size="md"
-                      />
-                      <span class="subscription-channel-group__copy">
-                        <strong>{{ group.name }}</strong>
-                        <small>{{ group.items.length }} 个更新</small>
-                      </span>
-                      <AppIcon
-                        v-if="group.subscriptionId != null"
-                        name="chevronRight"
-                        class="h-3.5 w-3.5"
-                      />
-                    </Button>
-                  </header>
-
-                  <div class="subscription-channel-group__items">
-                    <SubscriptionInboxItem
-                      v-for="video in group.items"
-                      :key="video.id"
-                      :video="video"
-                      @open="openVideo"
-                      @read-change="handleReadChange"
-                    />
-                  </div>
-                </section>
+                <div class="subscription-feed-day__items">
+                  <SubscriptionInboxItem
+                    v-for="item in day.items"
+                    :key="item.video.id"
+                    :video="item.video"
+                    :channel-name="item.channelName"
+                    :channel-avatar="item.channelAvatar"
+                    :subscription-id="item.subscriptionId"
+                    @open="openVideo"
+                    @open-channel="inspectChannelById"
+                    @read-change="handleReadChange"
+                  />
+                </div>
               </section>
             </div>
 
@@ -252,19 +250,6 @@
 
           <template v-else>
             <div class="subscription-list-view">
-              <header class="subscription-list-view__heading">
-                <div>
-                  <h2>{{ activeView === 'issues' ? '需要处理' : '频道库' }}</h2>
-                  <p>
-                    {{
-                      activeView === 'issues'
-                        ? '这里只显示同步失败或存在明确错误的频道。'
-                        : '搜索、检查状态并连续管理所有订阅频道。'
-                    }}
-                  </p>
-                </div>
-              </header>
-
               <div v-if="channelsError && !visibleChannels.length" class="subscription-content__empty">
                 <AppEmptyState variant="error" title="频道加载失败" :copy="channelsError">
                   <template #actions>
@@ -368,6 +353,7 @@ import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppSearchInput from '@/shared/components/layout/AppSearchInput.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Button } from '@/shared/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
 import {
   Select,
   SelectContent,
@@ -375,10 +361,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/ui/select'
+import { Switch } from '@/shared/ui/switch'
 import { useToast } from '@/shared/components/toast/useToast'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { useUIStore } from '@/shared/stores/ui'
-import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import SubscriptionCard from '@/features/video/components/feed/SubscriptionCard.vue'
 import SubscriptionCardSkeleton from '@/features/video/components/feed/SubscriptionCardSkeleton.vue'
 import SubscriptionInboxItem from '@/features/video/components/subscription/SubscriptionInboxItem.vue'
@@ -411,19 +397,18 @@ defineOptions({ name: 'Subscribed' })
 
 type SubscriptionView = 'inbox' | 'activity' | 'special' | 'issues' | 'channels'
 
-type FeedChannelGroup = {
-  key: string
-  name: string
-  avatar: string | null
+type FeedDayItem = {
+  video: VideoListItem
+  channelName: string
+  channelAvatar: string | null
   subscriptionId: string | number | null
-  items: VideoListItem[]
 }
 
 type FeedDayGroup = {
   key: string
   label: string
   count: number
-  channels: FeedChannelGroup[]
+  items: FeedDayItem[]
 }
 
 const router = useRouter()
@@ -484,9 +469,6 @@ const issueChannels = computed(() => channels.value.filter(isSubscriptionSyncFai
 const visibleChannels = computed(() => (
   activeView.value === 'issues' ? issueChannels.value : channels.value
 ))
-const unreadTotal = computed(() => (
-  channels.value.reduce((total, channel) => total + Math.max(0, channel.unread_count), 0)
-))
 const selectedChannel = computed(() => {
   const snapshot = selectedChannelSnapshot.value
   if (!snapshot) return null
@@ -517,7 +499,7 @@ const viewOptions = computed<{
     value: 'inbox',
     label: '收件箱',
     icon: 'inbox',
-    count: channelsFinished.value ? unreadTotal.value : null,
+    count: null,
   },
   { value: 'activity', label: '全部动态', icon: 'list', count: null },
   { value: 'special', label: '特别关注', icon: 'star', count: null },
@@ -531,27 +513,9 @@ const viewOptions = computed<{
     value: 'channels',
     label: '频道库',
     icon: 'library',
-    count: channelsTotal.value,
+    count: null,
   },
 ])
-
-const pageSubtitle = computed(() => {
-  if (activeView.value === 'inbox') return '未读更新，按日期与频道整理'
-  if (activeView.value === 'activity') return '所有订阅频道的完整时间流'
-  if (activeView.value === 'special') return '只查看特别关注频道的最新内容'
-  if (activeView.value === 'issues') return '集中处理同步失败和明确错误'
-  return '搜索、检查并管理所有订阅频道'
-})
-
-const toolbarSummary = computed(() => {
-  if (isFeedView.value) {
-    return feedFinished.value
-      ? `${feedItems.value.length} 条内容`
-      : `已加载 ${feedItems.value.length} 条`
-  }
-  if (activeView.value === 'issues') return `${issueChannels.value.length} 个需要处理`
-  return `${channelsTotal.value} 个频道`
-})
 
 const pageLoading = computed(() => (
   isFeedView.value
@@ -559,14 +523,17 @@ const pageLoading = computed(() => (
     : loadingChannels.value || loadingMoreChannels.value
 ))
 
-const hasActiveToolbarFilters = computed(() => {
-  if (isFeedView.value) {
-    return Boolean(feedSearch.value.trim()) || Boolean(site.value) || nsfw.value !== 'all'
-  }
-  if (activeView.value === 'channels') {
-    return Boolean(channelSearch.value.trim()) || Boolean(site.value) || librarySpecialOnly.value
-  }
-  return Boolean(site.value)
+const activeFilterCount = computed(() => {
+  let count = site.value ? 1 : 0
+  if (isFeedView.value && nsfw.value !== 'all') count += 1
+  if (activeView.value === 'channels' && librarySpecialOnly.value) count += 1
+  return count
+})
+
+const filterDescription = computed(() => {
+  if (isFeedView.value) return '按来源和内容分级缩小范围'
+  if (activeView.value === 'channels') return '按来源和关注状态缩小范围'
+  return '按来源缩小范围'
 })
 
 const feedEmptyTitle = computed(() => {
@@ -586,8 +553,7 @@ const feedEmptyCopy = computed(() => {
 const feedDayGroups = computed<FeedDayGroup[]>(() => {
   const dayMap = new Map<string, {
     label: string
-    count: number
-    channels: Map<string, FeedChannelGroup>
+    items: FeedDayItem[]
   }>()
 
   for (const video of feedItems.value) {
@@ -596,32 +562,24 @@ const feedDayGroups = computed<FeedDayGroup[]>(() => {
     const dayKey = Number.isNaN(date.getTime()) ? 'unknown' : localDateKey(date)
     const day = dayMap.get(dayKey) || {
       label: feedDayLabel(date),
-      count: 0,
-      channels: new Map<string, FeedChannelGroup>(),
-    }
-    const profile = primaryVideoProfile(video)
-    const channelKey = profile?.id != null
-      ? `id:${String(profile.id)}`
-      : `name:${profile?.name || '未知频道'}`
-    const group = day.channels.get(channelKey) || {
-      key: channelKey,
-      name: profile?.name || '未知频道',
-      avatar: profile?.avatar || null,
-      subscriptionId: profile?.id ?? null,
       items: [],
     }
+    const profile = primaryVideoProfile(video)
 
-    group.items.push(video)
-    day.channels.set(channelKey, group)
-    day.count += 1
+    day.items.push({
+      video,
+      channelName: profile?.name || '未知频道',
+      channelAvatar: profile?.avatar || null,
+      subscriptionId: profile?.id ?? null,
+    })
     dayMap.set(dayKey, day)
   }
 
   return Array.from(dayMap.entries()).map(([key, day]) => ({
     key,
     label: day.label,
-    count: day.count,
-    channels: Array.from(day.channels.values()),
+    count: day.items.length,
+    items: day.items,
   }))
 })
 
@@ -660,10 +618,8 @@ const handleNsfwFilterChange = (value: unknown) => {
 const clearToolbarFilters = () => {
   site.value = undefined
   if (isFeedView.value) {
-    feedSearch.value = ''
     nsfw.value = 'all'
   } else if (activeView.value === 'channels') {
-    channelSearch.value = ''
     librarySpecialOnly.value = false
   }
 }
@@ -1076,9 +1032,9 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.subscription-page__header {
+.subscription-control-bar {
   display: flex;
-  min-height: 4.5rem;
+  min-height: 3.5rem;
   flex: none;
   align-items: center;
   justify-content: space-between;
@@ -1087,49 +1043,20 @@ onUnmounted(() => {
   padding: 0 var(--space-5);
 }
 
-.subscription-page__heading {
-  min-width: 0;
-}
-
-.subscription-page__heading h1 {
-  color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: 1.25rem;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.subscription-page__heading p {
-  margin-top: 0.25rem;
-  color: hsl(var(--muted-foreground) / 0.74);
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.subscription-page__header-actions {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 .subscription-view-nav {
   display: flex;
-  min-height: 2.875rem;
+  min-width: 0;
   flex: none;
   align-items: center;
   gap: 0.25rem;
-  border-bottom: 1px solid var(--app-hairline);
-  padding: 0 var(--space-5);
 }
 
 .subscription-view-nav__item {
   display: inline-flex;
-  height: 2rem;
+  height: 3.5rem;
   align-items: center;
   gap: 0.45rem;
-  border-radius: var(--radius-md);
-  padding: 0 0.75rem;
+  padding: 0 0.625rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 550;
@@ -1141,22 +1068,19 @@ onUnmounted(() => {
 
 .subscription-view-nav__item:hover,
 .subscription-view-nav__item:focus-visible {
-  background: hsl(var(--muted) / 0.42);
+  background: hsl(var(--muted) / 0.28);
   color: hsl(var(--foreground));
   outline: none;
 }
 
 .subscription-view-nav__item.is-active {
-  background: hsl(var(--foreground) / 0.06);
   color: hsl(var(--foreground));
+  box-shadow: inset 0 -2px 0 hsl(var(--foreground) / 0.58);
 }
 
 .subscription-view-nav__count {
-  min-width: 1.25rem;
-  border-radius: var(--radius-sm);
-  background: hsl(var(--muted) / 0.6);
-  padding: 0.125rem 0.3rem;
-  color: hsl(var(--muted-foreground));
+  min-width: 0;
+  color: hsl(var(--muted-foreground) / 0.76);
   font-size: 0.5625rem;
   line-height: 1;
   text-align: center;
@@ -1164,75 +1088,134 @@ onUnmounted(() => {
 
 .subscription-toolbar {
   display: flex;
-  min-height: 3.5rem;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  border-bottom: 1px solid var(--app-hairline);
-  padding: 0 var(--space-5);
-}
-
-.subscription-toolbar__filters,
-.subscription-toolbar__actions {
-  display: flex;
   min-width: 0;
+  min-height: 0;
+  flex: none;
   align-items: center;
   gap: var(--space-2);
 }
 
-.subscription-toolbar__filters {
-  flex: 1 1 auto;
-}
-
-.subscription-toolbar__actions {
-  flex: none;
-}
-
 .subscription-toolbar__search {
-  width: min(22rem, 34vw);
-  flex: 0 1 22rem;
+  width: 15rem;
+  flex: 0 1 15rem;
 }
 
-.subscription-toolbar__select {
-  width: 10rem;
-  height: 2rem;
-  background: hsl(var(--muted) / 0.24);
+.subscription-toolbar__filter {
+  gap: 0.4rem;
+  color: hsl(var(--muted-foreground) / 0.84);
   font-size: 0.75rem;
+}
+
+.subscription-toolbar__filter.is-active {
+  border-color: hsl(var(--foreground) / 0.1);
+  background: hsl(var(--foreground) / 0.045);
+  color: hsl(var(--foreground) / 0.82);
+}
+
+.subscription-toolbar__filter-count {
+  display: grid;
+  min-width: 1rem;
+  height: 1rem;
+  place-items: center;
+  border-radius: 999px;
+  background: hsl(var(--foreground) / 0.08);
+  color: hsl(var(--foreground) / 0.72);
+  font-size: 0.5625rem;
+  line-height: 1;
+}
+
+.subscription-toolbar__divider {
+  width: 1px;
+  height: 1rem;
+  flex: none;
+  background: var(--app-hairline);
+}
+
+.subscription-toolbar__icon-action {
+  color: hsl(var(--muted-foreground) / 0.78);
+}
+
+.subscription-toolbar__add {
   box-shadow: none;
 }
 
-.subscription-toolbar__select.is-active {
-  border-color: hsl(var(--primary) / 0.22);
-  background: hsl(var(--primary) / 0.06);
+.subscription-filter-panel {
+  padding: var(--space-4);
 }
 
-.subscription-toolbar__site-option {
+.subscription-filter-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+}
+
+.subscription-filter-panel__header > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.subscription-filter-panel__header strong {
+  color: hsl(var(--foreground));
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.subscription-filter-panel__header span {
+  color: hsl(var(--muted-foreground) / 0.72);
+  font-size: 0.6875rem;
+}
+
+.subscription-filter-panel__fields {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.subscription-filter-panel__field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.subscription-filter-panel__field > span {
+  color: hsl(var(--muted-foreground) / 0.82);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.subscription-filter-panel__site-option {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.subscription-toolbar__special {
-  height: 2rem;
-  gap: 0.4rem;
-  border-color: hsl(var(--border) / 0.58);
-  background: hsl(var(--muted) / 0.24);
-  color: hsl(var(--muted-foreground));
+.subscription-filter-panel__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-top: 1px solid var(--app-hairline);
+  padding-top: var(--space-4);
+}
+
+.subscription-filter-panel__toggle > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.subscription-filter-panel__toggle strong {
+  color: hsl(var(--foreground) / 0.9);
   font-size: 0.75rem;
+  font-weight: 600;
 }
 
-.subscription-toolbar__special.is-active {
-  border-color: hsl(var(--foreground) / 0.12);
-  background: hsl(var(--foreground) / 0.045);
-  color: hsl(var(--foreground) / 0.72);
-}
-
-.subscription-toolbar__summary {
-  color: hsl(var(--muted-foreground) / 0.7);
+.subscription-filter-panel__toggle small {
+  color: hsl(var(--muted-foreground) / 0.68);
   font-size: 0.6875rem;
-  font-weight: 550;
-  white-space: nowrap;
 }
 
 .subscription-workspace {
@@ -1258,9 +1241,14 @@ onUnmounted(() => {
 }
 
 .subscription-feed,
-.subscription-feed-skeletons,
+.subscription-feed-skeletons {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-6) var(--app-content-padding-bottom);
+}
+
 .subscription-list-view {
-  width: min(100%, 76rem);
+  width: min(100%, 88rem);
   margin: 0 auto;
   padding: var(--space-5) var(--space-6) var(--app-content-padding-bottom);
 }
@@ -1279,8 +1267,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--app-hairline);
+  padding-bottom: var(--space-3);
 }
 
 .subscription-feed-day__header h2 {
@@ -1296,83 +1284,12 @@ onUnmounted(() => {
   font-weight: 550;
 }
 
-.subscription-channel-group {
-  padding: var(--space-4) 0 var(--space-5);
-}
-
-.subscription-channel-group + .subscription-channel-group {
-  border-top: 1px solid var(--app-hairline);
-}
-
-.subscription-channel-group__header {
-  margin-bottom: var(--space-2);
-}
-
-.subscription-channel-group__identity {
-  display: inline-flex;
-  max-width: 100%;
-  align-items: center;
-  gap: var(--space-3);
-  border-radius: var(--radius-md);
-  padding: 0.25rem;
-  color: hsl(var(--muted-foreground));
-  text-align: left;
-  cursor: pointer;
-}
-
-.subscription-channel-group__identity:hover:not(:disabled),
-.subscription-channel-group__identity:focus-visible:not(:disabled) {
-  background: hsl(var(--muted) / 0.4);
-  color: hsl(var(--foreground));
-  outline: none;
-}
-
-.subscription-channel-group__identity:disabled {
-  cursor: default;
-}
-
-.subscription-channel-group__copy {
-  display: flex;
+.subscription-feed-day__items {
   min-width: 0;
-  flex-direction: column;
-  gap: 0.1rem;
 }
 
-.subscription-channel-group__copy strong {
-  overflow: hidden;
-  color: hsl(var(--foreground));
-  font-size: 0.8125rem;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.subscription-channel-group__copy small {
-  color: hsl(var(--muted-foreground) / 0.68);
-  font-size: 0.625rem;
-  font-weight: 500;
-}
-
-.subscription-list-view__heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding-bottom: var(--space-4);
-}
-
-.subscription-list-view__heading h2 {
-  color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: 1.0625rem;
-  font-weight: 600;
-}
-
-.subscription-list-view__heading p {
-  margin-top: 0.3rem;
-  color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.75rem;
-  font-weight: 500;
+.subscription-feed-day__items > * + * {
+  border-top: 1px solid var(--app-hairline);
 }
 
 .subscription-channel-table {
@@ -1422,6 +1339,16 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1200px) {
+  .subscription-control-bar {
+    gap: var(--space-3);
+    padding-inline: var(--space-4);
+  }
+
+  .subscription-view-nav__item {
+    gap: 0.35rem;
+    padding-inline: 0.5rem;
+  }
+
   .subscription-feed,
   .subscription-feed-skeletons,
   .subscription-list-view {
@@ -1429,8 +1356,8 @@ onUnmounted(() => {
   }
 
   .subscription-toolbar__search {
-    width: 16rem;
-    flex-basis: 16rem;
+    width: 12rem;
+    flex-basis: 12rem;
   }
 }
 
