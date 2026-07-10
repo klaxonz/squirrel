@@ -2,11 +2,7 @@
   <AppPageShell class="home-view-page" variant="compact" :fill="false">
     <div ref="contentRef" class="app-page-content app-page-content--media home-page-content">
       <div class="home-dashboard">
-        <section
-          class="home-focus"
-          :class="{ 'home-focus--single': secondaryFeaturedVideos.length === 0 }"
-          :aria-label="heroAriaLabel"
-        >
+        <section class="home-focus" :aria-label="heroAriaLabel">
           <div
             class="home-stage"
             :class="{
@@ -105,16 +101,42 @@
             </div>
           </div>
 
-          <aside
-            v-if="secondaryFeaturedVideos.length > 0"
-            class="home-queue"
-            aria-label="推荐队列"
-          >
+          <aside class="home-queue" aria-label="推荐队列">
             <header class="home-queue__header">
               <h2 class="home-queue__title">{{ queueTitle }}</h2>
             </header>
 
-            <div class="home-queue__list">
+            <div
+              v-if="showQueueLoading"
+              class="home-queue__list"
+              aria-label="正在加载推荐队列"
+            >
+              <div v-for="index in 4" :key="index" class="home-queue-skeleton">
+                <AppSkeleton
+                  width="8.5rem"
+                  height="4.78125rem"
+                  rounded="var(--radius-md)"
+                  shimmer
+                />
+                <div class="home-queue-skeleton__body">
+                  <AppSkeleton height="0.875rem" rounded="var(--radius-sm)" shimmer />
+                  <AppSkeleton
+                    width="76%"
+                    height="0.875rem"
+                    rounded="var(--radius-sm)"
+                    shimmer
+                  />
+                  <AppSkeleton
+                    width="46%"
+                    height="0.6875rem"
+                    rounded="var(--radius-sm)"
+                    shimmer
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="secondaryFeaturedVideos.length > 0" class="home-queue__list">
               <button
                 v-for="video in secondaryFeaturedVideos"
                 :key="video.id"
@@ -141,6 +163,11 @@
                   </span>
                 </span>
               </button>
+            </div>
+
+            <div v-else class="home-queue__empty">
+              <AppIcon name="inbox" class="size-5" />
+              <span>暂无更多推荐</span>
             </div>
           </aside>
         </section>
@@ -178,6 +205,7 @@ import SpotlightRow from '@/features/video/components/feed/SpotlightRow.vue'
 import ContinueWatching from '@/features/video/components/feed/ContinueWatching.vue'
 import SpecialFollowVideos from '@/features/video/components/feed/SpecialFollowVideos.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
@@ -202,6 +230,8 @@ const specialFollowRef = ref<{ refresh?: () => void } | null>(null)
 
 // ── Hero state ──
 const featuredVideos = ref<VideoListItem[]>([])
+const featuredLoading = ref(true)
+let featuredRequestId = 0
 
 // History-based hero (from ContinueWatching). Takes priority over featured when valid.
 const historyHero = ref<VideoHistoryEntry | null>(null)
@@ -241,6 +271,9 @@ const secondaryFeaturedVideos = computed(() => {
     })
     .slice(0, 4)
 })
+const showQueueLoading = computed(
+  () => featuredLoading.value && featuredVideos.value.length === 0,
+)
 
 /**
  * Mode split is intentional:
@@ -370,13 +403,24 @@ const refresh = () => {
 }
 
 const loadFeaturedVideos = async () => {
+  const requestId = ++featuredRequestId
+  featuredLoading.value = true
+
   try {
     const items = await getFeaturedVideos()
+    if (requestId !== featuredRequestId) return
+
     if (Array.isArray(items)) {
       featuredVideos.value = items.slice(0, 5)
     }
   } catch (e) {
-    Logger.warn('Failed to load featured hero videos:', e)
+    if (requestId === featuredRequestId) {
+      Logger.warn('Failed to load featured hero videos:', e)
+    }
+  } finally {
+    if (requestId === featuredRequestId) {
+      featuredLoading.value = false
+    }
   }
 }
 
@@ -418,10 +462,6 @@ onMounted(() => {
   align-items: stretch;
   gap: var(--space-5);
   min-height: 0;
-}
-
-.home-focus--single {
-  grid-template-columns: minmax(0, 1fr);
 }
 
 .home-stage {
@@ -705,6 +745,33 @@ onMounted(() => {
   grid-template-rows: repeat(4, minmax(0, 1fr));
   min-width: 0;
   min-height: 0;
+}
+
+.home-queue-skeleton {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) 0;
+  border-top: 1px solid hsl(var(--border) / 0.5);
+}
+
+.home-queue-skeleton__body {
+  display: grid;
+  min-width: 0;
+  gap: 0.5rem;
+}
+
+.home-queue__empty {
+  display: flex;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  font-weight: 550;
 }
 
 .home-queue-item {
