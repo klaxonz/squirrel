@@ -18,13 +18,13 @@ colors:
   border-light: "hsl(28 12% 89%)"
 typography:
   display:
-    fontFamily: "Newsreader, Inter, Georgia, Times New Roman, serif"
+    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
     fontSize: "1.6875rem"
     fontWeight: 600
     lineHeight: 1.15
     letterSpacing: "-0.02em"
   title:
-    fontFamily: "Newsreader, Inter, Georgia, Times New Roman, serif"
+    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
     fontSize: "1.25rem"
     fontWeight: 600
     lineHeight: 1.25
@@ -126,11 +126,11 @@ The palette runs on one warm amber hue axis: near-black warm neutrals for dark m
 
 ## 3. Typography
 
-**Display Font:** Newsreader with Inter and Georgia fallbacks  
-**Body Font:** Inter with system sans fallbacks  
+**Display Font:** Inter with system sans fallbacks
+**Body Font:** Inter with the same system sans fallbacks
 **Label/Mono Font:** JetBrains Mono for logs, ids, counters, and tabular operational values
 
-**Character:** Newsreader gives page titles and section headings a quiet editorial tone; Inter owns controls, dense lists, navigation, labels, and data. The pairing should feel deliberate but never theatrical.
+**Character:** Inter owns the complete product interface, including headings, controls, dense lists, navigation, labels, and data. Hierarchy comes from size, weight, spacing, and contrast instead of switching to an editorial display face.
 
 ### Hierarchy
 - **Display** (600, 27px, 1.15): top page headings and primary empty-state titles.
@@ -144,7 +144,7 @@ The palette runs on one warm amber hue axis: near-black warm neutrals for dark m
 
 **The Product Type Rule.** Use fixed rem sizes for product UI. Avoid fluid type on app surfaces; density and stability matter more than dramatic scaling.
 
-**The Display Font Has A Job Rule.** Newsreader belongs to headings and hero-like media moments, not buttons, labels, table cells, or form controls.
+**The Unified Product Type Rule.** Use the shared Inter stack for headings and body copy. Do not introduce a separate display face; create hierarchy with the established type scale and weights.
 
 **The Existing Heading Scale Is A Starting Point Rule.** Keep the current scale only where it produces clear hierarchy. If a page looks visually flat or cramped, redesign the hierarchy first; do not normalize the flaw into new screens.
 
