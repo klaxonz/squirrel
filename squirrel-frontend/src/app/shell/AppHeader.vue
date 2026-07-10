@@ -1,12 +1,5 @@
 <template>
   <header class="app-header">
-    <div class="app-header__lead">
-      <div class="app-header__context" :title="contextTitle">
-        <div v-if="showSection" class="app-header__section">{{ sectionLabel }}</div>
-        <h1 class="app-header__page-title">{{ pageTitle }}</h1>
-      </div>
-    </div>
-
     <div class="app-header__center">
       <Transition name="fade" mode="out-in">
         <div v-if="showSearch" key="search" class="app-header__search-wrap">
@@ -47,7 +40,6 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
-import { resolveRouteContext } from '@/shared/constants/sidebar'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import GlobalSearchBar from '@/shared/components/layout/GlobalSearchBar.vue'
 import { Button } from '@/shared/ui/button'
@@ -111,35 +103,13 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   router.replace({ query })
 }
 
-const routeContext = computed(() => resolveRouteContext(route))
-const pageTitle = computed(() => routeContext.value.pageTitle)
-const sectionLabel = computed(() => routeContext.value.sectionLabel)
-/**
- * Section label is only useful when it adds hierarchy beyond the page title.
- * Top-level nav pages already expose their identity in the sidebar, so
- * repeating the same string as both section + title (e.g. 首页 / 首页) is noise.
- */
-const showSection = computed(() => {
-  const section = sectionLabel.value.trim()
-  const title = pageTitle.value.trim()
-  if (!section) return false
-  if (section === title) return false
-  if (routeContext.value.isTopLevel) return false
-  return true
-})
-const contextTitle = computed(() => (
-  showSection.value
-    ? `${sectionLabel.value} / ${pageTitle.value}`
-    : pageTitle.value
-))
-
 </script>
 
 <style scoped>
 .app-header {
   height: 3.5rem;
   display: grid;
-  grid-template-columns: minmax(15rem, 0.8fr) minmax(22rem, 1.2fr) minmax(10rem, 0.55fr);
+  grid-template-columns: minmax(0, 1fr) minmax(22rem, 40rem) minmax(0, 1fr);
   align-items: center;
   gap: var(--space-4);
   padding: 0 var(--space-5);
@@ -151,44 +121,8 @@ const contextTitle = computed(() => (
   user-select: none;
 }
 
-.app-header__lead {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.app-header__context {
-  min-width: 0;
-  display: grid;
-  gap: 0.1rem;
-  align-content: center;
-}
-
-.app-header__section {
-  overflow: hidden;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
-  font-weight: 600;
-  line-height: 1.1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.app-header__page-title {
-  margin: 0;
-  overflow: hidden;
-  color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: var(--app-h3-size);
-  font-weight: var(--app-h3-weight);
-  line-height: var(--app-h3-leading);
-  letter-spacing: var(--app-h3-tracking);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .app-header__center {
+  grid-column: 2;
   min-width: 0;
   display: flex;
   justify-content: center;
@@ -210,6 +144,7 @@ const contextTitle = computed(() => (
 }
 
 .app-header__actions {
+  grid-column: 3;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -263,7 +198,7 @@ const contextTitle = computed(() => (
 
 @media (max-width: 980px) {
   .app-header {
-    grid-template-columns: minmax(10rem, 0.7fr) minmax(16rem, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 32rem) minmax(0, 1fr);
   }
 
   .app-header__user-name {
