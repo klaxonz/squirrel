@@ -1,97 +1,96 @@
 <template>
-  <div
-    class="subscription-card group"
-    role="button"
-    tabindex="0"
-    @click="$emit('click')"
-    @keydown.enter.prevent="$emit('click')"
-    @keydown.space.prevent="$emit('click')"
+  <article
+    class="subscription-row"
+    :class="{ 'subscription-row--error': syncFailed }"
   >
-    <!-- Media first: always reserve a 3-up strip so the grid rhythm stays calm. -->
-    <div class="subscription-card__media" aria-hidden="true">
-      <div
-        v-for="(slot, index) in previewSlots"
-        :key="slot?.id ?? `empty-${index}`"
-        class="subscription-card__thumb"
-      >
-        <VideoThumbnail
-          v-if="slot?.thumbnail"
-          :src="slot.thumbnail"
-          fit="cover"
-          img-class="subscription-card__thumb-img"
-        />
-      </div>
-    </div>
+    <Button
+      unstyled
+      type="button"
+      class="subscription-row__identity"
+      :title="cardTitle"
+      @click="$emit('click')"
+    >
+      <SubscriptionAvatar
+        :src="subscription.avatar"
+        :name="subscription.name"
+        size="md"
+        class="subscription-row__avatar"
+      />
 
-    <div class="subscription-card__body">
-      <div class="subscription-card__identity">
-        <SubscriptionAvatar
-          :src="subscription.avatar"
-          :name="subscription.name"
-          size="md"
-          class="subscription-card__avatar"
-        />
-
-        <div class="subscription-card__copy min-w-0 flex-1">
-          <div class="subscription-card__title-row">
-            <h3 class="subscription-card__title">{{ subscription.name }}</h3>
-            <Button
-              type="button"
-              variant="ghost"
-              size="mini-icon"
-              class="subscription-card__star"
-              :class="{ 'is-active': subscription.is_special_followed }"
-              :disabled="toggling"
-              :aria-pressed="subscription.is_special_followed"
-              aria-label="切换特别关注"
-              @click.stop="$emit('toggleSpecial', subscription)"
-            >
-              <AppSpinner v-if="toggling" size="sm" />
-              <AppIcon
-                v-else
-                name="star"
-                class="h-3.5 w-3.5"
-                :class="{ 'fill-current': subscription.is_special_followed }"
-              />
-            </Button>
-          </div>
-
-          <div class="subscription-card__meta">
-            <span v-if="subscription.site" class="subscription-card__site">{{ subscription.site }}</span>
-            <span v-if="subscription.site" class="subscription-card__dot" aria-hidden="true">·</span>
-            <span class="app-mono">{{ subscription.total_videos || 0 }}</span>
-            <span class="subscription-card__meta-label">视频</span>
-            <template v-if="unreadLabel">
-              <span class="subscription-card__dot" aria-hidden="true">·</span>
-              <span class="subscription-card__unread app-mono" :title="`${subscription.unread_count} 个未读`">
-                {{ unreadLabel }}
-              </span>
-              <span class="subscription-card__meta-label">未读</span>
-            </template>
-            <template v-if="syncFailed">
-              <span class="subscription-card__dot" aria-hidden="true">·</span>
-              <span class="subscription-card__status subscription-card__status--error" :title="errorLabel">
-                <AppIcon name="warning" class="h-3 w-3" />
-                异常
-              </span>
-            </template>
-            <template v-else-if="syncBusy">
-              <span class="subscription-card__dot" aria-hidden="true">·</span>
-              <span class="subscription-card__status">同步中</span>
-            </template>
-            <span v-if="subscription.is_nsfw" class="subscription-card__nsfw">18+</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="subscription-card__footer">
-        <span class="subscription-card__time">{{ lastUpdatedText }}</span>
-        <span v-if="subscription.pending_video_count > 0" class="subscription-card__pending app-mono">
-          {{ subscription.pending_video_count }} 待处理
+      <span class="subscription-row__copy">
+        <span class="subscription-row__title-line">
+          <strong class="subscription-row__title">{{ subscription.name }}</strong>
+          <span
+            v-if="subscription.is_special_followed"
+            class="subscription-row__special"
+            title="特别关注"
+          />
+          <span v-if="subscription.is_nsfw" class="subscription-row__nsfw">18+</span>
         </span>
-      </div>
-    </div>
-  </div>
+        <span v-if="subscription.site" class="subscription-row__site">{{ subscription.site }}</span>
+      </span>
+    </Button>
+
+    <span class="subscription-row__metric app-mono">{{ subscription.total_videos }}</span>
+
+    <span
+      class="subscription-row__metric app-mono"
+      :class="{ 'subscription-row__metric--active': subscription.unread_count > 0 }"
+      :title="`${subscription.unread_count} 个未读`"
+    >
+      {{ unreadLabel || 0 }}
+    </span>
+
+    <span
+      class="subscription-row__updated"
+      :title="subscription.last_success_at || '尚未同步'"
+    >
+      {{ lastUpdatedText }}
+    </span>
+
+    <span
+      v-if="syncFailed"
+      class="subscription-row__state subscription-row__state--error"
+      :title="errorLabel"
+    >
+      <AppIcon name="warning" class="h-3 w-3" />
+      同步失败
+    </span>
+    <span v-else-if="syncBusy" class="subscription-row__state">
+      <AppSpinner size="sm" />
+      {{ syncLabel }}
+    </span>
+    <span
+      v-else-if="subscription.pending_video_count > 0"
+      class="subscription-row__state subscription-row__state--pending"
+    >
+      <AppIcon name="time" class="h-3 w-3" />
+      {{ subscription.pending_video_count }} 待处理
+    </span>
+    <span v-else class="subscription-row__state subscription-row__state--healthy">
+      <span class="subscription-row__state-dot" />
+      正常
+    </span>
+
+    <Button
+      type="button"
+      variant="ghost"
+      size="mini-icon"
+      class="subscription-row__star"
+      :class="{ 'is-active': subscription.is_special_followed }"
+      :disabled="toggling"
+      :aria-pressed="subscription.is_special_followed"
+      :aria-label="subscription.is_special_followed ? '取消特别关注' : '设为特别关注'"
+      @click="$emit('toggleSpecial', subscription)"
+    >
+      <AppSpinner v-if="toggling" size="sm" />
+      <AppIcon
+        v-else
+        name="star"
+        class="h-3.5 w-3.5"
+      />
+    </Button>
+  </article>
 </template>
 
 <script setup lang="ts">
@@ -100,252 +99,228 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import { Button } from '@/shared/ui/button'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
-import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import { formatDate } from '@/shared/lib/dateFormat'
 import {
   formatUnreadCount,
-  getSubscriptionRecentVideos,
   isSubscriptionSyncBusy,
   isSubscriptionSyncFailed,
   subscriptionSyncErrorLabel,
 } from '@/features/video/lib/subscriptionPresenters'
-import type { SubscriptionListItem, SubscriptionRecentVideo } from '@/features/video/types/subscription'
+import type { SubscriptionListItem } from '@/features/video/types/subscription'
 
 const props = defineProps<{
   subscription: SubscriptionListItem
   toggling?: boolean
 }>()
 
-defineEmits(['click', 'toggleSpecial'])
-
-const previewVideos = computed(() => getSubscriptionRecentVideos(props.subscription).slice(0, 3))
-const previewSlots = computed(() => {
-  const slots: Array<SubscriptionRecentVideo | null> = [...previewVideos.value]
-  while (slots.length < 3) slots.push(null)
-  return slots
-})
+defineEmits<{
+  click: []
+  toggleSpecial: [subscription: SubscriptionListItem]
+}>()
 
 const unreadLabel = computed(() => formatUnreadCount(props.subscription.unread_count))
 const syncFailed = computed(() => isSubscriptionSyncFailed(props.subscription))
 const syncBusy = computed(() => isSubscriptionSyncBusy(props.subscription))
 const errorLabel = computed(() => subscriptionSyncErrorLabel(props.subscription) || '同步失败')
+const syncLabel = computed(() => props.subscription.sync_status === 'queued' ? '等待同步' : '同步中')
+const lastUpdatedText = computed(() => (
+  props.subscription.last_success_at
+    ? formatDate(props.subscription.last_success_at)
+    : '尚未同步'
+))
 
-const lastUpdatedText = computed(() => {
-  const date = props.subscription.updated_at
-    || props.subscription.last_published_at
-    || props.subscription.last_success_at
-  return date ? formatDate(date) : '尚未更新'
+const cardTitle = computed(() => {
+  const parts = [props.subscription.name]
+  if (props.subscription.site) parts.push(props.subscription.site)
+  parts.push(`${props.subscription.total_videos} 个视频`)
+  if (props.subscription.unread_count > 0) parts.push(`${props.subscription.unread_count} 个未读`)
+  if (syncFailed.value) parts.push(errorLabel.value)
+  return parts.join(' · ')
 })
 </script>
 
 <style scoped>
-.subscription-card {
+.subscription-row {
+  display: grid;
+  min-width: 0;
+  min-height: 4rem;
+  grid-template-columns: var(
+    --subscription-table-columns,
+    minmax(15rem, 1fr) 5.5rem 5.5rem 8rem minmax(6.5rem, 8rem) 1.75rem
+  );
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid var(--app-hairline);
+  padding: 0.625rem 0.75rem;
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.subscription-row:hover,
+.subscription-row:focus-within {
+  background: hsl(var(--foreground) / 0.025);
+}
+
+.subscription-row--error {
+  background: hsl(var(--destructive) / 0.025);
+}
+
+.subscription-row__identity {
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--app-card-radius);
-  background: hsl(var(--card));
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition:
-    border-color var(--duration-base) var(--ease-default),
-    box-shadow var(--duration-base) var(--ease-default),
-    transform var(--duration-fast) var(--ease-default);
 }
 
-.subscription-card:hover {
-  border-color: hsl(var(--border) / 0.8);
-  box-shadow:
-    0 1px 2px hsl(0 0% 0% / 0.08),
-    0 10px 24px hsl(0 0% 0% / 0.14);
-}
-
-.subscription-card:focus-visible {
+.subscription-row__identity:focus-visible {
+  border-radius: var(--radius-sm);
   outline: none;
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.45);
 }
 
-.subscription-card:active {
-  transform: scale(0.995);
+.subscription-row__identity:active {
+  transform: translateY(1px);
 }
 
-.subscription-card__media {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  background: hsl(0 0% 0% / 0.55);
-  isolation: isolate;
-}
-
-.subscription-card__thumb {
-  position: relative;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  background: hsl(0 0% 0% / 0.72);
-}
-
-.subscription-card__thumb :deep(img),
-.subscription-card__thumb-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform var(--duration-base) var(--ease-default), filter var(--duration-fast) var(--ease-default);
-}
-
-.subscription-card:hover .subscription-card__thumb :deep(img),
-.subscription-card:hover .subscription-card__thumb-img {
-  transform: scale(1.03);
-  filter: brightness(1.06);
-}
-
-.subscription-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: 0.75rem 0.875rem 0.75rem;
-}
-
-.subscription-card__identity {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.625rem;
-}
-
-.subscription-card__avatar {
-  margin-top: 0.125rem;
+.subscription-row__avatar {
+  flex: none;
   box-shadow: 0 0 0 1px var(--app-surface-border-subtle);
 }
 
-.subscription-card__copy {
-  min-width: 0;
-}
-
-.subscription-card__title-row {
+.subscription-row__copy {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
 }
 
-.subscription-card__title {
-  flex: 1 1 auto;
+.subscription-row__title-line {
+  display: flex;
   min-width: 0;
-  margin: 0;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.subscription-row__title {
+  min-width: 0;
   overflow: hidden;
-  color: hsl(var(--foreground) / 0.94);
-  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: color var(--duration-fast) var(--ease-default);
 }
 
-.subscription-card:hover .subscription-card__title {
-  color: hsl(var(--primary));
+.subscription-row__special {
+  width: 0.35rem;
+  height: 0.35rem;
+  flex: none;
+  border-radius: 999px;
+  background: hsl(var(--muted-foreground) / 0.56);
 }
 
-.subscription-card__star {
-  flex: 0 0 auto;
-  margin-top: -0.125rem;
-  color: hsl(var(--muted-foreground) / 0.55);
-}
-
-.subscription-card__star.is-active {
-  color: hsl(var(--warning));
-}
-
-.subscription-card__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem 0.35rem;
-  margin-top: 0.2rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.35;
-}
-
-.subscription-card__site {
-  max-width: 6.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-transform: lowercase;
-}
-
-.subscription-card__dot {
-  color: hsl(var(--muted-foreground) / 0.55);
-}
-
-.subscription-card__meta-label {
-  color: hsl(var(--muted-foreground) / 0.85);
-}
-
-.subscription-card__unread {
-  color: hsl(var(--primary));
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.subscription-card__status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  color: hsl(var(--muted-foreground));
-}
-
-.subscription-card__status--error {
-  color: hsl(var(--destructive) / 0.92);
-}
-
-.subscription-card__nsfw {
-  margin-left: 0.15rem;
-  padding: 0.05rem 0.35rem;
-  border: 1px solid hsl(var(--destructive) / 0.35);
-  border-radius: var(--radius-sm);
+.subscription-row__nsfw {
+  flex: none;
   color: hsl(var(--destructive));
   font-size: 0.625rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  line-height: 1.2;
+  line-height: 1;
 }
 
-.subscription-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding-top: 0.125rem;
-}
-
-.subscription-card__time,
-.subscription-card__pending {
+.subscription-row__site {
+  overflow: hidden;
   color: hsl(var(--muted-foreground) / 0.78);
   font-size: 0.6875rem;
   font-weight: 500;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.subscription-card__pending {
-  font-variant-numeric: tabular-nums;
+.subscription-row__metric {
+  justify-self: end;
+  color: hsl(var(--foreground) / 0.78);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.subscription-row__metric--active {
+  color: hsl(var(--foreground));
+}
+
+.subscription-row__updated {
+  color: hsl(var(--muted-foreground) / 0.78);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.subscription-row__state {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.3rem;
+  color: hsl(var(--muted-foreground) / 0.72);
+  font-size: 0.6875rem;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.subscription-row__state--error {
+  color: hsl(var(--destructive));
+}
+
+.subscription-row__state--pending {
+  color: hsl(var(--warning));
+}
+
+.subscription-row__state--healthy {
+  color: hsl(var(--muted-foreground) / 0.72);
+}
+
+.subscription-row__state-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  flex: none;
+  border-radius: 999px;
+  background: hsl(var(--success) / 0.8);
+}
+
+.subscription-row__star {
+  opacity: 0;
+  color: hsl(var(--muted-foreground) / 0.55);
+}
+
+.subscription-row__star.is-active {
+  opacity: 0.72;
+  color: hsl(var(--foreground) / 0.72);
+}
+
+.subscription-row:hover .subscription-row__star,
+.subscription-row:focus-within .subscription-row__star {
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .subscription-card,
-  .subscription-card__title,
-  .subscription-card__thumb :deep(img),
-  .subscription-card__thumb-img {
+  .subscription-row {
     transition: none;
   }
 
-  .subscription-card:active {
+  .subscription-row__identity:active {
     transform: none;
   }
 
-  .subscription-card:hover .subscription-card__thumb :deep(img),
-  .subscription-card:hover .subscription-card__thumb-img {
-    transform: none;
-    filter: none;
+  .subscription-row__star {
+    opacity: 1;
   }
 }
 </style>

@@ -2,9 +2,11 @@
   <AppPageShell variant="compact" fill>
     <AppTwoColumnLayout
       ref="layoutRef"
+      class="subscribed-workbench"
       sidebar-always
-      sidebar-width="17.5rem"
-      content-width="112.5rem"
+      :show-sidebar="mainView !== 'channels'"
+      sidebar-width="17rem"
+      content-width="100rem"
     >
       <template #sidebar>
         <SubscriptionSidebar
@@ -18,8 +20,6 @@
           :search="sidebarSearch"
           :site="site || ''"
           :site-options="siteOptionsList"
-          :active-site-label="activeSiteLabel"
-          :site-dropdown-open="showSiteDropdown"
           :special-filter="specialFilter"
           :active-channel-id="activeChannelId"
           :toggling-ids="togglingSpecialIds"
@@ -27,50 +27,51 @@
           @import="showImportDialog = true"
           @retry="fetchChannels(true)"
           @clear-filters="clearSidebarFilters"
+          @select-all="handleSelectAllChannels"
           @select-channel="handleChannelClick"
           @toggle-special="toggleSpecialFollow"
           @toggle-special-filter="toggleSpecialFilter"
           @update:search="sidebarSearch = $event"
-          @update:site="site = $event"
-          @update:site-dropdown-open="showSiteDropdown = $event"
+          @update:site="handleSiteFilterChange"
         />
       </template>
 
       <template #header>
         <div class="subscribed-header">
           <div class="subscribed-header__identity">
-            <button
-              v-if="activeChannel"
+            <Button
+              v-if="activeChannel && mainView !== 'channels'"
+              unstyled
               type="button"
               class="subscribed-header__avatar-btn"
               :aria-label="`打开 ${activeChannel.name}`"
               @click="openActiveChannelDetail"
             >
-              <SubscriptionAvatar :src="activeChannel.avatar" :name="activeChannel.name" size="xl" class="subscribed-avatar" />
-              <span v-if="activeChannel.is_special_followed" class="subscribed-star-badge">
-                <AppIcon name="star" class="h-2.5 w-2.5 fill-current" />
-              </span>
-            </button>
-            <div v-else class="subscribed-empty-avatar" aria-hidden="true">
-              <AppIcon name="library" class="h-4 w-4" />
-            </div>
+              <SubscriptionAvatar
+                :src="activeChannel.avatar"
+                :name="activeChannel.name"
+                size="md"
+                class="subscribed-avatar"
+              />
+            </Button>
 
             <div class="subscribed-header__copy">
               <div class="subscribed-header__title-row">
-                <button
+                <Button
+                  unstyled
                   type="button"
                   class="subscribed-header__title"
-                  :disabled="!activeChannel"
+                  :disabled="!activeChannel || mainView === 'channels'"
                   @click="activeChannel && openActiveChannelDetail()"
                 >
-                  {{ activeChannelName || '订阅动态' }}
-                </button>
+                  {{ pageTitle }}
+                </Button>
 
                 <Button
-                  v-if="activeChannel"
+                  v-if="activeChannel && mainView !== 'channels'"
                   type="button"
                   variant="ghost"
-                  size="icon-sm"
+                  size="mini-icon"
                   class="subscribed-header__star"
                   :class="{ 'is-active': activeChannel.is_special_followed }"
                   :disabled="togglingSpecialIds.has(activeChannel.id)"
@@ -83,34 +84,28 @@
                     v-else
                     name="star"
                     class="h-3.5 w-3.5"
-                    :class="{ 'fill-current': activeChannel.is_special_followed }"
                   />
                 </Button>
-              </div>
 
-              <div class="subscribed-header__subtitle">
-                <template v-for="(part, index) in headerMetaParts" :key="`${part}-${index}`">
-                  <span v-if="index > 0" class="subscribed-header__sep" aria-hidden="true">·</span>
-                  <span>{{ part }}</span>
-                </template>
                 <span
-                  v-if="activeChannel && isSubscriptionSyncFailed(activeChannel)"
+                  v-if="activeChannel && mainView !== 'channels' && isSubscriptionSyncFailed(activeChannel)"
                   class="subscribed-header__health subscribed-header__health--error"
                   :title="subscriptionSyncErrorLabel(activeChannel)"
                 >
-                  <span class="subscribed-header__sep" aria-hidden="true">·</span>
                   <AppIcon name="warning" class="h-3 w-3" />
                   同步异常
                 </span>
                 <span
-                  v-else-if="activeChannel && isSubscriptionSyncBusy(activeChannel)"
+                  v-else-if="activeChannel && mainView !== 'channels' && isSubscriptionSyncBusy(activeChannel)"
                   class="subscribed-header__health"
                 >
-                  <span class="subscribed-header__sep" aria-hidden="true">·</span>
+                  <AppSpinner size="sm" />
                   同步中
                 </span>
-                <AppBounceDots v-if="headerLoading" class="subscribed-header__loading" />
+
               </div>
+
+              <span class="subscribed-header__meta">{{ headerSubtitle }}</span>
             </div>
           </div>
 
@@ -121,24 +116,36 @@
               aria-label="订阅视图"
               size="sm"
               @update:model-value="handleMainViewChange"
-            />
-
-            <Button
-              class="subscribed-nsfw-toggle"
-              :variant="nsfw !== 'all' ? 'secondary' : 'ghost'"
-              size="sm"
-              :aria-pressed="nsfw !== 'all'"
-              :aria-label="nsfwLabel"
-              :title="nsfwLabel"
-              @click="nsfw = nsfw === 'all' ? 'yes' : 'all'"
             >
-              <AppIcon
-                name="warning"
-                class="h-3.5 w-3.5"
-                :class="nsfw === 'all' ? 'text-muted-foreground/70' : 'text-destructive'"
-              />
-              成年内容
-            </Button>
+              <template #option="{ option }">
+                <AppIcon v-if="option.icon" :name="option.icon" class="h-3.5 w-3.5" />
+                <span>{{ option.label }}</span>
+              </template>
+            </AppSegmentedControl>
+
+            <Select
+              v-if="mainView !== 'remote'"
+              :model-value="nsfw"
+              @update:model-value="handleNsfwFilterChange"
+            >
+              <SelectTrigger
+                class="subscribed-content-filter"
+                :class="{ 'is-active': nsfw !== 'all' }"
+                aria-label="内容分级"
+              >
+                <AppIcon :name="nsfw === 'yes' ? 'warning' : 'eye'" class="h-3.5 w-3.5" />
+                <SelectValue placeholder="全部内容" />
+              </SelectTrigger>
+              <SelectContent class="min-w-36">
+                <SelectItem
+                  v-for="option in contentLevelOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
 
             <Button
               variant="ghost"
@@ -155,7 +162,11 @@
         </div>
       </template>
 
-      <div ref="gridWrapper" class="app-workbench__content subscribed-content">
+      <div
+        ref="gridWrapper"
+        class="app-workbench__content subscribed-content"
+        :class="{ 'subscribed-content--channels': mainView === 'channels' }"
+      >
         <RemoteChannelVideoGrid
           v-if="mainView === 'remote'"
           :items="remoteItems"
@@ -212,7 +223,87 @@
           <div ref="feedTrigger" class="h-20" />
         </div>
 
-        <div v-else class="app-content-stack">
+        <div v-else class="app-content-stack app-content-stack--dense">
+          <section class="subscribed-channel-toolbar" aria-label="频道筛选和操作">
+            <div class="subscribed-channel-toolbar__filters">
+              <AppSearchInput
+                :model-value="sidebarSearch"
+                class="subscribed-channel-toolbar__search"
+                placeholder="搜索频道名称..."
+                aria-label="搜索频道名称"
+                @update:model-value="sidebarSearch = $event"
+              />
+
+              <Select
+                :model-value="site || 'all'"
+                @update:model-value="handleSiteFilterChange"
+              >
+                <SelectTrigger
+                  class="subscribed-channel-toolbar__select"
+                  :class="{ 'is-active': site }"
+                  aria-label="按来源筛选频道"
+                >
+                  <SelectValue placeholder="全部来源" />
+                </SelectTrigger>
+                <SelectContent class="min-w-48">
+                  <SelectItem value="all">全部来源</SelectItem>
+                  <SelectItem
+                    v-for="option in siteOptionsList"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    <span class="subscribed-channel-toolbar__source-option">
+                      <SiteIcon :site="option.value" class="h-4 w-4 rounded-sm" />
+                      <span>{{ option.label }}</span>
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                class="subscribed-channel-toolbar__special"
+                :class="{ 'is-active': specialFilter === 'yes' }"
+                :aria-pressed="specialFilter === 'yes'"
+                @click="toggleSpecialFilter"
+              >
+                <AppIcon
+                  name="star"
+                  class="h-3.5 w-3.5"
+                />
+                特别关注
+              </Button>
+
+              <Button
+                v-if="hasSidebarFilters"
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                title="清除频道筛选"
+                aria-label="清除频道筛选"
+                @click="clearSidebarFilters"
+              >
+                <AppIcon name="close" class="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div class="subscribed-channel-toolbar__actions">
+              <span class="subscribed-channel-toolbar__count app-mono">
+                {{ channelsTotal }} 个频道
+              </span>
+              <Button variant="outline" size="sm" @click="showImportDialog = true">
+                <AppIcon name="download" class="h-4 w-4" />
+                导入
+              </Button>
+              <Button size="sm" @click="showAddDialog = true">
+                <AppIcon name="plus" class="h-4 w-4" />
+                添加频道
+              </Button>
+            </div>
+          </section>
+
           <div v-if="channelsError && !list.length && !loadingChannels" class="app-page-empty">
             <AppEmptyState variant="error" title="加载失败" :copy="channelsError">
               <template #actions>
@@ -238,18 +329,31 @@
             </AppEmptyState>
           </div>
 
-          <div v-else class="app-video-grid app-video-grid--compact">
-            <SubscriptionCard
-              v-for="sub in list"
-              :key="sub.id"
-              :subscription="sub"
-              :toggling="togglingSpecialIds.has(sub.id)"
-              @click="handleChannelClick(sub.id)"
-              @toggleSpecial="toggleSpecialFollow"
-            />
-          </div>
-          <div v-if="loadingChannels && !list.length" class="app-video-grid app-video-grid--compact">
-            <SubscriptionCardSkeleton v-for="i in channelSkeletonCount" :key="i" />
+          <section v-if="list.length" class="subscribed-channel-table" aria-label="订阅频道列表">
+            <div class="subscribed-channel-table__header" aria-hidden="true">
+              <span>频道</span>
+              <span>视频</span>
+              <span>未读</span>
+              <span>最近成功</span>
+              <span>同步状态</span>
+              <span />
+            </div>
+            <div class="subscribed-channel-table__body">
+              <SubscriptionCard
+                v-for="sub in list"
+                :key="sub.id"
+                :subscription="sub"
+                :toggling="togglingSpecialIds.has(sub.id)"
+                @click="handleChannelClick(sub.id)"
+                @toggleSpecial="toggleSpecialFollow"
+              />
+            </div>
+          </section>
+
+          <div v-if="loadingChannels && !list.length" class="subscribed-channel-table">
+            <div class="subscribed-channel-table__body">
+              <SubscriptionCardSkeleton v-for="i in 10" :key="i" />
+            </div>
           </div>
           <div v-if="!channelsFinished" ref="gridMoreTrigger" class="h-20" />
         </div>
@@ -268,12 +372,20 @@ import { useRouter } from 'vue-router'
 import { useUIStore } from '@/shared/stores/ui'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
-import AppBounceDots from '@/shared/components/AppBounceDots.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppSearchInput from '@/shared/components/layout/AppSearchInput.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
+import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Button } from '@/shared/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/ui/select'
 import { useToast } from '@/shared/components/toast/useToast'
 import SubscriptionSidebar from '@/features/video/components/SubscriptionSidebar.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
@@ -298,12 +410,13 @@ import {
 } from '@/features/video/lib/subscriptionPresenters'
 import { getSubscriptions, getVideoList, updateSpecialFollowStatus } from '@/shared/api'
 import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
+import type { AppIconName } from '@/shared/icons/app-icons'
 import type { SubscriptionListItem } from '@/features/video/types/subscription'
 import type { VideoListItem } from '@/features/video/types/video'
 
 defineOptions({ name: 'Subscribed' })
 
-type MainView = 'feed' | 'grid' | 'remote'
+type MainView = 'feed' | 'channels' | 'remote'
 
 const router = useRouter()
 const uiStore = useUIStore()
@@ -313,14 +426,13 @@ const { nsfw, site } = useFeedFilters()
 const { options: siteOptions, fetchSites } = useSites()
 const desktopBridge = useDesktopBridge()
 
-// Single view axis: feed (recent) | grid (channels) | remote (desktop channel source)
+// Single workspace axis: recent activity | channel management | desktop remote source.
 const mainView = ref<MainView>('feed')
 const sidebarSearch = ref('')
 const feedSearch = ref('')
-const showSiteDropdown = ref(false)
 const specialFilter = ref<'all' | 'yes'>('all')
 const activeChannelId = ref<string | number | null>(null)
-const activeChannelNameCache = ref('')
+const activeChannelSnapshot = ref<SubscriptionListItem | null>(null)
 const showAddDialog = ref(false)
 const showImportDialog = ref(false)
 const layoutRef = ref<{ scrollEl: HTMLElement | null } | null>(null)
@@ -335,15 +447,8 @@ const { count: videoSkeletonCount, attachRef: videoGridRef } = useSkeletonCount(
   cardHeight: 220,
 })
 
-const { count: channelSkeletonCount, attachRef: channelGridRef } = useSkeletonCount({
-  minCardWidth: 240,
-  gap: 24,
-  cardHeight: 220,
-})
-
 watch(gridWrapper, (node) => {
   videoGridRef.value = node
-  channelGridRef.value = node
 }, { immediate: true })
 
 // Data State (Channels)
@@ -389,13 +494,10 @@ let feedObserver: IntersectionObserver | null = null
 let channelsObserver: IntersectionObserver | null = null
 let gridObserver: IntersectionObserver | null = null
 
-const activeChannelName = computed(() => {
-  if (!activeChannelId.value) return ''
-  return list.value.find(c => c.id === activeChannelId.value)?.name || activeChannelNameCache.value
-})
 const activeChannel = computed(() => {
   if (!activeChannelId.value) return null
-  return list.value.find(c => c.id === activeChannelId.value) || null
+  return list.value.find(c => c.id === activeChannelId.value)
+    || (activeChannelSnapshot.value?.id === activeChannelId.value ? activeChannelSnapshot.value : null)
 })
 
 const { openRemoteResult } = useRemoteVideoMapping({ activeChannel })
@@ -412,28 +514,41 @@ const hasSidebarFilters = computed(() => {
   return Boolean(site.value) || specialFilter.value === 'yes' || Boolean(sidebarSearch.value.trim())
 })
 
-/** Quiet meta fragments for the header subtitle — joined with middots in template. */
-const headerMetaParts = computed(() => {
-  if (mainView.value === 'remote') return [`${remoteItems.value.length} 远端视频`]
-  if (mainView.value === 'grid') return [`${channelsTotal.value} 个频道`]
-  if (activeChannel.value) {
-    const parts = [`${feedItems.value.length} 个视频`]
-    if (activeChannel.value.unread_count > 0) parts.push(`${activeChannel.value.unread_count} 未读`)
-    return parts
+const pageTitle = computed(() => {
+  if (mainView.value === 'channels') return '频道管理'
+  if (mainView.value === 'remote') {
+    return activeChannel.value ? `${activeChannel.value.name} · 远端` : '远端内容'
   }
-  return [`${feedItems.value.length} 个视频`, `${channelsTotal.value} 个频道`]
+  if (activeChannel.value) return activeChannel.value.name
+  return '订阅动态'
+})
+
+const headerSubtitle = computed(() => {
+  if (mainView.value === 'remote') return `${remoteItems.value.length} 条远端内容`
+  if (mainView.value === 'channels') {
+    return hasSidebarFilters.value
+      ? `${channelsTotal.value} 个匹配频道`
+      : `${channelsTotal.value} 个频道`
+  }
+  if (activeChannel.value) {
+    const parts: string[] = []
+    if (activeChannel.value.site) parts.push(activeChannel.value.site)
+    parts.push(`${activeChannel.value.total_videos} 个视频`)
+    if (activeChannel.value.unread_count > 0) parts.push(`${activeChannel.value.unread_count} 未读`)
+    if (activeChannel.value.pending_video_count > 0) {
+      parts.push(`${activeChannel.value.pending_video_count} 待处理`)
+    }
+    return parts.join(' · ')
+  }
+  if (loadingChannels.value && channelsTotal.value === 0) return '正在加载订阅频道'
+  if (channelsTotal.value === 0) return '添加频道后，近期视频会集中显示在这里'
+  return `${channelsTotal.value} 个频道 · 已加载 ${feedItems.value.length} 条近期内容`
 })
 
 const headerLoading = computed(() => {
   if (mainView.value === 'remote') return remoteLoading.value
-  if (mainView.value === 'grid') return loadingChannels.value || loadingMoreChannels.value
+  if (mainView.value === 'channels') return loadingChannels.value || loadingMoreChannels.value
   return loadingFeed.value || loadingMoreFeed.value
-})
-
-const nsfwLabel = computed(() => {
-  return nsfw.value === 'all'
-    ? '当前显示全部内容（含成年），点击仅看成年内容'
-    : '当前仅显示成年内容，点击显示全部'
 })
 
 const feedEmptyTitle = computed(() => {
@@ -450,23 +565,31 @@ const feedEmptyCopy = computed(() => {
 })
 
 const siteOptionsList = computed(() => siteOptions.value || [])
-const activeSiteLabel = computed(() => {
-  if (!site.value) return '全部来源'
-  return siteOptionsList.value.find(opt => opt.value === site.value)?.label || '未知来源'
-})
+const contentLevelOptions = [
+  { value: 'all', label: '全部内容' },
+  { value: 'no', label: '普通内容' },
+  { value: 'yes', label: '成年内容' },
+] as const
 
 const mainViewOptions = computed(() => {
-  const options: { value: MainView; label: string }[] = [
-    { value: 'feed', label: '最近发布' },
-    { value: 'grid', label: '频道' },
+  const options: { value: MainView; label: string; icon: AppIconName }[] = [
+    { value: 'feed', label: '动态', icon: 'playlistVideo' },
+    { value: 'channels', label: '频道', icon: 'subscriptions' },
   ]
   if (canOpenRemoteChannel.value) {
-    options.push({ value: 'remote', label: '远端' })
+    options.push({ value: 'remote', label: '远端', icon: 'siteFallback' })
   }
   return options
 })
 
 const sortChannels = sortSubscriptions
+
+const clearActiveChannel = () => {
+  activeChannelId.value = null
+  activeChannelSnapshot.value = null
+  loadedRemoteChannelKey = ''
+  if (mainView.value === 'remote') mainView.value = 'feed'
+}
 
 const applySpecialFollowState = (subscriptionId: string | number, isSpecialFollowed: boolean) => {
   const updated = list.value.map((item) => (
@@ -478,10 +601,14 @@ const applySpecialFollowState = (subscriptionId: string | number, isSpecialFollo
   } else {
     list.value = sortChannels(updated)
   }
+  if (activeChannelSnapshot.value?.id === subscriptionId) {
+    activeChannelSnapshot.value = {
+      ...activeChannelSnapshot.value,
+      is_special_followed: isSpecialFollowed,
+    }
+  }
   if (specialFilter.value === 'yes' && !isSpecialFollowed && activeChannelId.value === subscriptionId) {
-    activeChannelId.value = null
-    activeChannelNameCache.value = ''
-    if (mainView.value === 'remote') mainView.value = 'feed'
+    clearActiveChannel()
     fetchFeed(true)
   }
 }
@@ -492,9 +619,20 @@ const toggleSpecialFilter = () => {
 
 const clearSidebarFilters = () => {
   sidebarSearch.value = ''
-  site.value = ''
+  site.value = undefined
   specialFilter.value = 'all'
-  showSiteDropdown.value = false
+}
+
+const handleSiteFilterChange = (value: unknown) => {
+  const nextValue = String(value ?? '')
+  site.value = nextValue === 'all' || nextValue === '' ? undefined : nextValue
+}
+
+const handleNsfwFilterChange = (value: unknown) => {
+  const nextValue = String(value ?? '')
+  if (nextValue === 'all' || nextValue === 'yes' || nextValue === 'no') {
+    nsfw.value = nextValue
+  }
 }
 
 const toggleSpecialFollow = async (subscription: SubscriptionListItem) => {
@@ -552,6 +690,8 @@ const fetchChannels = async (isReset = false) => {
         : (isReset ? items.length : list.value.length + items.length)
       if (isReset) list.value = items
       else list.value.push(...items)
+      const refreshedActiveChannel = list.value.find((item) => item.id === activeChannelId.value)
+      if (refreshedActiveChannel) activeChannelSnapshot.value = refreshedActiveChannel
       if (items.length < CHANNELS_PAGE_SIZE || list.value.length >= channelsTotal.value) {
         channelsFinished.value = true
       } else {
@@ -629,18 +769,18 @@ const resetAllScroll = () => {
 }
 
 const handleChannelClick = (id: string | number) => {
-  if (activeChannelId.value === id) {
-    activeChannelId.value = null
-    activeChannelNameCache.value = ''
-    if (mainView.value === 'remote') mainView.value = 'feed'
-  } else {
-    activeChannelId.value = id
-    activeChannelNameCache.value = list.value.find(c => c.id === id)?.name || ''
-  }
-  // Selecting a channel is a feed triage action; leave remote only when still valid.
-  if (mainView.value !== 'remote') {
-    mainView.value = 'feed'
-  }
+  const channel = list.value.find((item) => item.id === id)
+  if (!channel) return
+  activeChannelId.value = id
+  activeChannelSnapshot.value = channel
+  mainView.value = 'feed'
+  fetchFeed(true)
+  scrollToTop(feedContainer.value)
+}
+
+const handleSelectAllChannels = () => {
+  clearActiveChannel()
+  mainView.value = 'feed'
   fetchFeed(true)
   scrollToTop(feedContainer.value)
 }
@@ -662,8 +802,8 @@ const handleMainViewChange = (value: string | number) => {
     void openRemoteChannel()
     return
   }
-  if (value === 'grid') {
-    mainView.value = 'grid'
+  if (value === 'channels') {
+    mainView.value = 'channels'
     nextTick(() => initObservers())
     return
   }
@@ -715,7 +855,7 @@ const initObservers = () => {
   const channelsSentinel = sidebarRef.value?.loadMore ?? null
   if (channelsSentinel) channelsObserver.observe(channelsSentinel)
 
-  if (mainView.value === 'grid') {
+  if (mainView.value === 'channels') {
     gridObserver = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && !loadingChannels.value && !loadingMoreChannels.value && !channelsFinished.value) {
         fetchChannels()
@@ -739,15 +879,23 @@ watch(feedContainer, (el) => {
   if (el) nextTick(() => initObservers())
 })
 
-watch([nsfw, site, specialFilter], () => {
+watch(nsfw, () => {
   fetchChannels(true)
-  if (mainView.value === 'feed') fetchFeed(true)
+  fetchFeed(true)
+  resetAllScroll()
+})
+
+watch([site, specialFilter], () => {
+  clearActiveChannel()
+  fetchChannels(true)
+  fetchFeed(true)
   resetAllScroll()
 })
 
 watch(() => uiStore.searchTrigger, () => {
   const query = uiStore.searchQuery.trim()
   feedSearch.value = query
+  clearActiveChannel()
   mainView.value = 'feed'
   fetchFeed(true)
   nextTick(resetAllScroll)
@@ -781,6 +929,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.subscribed-workbench {
+  --app-workbench-header-height: 3.75rem;
+}
+
+.subscribed-workbench :deep(.app-sidebar-header__copy .app-h3) {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
 .subscribed-header {
   display: flex;
   width: 100%;
@@ -793,12 +953,12 @@ onUnmounted(() => {
 .subscribed-header__identity {
   display: flex;
   min-width: 0;
+  flex: 1 1 auto;
   align-items: center;
   gap: var(--space-3);
 }
 
 .subscribed-header__avatar-btn {
-  position: relative;
   flex: none;
   padding: 0;
   border: 0;
@@ -812,9 +972,28 @@ onUnmounted(() => {
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.45);
 }
 
+.subscribed-header__title {
+  max-width: min(28rem, 38vw);
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
 .subscribed-header__copy {
-  min-width: 0;
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 0.2rem;
 }
@@ -823,26 +1002,7 @@ onUnmounted(() => {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: var(--space-1);
-}
-
-.subscribed-header__title {
-  max-width: min(28rem, 48vw);
-  overflow: hidden;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: var(--app-h3-size);
-  font-weight: var(--app-h3-weight);
-  line-height: var(--app-h3-leading);
-  letter-spacing: var(--app-h3-tracking);
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color var(--duration-fast) var(--ease-default);
+  gap: 0.35rem;
 }
 
 .subscribed-header__title:hover:not(:disabled) {
@@ -860,27 +1020,25 @@ onUnmounted(() => {
 }
 
 .subscribed-header__star {
-  color: hsl(var(--muted-foreground) / 0.55);
+  flex: none;
+  color: hsl(var(--muted-foreground) / 0.5);
 }
 
 .subscribed-header__star.is-active {
-  color: hsl(var(--warning));
+  color: hsl(var(--foreground) / 0.72);
 }
 
-.subscribed-header__subtitle {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.3rem;
-  color: hsl(var(--muted-foreground));
+.subscribed-header__meta {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: hsl(var(--muted-foreground) / 0.78);
   font-size: 0.75rem;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.25;
   font-variant-numeric: tabular-nums;
-}
-
-.subscribed-header__sep {
-  color: hsl(var(--muted-foreground) / 0.45);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .subscribed-header__health {
@@ -888,23 +1046,22 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.25rem;
   color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .subscribed-header__health--error {
   color: hsl(var(--destructive) / 0.92);
 }
 
-.subscribed-header__loading {
-  margin-left: 0.15rem;
-}
-
 .subscribed-header__actions {
   display: flex;
   flex: 0 0 auto;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
 .subscribed-avatar {
@@ -916,40 +1073,177 @@ onUnmounted(() => {
   opacity: 0.9;
 }
 
-.subscribed-star-badge {
-  position: absolute;
-  right: -0.05rem;
-  bottom: -0.05rem;
-  display: flex;
-  width: 1.05rem;
-  height: 1.05rem;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid hsl(var(--background));
-  border-radius: 999px;
-  background: hsl(var(--warning) / 0.16);
-  color: hsl(var(--warning));
-}
-
-.subscribed-nsfw-toggle {
-  display: inline-flex;
-}
-
-.subscribed-empty-avatar {
-  display: flex;
-  width: 3rem;
-  height: 3rem;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: hsl(var(--muted) / 0.55);
+.subscribed-content-filter {
+  width: auto;
+  min-width: 7.75rem;
+  height: 2rem;
+  gap: 0.35rem;
+  border-color: transparent;
+  background: transparent;
+  padding: 0 var(--space-2);
   color: hsl(var(--muted-foreground));
-  box-shadow: 0 0 0 1px var(--app-surface-border-subtle);
+  font-size: 0.75rem;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.subscribed-content-filter:hover {
+  border-color: hsl(var(--border) / 0.58);
+  background: hsl(var(--muted) / 0.45);
+  color: hsl(var(--foreground));
+}
+
+.subscribed-content-filter.is-active {
+  border-color: hsl(var(--destructive) / 0.18);
+  background: hsl(var(--destructive) / 0.08);
+  color: hsl(var(--destructive));
 }
 
 .subscribed-content {
-  --app-workbench-content-width: 112.5rem;
+  --app-workbench-content-width: 100rem;
+  padding: var(--space-4) var(--space-5) var(--app-content-padding-bottom);
+}
+
+.subscribed-content :deep(.app-video-grid--feed) {
+  --app-grid-min: 310px;
+  --app-video-grid-gap-x: 1.5rem;
+  --app-video-grid-gap-y: 2rem;
+}
+
+.subscribed-content--channels {
+  --app-workbench-content-width: 78rem;
+  padding-top: var(--space-4);
+}
+
+.subscribed-channel-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--app-hairline);
+  padding-bottom: var(--space-3);
+}
+
+.subscribed-channel-toolbar__filters,
+.subscribed-channel-toolbar__actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.subscribed-channel-toolbar__filters {
+  flex: 1 1 auto;
+}
+
+.subscribed-channel-toolbar__actions {
+  flex: none;
+}
+
+.subscribed-channel-toolbar__search {
+  width: min(22rem, 36vw);
+  flex: 0 1 22rem;
+}
+
+.subscribed-channel-toolbar__select {
+  width: 10rem;
+  height: 2rem;
+  background: hsl(var(--muted) / 0.24);
+  font-size: 0.75rem;
+  box-shadow: none;
+}
+
+.subscribed-channel-toolbar__select.is-active {
+  border-color: hsl(var(--primary) / 0.28);
+  background: hsl(var(--primary) / 0.08);
+}
+
+.subscribed-channel-toolbar__source-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.subscribed-channel-toolbar__special {
+  height: 2rem;
+  gap: 0.4rem;
+  border-color: hsl(var(--border) / 0.58);
+  background: hsl(var(--muted) / 0.24);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+.subscribed-channel-toolbar__special.is-active {
+  border-color: hsl(var(--foreground) / 0.12);
+  background: hsl(var(--foreground) / 0.045);
+  color: hsl(var(--foreground) / 0.72);
+}
+
+.subscribed-channel-toolbar__count {
+  color: hsl(var(--muted-foreground) / 0.72);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.subscribed-channel-table {
+  --subscription-table-columns:
+    minmax(15rem, 1fr)
+    5.5rem
+    5.5rem
+    8rem
+    minmax(6.5rem, 8rem)
+    1.75rem;
+  overflow: hidden;
+  border-top: 1px solid var(--app-hairline);
+  border-bottom: 1px solid var(--app-hairline);
+}
+
+.subscribed-channel-table__header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-content);
+  display: grid;
+  grid-template-columns: var(--subscription-table-columns);
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid var(--app-hairline);
+  background: hsl(var(--background) / 0.96);
+  padding: 0.5rem 0.75rem;
+  color: hsl(var(--muted-foreground) / 0.68);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.subscribed-channel-table__header > :nth-child(2),
+.subscribed-channel-table__header > :nth-child(3) {
+  justify-self: end;
+}
+
+.subscribed-channel-table__body > :last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 1180px) {
+  .subscribed-header__meta {
+    max-width: 18rem;
+  }
+
+  .subscribed-channel-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .subscribed-channel-toolbar__filters,
+  .subscribed-channel-toolbar__actions {
+    width: 100%;
+  }
+
+  .subscribed-channel-toolbar__actions {
+    justify-content: flex-end;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

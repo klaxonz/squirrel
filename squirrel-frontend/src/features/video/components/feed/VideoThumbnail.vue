@@ -13,7 +13,7 @@
   >
 
   <div v-else class="video-thumbnail__fallback absolute inset-0 flex flex-col items-center justify-center text-center">
-    <span class="flex size-10 items-center justify-center rounded-md border border-white/10 bg-black/35 text-white/55">
+    <span class="video-thumbnail__fallback-icon size-10 rounded-md border border-white/10 bg-black/35 text-white/55">
       <AppIcon name="imageOff" class="size-5" :stroke-width="1.75" />
     </span>
     <span class="mt-2 max-w-[80%] truncate text-xs font-medium text-white/50">
@@ -84,5 +84,11 @@ const imageClasses = computed(() => [
 
 .video-thumbnail__fallback {
   background: hsl(0 0% 0% / 0.55);
+}
+
+.video-thumbnail__fallback-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

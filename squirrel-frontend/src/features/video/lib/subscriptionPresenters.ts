@@ -1,4 +1,4 @@
-import type { SubscriptionListItem, SubscriptionRecentVideo } from '@/features/video/types/subscription'
+import type { SubscriptionListItem } from '@/features/video/types/subscription'
 
 /** Sync statuses that should surface as operational failure on the desk. */
 export function isSubscriptionSyncFailed(item: Pick<SubscriptionListItem, 'sync_status' | 'last_error'>): boolean {
@@ -7,16 +7,6 @@ export function isSubscriptionSyncFailed(item: Pick<SubscriptionListItem, 'sync_
 
 export function isSubscriptionSyncBusy(item: Pick<SubscriptionListItem, 'sync_status'>): boolean {
   return item.sync_status === 'queued' || item.sync_status === 'running'
-}
-
-/**
- * Prefer the serializer's `recent_videos`; fall back to the legacy alias
- * `latest_videos` so cards still render if either key is present.
- */
-export function getSubscriptionRecentVideos(item: SubscriptionListItem): SubscriptionRecentVideo[] {
-  if (item.recent_videos?.length) return item.recent_videos
-  if (item.latest_videos?.length) return item.latest_videos
-  return []
 }
 
 export function formatUnreadCount(count: number): string {
