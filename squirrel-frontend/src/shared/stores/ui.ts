@@ -12,7 +12,6 @@ export const useUIStore = defineStore('ui', () => {
   const isVideoSidebarOpen = ref(true)
   const searchQuery = ref('')
   const searchTrigger = ref(0)
-  const shouldFocusGlobalSearch = ref(false)
   const homeSearchMode = ref<'local' | 'remote'>('local')
 
   const VIEW_MODE_KEY = 'ui.viewMode'
@@ -43,14 +42,6 @@ export const useUIStore = defineStore('ui', () => {
     searchTrigger.value++
   }
 
-  const requestGlobalSearchFocus = () => {
-    shouldFocusGlobalSearch.value = true
-  }
-
-  const consumeGlobalSearchFocus = () => {
-    shouldFocusGlobalSearch.value = false
-  }
-
   const setHomeSearchMode = (mode: 'local' | 'remote') => {
     homeSearchMode.value = mode
   }
@@ -75,14 +66,11 @@ export const useUIStore = defineStore('ui', () => {
     isVideoSidebarOpen,
     searchQuery,
     searchTrigger,
-    shouldFocusGlobalSearch,
     homeSearchMode,
     viewMode,
     toggleSidebar,
     setSidebarOpen,
     triggerSearch,
-    requestGlobalSearchFocus,
-    consumeGlobalSearchFocus,
     setHomeSearchMode,
     setViewMode,
     setVideoWidescreen

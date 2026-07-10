@@ -15,24 +15,14 @@
       </RouterLink>
     </header>
 
-    <div class="sidebar-quick-actions">
-      <Button
-        unstyled
-        type="button"
-        class="sidebar-command"
-        @click="openGlobalSearch"
-      >
-        <AppIcon name="search" class="sidebar-command__icon" :stroke-width="1.75" />
-        <span class="sidebar-command__label">搜索</span>
-      </Button>
-
+    <nav class="sidebar-top-nav" aria-label="主要入口">
       <SidebarMenuItem
         v-for="item in SIDEBAR_TOP_ITEMS"
         :key="item.path"
         :item="item"
         :is-active="isNavigationItemActive(item, $route)"
       />
-    </div>
+    </nav>
 
     <nav
       :id="NAV_ID"
@@ -77,11 +67,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import BrandLogo from '@/shared/components/BrandLogo.vue'
 import SidebarMenuItem from './SidebarMenuItem.vue'
-import { Button } from '@/shared/ui/button'
 import {
   NAV_GROUPS,
   SIDEBAR_FOOTER_ITEMS,
@@ -89,14 +78,11 @@ import {
   isNavigationItemActive,
 } from '@/shared/constants/sidebar'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
-import { useUIStore } from '@/shared/stores/ui'
 
 const NAV_ID = 'app-sidebar-nav'
 
 const route = useRoute()
-const router = useRouter()
 const musicPlayerStore = useMusicPlayerStore()
-const uiStore = useUIStore()
 
 const primaryNavGroups = NAV_GROUPS
 
@@ -106,13 +92,6 @@ const showSidebarMusicPlayer = computed(() =>
     && (musicPlayerStore.resolvingUrl || musicPlayerStore.audioSrc || musicPlayerStore.error),
   ),
 )
-
-async function openGlobalSearch() {
-  uiStore.requestGlobalSearchFocus()
-  if (!route.meta?.showSearch) {
-    await router.push('/home')
-  }
-}
 </script>
 
 <style scoped>
@@ -177,58 +156,12 @@ async function openGlobalSearch() {
   line-height: 1.2;
 }
 
-.sidebar-command {
-  display: flex;
-  align-items: center;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-  font: inherit;
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
-}
-
-.sidebar-command:hover {
-  background: hsl(var(--foreground) / 0.055);
-  color: hsl(var(--foreground));
-}
-
-.sidebar-command:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.65);
-}
-
-.sidebar-command__icon {
-  width: 1.125rem;
-  height: 1.125rem;
-  flex: 0 0 auto;
-}
-
-.sidebar-quick-actions {
+.sidebar-top-nav {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--sidebar-item-gap);
   padding: 0.25rem 0.625rem 0.625rem;
-}
-
-.sidebar-command {
-  gap: 0.75rem;
-  width: 100%;
-  height: var(--sidebar-item-height);
-  padding: 0 0.625rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
-
-.sidebar-command__label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .sidebar-nav {
@@ -275,8 +208,7 @@ async function openGlobalSearch() {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebar-rail,
-  .sidebar-command {
+  .sidebar-rail {
     transition: none;
   }
 }
