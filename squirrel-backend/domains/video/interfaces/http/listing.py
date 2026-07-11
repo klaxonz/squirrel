@@ -35,6 +35,9 @@ def get_videos(
         resolved = SiteCatalog.resolve_domains(params.site)
         domains_list = resolved or None
 
+    if params.subscription_id is not None and params.creator_id is not None:
+        return response.param_error('subscription_id 与 creator_id 不能同时指定')
+
     videos, next_cursor = svc.list_videos(
         current_user.id,
         params.query,
@@ -49,6 +52,7 @@ def get_videos(
         duration=params.duration.value,
         content_type=params.content_type.value,
         special=params.special.value,
+        creator_id=params.creator_id,
     )
 
     return response.success(

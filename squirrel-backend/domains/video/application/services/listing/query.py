@@ -21,6 +21,7 @@ from domains.video.application.services.search.meili_indexer import (
     encode_cursor,
 )
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
+from domains.video.domain.junctions.video_creator import VideoCreator
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
 from domains.video.domain.models.video_interaction import VideoInteraction
@@ -362,6 +363,69 @@ def fetch_subscription_video_ids(
         base.group_by(Video.id, Video.publish_date, Video.created_at)
         .order_by(sort_col.desc(), Video.id.desc())
         .limit(limit + 1)  # 多取 1 条判断 has_more
+    )
+    decoded = decode_cursor_for_key(cursor, expected_key)
+    if decoded is not None:
+        cur_ts, cur_id = decoded
+        cur_ts_dt = datetime.fromtimestamp(cur_ts)
+        base = base.where(
+            (sort_col < cur_ts_dt) | and_(sort_col == cur_ts_dt, Video.id < cur_id),
+        )
+
+    rows = session.execute(base).all()
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    video_ids = [r.id for r in rows]
+    next_cursor = None
+    if has_more and rows:
+        last = rows[-1]
+        last_ts = last.created_at if use_created else last.publish_date
+        next_cursor = encode_cursor(expected_key, int(last_ts.timestamp()), last.id)
+    return video_ids, next_cursor
+
+
+def fetch_creator_video_ids(
+    session: Session,
+    *,
+    creator_id: int,
+    cursor: str | None,
+    limit: int,
+    category: str = 'all',
+    sort_by: str = 'publish_date',
+) -> tuple[list[int], str | None]:
+    """指定创作者浏览:PG keyset 直查 video_creator 关联视频。
+
+    与 fetch_subscription_video_ids 同构,但不 join UserSubscription——创作者页
+    展示库内已关联视频,不要求当前用户订阅了对应频道。
+    """
+    use_created = sort_by == 'created_at'
+    sort_col = Video.created_at if use_created else Video.publish_date
+    expected_key = _CURSOR_KEY_CREATED if use_created else _CURSOR_KEY_PUBLISH
+
+    base = (
+        select(
+            Video.id,
+            Video.publish_date,
+            Video.created_at,
+        )
+        .select_from(Video)
+        .join(VideoCreator, VideoCreator.video_id == Video.id)
+        .where(
+            Video.is_deleted.is_(False),
+            VideoCreator.creator_id == creator_id,
+        )
+    )
+    if category == 'preview':
+        base = base.where(Video.publish_date > func.now())
+    else:
+        base = base.where(
+            Video.publish_date.is_not(None),
+            Video.publish_date <= func.now(),
+        )
+    base = (
+        base.group_by(Video.id, Video.publish_date, Video.created_at)
+        .order_by(sort_col.desc(), Video.id.desc())
+        .limit(limit + 1)
     )
     decoded = decode_cursor_for_key(cursor, expected_key)
     if decoded is not None:

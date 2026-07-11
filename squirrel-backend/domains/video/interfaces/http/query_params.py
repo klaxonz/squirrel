@@ -17,6 +17,7 @@ class VideoListQuery:
         self,
         query: str = Query(None, description='搜索关键字'),
         subscription_id: int = Query(None, description='订阅ID'),
+        creator_id: int = Query(None, description='创作者ID'),
         category: VideoCategory = Query(VideoCategory.ALL, description='阅读状态: all, read, unread, preview, like'),
         sort_by: SortBy = Query(SortBy.UPLOADED_AT, description='排序字段'),
         nsfw: YesNoAll = Query(YesNoAll.ALL, description='NSFW 过滤: all|yes|no'),
@@ -33,6 +34,7 @@ class VideoListQuery:
     ) -> None:
         self.query = query
         self.subscription_id = subscription_id
+        self.creator_id = creator_id
         self.category = category
         self.sort_by = sort_by
         self.nsfw = nsfw

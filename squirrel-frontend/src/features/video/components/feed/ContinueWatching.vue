@@ -32,6 +32,7 @@
         show-duration
         class="w-[18rem] shrink-0 snap-start"
         @openModal="$emit('openModal', item)"
+        @goToProfile="(profile) => $emit('goToProfile', profile)"
         @goToSubscription="(id) => $emit('goToSubscription', id)"
       />
     </FeedRailTrack>
@@ -81,6 +82,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   openModal: [video: VideoHistoryEntry]
   viewMore: []
+  goToProfile: [profile: import('@/features/video/types/video').VideoProfile]
   goToSubscription: [id: number | string | null | undefined]
   heroChange: [video: VideoHistoryEntry | null]
 }>()

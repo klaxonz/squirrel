@@ -17,6 +17,7 @@ type InitialState = {
   activeTab?: string
   searchQuery?: string
   subscriptionId?: VideoId | null
+  creatorId?: VideoId | null
   sortBy?: string
   nsfw?: string
   site?: string
@@ -33,6 +34,7 @@ type VideoListParams = {
   page_size: number
   query: string
   subscription_id: VideoId | null
+  creator_id: VideoId | null
   category: string
   sort_by: string
   nsfw: string
@@ -91,6 +93,7 @@ export function useLatestVideos(initial: InitialState = {}) {
   const searchQuery = ref(initial.searchQuery ?? '')
   const isResetting = ref(false)
   const subscriptionId = ref<VideoId | null>(initial.subscriptionId ?? null)
+  const creatorId = ref<VideoId | null>(initial.creatorId ?? null)
   const sortBy = ref(initial.sortBy ?? 'publish_date')
   const nsfw = ref(initial.nsfw ?? 'all')
   const site = ref<string | undefined>(initial.site)
@@ -110,6 +113,7 @@ export function useLatestVideos(initial: InitialState = {}) {
     page_size: PAGE_SIZE,
     query: searchQuery.value || '',
     subscription_id: subscriptionId.value,
+    creator_id: creatorId.value,
     category: category.value,
     sort_by: sortBy.value,
     nsfw: nsfw.value,
@@ -193,6 +197,7 @@ export function useLatestVideos(initial: InitialState = {}) {
     loadMore,
     searchQuery,
     subscriptionId,
+    creatorId,
     sortBy,
     nsfw,
     site,

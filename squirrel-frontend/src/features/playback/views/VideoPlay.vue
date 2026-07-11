@@ -38,9 +38,9 @@
                   class="video-detail__channel"
                   role="button"
                   tabindex="0"
-                  @click="openChannelDetail(primarySubscription)"
-                  @keydown.enter.prevent="openChannelDetail(primarySubscription)"
-                  @keydown.space.prevent="openChannelDetail(primarySubscription)"
+                  @click="openProfile(primarySubscription)"
+                  @keydown.enter.prevent="openProfile(primarySubscription)"
+                  @keydown.space.prevent="openProfile(primarySubscription)"
                 >
                   <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name || ''" size="xl" />
                   <div class="video-detail__channel-copy">
@@ -146,7 +146,7 @@
                   variant="secondary"
                   size="sm"
                   class="video-detail__actor"
-                  @click="openChannelDetail(actor)"
+                  @click="openProfile(actor)"
                 >
                   <SubscriptionAvatar :src="actor.avatar" :name="actor.name || ''" size="xs" />
                   <span class="truncate max-w-[120px]">{{ actor.name }}</span>
@@ -281,6 +281,7 @@ import { useVideoDescriptionOverflow } from '../composables/useVideoDescriptionO
 import { useVideoSubscription } from '../composables/useVideoSubscription'
 import { useVideoShareMenu } from '../composables/useVideoShareMenu'
 import useVideoPageNavigation from '@/features/video/composables/useVideoPageNavigation'
+import { useProfileNavigation } from '@/features/video/composables/useProfileNavigation'
 import { consumeVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { useGlobalVideoPlayer } from '@/features/playback/composables/useGlobalVideoPlayer'
 import { storeToRefs } from 'pinia'
@@ -302,6 +303,7 @@ const { isDesktop: isDesktopEnv } = useDesktopBridge()
 
 const route = useRoute()
 const router = useRouter()
+const { openProfile } = useProfileNavigation(router)
 // ponytail: useThemeStore replaces the deleted useAppTheme composable (the two
 // had diverged — only useAppTheme wired the matchMedia listener). storeToRefs
 // keeps the computed ref reactive when passed into useVideoPlaybackShell.
@@ -574,57 +576,6 @@ const {
   hasNext: ref(false),
 })
 
-const resolveRemoteChannelSite = (url: string) => {
-  let parsedUrl: URL
-  try {
-    parsedUrl = new URL(url)
-  } catch (err) {
-    Logger.debug('[VideoPlay] Failed to parse channel URL', err)
-    return ''
-  }
-
-  const hostname = parsedUrl.hostname.toLowerCase().replace(/^www\./, '')
-  const pathname = parsedUrl.pathname
-
-  if (hostname === 'space.bilibili.com' && /^\/\d+/i.test(pathname)) return 'bilibili'
-  if (hostname === 'youtube.com' && /^\/(?:@[^/]+|channel\/[^/]+|c\/[^/]+|user\/[^/]+)/i.test(pathname)) return 'youtube'
-  if (hostname === 'javdb.com' && /^\/actors?\//i.test(pathname)) return 'javdb'
-  if (hostname === 'pornhub.com' && /^\/(?:users?|channels?|model|pornstar)\//i.test(pathname)) return 'pornhub'
-  if (hostname === 'youporn.com' && /^\/(?:channel|amateur|pornstar|model)\//i.test(pathname)) return 'youporn'
-
-  return ''
-}
-
-const isLocalSubscriptionProfile = (profile: VideoProfile) => {
-  return profile.profile_source === 'subscription' && profile.id != null && String(profile.id).trim() !== ''
-}
-
-const openChannelDetail = async (profile: VideoProfile) => {
-  if (isLocalSubscriptionProfile(profile)) {
-    await router.push({ name: 'SubscriptionAllVideos', params: { id: String(profile.id) } })
-    return
-  }
-
-  const url = String(profile?.url || '').trim()
-  const remoteSite = resolveRemoteChannelSite(url)
-
-  if (remoteSite) {
-    if (url) {
-      await router.push({
-        name: 'RemoteChannelDetail',
-        query: {
-          site: remoteSite,
-          url,
-          id: profile?.id != null ? String(profile.id) : undefined,
-          name: profile?.name || undefined,
-          avatar: profile?.avatar || undefined,
-          is_nsfw: profile?.is_nsfw === true ? 'true' : undefined,
-        },
-      })
-    }
-    return
-  }
-}
 </script>
 
 <style scoped>

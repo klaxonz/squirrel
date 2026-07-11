@@ -78,6 +78,7 @@
               :key="video.history_id"
               :video="video"
               @open="handleOpenVideo"
+              @open-profile="handleOpenProfile"
               @delete="handleDeleteItem"
             />
           </div>
@@ -123,7 +124,8 @@ import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import HistoryItem from '@/features/video/components/history/HistoryItem.vue'
 import HistoryItemSkeleton from '@/features/video/components/history/HistoryItemSkeleton.vue'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
-import type { VideoHistoryEntry } from '@/features/video/types/video'
+import { useProfileNavigation } from '@/features/video/composables/useProfileNavigation'
+import type { VideoHistoryEntry, VideoProfile } from '@/features/video/types/video'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { useUIStore } from '@/shared/stores/ui'
@@ -158,9 +160,14 @@ const fullDateFormatter = new Intl.DateTimeFormat('zh-CN', {
 const router = useRouter()
 const route = useRoute()
 const uiStore = useUIStore()
+const { openProfile } = useProfileNavigation(router)
 const searchQuery = computed(() => uiStore.getSearchQuery('history'))
 const searchTrigger = computed(() => uiStore.getSearchTrigger('history'))
 const { getWatchHistory, clearHistory, deleteHistoryEntry } = useVideoHistory()
+
+const handleOpenProfile = (profile: VideoProfile) => {
+  void openProfile(profile)
+}
 
 const videos = ref<VideoHistoryEntry[]>([])
 const loading = ref(false)

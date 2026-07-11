@@ -78,6 +78,16 @@
                   {{ heroCtaLabel }}
                 </Button>
                 <Button
+                  v-else-if="featuredLoadError"
+                  type="button"
+                  variant="default"
+                  class="home-stage__primary-action"
+                  @click="loadFeaturedVideos"
+                >
+                  <AppIcon name="refresh" class="size-4" />
+                  重试精选
+                </Button>
+                <Button
                   v-else
                   type="button"
                   variant="default"
@@ -136,6 +146,23 @@
               </div>
             </div>
 
+            <div
+              v-else-if="featuredLoadError && secondaryFeaturedVideos.length === 0"
+              class="home-queue__error"
+            >
+              <AppEmptyState
+                variant="error"
+                title="精选加载失败"
+                :copy="featuredLoadError"
+              >
+                <template #actions>
+                  <Button size="sm" variant="outline" @click="loadFeaturedVideos">
+                    重试
+                  </Button>
+                </template>
+              </AppEmptyState>
+            </div>
+
             <div v-else-if="secondaryFeaturedVideos.length > 0" class="home-queue__list">
               <button
                 v-for="video in secondaryFeaturedVideos"
@@ -181,18 +208,21 @@
             :exclude-video-id="continueExcludeId"
             @openModal="openVideo"
             @viewMore="goToContinueWatching"
+            @goToProfile="openProfile"
             @goToSubscription="openSubscription"
             @heroChange="handleHeroChange"
           />
           <SpecialFollowVideos
             ref="specialFollowRef"
             @openModal="openVideo"
+            @goToProfile="openProfile"
             @goToSubscription="openSubscription"
             @viewMore="goToSpecialFollowVideos"
           />
           <SpotlightRow
             ref="spotlightRef"
             @openModal="openVideo"
+            @goToProfile="openProfile"
             @goToSubscription="openSubscription"
           />
         </div>
@@ -208,10 +238,12 @@ import SpotlightRow from '@/features/video/components/feed/SpotlightRow.vue'
 import ContinueWatching from '@/features/video/components/feed/ContinueWatching.vue'
 import SpecialFollowVideos from '@/features/video/components/feed/SpecialFollowVideos.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import { getFeaturedVideos } from '@/shared/api/video'
 import { Logger } from '@/shared/lib/logger'
@@ -223,7 +255,7 @@ defineOptions({ name: 'HomeView' })
 type HeroMode = 'continue' | 'featured' | 'empty'
 
 const router = useRouter()
-const { openVideo, openSubscription } = useVideoCardNavigation(router)
+const { openVideo, openSubscription, openProfile } = useVideoCardNavigation(router)
 
 // feed rows share a refresh() surface via defineExpose; minimal interface
 // avoids coupling the parent to specific component instances.
@@ -234,6 +266,7 @@ const specialFollowRef = ref<{ refresh?: () => void } | null>(null)
 // ── Hero state ──
 const featuredVideos = ref<VideoListItem[]>([])
 const featuredLoading = ref(true)
+const featuredLoadError = ref('')
 let featuredRequestId = 0
 
 // History-based hero (from ContinueWatching). Takes priority over featured when valid.
@@ -396,6 +429,9 @@ const heroSub = computed(() => {
     return parts.length > 0 ? parts.join(' · ') : '为你挑选的内容'
   }
 
+  if (featuredLoadError.value) {
+    return featuredLoadError.value
+  }
   return '在右侧添加第一个订阅频道，开始建立你的观看队列。'
 })
 
@@ -437,6 +473,7 @@ const refresh = () => {
 const loadFeaturedVideos = async () => {
   const requestId = ++featuredRequestId
   featuredLoading.value = true
+  featuredLoadError.value = ''
 
   try {
     const items = await getFeaturedVideos()
@@ -444,9 +481,13 @@ const loadFeaturedVideos = async () => {
 
     if (Array.isArray(items)) {
       featuredVideos.value = items.slice(0, 5)
+    } else {
+      featuredVideos.value = []
     }
   } catch (e) {
     if (requestId === featuredRequestId) {
+      featuredVideos.value = []
+      featuredLoadError.value = errorMessage(e, '精选推荐加载失败，请重试')
       Logger.warn('Failed to load featured hero videos:', e)
     }
   } finally {
@@ -873,6 +914,24 @@ onMounted(() => {
   color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
   font-weight: 550;
+}
+
+.home-queue__error {
+  min-height: 8rem;
+}
+
+.home-queue__error :deep(.app-empty-state) {
+  min-height: 8rem;
+  padding: var(--space-4) var(--space-3);
+  gap: var(--space-2);
+}
+
+.home-queue__error :deep(.app-empty-state__title) {
+  font-size: 0.9375rem;
+}
+
+.home-queue__error :deep(.app-empty-state__copy) {
+  font-size: 0.75rem;
 }
 
 .home-queue-item {

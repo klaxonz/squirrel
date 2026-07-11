@@ -9,8 +9,8 @@
       @synced="handleChannelSynced"
     />
 
-    <!-- Sticky toolbar: outside app-page-content so top-padding never affects height -->
-    <AppToolbarFrame sticky bordered variant="compact">
+    <!-- Local-only toolbar: remote feed ignores sort/filter/tabs -->
+    <AppToolbarFrame v-if="channelDataMode === 'local'" sticky bordered variant="compact">
       <FeedToolbar
         :active-tab="activeTab"
         :nsfw="nsfw"
@@ -34,6 +34,20 @@
         @update:special="setSpecialFilter"
         @refresh="refreshCurrentList"
       />
+    </AppToolbarFrame>
+    <AppToolbarFrame v-else sticky bordered variant="compact">
+      <div class="channel-remote-toolbar">
+        <span class="channel-remote-toolbar__label">远端内容</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          :disabled="isRefreshing"
+          @click="refreshCurrentList"
+        >
+          {{ isRefreshing ? '加载中' : '刷新' }}
+        </Button>
+      </div>
     </AppToolbarFrame>
 
     <!-- Main Content Area -->
@@ -67,6 +81,7 @@
             :key="childRoute.name"
             :filters="childFilters"
             ref="videoChildRef"
+            @goToProfile="openProfile"
             @goToSubscription="openSubscription"
             @openModal="openVideo"
             @error="loadError = String($event || '')"
@@ -102,7 +117,7 @@ defineOptions({ name: 'ChannelDetailView' })
 
 const router = useRouter()
 const route = useRoute()
-const { openVideo, openSubscription } = useVideoCardNavigation(router)
+const { openVideo, openSubscription, openProfile } = useVideoCardNavigation(router)
 
 const subscriptionId = computed(() => route.params.id as string)
 const { activeTab, nsfw, sortBy, special, timeRange, duration, contentType, filters } = useFeedFilters({ subscriptionIdRef: subscriptionId })
@@ -213,5 +228,20 @@ onMounted(() => {
 <style scoped>
 .channel-detail-page {
   --app-page-max-width: 2400px;
+}
+
+.channel-remote-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 2.25rem;
+  padding-inline: 0.125rem;
+}
+
+.channel-remote-toolbar__label {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 </style>

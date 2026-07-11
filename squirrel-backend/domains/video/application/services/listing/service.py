@@ -16,6 +16,7 @@ from domains.video.application.services.listing.page_loader import VideoListPage
 from domains.video.application.services.listing.profiles import merge_profiles as _merge_profiles
 from domains.video.application.services.listing.profiles import video_extra_profiles as _video_extra_profiles
 from domains.video.application.services.listing.query import (
+    fetch_creator_video_ids,
     fetch_special_follow_id_set,
     fetch_special_follow_video_ids,
     fetch_subscription_video_ids,
@@ -102,6 +103,7 @@ class VideoListService:
         duration: str = 'all',
         content_type: str = 'all',
         special: str = 'all',
+        creator_id: int | None = None,
     ) -> tuple[list[dict], str | None]:
         """列表查询。返回 (videos, next_cursor);next_cursor 为 None 表示无更多。
 
@@ -132,6 +134,7 @@ class VideoListService:
                     duration=duration,
                     content_type=content_type,
                     special=special,
+                    creator_id=creator_id,
                 )
             else:
                 videos, next_cursor, timings = self._list_browse_keyset(
@@ -149,6 +152,7 @@ class VideoListService:
                     duration=duration,
                     content_type=content_type,
                     special=special,
+                    creator_id=creator_id,
                 )
 
         logger.info(
@@ -356,6 +360,7 @@ class VideoListService:
         duration: str,
         content_type: str,
         special: str,
+        creator_id: int | None = None,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """浏览 keyset:循环召回 + PG 过滤,补足一页。
 
@@ -421,6 +426,21 @@ class VideoListService:
                 duration=duration,
                 content_type=content_type,
                 special=special,
+                sort_by=sort_by,
+            )
+
+        # 创作者详情页:PG keyset 经 video_creator,不依赖用户订阅。
+        if creator_id is not None:
+            return self._list_creator_browse(
+                session,
+                user_id=user_id,
+                show_nsfw=show_nsfw,
+                creator_id=creator_id,
+                category=category,
+                nsfw=nsfw,
+                domains=domains,
+                cursor=cursor,
+                page_size=page_size,
                 sort_by=sort_by,
             )
 
@@ -521,11 +541,30 @@ class VideoListService:
         duration: str,
         content_type: str,
         special: str,
+        creator_id: int | None = None,
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """搜索 OFFSET:Meili 召回全集(≤5000) → PG 过滤 → OFFSET 分页。
 
         cursor 在搜索场景编码 page 值(复用 cursor 字段,前端无需区分场景)。
         """
+        # Creator-scoped search: PG creator ids first (same reason as subscription browse).
+        if creator_id is not None:
+            return self._list_creator_search(
+                session,
+                user_id=user_id,
+                show_nsfw=show_nsfw,
+                query=query,
+                creator_id=creator_id,
+                category=category,
+                nsfw=nsfw,
+                domains=domains,
+                cursor=cursor,
+                page_size=page_size,
+                time_range=time_range,
+                duration=duration,
+                sort_by=sort_by,
+            )
+
         # read/liked/later 搜索:PG 取 id 集合 → Meili filter id IN [...] 反向交集
         if category in ('read', 'liked', 'later'):
             return self._list_user_state_search(
@@ -791,6 +830,159 @@ class VideoListService:
             next_cursor=next_cursor,
             recall_ms=recall_ms,
         )
+
+    def _list_creator_browse(
+        self,
+        session: Session,
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        creator_id: int,
+        category: str,
+        nsfw: str,
+        domains: list[str] | None,
+        cursor: str | None,
+        page_size: int,
+        sort_by: str,
+    ) -> tuple[list[dict], str | None, dict[str, float]]:
+        """创作者详情浏览:PG keyset 经 video_creator,不要求用户订阅。"""
+        del show_nsfw, nsfw, domains  # creator catalog is not subscription-gated for MVP
+        fetch_limit = max(page_size * _RECALL_BUFFER_FACTOR, 20)
+
+        recall_started = perf_counter()
+        try:
+            video_ids, next_cursor = fetch_creator_video_ids(
+                session,
+                creator_id=creator_id,
+                cursor=cursor,
+                limit=fetch_limit,
+                category=category,
+                sort_by=sort_by,
+            )
+        except Exception:
+            logger.warning('fetch_creator_video_ids failed', exc_info=True)
+            return [], None, _EMPTY_TIMINGS
+        recall_ms = self._elapsed_ms(recall_started)
+
+        if not video_ids:
+            return [], None, _timings(recall_ms, 0.0, 0.0)
+
+        # Category-only filter for unread (no subscription join).
+        if category and category not in ('all', 'read', 'liked', 'later', 'preview'):
+            from domains.video.application.services.listing.query_filters import feed_category_predicate
+            from domains.video.domain.models.video import Video
+            from sqlalchemy import select
+
+            stmt = select(Video.id).where(
+                Video.id.in_(video_ids),
+                Video.is_deleted.is_(False),
+                feed_category_predicate(
+                    user_id,
+                    category,
+                    video_id_column=Video.id,
+                    publish_date_column=Video.publish_date,
+                ),
+            )
+            matched = {row[0] for row in session.execute(stmt).all()}
+            video_ids = [vid for vid in video_ids if vid in matched]
+
+        page_ids = video_ids[:page_size]
+        if not page_ids:
+            return [], next_cursor, _timings(recall_ms, 0.0, 0.0)
+
+        page_started = perf_counter()
+        page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
+        page_ms = self._elapsed_ms(page_started)
+        return page_items.items, next_cursor, _timings(recall_ms, 0.0, page_ms)
+
+    def _list_creator_search(
+        self,
+        session: Session,
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        query: str,
+        creator_id: int,
+        category: str,
+        nsfw: str,
+        domains: list[str] | None,
+        cursor: str | None,
+        page_size: int,
+        time_range: str,
+        duration: str,
+        sort_by: str,
+    ) -> tuple[list[dict], str | None, dict[str, float]]:
+        """创作者页搜索:先取 creator 下全部 id,再与 Meili 文本召回取交集。"""
+        del show_nsfw, nsfw, domains, time_range, duration, sort_by
+        page = _decode_page_cursor(cursor) if cursor else 1
+
+        recall_started = perf_counter()
+        try:
+            creator_ids, _ = fetch_creator_video_ids(
+                session,
+                creator_id=creator_id,
+                cursor=None,
+                limit=5000,
+                category=category if category in ('all', 'preview') else 'all',
+                sort_by='publish_date',
+            )
+        except Exception:
+            logger.warning('fetch_creator_video_ids failed in search', exc_info=True)
+            return [], None, _EMPTY_TIMINGS
+
+        if not creator_ids:
+            return [], None, _timings(self._elapsed_ms(recall_started), 0.0, 0.0)
+
+        if not settings.meili.url:
+            # Fall back to title ILIKE when Meili unavailable.
+            from domains.video.domain.models.video import Video
+            from sqlalchemy import select
+
+            q = (query or '').strip()
+            stmt = select(Video.id).where(
+                Video.id.in_(creator_ids),
+                Video.is_deleted.is_(False),
+            )
+            if q:
+                stmt = stmt.where(Video.title.ilike(f'%{q}%'))
+            ordered = [row[0] for row in session.execute(stmt).all()]
+            # Preserve creator keyset order
+            id_set = set(ordered)
+            ordered = [vid for vid in creator_ids if vid in id_set]
+            recall_ms = self._elapsed_ms(recall_started)
+            offset = max((page - 1) * page_size, 0)
+            page_ids = ordered[offset : offset + page_size]
+            next_cursor = _encode_page_cursor(page + 1) if offset + page_size < len(ordered) else None
+            if not page_ids:
+                return [], next_cursor, _timings(recall_ms, 0.0, 0.0)
+            page_started = perf_counter()
+            page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
+            return page_items.items, next_cursor, _timings(recall_ms, 0.0, self._elapsed_ms(page_started))
+
+        try:
+            recalled_ids = recall_offset_ids(
+                query=query,
+                domains=None,
+                time_range='all',
+                duration='all',
+                limit=_SEARCH_RECALL_LIMIT,
+                category=category if category in ('all', 'preview', 'unread') else 'all',
+            )
+        except Exception:
+            logger.warning('meili recall failed for creator search', exc_info=True)
+            return [], None, _timings(self._elapsed_ms(recall_started), 0.0, 0.0)
+        recall_ms = self._elapsed_ms(recall_started)
+
+        creator_set = set(creator_ids)
+        filtered = [vid for vid in recalled_ids if vid in creator_set]
+        offset = max((page - 1) * page_size, 0)
+        page_ids = filtered[offset : offset + page_size]
+        next_cursor = _encode_page_cursor(page + 1) if offset + page_size < len(filtered) else None
+        if not page_ids:
+            return [], next_cursor, _timings(recall_ms, 0.0, 0.0)
+        page_started = perf_counter()
+        page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
+        return page_items.items, next_cursor, _timings(recall_ms, 0.0, self._elapsed_ms(page_started))
 
     def _list_user_state_search(
         self,

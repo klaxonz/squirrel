@@ -23,6 +23,7 @@ from domains.user.interfaces.http import router as user_router
 from domains.user.interfaces.http.search import router as search_router
 from domains.video.interfaces.http import router as video_router
 from domains.video.interfaces.http.clip_marker import router as video_clip_marker_router
+from domains.video.interfaces.http.creators import router as creator_router
 from domains.video.interfaces.http.history import router as video_history_router
 from domains.video.interfaces.http.interaction import router as video_interaction_router
 from infrastructure.config.settings import settings
@@ -144,6 +145,7 @@ def _register_middleware(application: FastAPI) -> None:
 _ROUTERS: tuple[APIRouter, ...] = (
     health_router,
     video_router,
+    creator_router,
     video_clip_marker_router,
     video_history_router,
     video_interaction_router,

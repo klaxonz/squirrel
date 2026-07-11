@@ -3,9 +3,8 @@
 //
 // Key facts from backend tracing:
 // - List response uses `data` only (no `items` key).
-// - List items do NOT carry is_read/is_liked/is_later — read/like state is
-//   only derivable from last_position (list) and interaction_type + last_position
-//   (detail). Frontend code reading those fields on list items was reading undefined.
+// - List items carry is_read + interaction_type (page_loader). Read = history row
+//   exists; interaction_type is a single exclusive value (1 like / 2 dislike / 3 later).
 // - subscriptions[]/actors[] are unions (PG profile ∪ extra-data profile); only
 //   id/name/url are guaranteed, the rest optional.
 
@@ -33,6 +32,13 @@ export interface VideoListItem {
   thumbnail: string | null
   duration: number | null
   last_position: number
+  /** True when the user has any history row for this video (matches read/unread filters). */
+  is_read?: boolean
+  /**
+   * Exclusive engagement flag from video_interaction:
+   * 1 = like, 2 = dislike, 3 = later. Null/undefined = none.
+   */
+  interaction_type?: number | null
   uploaded_at: string | null
   created_at: string
   subscriptions: VideoProfile[]

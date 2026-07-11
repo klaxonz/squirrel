@@ -9,6 +9,10 @@ type RemoteChannelProfile = {
   url?: string | null
   avatar?: string | null
   is_nsfw?: boolean | null
+  description?: string | null
+  banner?: string | null
+  subscriber_count?: number | null
+  video_count?: number | null
 }
 
 type RemoteVideoItem = {
@@ -53,6 +57,7 @@ export function useRemoteChannel() {
   const error = ref('')
   const currentPage = ref(1)
   const nextCursor = shallowRef<unknown>(null)
+  const profile = ref<RemoteChannelProfile | null>(null)
   let requestToken = 0
 
   const resetState = () => {
@@ -61,6 +66,7 @@ export function useRemoteChannel() {
     nextCursor.value = null
     allLoaded.value = false
     error.value = ''
+    profile.value = null
   }
 
   const fetchPage = async (channel: RemoteChannelOptions, page: number, token: number): Promise<boolean> => {
@@ -107,6 +113,9 @@ export function useRemoteChannel() {
       const nextItems = (Array.isArray(result.items) ? result.items : []) as RemoteVideoItem[]
       if (page === 1) {
         items.value = nextItems
+        if (result.profile) {
+          profile.value = result.profile as RemoteChannelProfile
+        }
       } else {
         items.value = items.value.concat(dedupeByUrl(items.value, nextItems))
       }
@@ -154,6 +163,7 @@ export function useRemoteChannel() {
     error,
     currentPage,
     nextCursor,
+    profile,
     fetchRemote,
     loadMore,
     refresh,

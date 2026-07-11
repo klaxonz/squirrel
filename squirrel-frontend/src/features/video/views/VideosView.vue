@@ -89,6 +89,7 @@
             :key="childRoute.name"
             :filters="childFilters"
             ref="videoChildRef"
+            @goToProfile="openProfile"
             @goToSubscription="openSubscription"
             @openModal="openVideo"
             @error="loadError = String($event || '')"
@@ -129,7 +130,7 @@ const router = useRouter()
 const route = useRoute()
 const uiStore = useUIStore()
 const VIDEO_SEARCH_SCOPE = 'VideosView'
-const { openVideo, openSubscription } = useVideoCardNavigation(router)
+const { openVideo, openSubscription, openProfile } = useVideoCardNavigation(router)
 
 const { activeTab, nsfw, sortBy, site, searchQuery, special, timeRange, duration, contentType, filters } = useFeedFilters()
 const { options: siteOptions } = useSites()

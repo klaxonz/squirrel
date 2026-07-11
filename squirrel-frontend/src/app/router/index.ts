@@ -15,6 +15,7 @@ import {
 const HomeView = () => import('@/features/video/views/HomeView.vue')
 const VideosView = () => import('@/features/video/views/VideosView.vue')
 const ChannelDetailView = () => import('@/features/video/views/ChannelDetailView.vue')
+const CreatorDetailView = () => import('@/features/video/views/CreatorDetailView.vue')
 const Subscribed = () => import('@/features/video/views/Subscribed.vue')
 const RssSources = () => import('@/features/rss/views/RssSources.vue')
 const Settings = () => import('@/features/settings/views/Settings.vue')
@@ -278,6 +279,63 @@ const routes: RouteRecordRaw[] = [
         navKey: 'subscribed',
         sectionLabel: '订阅',
         contextParentLabel: '频道',
+        historyStrategy: 'replace',
+      }),
+    ],
+  },
+  {
+    path: '/creator/:id',
+    name: 'CreatorDetail',
+    component: CreatorDetailView,
+    meta: createSearchMeta('创作者', {
+      navKey: 'videos',
+      sectionLabel: '视频',
+      keepAlive: true,
+      keepAliveComponent: 'CreatorDetailView',
+      contextParentLabel: '创作者',
+      transitionKey: 'creator',
+      historyStrategy: 'push',
+    }),
+    children: [
+      {
+        path: '',
+        name: 'CreatorIndex',
+        redirect: (to) => ({ name: 'CreatorAllVideos', params: { id: String(to.params.id) } }),
+      },
+      createVideoTabRoute('all', 'CreatorAllVideos', '全部视频', {
+        navKey: 'videos',
+        sectionLabel: '视频',
+        contextParentLabel: '创作者',
+        historyStrategy: 'replace',
+      }),
+      createVideoTabRoute('unread', 'CreatorUnreadVideos', '未读视频', {
+        navKey: 'videos',
+        sectionLabel: '视频',
+        contextParentLabel: '创作者',
+        historyStrategy: 'replace',
+      }),
+      createVideoTabRoute('read', 'CreatorReadVideos', '已读视频', {
+        navKey: 'videos',
+        sectionLabel: '视频',
+        contextParentLabel: '创作者',
+        historyStrategy: 'replace',
+      }),
+      createVideoTabRoute('preview', 'CreatorPreviewVideos', '预览视频', {
+        navKey: 'videos',
+        sectionLabel: '视频',
+        contextParentLabel: '创作者',
+        historyStrategy: 'replace',
+      }),
+      createVideoTabRoute('liked', 'CreatorLikedVideos', '喜欢的视频', {
+        navKey: 'videos',
+        sectionLabel: '视频',
+        contextParentLabel: '创作者',
+        historyStrategy: 'replace',
+      }),
+      createVideoTabRoute('later', 'CreatorLaterVideos', '稍后再看', {
+        navKey: 'videos',
+        sectionLabel: '视频',
+        contextParentLabel: '创作者',
         historyStrategy: 'replace',
       }),
     ],

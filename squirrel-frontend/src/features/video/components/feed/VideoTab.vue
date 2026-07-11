@@ -8,6 +8,7 @@
     :refreshing="loading && videos.length > 0"
     @loadMore="loadMore"
     @openModal="(video) => emit('openModal', video, videos)"
+    @goToProfile="(profile) => emit('goToProfile', profile)"
     @goToSubscription="(id) => emit('goToSubscription', id)"
   />
 </template>
@@ -18,7 +19,7 @@ import VideoList from './VideoList.vue'
 import { useLatestVideos } from '@/features/video/composables/useLatestVideos'
 import type { FeedFilters } from '@/features/video/composables/useFeedFilters'
 
-const emit = defineEmits(['openModal', 'goToSubscription', 'loading-change', 'error', 'loaded'])
+const emit = defineEmits(['openModal', 'goToProfile', 'goToSubscription', 'loading-change', 'error', 'loaded'])
 
 const props = defineProps<{
   filters?: FeedFilters
@@ -38,6 +39,7 @@ const currentFilters = computed(() => ({
   tab: props.filters?.tab ?? props.activeTab ?? 'all',
   q: props.filters?.q ?? props.searchQuery ?? '',
   subscription_id: props.filters?.subscription_id ?? props.selectedSubscriptionId ?? null,
+  creator_id: props.filters?.creator_id ?? null,
   sort: props.filters?.sort_by ?? props.sortBy ?? 'publish_date',
   site: props.filters?.site ?? props.site,
   nsfw: props.filters?.nsfw ?? props.nsfw ?? 'all',
@@ -46,16 +48,19 @@ const currentFilters = computed(() => ({
   contentType: props.filters?.contentType ?? 'all',
   special: props.filters?.special ?? 'all',
 }))
-const showChannelAvatar = computed(() => !currentFilters.value.subscription_id)
+const showChannelAvatar = computed(
+  () => !currentFilters.value.subscription_id && !currentFilters.value.creator_id,
+)
 
 const {
   videos, loading, allLoaded, loadMore, handleSearch,
-  searchQuery, activeTab, subscriptionId, sortBy, site, nsfw,
+  searchQuery, activeTab, subscriptionId, creatorId, sortBy, site, nsfw,
   timeRange, duration, contentType, special, error
 } = useLatestVideos({
   activeTab: currentFilters.value.tab,
   searchQuery: currentFilters.value.q,
   subscriptionId: currentFilters.value.subscription_id,
+  creatorId: currentFilters.value.creator_id,
   sortBy: currentFilters.value.sort,
   site: currentFilters.value.site,
   nsfw: currentFilters.value.nsfw,
@@ -69,6 +74,7 @@ watch(currentFilters, (f) => {
   activeTab.value = f.tab
   searchQuery.value = f.q
   subscriptionId.value = f.subscription_id
+  creatorId.value = f.creator_id
   sortBy.value = f.sort
   site.value = f.site
   nsfw.value = f.nsfw

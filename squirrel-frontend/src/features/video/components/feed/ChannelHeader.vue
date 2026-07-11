@@ -52,6 +52,19 @@
                 <span class="channel-header__stat-label">解析</span>
                 <span class="channel-header__stat-value">{{ detail?.total_extract || 0 }}</span>
               </span>
+              <span v-if="pendingCount > 0" class="channel-header__stat">
+                <span class="channel-header__stat-label">待处理</span>
+                <span class="channel-header__stat-value">{{ pendingCount }}</span>
+              </span>
+            </div>
+
+            <div
+              v-if="syncStatusLine"
+              class="channel-header__sync-status"
+              :class="{ 'is-error': Boolean(detail?.last_error) }"
+              :title="detail?.last_error || undefined"
+            >
+              {{ syncStatusLine }}
             </div>
           </div>
         </div>
@@ -178,6 +191,31 @@ const isDesktop = useDesktopBridge().isDesktop()
 
 const canOpenRemote = computed(() => {
   return isDesktop && !!detail.value?.site && !!detail.value?.url
+})
+
+const pendingCount = computed(() => Number(detail.value?.pending_video_count || 0))
+
+const formatSyncTime = (value) => {
+  if (!value) return ''
+  const text = String(value).trim()
+  if (!text) return ''
+  // Backend uses "YYYY-MM-DD HH:MM:SS"; show a compact local-friendly form.
+  return text.length >= 16 ? text.slice(0, 16) : text
+}
+
+const syncStatusLine = computed(() => {
+  const d = detail.value
+  if (!d) return ''
+  const status = String(d.sync_status || '').toLowerCase()
+  if (status === 'running' || status === 'syncing') return '同步中'
+  if (status === 'queued' || status === 'pending') return '排队中'
+  if (d.last_error) {
+    const err = String(d.last_error)
+    return err.length > 80 ? `同步失败：${err.slice(0, 80)}…` : `同步失败：${err}`
+  }
+  const lastOk = formatSyncTime(d.last_success_at)
+  if (lastOk) return `上次成功：${lastOk}`
+  return ''
 })
 
 const wait = (ms) => new Promise((resolve) => {
@@ -347,6 +385,17 @@ watch(() => props.subscriptionId, () => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.channel-header__sync-status {
+  margin-top: 0.125rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.channel-header__sync-status.is-error {
+  color: hsl(var(--destructive));
 }
 
 .channel-header__stats {

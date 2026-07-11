@@ -13,6 +13,7 @@ from domains.video.domain.junctions.video_creator import VideoCreator
 from domains.video.domain.models.creator import Creator
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
+from domains.video.domain.models.video_interaction import VideoInteraction
 from domains.video.interfaces.dto.video_responses import serialize_creator
 
 
@@ -43,6 +44,15 @@ class VideoListPageLoader:
         ).all()
         history_map = {row.video_id: row.last_position for row in history_rows}
 
+        # One row per user/video: like (1) / dislike (2) / later (3) are mutually exclusive.
+        interaction_rows = session.execute(
+            select(VideoInteraction.video_id, VideoInteraction.interaction_type).where(
+                VideoInteraction.user_id == user_id,
+                VideoInteraction.video_id.in_(video_ids),
+            ),
+        ).all()
+        interaction_map = {row.video_id: row.interaction_type for row in interaction_rows}
+
         subscriptions_map = self._load_subscription_profiles(session, user_id=user_id, video_ids=video_ids)
         actors_map = self._load_actor_profiles(session, video_ids=video_ids)
 
@@ -60,6 +70,8 @@ class VideoListPageLoader:
             video = video_map.get(video_id)
             if not video:
                 continue
+            # "Read" matches list filters: any history row for this user/video.
+            is_read = video.id in history_map
             video_list.append(
                 {
                     'id': video.id,
@@ -68,6 +80,8 @@ class VideoListPageLoader:
                     'thumbnail': thumbnail_map.get(video.id),
                     'duration': video.duration,
                     'last_position': history_map.get(video.id, 0),
+                    'is_read': is_read,
+                    'interaction_type': interaction_map.get(video.id),
                     'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
                     'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                     'subscriptions': merge_profiles(

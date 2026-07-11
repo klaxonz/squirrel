@@ -13,6 +13,7 @@ type SortBy = 'publish_date' | 'created_at'
 export type VideoListParams = {
   query?: string
   subscription_id?: number | string | null
+  creator_id?: number | string | null
   // ponytail: backend accepts arbitrary category/sort strings beyond the known
   // enum; typed as the union plus a bare string escape hatch for forward-compat.
   category?: Category | (string & {})

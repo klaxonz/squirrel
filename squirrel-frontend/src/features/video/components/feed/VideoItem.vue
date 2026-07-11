@@ -4,6 +4,7 @@
     :class="layout === 'list' ? 'video-item--list' : 'video-item--grid'"
     role="button"
     tabindex="0"
+    :aria-label="`打开：${video.title}`"
     @contextmenu.prevent="showContextMenu"
     @click="handleClick"
     @keydown.enter.prevent="handleClick"
@@ -78,13 +79,13 @@
             :src="displayAvatars[0].avatar"
             :name="displayAvatars[0].name"
             size="lg"
-            @click.stop="goToSubscription(displayAvatars[0].id)"
+            @click.stop="goToProfile(displayAvatars[0])"
           />
         </div>
 
         <div class="video-item__meta-main">
           <div class="video-item__meta-line">
-            <span class="video-item__source-name" @click.stop="goToSubscription(primarySubscriptionId)">
+            <span class="video-item__source-name" @click.stop="goToProfile(primaryProfile)">
               {{ displayNames }}
             </span>
             <span v-if="video.site" class="video-item__site">{{ video.site }}</span>
@@ -112,6 +113,7 @@
             class="video-item__quick-btn"
             :class="{ 'is-on': isRead }"
             :title="isRead ? '标记未读' : '标记已读'"
+            :aria-label="isRead ? '标记未读' : '标记已读'"
             :aria-pressed="isRead"
             @click="toggleReadStatus(!isRead)"
           >
@@ -121,7 +123,8 @@
             type="button"
             class="video-item__quick-btn"
             :class="{ 'is-on': isLater === 1 }"
-            :title="isLater === 1 ? '取消稍后再看' : '稍后再看'"
+            :title="isLater === 1 ? '取消稍后看' : '稍后看（会替换喜欢）'"
+            :aria-label="isLater === 1 ? '取消稍后看' : '稍后看'"
             :aria-pressed="isLater === 1"
             @click="toggleLater"
           >
@@ -134,7 +137,8 @@
             type="button"
             class="video-item__quick-btn"
             :class="{ 'is-on': isLiked === 1 }"
-            :title="isLiked === 1 ? '取消喜欢' : '喜欢'"
+            :title="isLiked === 1 ? '取消喜欢' : '喜欢（会替换稍后看）'"
+            :aria-label="isLiked === 1 ? '取消喜欢' : '喜欢'"
             :aria-pressed="isLiked === 1"
             @click="toggleLikeVideo"
           >
@@ -174,7 +178,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import ContextMenu from './ContextMenu.vue'
@@ -182,8 +186,14 @@ import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import { useVideoHistory } from '@/features/video/composables/useVideoHistory'
 import useVideoInteraction from '@/features/video/composables/useVideoInteraction'
 import { useSystemConfig } from '@/shared/composables/useSystemConfig'
+import { useToast } from '@/shared/components/toast/useToast'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
-import type { VideoListItem } from '@/features/video/types/video'
+import type { VideoListItem, VideoProfile } from '@/features/video/types/video'
+import {
+  pickPrimaryProfile,
+  profileDisplayNames,
+} from '@/features/video/composables/useProfileNavigation'
 
 const props = withDefaults(defineProps<{
   video: VideoListItem
@@ -196,22 +206,46 @@ const props = withDefaults(defineProps<{
   showDuration: true,
 })
 
-const emit = defineEmits(['goToSubscription', 'openModal'])
+const emit = defineEmits<{
+  goToProfile: [profile: VideoProfile]
+  /** @deprecated prefer goToProfile */
+  goToSubscription: [id: number | string]
+  openModal: [video: VideoListItem]
+}>()
 
 const { config: systemConfig } = useSystemConfig()
 const { clearHistory, sendReport } = useVideoHistory()
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction()
+const toast = useToast()
 
 const showMenu = ref(false)
 const menuPosition = ref({ x: 0, y: 0 })
 
-// ponytail: read/like/later interaction state. The list endpoint does not
-// return these flags, so they are kept as local optimistic UI state here
-// rather than mutated on the props object (which would violate one-way flow
-// and previously wrote to nonexistent fields).
+/**
+ * Local optimistic engagement state, seeded from list fields:
+ * - is_read: history row exists
+ * - interaction_type: exclusive 1=like / 2=dislike / 3=later
+ *
+ * Like and later share one backend row — setting one replaces the other.
+ */
 const isRead = ref(false)
 const isLiked = ref<number | null>(null)
 const isLater = ref<number | null>(null)
+
+function hydrateFromVideo(video: VideoListItem) {
+  // Prefer explicit is_read; fall back to last_position for older payloads.
+  isRead.value = video.is_read ?? Number(video.last_position || 0) > 0
+  const type = video.interaction_type
+  isLiked.value = type === INTERACTION_TYPE.LIKE ? 1 : null
+  isLater.value = type === INTERACTION_TYPE.LATER ? 1 : null
+}
+
+hydrateFromVideo(props.video)
+
+watch(
+  () => [props.video.id, props.video.is_read, props.video.interaction_type, props.video.last_position] as const,
+  () => hydrateFromVideo(props.video),
+)
 
 const hasActiveFlags = computed(
   () => isRead.value || isLater.value === 1 || isLiked.value === 1,
@@ -234,17 +268,13 @@ const displayDateText = computed(() => {
 })
 
 const displayAvatars = computed(() => {
-  const subs = props.video.subscriptions || []
-  const actors = props.video.actors || []
-  return (subs.length ? subs : actors).slice(0, 1)
+  const primary = pickPrimaryProfile(props.video)
+  return primary ? [primary] : []
 })
 
-const displayNames = computed(() => {
-  const names = (props.video.subscriptions || props.video.actors || []).map((a) => a.name)
-  return names.length ? names.join(' / ') : '未知'
-})
+const displayNames = computed(() => profileDisplayNames(props.video, '未知'))
 
-const primarySubscriptionId = computed(() => props.video.subscriptions?.[0]?.id || props.video.actors?.[0]?.id)
+const primaryProfile = computed(() => pickPrimaryProfile(props.video))
 
 const closeMenuOnExternalClose = () => { showMenu.value = false }
 
@@ -256,47 +286,83 @@ const showContextMenu = async (event: MouseEvent) => {
 }
 
 const handleClick = () => emit('openModal', props.video)
-const goToSubscription = (id: number | string | null | undefined) => id && emit('goToSubscription', id)
+const goToProfile = (profile: VideoProfile | null | undefined) => {
+  if (!profile) return
+  // Fill profile_source when list payload omitted it, so navigation never
+  // mistakes a creator id for a subscription id.
+  let source = profile.profile_source
+  if (!source) {
+    const id = profile.id
+    const inSubs = (props.video.subscriptions || []).some((s) => s.id === id && id != null)
+    const inActors = (props.video.actors || []).some((a) => a.id === id && id != null)
+    if (inSubs) source = 'subscription'
+    else if (inActors) source = 'creator'
+  }
+  const resolved: VideoProfile = source ? { ...profile, profile_source: source } : profile
+  emit('goToProfile', resolved)
+  if (resolved.profile_source === 'subscription' && resolved.id != null && resolved.id !== '') {
+    emit('goToSubscription', resolved.id)
+  }
+}
 
 const toggleReadStatus = async (markRead: boolean) => {
-  if (markRead) {
-    const pos = Number(props.video.duration || 0)
-    await sendReport(props.video.id, pos, { force: true })
-    isRead.value = true
-  } else {
-    await clearHistory([props.video.id])
-    isRead.value = false
+  const previous = isRead.value
+  isRead.value = markRead
+  try {
+    if (markRead) {
+      const pos = Number(props.video.duration || 0)
+      await sendReport(props.video.id, pos, { force: true })
+    } else {
+      await clearHistory([props.video.id])
+    }
+  } catch (err) {
+    isRead.value = previous
+    toast.error(errorMessage(err, markRead ? '标记已读失败' : '标记未读失败'))
   }
   showMenu.value = false
 }
 
-const toggleLikeVideo = async () => {
-  try {
-    if (isLiked.value === 1) {
-      await deleteInteraction(props.video.id)
-      isLiked.value = null
-    } else {
-      await toggleLike(props.video.id, INTERACTION_TYPE.LIKE)
-      isLiked.value = 1
-    }
-  } catch {
-    // silent — toggle failure leaves the prior like state
+/**
+ * Exclusive engagement toggle. Backend stores one interaction_type per
+ * user/video, so enabling like clears later (and vice versa).
+ */
+const setExclusiveInteraction = async (next: 'like' | 'later' | null) => {
+  const prevLiked = isLiked.value
+  const prevLater = isLater.value
+
+  if (next === 'like') {
+    isLiked.value = 1
+    isLater.value = null
+  } else if (next === 'later') {
+    isLater.value = 1
+    isLiked.value = null
+  } else {
+    isLiked.value = null
+    isLater.value = null
   }
+
+  try {
+    if (next === 'like') {
+      await toggleLike(props.video.id, INTERACTION_TYPE.LIKE)
+    } else if (next === 'later') {
+      await toggleLike(props.video.id, INTERACTION_TYPE.LATER)
+    } else {
+      await deleteInteraction(props.video.id)
+    }
+  } catch (err) {
+    isLiked.value = prevLiked
+    isLater.value = prevLater
+    toast.error(errorMessage(err, '更新互动状态失败'))
+  }
+}
+
+const toggleLikeVideo = async () => {
+  await setExclusiveInteraction(isLiked.value === 1 ? null : 'like')
   showMenu.value = false
 }
 
 const toggleLater = async () => {
-  try {
-    if (isLater.value === 1) {
-      await deleteInteraction(props.video.id)
-      isLater.value = null
-    } else {
-      await toggleLike(props.video.id, INTERACTION_TYPE.LATER)
-      isLater.value = 1
-    }
-  } catch {
-    // silent — toggle failure leaves the prior later state
-  }
+  await setExclusiveInteraction(isLater.value === 1 ? null : 'later')
   showMenu.value = false
 }
 

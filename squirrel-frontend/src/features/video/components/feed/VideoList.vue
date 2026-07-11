@@ -12,6 +12,7 @@
         :show-avatar="showAvatar"
         :sort-by="sortBy"
         :layout="uiStore.viewMode"
+        @goToProfile="$emit('goToProfile', $event)"
         @goToSubscription="$emit('goToSubscription', $event)"
         @openModal="$emit('openModal', video)"
       />
@@ -59,7 +60,7 @@ const props = defineProps<{
   refreshing: boolean
 }>()
 
-const emit = defineEmits(['goToSubscription', 'openModal', 'loadMore'])
+const emit = defineEmits(['goToProfile', 'goToSubscription', 'openModal', 'loadMore'])
 
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 

@@ -131,6 +131,27 @@ const buildYouTubeChannelUrl = (url, profile = {}) => {
   return normalizeChannelUrl(url)
 }
 
+const parseLooseCount = (value) => {
+  if (value == null) return null
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.floor(value))
+  const text = String(value).trim()
+  if (!text) return null
+  // "1.2M subscribers", "12,345", "123万"
+  const compact = text.replace(/,/g, '').toLowerCase()
+  const wan = compact.match(/([\d.]+)\s*万/)
+  if (wan) return Math.floor(Number(wan[1]) * 10_000)
+  const yi = compact.match(/([\d.]+)\s*亿/)
+  if (yi) return Math.floor(Number(yi[1]) * 100_000_000)
+  const m = compact.match(/([\d.]+)\s*m\b/)
+  if (m) return Math.floor(Number(m[1]) * 1_000_000)
+  const k = compact.match(/([\d.]+)\s*k\b/)
+  if (k) return Math.floor(Number(k[1]) * 1_000)
+  const plain = compact.match(/([\d.]+)/)
+  if (!plain) return null
+  const n = Number(plain[1])
+  return Number.isFinite(n) ? Math.floor(n) : null
+}
+
 const extractYouTubeProfile = (initialData, channelUrl, providedProfile = {}) => {
   const metadata = initialData?.metadata?.channelMetadataRenderer || {}
   const header = initialData?.header?.pageHeaderRenderer || initialData?.header?.c4TabbedHeaderRenderer || {}
@@ -139,6 +160,17 @@ const extractYouTubeProfile = (initialData, channelUrl, providedProfile = {}) =>
     || header?.avatar?.thumbnails
     || metadata?.avatar?.thumbnails
   )
+  const banner = pickThumbnail(
+    header?.banner?.thumbnails
+    || header?.content?.pageHeaderViewModel?.banner?.imageBannerViewModel?.image?.sources
+    || header?.image?.contentImageViewModel?.image?.sources
+  )
+  const subscriberText = pickText(header?.subscriberCountText)
+    || pickText(header?.content?.pageHeaderViewModel?.metadata?.contentMetadataViewModel?.metadataRows?.[1]?.metadataParts?.[0]?.text)
+    || ''
+  const videoCountText = pickText(header?.videosCountText)
+    || pickText(header?.content?.pageHeaderViewModel?.metadata?.contentMetadataViewModel?.metadataRows?.[1]?.metadataParts?.[1]?.text)
+    || ''
   const name = metadata?.title || pickText(header?.title) || providedProfile.name || ''
   return {
     id: metadata?.externalId || providedProfile.id || null,
@@ -146,7 +178,10 @@ const extractYouTubeProfile = (initialData, channelUrl, providedProfile = {}) =>
     name,
     url: channelUrl,
     avatar: avatar || providedProfile.avatar || '',
+    banner: banner || providedProfile.banner || null,
     description: metadata?.description || '',
+    subscriber_count: parseLooseCount(subscriberText),
+    video_count: parseLooseCount(videoCountText),
     site: 'youtube',
     is_nsfw: false,
   }
@@ -411,6 +446,9 @@ const getBilibiliChannel = async ({ url, limit, page, fetchImpl, buildCookieHead
     url: `https://space.bilibili.com/${mid}`,
     avatar: normalizeUrl(card?.face || profile?.avatar || '', BILIBILI_ORIGIN),
     description: stripHtml(card?.sign || ''),
+    banner: normalizeUrl(card?.top_photo || card?.space?.top_photo || profile?.banner || '', BILIBILI_ORIGIN) || null,
+    subscriber_count: parseLooseCount(card?.fans ?? profilePayload?.follower ?? profilePayload?.card?.fans),
+    video_count: parseLooseCount(card?.archive_count ?? profilePayload?.archive_count),
     site: 'bilibili',
     is_nsfw: false,
   }
@@ -442,6 +480,9 @@ const getBilibiliChannel = async ({ url, limit, page, fetchImpl, buildCookieHead
   const rows = Array.isArray(videosPayload?.list?.vlist) ? videosPayload.list.vlist : []
   const totalCount = Number(videosPayload?.page?.count)
   const hasTotalCount = Number.isFinite(totalCount) && totalCount >= 0
+  if (hasTotalCount && (channelProfile.video_count == null || channelProfile.video_count <= 0)) {
+    channelProfile.video_count = totalCount
+  }
 
   return {
     profile: channelProfile,

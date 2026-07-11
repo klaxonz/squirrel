@@ -12,7 +12,8 @@ export function useRouteTabSync(
   router: Router,
   route: RouteLocationNormalizedLoaded,
   activeTabRef: Ref<string>,
-  subscriptionIdRef?: Ref<string | number | null | undefined>
+  subscriptionIdRef?: Ref<string | number | null | undefined>,
+  creatorIdRef?: Ref<string | number | null | undefined>,
 ) {
   const tabValues = VIDEO_TABS.map(t => t.value)
 
@@ -26,9 +27,12 @@ export function useRouteTabSync(
 
   const pushPathFromTab = (tab: string) => {
     const subId = subscriptionIdRef?.value
+    const creatorId = creatorIdRef?.value
     const target = subId
       ? `/subscription/${subId}/${tab}`
-      : `/videos/${tab}`
+      : creatorId
+        ? `/creator/${creatorId}/${tab}`
+        : `/videos/${tab}`
     if (router.currentRoute.value.fullPath !== target) {
       router.push(target)
     }

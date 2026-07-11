@@ -1,20 +1,13 @@
 import type { Router } from 'vue-router'
 
-import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
+import {
+  useProfileNavigation,
+} from '@/features/video/composables/useProfileNavigation'
 
-type VideoCardSeed = { id: string | number }
-type SubscriptionId = string | number | null | undefined
-
+/**
+ * Card navigation facade. Prefer openProfile for avatar/name clicks;
+ * openSubscription remains for known subscription ids only.
+ */
 export function useVideoCardNavigation(router: Router) {
-  const openVideo = (video: VideoCardSeed) => {
-    rememberVideoPlaybackSeed(video)
-    router.push({ name: 'VideoPlay', params: { videoId: String(video.id) } })
-  }
-
-  const openSubscription = (id: SubscriptionId) => {
-    if (id == null || id === '') return
-    router.push({ name: 'SubscriptionAllVideos', params: { id: String(id) } })
-  }
-
-  return { openVideo, openSubscription }
+  return useProfileNavigation(router)
 }

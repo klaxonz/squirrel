@@ -168,6 +168,9 @@ type DesktopRemoteChannelResolver = (
     description?: string | null
     site?: string | null
     is_nsfw?: boolean | null
+    banner?: string | null
+    subscriber_count?: number | null
+    video_count?: number | null
   }
   items: Awaited<ReturnType<DesktopRemoteSearchResolver>>['items']
   page?: number

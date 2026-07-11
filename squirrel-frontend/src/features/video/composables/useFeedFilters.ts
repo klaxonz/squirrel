@@ -14,6 +14,7 @@ export type FeedFilters = {
   tab?: string
   q?: string
   subscription_id?: SubscriptionId
+  creator_id?: SubscriptionId
   sort_by?: string
   nsfw?: string
   site?: string
@@ -23,7 +24,13 @@ export type FeedFilters = {
   special?: string
 }
 
-export function useFeedFilters({ subscriptionIdRef }: { subscriptionIdRef?: Ref<SubscriptionId> } = {}) {
+export function useFeedFilters({
+  subscriptionIdRef,
+  creatorIdRef,
+}: {
+  subscriptionIdRef?: Ref<SubscriptionId>
+  creatorIdRef?: Ref<SubscriptionId>
+} = {}) {
   const activeTab = ref('all')
   const nsfw = ref('all')
   const sortBy = ref('publish_date')
@@ -38,9 +45,10 @@ export function useFeedFilters({ subscriptionIdRef }: { subscriptionIdRef?: Ref<
     tab: activeTab.value,
     q: searchQuery.value,
     subscription_id: subscriptionIdRef?.value,
+    creator_id: creatorIdRef?.value,
     sort_by: sortBy.value,
     nsfw: nsfw.value === 'only' ? 'yes' : nsfw.value,
-    site: subscriptionIdRef?.value ? undefined : site.value,
+    site: subscriptionIdRef?.value || creatorIdRef?.value ? undefined : site.value,
     timeRange: timeRange.value,
     duration: duration.value,
     contentType: contentType.value,

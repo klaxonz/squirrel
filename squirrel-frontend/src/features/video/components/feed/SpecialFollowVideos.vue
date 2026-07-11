@@ -33,6 +33,7 @@
         show-duration
         class="w-[18rem] shrink-0 snap-start"
         @openModal="emit('openModal', item)"
+        @goToProfile="(profile) => emit('goToProfile', profile)"
         @goToSubscription="(id) => emit('goToSubscription', id)"
       />
     </FeedRailTrack>
@@ -52,7 +53,7 @@ import FeedRailTrack from '@/features/video/components/feed/FeedRailTrack.vue'
 import VideoItem from '@/features/video/components/feed/VideoItem.vue'
 import RecommendationSkeleton from '@/features/video/components/feed/RecommendationSkeleton.vue'
 
-const emit = defineEmits(['openModal', 'goToSubscription', 'viewMore'])
+const emit = defineEmits(['openModal', 'goToProfile', 'goToSubscription', 'viewMore'])
 
 const items = ref<VideoListItem[]>([])
 const loading = ref(false)

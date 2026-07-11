@@ -10,17 +10,54 @@
       </div>
 
       <section class="app-media-header remote-channel-header">
+        <div
+          v-if="profile.banner"
+          class="remote-channel-banner"
+          :style="{ backgroundImage: `url(${profile.banner})` }"
+          aria-hidden="true"
+        />
         <div class="app-media-header__inner remote-channel-header__inner">
           <div class="remote-channel-header__identity">
-            <SubscriptionAvatar :src="profile.avatar" :name="profile.name || siteLabel" size="xl" class="remote-channel-header__avatar" />
+            <a
+              v-if="channelUrl"
+              :href="channelUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="remote-channel-header__avatar-link"
+            >
+              <SubscriptionAvatar :src="profile.avatar" :name="profile.name || siteLabel" size="xl" class="remote-channel-header__avatar" />
+            </a>
+            <SubscriptionAvatar
+              v-else
+              :src="profile.avatar"
+              :name="profile.name || siteLabel"
+              size="xl"
+              class="remote-channel-header__avatar"
+            />
             <div class="remote-channel-header__copy">
               <div class="remote-channel-header__title-row">
-                <h1 class="app-h2 truncate">{{ profile.name || siteLabel }}</h1>
+                <a
+                  v-if="channelUrl"
+                  :href="channelUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="remote-channel-header__name-link"
+                >
+                  <h1 class="app-h2 truncate">{{ profile.name || siteLabel }}</h1>
+                </a>
+                <h1 v-else class="app-h2 truncate">{{ profile.name || siteLabel }}</h1>
                 <span class="remote-channel-site-badge">{{ siteLabel }}</span>
+                <span v-if="profile.is_nsfw" class="remote-channel-nsfw-badge">敏感</span>
               </div>
               <p v-if="profile.description" class="remote-channel-header__desc">
                 {{ profile.description }}
               </p>
+              <div v-if="profileStats.length" class="remote-channel-header__stats">
+                <span v-for="stat in profileStats" :key="stat.label" class="remote-channel-header__stat">
+                  <span class="remote-channel-header__stat-label">{{ stat.label }}</span>
+                  <span class="remote-channel-header__stat-value">{{ stat.value }}</span>
+                </span>
+              </div>
             </div>
           </div>
 
@@ -130,6 +167,9 @@ type RemoteProfile = {
   description?: string | null
   site?: string | null
   is_nsfw?: boolean | null
+  banner?: string | null
+  subscriber_count?: number | null
+  video_count?: number | null
 }
 
 type RemoteSearchItem = {
@@ -235,6 +275,23 @@ const routeProfile = computed(() => ({
   is_nsfw: queryValue('is_nsfw') === 'true',
 }))
 const channelKey = computed(() => `${site.value}::${channelUrl.value}`)
+
+const formatCount = (value: number | null | undefined) => {
+  if (value == null || !Number.isFinite(Number(value))) return ''
+  const n = Number(value)
+  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1).replace(/\.0$/, '')}亿`
+  if (n >= 10_000) return `${(n / 10_000).toFixed(1).replace(/\.0$/, '')}万`
+  return String(n)
+}
+
+const profileStats = computed(() => {
+  const stats: Array<{ label: string; value: string }> = []
+  const subs = formatCount(profile.value.subscriber_count)
+  const videos = formatCount(profile.value.video_count)
+  if (subs) stats.push({ label: '订阅', value: subs })
+  if (videos) stats.push({ label: '视频', value: videos })
+  return stats
+})
 
 const displayDate = (item: RemoteSearchItem) => {
   if (item.published_text) return item.published_text
@@ -471,6 +528,22 @@ onUnmounted(() => {
   gap: var(--space-4);
 }
 
+.remote-channel-banner {
+  width: 100%;
+  height: 8.5rem;
+  margin-bottom: var(--space-4);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  border-bottom: 1px solid var(--app-surface-border-subtle);
+}
+
+.remote-channel-header__avatar-link {
+  display: block;
+  flex: none;
+  text-decoration: none;
+}
+
 .remote-channel-header__avatar {
   flex: none;
   border: 1px solid var(--app-surface-border-subtle);
@@ -492,6 +565,17 @@ onUnmounted(() => {
   gap: var(--space-2);
 }
 
+.remote-channel-header__name-link {
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.remote-channel-header__name-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
 .remote-channel-header__desc {
   margin: 0;
   max-width: 42rem;
@@ -502,6 +586,41 @@ onUnmounted(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.remote-channel-header__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+}
+
+.remote-channel-header__stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.remote-channel-header__stat-label {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+.remote-channel-header__stat-value {
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.remote-channel-nsfw-badge {
+  flex: none;
+  border: 1px solid hsl(var(--primary) / 0.35);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--primary) / 0.08);
+  padding: 0.125rem 0.375rem;
+  color: hsl(var(--primary));
+  font-size: 0.6875rem;
+  font-weight: 650;
 }
 
 .remote-channel-header__actions {
