@@ -2,6 +2,7 @@ import { ref, type Ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { getSupportedImportSites } from '@/shared/api'
 import { useSiteCatalog } from '@/features/video/composables/useSites'
+import { resolveServerAssetUrl } from '@/shared/lib/serverConfig'
 
 /**
  * Supported-import-site discovery + name/icon resolution.
@@ -58,7 +59,10 @@ export function useImportSiteMeta(options: UseImportSiteMetaOptions): UseImportS
 
   const getSiteIconUrl = (site: string): string | null => {
     const iconUrl = getSiteCatalogItem(site)?.icon_url
-    return typeof iconUrl === 'string' && (iconUrl as string).trim() ? iconUrl : null
+    const raw = typeof iconUrl === 'string' && iconUrl.trim()
+      ? iconUrl.trim()
+      : (site ? `/api/sites/${encodeURIComponent(site.toLowerCase())}/icon` : null)
+    return resolveServerAssetUrl(raw)
   }
 
   const loadSupportedSites = async () => {

@@ -5,9 +5,9 @@
      light used H26/H36 — two independently-tuned palettes that made the
      whole UI feel inconsistent across themes. */
 
-  /* Aligned to DESIGN.md: Projection Black / Panel Charcoal.
-     Sidebar shares the canvas color (not a darker "Rail Black") so chrome
-     and content stay on one temperature; hierarchy comes from border/structure. */
+  /* Semantic surfaces (see DESIGN.md §2). Sidebar is a quiet lift of the
+     canvas so chrome and content stay one temperature; hierarchy comes from
+     hairlines/structure, not a second floating column. */
   --background: 28 10% 7%;
   --foreground: 28 10% 95%;
 

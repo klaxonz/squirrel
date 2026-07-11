@@ -706,7 +706,7 @@
   color: hsl(var(--foreground));
 }
 
-/* Active filter chips: quiet selected state, not warning/amber alarm. */
+/* Toolbar chips — selected/filter-on uses primary (interactive selection). */
 .app-toolbar-chip {
   height: 2rem;
   gap: var(--space-1);
@@ -716,42 +716,43 @@
 }
 
 .app-toolbar-chip--active {
-  border-color: hsl(var(--border));
-  background: hsl(var(--secondary));
-  color: hsl(var(--foreground));
+  border-color: hsl(var(--primary) / 0.22);
+  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--foreground) / 0.92);
 }
 
 .app-toolbar-chip--active:hover {
-  border-color: hsl(var(--border));
-  background: hsl(var(--accent));
+  border-color: hsl(var(--primary) / 0.32);
+  background: hsl(var(--primary) / 0.12);
   color: hsl(var(--foreground));
 }
 
-/* Legacy alias — prefer --active for filter dismiss chips. */
+/* Legacy alias — same as --active (filter dismiss chips). */
 .app-toolbar-chip--warning {
-  border-color: hsl(var(--border));
-  background: hsl(var(--secondary));
-  color: hsl(var(--foreground));
+  border-color: hsl(var(--primary) / 0.22);
+  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--foreground) / 0.92);
 }
 
 .app-toolbar-select-trigger {
-  height: 2rem;
+  height: 2rem !important;
+  min-height: 2rem !important;
   width: auto;
   min-width: 0;
   flex-shrink: 0;
   flex-wrap: nowrap;
   gap: var(--space-2);
-  padding: 0 var(--space-3);
-  box-shadow: none;
-  font-size: 0.75rem;
+  padding: 0 var(--space-3) !important;
+  box-shadow: none !important;
+  font-size: 0.75rem !important;
   font-weight: 650;
   white-space: nowrap;
 }
 
 .app-toolbar-select-trigger.is-active {
-  border-color: hsl(var(--border));
-  background: hsl(var(--secondary));
-  color: hsl(var(--foreground));
+  border-color: hsl(var(--primary) / 0.22) !important;
+  background: hsl(var(--primary) / 0.08) !important;
+  color: hsl(var(--foreground) / 0.92);
 }
 
 .app-toolbar-icon-button {
@@ -761,11 +762,38 @@
   flex: 0 0 auto;
 }
 
-/* Funnel / icon controls: selected = structural emphasis, not saturated amber. */
+/* Icon / filter controls: active = interactive primary tint (not health status). */
 .app-toolbar-icon-button.is-active {
-  border-color: hsl(var(--border));
-  background: hsl(var(--secondary));
-  color: hsl(var(--foreground));
+  border-color: hsl(var(--primary) / 0.22);
+  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--foreground) / 0.92);
+}
+
+/* Text+icon filter trigger shared by feed / subscription toolbars. */
+.app-filter-toolbar-button {
+  gap: 0.375rem;
+  color: hsl(var(--muted-foreground) / 0.84);
+  font-size: 0.75rem;
+  font-weight: 550;
+}
+
+.app-filter-toolbar-button.is-active {
+  border-color: hsl(var(--primary) / 0.22);
+  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--foreground) / 0.9);
+}
+
+.app-filter-toolbar-button__count {
+  display: grid;
+  min-width: 1rem;
+  height: 1rem;
+  place-items: center;
+  border-radius: 999px;
+  background: hsl(var(--primary) / 0.14);
+  color: hsl(var(--primary));
+  font-size: 0.5625rem;
+  font-weight: 650;
+  line-height: 1;
 }
 
 .app-toolbar-count {
@@ -1045,6 +1073,120 @@
   background: hsl(var(--primary) / 0.1);
   color: hsl(var(--foreground));
   box-shadow: 0 0 0 1px hsl(var(--primary) / 0.16) inset;
+}
+
+/* ── Filter popover fields (AppFilterPanel consumers) ───────────────────── */
+.app-filter-field {
+  display: grid;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.app-filter-field__label {
+  color: hsl(var(--muted-foreground) / 0.88);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+}
+
+.app-filter-field__control {
+  min-width: 0;
+}
+
+/* Dense filter Select — Task surface 32px (beats SelectTrigger h-9 utilities). */
+.app-filter-select {
+  height: 2rem !important;
+  min-height: 2rem !important;
+  border-color: hsl(var(--border) / 0.72) !important;
+  background: hsl(var(--muted) / 0.28) !important;
+  padding-inline: 0.625rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+}
+
+.app-filter-select:hover {
+  border-color: hsl(var(--border) / 0.9) !important;
+  background: hsl(var(--muted) / 0.4) !important;
+}
+
+.app-filter-select:focus-visible {
+  border-color: hsl(var(--ring)) !important;
+  background: hsl(var(--card)) !important;
+}
+
+.app-filter-select.is-active {
+  border-color: hsl(var(--primary) / 0.28) !important;
+  background: hsl(var(--primary) / 0.06) !important;
+  color: hsl(var(--foreground));
+  box-shadow: none !important;
+}
+
+.app-filter-select.is-active:hover {
+  border-color: hsl(var(--primary) / 0.38) !important;
+  background: hsl(var(--primary) / 0.09) !important;
+}
+
+.app-filter-site-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Menu-style toggle row — same quiet language as filter options. */
+.app-filter-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.125rem 0.125rem 0.25rem;
+  padding: 0.5rem 0.5rem;
+  border: 0;
+  border-top: 1px solid hsl(var(--border) / 0.48);
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.app-filter-toggle:hover {
+  background: transparent;
+}
+
+.app-filter-toggle.is-active {
+  background: transparent;
+}
+
+.app-filter-toggle__copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding-top: 0.375rem;
+}
+
+.app-filter-toggle__title {
+  color: hsl(var(--foreground) / 0.88);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  line-height: 1.25;
+}
+
+.app-filter-toggle.is-active .app-filter-toggle__title {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+.app-filter-toggle__hint {
+  color: hsl(var(--muted-foreground) / 0.68);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.app-filter-toggle > :deep(button) {
+  margin-top: 0.375rem;
 }
 
 .app-table-shell {

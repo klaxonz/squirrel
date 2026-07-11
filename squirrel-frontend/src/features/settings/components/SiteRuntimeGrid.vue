@@ -328,6 +328,10 @@ const supportsLogin = runtime => Boolean(
   color: hsl(var(--muted-foreground) / 0.72);
 }
 
+.site-runtime-card__status dd[data-tone='success'] {
+  color: hsl(var(--success));
+}
+
 .site-runtime-card__status dd[data-tone='critical'] {
   color: hsl(var(--destructive) / 0.82);
 }

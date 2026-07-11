@@ -17,7 +17,7 @@
             type="button"
             variant="ghost"
             size="sm"
-            class="feed-toolbar__filter"
+            class="app-filter-toolbar-button"
             :class="{ 'is-active': activeFilterCount > 0 }"
             :aria-label="filterButtonLabel"
           >
@@ -25,139 +25,104 @@
             <span>筛选</span>
             <span
               v-if="activeFilterCount > 0"
-              class="feed-toolbar__filter-count app-mono"
+              class="app-filter-toolbar-button__count app-mono"
             >
               {{ activeFilterCount }}
             </span>
           </Button>
         </PopoverTrigger>
 
-        <PopoverContent align="end" :side-offset="8" class="w-80 p-0">
-          <div class="feed-filter-panel">
-            <header class="feed-filter-panel__header">
-              <div>
-                <strong>筛选</strong>
-                <span>{{ filterDescription }}</span>
-              </div>
-              <Button
-                v-if="activeFilterCount > 0"
-                type="button"
-                variant="ghost"
-                size="xs"
-                @click="clearAllFilters"
+        <PopoverContent
+          align="end"
+          :side-offset="8"
+          class="w-[17.25rem] overflow-hidden border-border/55 p-0 shadow-popover"
+        >
+          <AppFilterPanel
+            :active-count="activeFilterCount"
+            @reset="clearAllFilters"
+          >
+            <AppFilterSection v-if="!subscriptionId" label="来源">
+              <AppFilterOptionList
+                :model-value="site || 'all'"
+                :options="siteFilterOptions"
+                label="按来源筛选"
+                @update:model-value="handleSiteChange"
               >
-                重置
-              </Button>
-            </header>
+                <template #leading="{ option }">
+                  <span
+                    v-if="option.value === 'all'"
+                    class="feed-filter-all-icon"
+                    aria-hidden="true"
+                  >
+                    <AppIcon name="layoutGrid" />
+                  </span>
+                  <SiteIcon
+                    v-else
+                    :site="option.value"
+                    :icon-url="option.iconUrl"
+                    :label="option.label"
+                    size="sm"
+                    rounded="sm"
+                  />
+                </template>
+              </AppFilterOptionList>
+            </AppFilterSection>
 
-            <div class="feed-filter-panel__fields">
-              <label v-if="!subscriptionId" class="feed-filter-panel__field">
-                <span>来源</span>
-                <Select :model-value="site || 'all'" @update:model-value="handleSiteChange">
-                  <SelectTrigger aria-label="按来源筛选">
-                    <SelectValue placeholder="全部来源" />
-                  </SelectTrigger>
-                  <SelectContent class="min-w-48">
-                    <SelectItem value="all">全部来源</SelectItem>
-                    <SelectItem
-                      v-for="option in siteOptions"
-                      :key="option.value"
-                      :value="option.value"
-                    >
-                      <span class="feed-filter-panel__site-option">
-                        <SiteIcon :site="option.value" class="h-4 w-4 rounded-sm" />
-                        <span>{{ option.label }}</span>
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
+            <AppFilterSection label="范围" divided>
+              <div class="feed-filter-range">
+                <AppFilterSection label="时间" layout="row">
+                  <AppFilterChips
+                    :model-value="timeRange"
+                    :options="timeRangeOptions"
+                    label="按时间范围筛选"
+                    @update:model-value="handleTimeRangeChange"
+                  />
+                </AppFilterSection>
+                <AppFilterSection label="时长" layout="row">
+                  <AppFilterChips
+                    :model-value="duration"
+                    :options="durationOptions"
+                    label="按视频时长筛选"
+                    @update:model-value="handleDurationChange"
+                  />
+                </AppFilterSection>
+              </div>
+            </AppFilterSection>
 
-              <label class="feed-filter-panel__field">
-                <span>时间范围</span>
-                <Select :model-value="timeRange" @update:model-value="handleTimeRangeChange">
-                  <SelectTrigger aria-label="按时间范围筛选">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem
-                      v-for="option in timeRangeOptions"
-                      :key="option.value"
-                      :value="option.value"
-                    >
-                      {{ option.label }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
+            <AppFilterSection v-if="!subscriptionId" label="类型" layout="row">
+              <AppFilterChips
+                :model-value="contentType"
+                :options="contentTypeOptions"
+                label="按来源类型筛选"
+                @update:model-value="handleContentTypeChange"
+              />
+            </AppFilterSection>
 
-              <label class="feed-filter-panel__field">
-                <span>视频时长</span>
-                <Select :model-value="duration" @update:model-value="handleDurationChange">
-                  <SelectTrigger aria-label="按视频时长筛选">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem
-                      v-for="option in durationOptions"
-                      :key="option.value"
-                      :value="option.value"
-                    >
-                      {{ option.label }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
+            <AppFilterSection v-if="settings.showNsfw" label="分级" layout="row">
+              <AppFilterChips
+                :model-value="nsfw"
+                :options="nsfwOptions"
+                label="按内容分级筛选"
+                @update:model-value="handleNsfwChange"
+              />
+            </AppFilterSection>
 
-              <label v-if="!subscriptionId" class="feed-filter-panel__field">
-                <span>来源类型</span>
-                <Select :model-value="contentType" @update:model-value="handleContentTypeChange">
-                  <SelectTrigger aria-label="按来源类型筛选">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem
-                      v-for="option in contentTypeOptions"
-                      :key="option.value"
-                      :value="option.value"
-                    >
-                      {{ option.label }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
-
-              <label v-if="settings.showNsfw" class="feed-filter-panel__field">
-                <span>内容分级</span>
-                <Select :model-value="nsfw" @update:model-value="handleNsfwChange">
-                  <SelectTrigger aria-label="按内容分级筛选">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem
-                      v-for="option in nsfwOptions"
-                      :key="option.value"
-                      :value="option.value"
-                    >
-                      {{ option.label }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
-
-              <label v-if="!subscriptionId" class="feed-filter-panel__toggle">
-                <span>
-                  <strong>特别关注</strong>
-                  <small>只显示特别关注频道的视频</small>
-                </span>
-                <Switch
-                  :model-value="special === 'yes'"
-                  aria-label="只显示特别关注频道的视频"
-                  @update:model-value="handleSpecialChange"
-                />
-              </label>
-            </div>
-          </div>
+            <label
+              v-if="!subscriptionId"
+              class="app-filter-toggle"
+              :class="{ 'is-active': special === 'yes' }"
+            >
+              <span class="app-filter-toggle__copy">
+                <span class="app-filter-toggle__title">特别关注</span>
+                <span class="app-filter-toggle__hint">仅特别关注频道</span>
+              </span>
+              <Switch
+                :model-value="special === 'yes'"
+                aria-label="只显示特别关注频道的视频"
+                @update:model-value="handleSpecialChange"
+              />
+            </label>
+          </AppFilterPanel>
         </PopoverContent>
       </Popover>
 
@@ -172,7 +137,7 @@
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent class="min-w-36 rounded-md border-border/60 bg-popover shadow-lg">
+          <SelectContent class="min-w-36">
             <SelectItem
               v-for="opt in sortOptions"
               :key="opt.value"
@@ -227,6 +192,10 @@ import { ref, computed, watch, onMounted } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
+import AppFilterChips from '@/shared/components/layout/AppFilterChips.vue'
+import AppFilterOptionList from '@/shared/components/layout/AppFilterOptionList.vue'
+import AppFilterPanel from '@/shared/components/layout/AppFilterPanel.vue'
+import AppFilterSection from '@/shared/components/layout/AppFilterSection.vue'
 import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import type { TimeRange, Duration, ContentType } from '@/features/video/composables/useFeedFilters'
 import { useSites } from '@/features/video/composables/useSites'
@@ -301,25 +270,48 @@ onMounted(async () => {
 const localActiveTab = ref(props.activeTab)
 const localSortBy = ref(props.sortBy)
 
-const handleSiteChange = (value: unknown) => {
-  emit('update:site', value === 'all' ? '' : String(value))
+const handleSiteChange = (value: string) => {
+  emit('update:site', value === 'all' ? '' : value)
 }
 
-const handleTimeRangeChange = (value: unknown) => {
-  emit('update:timeRange', String(value) as TimeRange)
+const handleTimeRangeChange = (value: string) => {
+  emit('update:timeRange', value as TimeRange)
 }
 
-const handleDurationChange = (value: unknown) => {
-  emit('update:duration', String(value) as Duration)
+const handleDurationChange = (value: string) => {
+  emit('update:duration', value as Duration)
 }
 
-const handleContentTypeChange = (value: unknown) => {
-  emit('update:contentType', String(value) as ContentType)
+const handleContentTypeChange = (value: string) => {
+  emit('update:contentType', value as ContentType)
 }
 
-const handleNsfwChange = (value: unknown) => {
-  emit('update:nsfw', String(value))
+const handleNsfwChange = (value: string) => {
+  emit('update:nsfw', value)
 }
+
+const SITE_SHORT_LABELS: Record<string, string> = {
+  bilibili: 'B站',
+  youtube: '油管',
+  javdb: 'JavDB',
+  pornhub: 'PH',
+  youporn: 'YP',
+}
+
+const siteFilterOptions = computed(() => [
+  {
+    value: 'all',
+    label: '全部来源',
+    shortLabel: '全部',
+    iconUrl: null as string | null,
+  },
+  ...(siteOptions.value ?? []).map((option) => ({
+    value: option.value,
+    label: option.label,
+    shortLabel: SITE_SHORT_LABELS[option.value.toLowerCase()] || option.label,
+    iconUrl: option.iconUrl ?? null,
+  })),
+])
 
 const handleSpecialChange = (value: boolean) => {
   emit('update:special', value ? 'yes' : 'all')
@@ -416,30 +408,6 @@ const viewModeOptions = [
   margin-left: auto;
 }
 
-.feed-toolbar__filter {
-  gap: 0.4rem;
-  color: hsl(var(--muted-foreground) / 0.84);
-  font-size: 0.75rem;
-}
-
-.feed-toolbar__filter.is-active {
-  border-color: hsl(var(--foreground) / 0.1);
-  background: hsl(var(--foreground) / 0.045);
-  color: hsl(var(--foreground) / 0.82);
-}
-
-.feed-toolbar__filter-count {
-  display: grid;
-  min-width: 1rem;
-  height: 1rem;
-  place-items: center;
-  border-radius: 999px;
-  background: hsl(var(--foreground) / 0.08);
-  color: hsl(var(--foreground) / 0.72);
-  font-size: 0.5625rem;
-  line-height: 1;
-}
-
 .feed-toolbar__group {
   display: flex;
   flex: 0 1 auto;
@@ -455,82 +423,25 @@ const viewModeOptions = [
   background: var(--app-hairline);
 }
 
-.feed-filter-panel {
-  padding: var(--space-4);
-}
-
-.feed-filter-panel__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding-bottom: var(--space-4);
-}
-
-.feed-filter-panel__header > div {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.feed-filter-panel__header strong {
-  color: hsl(var(--foreground));
-  font-size: 0.8125rem;
-  font-weight: 650;
-}
-
-.feed-filter-panel__header span {
-  color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
-}
-
-.feed-filter-panel__fields {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.feed-filter-panel__field {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.feed-filter-panel__field > span {
-  color: hsl(var(--muted-foreground) / 0.82);
-  font-size: 0.6875rem;
-  font-weight: 600;
-}
-
-.feed-filter-panel__site-option {
+.feed-filter-all-icon {
   display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: center;
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground) / 0.9);
 }
 
-.feed-filter-panel__toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  border-top: 1px solid var(--app-hairline);
-  padding-top: var(--space-4);
+.feed-filter-all-icon :deep(svg) {
+  width: 0.8125rem;
+  height: 0.8125rem;
 }
 
-.feed-filter-panel__toggle > span {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.feed-filter-panel__toggle strong {
-  color: hsl(var(--foreground) / 0.9);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.feed-filter-panel__toggle small {
-  color: hsl(var(--muted-foreground) / 0.68);
-  font-size: 0.6875rem;
+.feed-filter-range {
+  display: grid;
+  gap: 0.35rem;
 }
 </style>

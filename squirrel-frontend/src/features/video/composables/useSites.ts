@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { getSiteCatalog, getSites, saveSites } from '@/shared/api'
 import type { SiteOption, SitesResponse } from '@/features/video/types/sites'
+import { resolveServerAssetUrl } from '@/shared/lib/serverConfig'
 
 type SiteSlug = string
 type SiteCatalogPayloadItem = {
@@ -27,7 +28,14 @@ export async function fetchSites() {
     for (const site of data?.sites || []) {
       const slug = site.site_name || site.name
       if (slug && site.config_enabled !== false) {
-        opts.push({ value: slug, label: site.label || slug })
+        const rawIcon = typeof site.icon_url === 'string' && site.icon_url.trim()
+          ? site.icon_url.trim()
+          : `/api/sites/${encodeURIComponent(String(slug).toLowerCase())}/icon`
+        opts.push({
+          value: slug,
+          label: site.label || slug,
+          iconUrl: resolveServerAssetUrl(rawIcon),
+        })
       }
     }
     cached.value = opts

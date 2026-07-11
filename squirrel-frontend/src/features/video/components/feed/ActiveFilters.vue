@@ -1,14 +1,14 @@
 <template>
-  <div v-if="activeChips.length > 0" class="flex min-w-0 flex-wrap items-center gap-2">
-    <span class="shrink-0 text-xs font-medium text-muted-foreground">已筛选</span>
-    <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+  <div v-if="activeChips.length > 0" class="active-filters" aria-label="已启用的筛选条件">
+    <span class="active-filters__label">已筛选</span>
+    <div class="active-filters__chips">
       <Button
         v-for="chip in activeChips"
         :key="chip.key"
         type="button"
         variant="outline"
         size="xs"
-        class="app-filter-button max-w-[12rem] hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+        class="app-toolbar-chip app-toolbar-chip--active active-filters__chip"
         :title="`移除 ${chip.label} 筛选`"
         @click="$emit('remove', chip.key)"
       >
@@ -19,6 +19,7 @@
         type="button"
         variant="ghost"
         size="xs"
+        class="active-filters__clear"
         @click="$emit('clearAll')"
       >
         清除
@@ -90,3 +91,47 @@ const activeChips = computed(() => {
   return chips
 })
 </script>
+
+<style scoped>
+.active-filters {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.active-filters__label {
+  flex-shrink: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.active-filters__chips {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.active-filters__chip {
+  max-width: 12rem;
+}
+
+.active-filters__chip:hover {
+  border-color: hsl(var(--destructive) / 0.3);
+  background: hsl(var(--destructive) / 0.08);
+  color: hsl(var(--destructive));
+}
+
+.active-filters__clear {
+  color: hsl(var(--muted-foreground));
+  font-weight: 600;
+}
+
+.active-filters__clear:hover {
+  color: hsl(var(--foreground));
+}
+</style>

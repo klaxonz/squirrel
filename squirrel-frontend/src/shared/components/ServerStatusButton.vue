@@ -203,7 +203,8 @@ const handleTest = async () => {
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
-  background: hsl(var(--primary));
+  /* Configured endpoint present — operational readiness, not brand accent. */
+  background: hsl(var(--success));
   box-shadow: 0 0 0 2px hsl(var(--card) / 0.9);
 }
 
@@ -258,8 +259,8 @@ const handleTest = async () => {
 }
 
 .server-status-popover__state--ok {
-  /* Brand amber for the "connected" pill — see note on the trigger dot above. */
-  color: hsl(var(--primary));
+  /* Healthy / configured — success semantic (DESIGN §2), not primary brand. */
+  color: hsl(var(--success));
 }
 .server-status-popover__state--idle {
   color: hsl(var(--muted-foreground));
@@ -331,12 +332,8 @@ const handleTest = async () => {
 }
 
 .server-status-popover__feedback--ok {
-  /* Match the brand-amber language of the trigger dot and state pill. Using
-     --primary here (instead of --success green) keeps the entire popover on
-     one chromatic axis so the connected state reads as "you belong here",
-     not "a system event happened". */
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--success));
+  background: hsl(var(--success) / 0.1);
 }
 
 .server-status-popover__feedback--err {

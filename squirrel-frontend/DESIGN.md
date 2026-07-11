@@ -1,240 +1,431 @@
 ---
 name: Squirrel Frontend
 description: Desktop-first media subscription and playback control surface
-colors:
-  background-dark: "hsl(28 10% 7%)"
-  foreground-dark: "hsl(28 10% 95%)"
-  card-dark: "hsl(28 8% 9%)"
-  sidebar-dark: "hsl(28 8% 8%)"
-  primary-amber-dark: "hsl(28 90% 58%)"
-  muted-foreground-dark: "hsl(28 6% 62%)"
-  border-dark: "hsl(28 7% 16%)"
-  background-light: "hsl(28 30% 99%)"
-  sidebar-light: "hsl(28 22% 96%)"
-  foreground-light: "hsl(28 10% 10%)"
-  card-light: "hsl(0 0% 100%)"
-  primary-amber-light: "hsl(28 88% 50%)"
-  muted-foreground-light: "hsl(28 5% 42%)"
-  border-light: "hsl(28 12% 89%)"
-typography:
-  display:
-    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
-    fontSize: "1.6875rem"
-    fontWeight: 600
-    lineHeight: 1.15
-    letterSpacing: "-0.02em"
-  title:
-    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
-    fontSize: "1.25rem"
-    fontWeight: 600
-    lineHeight: 1.25
-    letterSpacing: "-0.015em"
-  body:
-    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
-    fontSize: "0.875rem"
-    fontWeight: 400
-    lineHeight: 1.5
-    letterSpacing: "0"
-  label:
-    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
-    fontSize: "0.8125rem"
-    fontWeight: 600
-    lineHeight: 1.25
-    letterSpacing: "0"
-  mono:
-    fontFamily: "JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-rounded:
-  sm: "4px"
-  md: "6px"
-  lg: "8px"
-  xl: "10px"
-spacing:
-  xs: "0.25rem"
-  sm: "0.5rem"
-  md: "1rem"
-  lg: "1.5rem"
-  xl: "2rem"
-components:
-  button-primary:
-    backgroundColor: "{colors.primary-amber-dark}"
-    textColor: "hsl(28 10% 6%)"
-    rounded: "{rounded.md}"
-    padding: "0.5rem 1rem"
-    height: "2.25rem"
-  button-ghost:
-    backgroundColor: "transparent"
-    textColor: "{colors.muted-foreground-dark}"
-    rounded: "{rounded.md}"
-    padding: "0.5rem 1rem"
-    height: "2.25rem"
-  input-default:
-    backgroundColor: "{colors.card-dark}"
-    textColor: "{colors.foreground-dark}"
-    rounded: "{rounded.md}"
-    padding: "0.5rem 0.75rem"
-    height: "2.25rem"
-  card-default:
-    backgroundColor: "{colors.card-dark}"
-    textColor: "{colors.foreground-dark}"
-    rounded: "{rounded.lg}"
-    padding: "1rem"
-  badge-status:
-    backgroundColor: "hsl(28 90% 58% / 0.10)"
-    textColor: "{colors.primary-amber-dark}"
-    rounded: "{rounded.md}"
-    padding: "0.125rem 0.5rem"
+source_of_truth:
+  tokens: src/shared/styles/layout.css
+  themes: src/shared/styles/themes/dark.css
+  primitives: src/shared/ui/**
+  layout_primitives: src/shared/components/layout/**
 ---
 
-# Design System: Squirrel Frontend
+# Squirrel 前端设计规格
 
-## 1. Overview
+本文档是**可执行规格**，不是愿景散文。  
+冲突时以代码中的 CSS 变量与共享组件为准，并回写本文档；禁止在业务页发明第二套视觉语言。
 
-**Creative North Star: "The Private Media Operations Desk"**
+| 权威来源 | 路径 |
+|---------|------|
+| 布局 / 密度 / z-index / motion / 共享 class | `src/shared/styles/layout.css` |
+| 明暗色板 | `src/shared/styles/themes/dark.css`（含 `.light`） |
+| 基础组件 | `src/shared/ui/**` |
+| 布局与模式组件 | `src/shared/components/layout/**` |
 
-Squirrel's target interface is a desktop-first control surface for a personal media archive. The current codebase provides product structure, route boundaries, reusable components, and technical tokens; it is not automatically the visual ideal. When current UI choices feel cramped, decorative, inconsistent, or weak in hierarchy, redesign them instead of preserving them.
+---
 
-The target system borrows the viewing comfort of a dark media library and the precision of an operations console: quiet chrome, clear state, dense but calm navigation, and media content as the visual anchor. Amber is the identity color and should appear on primary actions, selected state, focus, playback emphasis, and status accents. Surfaces stay close to the background so thumbnails, lists, runtime health, and playback controls remain readable.
+## 1. 产品界面定位
 
-**Key Characteristics:**
-- Desktop app shell with fixed title bar, sidebar, header, scroll root, and persistent playback surfaces.
-- Dark-first amber-on-warm-neutral theme with a light mode that preserves the same hue axis.
-- Dense task UI using compact controls, visible keyboard focus, short state motion, and predictable navigation.
-- Media-led content screens supported by operational settings, logs, runtimes, and scheduled-task management.
-- Current implementation is a diagnostic baseline, not a preservation contract.
+**一句话：** 桌面端私人媒体运营台——浏览与播放以媒体为主，订阅/筛选/任务/诊断以可扫描、可操作为主。
 
-## 2. Colors
+**不是：** 流媒体营销页、SaaS 仪表盘模板、移动优先信息流。
 
-The palette runs on one warm amber hue axis: near-black warm neutrals for dark mode, near-white warm neutrals for light mode, and a single saturated amber accent for identity and action.
+**品牌气质：** 安静、电影感、能干。Chrome 收敛，状态清楚，动效短。
 
-### Primary
-- **Archive Amber** (`hsl(28 90% 58%)` dark, `hsl(28 88% 50%)` light): primary buttons, active navigation icons, focus rings, connected status emphasis, brand badge, and rare high-value highlights.
+### 1.1 三类界面（Surface）
 
-### Neutral
-- **Projection Black** (`hsl(28 10% 7%)`): dark-mode app background and main reading surface. The sidebar uses a subtly lifted warm neutral so navigation remains scannable without becoming a floating panel.
-- **Panel Charcoal** (`hsl(28 8% 9%)`): cards, inputs, popovers, and table containers in dark mode.
-- **Warm White** (`hsl(28 30% 99%)`): light-mode background without changing the amber identity.
-- **Muted Ink** (`hsl(28 6% 62%)` dark, `hsl(28 5% 42%)` light): secondary labels, inactive icons, metadata, and placeholder text.
-- **Hairline Warm Border** (`hsl(28 7% 16%)` dark, `hsl(28 12% 89%)` light): dividers, card borders, input strokes, and sidebar separation.
+所有页面先归类，再选密度与强调色。同一路由内可混合（例如视频墙是 Media，顶栏筛选是 Task）。
 
-### Named Rules
+| Surface | 典型页面 | 目标 | 默认密度 | Accent 用量 |
+|---------|----------|------|----------|-------------|
+| **Media** | 视频墙、频道详情、播放器、音乐封面墙 | 缩略图与标题主导 | 内容疏、chrome 轻 | 仅播放/选中/焦点 |
+| **Task** | 订阅、筛选、历史、播放列表、RSS 列表 | 扫描、筛选、批处理 | 工具栏 32px、字段紧凑 | 选中/已筛选/主操作 |
+| **System** | 设置、站点 runtime、定时任务、日志 | 诊断与配置 | 表单 36px、表格可读 | 语义色优先于 brand |
 
-**The Amber Is State Rule.** Use amber for selection, focus, primary action, brand identity, and concrete status. Do not use amber as background decoration.
+**决策：**
 
-**The Thumbnail Wins Rule.** Keep surrounding surfaces restrained so media artwork and thumbnails carry visual richness.
+1. 先定 Surface，再选组件与间距。  
+2. Media 区域禁止堆高对比表单控件抢缩略图。  
+3. Task 浮层（筛选 Popover）用 **dense control（32px）**，不用默认表单 36px。  
+4. System 状态用 `success` / `warning` / `destructive` / `info`，**不要用 primary 表示“健康/在线”**。
 
-**The Current Palette Is Not Sacred Rule.** The existing amber/warm-neutral tokens may be reused because they fit the product, not because they already exist. If a screen fails contrast, hierarchy, or mood, change the application of the tokens rather than copying the old treatment.
+---
 
-## 3. Typography
+## 2. 颜色语义
 
-**Display Font:** Inter with system sans fallbacks
-**Body Font:** Inter with the same system sans fallbacks
-**Label/Mono Font:** JetBrains Mono for logs, ids, counters, and tabular operational values
+色相轴统一为 **H28 暖琥珀**。Dark / Light 只调明度与饱和度，不换色温。  
+值定义在 `themes/dark.css`；业务代码只消费语义 token，不写裸 HSL（品牌徽章渐变等已集中定义的除外）。
 
-**Character:** Inter owns the complete product interface, including headings, controls, dense lists, navigation, labels, and data. Hierarchy comes from size, weight, spacing, and contrast instead of switching to an editorial display face.
+### 2.1 角色表
 
-### Hierarchy
-- **Display** (600, 27px, 1.15): top page headings and primary empty-state titles.
-- **Headline** (600, 20px, 1.25): section headers, settings groups, and major panel headings.
-- **Title** (600, 17px, 1.3): cards, lists, and compact content modules.
-- **Body** (400-500, 14px, 1.5): descriptions, rows, settings copy, and form support text.
-- **Label** (600, 12-13px, no negative tracking): tabs, badges, sidebar labels, buttons, metadata labels, and menu items.
-- **Micro Label** (8-10px): duration badges, timestamps, dense secondary metadata only.
+| Token | 职责 | 允许 | 禁止 |
+|-------|------|------|------|
+| `--background` / `--foreground` | 壳层画布与主文字 | 页面底、正文 | 用 background 当卡片抬升凑层次 |
+| `--sidebar` | 主导航轻微抬升 | 仅主侧栏 | workbench 次栏再铺一层 card |
+| `--card` | 内容块、输入底、列表项表面 | 媒体卡、设置分组、表内表面 | 给 shell 分区“刷存在感” |
+| `--popover` | 浮层表面 | 菜单、筛选面板、下拉 | 与 page 同色无阴影导致“贴死” |
+| `--muted` / `--muted-foreground` | 弱表面与次要信息 | 标签、占位、未激活图标 | 主文案长期用 muted-foreground |
+| `--border` / `--app-hairline` | 结构线 | 分区、输入描边 | 深色下用高对比硬框描整个 shell |
+| `--primary` | **交互强调 + 品牌** | 主按钮、选中、已筛选、焦点环、播放强调 | 成功/失败/告警；大面积装饰底 |
+| `--ring` | 键盘焦点 | focus-visible | 当装饰描边滥用 |
+| `--destructive` | 破坏性 | 删除、不可恢复错误 | 普通警告 |
+| `--success` | 健康/成功 | 连接正常、任务成功 | 品牌装饰 |
+| `--warning` | 需注意 | 降级、重试、部分失败 | 与 primary 混用表“选中” |
+| `--info` | 中性信息 | 提示性状态 | 替代 primary 选中 |
 
-### Named Rules
+### 2.2 Primary（琥珀）硬规则
 
-**The Product Type Rule.** Use fixed rem sizes for product UI. Avoid fluid type on app surfaces; density and stability matter more than dramatic scaling.
+```
+primary 仅用于：
+  - 主行动（Primary Button）
+  - 明确的选中 / 已启用筛选 / 当前导航强调
+  - focus ring（与 --ring 一致）
+  - 播放相关高亮、品牌徽章
 
-**The Unified Product Type Rule.** Use the shared Inter stack for headings and body copy. Do not introduce a separate display face; create hierarchy with the established type scale and weights.
+primary 不得用于：
+  - “服务正常 / 同步成功”等运维语义（改 success）
+  - 大面积背景洗色
+  - 每个图标默认色
+```
 
-**The Existing Heading Scale Is A Starting Point Rule.** Keep the current scale only where it produces clear hierarchy. If a page looks visually flat or cramped, redesign the hierarchy first; do not normalize the flaw into new screens.
+**已筛选 / 工具栏激活：** `border primary/0.22` + `bg primary/0.08` + 计数角标 `primary` 字色。  
+**未激活 chrome：** `muted-foreground`，不要为了“好看”提对比。
 
-## 4. Elevation
+### 2.3 Light 模式补充
 
-Squirrel uses a hybrid of tonal layering and small structural shadows. Resting surfaces rely on background, border, and subtle tonal contrast. Shadows appear for popovers, hover lift, brand badges, and transient overlays where depth clarifies stacking.
+- 浮层（popover/dropdown）依赖 **边框 + `--app-floating-shadow`**，不能只靠与页面同色的白底。  
+- Light 下 hairline 本身更明显，少叠加重阴影；Dark 下阴影可略强以分层。  
+- Primary 在 Light 为 `28 88% 50%`，字色用 `--primary-foreground`（白），保证按钮对比。
 
-### Shell Canvas
+---
 
-The desktop shell is **one continuous canvas**, not a stack of floating cards.
+## 3. 字体
 
-- Title bar, workspace, workbench secondary panes, page headers, and toolbars rest on `--background` (or transparent over it). The primary sidebar may use the quiet `--sidebar` tint to distinguish persistent navigation.
-- Regional hierarchy is hairline borders only (`--app-hairline` / sidebar border). Do not tint secondary panes with `--card` to invent depth.
-- No outer frame padding + gap that turns sidebar and workspace into two floating islands.
-- No full border + radius + panel shadow on shell chrome. Those treatments are reserved for true overlays (menus, dialogs, popovers) and media item cards.
+**UI 字体：** Inter + 系统 fallback（`--font-sans` / 产品界面统一）。  
+**等宽：** JetBrains Mono（日志、ID、计数、`--app-mono` / `.app-mono`）。
 
-### Shadow Vocabulary
-- **Surface Hairline** (`0 1px 2px hsl(var(--foreground) / 0.04)`): tables and small resting content surfaces — not shell regions.
-- **Primary Button Lift** (`0 1px 2px hsl(var(--primary)/0.3), 0 0 0 1px hsl(var(--primary)/0.5) inset`): primary action at rest.
-- **Primary Button Hover** (`0 2px 8px hsl(var(--primary)/0.35)`): primary action hover only.
-- **Popover Lift** (`0 8px 24px hsl(var(--foreground) / 0.14), 0 24px 56px hsl(var(--foreground) / 0.10)`): menus, search suggestions, and dropdowns.
-- **Brand Glow** (`0 8px 24px hsl(var(--primary) / 0.32)` plus hairline): brand badge only.
+**层级只用字号 / 字重 / 对比，不引入第二套展示字体。**
 
-### Named Rules
+| 级别 | Token / 规格 | 用途 |
+|------|----------------|------|
+| Hero | `--app-hero-size` 1.75rem / 650 | 极少：登录或空状态主标题 |
+| H1 | `--app-h1-*` 1.6875rem / 600 | 页面主标题 |
+| H2 | `--app-h2-*` 1.25rem / 600 | 区块、设置分组 |
+| H3 | `--app-h3-*` 1.0625rem / 600 | 卡片标题、模块名 |
+| H4 | `--app-h4-*` 0.875rem / 600 | 紧凑模块标题 |
+| Body | 0.875rem / 400–500 | 正文、列表行、说明 |
+| Label | 0.75–0.8125rem / 600 | Tab、侧栏、按钮、字段标签 |
+| Micro | 0.625–0.6875rem / 500–600 | 时长角标、筛选计数、次要元数据 |
 
-**The Single Canvas Rule.** Shell regions remain flush and structurally continuous. A subtle sidebar tint is allowed, but split structure still comes from alignment and hairlines rather than nested cards, inset panels, or dual floating columns.
+**规则：**
 
-**The Flat Until It Moves Rule.** Keep cards and panels nearly flat at rest. Use elevation to explain overlays, focus, hover, or brand identity, not to decorate every container.
+- 产品 UI 使用固定 rem，不做流体大标题。  
+- 同一工具栏内字号不超过两档（通常 12px 控件 + 11px 元数据）。  
+- 筛选字段标签：`0.6875rem / 600`；面板标题：`0.8125rem / 650`。
 
-**The Effects Must Justify Themselves Rule.** Existing blur, noise, glow, backdrop filters, and cinematic treatments are allowed only when they improve readability, depth, or media focus. Remove them when they make the product feel ornamental.
+---
 
-## 5. Components
+## 4. 间距、圆角、控件高度
 
-### Buttons
-- **Shape:** compact rounded rectangles using `--radius-md` (`6px`); icon buttons may be square or full-pill only when the control is circular by affordance.
-- **Primary:** amber background with primary foreground, 36px default height, 14px semibold text, subtle inset outline and hover glow.
-- **Secondary / Outline:** neutral tonal surfaces or transparent backgrounds with border emphasis; use when the action is not the next obvious step.
-- **Ghost:** muted text at rest, accent background on hover, foreground text on hover.
-- **States:** disabled opacity is 40%; active press scales to `0.985`; focus uses a ring bound to `--ring`.
+### 4.1 Spacing
 
-### Inputs / Fields
-- **Style:** 36px height, `--radius-md`, card background, input border, 14px text, 12px horizontal padding.
-- **Focus:** border shifts to `--ring` with a low-alpha ring; do not replace it with only color or glow.
-- **Search:** global search is a compact command/search hybrid with optional local/remote scope toggle, recent searches, suggestions, and `Cmd/Ctrl+K` focus behavior.
+使用 `--space-0` … `--space-9`（见 `layout.css`）。  
+页面槽：`--app-page-gutter*`；内容底距：`--app-content-padding-bottom`。
 
-### Cards / Containers
-- **Corner Style:** `--radius-lg` (`8px`) for app surfaces and `--radius-xl` (`10px`) for richer media cards.
-- **Background:** `--card` or muted surface layers; no nested card shells unless the inner element is a real repeated item.
-- **Border:** `border-border/60` or `--app-surface-border`; use hairlines for structure.
-- **Internal Padding:** default `1rem`, wider only for empty states or detail surfaces.
+| 场景 | 建议 |
+|------|------|
+| 控件内 gap | `--space-2`（8px） |
+| 表单字段纵向 | `--space-3`–`--space-4`；**筛选 Popover 内字段 gap = 12px（0.75rem）** |
+| 区块之间 | `--space-5`–`--space-6` |
+| 媒体网格 | `--app-video-grid-gap*` |
 
-### Badges / Chips
-- **Style:** compact rounded-md pill-like labels with 1px border, 12px text, and low-alpha state backgrounds.
-- **State:** status variants use success, warning, destructive, or amber with text plus context; never rely on color alone.
+### 4.2 Radius
 
-### Navigation
-- **System title bar:** owns shell-level navigation controls: sidebar visibility, application back, application forward, and window controls. These actions do not belong inside page headers or sidebar content.
-- **Sidebar:** fixed `15rem` desktop rail that never resizes, reflows, or changes its internal menu geometry. Sidebar visibility is controlled by the workspace layer: expanded state positions the workspace at the rail's right edge; collapsed state moves the opaque workspace to `left: 0`, progressively covering the stationary rail. Covered sidebar content is inert and removed from the accessibility tree. Brand sits at the top, home is the immediate navigation entry, grouped navigation scrolls as one list, and settings stays fixed at the bottom. Search remains a header-level global action and is not duplicated in the sidebar.
-- **Workspace:** continuous with the shell background. No outer card frame, radius, or panel shadow around the main content column.
-- **Workbench panes:** secondary sidebars (订阅频道, 播放列表, RSS entry list, settings nav) stay transparent on the same canvas; only a vertical hairline divides list from content.
-- **Header:** fixed height with current page title, contextual search, and user entry point. Flat `--background`, single bottom hairline. It should not repeat breadcrumbs already represented by the sidebar.
-- **History:** back and forward behavior stays application-bounded through keyboard, mouse, and contextual page controls; never expose browser history as product navigation.
-- **Tabs / Segmented Controls:** use shared `Tabs` / `TabsList` / `TabsTrigger` or `AppSegmentedControl`. Compact height, secondary track, active card surface, focus-visible ring. Do not invent a third tab look per feature.
+| Token | 值 | 用途 |
+|-------|-----|------|
+| `--radius-sm` | 4px | 控件内 item、小芯片 |
+| `--radius-md` / `--radius` | 6px | 按钮、输入、Select、Toolbar 控件 |
+| `--radius-lg` | 8px | 面板、Popover、Dialog 外壳 |
+| `--radius-xl` / `--app-card-radius` | 10px | 媒体卡片 |
 
-### Skeletons
-- **Style:** `AppSkeleton` is the single placeholder primitive. Use `--app-skeleton-base`, `--app-skeleton-shimmer`, and `--app-skeleton-radius`.
-- **Motion:** shimmer is acceptable for list/grid loading. Respect reduced motion when adding new animated placeholders.
+### 4.3 控件高度（Density）
 
-### Dialogs / Popovers
-- **Role:** use for focused confirmation, command-like selection, search suggestions, and runtime detail. Prefer inline/progressive controls before adding a modal.
-- **Stacking:** use the z-index tokens: dropdown, popover, sheet, dialog, toast, player overlay.
+| 名称 | 高度 | 使用场景 |
+|------|------|----------|
+| **Dense** | 32px（`h-8`） | 工具栏、筛选 Popover 内 Select、分段控件、图标按钮 sm |
+| **Default** | 36px（`h-9`） | 设置表单、对话框主字段、侧栏项（`--sidebar-item-height`） |
+| **Comfort** | 40px（`h-10`） | 少用：强调主 CTA、空状态按钮 |
 
-## 6. Do's and Don'ts
+**禁止：** Task 型 Popover 内继续用 Default 36px 堆出“表单草稿”感。
 
-### Do:
-- **Do** preserve the desktop-first shell: title bar, sidebar, app header, scroll root, and persistent playback surfaces.
-- **Do** reuse existing CSS variables and Tailwind token mappings when they support the target design.
-- **Do** change or remove existing visual treatments when they encode the current design problem.
-- **Do** keep media thumbnails and titles visually dominant on content screens.
-- **Do** show concrete runtime/auth/download/log state with useful next actions.
-- **Do** keep transitions short: 120ms for control feedback, 180ms for page/panel transitions, 240ms for larger surfaces.
-- **Do** verify keyboard focus on every custom interactive element.
+---
 
-### Don't:
-- **Don't** add mobile-first breakpoints unless the task explicitly asks for mobile behavior.
-- **Don't** float the sidebar and workspace as separate padded cards with gap, radius, and panel shadow.
-- **Don't** tint workbench/secondary panes with `--card` just to mark regions; hairlines are enough.
-- **Don't** use decorative gradient text, glassmorphism, diagonal stripes, or generic dashboard hero metrics.
-- **Don't** create colored side-stripe cards or alert stripes; use full borders, icons, badges, or semantic copy.
-- **Don't** make inactive UI saturated or high contrast; reserve emphasis for current state and action.
-- **Don't** hide broken server, runtime, auth, or media states behind generic fallback copy.
-- **Don't** introduce a new component vocabulary when `Button`, `Input`, `Badge`, `Card`, `AppSkeleton`, tabs, sidebar items, or existing layout primitives already cover the need.
-- **Don't** treat existing pages as approved references. Use them to understand flow and constraints, then redesign the broken hierarchy, spacing, density, copy, and component behavior directly.
+## 5. 层级与阴影
+
+### 5.1 壳层：单画布
+
+- Title bar、主工作区、页头、工具栏：落在 `--background`（或透明叠在其上）。  
+- 主侧栏：可用 `--sidebar` 轻抬升；**次栏（订阅列表、RSS 列表、设置 nav）透明 + 竖向 hairline**。  
+- **禁止** 侧栏与工作区做成两块带 gap/圆角/投影的浮岛。  
+- Shell 分区只用 `--app-hairline` / border，不用 `--card` 刷分区。
+
+### 5.2 阴影词汇
+
+| Token | 用途 |
+|-------|------|
+| `--app-surface-shadow` | 轻表面（表格壳等），非 shell |
+| `--app-panel-shadow` | 中等面板 |
+| `--app-floating-shadow`（Tailwind `shadow-popover`） | 菜单、筛选 Popover、下拉 |
+| `--app-overlay-shadow` | Dialog / 重浮层 |
+| `--brand-glow` / `--brand-glow-sm` | **仅品牌徽章** |
+
+**规则：** 静止内容尽量靠色阶 + hairline；阴影只解释 **叠层、hover 抬起、品牌**。
+
+### 5.3 Z-index
+
+严格使用：`--z-content` → `--z-sticky` → `--z-header` → `--z-sidebar` → `--z-dropdown` → `--z-popover` → `--z-sheet` → `--z-dialog` → `--z-toast` → `--z-player-overlay`。  
+禁止业务魔法数。
+
+---
+
+## 6. 动效
+
+| Token | 值 | 用途 |
+|-------|-----|------|
+| `--duration-fast` | 120ms | hover、focus、Tab、开关 |
+| `--duration-base` | 180ms | 面板显隐、页内过渡 |
+| `--duration-slow` | 240ms | 大表面 |
+| `--ease-default` / `--ease-out` | 见 layout.css | 标准 / 进入 |
+
+- 尊重 `prefers-reduced-motion`。  
+- 按压：`scale(0.985)`；禁用：`opacity: 0.4`（与 `--app-field-disabled-opacity` 一致）。
+
+---
+
+## 7. 组件规格
+
+优先复用 `src/shared/ui` 与 `layout` 组件，**先找再造**。
+
+### 7.1 Button
+
+| Variant | 何时用 |
+|---------|--------|
+| `default`（primary） | 页内唯一主行动：保存、添加、确认 |
+| `outline` / `secondary` | 次行动 |
+| `ghost` | 工具栏、次要、图标+文字弱操作 |
+| `destructive` | 删除等不可逆 |
+| `link` | 行内文字链 |
+
+- 形状：`--radius-md`；Default 高 36px；工具栏常用 `size="sm"`（32px）。  
+- 焦点：`ring-2` + `--ring`；不要只改颜色无 ring。
+
+### 7.2 Input / Select / Textarea
+
+- 共享字段表面：`--app-field-bg`、`--app-field-border` 等。  
+- Default 高 36px；**Toolbar / Filter 内 Select 用 Dense 32px + `text-xs`**。  
+- Focus：border → ring，保留 ring，不用纯 glow 替代。
+
+### 7.3 开关 Switch
+
+- 用于二元且立即生效的偏好（如「仅特别关注」）。  
+- 与说明文案组成 **toggle 行**（见 Pattern：Filter Popover），不要裸开关落在字段堆底部。
+
+### 7.4 Tabs / Segmented
+
+- 只用 `Tabs*` 或 `AppSegmentedControl`。  
+- 紧凑轨 + 激活表面；禁止每页自绘第三种 Tab。
+
+### 7.5 Badge / Chip
+
+- 小圆角、1px 边、12px 字、低透明底。  
+- 状态：文案 + 色，不只靠色。  
+- 可移除筛选 Chip：outline + hover 可走向 destructive 提示。
+
+### 7.6 Card / 媒体卡
+
+- 应用表面 `--radius-lg`；媒体卡 `--radius-xl`。  
+- 不嵌套“卡片套卡片”，除非内层是重复列表项。
+
+### 7.7 Skeleton / Spinner / Toast / Empty
+
+- Skeleton：仅 `AppSkeleton` + `--app-skeleton-*`。  
+- Spinner：`--app-spinner-size-*`。  
+- Toast：全局底右，`--z-toast`，语义分 success/error/info。  
+- Empty：`AppEmptyState`；说明真实原因与下一步，禁止假数据遮丑。
+
+### 7.8 Dialog / Popover / Menu
+
+| 容器 | 用途 |
+|------|------|
+| Menu / Dropdown | 动作列表、排序短选项 |
+| Popover | 筛选、状态摘要、轻量多字段 |
+| Dialog | 确认、长表单、导入流程 |
+| Sheet | 少用；需要时走 `--z-sheet` |
+
+优先 **inline / Popover**，再 Modal。  
+浮层 class：圆角 lg、border、`bg-popover`、`shadow-popover`。
+
+---
+
+## 8. 壳层与导航
+
+### 8.1 桌面壳
+
+固定结构：**Title bar → 主侧栏 → 顶栏（标题/搜索/用户）→ 滚动根 → 持久播放相关表面**。
+
+- 前进/后退：应用级历史，不暴露浏览器历史心智。  
+- 搜索：全局在顶栏（含 `Cmd/Ctrl+K`），不在侧栏重复一套。  
+- 侧栏宽：`--sidebar-expanded-width`（15rem），**不随页面改几何**。  
+- 折叠：工作区遮盖侧栏；被遮盖内容 `inert` 且移出 a11y 树。
+
+### 8.2 Workbench
+
+订阅 / 播放列表 / RSS / 设置等：**左列表 + 右内容**，中间一条竖线，次栏不铺 card 底。
+
+### 8.3 页头与工具栏
+
+- 页头：扁、底 hairline、不重复侧栏面包屑。  
+- 工具栏控件：统一 `app-toolbar-control` / `app-toolbar-select-trigger` / `app-toolbar-icon-button`。  
+- 组间可用 1px 竖线分隔（高约 16px）。
+
+---
+
+## 9. 交互模式（Patterns）
+
+模式比单组件更重要。新功能先对模式，再填字段。
+
+### 9.1 Toolbar Filter Popover（筛选）
+
+**何时用：** 2 个以上筛选维度，或维度会按上下文显隐（来源 / 时间 / 时长 / 类型 / 分级 / 特别关注）。
+
+**交互原则（重要）：**
+
+- 筛选在 **同一 Popover 内完成选择**，**禁止** 再叠一层 Select 下拉（嵌套浮层难看、难扫、易被遮挡）。
+- 少选项（≤6）用 **Chip 单选行**；带图标的长列表（站点）用 **面板内 OptionList**。
+- 筛选即时生效，无「应用」按钮；条件数 > 0 显示「重置」。
+
+**结构（必须）：**
+
+```
+PopoverContent（约 17.25rem，p-0，shadow-popover，overflow hidden）
+└── AppFilterPanel
+    ├── header：eyebrow「筛选」+ 计数 + 重置
+    └── body
+        ├── 来源 → AppFilterOptionList（3 列图标磁贴 + 短标签 + 角标 check）
+        ├── 范围 → 时间 / 时长 两行（layout=row，标签左 + chip 轨右）
+        ├── 类型 / 分级 → 次级 row chip
+        └── 特别关注 → 底部分隔 + Switch
+```
+
+**实现锚点：**
+
+| 部件 | 组件 / class |
+|------|----------------|
+| 壳 | `AppFilterPanel` |
+| 分区 | `AppFilterSection`（`layout="row"` 用于条件轨） |
+| Chip | `AppFilterChips` |
+| 站点 | `AppFilterOptionList` 磁贴网格 + `SiteIcon` |
+| 开关 | `.app-filter-toggle` |
+| 触发器 | `.app-filter-toolbar-button` |
+
+**视觉：**
+
+- 站点选中：**白底抬起 + 中性描边 + 角标勾**，禁止 primary 整行洗色。  
+- 条件轨：左短标签、右 segmented，避免三块同构「大段表单」。  
+- 图标：`/api/sites/{slug}/icon` + `resolveServerAssetUrl`；失败用品牌 monogram。
+
+**不要：**
+
+- Popover 内堆 `Select` / `SelectTrigger` 做筛选维度  
+- 长列表 + 散落 pill 的伪表单堆砌  
+- 与排序、视图切换混在一个 Popover  
+- 用无效 prop 导致站点图标全部 fallback
+
+**有已选条件时：** 内容区可用 `ActiveFilters` Chip 回显；Chip 移除单项，面板「重置」清全部。
+
+### 9.2 排序 vs 筛选
+
+- **筛选：** 缩小集合（来源、时间、时长…）→ Filter Popover。  
+- **排序：** 不缩小集合 → 工具栏独立 Select，不要塞进筛选面板。
+
+### 9.3 媒体网格
+
+- `.app-video-grid` / `--feed` / `--compact`；用 `--app-grid-min` 调密度。  
+- 不要每页手写 `grid-cols-1 sm:… 3xl:…` 长链。
+
+### 9.4 空态 / 错态 / 加载
+
+| 状态 | 要求 |
+|------|------|
+| Loading | 区域级 Skeleton 或 Block loader，避免整页无意义闪白 |
+| Empty | 标题 + 原因 + 可行动作（清空筛选 / 去添加） |
+| Error | 具体错误与重试；禁止“出了点问题”掩盖 runtime/auth |
+
+### 9.5 运维状态
+
+连接、同步、任务结果：`success` / `warning` / `destructive` + 文案（及可选图标）。  
+**在线/健康 ≠ primary。**
+
+---
+
+## 10. 无障碍
+
+- 目标 **WCAG 2.1 AA** 对比度。  
+- 自定义控件必须有可见 `:focus-visible`。  
+- 状态不只靠颜色（辅以文字、图标、角标）。  
+- 图标按钮要有 `aria-label` / `title`。  
+- 筛选触发器在激活时应反映数量（如 `aria-label="筛选，已启用 N 项"`）。
+
+---
+
+## 11. 决策树（速查）
+
+```
+新 UI 需求
+  ├─ 改壳层结构？ → 否：保持单画布；是：先改 layout 规范再改页面
+  ├─ 需要强调色？
+  │    ├─ 主行动 / 选中 / 已筛选 / 焦点 → primary
+  │    ├─ 成功 / 健康 → success
+  │    ├─ 警告 → warning
+  │    └─ 危险 → destructive
+  ├─ 多条件筛选？ → Pattern 9.1 AppFilterPanel，禁止页内私有 panel 样式
+  ├─ 仅排序？ → 工具栏 Select，不进筛选
+  ├─ 控件高度？
+  │    ├─ 工具栏 / 筛选浮层 → 32px
+  │    └─ 设置表单 / 对话框 → 36px
+  ├─ 已有 Button/Input/Select/Tabs/AppSkeleton/AppEmptyState/AppFilterPanel？
+  │    └─ 有则复用，禁止平行组件
+  └─ 现有页面很丑？
+       └─ 按本规格重做该 Surface/Pattern，不复制错误当规范
+```
+
+---
+
+## 12. 明确禁止
+
+1. 移动优先断点堆叠（除非需求显式要求移动端）。  
+2. 侧栏 + 工作区双浮岛（padding + gap + 双圆角阴影）。  
+3. workbench 次栏 `--card` 刷底。  
+4. 装饰性大渐变字、无意义 glass、斜线纹理、仪表盘假指标。  
+5. 色条侧边告警卡（用全边框 + 图标 + 文案）。  
+6. 未激活 UI 高饱和、高对比。  
+7. 用 primary 表示“正常/已连接”。  
+8. 业务页私有筛选面板样式（必须 `AppFilterPanel` + `app-filter-*`）。  
+9. 新 z-index / 新 spacing 刻度不进 `layout.css`。  
+10. 用假 UI 掩盖缺数据、runtime 失败、鉴权失败。
+
+---
+
+## 13. 与 PRODUCT 的关系
+
+- `PRODUCT.md`：用户、目的、品牌个性、产品原则。  
+- `DESIGN.md`（本文）：**如何画、如何选组件、如何用 token**。  
+
+产品原则冲突时：以可操作性与 token 一致性为准，并同时更新两份文档中的对应句，避免“气质形容词”直接驱动实现。
+
+---
+
+## 14. 修订规则
+
+1. **Token 变更：** 先改 `layout.css` / `themes/dark.css`，再改本文对应表。  
+2. **新模式：** 先在 `shared/components` 落地，再写入第 9 节。  
+3. **禁止** 只改文案口号不改可执行条款。  
+4. 本文中文为主；代码标识符保持与仓库一致的英文 class / token 名。

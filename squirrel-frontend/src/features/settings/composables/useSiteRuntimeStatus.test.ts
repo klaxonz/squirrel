@@ -9,13 +9,13 @@ describe('site runtime status tones', () => {
     getLoginVariant,
   } = useSiteRuntimeStatus()
 
-  it('uses the default tone for healthy states', () => {
+  it('uses the success tone for healthy states', () => {
     expect(getSiteRuntimeStatusVariant({
       enabled: true,
       active_runtime: { state: 'running' },
-    })).toBe('default')
-    expect(getNetworkVariant({ siteAccessible: true })).toBe('default')
-    expect(getLoginVariant({ siteLoginStatus: { logged_in: true } })).toBe('default')
+    })).toBe('success')
+    expect(getNetworkVariant({ siteAccessible: true })).toBe('success')
+    expect(getLoginVariant({ siteLoginStatus: { logged_in: true } })).toBe('success')
   })
 
   it('keeps unchecked and pending states muted', () => {

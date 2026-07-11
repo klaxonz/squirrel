@@ -33,4 +33,5 @@ export type SitesResponse = Record<SiteSlug, SiteInfo>
 export interface SiteOption {
   value: SiteSlug
   label: string
+  iconUrl?: string | null
 }

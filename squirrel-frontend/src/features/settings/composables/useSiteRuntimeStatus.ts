@@ -22,7 +22,8 @@ const CAPABILITY_LABELS: Record<string, string> = {
   rewrite_proxy_playlist: '代理播放',
 }
 
-export type SiteRuntimeTone = 'default' | 'muted' | 'critical'
+/** Visual tone for operational readiness — success ≠ brand primary (DESIGN §2). */
+export type SiteRuntimeTone = 'success' | 'muted' | 'critical'
 
 export interface UseSiteRuntimeStatusReturn {
   getSiteRuntimeStatusText: (plugin: RuntimeRow) => string
@@ -48,24 +49,24 @@ export function useSiteRuntimeStatus(): UseSiteRuntimeStatusReturn {
   const getSiteRuntimeStatusVariant = (plugin: RuntimeRow): SiteRuntimeTone => {
     const state = (plugin.active_runtime as Record<string, unknown> | undefined)?.state
     if (!plugin.enabled) return 'muted'
-    if (state === 'running') return 'default'
+    if (state === 'running') return 'success'
     const health = plugin.health as { healthy?: boolean } | undefined
     if (health?.healthy === false || state === 'failed') return 'critical'
     return 'muted'
   }
 
   const getNetworkVariant = (plugin: RuntimeRow): SiteRuntimeTone => {
-    if (plugin.siteAccessible === true) return 'default'
+    if (plugin.siteAccessible === true) return 'success'
     if (plugin.siteAccessible === false) return 'critical'
     return 'muted'
   }
 
   const getLoginVariant = (plugin: RuntimeRow): SiteRuntimeTone => {
-    if (plugin.siteOAuthStatus === 'authenticated') return 'default'
+    if (plugin.siteOAuthStatus === 'authenticated') return 'success'
     if (plugin.siteOAuthStatus === 'pending') return 'muted'
     const loginStatus = plugin.siteLoginStatus as Record<string, unknown> | undefined
     if (loginStatus?.supported === false) return 'muted'
-    if (loginStatus?.logged_in) return 'default'
+    if (loginStatus?.logged_in) return 'success'
     if (loginStatus) return 'critical'
     return 'muted'
   }
