@@ -4,8 +4,8 @@
 
 | 页 | 内容 |
 |----|------|
-| [decisions.md](./decisions.md) | 30 秒决策表 |
-| [principles.md](./principles.md) | 原则 |
+| [principles.md](./principles.md) | **Standards S1–S5**（归仓身份 + 验收） |
+| [decisions.md](./decisions.md) | 意图 → 标准实现 |
 | [foundations/](./foundations/) | 色 / 字 / 间距 / 层级 / 动效 |
 | [components/](./components/) | 单控件 |
 | [patterns/](./patterns/) | 组合模式 |

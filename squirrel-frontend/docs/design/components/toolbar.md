@@ -4,19 +4,20 @@
 
 **代码：** `src/shared/styles/layout.css`
 
-工具栏 / 筛选触发器共用 class，禁止业务页另起一套。
+**Surface：** Organize（Dense 32px）；嵌在 Consume 页时控件高仍为 32px。  
+**条款：** [S2](../principles.md#s2--surface-规格) · [S3](../principles.md#s3--色意映射)
 
 | Class | 用途 |
 |-------|------|
-| `.app-filter-toolbar-button` | 筛选触发器（`.is-active` = 中性选中） |
-| `.app-filter-toolbar-button__count` | 计数角标（中性，非 primary） |
+| `.app-filter-toolbar-button` | 筛选触发器（`.is-active` = selection） |
+| `.app-filter-toolbar-button__count` | 计数角标（selection count token） |
 | `.app-toolbar-chip` / `--active` | 条件 Chip |
 | `.app-toolbar-select-trigger` | 工具栏 Select |
 | `.app-toolbar-icon-button` | 工具栏图标按钮 |
 | `.app-filter-select` | 筛选内 Dense Select |
 | `.app-filter-button` / `.app-filter-toggle` | 筛选面板内控件 |
 
-激活态全部走 `--app-selection-*`。见 [Color](../foundations/color.md)。
+开启 / 激活态：`--app-selection-*`。见 [Color](../foundations/color.md)。
 
 ## 相关
 

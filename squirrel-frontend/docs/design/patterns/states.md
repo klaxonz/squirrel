@@ -2,29 +2,34 @@
 
 ← [Patterns](./README.md)
 
+**条款：** [S4](../principles.md#s4--状态完整性)
+
 ## 加载 · 空 · 错
 
-| 状态 | 要求 | 组件 |
+| 状态 | 标准 | 组件 |
 |------|------|------|
-| Loading | 区域级 Skeleton / Block loader，避免整页闪白 | `AppSkeleton` / `AppBlockLoader` |
-| Empty | 标题 + **原因** + **可行动作**（清空筛选 / 去添加） | `AppEmptyState` |
-| Error | 具体错误 + 重试；禁止含糊「出了点问题」 | 文案 + 按钮 |
+| Loading | 区域级 Skeleton / Block loader，形状贴近终态 | `AppSkeleton` / `AppBlockLoader` |
+| Empty | 标题 + 原因 + 可行动作 | `AppEmptyState` |
+| Error | 具体原因 + 恢复动作 | 文案 + 按钮 |
 
-## 运维状态
+## 运维与结果态
 
-连接、同步、任务结果：
+| 意图 | Token + 表达 |
+|------|----------------|
+| 健康 / 在线 / 成功 | `--success` + 文案（可加图标） |
+| 警告 / 降级 | `--warning` + 文案 |
+| 失败 / 危险 | `--destructive` + 文案 |
+| 选中 / 已筛选 | `--app-selection-*` |
 
-```
-success | warning | destructive  +  文案（可加图标）
-```
+## 验收
 
-| 意图 | 用 | 不用 |
-|------|-----|------|
-| 健康 / 在线 | `success` | `primary` |
-| 选中 / 已筛选 | `--app-selection-*` | `primary` |
+- [ ] 主列表与主详情具备 loading / empty / error
+- [ ] 空态与错误符合 [Content](../content.md)
+- [ ] 运维结果使用语义色 + 文案
 
 ## 相关
 
+- [Standards · S4](../principles.md#s4--状态完整性)
 - [Content](../content.md)
 - [Feedback components](../components/feedback.md)
 - [Color](../foundations/color.md)

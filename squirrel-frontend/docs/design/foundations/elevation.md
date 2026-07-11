@@ -2,34 +2,47 @@
 
 ← [Foundations](./README.md)
 
-**代码：** `src/shared/styles/layout.css`
+**代码：** `src/shared/styles/layout.css`  
+**条款：** [S5](../principles.md#s5--视觉系统一致性) · [S2 Consume 层次](../principles.md#s2--surface-规格)
 
-## 壳层 = 单画布
+## 单画布
 
-- 顶栏 / 工作区 / 工具栏落在 `--background`（或透明叠其上）。
-- 主侧栏可轻抬 `--sidebar`。
-- Workbench **次栏透明 + 竖线**，不刷 card、不做双浮岛。
-- Shell 分区用 `--app-hairline` / border，不用 `--card` 刷分区。
+| 区域 | 标准 |
+|------|------|
+| 顶栏 / 工作区 / 工具栏 | `--background` 或透明叠于画布 |
+| 主侧栏 | `--sidebar` 轻抬 |
+| Workbench 次栏 | 透明 + 竖线 hairline |
+| Shell 分区 | `--app-hairline` / border |
 
-## 阴影
+## 深度阶（何时用哪一级）
 
-| Token | 用途 |
-|-------|------|
-| `--app-surface-shadow` | 轻表面 |
-| `--app-panel-shadow` | 中等面板 |
-| `--app-floating-shadow` / `shadow-popover` | 菜单、筛选 |
-| `--app-overlay-shadow` | Dialog |
-| `--brand-glow*` | **仅**品牌徽章 |
+| 层级 | Token / 手段 | 场景 |
+|------|----------------|------|
+| 画布 | `--background` | 默认 |
+| 轻表面 | `--app-surface-shadow` | 需要微弱抬起的块 |
+| 媒体卡静止 | 封面 + 字阶为主；可选 surface shadow |
+| 媒体卡 hover / 焦点 | `--shadow-card-hover` + `transform` | Consume |
+| 中等面板 | `--app-panel-shadow` | 固定面板 |
+| 浮层 | `--app-floating-shadow` / `shadow-popover` | 菜单、筛选 |
+| 模态 | `--app-overlay-shadow` | Dialog |
+| 品牌徽章 | `--brand-glow*` | 仅徽章 |
 
-静止内容优先 hairline + 色阶；阴影解释叠层与抬起。
+Organize / Operate 默认停在 hairline + 字阶；Consume 对焦点媒体使用 hover/焦点抬升阶。
 
 ## Z-index
 
-禁止业务魔法数，严格使用：
+仅使用下列 token（`layout.css`）：
 
 ```
-content → sticky → header → sidebar
-→ dropdown → popover → sheet → dialog → toast → player-overlay
+--z-content → --z-sticky → --z-header → --z-sidebar
+→ --z-dropdown → --z-popover → --z-sheet → --z-dialog
+→ --z-toast → --z-player-overlay
 ```
 
-对应 token：`--z-content` … `--z-player-overlay`。
+业务代码使用 `z-content` / `z-dialog` 等 utility 或 `var(--z-*)`。
+
+## 验收
+
+- [ ] 壳层分区未使用第二套 card 浮岛底
+- [ ] 阴影仅来自上表 token
+- [ ] 无业务魔法 z-index 数字

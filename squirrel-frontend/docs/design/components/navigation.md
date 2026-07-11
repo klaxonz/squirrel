@@ -26,18 +26,18 @@ aside.sidebar-rail
 | 宽 | `--sidebar-expanded-width`（15rem），不随页改 |
 | 底 | `--sidebar` 轻抬升；右边界 `var(--app-hairline)` |
 | 项高 | `--sidebar-item-height`（36px Default） |
-| 分组标题 | 仅文字、Micro 级；**无分组图标**（chrome 安静） |
-| 项缩进 | 不因「嵌套」再 indent；分组标题已提供层次 |
+| 分组标题 | 仅文字、Micro 级；无分组图标 |
+| 项缩进 | 分组标题提供层次；菜单项不再二次 indent |
+| 分组语义 | 媒体 = 主路径 + 附属；资料库 = 辅路径；管理 = 支撑路径（S1） |
+| 侧栏内容 | 导航项与必要入口；站点健康 / 任务细节在支撑页呈现 |
 
 ## 选中 / 悬停
-
-激活态用 **中性 ink**（`--app-selection-*`），**禁止 primary**。
 
 | 状态 | 规格 |
 |------|------|
 | 默认 | `muted-foreground` 字 + 透明底 |
 | Hover | `foreground / 0.055` 底 + `selection-fg` |
-| Active | `var(--app-selection-bg)` + `var(--app-selection-fg)` + 字重 600 |
+| Active（当前） | `var(--app-selection-bg)` + `var(--app-selection-fg)` + 字重 600 |
 | Active hover | `var(--app-selection-bg-hover)` |
 | Focus | inset ring（`--ring`） |
 | 图标 | `currentColor`，随文字变 |
