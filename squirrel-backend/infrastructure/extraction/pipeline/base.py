@@ -138,7 +138,7 @@ class ExtractionPipeline:
             duration = context.get_duration()
 
             self.logger.info(
-                "Pipeline completed successfully: task_id=%s, duration=%f'.2f's", context.task.task_id, duration
+                'Pipeline completed successfully: task_id=%s, duration=%.2fs', context.task.task_id, duration
             )
 
             return ExtractionResult(
@@ -150,7 +150,7 @@ class ExtractionPipeline:
             duration = context.get_duration()
 
             self.logger.error(
-                "Pipeline failed: task_id=%s, duration=%f'.2f's, error=%s",
+                'Pipeline failed: task_id=%s, duration=%.2fs, error=%s',
                 context.task.task_id,
                 duration,
                 e,

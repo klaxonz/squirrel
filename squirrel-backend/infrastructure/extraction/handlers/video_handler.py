@@ -67,7 +67,7 @@ class VideoExtractionHandler:
             # 3. Log result
             if pipeline_result.success:
                 logger.info(
-                    "Extraction completed successfully: task_id=%s, duration=%f'.2f's",
+                    'Extraction completed successfully: task_id=%s, duration=%.2fs',
                     task.task_id,
                     context.get_duration(),
                 )
