@@ -77,3 +77,4 @@ def test_crawl_task_declares_dispatch_indexes():
     assert 'ix_crawl_task_runnable_lookup' in index_names
     assert 'ix_crawl_task_lease_until' in index_names
     assert 'ix_crawl_task_site_status' in index_names
+    assert 'ix_crawl_task_sync_state_type_status' in index_names

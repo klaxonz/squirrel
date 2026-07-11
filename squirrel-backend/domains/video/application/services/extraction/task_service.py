@@ -66,6 +66,7 @@ class VideoExtractionTaskService:
                 task_type='video_extract',
                 payload=content,
                 dedupe_key=dedupe_key,
+                sync_state_id=params.sync_state_id,
                 video_url=params.url,
                 trace_id=params.run_id,
             )

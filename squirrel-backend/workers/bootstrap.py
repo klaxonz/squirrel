@@ -13,6 +13,10 @@ import signal
 import threading
 from contextlib import contextmanager
 
+from infrastructure.runtime.import_paths import install_runtime_import_paths
+
+install_runtime_import_paths()
+
 from infrastructure.config.settings import settings
 from infrastructure.database.migrations import upgrade_database
 from infrastructure.runtime.site_config_manager import apply_site_config_overrides

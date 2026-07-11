@@ -168,6 +168,7 @@ class SubscriptionSyncLifecycle:
                 priority=resolve_priority(command.trigger, command.mode),
                 task_type=resolve_subscription_sync_task_type(command.mode.value),
                 payload=task_payload,
+                sync_state_id=queued.sync_state_id,
                 trace_id=command.trace_id,
             )
             request_id = str(task.id)
@@ -486,7 +487,7 @@ class SubscriptionSyncLifecycle:
             return
         self._sync_state_service.decrement_pending_video_count(sync_state_id, allow_completion=False)
         if sync_state_id:
-            self._sync_state_service.reconcile_terminal_drained_sync_states()
+            self._sync_state_service.reconcile_terminal_drained_sync_states(sync_state_id)
 
     def recover(self) -> SubscriptionSyncRecoveryResult:
         video_result = self._sync_state_service.reconcile_pending_video_counts()

@@ -6,6 +6,8 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any
 
+from infrastructure.runtime.import_paths import install_runtime_import_paths
+
 
 @dataclass(frozen=True)
 class SitePluginError:
@@ -47,6 +49,7 @@ class SitePluginRegistry:
         return self._repo_root / 'squirrel-site-runtimes'
 
     def _install_import_paths(self) -> None:
+        install_runtime_import_paths()
         paths = [self._runtimes_root / 'shared']
         paths.extend(self._runtimes_root / item.package_dir / 'src' for item in _PLUGIN_DEFINITIONS.values())
         for path in reversed(paths):

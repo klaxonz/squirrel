@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
 from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
 from domains.subscription.application.services.crawl.tasks.task_types import subscription_sync_task_types
@@ -32,87 +32,88 @@ def count_pending_video_tasks_for_subscription(session_factory, subscription_id:
 
 def count_pending_video_tasks_by_sync_state(session_factory) -> dict[int, int]:
     with session_factory() as session:
-        tasks = (
-            session.execute(
-                select(CrawlTask).where(
-                    CrawlTask.task_type == 'video_extract',
-                    CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
-                ),
+        rows = session.execute(
+            select(CrawlTask.sync_state_id, func.count(CrawlTask.id))
+            .where(
+                CrawlTask.task_type == 'video_extract',
+                CrawlTask.sync_state_id.is_not(None),
+                CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
             )
-            .scalars()
-            .all()
-        )
-    counts: dict[int, int] = {}
-    for task in tasks:
-        sync_state_id = (task.payload or {}).get('sync_state_id')
-        if sync_state_id in (None, ''):
-            continue
-        counts[int(sync_state_id)] = counts.get(int(sync_state_id), 0) + 1
-    return counts
+            .group_by(CrawlTask.sync_state_id),
+        ).all()
+    return {int(sync_state_id): int(count) for sync_state_id, count in rows if sync_state_id is not None}
 
 
-def summarize_video_task_states_by_sync_state(session_factory) -> dict[int, dict[str, object]]:
+def summarize_video_task_states_by_sync_state(
+    session_factory,
+    sync_state_id: int | None = None,
+) -> dict[int, dict[str, object]]:
+    filters = [
+        CrawlTask.task_type == 'video_extract',
+        CrawlTask.sync_state_id.is_not(None),
+    ]
+    if sync_state_id is not None:
+        filters.append(CrawlTask.sync_state_id == sync_state_id)
+
     with session_factory() as session:
-        tasks = (
-            session.execute(
-                select(CrawlTask).where(CrawlTask.task_type == 'video_extract'),
+        rows = session.execute(
+            select(
+                CrawlTask.sync_state_id,
+                func.sum(case((CrawlTask.status.in_(ACTIVE_TASK_STATUSES), 1), else_=0)),
+                func.sum(case((CrawlTask.status.in_(FAILED_TASK_STATUSES), 1), else_=0)),
             )
-            .scalars()
-            .all()
-        )
+            .where(*filters)
+            .group_by(CrawlTask.sync_state_id),
+        ).all()
 
-    summary: dict[int, dict[str, object]] = {}
-    for task in tasks:
-        sync_state_id = (task.payload or {}).get('sync_state_id')
-        if sync_state_id in (None, ''):
-            continue
-
-        key = int(sync_state_id)
-        bucket = summary.setdefault(
-            key,
-            {
-                'active_count': 0,
-                'failed_count': 0,
+        summary: dict[int, dict[str, object]] = {}
+        for row_sync_state_id, active_count, failed_count in rows:
+            if row_sync_state_id is None:
+                continue
+            summary[int(row_sync_state_id)] = {
+                'active_count': int(active_count or 0),
+                'failed_count': int(failed_count or 0),
                 'last_error': None,
-                'last_error_at': datetime.min,
-            },
-        )
+            }
 
-        if task.status in ACTIVE_TASK_STATUSES:
-            bucket['active_count'] = int(bucket['active_count']) + 1
-            continue
-
-        if task.status not in FAILED_TASK_STATUSES:
-            continue
-
-        bucket['failed_count'] = int(bucket['failed_count']) + 1
-        error_at = task.updated_at or task.finished_at or task.created_at or datetime.min
-        if error_at >= bucket['last_error_at']:
-            bucket['last_error_at'] = error_at
-            bucket['last_error'] = task.last_error or task.last_error_type or 'video_extract_failed'
-
-    for bucket in summary.values():
-        bucket.pop('last_error_at', None)
+        if summary:
+            failed_error_time = func.coalesce(CrawlTask.updated_at, CrawlTask.finished_at, CrawlTask.created_at, datetime.min)
+            ranked_errors = (
+                select(
+                    CrawlTask.sync_state_id.label('sync_state_id'),
+                    func.coalesce(CrawlTask.last_error, CrawlTask.last_error_type, 'video_extract_failed').label('last_error'),
+                    func.row_number()
+                    .over(
+                        partition_by=CrawlTask.sync_state_id,
+                        order_by=(failed_error_time.desc(), CrawlTask.id.desc()),
+                    )
+                    .label('error_rank'),
+                )
+                .where(
+                    *filters,
+                    CrawlTask.status.in_(FAILED_TASK_STATUSES),
+                )
+                .subquery()
+            )
+            error_rows = session.execute(
+                select(ranked_errors.c.sync_state_id, ranked_errors.c.last_error).where(ranked_errors.c.error_rank == 1),
+            ).all()
+            for error_sync_state_id, last_error in error_rows:
+                if error_sync_state_id is not None:
+                    summary[int(error_sync_state_id)]['last_error'] = last_error
 
     return summary
 
 
 def list_active_subscription_sync_state_ids(session_factory) -> set[int]:
     with session_factory() as session:
-        tasks = (
-            session.execute(
-                select(CrawlTask).where(
-                    CrawlTask.task_type.in_(subscription_sync_task_types()),
-                    CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
-                ),
+        state_ids = session.execute(
+            select(CrawlTask.sync_state_id)
+            .where(
+                CrawlTask.task_type.in_(subscription_sync_task_types()),
+                CrawlTask.sync_state_id.is_not(None),
+                CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
             )
-            .scalars()
-            .all()
-        )
-    state_ids: set[int] = set()
-    for task in tasks:
-        sync_state_id = (task.payload or {}).get('sync_state_id')
-        if sync_state_id in (None, ''):
-            continue
-        state_ids.add(int(sync_state_id))
-    return state_ids
+            .distinct(),
+        ).scalars().all()
+    return {int(sync_state_id) for sync_state_id in state_ids if sync_state_id is not None}

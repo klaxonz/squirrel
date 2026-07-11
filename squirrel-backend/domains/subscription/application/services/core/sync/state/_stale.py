@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
@@ -41,12 +40,8 @@ def _recover_stale_running_state(state: SubscriptionSyncState, now: datetime) ->
 
 
 def _can_complete_drained_state(sync_state_id: int) -> bool:
-    try:
-        summary = crawl_task_service.summarize_video_task_states_by_sync_state()
-    except SQLAlchemyError:
-        return True
-
+    summary = crawl_task_service.summarize_video_task_states_by_sync_state(sync_state_id)
     stats = summary.get(sync_state_id, {})
     active_count = int(stats.get('active_count', 0) or 0)
     failed_count = int(stats.get('failed_count', 0) or 0)
-    return failed_count == 0 and active_count <= 1
+    return failed_count == 0 and active_count == 0

@@ -14,6 +14,7 @@ class CrawlTask(Base):
         Index('ix_crawl_task_lease_until', 'lease_until'),
         Index('ix_crawl_task_site_status', 'site', 'status'),
         Index('ix_crawl_task_subscription_id', 'subscription_id'),
+        Index('ix_crawl_task_sync_state_type_status', 'sync_state_id', 'task_type', 'status'),
         Index('ix_crawl_task_job_id', 'job_id'),
         Index('ix_crawl_task_parent_task_id', 'parent_task_id'),
         Index('ix_crawl_task_type_status', 'task_type', 'status'),
@@ -25,6 +26,7 @@ class CrawlTask(Base):
     task_type: Mapped[str] = mapped_column(VARCHAR(32), nullable=False)
     site: Mapped[str] = mapped_column(VARCHAR(64), nullable=False)
     subscription_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sync_state_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     video_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     video_url: Mapped[str | None] = mapped_column(VARCHAR(2048), nullable=True)
     status: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default='pending')

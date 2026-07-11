@@ -59,6 +59,7 @@ class CrawlTaskService:
         dedupe_key: str | None = None,
         parent_task_id: int | None = None,
         subscription_id: int | None = None,
+        sync_state_id: int | None = None,
         video_id: int | None = None,
         video_url: str | None = None,
         trace_id: str | None = None,
@@ -74,6 +75,7 @@ class CrawlTaskService:
                 task_type=task_type,
                 site=site,
                 subscription_id=subscription_id,
+                sync_state_id=sync_state_id,
                 video_id=video_id,
                 video_url=video_url,
                 priority=priority,
@@ -100,6 +102,7 @@ class CrawlTaskService:
         dedupe_key: str | None = None,
         parent_task_id: int | None = None,
         video_id: int | None = None,
+        sync_state_id: int | None = None,
         video_url: str | None = None,
         trace_id: str | None = None,
         max_attempts: int = 3,
@@ -118,6 +121,7 @@ class CrawlTaskService:
                 dedupe_key=dedupe_key,
                 parent_task_id=parent_task_id,
                 video_id=video_id,
+                sync_state_id=sync_state_id,
                 video_url=video_url,
                 trace_id=trace_id,
                 max_attempts=max_attempts,
@@ -138,6 +142,7 @@ class CrawlTaskService:
         dedupe_key: str | None = None,
         parent_task_id: int | None = None,
         video_id: int | None = None,
+        sync_state_id: int | None = None,
         video_url: str | None = None,
         trace_id: str | None = None,
         max_attempts: int = 3,
@@ -164,6 +169,7 @@ class CrawlTaskService:
             task_type=task_type,
             site=site,
             subscription_id=subscription_id,
+            sync_state_id=sync_state_id,
             video_id=video_id,
             video_url=video_url,
             priority=priority,
@@ -351,8 +357,8 @@ class CrawlTaskService:
     def count_pending_video_tasks_by_sync_state(self) -> dict[int, int]:
         return task_summary.count_pending_video_tasks_by_sync_state(self.session_factory)
 
-    def summarize_video_task_states_by_sync_state(self) -> dict[int, dict[str, object]]:
-        return task_summary.summarize_video_task_states_by_sync_state(self.session_factory)
+    def summarize_video_task_states_by_sync_state(self, sync_state_id: int | None = None) -> dict[int, dict[str, object]]:
+        return task_summary.summarize_video_task_states_by_sync_state(self.session_factory, sync_state_id)
 
     def list_active_subscription_sync_state_ids(self) -> set[int]:
         return task_summary.list_active_subscription_sync_state_ids(self.session_factory)

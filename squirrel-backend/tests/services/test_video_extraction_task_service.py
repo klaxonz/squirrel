@@ -80,6 +80,7 @@ def test_enqueue_writes_crawl_task_when_site_enabled(engine, svc):
     assert len(tasks) == 1
     assert tasks[0].task_type == 'video_extract'
     assert tasks[0].video_url == 'https://www.youtube.com/watch?v=demo'
+    assert tasks[0].sync_state_id == 2
     assert tasks[0].payload['run_id'] == 'run-1'
 
 

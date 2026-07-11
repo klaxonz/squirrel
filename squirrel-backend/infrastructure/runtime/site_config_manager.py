@@ -5,6 +5,10 @@ from __future__ import annotations
 from copy import copy
 from typing import Any
 
+from infrastructure.runtime.import_paths import install_runtime_import_paths
+
+install_runtime_import_paths()
+
 from crawl import configure_rate_limit as configure_crawl_rate_limit
 from crawl import configure_rate_limit_enabled as configure_crawl_rate_limit_enabled
 

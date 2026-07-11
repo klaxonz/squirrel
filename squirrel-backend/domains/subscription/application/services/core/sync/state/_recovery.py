@@ -47,23 +47,21 @@ def reconcile_pending_video_counts() -> dict[str, int]:
     }
 
 
-def reconcile_terminal_drained_sync_states() -> dict[str, int]:
-    summary = crawl_task_service.summarize_video_task_states_by_sync_state()
+def reconcile_terminal_drained_sync_states(sync_state_id: int | None = None) -> dict[str, int]:
+    summary = crawl_task_service.summarize_video_task_states_by_sync_state(sync_state_id)
     now = datetime.now()
     completed = 0
     failed = 0
 
     with get_session() as session:
-        states = (
-            session.execute(
-                select(SubscriptionSyncState).where(
-                    SubscriptionSyncState.sync_status == SyncStatus.RUNNING.value,
-                    SubscriptionSyncState.locked_at.is_(None),
-                ),
-            )
-            .scalars()
-            .all()
+        filters = (
+            SubscriptionSyncState.sync_status == SyncStatus.RUNNING.value,
+            SubscriptionSyncState.locked_at.is_(None),
         )
+        if sync_state_id is not None:
+            filters = (*filters, SubscriptionSyncState.id == sync_state_id)
+
+        states = session.execute(select(SubscriptionSyncState).where(*filters)).scalars().all()
 
         for state in states:
             stats = summary.get(state.id, {})
