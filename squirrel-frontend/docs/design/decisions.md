@@ -21,8 +21,10 @@
 | 删除 | `destructive` | Spec 2 |
 | 多条件筛选 | `AppFilterPanel` · 32px | Spec 1 · [Filter](./patterns/filter-popover.md) |
 | 仅排序 | 工具栏 `Select` | Filter |
-| 媒体墙 | `.app-video-grid*` | Spec 4 · [Media grid](./patterns/media-grid.md) |
+| 媒体墙 | `.app-video-grid*` | Spec 4 · [Media grid](./patterns/media-grid.md) · [Media craft](./patterns/media-craft.md) |
+| 视频卡品质 | 16:9、标题 2 行、层级、同色温 scrim | [Media craft](./patterns/media-craft.md) |
 | 视频卡次要操作 | flag + meta ghost + 右键 | [Media card actions](./patterns/media-card-actions.md) |
+| 首页舞台 | 同色温 scrim、单 primary、标题可读 | [Media craft · 舞台](./patterns/media-craft.md#4-焦点舞台首页-hero--继续看主视觉) |
 | 空 / 加载 / 错 | `AppEmptyState` / Skeleton / 原因+动作 | Spec 3 · [States](./patterns/states.md) |
 | 新 token | 先 foundations，再引用 | Spec 4 · [Token 分层](./foundations/README.md#token-分层) · [Governance](./governance.md) |
 

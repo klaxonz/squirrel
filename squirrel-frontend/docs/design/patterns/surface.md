@@ -44,9 +44,15 @@ Surface 描述**界面工作类型对应的密度与强调规格**，不是产�
 
 壳结构 → [Shell](./shell.md)
 
+## 与 Media craft
+
+Consume 的密度与强调见上表；**媒体如何排才达到品质下限**见 [Media craft](./media-craft.md)。  
+两者都要满足：Surface 管场景规格，Media craft 管卡/墙/舞台配方。
+
 ## 验收
 
 - [ ] 可指出 Surface
 - [ ] 控件高 / 主行动 / 选中符合上表
 - [ ] 无第二套私有 Button / 筛选 / 空态
 - [ ] Operate 未统治 Consume / Organize 整页
+- [ ] 媒体面勾选 Media craft

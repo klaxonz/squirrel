@@ -4,7 +4,8 @@
 
 **代码：** `layout.css` → `.app-video-grid`  
 **Surface：** Consume 墙；Organize 页内网格仍复用本 token  
-**规格：** [Spec 4](../standards.md#spec-4--视觉系统一致性)
+**规格：** [Spec 4](../standards.md#spec-4--视觉系统一致性)  
+**品质：** [Media craft · 墙](./media-craft.md#3-媒体墙--rail)
 
 ## 标准用法
 

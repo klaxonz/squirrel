@@ -23,8 +23,9 @@ Surface 定义密度、主行动数量、选中态与层次手段。完整表与
 - [ ] 控件高度、主行动、选中 token 符合该 Surface
 - [ ] 无业务页私有第二套 Button / 筛选 / 空态
 - [ ] Operate 规格未铺满 Consume / Organize 整页
+- [ ] 含媒体呈现的 Consume 面（及 Organize 内视频卡）通过 [Media craft](./patterns/media-craft.md) 相关验收
 
-→ [Surface](./patterns/surface.md) · [Shell](./patterns/shell.md)
+→ [Surface](./patterns/surface.md) · [Media craft](./patterns/media-craft.md) · [Shell](./patterns/shell.md)
 
 ---
 

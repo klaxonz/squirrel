@@ -82,7 +82,7 @@
 
 | 原则 | 主要落点 |
 |------|----------|
-| P1 | Surface 密度、媒体 Pattern、空错态 |
+| P1 | Surface 密度、[Media craft](./patterns/media-craft.md)、空错态 |
 | P2 | 色意映射、Button 主行动数量 |
 | P3 | Governance、组件来源 |
 | P4 | Spec 3、States Pattern、Content |

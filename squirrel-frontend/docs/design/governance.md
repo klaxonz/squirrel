@@ -73,6 +73,7 @@
 |------|------|
 | 页面无 Surface 或混用未说明 | Spec 1 |
 | Operate 规格铺满 Consume / Organize 整页 | Spec 1 · P1 |
+| 媒体卡/墙/舞台未达 Media craft 配方 | Spec 1 · [Media craft](./patterns/media-craft.md) |
 | 业务私有第二套按钮 / 筛选 / 空态 | Spec 1 · P3 |
 | 选中态使用 primary 洗底或琥珀角标 | Spec 2 · P2 |
 | 健康态使用 primary | Spec 2 |

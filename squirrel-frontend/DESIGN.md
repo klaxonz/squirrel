@@ -44,7 +44,8 @@ source_of_truth:
 | Spec 4 | 视觉系统一致性 |
 
 全文 → [standards.md](./docs/design/standards.md)  
-Surface 明细 → [patterns/surface.md](./docs/design/patterns/surface.md)
+Surface 明细 → [patterns/surface.md](./docs/design/patterns/surface.md)  
+Consume 品质 → [patterns/media-craft.md](./docs/design/patterns/media-craft.md)
 
 ## 意图 → Token（Spec 2 速查）
 
@@ -66,7 +67,7 @@ Surface 明细 → [patterns/surface.md](./docs/design/patterns/surface.md)
 | [决策表](./docs/design/decisions.md) | 意图 → 实现 |
 | [Foundations](./docs/design/foundations/) | 色字间距层级动效 · token 分层 |
 | [Components](./docs/design/components/) | 单控件 |
-| [Patterns](./docs/design/patterns/) | Surface、壳、筛选、网格、状态 |
+| [Patterns](./docs/design/patterns/) | Surface、**Media craft**、壳、筛选、网格、状态 |
 | [Content](./docs/design/content.md) / [A11y](./docs/design/accessibility.md) | 文案与无障碍 |
 | [Governance](./docs/design/governance.md) | 扩展、新增三步、阻断 |
 | [Token 地图](./docs/design/tokens.md) | token → 文件 |
