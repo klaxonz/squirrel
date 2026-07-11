@@ -190,7 +190,7 @@ onUnmounted(() => {
   overflow: hidden;
   border: 0;
   border-radius: var(--app-card-radius);
-  background: hsl(0 0% 0% / 0.55);
+  background: var(--app-media-thumb-placeholder);
   isolation: isolate;
   transition: box-shadow var(--duration-base) var(--ease-default), filter var(--duration-fast) var(--ease-default);
 }
@@ -198,22 +198,20 @@ onUnmounted(() => {
 .remote-channel-video-card:hover .remote-channel-video-thumb,
 .remote-channel-video-card:focus-visible .remote-channel-video-thumb {
   /* Soft lift only — no amber outline ring (matches VideoItem). */
-  box-shadow:
-    0 1px 2px hsl(0 0% 0% / 0.12),
-    0 8px 20px hsl(0 0% 0% / 0.22);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .remote-channel-video-card:focus-visible .remote-channel-video-thumb {
   box-shadow:
     0 0 0 2px hsl(var(--background)),
     0 0 0 4px hsl(var(--ring) / 0.45),
-    0 8px 20px hsl(0 0% 0% / 0.22);
+    var(--shadow-card-hover);
 }
 
 .remote-channel-video-title {
   display: -webkit-box;
   overflow: hidden;
-  color: hsl(var(--foreground) / 0.9);
+  color: hsl(var(--foreground));
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.3;

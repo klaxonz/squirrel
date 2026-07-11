@@ -1019,7 +1019,7 @@ const openChannelDetail = async (profile: VideoProfile) => {
   overflow: hidden;
   border: 0;
   border-radius: var(--app-card-radius);
-  background: hsl(0 0% 0% / 0.55);
+  background: var(--app-media-thumb-placeholder);
   isolation: isolate;
 }
 
@@ -1031,9 +1031,9 @@ const openChannelDetail = async (profile: VideoProfile) => {
   align-items: center;
   height: 1.25rem;
   padding: 0 0.375rem;
-  border-radius: 0.375rem;
-  background: hsl(0 0% 0% / 0.72);
-  color: white;
+  border-radius: var(--radius-sm);
+  background: var(--app-media-badge-bg);
+  color: hsl(var(--app-media-on-image));
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
   font-weight: 650;

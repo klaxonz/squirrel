@@ -55,7 +55,7 @@ Title                        ← 主文案
 | 标题 | 网格 **最多 2 行**；字重 ≥ 600；`foreground`；`line-height` 紧凑 | 标题用 primary；3 行以上默认露出 |
 | Meta | 来源名可读；次行日期 / 站点用 muted，对比仍可扫 | meta 与标题同色同重导致糊成一块 |
 | Quick | 见 media-card-actions：默认弱、hover/focus-within 显、on = selection | 实心 primary 圆钮工具栏 |
-| 时长 | 压在封面上，tabular；底使用 `background` / `overlay` alpha（**目标**；实现中若仍有裸黑须迁到 token） | 裸白字无底、对比不足 |
+| 时长 | 压在封面上，tabular；底 `--app-media-badge-bg`，字 `--app-media-on-image` | 裸白字无底、对比不足 |
 | 进度 | 底边细条（约 2–3px）；填充可用 primary 或高对比浅条 | 粗进度条抢封面 |
 
 ### 2.2 比例与间距

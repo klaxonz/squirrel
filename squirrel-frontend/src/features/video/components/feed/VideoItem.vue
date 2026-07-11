@@ -327,22 +327,22 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
 }
 
-/* ── Thumbnail: media first, no action toolbar ─────────────────────────── */
+/* ── Thumbnail: media first, no action toolbar (media-craft) ───────────── */
 .video-item__thumb {
   position: relative;
   overflow: hidden;
   border: 0;
   border-radius: var(--app-card-radius);
-  background: hsl(0 0% 0% / 0.55);
+  background: var(--app-media-thumb-placeholder);
   isolation: isolate;
-  transition: box-shadow var(--duration-base) var(--ease-default);
+  transition:
+    box-shadow var(--duration-base) var(--ease-default),
+    transform var(--duration-base) var(--ease-default);
 }
 
 .video-item:hover .video-item__thumb,
 .video-item:focus-visible .video-item__thumb {
-  box-shadow:
-    0 1px 2px hsl(0 0% 0% / 0.12),
-    0 8px 20px hsl(0 0% 0% / 0.22);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .video-item__thumb--list {
@@ -373,8 +373,8 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   gap: 0.2rem;
   padding: 0.15rem 0.3rem;
   border-radius: 999px;
-  background: hsl(0 0% 0% / 0.55);
-  color: hsl(0 0% 100% / 0.92);
+  background: var(--app-media-flag-bg);
+  color: hsl(var(--app-media-on-image) / 0.94);
   pointer-events: none;
 }
 
@@ -393,9 +393,9 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   align-items: center;
   height: 1.25rem;
   padding: 0 0.375rem;
-  border-radius: 0.25rem;
-  background: hsl(0 0% 0% / 0.72);
-  color: white;
+  border-radius: var(--radius-sm);
+  background: var(--app-media-badge-bg);
+  color: hsl(var(--app-media-on-image));
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
@@ -414,7 +414,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   z-index: 10;
   height: 2.75rem;
   pointer-events: none;
-  background: linear-gradient(to top, hsl(0 0% 0% / 0.55), transparent);
+  background: linear-gradient(to top, var(--app-media-scrim-mid), transparent);
 }
 
 .video-item__progress {
@@ -425,12 +425,12 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   z-index: 20;
   height: 3px;
   overflow: hidden;
-  background: hsl(0 0% 0% / 0.45);
+  background: var(--app-media-progress-track);
 }
 
 .video-item__progress-fill {
   height: 100%;
-  background: hsl(0 0% 100% / 0.76);
+  background: hsl(var(--primary));
   transition: width var(--duration-slow) var(--ease-out);
 }
 
@@ -451,7 +451,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 .video-item__title {
   display: -webkit-box;
   overflow: hidden;
-  color: hsl(var(--foreground) / 0.92);
+  color: hsl(var(--foreground));
   font-weight: 600;
   line-height: 1.3;
   transition: color var(--duration-fast) var(--ease-default);
@@ -466,7 +466,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 .video-item__title--list {
   margin-bottom: 0.125rem;
   font-size: 1rem;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
 }
 
 .video-item:hover .video-item__title {
@@ -498,13 +498,13 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   min-width: 0;
   align-items: center;
   gap: 0.375rem;
-  color: hsl(var(--muted-foreground) / 0.82);
+  color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 500;
 }
 
 .video-item__meta-line--secondary {
-  color: hsl(var(--muted-foreground) / 0.7);
+  color: hsl(var(--muted-foreground) / 0.88);
 }
 
 .video-item__source-name {

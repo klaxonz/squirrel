@@ -13,10 +13,10 @@
   >
 
   <div v-else class="video-thumbnail__fallback absolute inset-0 flex flex-col items-center justify-center text-center">
-    <span class="video-thumbnail__fallback-icon size-10 rounded-md border border-white/10 bg-black/35 text-white/55">
+    <span class="video-thumbnail__fallback-icon size-10 rounded-md">
       <AppIcon name="imageOff" class="size-5" :stroke-width="1.75" />
     </span>
-    <span class="mt-2 max-w-[80%] truncate text-xs font-medium text-white/50">
+    <span class="video-thumbnail__fallback-label mt-2 max-w-[80%] truncate text-xs font-medium">
       {{ thumbnailSrc ? '封面加载失败' : '暂无封面' }}
     </span>
   </div>
@@ -83,12 +83,20 @@ const imageClasses = computed(() => [
 }
 
 .video-thumbnail__fallback {
-  background: hsl(0 0% 0% / 0.55);
+  background: var(--app-media-thumb-placeholder);
+  color: hsl(var(--app-media-on-image-muted) / 0.75);
 }
 
 .video-thumbnail__fallback-icon {
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid hsl(var(--app-media-on-image) / 0.12);
+  background: hsl(var(--overlay) / 0.35);
+  color: hsl(var(--app-media-on-image) / 0.55);
+}
+
+.video-thumbnail__fallback-label {
+  color: hsl(var(--app-media-on-image-muted) / 0.7);
 }
 </style>

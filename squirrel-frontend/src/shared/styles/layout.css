@@ -151,6 +151,19 @@
     0 36px 96px hsl(0 0% 0% / 0.18);
   --app-muted-surface: hsl(var(--muted) / 0.45);
 
+  /* Media craft — on-image overlays (docs/design/patterns/media-craft.md).
+     Darken frames with --overlay alpha; light ink stays H28 warm near-white
+     so dual themes do not introduce pure-black / pure-white canvas islands. */
+  --app-media-on-image: 28 12% 97%;
+  --app-media-on-image-muted: 28 8% 86%;
+  --app-media-thumb-placeholder: hsl(var(--overlay) / 0.45);
+  --app-media-flag-bg: hsl(var(--overlay) / 0.55);
+  --app-media-badge-bg: hsl(var(--overlay) / 0.72);
+  --app-media-scrim-soft: hsl(var(--overlay) / 0.42);
+  --app-media-scrim-mid: hsl(var(--overlay) / 0.55);
+  --app-media-scrim-strong: hsl(var(--overlay) / 0.72);
+  --app-media-progress-track: hsl(var(--overlay) / 0.48);
+
   --app-heading-font: var(--font-display);
   --app-heading-color: hsl(var(--foreground));
   --app-heading-color-muted: hsl(var(--foreground) / 0.82);

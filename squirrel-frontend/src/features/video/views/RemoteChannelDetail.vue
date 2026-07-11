@@ -559,7 +559,7 @@ onUnmounted(() => {
   overflow: hidden;
   border: 0;
   border-radius: var(--app-card-radius);
-  background: hsl(0 0% 0% / 0.55);
+  background: var(--app-media-thumb-placeholder);
   isolation: isolate;
   transition: box-shadow var(--duration-base) var(--ease-default);
 }
@@ -567,16 +567,14 @@ onUnmounted(() => {
 .remote-channel-card:hover .remote-channel-thumb,
 .remote-channel-card:focus-visible .remote-channel-thumb {
   /* Soft lift only — no amber outline ring (matches VideoItem). */
-  box-shadow:
-    0 1px 2px hsl(0 0% 0% / 0.12),
-    0 8px 20px hsl(0 0% 0% / 0.22);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .remote-channel-card:focus-visible .remote-channel-thumb {
   box-shadow:
     0 0 0 2px hsl(var(--background)),
     0 0 0 4px hsl(var(--ring) / 0.45),
-    0 8px 20px hsl(0 0% 0% / 0.22);
+    var(--shadow-card-hover);
 }
 
 .remote-channel-duration {
@@ -586,10 +584,10 @@ onUnmounted(() => {
   display: inline-flex;
   height: 1.25rem;
   align-items: center;
-  border-radius: 0.375rem;
-  background: hsl(0 0% 0% / 0.72);
+  border-radius: var(--radius-sm);
+  background: var(--app-media-badge-bg);
   padding: 0 0.375rem;
-  color: white;
+  color: hsl(var(--app-media-on-image));
   font-size: 0.625rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;

@@ -184,7 +184,7 @@ const openVideo = () => {
   width: 10rem;
   aspect-ratio: 16 / 9;
   border-radius: var(--radius-lg);
-  background: hsl(0 0% 0% / 0.55);
+  background: var(--app-media-thumb-placeholder);
   cursor: pointer;
 }
 
@@ -199,9 +199,9 @@ const openVideo = () => {
   right: 0.375rem;
   bottom: 0.375rem;
   border-radius: var(--radius-sm);
-  background: hsl(0 0% 0% / 0.72);
+  background: var(--app-media-badge-bg);
   padding: 0.125rem 0.3rem;
-  color: hsl(0 0% 100% / 0.94);
+  color: hsl(var(--app-media-on-image) / 0.94);
   font-family: var(--font-mono);
   font-size: 0.625rem;
   line-height: 1;

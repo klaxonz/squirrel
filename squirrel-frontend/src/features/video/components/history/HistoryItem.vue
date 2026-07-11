@@ -160,7 +160,7 @@ const displayChannel = computed(
   min-width: 0;
   overflow: hidden;
   border-radius: var(--radius-md);
-  background: hsl(0 0% 0% / 0.55);
+  background: var(--app-media-thumb-placeholder);
   isolation: isolate;
 }
 
@@ -174,8 +174,8 @@ const displayChannel = computed(
   height: 1.25rem;
   padding: 0 0.375rem;
   border-radius: var(--radius-sm);
-  background: hsl(0 0% 0% / 0.74);
-  color: hsl(0 0% 100%);
+  background: var(--app-media-badge-bg);
+  color: hsl(var(--app-media-on-image));
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
@@ -189,12 +189,12 @@ const displayChannel = computed(
   z-index: 20;
   height: 3px;
   overflow: hidden;
-  background: hsl(0 0% 0% / 0.48);
+  background: var(--app-media-progress-track);
 }
 
 .history-item__progress-fill {
   height: 100%;
-  background: hsl(0 0% 100% / 0.76);
+  background: hsl(var(--primary));
 }
 
 .history-item__body {

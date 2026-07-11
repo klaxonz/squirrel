@@ -465,7 +465,7 @@ onMounted(async () => {
   justify-content: center;
   overflow: hidden;
   border-radius: var(--radius-md);
-  background: hsl(0 0% 0% / 0.58);
+  background: var(--app-media-thumb-placeholder);
   isolation: isolate;
 }
 
@@ -670,7 +670,7 @@ onMounted(async () => {
   overflow: hidden;
   border-radius: var(--radius-md);
   border: 0;
-  background: hsl(0 0% 0% / 0.55);
+  background: var(--app-media-thumb-placeholder);
   isolation: isolate;
 }
 
@@ -751,9 +751,9 @@ onMounted(async () => {
   height: 1.25rem;
   align-items: center;
   border-radius: var(--radius-sm);
-  background: hsl(0 0% 0% / 0.72);
+  background: var(--app-media-badge-bg);
   padding: 0 0.375rem;
-  color: white;
+  color: hsl(var(--app-media-on-image));
   font-size: 0.625rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
