@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from urllib.parse import urlparse
 
 from crawl import (
@@ -10,8 +9,6 @@ from crawl import (
     request,
     request_without_limit,
 )
-
-logger = logging.getLogger(__name__)
 
 SITE_SLUG = "javdb"
 DEFAULT_JAVDB_TIMEOUT_SECONDS = 30.0
@@ -58,8 +55,4 @@ def fetch_javdb_html(
         "allow_redirects": allow_redirects,
     }
 
-    try:
-        return requester("GET", url, bypass_mode="html", **kwargs)
-    except Exception as exc:  # HTTP I/O boundary — fallback retry without bypass
-        logger.debug("JavDB bypass request failed for %s: %s", url, exc, exc_info=True)
-        return requester("GET", url, **kwargs)
+    return requester("GET", url, bypass_mode="html", **kwargs)
