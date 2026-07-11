@@ -520,12 +520,19 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 
 .video-item__site {
   flex: 0 0 auto;
-  padding: 0.0625rem 0.3125rem;
-  border-radius: 0.25rem;
-  background: hsl(var(--accent) / 0.5);
-  color: hsl(var(--muted-foreground));
+  max-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: hsl(var(--muted-foreground) / 0.72);
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 500;
+}
+
+.video-item__site::before {
+  content: '·';
+  margin-right: 0.3rem;
+  color: hsl(var(--muted-foreground) / 0.45);
 }
 
 .video-item__list-duration {

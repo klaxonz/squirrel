@@ -43,7 +43,7 @@
             </div>
 
             <div class="home-stage__content">
-              <h1 class="home-stage__title">{{ heroTitle }}</h1>
+              <h1 class="home-stage__title" :title="heroTitle">{{ heroTitleDisplay }}</h1>
               <p v-if="heroSub" class="home-stage__meta">{{ heroSub }}</p>
 
               <div v-if="heroProgress" class="home-stage__progress-group">
@@ -113,8 +113,8 @@
             >
               <div v-for="index in 4" :key="index" class="home-queue-skeleton">
                 <AppSkeleton
-                  width="8.5rem"
-                  height="4.78125rem"
+                  width="9.5rem"
+                  height="5.34375rem"
                   rounded="var(--radius-md)"
                   shimmer
                 />
@@ -152,14 +152,17 @@
                     class="home-queue-item__image"
                     loading="lazy"
                   />
+                  <span
+                    v-if="video.duration"
+                    class="home-queue-item__duration app-mono"
+                  >
+                    {{ formatDuration(video.duration) }}
+                  </span>
                 </span>
                 <span class="home-queue-item__body">
-                  <span class="home-queue-item__title">{{ video.title }}</span>
-                  <span class="home-queue-item__meta">
-                    <span class="home-queue-item__source">
-                      {{ video.subscriptions?.[0]?.name || video.site || '未知来源' }}
-                    </span>
-                    <span v-if="video.duration">{{ formatDuration(video.duration) }}</span>
+                  <span class="home-queue-item__title" :title="video.title">{{ video.title }}</span>
+                  <span class="home-queue-item__source">
+                    {{ video.subscriptions?.[0]?.name || video.site || '未知来源' }}
                   </span>
                 </span>
               </button>
@@ -335,6 +338,16 @@ const heroTitle = computed(() =>
   heroVideo.value ? heroVideo.value.title : '今天看点什么',
 )
 
+/** Display title: soft-trim very long strings so 2-line clamp ends on a word boundary when possible. */
+const heroTitleDisplay = computed(() => {
+  const raw = String(heroTitle.value || '').trim()
+  if (raw.length <= 72) return raw
+  const slice = raw.slice(0, 72)
+  const breakAt = Math.max(slice.lastIndexOf(' '), slice.lastIndexOf('　'), slice.lastIndexOf('，'), slice.lastIndexOf(','))
+  if (breakAt >= 40) return `${slice.slice(0, breakAt).trimEnd()}…`
+  return `${slice.trimEnd()}…`
+})
+
 const heroChannelName = computed(() => {
   const subs = heroVideo.value?.subscriptions
   return subs?.[0]?.name || null
@@ -458,7 +471,7 @@ onMounted(() => {
 
 .home-focus {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(30rem, 3fr);
+  grid-template-columns: minmax(0, 5fr) minmax(18rem, 22rem);
   align-items: stretch;
   gap: var(--space-5);
   min-height: 0;
@@ -472,8 +485,12 @@ onMounted(() => {
   max-height: 31rem;
   aspect-ratio: 2 / 1;
   overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.45);
   border-radius: var(--app-card-radius);
   background: hsl(var(--background));
+  box-shadow:
+    0 1px 0 hsl(var(--foreground) / 0.04) inset,
+    var(--app-surface-shadow);
   isolation: isolate;
   color: hsl(var(--app-media-on-image));
 }
@@ -510,18 +527,26 @@ onMounted(() => {
   inset: 0;
   z-index: 2;
   pointer-events: none;
+  /* Bottom edge blends toward page canvas; mid bands use overlay for type contrast.
+     --background shifts with theme, so light mode softens into the page shell. */
   background:
     linear-gradient(
       to top,
-      hsl(var(--overlay) / 0.88) 0%,
-      hsl(var(--overlay) / 0.58) 34%,
-      hsl(var(--overlay) / 0.18) 64%,
-      transparent 82%
+      hsl(var(--background) / 0.62) 0%,
+      hsl(var(--background) / 0.18) 14%,
+      transparent 30%
+    ),
+    linear-gradient(
+      to top,
+      hsl(var(--overlay) / 0.76) 0%,
+      hsl(var(--overlay) / 0.46) 36%,
+      hsl(var(--overlay) / 0.12) 66%,
+      transparent 84%
     ),
     linear-gradient(
       to right,
-      hsl(var(--overlay) / 0.36) 0%,
-      transparent 54%
+      hsl(var(--overlay) / 0.26) 0%,
+      transparent 52%
     );
 }
 
@@ -634,11 +659,11 @@ onMounted(() => {
 
 .home-stage__content {
   position: absolute;
-  right: var(--space-6);
-  bottom: var(--space-6);
-  left: var(--space-6);
+  right: var(--space-5);
+  bottom: var(--space-5);
+  left: var(--space-5);
   z-index: 3;
-  max-width: 44rem;
+  max-width: min(36rem, 92%);
   pointer-events: none;
 }
 
@@ -648,19 +673,21 @@ onMounted(() => {
 
 .home-stage__title {
   margin: 0;
-  max-width: 42rem;
+  max-width: 100%;
   overflow: hidden;
   color: hsl(var(--app-media-on-image));
   font-family: var(--app-heading-font);
-  font-size: clamp(1.5rem, 2.2vw, 1.875rem);
-  font-weight: 680;
-  line-height: 1.16;
-  letter-spacing: -0.02em;
+  font-size: clamp(1.25rem, 1.65vw, 1.5625rem);
+  font-weight: 650;
+  line-height: 1.28;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   text-wrap: balance;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  text-shadow: 0 1px 2px hsl(var(--overlay) / 0.4);
+  text-shadow: 0 1px 2px hsl(var(--overlay) / 0.35);
 }
 
 .home-stage__meta {
@@ -753,38 +780,40 @@ onMounted(() => {
   min-height: 0;
   height: 100%;
   align-self: stretch;
-  border-left: 1px solid hsl(var(--border) / 0.72);
-  padding-left: var(--space-5);
+  gap: var(--space-3);
 }
 
 .home-queue__header {
-  padding: 0.125rem 0 var(--space-3);
+  padding: 0.125rem 0.125rem 0;
 }
 
 .home-queue__title {
   margin: 0;
   color: hsl(var(--foreground));
   font-family: var(--app-heading-font);
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 650;
   line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .home-queue__list {
-  display: grid;
-  grid-template-rows: repeat(4, minmax(0, 1fr));
+  display: flex;
   min-width: 0;
   min-height: 0;
+  flex-direction: column;
+  gap: 0.375rem;
 }
 
 .home-queue-skeleton {
   display: grid;
-  grid-template-columns: 8.5rem minmax(0, 1fr);
+  grid-template-columns: 9.5rem minmax(0, 1fr);
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
-  padding: var(--space-3) 0;
-  border-top: 1px solid hsl(var(--border) / 0.5);
+  padding: 0.5rem;
+  border-radius: var(--radius-lg);
+  background: hsl(var(--muted) / 0.35);
 }
 
 .home-queue-skeleton__body {
@@ -795,10 +824,12 @@ onMounted(() => {
 
 .home-queue__empty {
   display: flex;
-  min-height: 0;
+  min-height: 8rem;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
+  border-radius: var(--radius-lg);
+  background: hsl(var(--muted) / 0.28);
   color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
   font-weight: 550;
@@ -806,41 +837,49 @@ onMounted(() => {
 
 .home-queue-item {
   display: grid;
-  grid-template-columns: 8.5rem minmax(0, 1fr);
+  grid-template-columns: 9.5rem minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-3);
+  gap: 0.75rem;
   min-width: 0;
   margin: 0;
-  padding: var(--space-3) 0;
-  border: 0;
-  border-top: 1px solid hsl(var(--border) / 0.5);
-  background: transparent;
+  padding: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: hsl(var(--muted) / 0.22);
   color: hsl(var(--foreground));
   text-align: left;
   cursor: pointer;
-  transition: color var(--duration-fast) var(--ease-default);
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
 }
 
 .home-queue-item:hover {
-  color: hsl(var(--foreground));
+  border-color: hsl(var(--border) / 0.55);
+  background: hsl(var(--accent) / 0.55);
+  box-shadow: var(--shadow-xs);
 }
 
-.home-queue-item:hover .home-queue-item__title {
-  color: hsl(var(--foreground));
+.home-queue-item:hover .home-queue-item__media {
+  box-shadow: var(--shadow-card-hover);
 }
 
 .home-queue-item:focus-visible {
-  border-radius: var(--radius-md);
   outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.45);
+  box-shadow:
+    0 0 0 2px hsl(var(--background)),
+    0 0 0 4px hsl(var(--ring) / 0.45);
 }
 
 .home-queue-item__media {
+  position: relative;
   display: block;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: var(--radius-md);
-  background: hsl(var(--muted));
+  background: var(--app-media-thumb-placeholder);
+  transition: box-shadow var(--duration-base) var(--ease-default);
 }
 
 .home-queue-item__image {
@@ -851,39 +890,50 @@ onMounted(() => {
   object-position: center;
 }
 
+.home-queue-item__duration {
+  position: absolute;
+  right: 0.3rem;
+  bottom: 0.3rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: var(--radius-sm);
+  background: var(--app-media-badge-bg);
+  color: hsl(var(--app-media-on-image));
+  font-size: 0.625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
 .home-queue-item__body {
   display: grid;
   min-width: 0;
-  gap: 0.45rem;
+  gap: 0.35rem;
+  padding-right: 0.125rem;
 }
 
 .home-queue-item__title {
   display: -webkit-box;
   overflow: hidden;
   min-width: 0;
-  color: currentColor;
+  color: hsl(var(--foreground));
   font-size: 0.8125rem;
-  font-weight: 620;
+  font-weight: 600;
   line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-.home-queue-item__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+.home-queue-item__source {
+  overflow: hidden;
   min-width: 0;
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
   font-weight: 500;
   line-height: 1.3;
-  font-variant-numeric: tabular-nums;
-}
-
-.home-queue-item__source {
-  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -912,16 +962,13 @@ onMounted(() => {
 
   .home-queue {
     height: auto;
-    border-top: 1px solid hsl(var(--border) / 0.72);
-    border-left: 0;
-    padding-top: var(--space-5);
-    padding-left: 0;
+    padding-top: var(--space-1);
   }
 
   .home-queue__list {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
-    column-gap: var(--space-6);
+    gap: 0.5rem;
   }
 }
 
