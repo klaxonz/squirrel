@@ -1,5 +1,30 @@
 <template>
   <header class="app-header">
+    <!--
+      Always keep three grid cells: leading | center | actions.
+      Desktop hosts the rail toggle on DesktopTitleBar, so leading is a balance
+      spacer there. If leading is omitted with `v-if`, CSS grid auto-placement
+      drops the search into column 1 (auto) and it sits on the content's left.
+    -->
+    <div
+      class="app-header__leading"
+      :aria-hidden="isDesktopClient ? 'true' : undefined"
+    >
+      <Button
+        v-if="!isDesktopClient"
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        class="app-header__sidebar-toggle"
+        :title="isSidebarOpen ? '收起侧边栏 (Ctrl+B)' : '展开侧边栏 (Ctrl+B)'"
+        :aria-label="isSidebarOpen ? '收起侧边栏' : '展开侧边栏'"
+        :aria-expanded="isSidebarOpen"
+        @click="uiStore.toggleSidebar()"
+      >
+        <AppIcon name="panelLeft" class="size-4" />
+      </Button>
+    </div>
+
     <div class="app-header__center">
       <Transition name="fade" mode="out-in">
         <div v-if="showSearch" key="search" class="app-header__search-wrap">
@@ -54,6 +79,9 @@ const router = useRouter()
 const uiStore = useUIStore()
 const userStore = useUserStore()
 const { isDesktop: isDesktopEnv } = useDesktopBridge()
+const isDesktopClient = isDesktopEnv()
+
+const isSidebarOpen = computed(() => uiStore.isSidebarOpen)
 
 const userDisplayName = computed(() => {
   if (!userStore.currentUser) return '未登录'
@@ -114,10 +142,12 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 .app-header {
   height: 3.25rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(20rem, 36rem) minmax(0, 1fr);
+  /* Equal side tracks keep the search optically centered in the header,
+     independent of whether the left toggle or right user chip is wider. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 40rem) minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-4);
-  padding: 0 var(--space-5);
+  gap: var(--space-3);
+  padding: 0 var(--space-5) 0 var(--space-3);
   border-bottom: 1px solid hsl(var(--border) / 0.32);
   /* Flat chrome on the shared canvas — no card band that reads as a third box. */
   background: hsl(var(--background) / 0.92);
@@ -127,9 +157,27 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   user-select: none;
 }
 
+.app-header__leading {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.app-header__sidebar-toggle {
+  color: hsl(var(--muted-foreground));
+}
+
+.app-header__sidebar-toggle:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent));
+}
+
 .app-header__center {
   grid-column: 2;
   min-width: 0;
+  width: 100%;
   display: flex;
   justify-content: center;
 }
@@ -204,7 +252,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 
 @media (max-width: 980px) {
   .app-header {
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 32rem) minmax(0, 1fr);
+    padding-right: var(--space-3);
   }
 
   .app-header__user-name {
