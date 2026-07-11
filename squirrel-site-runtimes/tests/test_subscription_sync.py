@@ -639,6 +639,40 @@ class SubscriptionSyncTests(unittest.TestCase):
                 ),
             )
 
+    def test_javdb_sync_raises_when_cloudflare_challenge_page_is_returned(self):
+        with _stub_javdb_subscription_dependencies() as (responses, soups):
+            module = _load_javdb_subscription_module()
+
+            error_html = (
+                '<!DOCTYPE html><html><head>'
+                '<title>Attention Required! | Cloudflare</title>'
+                '</head><body><div id="cf-error-details"></div></body></html>'
+            )
+            responses.append(_FakeResponse(error_html))
+            soups[error_html] = _FakeSoup({})
+
+            subscription = module.JavdbSubscription('https://javdb.com/actors/demo')
+
+            with self.assertRaisesRegex(RuntimeError, 'Cloudflare challenge page'):
+                subscription.sync_videos(_SubscriptionSyncContext(mode='incremental'))
+
+    def test_javdb_sync_raises_when_login_page_is_returned(self):
+        with _stub_javdb_subscription_dependencies() as (responses, soups):
+            module = _load_javdb_subscription_module()
+
+            login_html = (
+                '<!DOCTYPE html><html><head>'
+                '<title> Sign in | JavDB, Online information source for adult movies </title>'
+                '</head><body><form action="/user_sessions" method="post"></form></body></html>'
+            )
+            responses.append(_FakeResponse(login_html))
+            soups[login_html] = _FakeSoup({})
+
+            subscription = module.JavdbSubscription('https://javdb.com/actors/demo')
+
+            with self.assertRaisesRegex(RuntimeError, 'login page'):
+                subscription.sync_videos(_SubscriptionSyncContext(mode='incremental'))
+
     def test_pornhub_full_sync_returns_continuation_cursor_for_next_page(self):
         with _stub_pornhub_subscription_dependencies() as (responses, soups):
             module = _load_pornhub_subscription_module()

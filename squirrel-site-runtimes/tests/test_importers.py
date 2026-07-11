@@ -491,6 +491,23 @@ class ImporterTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'login page'):
                 importer.get_user_subscriptions_batch()
 
+    def test_javdb_importer_raises_when_bypass_returns_cloudflare_challenge_page(self):
+        with _stub_javdb_importer_dependencies() as (responses, soups):
+            module = _load_javdb_importer_module()
+
+            error_html = (
+                '<!DOCTYPE html><html><head>'
+                '<title>Attention Required! | Cloudflare</title>'
+                '</head><body><div id="cf-error-details"></div></body></html>'
+            )
+            responses.append(_FakeResponse(error_html))
+            soups[error_html] = _FakeSoup(select_map={})
+
+            importer = module.JavdbUserSubscriptionImporter()
+
+            with self.assertRaisesRegex(RuntimeError, 'Cloudflare challenge page'):
+                importer.get_user_subscriptions_batch()
+
 
 if __name__ == '__main__':
     unittest.main()

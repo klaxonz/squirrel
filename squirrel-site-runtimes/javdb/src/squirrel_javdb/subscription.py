@@ -23,13 +23,35 @@ from crawl import (
 from .html_client import fetch_javdb_html
 
 
+def _detect_javdb_error_page(body: str) -> str | None:
+    normalized_body = str(body or "").lower()
+    if not normalized_body:
+        return None
+    if (
+        "<title> sign in | javdb" in normalized_body
+        or "this content requires login to view" in normalized_body
+        or 'action="/user_sessions"' in normalized_body
+    ):
+        return "login"
+    if "<title>just a moment" in normalized_body or "<title>attention required!" in normalized_body:
+        return "challenge"
+    if "cf-error-details" in normalized_body:
+        if "bad gateway" in normalized_body or "error code 502" in normalized_body:
+            return "gateway"
+        if "cloudflare" in normalized_body:
+            return "challenge"
+    return None
+
+
 class JavdbSubscription:
     def __init__(self, url: str) -> None:
         self.url = url
 
     def get_subscribe_info(self) -> SubscriptionMeta:
         response = fetch_javdb_html(self.url)
+        response.raise_for_status()
         html = response.text
+        self._raise_for_error_page(html, "subscription metadata")
         bs4 = BeautifulSoup(html, "html.parser")
         username_el = bs4.select(".actor-section-name")
         if len(username_el) == 0:
@@ -66,7 +88,9 @@ class JavdbSubscription:
         count_offset = resolve_count_offset(context)
         previous_page_urls = resolve_previous_page_urls(context)
         response = fetch_javdb_html(build_page_url(self.url, page, {"sort_type": "0"}))
+        response.raise_for_status()
         html = response.text
+        self._raise_for_error_page(html, "subscription sync")
 
         parsed_url = urlparse(self.url)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
@@ -137,6 +161,15 @@ class JavdbSubscription:
         except ValueError:
             return None
 
+    def _raise_for_error_page(self, html: str, operation: str) -> None:
+        error_type = _detect_javdb_error_page(html)
+        if error_type == "login":
+            raise RuntimeError(f"JavDB returned a login page during {operation}")
+        if error_type == "gateway":
+            raise RuntimeError(f"JavDB returned a gateway error page during {operation}")
+        if error_type == "challenge":
+            raise RuntimeError(f"JavDB returned a Cloudflare challenge page during {operation}")
+
     def _extract_video_urls(
         self,
         bs4: BeautifulSoup,
@@ -167,5 +200,4 @@ class JavdbSubscription:
             if stop_reason:
                 return stop_reason, latest_video_url
         return None, latest_video_url
-
 

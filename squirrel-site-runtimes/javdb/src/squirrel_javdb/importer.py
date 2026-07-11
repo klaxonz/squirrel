@@ -25,12 +25,13 @@ def _detect_javdb_error_page(body: str) -> str | None:
         or 'action="/user_sessions"' in normalized_body
     ):
         return "login"
-    if "<title>just a moment" in normalized_body:
+    if "<title>just a moment" in normalized_body or "<title>attention required!" in normalized_body:
         return "challenge"
-    if "cf-error-details" in normalized_body and (
-        "bad gateway" in normalized_body or "error code 502" in normalized_body
-    ):
-        return "gateway"
+    if "cf-error-details" in normalized_body:
+        if "bad gateway" in normalized_body or "error code 502" in normalized_body:
+            return "gateway"
+        if "cloudflare" in normalized_body:
+            return "challenge"
     return None
 
 

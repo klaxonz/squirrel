@@ -1,6 +1,6 @@
 import logging
 import time
-from threading import Event, Lock, Thread
+from threading import Event, Lock, Thread, current_thread
 
 from infrastructure.concurrency.thread_manager import thread_manager
 
@@ -15,12 +15,15 @@ class Scheduler:
     def __init__(self):
         self.jobs = []
         self._lock = Lock()
+        self._lifecycle_lock = Lock()
         self._stop_event = Event()
+        self._thread = None
 
     @property
     def running(self) -> bool:
-        """True while the scheduler loop is active (read under lock semantics)."""
-        return not self._stop_event.is_set()
+        """True while the scheduler run loop thread is active."""
+        thread = self._thread
+        return thread is not None and thread.is_alive() and not self._stop_event.is_set()
 
     def _resolve_job_name(self, func):
         """Return a readable job name for logging."""
@@ -100,9 +103,12 @@ class Scheduler:
 
     def start(self):
         """Start the scheduler."""
-        if self._stop_event.is_set():
+        with self._lifecycle_lock:
+            if self.running:
+                return
             self._stop_event.clear()
             thread = Thread(target=self._run_jobs, name='scheduler-run-loop', daemon=True)
+            self._thread = thread
             thread.start()
             thread_manager.register(thread)
 
@@ -113,3 +119,6 @@ class Scheduler:
         immediately instead of sleeping through the poll interval.
         """
         self._stop_event.set()
+        thread = self._thread
+        if thread is not None and thread is not current_thread():
+            thread.join(timeout=_POLL_INTERVAL_SECONDS + 1)
