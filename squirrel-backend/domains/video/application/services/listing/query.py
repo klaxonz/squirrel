@@ -1,8 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, false, func, not_, or_, select
 from sqlalchemy.orm import Session
 
+from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.subscription.domain.models.subscription import Subscription
 from domains.video.application.services.listing.query_filters import (
     build_active_subscriptions_query,
     feed_category_predicate,
@@ -22,6 +24,7 @@ from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_history import VideoHistory
 from domains.video.domain.models.video_interaction import VideoInteraction
+from infrastructure.site_catalog.catalog import SiteCatalog
 
 # read/liked/later 的 interaction_type 映射
 _CATEGORY_INTERACTION_TYPE: dict[str, int] = {
@@ -33,6 +36,7 @@ _CATEGORY_INTERACTION_TYPE: dict[str, int] = {
 class VideoListQueryService:
     def __init__(self, resolve_effective_nsfw_filter=None):
         resolve_nsfw_filter = resolve_effective_nsfw_filter or _default_resolve_effective_nsfw_filter
+        self._resolve_effective_nsfw_filter = resolve_nsfw_filter
         self._build_active_subscriptions_query = lambda **kwargs: build_active_subscriptions_query(
             **kwargs,
             resolve_effective_nsfw_filter_func=resolve_nsfw_filter,
@@ -105,11 +109,112 @@ class VideoListQueryService:
         # 按召回顺序返回(Meili 的排序即最终顺序)
         return [vid for vid in recalled_ids if vid in matched]
 
+    def filter_user_state_ids(
+        self,
+        session: Session,
+        *,
+        recalled_ids: list[int],
+        user_id: int,
+        show_nsfw: bool,
+        subscription_id: int | None,
+        nsfw: str,
+        domains: list[str] | None,
+        content_type: str,
+        special: str,
+    ) -> list[int]:
+        """Filter read/liked/later ids by video existence and visibility rules.
+
+        read/liked/later are user-owned state lists. They must not disappear just
+        because a video is no longer attached to an active subscription, has no
+        subscription link, or has a missing publish_date. Sensitive-content
+        visibility still applies globally.
+        """
+        if not recalled_ids:
+            return []
+
+        query_stmt = select(Video.id).where(
+            Video.is_deleted.is_(False),
+            Video.id.in_(recalled_ids),
+        )
+        if domains:
+            normalized_domains = [domain.strip().lower() for domain in domains if domain and domain.strip()]
+            if normalized_domains:
+                query_stmt = query_stmt.where(func.lower(Video.domain).in_(normalized_domains))
+
+        effective_nsfw = self._resolve_effective_nsfw_filter(nsfw, show_nsfw)
+        needs_subscription_dimension_filter = (
+            subscription_id is not None
+            or content_type != 'all'
+            or special != 'all'
+        )
+        if needs_subscription_dimension_filter:
+            active_subscriptions = self._build_active_subscriptions_query(
+                user_id=user_id,
+                subscription_id=subscription_id,
+                nsfw=nsfw,
+                show_nsfw=show_nsfw,
+                special=special,
+            )
+            query_stmt = (
+                query_stmt.join(SubscriptionVideo, SubscriptionVideo.video_id == Video.id)
+                .join(active_subscriptions, active_subscriptions.c.subscription_id == SubscriptionVideo.subscription_id)
+            )
+            if content_type != 'all':
+                query_stmt = query_stmt.where(active_subscriptions.c.subscription_type == content_type)
+        elif effective_nsfw == 'blocked':
+            return []
+        elif effective_nsfw in {'yes', 'no'}:
+            is_sensitive = self._user_state_sensitive_predicate(user_id=user_id)
+            query_stmt = query_stmt.where(is_sensitive if effective_nsfw == 'yes' else not_(is_sensitive))
+
+        matched = {row[0] for row in session.execute(query_stmt).all()}
+        return [vid for vid in recalled_ids if vid in matched]
+
+    @staticmethod
+    def _user_state_sensitive_predicate(*, user_id: int):
+        nsfw_subscription_video_ids = (
+            select(SubscriptionVideo.video_id)
+            .select_from(SubscriptionVideo)
+            .join(
+                UserSubscription,
+                and_(
+                    UserSubscription.subscription_id == SubscriptionVideo.subscription_id,
+                    UserSubscription.user_id == user_id,
+                    UserSubscription.is_deleted.is_(False),
+                    UserSubscription.is_nsfw.is_(True),
+                ),
+            )
+            .join(
+                Subscription,
+                and_(
+                    Subscription.id == SubscriptionVideo.subscription_id,
+                    Subscription.is_deleted.is_(False),
+                ),
+            )
+        )
+        nsfw_domains = _nsfw_site_domains()
+        domain_is_nsfw = (
+            and_(Video.domain.is_not(None), func.lower(Video.domain).in_(nsfw_domains))
+            if nsfw_domains
+            else false()
+        )
+        return or_(Video.id.in_(nsfw_subscription_video_ids), domain_is_nsfw)
+
+
+def _nsfw_site_domains() -> list[str]:
+    domains: list[str] = []
+    for info in SiteCatalog._get_effective_catalog().values():
+        if not bool((info.get('metadata') or {}).get('nsfw', False)):
+            continue
+        domains.extend(str(domain or '').strip().lower() for domain in info.get('domains', []) if domain)
+    return list(dict.fromkeys(domains))
+
 
 video_list_query_service = VideoListQueryService()
 
 # 模块级便捷函数
 filter_recalled_ids = video_list_query_service.filter_recalled_ids
+filter_user_state_ids = video_list_query_service.filter_user_state_ids
 
 
 def fetch_special_follow_video_ids(
@@ -361,19 +466,17 @@ def fetch_user_state_id_set(
     *,
     user_id: int,
     category: str,
-    limit: int = 5000,
 ) -> list[int]:
     """read/liked/later 有 query 场景:取该用户该 category 的 video_id 集合(供 Meili filter)。
 
-    buffer 策略:按交互时间倒序取最近 limit 个(默认 5000),覆盖绝大多数用户。
-    超过 limit 的旧记录不在搜索范围(可接受:用户极少搜索超旧的已读/喜欢视频)。
+    这里不能截断。用户在 read/liked/later 分类里搜索时,语义是“在该用户全部状态集合内搜索”,
+    固定取最近 N 条会让旧的已读/喜欢/稍后再看视频从搜索范围里消失,导致分类数量与实际状态不一致。
     """
     if category == 'read':
         stmt = (
             select(VideoHistory.video_id)
             .where(VideoHistory.user_id == user_id)
             .order_by(VideoHistory.end_time.desc())
-            .limit(limit)
         )
     else:
         interaction_type = _CATEGORY_INTERACTION_TYPE.get(category)
@@ -386,7 +489,6 @@ def fetch_user_state_id_set(
                 VideoInteraction.interaction_type == interaction_type,
             )
             .order_by(VideoInteraction.created_at.desc())
-            .limit(limit)
         )
     return [r[0] for r in session.execute(stmt).all()]
 

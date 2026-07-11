@@ -22,6 +22,7 @@ from domains.video.application.services.listing.query import (
     fetch_user_state_id_set,
     fetch_user_state_video_ids,
     filter_recalled_ids,
+    filter_user_state_ids,
     recall_offset_ids,
 )
 from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
@@ -236,6 +237,90 @@ class VideoListService:
             subscription_id=subscription_id,
             category=category,
             nsfw=nsfw,
+            content_type=content_type,
+            special=special,
+        )
+        filter_ms = self._elapsed_ms(filter_started)
+
+        offset = max((page - 1) * page_size, 0)
+        page_ids = filtered_ids[offset : offset + page_size]
+        has_more = offset + page_size < len(filtered_ids)
+        next_cursor = _encode_page_cursor(page + 1) if has_more else None
+
+        if not page_ids:
+            return [], next_cursor, _timings(recall_ms, filter_ms, 0.0)
+
+        page_started = perf_counter()
+        page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
+        page_ms = self._elapsed_ms(page_started)
+        return page_items.items, next_cursor, _timings(recall_ms, filter_ms, page_ms)
+
+    def _filter_user_state_and_paginate(
+        self,
+        session: Session,
+        recalled_ids: list[int],
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        subscription_id: int | None,
+        nsfw: str,
+        domains: list[str] | None,
+        content_type: str,
+        special: str,
+        page_size: int,
+        next_cursor: str | None,
+        recall_ms: float,
+    ) -> tuple[list[dict], str | None, dict[str, float]]:
+        """PG filter + hydration tail for read/liked/later browse paths."""
+        filter_started = perf_counter()
+        filtered_ids = filter_user_state_ids(
+            session,
+            recalled_ids=recalled_ids,
+            user_id=user_id,
+            show_nsfw=show_nsfw,
+            subscription_id=subscription_id,
+            nsfw=nsfw,
+            domains=domains,
+            content_type=content_type,
+            special=special,
+        )
+        filter_ms = self._elapsed_ms(filter_started)
+
+        page_ids = filtered_ids[:page_size]
+        if not page_ids:
+            return [], next_cursor, _timings(recall_ms, filter_ms, 0.0)
+
+        page_started = perf_counter()
+        page_items = self._page_loader.load_page(session, user_id=user_id, video_ids=page_ids)
+        page_ms = self._elapsed_ms(page_started)
+        return page_items.items, next_cursor, _timings(recall_ms, filter_ms, page_ms)
+
+    def _filter_user_state_and_offset_paginate(
+        self,
+        session: Session,
+        recalled_ids: list[int],
+        *,
+        user_id: int,
+        show_nsfw: bool,
+        subscription_id: int | None,
+        nsfw: str,
+        domains: list[str] | None,
+        content_type: str,
+        special: str,
+        page: int,
+        page_size: int,
+        recall_ms: float,
+    ) -> tuple[list[dict], str | None, dict[str, float]]:
+        """PG filter + offset hydration tail for read/liked/later search paths."""
+        filter_started = perf_counter()
+        filtered_ids = filter_user_state_ids(
+            session,
+            recalled_ids=recalled_ids,
+            user_id=user_id,
+            show_nsfw=show_nsfw,
+            subscription_id=subscription_id,
+            nsfw=nsfw,
+            domains=domains,
             content_type=content_type,
             special=special,
         )
@@ -562,17 +647,17 @@ class VideoListService:
         if not video_ids:
             return [], None, _timings(recall_ms, 0.0, 0.0)
 
-        # 权限过滤;category 传 'all'(per-user 表已保证 category 语义,不再 EXISTS)
-        # has_more 看 PG per-user 表是否还有更多(next_cursor 非 None)
-        # 注意:即使权限过滤后不足一页,只要 per-user 表还有更多,就允许翻页
-        return self._filter_and_paginate(
+        # User-state lists are owned by per-user tables; default visibility only
+        # requires the target video to still exist. Explicit subscription/nsfw/
+        # type/special filters are applied inside filter_user_state_ids.
+        return self._filter_user_state_and_paginate(
             session,
             video_ids,
             user_id=user_id,
             show_nsfw=show_nsfw,
             subscription_id=subscription_id,
-            category='all',
             nsfw=nsfw,
+            domains=domains,
             content_type=content_type,
             special=special,
             page_size=page_size,
@@ -727,7 +812,7 @@ class VideoListService:
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """read/liked/later 搜索:PG 取 per-user id 集合 → Meili filter id IN [...] 反向交集。
 
-        - PG: 取该用户该 category 的 video_id 集合(最近 5000 个)
+        - PG: 取该用户该 category 的完整 video_id 集合
         - Meili: 全局索引 filter id IN [集合] + query 文本召回
         - PG: 权限过滤 + OFFSET 分页
         """
@@ -765,14 +850,14 @@ class VideoListService:
             return [], None, _timings(recall_ms, 0.0, 0.0)
 
         # 3. PG 权限过滤 + 4. OFFSET 分页
-        return self._filter_and_offset_paginate(
+        return self._filter_user_state_and_offset_paginate(
             session,
             recalled_ids,
             user_id=user_id,
             show_nsfw=show_nsfw,
             subscription_id=subscription_id,
-            category='all',
             nsfw=nsfw,
+            domains=domains,
             content_type=content_type,
             special=special,
             page=page,
