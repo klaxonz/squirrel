@@ -71,7 +71,7 @@
                   <AppFilterSection v-if="isFeedView" label="分级" layout="row" divided>
                     <AppFilterChips
                       :model-value="nsfw"
-                      :options="contentLevelOptions"
+                      :options="nsfwOptions"
                       label="内容分级"
                       @update:model-value="handleNsfwFilterChange"
                     />
@@ -84,7 +84,6 @@
                   >
                     <span class="app-filter-toggle__copy">
                       <span class="app-filter-toggle__title">特别关注</span>
-                      <span class="app-filter-toggle__hint">仅特别关注频道</span>
                     </span>
                     <Switch
                       :model-value="librarySpecialOnly"
@@ -323,6 +322,7 @@ import SubscriptionChannelInspector from '@/features/video/components/subscripti
 import AddChannelDialog from '@/features/video/components/dialogs/AddChannelDialog.vue'
 import ImportSubscriptionDialog from '@/features/video/components/dialogs/ImportSubscriptionDialog.vue'
 import { useSites } from '@/features/video/composables/useSites'
+import { NSFW_OPTIONS } from '@/features/video/constants/feedFilters'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import { sortSubscriptions } from '@/features/video/lib/subscriptionSort'
@@ -457,11 +457,7 @@ const canOpenSelectedRemote = computed(() => (
   )
 ))
 
-const contentLevelOptions = [
-  { value: 'all', label: '全部' },
-  { value: 'no', label: '普通' },
-  { value: 'yes', label: '成年' },
-]
+const nsfwOptions = NSFW_OPTIONS
 
 const viewOptions = computed<{
   value: SubscriptionView
@@ -502,12 +498,6 @@ const activeFilterCount = computed(() => {
   if (isFeedView.value && nsfw.value !== 'all') count += 1
   if (activeView.value === 'channels' && librarySpecialOnly.value) count += 1
   return count
-})
-
-const filterDescription = computed(() => {
-  if (isFeedView.value) return '按来源和内容分级缩小范围'
-  if (activeView.value === 'channels') return '按来源和关注状态缩小范围'
-  return '按来源缩小范围'
 })
 
 const feedEmptyTitle = computed(() => {
@@ -1044,10 +1034,10 @@ onUnmounted(() => {
   height: 1.5rem;
   align-items: center;
   justify-content: center;
-  border: 1px solid hsl(var(--border) / 0.4);
+  border: 1px solid hsl(var(--border) / 0.5);
   border-radius: var(--radius-sm);
-  background: hsl(var(--card));
-  color: hsl(var(--muted-foreground) / 0.9);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground) / 0.72);
 }
 
 .subscription-filter-all-icon :deep(svg) {

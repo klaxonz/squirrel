@@ -1,4 +1,4 @@
-<!-- DESIGN.md §9.1 — compact filter menu. -->
+<!-- DESIGN.md § filter-popover — compact filter menu (Organize 32px). -->
 <template>
   <div class="app-filter-panel">
     <header class="app-filter-panel__header">
@@ -31,11 +31,9 @@
 <script setup lang="ts">
 withDefaults(defineProps<{
   title?: string
-  description?: string
   activeCount?: number
 }>(), {
   title: '筛选',
-  description: '',
   activeCount: 0,
 })
 
@@ -56,22 +54,23 @@ defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  min-height: 2.125rem;
-  padding: 0.4rem 0.75rem 0.25rem;
+  min-height: 2rem;
+  padding: 0.55rem 0.85rem 0.15rem;
 }
 
 .app-filter-panel__title-row {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.375rem;
 }
 
 .app-filter-panel__title {
-  color: hsl(var(--foreground) / 0.5);
+  color: hsl(var(--muted-foreground) / 0.72);
   font-size: 0.6875rem;
   font-weight: 650;
   letter-spacing: 0.04em;
+  line-height: 1.2;
   text-transform: uppercase;
 }
 
@@ -82,8 +81,8 @@ defineEmits<{
   place-items: center;
   padding: 0 0.25rem;
   border-radius: 999px;
-  background: hsl(var(--foreground) / 0.08);
-  color: hsl(var(--foreground) / 0.7);
+  background: var(--app-selection-count-bg);
+  color: var(--app-selection-count-fg);
   font-size: 0.5625rem;
   font-weight: 700;
   line-height: 1;
@@ -93,11 +92,15 @@ defineEmits<{
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  padding: 0.15rem 0.3rem;
-  color: hsl(var(--muted-foreground));
+  padding: 0.2rem 0.375rem;
+  color: hsl(var(--muted-foreground) / 0.88);
   font-size: 0.75rem;
   font-weight: 550;
+  line-height: 1.2;
   cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
 }
 
 .app-filter-panel__reset:hover {
@@ -105,10 +108,21 @@ defineEmits<{
   background: hsl(var(--muted) / 0.65);
 }
 
+.app-filter-panel__reset:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+}
+
 .app-filter-panel__body {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
-  padding: 0.125rem 0.625rem 0.625rem;
+  gap: 0.05rem;
+  padding: 0.1rem 0.7rem 0.7rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-filter-panel__reset {
+    transition: none;
+  }
 }
 </style>

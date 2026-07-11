@@ -68,25 +68,22 @@
               </AppFilterOptionList>
             </AppFilterSection>
 
-            <AppFilterSection label="范围" divided>
-              <div class="feed-filter-range">
-                <AppFilterSection label="时间" layout="row">
-                  <AppFilterChips
-                    :model-value="timeRange"
-                    :options="timeRangeOptions"
-                    label="按时间范围筛选"
-                    @update:model-value="handleTimeRangeChange"
-                  />
-                </AppFilterSection>
-                <AppFilterSection label="时长" layout="row">
-                  <AppFilterChips
-                    :model-value="duration"
-                    :options="durationOptions"
-                    label="按视频时长筛选"
-                    @update:model-value="handleDurationChange"
-                  />
-                </AppFilterSection>
-              </div>
+            <AppFilterSection label="时间" layout="row" divided>
+              <AppFilterChips
+                :model-value="timeRange"
+                :options="timeRangeOptions"
+                label="按时间范围筛选"
+                @update:model-value="handleTimeRangeChange"
+              />
+            </AppFilterSection>
+
+            <AppFilterSection label="时长" layout="row">
+              <AppFilterChips
+                :model-value="duration"
+                :options="durationOptions"
+                label="按视频时长筛选"
+                @update:model-value="handleDurationChange"
+              />
             </AppFilterSection>
 
             <AppFilterSection v-if="!subscriptionId" label="类型" layout="row">
@@ -114,7 +111,6 @@
             >
               <span class="app-filter-toggle__copy">
                 <span class="app-filter-toggle__title">特别关注</span>
-                <span class="app-filter-toggle__hint">仅特别关注频道</span>
               </span>
               <Switch
                 :model-value="special === 'yes'"
@@ -337,14 +333,6 @@ const activeFilterCount = computed(() => {
   return count
 })
 
-const filterDescription = computed(() => (
-  activeFilterCount.value > 0
-    ? `已启用 ${activeFilterCount.value} 项条件`
-    : props.subscriptionId
-      ? '按时间和内容范围筛选'
-      : '按来源、时间和内容范围筛选'
-))
-
 const filterButtonLabel = computed(() => (
   activeFilterCount.value > 0
     ? `筛选，已启用 ${activeFilterCount.value} 项`
@@ -446,10 +434,10 @@ const viewModeOptions = [
   height: 1.5rem;
   align-items: center;
   justify-content: center;
-  border: 1px solid hsl(var(--border) / 0.4);
+  border: 1px solid hsl(var(--border) / 0.5);
   border-radius: var(--radius-sm);
-  background: hsl(var(--card));
-  color: hsl(var(--muted-foreground) / 0.9);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground) / 0.72);
 }
 
 .feed-filter-all-icon :deep(svg) {
@@ -457,8 +445,4 @@ const viewModeOptions = [
   height: 0.8125rem;
 }
 
-.feed-filter-range {
-  display: grid;
-  gap: 0.35rem;
-}
 </style>

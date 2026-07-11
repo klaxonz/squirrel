@@ -141,4 +141,25 @@
   --gray-800: 28 10% 14%;
   --gray-900: 28 10% 10%;
   --gray-950: 28 10% 6%;
+
+  /* Selection on paper: lower fill alpha (ink on white reads darker), keep
+     foreground-based borders so tiles/triggers don't dissolve into hairlines. */
+  --app-selection-bg: hsl(var(--foreground) / 0.06);
+  --app-selection-bg-hover: hsl(var(--foreground) / 0.09);
+  --app-selection-border: hsl(var(--foreground) / 0.16);
+  --app-selection-border-hover: hsl(var(--foreground) / 0.24);
+  --app-selection-fg: hsl(var(--foreground));
+  --app-selection-count-bg: hsl(var(--foreground) / 0.1);
+  --app-selection-count-fg: hsl(var(--foreground));
+
+  /* Filter raised on paper: card-on-secondary (white lift over soft track).
+     Elevation-only tile shadow; selection edge is border-color. */
+  --app-filter-track-bg: hsl(var(--secondary));
+  --app-filter-raised-bg: hsl(var(--card));
+  --app-filter-raised-fg: hsl(var(--foreground));
+  --app-filter-raised-shadow: var(--shadow-xs);
+  --app-filter-tile-idle-bg: hsl(var(--muted) / 0.75);
+  --app-filter-tile-idle-border: hsl(var(--border) / 0.95);
+  --app-filter-tile-hover-bg: hsl(var(--muted));
+  --app-filter-tile-raised-shadow: 0 1px 2px hsl(var(--foreground) / 0.06);
 }

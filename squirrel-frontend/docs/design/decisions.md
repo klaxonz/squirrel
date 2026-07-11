@@ -13,7 +13,8 @@
 | 站点 / 定时 / 日志 / 设置 | Operate · 36px 字段 | Spec 1 |
 | 页内主行动 | `Button` `default`，每视图 1 个 | Spec 2 · P2 |
 | 工具栏次要操作 | `ghost` / `outline` | Spec 1 Organize |
-| 导航当前 / 列表选中 / 筛选开 | `--app-selection-*` / `.is-active` | Spec 2 · [Color](./foundations/color.md) |
+| 导航当前 / 列表选中 / 筛选触发器开 | `--app-selection-*` / `.is-active` | Spec 2 · [Color](./foundations/color.md) |
+| 筛选面板内 segment / tile 当前 | `--app-filter-raised-*`（tile 边 selection） | Spec 2 · [Filter](./patterns/filter-popover.md) |
 | Consume scrim | `background` / `overlay` 的 alpha | Spec 2 |
 | 卡焦点抬升 | `shadow-card-hover` + transform | Spec 1 · [Elevation](./foundations/elevation.md) |
 | 健康 / 成功 | `--success` + 文案 | Spec 2 |

@@ -22,20 +22,24 @@
 | 项 | 标准 |
 |----|------|
 | 选择完成位置 | 同一 Popover 内完成 |
-| 短列表 | ≤6 项用 Chip 轨 |
-| 站点等长列表 | OptionList 磁贴 |
+| 短列表 | ≤6 项用 Chip 轨（`AppFilterChips`） |
+| 站点等长列表 | OptionList 磁贴（`AppFilterOptionList`） |
 | 生效 | 即时生效 |
 | 重置 | 有条件时显示「重置」 |
 | 触发器开启态 | `--app-selection-*` / `.is-active` + 中性计数 |
+| 面板内当前项 | `--app-filter-raised-*`（抬起面）；磁贴边用 `--app-selection-border` |
 | 控件高 | Dense 32px |
 
 ## 结构
 
 实现与字段布局以 `AppFilterPanel` 及现有 feed 工具栏为准；新筛选项扩展 shared Pattern，不新增业务私有面板。
 
+时间 / 时长直接用 sibling `AppFilterSection` 行，不套「范围」空壳。
+
 ## 验收
 
 - [ ] 筛选仅通过 `AppFilterPanel`（或文档化等价）
 - [ ] 排序在工具栏独立 Select
-- [ ] 开启态为 selection token
+- [ ] 触发器开启态为 selection token
+- [ ] 面板内 segment / tile 当前为 raised token
 - [ ] 控件高 32px

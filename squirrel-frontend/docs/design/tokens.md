@@ -6,6 +6,7 @@
 |------|------|------|
 | 色板 | `src/shared/styles/themes/dark.css` | `--background`、`--primary`、`--success`… |
 | 选中 | `src/shared/styles/layout.css` | `--app-selection-*` |
+| 筛选抬起面 | `layout.css` + `.light` | `--app-filter-track-*` / `--app-filter-raised-*` / `--app-filter-tile-*` |
 | 媒体叠层 | `layout.css` | `--app-media-on-image*`、`--app-media-scrim-*`、`--app-media-badge-bg` |
 | 字段 | `layout.css` | `--app-field-*` |
 | 网格 | `layout.css` | `--app-video-grid-*`、`.app-video-grid` |

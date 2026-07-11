@@ -1,18 +1,18 @@
-<!-- DESIGN.md §9.1 — compact segmented track. -->
+<!-- DESIGN.md § filter-popover — compact segmented track (exclusive choice).
+     Dual-theme: track/raised tokens. role=group (honest; not full APG radiogroup). -->
 <template>
   <div
     class="app-filter-chips"
-    role="radiogroup"
+    role="group"
     :aria-label="label"
   >
     <button
       v-for="option in options"
       :key="option.value"
       type="button"
-      role="radio"
       class="app-filter-chip"
       :class="{ 'is-active': modelValue === option.value }"
-      :aria-checked="modelValue === option.value"
+      :aria-pressed="modelValue === option.value"
       @click="emit('update:modelValue', option.value)"
     >
       {{ option.label }}
@@ -43,9 +43,10 @@ const emit = defineEmits<{
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   gap: 0;
+  min-height: 1.75rem;
   padding: 2px;
   border-radius: var(--radius-md);
-  background: hsl(var(--muted) / 0.7);
+  background: var(--app-filter-track-bg);
 }
 
 .app-filter-chip {
@@ -57,8 +58,8 @@ const emit = defineEmits<{
   border: 0;
   border-radius: calc(var(--radius-md) - 2px);
   background: transparent;
-  padding: 0 0.2rem;
-  color: hsl(var(--muted-foreground) / 0.9);
+  padding: 0 0.25rem;
+  color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
   font-weight: 550;
   line-height: 1;
@@ -74,15 +75,28 @@ const emit = defineEmits<{
   color: hsl(var(--foreground));
 }
 
+/* Raised segment — same dual-theme family as AppSegmentedControl. */
 .app-filter-chip.is-active {
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background: var(--app-filter-raised-bg);
+  color: var(--app-filter-raised-fg);
   font-weight: 650;
-  box-shadow: 0 1px 1px hsl(var(--foreground) / 0.06);
+  box-shadow: var(--app-filter-raised-shadow);
 }
 
 .app-filter-chip:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.35);
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+}
+
+.app-filter-chip.is-active:focus-visible {
+  box-shadow:
+    var(--app-filter-raised-shadow),
+    0 0 0 2px hsl(var(--ring) / 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-filter-chip {
+    transition: none;
+  }
 }
 </style>

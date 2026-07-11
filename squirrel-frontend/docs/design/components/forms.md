@@ -14,8 +14,9 @@
 
 - 共享表面：`--app-field-bg`、`--app-field-border` 等
 - 设置 / 对话框：**36px** Default
-- **工具栏 / 筛选内 Select：32px + `text-xs`**
-  - class：`app-filter-select` / `app-toolbar-select-trigger`
+- **工具栏 Select：32px + `text-xs`**
+  - class：`app-toolbar-select-trigger`
+  - 多维筛选优先 [Filter Popover](../patterns/filter-popover.md) chip / 磁贴，不在面板内叠 Dense Select
 - Focus：边框切入 ring，不用纯 glow 替代
 
 ## Switch

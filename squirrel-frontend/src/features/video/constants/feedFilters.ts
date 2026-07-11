@@ -3,14 +3,14 @@
 export type FilterOption = { value: string; label: string }
 
 export const TIME_RANGE_OPTIONS: FilterOption[] = [
-  { value: 'all', label: '不限' },
+  { value: 'all', label: '全部' },
   { value: 'today', label: '今天' },
   { value: 'week', label: '本周' },
   { value: 'month', label: '本月' },
 ]
 
 export const DURATION_OPTIONS: FilterOption[] = [
-  { value: 'all', label: '不限' },
+  { value: 'all', label: '全部' },
   { value: 'short', label: '短片' },
   { value: 'medium', label: '常规' },
   { value: 'long', label: '长片' },

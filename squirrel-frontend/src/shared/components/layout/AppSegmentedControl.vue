@@ -2,7 +2,7 @@
   <div
     class="app-segmented-control"
     :class="[`app-segmented-control--${size}`]"
-    role="radiogroup"
+    role="group"
     :aria-label="ariaLabel"
   >
     <Button
@@ -13,8 +13,7 @@
       type="button"
       class="app-segmented-control__item"
       :class="{ 'is-active': modelValue === option.value }"
-      role="radio"
-      :aria-checked="modelValue === option.value"
+      :aria-pressed="modelValue === option.value"
       :title="option.label"
       :aria-label="option.label"
       @click="selectOption(option.value)"
@@ -75,7 +74,7 @@ const selectOption = (value: string | number) => {
   align-items: center;
   gap: 2px;
   flex: 0 0 auto;
-  background: hsl(var(--secondary));
+  background: var(--app-filter-track-bg);
   border-radius: var(--radius-md);
   padding: 2px;
 }
@@ -98,9 +97,9 @@ const selectOption = (value: string | number) => {
 }
 
 .app-segmented-control__item.is-active {
-  color: hsl(var(--foreground));
-  background: hsl(var(--card));
-  box-shadow: var(--shadow-xs);
+  color: var(--app-filter-raised-fg);
+  background: var(--app-filter-raised-bg);
+  box-shadow: var(--app-filter-raised-shadow);
 }
 
 @media (prefers-reduced-motion: reduce) {

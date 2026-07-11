@@ -52,7 +52,8 @@ Consume 品质 → [patterns/media-craft.md](./docs/design/patterns/media-craft.
 | 意图 | Token |
 |------|-------|
 | 主行动 / 播放 / 焦点环 | `--primary` / `--ring` |
-| 选中 / 当前 / 筛选开 | `--app-selection-*` |
+| 选中 / 列表当前 / 筛选触发器开 | `--app-selection-*` |
+| 筛选面板内 segment / tile 当前 | `--app-filter-raised-*` |
 | 成功 | `--success` + 文案 |
 | 警告 | `--warning` + 文案 |
 | 危险 | `--destructive` |

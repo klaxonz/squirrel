@@ -19,7 +19,8 @@
 | 健康 / 在线 / 成功 | `--success` + 文案（可加图标） |
 | 警告 / 降级 | `--warning` + 文案 |
 | 失败 / 危险 | `--destructive` + 文案 |
-| 选中 / 已筛选 | `--app-selection-*` |
+| 列表选中 / 筛选触发器开 | `--app-selection-*` |
+| 筛选面板内当前项 | `--app-filter-raised-*` |
 
 ## 验收
 

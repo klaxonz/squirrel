@@ -37,7 +37,8 @@ Surface 定义密度、主行动数量、选中态与层次手段。完整表与
 |------|------------------|
 | 画布 / 正文 | `--background` / `--foreground` |
 | 主行动、焦点环、播放强调、品牌徽章 | `--primary` / `--ring` / 品牌梯度 token |
-| 导航当前、列表选中、筛选开启、chip active | `--app-selection-*` |
+| 导航当前、列表选中、筛选**触发器**开启、计数角标 | `--app-selection-*` |
+| 筛选 Popover 内互斥当前（segment chip / 站点磁贴面） | `--app-filter-raised-*`（磁贴边另用 `--app-selection-border`） |
 | 健康 / 在线 / 成功 | `--success` + 文案或图标 |
 | 警告 / 降级 | `--warning` + 文案或图标 |
 | 危险 / 删除 | `--destructive` |
@@ -48,7 +49,8 @@ Surface 定义密度、主行动数量、选中态与层次手段。完整表与
 
 **验收**
 
-- [ ] 选中 / 当前态仅使用 `--app-selection-*`
+- [ ] Chrome 选中 / 触发器开启仅使用 `--app-selection-*`
+- [ ] 筛选面板内 segment / tile 当前使用 `--app-filter-raised-*`（非 selection 墨水洗）
 - [ ] 健康态仅使用 success + 文案
 - [ ] scrim 可追溯到 background 或 overlay
 - [ ] 业务无裸 hex / 随意 hsl（集中定义的品牌梯度除外）

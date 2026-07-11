@@ -13,8 +13,8 @@
 ## Badge · Chip
 
 - 状态 = 文案 + 色，不只靠色
-- 已选筛选 Chip：`app-toolbar-chip--active`（中性选中）
-- hover 可提示移除（destructive 倾向）
+- 筛选开启计数：工具栏 `.app-filter-toolbar-button__count`（selection count）
+- 面板内互斥当前：raised segment（`--app-filter-raised-*`），见 [Filter Popover](../patterns/filter-popover.md)
 
 ## Card · 媒体卡
 
