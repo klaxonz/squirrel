@@ -18,13 +18,29 @@
       />
     </div>
 
+    <div v-else-if="loadError" class="app-page-empty">
+      <AppEmptyState
+        variant="error"
+        title="站点加载失败"
+        :copy="loadError"
+      >
+        <template #actions>
+          <Button size="sm" @click="$emit('retry')">重试</Button>
+        </template>
+      </AppEmptyState>
+    </div>
+
     <div v-else-if="!runtimes.length" class="app-page-empty">
       <AppEmptyState
         variant="plain"
         icon="cube"
         :title="searchQuery ? '没有匹配的站点' : '暂无站点'"
         :copy="searchQuery ? '更换搜索关键词后再试。' : '本地站点发现后会显示在这里。'"
-      />
+      >
+        <template v-if="searchQuery" #actions>
+          <Button size="sm" variant="secondary" @click="$emit('clear-search')">清空搜索</Button>
+        </template>
+      </AppEmptyState>
     </div>
 
     <div v-else class="site-runtime-grid">
@@ -209,6 +225,7 @@ defineProps({
   actioning: { type: [String, null], default: null },
   searchQuery: { type: String, default: '' },
   discoveryErrors: { type: Array, default: () => [] },
+  loadError: { type: String, default: '' },
 })
 
 defineEmits([
@@ -221,6 +238,8 @@ defineEmits([
   'start-oauth',
   'revoke-oauth',
   'edit-site',
+  'retry',
+  'clear-search',
 ])
 
 const {

@@ -125,7 +125,7 @@ function handleCoverError() {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: hsl(0 0% 0% / 0.28);
+  background: var(--app-media-scrim-soft);
   content: '';
   opacity: 0;
   pointer-events: none;
@@ -184,7 +184,7 @@ function handleCoverError() {
   justify-content: center;
   border: 0;
   background: transparent;
-  color: hsl(0 0% 100%);
+  color: hsl(var(--app-media-on-image));
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.88);
   cursor: pointer;
@@ -198,7 +198,7 @@ function handleCoverError() {
   width: 1.5rem;
   height: 1.5rem;
   fill: currentColor;
-  filter: drop-shadow(0 2px 5px hsl(0 0% 0% / 0.42));
+  filter: drop-shadow(0 2px 5px hsl(var(--overlay) / 0.42));
   transform: translateX(0.075rem);
 }
 
@@ -218,7 +218,7 @@ function handleCoverError() {
 }
 
 .music-card-play:hover {
-  color: hsl(0 0% 100% / 0.84);
+  color: hsl(var(--app-media-on-image) / 0.84);
   transform: translate(-50%, -50%) scale(1.08);
 }
 
@@ -228,7 +228,7 @@ function handleCoverError() {
 
 .music-card-play:focus-visible {
   border-radius: var(--radius-md);
-  outline: 2px solid hsl(0 0% 100% / 0.9);
+  outline: 2px solid hsl(var(--app-media-on-image) / 0.9);
   outline-offset: 0;
 }
 
@@ -252,11 +252,11 @@ function handleCoverError() {
   bottom: var(--space-2);
   left: var(--space-2);
   z-index: 2;
-  border: 1px solid hsl(0 0% 100% / 0.16);
+  border: 1px solid hsl(var(--app-media-on-image) / 0.16);
   border-radius: var(--radius-sm);
   padding: 0.2rem 0.45rem;
-  background: hsl(0 0% 5% / 0.76);
-  color: hsl(0 0% 100% / 0.92);
+  background: var(--app-media-badge-bg);
+  color: hsl(var(--app-media-on-image) / 0.92);
   font-size: 0.625rem;
   font-weight: 650;
 }

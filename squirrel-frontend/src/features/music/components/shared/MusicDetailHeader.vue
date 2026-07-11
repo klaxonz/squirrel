@@ -95,10 +95,12 @@ withDefaults(defineProps<{
 }
 
 .music-detail-kicker {
-  color: hsl(var(--primary));
+  color: var(--app-heading-color-muted);
   font-size: 0.75rem;
   font-weight: 650;
   line-height: 1.25;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .music-detail-title {

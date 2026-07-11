@@ -119,6 +119,18 @@
             </div>
 
             <AppEmptyState
+              v-else-if="loadError"
+              class="log-empty-state"
+              variant="error"
+              title="日志加载失败"
+              :copy="loadError"
+            >
+              <template #actions>
+                <Button size="sm" @click="loadLogs">重试</Button>
+              </template>
+            </AppEmptyState>
+
+            <AppEmptyState
               v-else-if="logs.length === 0"
               class="log-empty-state"
               variant="plain"
@@ -220,6 +232,7 @@ import {
 import { Switch } from '@/shared/ui/switch'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import { getLogFiles, queryLogs } from '@/shared/api'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { Logger } from '@/shared/lib/logger'
 import { useUIStore } from '@/shared/stores/ui'
 import { useLogClipboard } from '@/features/settings/composables/useLogClipboard'
@@ -234,6 +247,7 @@ const uiStore = useUIStore()
 const logs = ref([])
 const logFiles = ref([])
 const loading = ref(false)
+const loadError = ref('')
 let latestRequestId = 0
 
 const filters = ref({
@@ -288,6 +302,7 @@ async function loadLogFiles() {
 async function loadLogs() {
   const requestId = ++latestRequestId
   loading.value = true
+  loadError.value = ''
   try {
     const params = {
       filename: filters.value.filename,
@@ -302,9 +317,14 @@ async function loadLogs() {
         ...log,
         id: `${Date.now()}-${index}-${log.line_num}`,
       }))
+      loadError.value = ''
     }
   } catch (error) {
     Logger.error('Failed to load logs', error)
+    if (requestId === latestRequestId) {
+      logs.value = []
+      loadError.value = errorMessage(error, '无法读取日志，请检查后端连接后重试。')
+    }
   } finally {
     if (requestId === latestRequestId) {
       loading.value = false
@@ -500,9 +520,9 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 }
 
 .log-level[data-level='WARNING'] {
-  border-color: hsl(var(--primary) / 0.24);
-  background: hsl(var(--primary) / 0.08);
-  color: hsl(var(--primary));
+  border-color: hsl(var(--warning) / 0.28);
+  background: hsl(var(--warning) / 0.1);
+  color: hsl(var(--warning));
 }
 
 .log-level[data-level='ERROR'],

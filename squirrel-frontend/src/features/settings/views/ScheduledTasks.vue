@@ -82,13 +82,43 @@
               />
             </div>
 
+            <div v-else-if="isError" class="app-page-empty app-page-empty--compact">
+              <AppEmptyState
+                variant="error"
+                title="任务加载失败"
+                :copy="errorMessage"
+              >
+                <template #actions>
+                  <Button size="sm" @click="refreshData">重试</Button>
+                </template>
+              </AppEmptyState>
+            </div>
+
             <div v-else-if="tasks.length === 0" class="app-page-empty app-page-empty--compact">
               <AppEmptyState
                 variant="plain"
                 icon="time"
                 :title="hasTaskFilters ? '未找到相关任务' : '暂无定时任务'"
                 :copy="hasTaskFilters ? '调整筛选条件后再试。' : '创建任务后会显示在这里。'"
-              />
+              >
+                <template #actions>
+                  <Button
+                    v-if="hasTaskFilters"
+                    size="sm"
+                    variant="secondary"
+                    @click="clearTaskFilters"
+                  >
+                    清空筛选
+                  </Button>
+                  <Button
+                    v-else
+                    size="sm"
+                    @click="showCreateDialog = true"
+                  >
+                    新建任务
+                  </Button>
+                </template>
+              </AppEmptyState>
             </div>
 
             <div v-else class="app-table-body">
@@ -298,6 +328,13 @@ const executingTask = ref<ScheduledTask | null>(null)
 
 const hasTaskFilters = computed(() => Boolean(searchQuery.value || statusFilter.value !== 'all'))
 
+const clearTaskFilters = () => {
+  statusFilter.value = 'all'
+  currentPage.value = 1
+  uiStore.triggerSearch(SEARCH_SCOPE, '')
+  searchQueryDebounced.value = ''
+}
+
 const taskSummary = computed(() => {
   const stats = statistics.value
   return `${stats.total_tasks} 个任务，${stats.active_tasks} 个正在参与调度`
@@ -332,6 +369,8 @@ const {
   tasks,
   totalPages,
   loading,
+  isError,
+  errorMessage,
   refreshData,
   invalidateTasks,
 } = useScheduledTaskQueries({

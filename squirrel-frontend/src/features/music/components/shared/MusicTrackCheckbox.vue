@@ -2,7 +2,7 @@
   <Button
     variant="ghost"
     size="icon-xs"
-    :class="checked && 'text-primary hover:text-primary'"
+    :class="checked && 'app-selection-active'"
     :aria-label="checked ? '取消选择' : '选择歌曲'"
     :aria-pressed="checked"
     @click="$emit('toggle')"

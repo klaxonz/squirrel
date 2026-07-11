@@ -28,7 +28,7 @@
         </Button>
         <Button
           variant="secondary"
-          :class="shuffle && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
+          :class="shuffle && 'app-selection-active'"
           @click="shuffleAll"
         >
           <AppIcon name="shuffle" class="h-4 w-4" />

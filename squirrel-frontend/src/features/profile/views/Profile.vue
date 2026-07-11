@@ -19,7 +19,7 @@
             <AppIcon v-else name="user" class="h-6 w-6 text-primary/75" />
           </div>
           <span class="profile-avatar-mask" aria-hidden="true">
-            <AppIcon name="camera" class="h-3.5 w-3.5 text-white" />
+            <AppIcon name="camera" class="h-3.5 w-3.5 app-media-on-image" />
           </span>
         </button>
 
@@ -269,7 +269,7 @@ const handleLogout = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: hsl(0 0% 0% / 0.44);
+  background: var(--app-media-scrim-mid);
   opacity: 0;
   transition: opacity var(--duration-fast) var(--ease-default);
 }

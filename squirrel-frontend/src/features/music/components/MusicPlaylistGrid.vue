@@ -5,7 +5,7 @@
       <Button
         variant="secondary"
         size="sm"
-        :class="selectedCategory === 0 && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
+        :class="selectedCategory === 0 && 'app-selection-active'"
         @click="$emit('select-category', 0)"
       >
         推荐
@@ -15,7 +15,7 @@
         :key="tag.id"
         variant="secondary"
         size="sm"
-        :class="selectedCategory === Number(tag.id) && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
+        :class="selectedCategory === Number(tag.id) && 'app-selection-active'"
         @click="$emit('select-category', Number(tag.id))"
       >
         {{ tag.name }}
@@ -45,7 +45,7 @@
             <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
           </div>
           <div class="music-source-play-overlay">
-            <AppIcon name="play" class="h-6 w-6 text-primary-foreground fill-current" />
+            <AppIcon name="play" class="h-6 w-6 fill-current" />
           </div>
         </div>
         <span class="music-grid-card-title">{{ playlist.specialname }}</span>
@@ -115,10 +115,10 @@ defineEmits<{
 .music-source-cover-wrap {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 0.75rem;
+  border-radius: var(--app-card-radius);
   overflow: hidden;
-  background: hsl(var(--muted) / 0.3);
-  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.06);
+  background: var(--app-media-thumb-placeholder);
+  box-shadow: var(--app-surface-shadow);
 }
 
 .music-source-cover {
@@ -141,9 +141,10 @@ defineEmits<{
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, transparent 0%, hsl(var(--foreground) / 0.6) 100%);
+  background: linear-gradient(180deg, transparent 0%, var(--app-media-scrim-mid) 100%);
+  color: hsl(var(--app-media-on-image));
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--duration-base) var(--ease-default);
 }
 
 .music-grid-card:hover .music-source-play-overlay {

@@ -466,7 +466,7 @@
                 ref="iframeRef"
                 :src="readingEntry.canonical_url"
                 :data-load-key="iframeLoadKey"
-                class="w-full h-full border-0 bg-white"
+                class="w-full h-full border-0 bg-card"
                 @load="handleIframeLoad"
               />
               

@@ -472,7 +472,7 @@ function handlePlaySong(track: MusicTrack) {
 }
 
 .music-search-song-artist:hover:not(:disabled) {
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground));
 }
 
 .music-search-song-album {
@@ -488,7 +488,7 @@ function handlePlaySong(track: MusicTrack) {
 }
 
 .music-search-song-album:hover:not(:disabled) {
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground));
 }
 
 .music-search-side {

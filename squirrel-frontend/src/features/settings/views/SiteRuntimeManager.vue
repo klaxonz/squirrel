@@ -63,6 +63,7 @@
         :actioning="actioning"
         :search-query="searchQuery"
         :discovery-errors="discoveryErrors"
+        :load-error="loadError"
         @enable="handleEnable"
         @disable="handleDisable"
         @test-runtime="handleTestRuntime"
@@ -72,6 +73,8 @@
         @start-oauth="handleStartYouTubeOAuth"
         @revoke-oauth="handleRevokeYouTubeOAuth"
         @edit-site="openSiteEditorByRuntime"
+        @retry="fetchSiteRuntimes"
+        @clear-search="clearRuntimeSearch"
       />
     </div>
 
@@ -129,6 +132,7 @@ const loading = ref(false)
 const reloading = ref(false)
 const siteRuntimes = ref([])
 const discoveryErrors = ref([])
+const loadError = ref('')
 const actioning = ref(null)
 const isInitialLoading = computed(() => loading.value && !siteRuntimes.value.length)
 
@@ -409,14 +413,23 @@ const saveSiteEditor = async ({ slug, sitePayload }) => {
   }
 }
 
+const clearRuntimeSearch = () => {
+  uiStore.triggerSearch('site-runtimes', '')
+}
+
 const fetchSiteRuntimes = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     const data = await getSiteRuntimes()
     siteRuntimes.value = data?.items || []
     discoveryErrors.value = data?.discovery_errors || []
-  } catch {
-    // silent — fetch failure leaves the prior list
+    loadError.value = ''
+  } catch (error) {
+    Logger.error('Failed to load site runtimes', error)
+    if (!siteRuntimes.value.length) {
+      loadError.value = errorMessage(error, '无法加载站点运行时，请检查后端连接后重试。')
+    }
   } finally {
     loading.value = false
   }
@@ -503,8 +516,9 @@ onMounted(() => {
 }
 
 .site-runtime-file-button.is-active {
-  background: hsl(var(--foreground) / 0.045);
-  color: hsl(var(--foreground) / 0.82);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
 }
 
 .site-runtime-file-button span {

@@ -63,7 +63,7 @@
         >
           <div class="remote-channel-thumb">
             <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" />
-            <span v-if="item.duration" class="remote-channel-duration">
+            <span v-if="item.duration" class="app-media-duration-badge app-media-duration-badge--compact app-mono">
               {{ formatDuration(item.duration) }}
             </span>
           </div>
@@ -577,22 +577,6 @@ onUnmounted(() => {
     var(--shadow-card-hover);
 }
 
-.remote-channel-duration {
-  position: absolute;
-  right: 0.25rem;
-  bottom: 0.25rem;
-  display: inline-flex;
-  height: 1.25rem;
-  align-items: center;
-  border-radius: var(--radius-sm);
-  background: var(--app-media-badge-bg);
-  padding: 0 0.375rem;
-  color: hsl(var(--app-media-on-image));
-  font-size: 0.625rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
 .remote-channel-title {
   display: -webkit-box;
   overflow: hidden;
@@ -606,7 +590,8 @@ onUnmounted(() => {
 }
 
 .remote-channel-card:hover .remote-channel-title {
-  color: hsl(var(--primary));
+  /* Media craft: title stays foreground — primary is for CTA/play only. */
+  color: hsl(var(--foreground));
 }
 
 .remote-channel-meta {

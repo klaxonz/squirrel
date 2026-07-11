@@ -91,8 +91,9 @@ function toggleExpand() {
 }
 
 .music-user-playlist-item--active {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.08);
+  color: var(--app-selection-fg);
+  background: var(--app-selection-bg);
+  box-shadow: 0 0 0 1px var(--app-selection-border);
 }
 
 .music-user-playlist-count {
@@ -113,7 +114,7 @@ function toggleExpand() {
 }
 
 .music-user-playlists-more:hover {
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground));
 }
 
 .playlist-list-move,

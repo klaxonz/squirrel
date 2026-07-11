@@ -39,6 +39,9 @@ export interface UseScheduledTaskQueriesReturn {
   tasks: ComputedRef<ScheduledTask[]>
   totalPages: ComputedRef<number>
   loading: ComputedRef<boolean>
+  /** True when the paged list query failed and there is no cached list. */
+  isError: ComputedRef<boolean>
+  errorMessage: ComputedRef<string>
   refreshData: () => Promise<void>
   invalidateTasks: () => void
 }
@@ -88,6 +91,14 @@ export function useScheduledTaskQueries(
   // Skeletons show on first load only (isLoading); background refetches keep
   // the prior list visible rather than flashing the skeleton.
   const loading = computed(() => tasksQuery.isLoading.value)
+  const isError = computed(
+    () => Boolean(tasksQuery.isError.value) && tasks.value.length === 0 && !loading.value,
+  )
+  const errorMessage = computed(() => {
+    if (!tasksQuery.isError.value) return ''
+    const err = tasksQuery.error.value as { message?: string } | null
+    return err?.message || '无法加载定时任务，请检查后端连接后重试。'
+  })
 
   const refreshData = async () => {
     await Promise.all([
@@ -107,6 +118,8 @@ export function useScheduledTaskQueries(
     tasks,
     totalPages,
     loading,
+    isError,
+    errorMessage,
     refreshData,
     invalidateTasks,
   }

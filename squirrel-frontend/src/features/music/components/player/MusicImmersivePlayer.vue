@@ -219,7 +219,7 @@ const handleTabChange = (value: string | number) => {
 .immersive-player {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: var(--z-player-overlay);
   display: flex;
   flex-direction: column;
   width: 100vw;
@@ -314,10 +314,10 @@ const handleTabChange = (value: string | number) => {
 .immersive-art-wrapper {
   width: 4.5rem;
   height: 4.5rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background: hsl(var(--muted) / 0.2);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--app-floating-shadow);
   flex-shrink: 0;
 }
 
@@ -363,7 +363,7 @@ const handleTabChange = (value: string | number) => {
 .immersive-artist {
   font-size: 0.875rem;
   font-weight: 500;
-  color: hsl(var(--primary));
+  color: hsl(var(--muted-foreground));
   margin-top: 0.25rem;
   white-space: nowrap;
   overflow: hidden;

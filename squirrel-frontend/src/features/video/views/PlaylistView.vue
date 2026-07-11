@@ -172,10 +172,10 @@
                 <div class="playlist-item-media">
                   <div class="playlist-row-thumb">
                     <VideoThumbnail v-if="item.video?.thumbnail" :src="item.video.thumbnail" fit="cover" />
-                    <div v-else class="flex h-full w-full items-center justify-center text-white/45">
+                    <div v-else class="app-media-thumb-fallback">
                       <AppIcon name="film" class="h-5 w-5" />
                     </div>
-                    <span v-if="item.video?.duration" class="playlist-duration-badge">
+                    <span v-if="item.video?.duration" class="app-media-duration-badge app-media-duration-badge--compact app-mono">
                       {{ formatDuration(item.video.duration) }}
                     </span>
                   </div>
@@ -501,9 +501,9 @@ onMounted(async () => {
   flex: none;
   align-items: center;
   border-radius: var(--radius-sm);
-  background: hsl(var(--primary) / 0.1);
+  background: var(--app-selection-count-bg);
   padding: 0.125rem 0.3rem;
-  color: hsl(var(--primary));
+  color: var(--app-selection-count-fg);
   font-size: 0.625rem;
   font-weight: 700;
   line-height: 1;
@@ -741,22 +741,6 @@ onMounted(async () => {
 .playlist-item-remove:hover,
 .playlist-item-remove:focus-visible {
   color: hsl(var(--destructive));
-}
-
-.playlist-duration-badge {
-  position: absolute;
-  right: 0.25rem;
-  bottom: 0.25rem;
-  display: inline-flex;
-  height: 1.25rem;
-  align-items: center;
-  border-radius: var(--radius-sm);
-  background: var(--app-media-badge-bg);
-  padding: 0 0.375rem;
-  color: hsl(var(--app-media-on-image));
-  font-size: 0.625rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
 }
 
 .playlist-skeleton-list {

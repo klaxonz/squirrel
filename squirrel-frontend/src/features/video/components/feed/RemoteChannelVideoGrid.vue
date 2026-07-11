@@ -27,7 +27,7 @@
       >
         <div class="remote-channel-video-thumb group-hover:brightness-110">
           <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" />
-          <span v-if="item.duration" class="absolute bottom-1 right-1 inline-flex h-5 items-center rounded bg-black/80 px-1.5 text-xs font-medium tabular-nums text-white">
+          <span v-if="item.duration" class="app-media-duration-badge app-mono">
             {{ formatDuration(item.duration) }}
           </span>
         </div>
@@ -221,7 +221,8 @@ onUnmounted(() => {
 }
 
 .group:hover .remote-channel-video-title {
-  color: hsl(var(--primary));
+  /* Media craft: title stays foreground — primary is for CTA/play only. */
+  color: hsl(var(--foreground));
 }
 
 @media (prefers-reduced-motion: reduce) {

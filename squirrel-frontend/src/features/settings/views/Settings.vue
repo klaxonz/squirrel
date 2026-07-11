@@ -24,6 +24,18 @@
         <AppSkeleton height="5rem" rounded="var(--radius-lg)" shimmer />
       </div>
 
+      <div v-else-if="pageLoadError" class="app-page-empty app-page-empty--compact">
+        <AppEmptyState
+          variant="error"
+          title="设置加载失败"
+          :copy="pageLoadError"
+        >
+          <template #actions>
+            <Button size="sm" @click="reloadSettingsPage">重试</Button>
+          </template>
+        </AppEmptyState>
+      </div>
+
       <div v-else class="settings-sections">
         <section v-if="currentTab === 'appearance'" class="app-settings-section">
           <div class="app-settings-section-title">
@@ -182,6 +194,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
@@ -190,6 +203,7 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Switch } from '@/shared/ui/switch'
 import SecuritySettings from '@/features/settings/components/SecuritySettings.vue'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import {
   SETTINGS_TABS,
   getSettingsTabByRouteName,
@@ -250,10 +264,24 @@ const themeStore = useThemeStore()
 const { themeMode } = storeToRefs(themeStore)
 const { setThemeMode } = themeStore
 
-const { settings, loading: userSaving, loadUserSettings, saveUserSettings } = useUserSettings()
+const {
+  settings,
+  loading: userSaving,
+  error: userSettingsError,
+  loadUserSettings,
+  saveUserSettings,
+} = useUserSettings()
 const { config: systemConfig, loading: systemLoading, loadSystemConfig, updateSystemConfig } = useSystemConfig()
 const systemSaving = ref(false)
 const pageLoading = ref(true)
+const systemLoadError = ref('')
+const pageLoadError = computed(() => {
+  if (userSettingsError.value) {
+    return errorMessage(userSettingsError.value, '无法加载用户设置，请检查后端连接后重试。')
+  }
+  if (systemLoadError.value) return systemLoadError.value
+  return ''
+})
 
 const { serverUrl: currentServerUrl, initServerConfig } = useServerConfig()
 const {
@@ -296,15 +324,26 @@ const updateUserSetting = (
   void saveUserSettingChanges()
 }
 
-onMounted(async () => {
+const reloadSettingsPage = async () => {
   pageLoading.value = true
-  await initServerConfig()
-  await Promise.all([
-    loadUserSettings(),
-    loadSystemConfig().catch((error) => Logger.error('Failed to load system config', error)),
-  ])
-  serverForm.value.url = currentServerUrl.value || ''
-  pageLoading.value = false
+  systemLoadError.value = ''
+  try {
+    await initServerConfig()
+    await Promise.all([
+      loadUserSettings(true),
+      loadSystemConfig().catch((error) => {
+        Logger.error('Failed to load system config', error)
+        systemLoadError.value = errorMessage(error, '无法加载系统配置，请检查后端连接后重试。')
+      }),
+    ])
+    serverForm.value.url = currentServerUrl.value || ''
+  } finally {
+    pageLoading.value = false
+  }
+}
+
+onMounted(() => {
+  void reloadSettingsPage()
 })
 
 const saveUserSettingChanges = async () => {

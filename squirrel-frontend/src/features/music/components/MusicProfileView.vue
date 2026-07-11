@@ -144,7 +144,7 @@
                     <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
                   </div>
                   <div class="music-source-play-overlay">
-                    <AppIcon name="play" class="h-6 w-6 text-primary-foreground fill-current" />
+                    <AppIcon name="play" class="h-6 w-6 fill-current" />
                   </div>
                 </div>
                 <span class="music-grid-card-title">{{ playlist.name }}</span>
@@ -175,7 +175,7 @@
                     <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
                   </div>
                   <div class="music-source-play-overlay">
-                    <AppIcon name="play" class="h-6 w-6 text-primary-foreground fill-current" />
+                    <AppIcon name="play" class="h-6 w-6 fill-current" />
                   </div>
                 </div>
                 <span class="music-grid-card-title">{{ playlist.name }}</span>
@@ -650,19 +650,20 @@ watch(activeTab, (tab) => {
 .music-source-cover-wrap {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 0.5rem;
+  border-radius: var(--app-card-radius);
   overflow: hidden;
-  background: hsl(var(--muted) / 0.3);
+  background: var(--app-media-thumb-placeholder);
   border: 1px solid hsl(var(--border) / 0.28);
+  box-shadow: var(--app-surface-shadow);
   transition:
-    border-color 0.18s ease,
-    background-color 0.18s ease;
+    border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-base) var(--ease-default);
 }
 
 .music-grid-card:hover .music-source-cover-wrap,
 .music-grid-card:focus-visible .music-source-cover-wrap {
-  border-color: hsl(var(--primary) / 0.45);
-  background: hsl(var(--primary) / 0.08);
+  border-color: hsl(var(--border));
+  box-shadow: var(--shadow-card-hover);
 }
 
 .music-source-cover {
@@ -680,9 +681,10 @@ watch(activeTab, (tab) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: hsl(var(--foreground) / 0.3);
+  background: linear-gradient(180deg, transparent 0%, var(--app-media-scrim-mid) 100%);
+  color: hsl(var(--app-media-on-image));
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-base) var(--ease-default);
 }
 
 .music-grid-card:hover .music-source-play-overlay {

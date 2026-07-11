@@ -47,7 +47,7 @@
               <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
             </div>
             <div class="music-source-play-overlay">
-              <AppIcon name="play" class="h-6 w-6 text-primary-foreground fill-current" />
+              <AppIcon name="play" class="h-6 w-6 fill-current" />
             </div>
           </div>
           <span class="music-grid-card-title">{{ rank.name }}</span>
@@ -224,10 +224,10 @@ const restRanks = computed(() => props.ranks.slice(4))
 .music-source-cover-wrap {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 0.625rem;
+  border-radius: var(--app-card-radius);
   overflow: hidden;
-  background: hsl(var(--muted) / 0.3);
-  box-shadow: 0 4px 14px hsl(var(--foreground) / 0.08);
+  background: var(--app-media-thumb-placeholder);
+  box-shadow: var(--app-surface-shadow);
 }
 
 .music-source-cover {
@@ -245,9 +245,10 @@ const restRanks = computed(() => props.ranks.slice(4))
   display: flex;
   align-items: center;
   justify-content: center;
-  background: hsl(var(--foreground) / 0.32);
+  background: linear-gradient(180deg, transparent 0%, var(--app-media-scrim-mid) 100%);
+  color: hsl(var(--app-media-on-image));
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-base) var(--ease-default);
 }
 
 .music-grid-card:hover .music-source-play-overlay {

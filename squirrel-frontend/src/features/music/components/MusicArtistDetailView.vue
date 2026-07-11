@@ -20,7 +20,7 @@
         <Button
           variant="secondary"
           :loading="followLoading"
-          :class="followed && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
+          :class="followed && 'app-selection-active'"
           @click="handleFollow"
         >
           <AppIcon v-if="!followLoading" name="heart" class="h-4 w-4" :class="{ 'fill-current': followed }" />

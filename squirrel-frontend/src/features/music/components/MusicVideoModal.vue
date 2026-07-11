@@ -52,7 +52,7 @@ defineEmits<{
 .music-video-container {
   width: min(90vw, 960px);
   background: hsl(var(--card));
-  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--app-overlay-shadow);
 }
 
 .music-video-header {

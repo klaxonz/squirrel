@@ -430,7 +430,7 @@ const {
 }
 
 .music-track-artist:hover:not(:disabled) {
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground));
 }
 
 .music-track-artist:disabled {
@@ -456,7 +456,7 @@ const {
 }
 
 .music-track-col--album:hover:not(:disabled) {
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground));
 }
 
 .music-track-col--duration {

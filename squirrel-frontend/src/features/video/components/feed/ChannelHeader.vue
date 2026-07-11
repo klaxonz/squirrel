@@ -323,7 +323,7 @@ watch(() => props.subscriptionId, () => {
 }
 
 .channel-header__name-link:hover {
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground));
 }
 
 .channel-header__badge {

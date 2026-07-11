@@ -1,5 +1,5 @@
 <template>
-  <section v-if="railItems.length > 0 || loading" class="home-feed-rail group/container">
+  <section v-if="railItems.length > 0 || loading || loadError" class="home-feed-rail group/container">
     <FeedRailHeader
       title="继续观看"
       view-more
@@ -9,7 +9,16 @@
       @scroll="onScroll"
     />
 
+    <div v-if="loadError && !loading && railItems.length === 0" class="app-page-empty app-page-empty--compact">
+      <AppEmptyState variant="error" title="继续观看加载失败" :copy="loadError">
+        <template #actions>
+          <Button size="sm" @click="load">重试</Button>
+        </template>
+      </AppEmptyState>
+    </div>
+
     <FeedRailTrack
+      v-else
       ref="track"
       :content-key="railItems.length"
       @scroll-state="onScrollState"
@@ -55,7 +64,10 @@ import FeedRailHeader from '@/features/video/components/feed/FeedRailHeader.vue'
 import FeedRailTrack from '@/features/video/components/feed/FeedRailTrack.vue'
 import VideoItem from '@/features/video/components/feed/VideoItem.vue'
 import RecommendationSkeleton from '@/features/video/components/feed/RecommendationSkeleton.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import { Button } from '@/shared/ui/button'
 import { useVideoHistory } from '@/features/video/composables/useVideoHistory'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import { Logger } from '@/shared/lib/logger'
 import type { VideoListItem } from '@/features/video/types/video'
 
@@ -76,6 +88,7 @@ const emit = defineEmits<{
 const { getWatchHistory } = useVideoHistory()
 const historyItems = ref<VideoHistoryEntry[]>([])
 const loading = ref(false)
+const loadError = ref('')
 const track = ref<InstanceType<typeof FeedRailTrack> | null>(null)
 const canScrollLeft = ref(false)
 const canScrollRight = ref(false)
@@ -157,6 +170,7 @@ const pickHeroVideo = (items: VideoHistoryEntry[]): VideoHistoryEntry | null => 
 
 const load = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     const { items } = await getWatchHistory(1, { pageSize: 30 })
     historyItems.value = items.filter((item) => getProgress(item) > 0).slice(0, 12)
@@ -165,6 +179,9 @@ const load = async () => {
     emit('heroChange', hero)
   } catch (e) {
     Logger.error('Failed to load continue watching history:', e)
+    historyItems.value = []
+    loadError.value = errorMessage(e, '无法加载继续观看，请稍后重试。')
+    emit('heroChange', null)
   } finally {
     loading.value = false
   }

@@ -9,7 +9,7 @@
         <Button
           variant="ghost"
           size="icon-sm"
-          :class="shuffle && 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
+          :class="shuffle && 'app-selection-active'"
           title="随机播放"
           @click="shuffleAll"
         >
@@ -19,7 +19,7 @@
           v-if="showCollect"
           variant="ghost"
           size="icon-sm"
-          :class="collected && 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'"
+          :class="collected && 'app-selection-active'"
           title="收藏"
           @click="$emit('collect')"
         >
