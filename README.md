@@ -1,355 +1,186 @@
-# Squirrel
+# Squirrel（归仓）
 
-Squirrel 是一个视频订阅和下载工具，下载时可以生成nfo文件，以供 Emby / Jellyfin 识别元数据。
+自托管的多站视频订阅中枢。跨站点订阅并同步到本地库，在同一处浏览、整理与播放。
 
-## 功能特性
+| | |
+|--|--|
+| **主路径** | 订阅 → 同步入库 → 浏览 / 未读 / 稍后看 → 播放 |
+| **支撑** | 站点会话、定时任务、日志 |
+| **形态** | Web 服务 + 可选桌面端 + 浏览器扩展 |
 
-- 多平台支持：目前支持 YouTube 和 Bilibili
-- 频道订阅：自动下载订阅频道的最新视频
-- 用户友好的Web界面：方便管理订阅和下载
-- 桌面端壳：可直接以桌面应用方式承载现有界面
-- 浏览器拓展：方便快捷的订阅站点频道
-- 视频内容展示：轻松浏览和管理下载的内容
-- 音乐搜索与播放：支持酷狗音乐搜索与播放（桌面端）
-- 定时更新：定时更新订阅频道视频
+数据与配置在你自己的环境里。桌面端复用同一套 UI，并补齐站点登录、远端搜索与播流解析。
 
-## 待办事项
+## 能力概览
 
-- [ ] 扩展支持更多视频平台
-- [ ] 实现可自定义的下载参数配置
+- **多站订阅与同步** — 频道订阅、导入、定时/手动同步。站点插件见 `squirrel-site-runtimes/`，开关与参数在 `config/sites.json`（含 YouTube、Bilibili、JavDB、Pornhub、YouPorn 等）。
+- **内容库** — 首页推荐、视频库（全部 / 未读 / 已读 / 稍后看 / 喜欢）、历史、播放列表。
+- **播放** — 应用内播放；桌面端可按站点会话解析地址与字幕。
+- **桌面增强** — 站点登录与 cookie、远端搜索、远端频道浏览。
+- **扩展** — 浏览器扩展一键加订；RSS 阅读；酷狗音乐（桌面）。
+- **运维** — 站点连通性、计划任务、日志、系统设置。
 
-## 目录
+## 仓库结构
 
-- [快速开始](#快速开始)
-  - [完整部署](#方式一完整部署包含数据库和redis)
-  - [独立部署](#方式二独立部署使用已有的数据库和redis)（使用已有的数据库和Redis）
-- [详细部署指南](#详细部署指南)
-- [常用命令](#常用命令)
-- [浏览器扩展](#浏览器扩展)
-- [桌面端](#桌面端)
-- [插件开发](#插件开发)
-- [故障排查](#故障排查)
-- [备份与恢复](#备份与恢复)
+```
+squirrel-backend/       API、同步与抽取、调度
+squirrel-frontend/      Web UI
+squirrel-desktop/       Electron 壳（登录 / 搜索 / 播流）
+squirrel-extension/     浏览器扩展
+squirrel-site-runtimes/ 站点插件
+squirrel-cf-bypass/     Cloudflare bypass sidecar
+config/                 站点与运行配置（部署时挂载）
+```
 
 ## 快速开始
 
-### 🚀 快速部署
+需要 Docker 与 Docker Compose。默认镜像：`klaxonz/squirrel:latest`、`klaxonz/squirrel-cf-bypass:latest`。
 
-`docker-compose.yaml` 支持两种部署模式，通过注释配置切换。
+### 1. 完整部署（自带 Postgres / Redis / Meilisearch）
 
-#### 方式一：完整部署（包含数据库和Redis）
-
-1. 复制环境变量示例文件：
 ```bash
 cp env.example .env
-# 根据需要修改 .env 文件中的密码等配置
-```
+# 至少修改 JWT_SECRET_KEY、REDIS_PASSWORD、POSTGRES_PASSWORD
 
-2. 启动服务：
-```bash
+mkdir -p config logs downloads thumbnails postgres/data redis/data
 docker compose up -d
 ```
 
-Cloudflare bypass sidecar 现在也会随 compose 一起启动；容器内默认地址是 `http://squirrel-cf-bypass:8002`，宿主机默认端口是 `8002`。如果在外部部署目录运行 compose，请确保同时准备好 `klaxonz/squirrel:latest` 和 `klaxonz/squirrel-cf-bypass:latest` 两个镜像。
+启动后访问：http://localhost:8001  
 
-3. 访问应用：`http://localhost:8001`
+健康检查：`curl http://localhost:8001/health`
 
-#### 方式二：独立部署（使用已有的数据库和Redis）
+默认会拉起：
 
-1. 复制并修改环境变量：
-```bash
-cp env.example .env
-# 修改 .env 文件中的数据库和 Redis 连接信息：
-# - REDIS_HOST=你的Redis地址
-# - REDIS_PASSWORD=你的Redis密码
-# - POSTGRES_HOST=你的PostgreSQL地址
-# - POSTGRES_PASSWORD=你的PostgreSQL密码
-```
+| 服务 | 作用 | 默认端口 |
+|------|------|----------|
+| `squirrel` | Web / API | `8001` |
+| `squirrel-worker` | 消息与后台任务 | — |
+| `squirrel-scheduler` | 定时与 crawl 调度 | — |
+| `squirrel-cf-bypass` | Cloudflare bypass | `8002` |
+| `postgres` / `redis` / `meilisearch` | 数据与搜索 | 内网 |
 
-2. 启动服务（仅启动 Squirrel，不启动数据库；如需本地 sidecar，一并启动）：
-```bash
-docker compose up -d --no-deps squirrel squirrel-cf-bypass
-```
+### 2. 接入已有数据库
 
-3. 访问应用：`http://localhost:8001`
-
-**说明：** 
-- `--no-deps` 参数会跳过依赖服务（Redis 和 PostgreSQL），不会拉取或启动它们
-- 确保外部数据库可以从容器内访问（使用 `host.docker.internal` 或实际 IP）
-
-### 使用指南
-
-1. 添加订阅：使用Web界面添加YouTube或Bilibili频道URL
-2. 管理订阅：在订阅列表中查看和管理您的订阅
-3. 浏览最新视频：在"最新视频"页面查看下载的内容
-4. 使用浏览器拓展：在支持的网站上快速添加订阅
-5. 配置设置：调整下载路径、更新频率等参数
-
-## 详细部署指南
-
-### 📋 部署配置说明
-
-#### 环境变量配置
+1. 编辑 `.env`，将 `REDIS_HOST`、`POSTGRES_HOST` 及对应密码改成外部实例（本机 Docker Desktop 常用 `host.docker.internal`）。
+2. 只启动应用进程（不拉起 compose 内的 DB）：
 
 ```bash
-# 复制示例文件
-cp env.example .env
-
-# 完整部署：保持默认配置即可
-# 独立部署：修改以下配置
-# - REDIS_HOST: 改为外部 Redis 地址
-# - REDIS_PASSWORD: 改为实际密码
-# - POSTGRES_HOST: 改为外部 PostgreSQL 地址
-# - POSTGRES_PASSWORD: 改为实际密码
+docker compose up -d --no-deps \
+  squirrel squirrel-worker squirrel-scheduler squirrel-cf-bypass
 ```
 
-#### Docker Compose 独立部署配置
+确保容器能访问外部 Postgres / Redis；若搜索也外置，需同步调整 Meilisearch 相关配置。
 
-独立部署时使用 `--no-deps` 参数跳过数据库服务：
+### 3. 用起来
 
-```bash
-# 修改 .env 文件配置外部数据库连接信息
+1. 打开 Web，注册/登录。
+2. 在「订阅」添加频道 URL，或用浏览器扩展在站点页加订。
+3. 等待定时同步，或在界面中手动刷新。
+4. 在首页 / 视频库浏览，用未读、稍后看等整理；点开即可播放。
+5. 需要登录站或远端搜索时，使用桌面端维护站点会话。
+6. 同步异常时看「站点」「定时」「日志」。
 
-# 启动服务（不启动 Redis 和 PostgreSQL）
-docker compose up -d --no-deps squirrel
-```
+## 配置要点
 
-#### 创建必要的目录
+复制 `env.example` 为 `.env`。常用项：
 
-```bash
-# 完整部署：需要数据库数据目录
-mkdir -p config logs downloads postgres/data redis/data
+| 变量 | 说明 |
+|------|------|
+| `PORT` | Web 端口，默认 `8001` |
+| `CF_BYPASS_PORT` | bypass 端口，默认 `8002` |
+| `CLOUDFLARE_BYPASS_SERVICE_URL` | 容器内一般为 `http://squirrel-cf-bypass:8002` |
+| `REDIS_*` / `POSTGRES_*` | 缓存与数据库 |
+| `JWT_SECRET_KEY` | 生产环境务必改为长随机串 |
+| `THUMBNAILS_DIR` | 缩略图宿主机目录 |
+| `COOKIECLOUD_*` | 可选，CookieCloud 同步 |
 
-# 独立部署：不需要数据库数据目录
-mkdir -p config logs downloads thumbnails
-```
+站点启用与元数据：`config/sites.json`。
 
-### 📦 Docker Compose 使用
+数据卷（主服务）：
 
-```bash
-# 启动所有服务
-docker compose up -d
-
-# 查看日志
-docker compose logs -f
-
-# 查看特定服务日志
-docker compose logs -f squirrel
-
-# 停止服务
-docker compose down
-
-# 停止服务并删除数据卷
-docker compose down -v
-```
-
-- `squirrel-cf-bypass` 负责 backend 的 Cloudflare bypass 请求。
-- 容器部署时 `CLOUDFLARE_BYPASS_SERVICE_URL` 应指向 `http://squirrel-cf-bypass:8002`。
-- 外部部署目录运行 compose 时，需要单独提供 `klaxonz/squirrel-cf-bypass:latest` 镜像。
-
-### 📊 服务说明
-
-#### Squirrel 主服务
-
-- **端口**: `PORT`（默认 `8001`，宿主机与容器内保持一致）
-- **健康检查**: `http://localhost:8001/health`
-- **数据卷**:
-  - `./config:/app/config` - 配置文件
-  - `./logs:/app/logs` - 日志文件
-  - `./downloads:/downloads` - 下载的媒体文件
-
-#### Cloudflare bypass sidecar
-
-- **端口**: `CF_BYPASS_PORT`（默认 `8002`，宿主机与容器内保持一致）
-- **容器内地址**: `http://squirrel-cf-bypass:8002`
-
-#### Redis
-
-- **端口**: 6379
-- **数据卷**: `./redis/data:/data`
-- **密码**: 通过环境变量 `REDIS_PASSWORD` 配置
-
-#### PostgreSQL
-
-- **端口**: 5432
-- **数据卷**: `./postgres/data:/var/lib/postgresql/data`
-- **数据库**: 通过环境变量配置
-
-### 🔍 健康检查
-
-所有服务都配置了健康检查：
-
-- **Squirrel**: 每30秒检查一次，启动40秒后开始
-- **Redis**: 每5秒检查一次
-- **PostgreSQL**: 每10秒检查一次
-
-查看健康状态：
-
-```bash
-docker compose ps
-```
-
-### 🔄 更新部署
-
-```bash
-# 1. 拉取最新代码
-git pull
-
-# 2. 重启服务
-docker compose down
-docker compose up -d
-```
-
-**说明：**
-- 完整部署：直接更新即可
-- 独立部署：`docker-compose.override.yaml` 不会被 git 跟踪，您的配置不会丢失
+- `./config` → `/app/config`
+- `./logs` → `/app/logs`
+- `./downloads` → `/downloads`
+- `./thumbnails`（或 `THUMBNAILS_DIR`）→ `/thumbnails`
 
 ## 常用命令
 
 ```bash
-# 查看服务状态
 docker compose ps
-
-# 查看日志
 docker compose logs -f squirrel
-
-# 重启服务
-docker compose restart
-
-# 停止服务
+docker compose logs -f squirrel-worker
+docker compose restart squirrel
 docker compose down
 
-# 进入容器
-docker compose exec squirrel bash
-
-# 健康检查
-curl http://localhost:8001/health
+# 更新镜像后
+docker compose pull
+docker compose up -d
 ```
-
-### 目录结构
-
-```
-.
-├── config/          # 配置文件目录
-├── logs/            # 日志文件目录
-├── downloads/       # 下载文件目录
-├── postgres/data/   # PostgreSQL 数据
-├── redis/data/      # Redis 数据
-└── .env             # 环境变量配置
-```
-
-## 浏览器扩展
-
-### 安装步骤
-
-1. 安装浏览器插件
-2. 打开浏览器，找到扩展管理
-3. 将 `squirrel-extension` 目录导入到浏览器扩展中
 
 ## 桌面端
-
-仓库提供了独立的 `squirrel-desktop` Electron 子项目，用来承载现有 Web UI。
 
 ```bash
 cd squirrel-desktop
 npm install
-npm run dev
+npm run dev      # 联动 frontend 开发服；后端默认 http://127.0.0.1:8001
+npm run build    # unpacked
+npm run dist     # 安装包
 ```
 
-- `npm run dev` 会启动桌面壳，并自动联动 `squirrel-frontend` 开发服务器。
-- 默认要求后端运行在 `http://127.0.0.1:8001`。
-- 打包可使用 `npm run build` 或 `npm run dist`。
+环境变量见 `squirrel-desktop/README.md`（`DESKTOP_APP_URL`、`VITE_BACKEND_URL` 等）。
 
-## 插件开发
+## 浏览器扩展
 
-Squirrel 支持通过插件系统扩展更多视频平台。
+1. 打开浏览器扩展管理，启用「开发者模式」。
+2. 「加载已解压的扩展程序」，选择仓库中的 `squirrel-extension/`。
+3. 在扩展选项里配置 Squirrel 服务地址后，在支持的站点页加订。
 
-### 插件目录
+## 站点插件
 
-- `squirrel-site-runtimes/` - 插件源码目录
-  - `bilibili/` - Bilibili 插件
-  - `youtube/` - YouTube 插件
-  - `javdb/` - JavDB 插件
-  - `pornhub/` - PornHub 插件
+插件为 monorepo 内 first-party 代码，后端进程内调用，不接受上传安装包。
 
-## 故障排查
+- 源码：`squirrel-site-runtimes/<site>/`
+- 共用抓取逻辑：`squirrel-site-runtimes/shared/`
+- 启用与域名等：`config/sites.json`
+- 能力包括：`extract_video`、`sync_subscription`、`import_subscriptions`、`check_login_status` 等
 
-### 🛠️ 查看日志
+开发说明见 `squirrel-backend/README.md` 与各插件目录。
 
-```bash
-# 所有服务日志
-docker compose logs -f
-
-# Squirrel 服务日志
-docker compose logs -f squirrel
-
-# Redis 日志
-docker compose logs -f redis
-
-# PostgreSQL 日志
-docker compose logs -f postgres
-```
-
-### 重启服务
+## 备份
 
 ```bash
-# 重启所有服务
-docker compose restart
-
-# 重启特定服务
-docker compose restart squirrel
-```
-
-### 进入容器
-
-```bash
-# 进入 Squirrel 容器
-docker compose exec squirrel bash
-
-# 进入 PostgreSQL 容器
-docker compose exec postgres bash
-
-# 进入 Redis 容器
-docker compose exec redis sh
-```
-
-### 检查数据库连接
-
-```bash
-# 在 Squirrel 容器中测试数据库连接
-docker compose exec squirrel python -c "from core.config import settings; print(settings.database_url)"
-```
-
-## 备份与恢复
-
-### 📝 备份数据
-
-```bash
-# 备份 PostgreSQL 数据库
+# 数据库
 docker compose exec postgres pg_dump -U postgres squirrel > backup.sql
 
-# 备份配置和数据
-tar -czf squirrel-backup-$(date +%Y%m%d).tar.gz config downloads postgres/data redis/data
+# 配置与卷（按你实际保留的目录调整）
+tar -czf squirrel-backup-$(date +%Y%m%d).tar.gz config logs downloads thumbnails postgres/data redis/data
 ```
 
-### 恢复数据
+恢复示例：
 
 ```bash
-# 恢复 PostgreSQL 数据库
 cat backup.sql | docker compose exec -T postgres psql -U postgres squirrel
-
-# 恢复配置和数据
 tar -xzf squirrel-backup-YYYYMMDD.tar.gz
 ```
 
-## 🔐 安全建议
+## 故障排查
 
-1. **修改默认密码**: 修改 `.env` 文件中的 `REDIS_PASSWORD` 和 `POSTGRES_PASSWORD`
-2. **限制端口暴露**: 生产环境中，考虑只暴露必要的端口
-3. **使用反向代理**: 建议使用 Nginx 或 Traefik 作为反向代理
-4. **启用 HTTPS**: 配置 SSL 证书
+| 现象 | 建议 |
+|------|------|
+| 服务起不来 | `docker compose ps`，再看对应服务 `logs` |
+| API 不通 | `curl http://localhost:8001/health`；检查 `PORT` 与反向代理 |
+| 同步失败 | 查「日志」、站点是否需登录/cookie、`squirrel-worker` / `squirrel-scheduler` 是否在跑 |
+| CF 相关失败 | 确认 `squirrel-cf-bypass` healthy，且 `CLOUDFLARE_BYPASS_SERVICE_URL` 正确 |
+| 数据库连不上 | 核对 `.env` 主机名；独立部署时应用容器能否解析外部 DB |
 
-### 🌐 反向代理配置示例（Nginx）
+应用日志目录：`./logs/`（如 `app.log`）。
+
+## 安全
+
+- 修改默认 `REDIS_PASSWORD`、`POSTGRES_PASSWORD`、`JWT_SECRET_KEY`。
+- 生产环境不要把数据库端口暴露到公网；Web 建议置于反向代理之后并启用 HTTPS。
+
+Nginx 示例：
 
 ```nginx
 server {
@@ -357,7 +188,7 @@ server {
     server_name your-domain.com;
 
     location / {
-        proxy_pass http://localhost:8001;
+        proxy_pass http://127.0.0.1:8001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -366,18 +197,8 @@ server {
 }
 ```
 
-## 🆘 获取帮助
-
-如遇到问题，请查看：
-
-1. 日志文件: `./logs/app.log`
-2. [GitHub Issues](https://github.com/klaxonz/squirrel/issues)
-3. 提交问题反馈
-
-## 贡献
-
-欢迎提交问题报告、功能请求和代码贡献。请查看 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解更多信息。
-
 ## 许可
 
-本项目遵循 [MIT License](./LICENSE)。
+[MIT License](./LICENSE)
+
+问题与反馈：[GitHub Issues](https://github.com/klaxonz/squirrel/issues)
