@@ -338,14 +338,33 @@ const heroTitle = computed(() =>
   heroVideo.value ? heroVideo.value.title : '今天看点什么',
 )
 
-/** Display title: soft-trim very long strings so 2-line clamp ends on a word boundary when possible. */
+/**
+ * Soft-trim long hero titles so ellipsis lands near a word / CJK boundary.
+ * Full string stays on the element `title` attribute for hover.
+ */
 const heroTitleDisplay = computed(() => {
   const raw = String(heroTitle.value || '').trim()
-  if (raw.length <= 72) return raw
-  const slice = raw.slice(0, 72)
-  const breakAt = Math.max(slice.lastIndexOf(' '), slice.lastIndexOf('　'), slice.lastIndexOf('，'), slice.lastIndexOf(','))
-  if (breakAt >= 40) return `${slice.slice(0, breakAt).trimEnd()}…`
-  return `${slice.trimEnd()}…`
+  const maxChars = 58
+  if (raw.length <= maxChars) return raw
+
+  const window = raw.slice(0, maxChars)
+  const breakChars = [' ', '\u3000', '，', ',', '、', '·', '-', '–', '—', ':', '：', '!', '！', '?', '？', '.', '。']
+  let best = -1
+  for (const ch of breakChars) {
+    const idx = window.lastIndexOf(ch)
+    if (idx >= Math.floor(maxChars * 0.42)) best = Math.max(best, idx)
+  }
+  if (best > 0) return `${window.slice(0, best).trimEnd()}…`
+
+  // No good separator — shorten further rather than mid-word at maxChars.
+  const shorter = raw.slice(0, Math.floor(maxChars * 0.78))
+  for (const ch of breakChars) {
+    const idx = shorter.lastIndexOf(ch)
+    if (idx >= Math.floor(maxChars * 0.35)) {
+      return `${shorter.slice(0, idx).trimEnd()}…`
+    }
+  }
+  return `${shorter.trimEnd()}…`
 })
 
 const heroChannelName = computed(() => {
@@ -527,26 +546,46 @@ onMounted(() => {
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  /* Bottom edge blends toward page canvas; mid bands use overlay for type contrast.
-     --background shifts with theme, so light mode softens into the page shell. */
+  /* Overlay for type contrast; only a thin canvas seam at the bottom (no fog wash). */
   background:
     linear-gradient(
       to top,
-      hsl(var(--background) / 0.62) 0%,
-      hsl(var(--background) / 0.18) 14%,
-      transparent 30%
+      hsl(var(--background) / 0.22) 0%,
+      transparent 9%
     ),
     linear-gradient(
       to top,
-      hsl(var(--overlay) / 0.76) 0%,
-      hsl(var(--overlay) / 0.46) 36%,
-      hsl(var(--overlay) / 0.12) 66%,
+      hsl(var(--overlay) / 0.82) 0%,
+      hsl(var(--overlay) / 0.5) 34%,
+      hsl(var(--overlay) / 0.14) 64%,
+      transparent 84%
+    ),
+    linear-gradient(
+      to right,
+      hsl(var(--overlay) / 0.28) 0%,
+      transparent 50%
+    );
+}
+
+/* Light shell: even thinner canvas seam so the photo does not bleach white. */
+:global(html.light) .home-stage__scrim {
+  background:
+    linear-gradient(
+      to top,
+      hsl(var(--background) / 0.14) 0%,
+      transparent 7%
+    ),
+    linear-gradient(
+      to top,
+      hsl(var(--overlay) / 0.8) 0%,
+      hsl(var(--overlay) / 0.48) 34%,
+      hsl(var(--overlay) / 0.14) 64%,
       transparent 84%
     ),
     linear-gradient(
       to right,
       hsl(var(--overlay) / 0.26) 0%,
-      transparent 52%
+      transparent 50%
     );
 }
 
@@ -663,7 +702,7 @@ onMounted(() => {
   bottom: var(--space-5);
   left: var(--space-5);
   z-index: 3;
-  max-width: min(36rem, 92%);
+  max-width: min(32rem, 90%);
   pointer-events: none;
 }
 
@@ -677,17 +716,18 @@ onMounted(() => {
   overflow: hidden;
   color: hsl(var(--app-media-on-image));
   font-family: var(--app-heading-font);
-  font-size: clamp(1.25rem, 1.65vw, 1.5625rem);
+  font-size: clamp(1.125rem, 1.45vw, 1.4375rem);
   font-weight: 650;
-  line-height: 1.28;
-  letter-spacing: -0.015em;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  text-wrap: balance;
+  line-height: 1.32;
+  letter-spacing: -0.012em;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
+  text-wrap: pretty;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  text-shadow: 0 1px 2px hsl(var(--overlay) / 0.35);
+  text-shadow: 0 1px 2px hsl(var(--overlay) / 0.4);
 }
 
 .home-stage__meta {
