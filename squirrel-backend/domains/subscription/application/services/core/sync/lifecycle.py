@@ -115,6 +115,7 @@ class SubscriptionSyncLifecycle:
         force: bool = False,
         trace_id: str | None = None,
         run_id: str | None = None,
+        cursor_payload: dict | None = None,
     ) -> SubscriptionScheduleResult:
         command = build_command(
             subscription_id=subscription_id,
@@ -158,6 +159,7 @@ class SubscriptionSyncLifecycle:
                 queued.queue_token,
                 request_id=None,
                 run_id=queued.run_context.run_id,
+                cursor_payload=cursor_payload,
             )
             _, task = self._crawl_tasks.create_job_with_task_in_session(
                 session,
@@ -201,6 +203,7 @@ class SubscriptionSyncLifecycle:
         force: bool = False,
         trace_id: str | None = None,
         run_id: str | None = None,
+        cursor_payload: dict | None = None,
     ) -> SubscriptionDirectRunResult:
         command = build_command(
             subscription_id=subscription_id,
@@ -247,6 +250,7 @@ class SubscriptionSyncLifecycle:
                         queued.queue_token,
                         request_id=request_id,
                         run_id=queued.run_context.run_id,
+                        cursor_payload=cursor_payload,
                     ),
                     'inline_video_extraction': True,
                 }
@@ -351,12 +355,13 @@ class SubscriptionSyncLifecycle:
                 latest_video_url=result.latest_video_url,
                 videos_found=result.videos_found,
             )
-            self._continue_full_sync(request)
+            self._continue_full_sync(request, cursor_payload=result.cursor_payload)
             return
 
+        completion_cursor_payload = {} if request.mode == UpdateMode.FULL else result.cursor_payload
         self._sync_state_service.mark_sync_success(
             request.sync_state_id,
-            cursor_payload=result.cursor_payload,
+            cursor_payload=completion_cursor_payload,
             latest_video_url=result.latest_video_url,
             videos_found=result.videos_found,
         )
@@ -506,7 +511,7 @@ class SubscriptionSyncLifecycle:
     def recover_on_startup(self) -> dict[str, int]:
         return self._sync_state_service.recover_stale_sync_states_on_startup()
 
-    def _continue_full_sync(self, request: SubscriptionUpdateRequest) -> None:
+    def _continue_full_sync(self, request: SubscriptionUpdateRequest, *, cursor_payload: dict | None) -> None:
         if request.inline_video_extraction:
             continuation_result = self.run_inline_sync(
                 subscription_id=request.subscription_id,
@@ -517,6 +522,7 @@ class SubscriptionSyncLifecycle:
                 force=request.force,
                 trace_id=request.trace_id,
                 run_id=request.run_id,
+                cursor_payload=cursor_payload,
             )
             expected_status = 'success'
         else:
@@ -529,6 +535,7 @@ class SubscriptionSyncLifecycle:
                 force=request.force,
                 trace_id=request.trace_id,
                 run_id=request.run_id,
+                cursor_payload=cursor_payload,
             )
             expected_status = 'queued'
 

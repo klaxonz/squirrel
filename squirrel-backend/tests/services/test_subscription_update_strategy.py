@@ -298,6 +298,7 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success()
             'force': False,
             'trace_id': 'trace-1',
             'run_id': 'run-1',
+            'cursor_payload': {'page': 2},
         },
     ]
 
@@ -367,7 +368,7 @@ def test_execute_final_full_sync_batch_marks_success():
         (
             2,
             {
-                'cursor_payload': {'page': 3},
+                'cursor_payload': {},
                 'latest_video_url': 'https://example.com/c',
                 'videos_found': 1,
             },

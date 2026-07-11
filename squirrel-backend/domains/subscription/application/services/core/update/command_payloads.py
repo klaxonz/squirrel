@@ -23,8 +23,10 @@ def build_task_payload(
     *,
     request_id: str | None,
     run_id: str,
+    cursor_payload: dict | None = None,
+    last_seen_video_url: str | None = None,
 ) -> dict:
-    return {
+    payload = {
         'subscription_id': command.subscription_id,
         'url': command.url,
         'sync_state_id': sync_state_id,
@@ -37,6 +39,11 @@ def build_task_payload(
         'trace_id': command.trace_id,
         'request_id': request_id,
     }
+    if cursor_payload is not None:
+        payload['cursor_payload'] = cursor_payload
+    if last_seen_video_url is not None:
+        payload['last_seen_video_url'] = last_seen_video_url
+    return payload
 
 
 def resolve_priority(trigger: UpdateTrigger, mode: UpdateMode) -> str:

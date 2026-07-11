@@ -1,11 +1,29 @@
 import logging
 import os
+from contextlib import contextmanager
 
+from sqlalchemy import create_engine, text
+from sqlalchemy.pool import NullPool
 from alembic.config import Config as AlembicConfig
 
 from alembic import command
+from infrastructure.config.settings import settings
 
 logger = logging.getLogger(__name__)
+
+_MIGRATION_LOCK_ID = 7350438400214821
+
+
+@contextmanager
+def _migration_lock():
+    engine = create_engine(settings.database_url, poolclass=NullPool)
+    with engine.connect() as connection:
+        connection.execute(text('SELECT pg_advisory_lock(:lock_id)'), {'lock_id': _MIGRATION_LOCK_ID})
+        try:
+            yield
+        finally:
+            connection.execute(text('SELECT pg_advisory_unlock(:lock_id)'), {'lock_id': _MIGRATION_LOCK_ID})
+            engine.dispose()
 
 
 def upgrade_database() -> None:
@@ -18,4 +36,5 @@ def upgrade_database() -> None:
     alembic_cfg.set_main_option('script_location', alembic_script_path)
     alembic_cfg.set_main_option('prepend_sys_path', current_dir)
     alembic_cfg.attributes['skip_logging_config'] = True
-    command.upgrade(alembic_cfg, 'head')
+    with _migration_lock():
+        command.upgrade(alembic_cfg, 'head')

@@ -36,8 +36,10 @@ class CrawlExecutorService:
         request_id = payload.get('request_id')
         run_id = payload.get('run_id')
         trace_id = payload.get('trace_id')
-        cursor_payload = payload.get('cursor_payload')
-        last_seen_video_url = payload.get('last_seen_video_url')
+        has_payload_cursor = 'cursor_payload' in payload
+        has_payload_last_seen = 'last_seen_video_url' in payload
+        cursor_payload = payload.get('cursor_payload') if has_payload_cursor else None
+        last_seen_video_url = payload.get('last_seen_video_url') if has_payload_last_seen else None
 
         if sync_state_id and queue_token:
             claimed_state = self._lifecycle.claim_sync(
@@ -50,10 +52,13 @@ class CrawlExecutorService:
             )
             if not claimed_state:
                 raise CrawlTaskStateError(f'Failed to claim sync state: sync_state_id={sync_state_id}')
-            cursor_payload = cursor_payload if cursor_payload is not None else claimed_state.cursor_payload
-            last_seen_video_url = (
-                last_seen_video_url if last_seen_video_url is not None else claimed_state.last_seen_video_url
-            )
+            if has_payload_cursor:
+                cursor_payload = cursor_payload
+            elif mode == UpdateMode.FULL:
+                cursor_payload = None
+            else:
+                cursor_payload = claimed_state.cursor_payload
+            last_seen_video_url = last_seen_video_url if has_payload_last_seen else claimed_state.last_seen_video_url
 
         request = SubscriptionUpdateRequest(
             subscription_id=subscription_id,

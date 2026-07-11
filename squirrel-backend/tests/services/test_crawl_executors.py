@@ -166,6 +166,59 @@ def test_execute_subscription_sync_task_builds_request_from_payload():
     assert calls[0].inline_video_extraction is True
 
 
+def test_execute_subscription_sync_task_starts_new_full_run_without_stored_cursor():
+    class FakeLifecycle:
+        @staticmethod
+        def claim_sync(sync_state_id, queue_token, **kwargs):
+            return SimpleNamespace(
+                id=sync_state_id,
+                site='bilibili',
+                sync_mode='full',
+                pending_video_count=0,
+                cursor_payload={'page': 9},
+                last_seen_video_url='https://example.com/old',
+            )
+
+    calls = []
+
+    class FakeOrchestrator:
+        @staticmethod
+        def update(request):
+            calls.append(request)
+            return SubscriptionUpdateResult(
+                subscription_id=request.subscription_id,
+                success=True,
+                videos_found=0,
+                videos_enqueued=0,
+            )
+
+    svc = _make_sync_svc(
+        lifecycle=FakeLifecycle,
+        orchestrator_service=FakeOrchestrator,
+    )
+
+    task = CrawlTask(
+        job_id=1,
+        task_type='subscription_sync_full',
+        site='bilibili',
+        payload={
+            'subscription_id': 10,
+            'url': 'https://space.bilibili.com/42',
+            'trigger': 'scheduled',
+            'mode': 'full',
+            'sync_state_id': 99,
+            'queue_token': 'queue-1',
+        },
+    )
+
+    svc.execute_subscription_sync_task(task)
+
+    assert len(calls) == 1
+    assert calls[0].mode == UpdateMode.FULL
+    assert calls[0].cursor_payload is None
+    assert calls[0].last_seen_video_url == 'https://example.com/old'
+
+
 def test_execute_subscription_sync_task_uses_subscription_url_fallback():
     class FakeSubscriptionService:
         @staticmethod
