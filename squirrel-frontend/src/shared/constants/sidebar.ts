@@ -40,7 +40,6 @@ export interface NavigationItem {
 export interface NavigationGroup {
   key: NavigationGroupKey
   label: string
-  icon: AppIconName
   items: NavigationItem[]
 }
 
@@ -252,19 +251,16 @@ export const NAV_GROUPS: NavigationGroup[] = [
   {
     key: 'media',
     label: '媒体',
-    icon: 'layoutGrid',
     items: NAV_ITEMS.filter((item) => item.group === 'media' && item.key !== 'home'),
   },
   {
     key: 'library',
     label: '资料库',
-    icon: 'library',
     items: NAV_ITEMS.filter((item) => item.group === 'library'),
   },
   {
     key: 'system',
     label: '管理',
-    icon: 'settingsPanel',
     items: NAV_ITEMS.filter((item) => item.group === 'system' && item.key !== 'settings'),
   },
 ]

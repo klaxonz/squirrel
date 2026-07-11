@@ -18,6 +18,7 @@ Title bar
 | 历史 | 应用级前进后退，不暴露浏览器历史心智 |
 | 搜索 | 全局在顶栏，不在侧栏重复 |
 | 侧栏宽 | `--sidebar-expanded-width`（15rem），不随页面改几何 |
+| 侧栏菜单 | 中性选中 + 文字分组；见 [Navigation](../components/navigation.md) |
 | 折叠 | 被遮内容 `inert` 且移出 a11y 树 |
 
 ## Workbench

@@ -2,12 +2,12 @@
   <Button
     variant="ghost"
     class="music-nav-item"
-    :class="{ 'music-nav-item--active': active }"
+    :class="{ 'is-active': active }"
     :aria-current="active ? 'page' : undefined"
     @click="$emit('click')"
   >
-    <AppIcon :name="item.icon" class="h-4 w-4" />
-    <span>{{ item.label }}</span>
+    <AppIcon :name="item.icon" class="music-nav-item__icon" :stroke-width="active ? 2 : 1.75" />
+    <span class="music-nav-item__label">{{ item.label }}</span>
   </Button>
 </template>
 
@@ -33,27 +33,48 @@ defineEmits<{
 </script>
 
 <style scoped>
+/* Secondary rail item — same neutral selection language as app sidebar. */
 .music-nav-item {
   justify-content: flex-start;
-  gap: 0.625rem;
-  padding: 0.5rem 0.75rem;
-  margin: 1px 0.75rem;
+  gap: var(--space-2);
   width: calc(100% - 1.5rem);
+  height: var(--sidebar-item-height);
+  margin: 1px 0.75rem;
+  padding: 0 0.625rem;
+  border: 0;
+  border-radius: var(--radius-md);
   color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
+  font-weight: 500;
   text-align: left;
-  border-radius: var(--radius-md);
-  position: relative;
 }
 
-.music-nav-item--active {
-  border-color: hsl(var(--primary) / 0.18);
-  background: hsl(var(--primary) / 0.08);
-  color: hsl(var(--foreground));
+.music-nav-item:hover {
+  background: hsl(var(--foreground) / 0.055);
+  color: var(--app-selection-fg);
+}
+
+.music-nav-item.is-active {
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
   font-weight: 600;
 }
 
-.music-nav-item--active :first-child {
-  color: hsl(var(--primary));
+.music-nav-item.is-active:hover {
+  background: var(--app-selection-bg-hover);
+}
+
+.music-nav-item__icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+.music-nav-item__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

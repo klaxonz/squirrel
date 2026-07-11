@@ -24,20 +24,18 @@
         class="sidebar-group"
         :aria-labelledby="`sidebar-group-${group.key}`"
       >
-        <div
+        <h2
           :id="`sidebar-group-${group.key}`"
           class="sidebar-group__label"
         >
-          <AppIcon :name="group.icon" class="sidebar-group__icon" :stroke-width="1.75" />
-          <span>{{ group.label }}</span>
-        </div>
+          {{ group.label }}
+        </h2>
         <div class="sidebar-group__items">
           <SidebarMenuItem
             v-for="item in group.items"
             :key="item.path"
             :item="item"
             :is-active="isNavigationItemActive(item, $route)"
-            nested
           />
         </div>
       </section>
@@ -57,7 +55,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import AppIcon from '@/shared/icons/AppIcon.vue'
 import SidebarMenuItem from './SidebarMenuItem.vue'
 import {
   NAV_GROUPS,
@@ -83,17 +80,19 @@ const showSidebarMusicPlayer = computed(() =>
 </script>
 
 <style scoped>
+/* Main app rail — quiet lift of canvas, single-canvas shell (DESIGN elevation). */
 .sidebar-rail {
   --sidebar-player-space: 6.25rem;
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   border: 0;
-  border-right: 1px solid hsl(var(--sidebar-border) / 0.55);
+  border-right: 1px solid var(--app-hairline);
   border-radius: 0;
   background: hsl(var(--sidebar));
+  color: hsl(var(--sidebar-foreground));
   box-shadow: none;
   user-select: none;
   transition: padding-bottom var(--duration-base) var(--ease-out);
@@ -104,11 +103,12 @@ const showSidebarMusicPlayer = computed(() =>
 }
 
 .sidebar-top-nav {
-  flex: 0 0 auto;
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
   gap: var(--sidebar-item-gap);
-  padding: 0.25rem 0.625rem 0.625rem;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--app-hairline);
 }
 
 .sidebar-nav {
@@ -116,30 +116,22 @@ const showSidebarMusicPlayer = computed(() =>
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 0.25rem 0.625rem 0.625rem;
+  padding: var(--space-3) var(--space-2) var(--space-2);
 }
 
 .sidebar-group + .sidebar-group {
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }
 
+/* Quiet section label — text only, no chrome icons (DESIGN: quiet chrome). */
 .sidebar-group__label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  height: 1.75rem;
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--space-1);
   padding: 0 0.625rem;
-  color: hsl(var(--muted-foreground) / 0.75);
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.2;
-}
-
-.sidebar-group__icon {
-  width: 1rem;
-  height: 1rem;
-  flex: 0 0 auto;
+  color: hsl(var(--muted-foreground) / 0.78);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
 }
 
 .sidebar-group__items {
@@ -149,8 +141,11 @@ const showSidebarMusicPlayer = computed(() =>
 }
 
 .sidebar-footer {
+  display: flex;
   flex: 0 0 auto;
-  padding: 0.625rem;
+  flex-direction: column;
+  gap: var(--sidebar-item-gap);
+  padding: var(--space-2);
   border-top: 1px solid var(--app-hairline);
 }
 
