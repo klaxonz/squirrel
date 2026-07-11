@@ -105,8 +105,19 @@
   --app-control-item-radius: var(--radius-sm);
   --app-control-border: hsl(var(--border) / 0.62);
   --app-control-hover-bg: hsl(var(--accent));
-  --app-control-active-bg: hsl(var(--primary) / 0.12);
-  --app-control-shadow: 0 0 0 1px hsl(var(--primary) / 0.35);
+  --app-control-active-bg: var(--app-selection-bg);
+  --app-control-shadow: 0 0 0 1px var(--app-selection-border);
+
+  /* Neutral chrome selection (filters, chips, list selected).
+     Same language as sidebar active: ink wash + foreground — NEVER brand primary.
+     Full color values (not HSL channel triples). */
+  --app-selection-bg: hsl(var(--foreground) / 0.08);
+  --app-selection-bg-hover: hsl(var(--foreground) / 0.1);
+  --app-selection-border: hsl(var(--border) / 0.9);
+  --app-selection-border-hover: hsl(var(--border));
+  --app-selection-fg: hsl(var(--foreground));
+  --app-selection-count-bg: hsl(var(--foreground) / 0.12);
+  --app-selection-count-fg: hsl(var(--foreground));
 
   --app-dense-toolbar-gap: 0.75rem;
 
@@ -574,9 +585,9 @@
 }
 
 .app-filter-trigger.is-selected {
-  border-color: hsl(var(--primary) / 0.22);
-  background: hsl(var(--primary) / 0.07);
-  color: hsl(var(--foreground));
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
 }
 
 .app-filter-trigger--warning.is-selected {
@@ -706,7 +717,7 @@
   color: hsl(var(--foreground));
 }
 
-/* Toolbar chips — selected/filter-on uses primary (interactive selection). */
+/* Toolbar chips — selected/filter-on uses neutral ink selection (not brand). */
 .app-toolbar-chip {
   height: 2rem;
   gap: var(--space-1);
@@ -716,22 +727,22 @@
 }
 
 .app-toolbar-chip--active {
-  border-color: hsl(var(--primary) / 0.22);
-  background: hsl(var(--primary) / 0.08);
-  color: hsl(var(--foreground) / 0.92);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
 }
 
 .app-toolbar-chip--active:hover {
-  border-color: hsl(var(--primary) / 0.32);
-  background: hsl(var(--primary) / 0.12);
-  color: hsl(var(--foreground));
+  border-color: var(--app-selection-border-hover);
+  background: var(--app-selection-bg-hover);
+  color: var(--app-selection-fg);
 }
 
 /* Legacy alias — same as --active (filter dismiss chips). */
 .app-toolbar-chip--warning {
-  border-color: hsl(var(--primary) / 0.22);
-  background: hsl(var(--primary) / 0.08);
-  color: hsl(var(--foreground) / 0.92);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
 }
 
 .app-toolbar-select-trigger {
@@ -750,9 +761,9 @@
 }
 
 .app-toolbar-select-trigger.is-active {
-  border-color: hsl(var(--primary) / 0.22) !important;
-  background: hsl(var(--primary) / 0.08) !important;
-  color: hsl(var(--foreground) / 0.92);
+  border-color: var(--app-selection-border) !important;
+  background: var(--app-selection-bg) !important;
+  color: var(--app-selection-fg);
 }
 
 .app-toolbar-icon-button {
@@ -762,11 +773,11 @@
   flex: 0 0 auto;
 }
 
-/* Icon / filter controls: active = interactive primary tint (not health status). */
+/* Icon / filter controls: active = neutral ink selection (not brand, not health). */
 .app-toolbar-icon-button.is-active {
-  border-color: hsl(var(--primary) / 0.22);
-  background: hsl(var(--primary) / 0.08);
-  color: hsl(var(--foreground) / 0.92);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
 }
 
 /* Text+icon filter trigger shared by feed / subscription toolbars. */
@@ -778,9 +789,10 @@
 }
 
 .app-filter-toolbar-button.is-active {
-  border-color: hsl(var(--primary) / 0.22);
-  background: hsl(var(--primary) / 0.08);
-  color: hsl(var(--foreground) / 0.9);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
+  font-weight: 650;
 }
 
 .app-filter-toolbar-button__count {
@@ -789,8 +801,8 @@
   height: 1rem;
   place-items: center;
   border-radius: 999px;
-  background: hsl(var(--primary) / 0.14);
-  color: hsl(var(--primary));
+  background: var(--app-selection-count-bg);
+  color: var(--app-selection-count-fg);
   font-size: 0.5625rem;
   font-weight: 650;
   line-height: 1;
@@ -1070,9 +1082,9 @@
 }
 
 .app-filter-button.is-active {
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--foreground));
-  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.16) inset;
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
+  box-shadow: 0 0 0 1px var(--app-selection-border) inset;
 }
 
 /* ── Filter popover fields (AppFilterPanel consumers) ───────────────────── */
@@ -1117,15 +1129,15 @@
 }
 
 .app-filter-select.is-active {
-  border-color: hsl(var(--primary) / 0.28) !important;
-  background: hsl(var(--primary) / 0.06) !important;
-  color: hsl(var(--foreground));
+  border-color: var(--app-selection-border) !important;
+  background: var(--app-selection-bg) !important;
+  color: var(--app-selection-fg);
   box-shadow: none !important;
 }
 
 .app-filter-select.is-active:hover {
-  border-color: hsl(var(--primary) / 0.38) !important;
-  background: hsl(var(--primary) / 0.09) !important;
+  border-color: var(--app-selection-border-hover) !important;
+  background: var(--app-selection-bg-hover) !important;
 }
 
 .app-filter-site-option {

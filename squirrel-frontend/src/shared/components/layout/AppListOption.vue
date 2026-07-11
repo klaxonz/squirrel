@@ -87,9 +87,9 @@ const onKeydown = (event: KeyboardEvent) => {
 }
 
 .app-list-option.is-selected {
-  border-color: hsl(var(--primary) / 0.18);
-  background: hsl(var(--primary) / 0.08);
-  color: hsl(var(--foreground));
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
   font-weight: 650;
 }
 

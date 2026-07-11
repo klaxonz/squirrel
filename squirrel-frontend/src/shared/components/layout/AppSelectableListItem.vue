@@ -58,9 +58,9 @@ const props = withDefaults(defineProps<{
 }
 
 .app-selectable-list-item.is-selected {
-  border-color: hsl(var(--primary) / 0.2);
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
 }
 
 :deep(.app-selectable-list-item__actions) {
