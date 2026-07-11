@@ -34,7 +34,14 @@
           </SelectTrigger>
           <SelectContent class="min-w-44">
             <SelectItem value="all" class="text-xs">全部站点</SelectItem>
-            <SelectItem v-for="opt in siteOptions" :key="opt.value" :value="opt.value" class="text-xs">{{ opt.label }}</SelectItem>
+            <SelectItem
+              v-for="opt in visibleRemoteSiteOptions"
+              :key="opt.value"
+              :value="opt.value"
+              class="text-xs"
+            >
+              {{ opt.label }}
+            </SelectItem>
           </SelectContent>
         </Select>
 
@@ -111,6 +118,7 @@ import { useVideoCardNavigation } from '@/features/video/composables/useVideoCar
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { useSites } from '@/features/video/composables/useSites'
+import { useUserSettings } from '@/shared/composables/useUserSettings'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 
 // Videos tabbed feed: full toolbar + tabbed router-view. Recommendation rows
@@ -125,8 +133,12 @@ const { openVideo, openSubscription } = useVideoCardNavigation(router)
 
 const { activeTab, nsfw, sortBy, site, searchQuery, special, timeRange, duration, contentType, filters } = useFeedFilters()
 const { options: siteOptions } = useSites()
+const { settings } = useUserSettings()
 
 const tabs = ref(VIDEO_TABS)
+const visibleRemoteSiteOptions = computed(() =>
+  (siteOptions.value || []).filter((option) => settings.value.showNsfw || option.isNsfw !== true),
+)
 const isRefreshing = ref(false)
 const loadError = ref<string | null>(null)
 // ponytail: child components (VideoTab / RemoteSearchResults) share a refresh() surface;
@@ -194,6 +206,20 @@ watch(() => route.query.site, (value) => {
   if (!isActiveVideosRoute.value) return
   remoteSite.value = typeof value === 'string' ? value : ''
 }, { immediate: true })
+
+watch(
+  () => ({
+    remoteSite: remoteSite.value,
+    showNsfw: settings.value.showNsfw,
+    options: siteOptions.value || [],
+  }),
+  ({ remoteSite: current, showNsfw, options }) => {
+    if (!current || showNsfw) return
+    const selected = options.find((option) => option.value === current)
+    if (selected?.isNsfw === true) updateRemoteSite('all')
+  },
+  { immediate: true },
+)
 
 watch(() => route.query.special, (value) => {
   if (!isActiveVideosRoute.value) return

@@ -49,7 +49,7 @@ withDefaults(defineProps<{
 }
 
 .app-toolbar-frame--bordered {
-  border-bottom: 1px solid var(--app-hairline);
+  border-bottom: 1px solid hsl(var(--border) / 0.32);
 }
 
 .app-toolbar-frame__inner {
@@ -61,7 +61,7 @@ withDefaults(defineProps<{
 }
 
 .app-toolbar-frame--compact .app-toolbar-frame__inner {
-  padding-block: 0.5rem;
+  padding-block: 0.4375rem;
 }
 
 @media (min-width: 640px) {

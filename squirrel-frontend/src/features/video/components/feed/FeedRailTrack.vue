@@ -1,7 +1,7 @@
 <template>
   <div
     ref="scrollContainer"
-    class="feed-rail-track no-scrollbar flex gap-4 overflow-x-auto pb-4 snap-x"
+    class="feed-rail-track no-scrollbar flex gap-5 overflow-x-auto pb-2 snap-x"
     @scroll="updateScrollState"
   >
     <slot />

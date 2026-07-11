@@ -370,7 +370,7 @@ onMounted(() => {
   align-items: baseline;
   gap: var(--space-4);
   padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--app-hairline);
+  border-bottom: 1px solid hsl(var(--border) / 0.35);
 }
 
 .history-day__heading {
@@ -383,20 +383,18 @@ onMounted(() => {
 .history-day__title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.history-day__detail {
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  line-height: 1.3;
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 
 .history-day__detail {
   overflow: hidden;
+  color: hsl(var(--muted-foreground) / 0.85);
+  font-size: 0.75rem;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

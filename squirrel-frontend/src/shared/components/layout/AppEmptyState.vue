@@ -111,9 +111,9 @@ const variantClass = computed(() =>
   color: hsl(var(--foreground));
   font-family: var(--font-display);
   font-size: var(--app-h2-size);
-  font-weight: 600;
+  font-weight: 650;
   line-height: var(--app-h2-leading);
-  letter-spacing: var(--app-h2-tracking);
+  letter-spacing: -0.022em;
 }
 
 .app-empty-state__copy {

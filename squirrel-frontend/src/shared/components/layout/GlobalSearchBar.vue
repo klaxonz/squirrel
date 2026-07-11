@@ -419,11 +419,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 0.125rem;
-  height: 2.25rem;
-  padding: 0.1875rem 0.25rem 0.1875rem 0.1875rem;
-  border: 1px solid hsl(var(--border) / 0.45);
+  height: 2rem;
+  padding: 0.125rem 0.25rem 0.125rem 0.1875rem;
+  border: 1px solid hsl(var(--border) / 0.32);
   border-radius: var(--radius-md);
-  background: hsl(var(--card) / 0.55);
+  background: hsl(var(--muted) / 0.35);
   transition:
     background-color var(--duration-fast) var(--ease-default),
     border-color var(--duration-fast) var(--ease-default),
@@ -434,9 +434,9 @@ onUnmounted(() => {
    Nested input/button focus rings are suppressed below so they do not
    stack with this ring (global :focus-visible + Button ring utilities). */
 .global-search__box:focus-within {
-  border-color: hsl(var(--ring));
-  background: hsl(var(--card) / 0.78);
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.22);
+  border-color: hsl(var(--border) / 0.55);
+  background: hsl(var(--card) / 0.72);
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.16);
 }
 
 /* is-open only while the panel is visible; never override focus chrome. */
@@ -452,21 +452,26 @@ onUnmounted(() => {
 
 .global-search__mode {
   gap: 0.3125rem;
-  height: 1.875rem;
-  padding: 0 0.5rem;
+  height: 1.625rem;
+  padding: 0 0.45rem;
   border-radius: calc(var(--radius-md) - 1px);
   border-color: transparent;
-  background: hsl(var(--secondary) / 0.72);
-  color: hsl(var(--foreground) / 0.88);
-  font-size: 0.75rem;
-  font-weight: 650;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 600;
   letter-spacing: 0.01em;
 }
 
 .global-search__mode:hover {
   border-color: transparent;
-  background: hsl(var(--secondary));
+  background: hsl(var(--foreground) / 0.05);
   color: hsl(var(--foreground));
+}
+
+.global-search__mode[aria-pressed='true'] {
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
 }
 
 .global-search__mode:active {
@@ -476,9 +481,9 @@ onUnmounted(() => {
 .global-search__divider {
   flex: 0 0 auto;
   width: 1px;
-  height: 1rem;
-  margin: 0 0.25rem 0 0.125rem;
-  background: hsl(var(--border) / 0.72);
+  height: 0.875rem;
+  margin: 0 0.2rem 0 0.1rem;
+  background: hsl(var(--border) / 0.4);
   border-radius: 1px;
 }
 
@@ -486,12 +491,12 @@ onUnmounted(() => {
   width: 0.875rem;
   height: 0.875rem;
   margin: 0 0.375rem 0 0.5rem;
-  color: hsl(var(--muted-foreground) / 0.48);
+  color: hsl(var(--muted-foreground) / 0.55);
   transition: color var(--duration-fast) var(--ease-default);
 }
 
 .global-search__box:focus-within .global-search__leading-icon {
-  color: hsl(var(--primary));
+  color: hsl(var(--muted-foreground) / 0.85);
 }
 
 .global-search__input {
@@ -600,8 +605,8 @@ onUnmounted(() => {
 }
 
 .global-search__suggestion.is-active {
-  background: hsl(var(--secondary));
-  color: hsl(var(--foreground));
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
 }
 
 .global-search__suggestion-copy {

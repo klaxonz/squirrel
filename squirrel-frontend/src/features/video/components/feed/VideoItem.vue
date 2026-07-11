@@ -40,7 +40,7 @@
 
       <span
         v-if="video.duration && showDuration"
-        class="video-item__duration"
+        class="video-item__duration app-mono"
         :class="{ 'video-item__duration--with-progress': progressRatio > 0 }"
       >
         {{ formatDuration(video.duration) }}

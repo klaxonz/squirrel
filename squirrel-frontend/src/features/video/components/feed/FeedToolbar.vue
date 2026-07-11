@@ -397,10 +397,10 @@ const viewModeOptions = [
   display: flex;
   width: 100%;
   min-width: 0;
-  min-height: 2.5rem;
+  min-height: 2.25rem;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 .feed-toolbar__primary {
