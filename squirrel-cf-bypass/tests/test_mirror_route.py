@@ -73,6 +73,60 @@ def test_mirror_route_proxies_any_path():
     assert call['headers']['x-hostname'] == 'surrit.com'
 
 
+def test_mirror_route_uses_configured_default_proxy(monkeypatch):
+    session_calls = []
+
+    class CookieSession:
+        def __init__(self, **kwargs):
+            session_calls.append({'kind': 'init', 'kwargs': kwargs})
+
+        async def get(self, url, headers=None, allow_redirects=False):
+            session_calls.append({'kind': 'seed', 'url': url, 'headers': headers})
+
+            class Response:
+                status_code = 200
+                text = '<html>seed</html>'
+                url = 'https://javdb.com/'
+                cookies = {'cf_clearance': 'seeded'}
+
+            return Response()
+
+        async def request(self, method, url, headers=None, data=None, allow_redirects=False):
+            session_calls.append({'kind': 'mirror', 'url': url, 'headers': headers})
+
+            class Response:
+                status_code = 200
+                headers = {'content-type': 'text/plain'}
+                content = b'ok'
+
+            return Response()
+
+    monkeypatch.setattr(
+        'squirrel_cf_bypass.app.core.service.AsyncSession',
+        lambda **kwargs: CookieSession(**kwargs),
+    )
+
+    app = create_app(solver=FakeSolver())
+    app.state.bypass_service._default_proxy = 'http://127.0.0.1:7897'
+    client = TestClient(app)
+
+    response = client.get(
+        '/videos/demo.m3u8',
+        headers={
+            'X-Hostname': 'javdb.com',
+            'Cookie': 'cf_clearance=provided; _jdb_session=session',
+            'User-Agent': 'Mirror UA',
+        },
+    )
+
+    assert response.status_code == 200
+    init_call = next(call for call in session_calls if call['kind'] == 'init')
+    assert init_call['kwargs']['proxies'] == {
+        'http': 'http://127.0.0.1:7897',
+        'https': 'http://127.0.0.1:7897',
+    }
+
+
 def test_mirror_route_seeds_clearance_from_request_cookies(monkeypatch):
     session_calls = []
 

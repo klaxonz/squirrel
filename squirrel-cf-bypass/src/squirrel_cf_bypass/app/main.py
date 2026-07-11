@@ -4,6 +4,7 @@ from squirrel_cf_bypass.app.api.routes import router
 from squirrel_cf_bypass.app.core.browser_solver import BrowserSolver
 from squirrel_cf_bypass.app.core.cache import ClearanceCache
 from squirrel_cf_bypass.app.core.service import CloudflareBypassService
+from squirrel_cf_bypass.app.core.settings import settings
 from squirrel_cf_bypass.app.core.session_pool import SessionPool
 
 
@@ -21,6 +22,7 @@ def create_app(solver=None) -> FastAPI:
         cache=ClearanceCache(ttl_seconds=900),
         session_pool=SessionPool(ttl_seconds=300, max_sessions=32),
         ttl_seconds=900,
+        default_proxy=settings.CF_BYPASS_PROXY_URL,
     )
     app.include_router(router)
     return app

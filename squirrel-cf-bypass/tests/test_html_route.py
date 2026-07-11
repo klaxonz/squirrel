@@ -40,6 +40,18 @@ def test_html_route_returns_solver_result_headers():
     assert solver.calls[0]['url'] == 'https://javdb.com'
 
 
+def test_html_route_uses_configured_default_proxy():
+    solver = FakeSolver()
+    app = create_app(solver=solver)
+    app.state.bypass_service._default_proxy = 'http://127.0.0.1:7897'
+    client = TestClient(app)
+
+    response = client.get('/html', params={'url': 'https://javdb.com'})
+
+    assert response.status_code == 200
+    assert solver.calls[0]['proxy'] == 'http://127.0.0.1:7897'
+
+
 def test_html_route_forwards_request_headers_to_solver():
     solver = FakeSolver()
     client = TestClient(create_app(solver=solver))
@@ -63,6 +75,22 @@ def test_html_route_forwards_request_headers_to_solver():
     assert solver.calls[0]['custom_headers']['origin'] == 'https://javdb.com'
     assert 'host' not in solver.calls[0]['custom_headers']
     assert 'x-bypass-cache' not in solver.calls[0]['custom_headers']
+
+
+def test_html_route_request_proxy_overrides_configured_default_proxy():
+    solver = FakeSolver()
+    app = create_app(solver=solver)
+    app.state.bypass_service._default_proxy = 'http://127.0.0.1:7897'
+    client = TestClient(app)
+
+    response = client.get(
+        '/html',
+        params={'url': 'https://javdb.com/users/collection_actors?page=1'},
+        headers={'X-Proxy': 'http://127.0.0.1:7890'},
+    )
+
+    assert response.status_code == 200
+    assert solver.calls[0]['proxy'] == 'http://127.0.0.1:7890'
 
 
 def test_html_route_uses_cached_clearance_without_solver(monkeypatch):

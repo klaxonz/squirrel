@@ -13,11 +13,19 @@ logger = logging.getLogger(__name__)
 
 
 class CloudflareBypassService:
-    def __init__(self, solver, cache: ClearanceCache, session_pool: SessionPool, ttl_seconds: float = 900):
+    def __init__(
+        self,
+        solver,
+        cache: ClearanceCache,
+        session_pool: SessionPool,
+        ttl_seconds: float = 900,
+        default_proxy: str | None = None,
+    ):
         self._solver = solver
         self._cache = cache
         self._session_pool = session_pool
         self._ttl_seconds = ttl_seconds
+        self._default_proxy = self._normalize_proxy(default_proxy)
 
     def health_payload(self) -> dict:
         return {
@@ -26,6 +34,7 @@ class CloudflareBypassService:
             "solver_ready": bool(getattr(self._solver, "ready", False)),
             "cache_entries": self._cache.size(),
             "session_entries": self._session_pool.size(),
+            "proxy_configured": self._default_proxy is not None,
         }
 
     async def clear_runtime_state(self) -> None:
@@ -42,6 +51,7 @@ class CloudflareBypassService:
         custom_headers: dict[str, str] | None = None,
         bypass_cache: bool = False,
     ):
+        proxy = self._resolve_proxy(proxy)
         hostname = str(urlparse(url).hostname or "").strip().lower()
         cached_record = None if bypass_cache else self._cache.get(hostname, proxy)
         if cached_record is not None:
@@ -224,6 +234,14 @@ class CloudflareBypassService:
         return hostname, proxy, bypass_cache
 
     @staticmethod
+    def _normalize_proxy(proxy: str | None) -> str | None:
+        value = str(proxy or "").strip()
+        return value or None
+
+    def _resolve_proxy(self, request_proxy: str | None) -> str | None:
+        return self._normalize_proxy(request_proxy) or self._default_proxy
+
+    @staticmethod
     def _strip_control_headers(headers: dict[str, str]) -> dict[str, str]:
         return {
             key: value
@@ -256,6 +274,7 @@ class CloudflareBypassService:
         body: bytes,
     ) -> MirrorResult:
         hostname, proxy, bypass_cache = self._extract_control_headers(headers)
+        proxy = self._resolve_proxy(proxy)
         if not hostname:
             raise ValueError("x-hostname header is required")
 

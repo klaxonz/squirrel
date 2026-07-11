@@ -15,4 +15,5 @@ def test_health_reports_ok_defaults():
         'solver_ready': True,
         'cache_entries': 0,
         'session_entries': 0,
+        'proxy_configured': False,
     }
