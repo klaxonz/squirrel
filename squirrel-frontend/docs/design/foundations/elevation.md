@@ -3,7 +3,7 @@
 ← [Foundations](./README.md)
 
 **代码：** `src/shared/styles/layout.css`  
-**条款：** [S4](../principles.md#s4--视觉系统一致性) · [S1 Consume 层次](../principles.md#s1--surface-规格)
+**规格：** [Spec 4](../standards.md#spec-4--视觉系统一致性) · [Surface · Consume](../patterns/surface.md)
 
 ## 单画布
 

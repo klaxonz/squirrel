@@ -3,7 +3,7 @@
 ← [Patterns](./README.md)
 
 **Surface：** Consume（卡）；嵌在 Organize 页时仍用本形态  
-**条款：** [S1](../principles.md#s1--surface-规格) · [S2](../principles.md#s2--色意映射)
+**规格：** [Spec 1](../standards.md#spec-1--surface) · [Spec 2](../standards.md#spec-2--色意映射) · **原则：** [P1](../principles.md#p1--内容与真实状态优先)
 
 视频卡次要操作（已读 / 稍后看 / 喜欢）的标准形态。
 

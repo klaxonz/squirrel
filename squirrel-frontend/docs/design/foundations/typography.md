@@ -3,7 +3,7 @@
 ← [Foundations](./README.md)
 
 **代码：** `layout.css`（`--app-h1-*` 等）· 字体变量在 `index.css`  
-**条款：** [S4](../principles.md#s4--视觉系统一致性)
+**规格：** [Spec 4](../standards.md#spec-4--视觉系统一致性) · **原则：** [P5](../principles.md#p5--一致即可预期)
 
 ## 字体角色
 

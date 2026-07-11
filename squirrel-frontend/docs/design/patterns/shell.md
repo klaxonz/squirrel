@@ -2,7 +2,8 @@
 
 ← [Patterns](./README.md)
 
-**条款：** [S1 Surface](../principles.md#s1--surface-规格)
+**规格：** [Spec 1 Surface](../standards.md#spec-1--surface)  
+**明细：** [Surface](./surface.md)
 
 ## 桌面壳（标准结构）
 
@@ -25,43 +26,6 @@ Title bar
 | 折叠 | 被遮内容 `inert`，移出 a11y 树 |
 | 壳角色 | 安静导航与搜索；内容在滚动区 |
 
-## 当前应用：页面 → Surface
-
-下列对照是**现有路由的落地表**（Pattern 应用说明），不是产品路径分级。改路由时同步改本表。
-
-| 页面 / 区域 | Surface |
-|-------------|---------|
-| 首页、视频库墙、播放器 | Consume |
-| 音乐、RSS 阅读 | Consume |
-| 订阅工作台、筛选条、历史、播放列表 | Organize |
-| 站点、定时任务、日志、设置 | Operate |
-
-混合：Consume 页内的筛选条仍用 Organize 控件高（32px）。
-
-## Surface 规格（与 S1 一致）
-
-| Surface | 控件高 | 主行动 | 选中 | 层次 |
-|---------|--------|--------|------|------|
-| **Consume** | chrome 轻；主 CTA 可用 40px | 每页 1× primary | `--app-selection-*` | 同色温 scrim、封面对比、卡抬升 |
-| **Organize** | **32px** Dense | 每页 1× primary | `--app-selection-*` | hairline 分区 |
-| **Operate** | **36px** Default 字段 | 按提交需要 | `--app-selection-*` | 语义色 + 字阶 |
-
-### 如何选定（不依赖产品路径表）
-
-| 主停留行为 | Surface |
-|------------|---------|
-| 看 / 听 / 读 | Consume |
-| 订 / 筛 / 标 / 整理列表 | Organize |
-| 改配置 / 修站点与任务 / 看日志 | Operate |
-
-### 组件
-
-| 需求 | 标准来源 |
-|------|----------|
-| 按钮 / 输入 / 对话框 | `shared/ui/**` |
-| 工具栏 / 筛选 / 空态 / 页壳 | `shared/components/layout/**` + `layout.css` class |
-| 新媒体网格 | `.app-video-grid*` |
-
 ## Workbench
 
 | 项 | 标准 |
@@ -83,5 +47,5 @@ Title bar
 ## 验收
 
 - [ ] 壳结构与上表一致
-- [ ] 页面可指出 Surface 并遵守对应行
+- [ ] 页面 Surface 见 [Surface](./surface.md)
 - [ ] 工具栏 / 筛选仅使用文档化 class 与 shared 组件

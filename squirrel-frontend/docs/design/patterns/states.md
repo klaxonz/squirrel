@@ -2,7 +2,7 @@
 
 ← [Patterns](./README.md)
 
-**条款：** [S3](../principles.md#s3--状态完整性)
+**规格：** [Spec 3](../standards.md#spec-3--状态完整性) · **原则：** [P4](../principles.md#p4--状态闭环)
 
 ## 加载 · 空 · 错
 
@@ -29,7 +29,7 @@
 
 ## 相关
 
-- [Standards · S3](../principles.md#s3--状态完整性)
+- [Standards · Spec 3](../standards.md#spec-3--状态完整性)
 - [Content](../content.md)
 - [Feedback components](../components/feedback.md)
 - [Color](../foundations/color.md)

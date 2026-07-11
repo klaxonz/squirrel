@@ -17,8 +17,10 @@
 
 说明文档：
 
+- [Token 分层](./foundations/README.md#token-分层)
 - [Color](./foundations/color.md)
 - [Typography](./foundations/typography.md)
 - [Spacing](./foundations/spacing.md)
 - [Elevation](./foundations/elevation.md)
 - [Motion](./foundations/motion.md)
+- [Standards Spec 2](./standards.md#spec-2--色意映射)

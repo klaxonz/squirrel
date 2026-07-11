@@ -3,7 +3,7 @@
 ← [Foundations](./README.md)
 
 **代码：** `src/shared/styles/layout.css`  
-**条款：** [S1](../principles.md#s1--surface-规格) · [S4](../principles.md#s4--视觉系统一致性)
+**规格：** [Spec 1](../standards.md#spec-1--surface) · [Spec 4](../standards.md#spec-4--视觉系统一致性)
 
 ## Spacing
 
@@ -41,4 +41,4 @@
 
 - [ ] 间距来自 `--space-*` 或文档化 app 槽 token
 - [ ] 圆角仅 sm/md/lg/xl
-- [ ] 控件高与页面 Surface 一致（S1）
+- [ ] 控件高与页面 Surface 一致（Spec 1）
