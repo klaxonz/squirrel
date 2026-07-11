@@ -10,10 +10,9 @@
       class="music-bar"
       :class="{
         'music-bar--mini': !isMusicPage,
+        'music-bar--dock': !isMusicPage && !isSidebarOpen,
         'music-bar--immersive': showImmersive,
       }"
-      :inert="!isMusicPage && !isSidebarOpen"
-      :aria-hidden="!isMusicPage && !isSidebarOpen ? 'true' : undefined"
     >
       <audio
         ref="audioEl"
@@ -329,6 +328,22 @@ function removeQueueItem(index: number) {
   overflow: hidden;
 }
 
+/*
+  When the app rail is collapsed, mini controls must stay reachable.
+  Dock to the workspace bottom-left instead of the inert sidebar slot.
+*/
+.music-bar--dock {
+  left: var(--space-3);
+  bottom: var(--space-3);
+  z-index: var(--z-header);
+  width: min(22rem, calc(100vw - 1.5rem));
+  transform: none;
+  border: 1px solid var(--app-hairline);
+  border-radius: var(--app-surface-radius);
+  background: hsl(var(--background) / 0.96);
+  box-shadow: var(--app-panel-shadow);
+}
+
 @media (min-width: 768px) {
   .music-bar {
     left: calc(50vw + var(--workspace-offset) / 2);
@@ -338,6 +353,11 @@ function removeQueueItem(index: number) {
   .music-bar--mini {
     left: 0;
     width: var(--sidebar-expanded-width);
+  }
+
+  .music-bar--dock {
+    left: var(--space-3);
+    width: min(22rem, calc(100vw - var(--workspace-offset) - 1.5rem));
   }
 }
 
