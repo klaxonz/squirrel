@@ -1,6 +1,6 @@
 <template>
   <AppPageShell variant="compact" fill>
-    <AppTwoColumnLayout content-width="75rem">
+    <AppTwoColumnLayout content-width="none">
       <template #sidebar>
         <AppSidebarHeader title="播放列表" :subtitle="`${playlists.length} 个列表`">
           <template #actions>
@@ -23,7 +23,7 @@
             :selected="String(activePlaylist?.id) === String(playlist.id)"
             @click="selectPlaylist(playlist.id)"
           >
-            <div class="app-compact-thumb">
+            <div class="playlist-nav-thumb">
               <VideoThumbnail
                 v-if="getPlaylistThumbnails(playlist).length"
                 :src="getPlaylistThumbnails(playlist)[0]"
@@ -33,9 +33,12 @@
                 <AppIcon name="playlistVideo" class="h-4 w-4" />
               </div>
             </div>
-            <div class="min-w-0 flex-1">
-              <div class="truncate text-sm font-medium">{{ playlist.name }}</div>
-              <div class="mt-0.5 text-xs text-muted-foreground">{{ playlist.video_count }} 个视频</div>
+            <div class="playlist-nav-copy">
+              <div class="playlist-nav-title-row">
+                <span class="playlist-nav-title">{{ playlist.name }}</span>
+                <span v-if="playlist.is_default" class="playlist-nav-badge">默认</span>
+              </div>
+              <div class="playlist-nav-meta">{{ playlist.video_count }} 个视频</div>
             </div>
           </AppListOption>
         </nav>
@@ -84,7 +87,7 @@
         </AppPaneHeader>
       </template>
 
-      <div class="app-workbench__content">
+      <div class="app-workbench__content playlist-workbench-content">
         <div v-if="loading && !playlists.length" class="app-content-stack app-content-stack--dense">
           <AppSkeleton height="7rem" rounded="var(--radius-lg)" shimmer />
           <div class="app-content-stack app-content-stack--dense">
@@ -109,109 +112,102 @@
           </AppEmptyState>
         </div>
 
-        <div v-else-if="activePlaylist" class="app-content-stack">
-          <section class="app-divider-bottom flex flex-col gap-4 pb-6 sm:flex-row sm:items-end">
-            <div class="playlist-cover shrink-0 overflow-hidden rounded-lg">
-              <div v-if="getPlaylistThumbnails(activePlaylist).length >= 4" class="grid h-full w-full grid-cols-2 grid-rows-2 gap-px bg-black/40">
-                <VideoThumbnail
-                  v-for="(thumb, i) in getPlaylistThumbnails(activePlaylist).slice(0, 4)"
-                  :key="i"
-                  :src="thumb"
-                  fit="cover"
-                />
-              </div>
-              <VideoThumbnail
-                v-else-if="getPlaylistThumbnails(activePlaylist).length > 0"
-                :src="getPlaylistThumbnails(activePlaylist)[0]"
-                fit="cover"
-              />
-              <div v-else class="flex h-full w-full items-center justify-center text-white/45">
-                <AppIcon name="playlistVideo" class="h-6 w-6" />
-              </div>
+        <div v-else-if="activePlaylist" class="playlist-workspace">
+          <section class="playlist-command-strip">
+            <div class="playlist-command-strip__copy">
+              <span class="playlist-command-strip__eyebrow">{{ activePlaylistKindLabel }}</span>
+              <p v-if="activePlaylist.description">{{ activePlaylist.description }}</p>
+              <p v-else>按添加顺序管理这个播放列表中的视频。</p>
             </div>
-
-            <div class="min-w-0 flex-1">
-              <h1 class="app-h2 truncate">{{ activePlaylist.name }}</h1>
-              <p v-if="activePlaylist.description" class="mt-2 line-clamp-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                {{ activePlaylist.description }}
-              </p>
-              <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span>我的媒体库</span>
-                <span class="h-3 w-px bg-border" />
-                <span>{{ activePlaylistItems.length }} 个视频</span>
-                <span class="h-3 w-px bg-border" />
-                <span>{{ activePlaylistDurationLabel }}</span>
-              </div>
+            <div class="playlist-command-strip__meta">
+              <span>{{ activePlaylistItems.length }} 个视频</span>
+              <span>{{ activePlaylistDurationLabel }}</span>
+              <span>{{ activePlaylistUpdatedLabel }} 更新</span>
             </div>
           </section>
 
-          <div v-if="loadingItems || isHydratingSelection" class="app-content-stack app-content-stack--dense">
-            <AppSkeleton v-for="i in 6" :key="i" height="4rem" rounded="var(--radius-lg)" shimmer />
-          </div>
+          <section class="playlist-table">
+            <header class="playlist-table-toolbar">
+              <div>
+                <h2 class="playlist-table-title">视频</h2>
+                <p class="playlist-table-subtitle">点击行播放，使用右侧操作从列表移除。</p>
+              </div>
+              <span class="playlist-table-count">{{ activePlaylistItems.length }} 项</span>
+            </header>
 
-          <div v-else-if="!activePlaylistItems.length" class="app-page-empty app-page-empty--compact">
-            <AppEmptyState variant="plain" icon="playlistVideo" title="暂无视频" copy="添加到列表的视频会显示在这里。" />
-          </div>
-
-          <div v-else class="app-content-stack app-content-stack--dense">
-            <div class="playlist-table-head app-divider-bottom hidden grid-cols-[2rem_minmax(0,1fr)_8rem_8rem_3rem] items-center gap-3 px-2 text-xs font-medium text-muted-foreground md:grid">
-              <div>#</div>
-              <div>标题</div>
-              <div>来源</div>
-              <div>添加时间</div>
-              <div />
+            <div v-if="loadingItems || isHydratingSelection" class="playlist-skeleton-list">
+              <AppSkeleton v-for="i in 8" :key="i" height="4.75rem" rounded="var(--radius-md)" shimmer />
             </div>
 
-            <article
-              v-for="(item, index) in activePlaylistItems"
-              :key="item.id"
-              class="group grid cursor-pointer grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-3 rounded-lg border border-transparent px-2 py-2 outline-none transition-colors hover:border-border/50 hover:bg-accent/40 focus-visible:border-border/50 focus-visible:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring/40 md:grid-cols-[2rem_minmax(0,1fr)_8rem_8rem_3rem]"
-              :class="{ 'text-primary': currentVideoId && String(item.video_id) === String(currentVideoId) }"
-              role="button"
-              tabindex="0"
-              @click="playVideo(item)"
-              @keydown.enter.prevent="playVideo(item)"
-              @keydown.space.prevent="playVideo(item)"
-            >
-              <div class="flex items-center justify-center text-sm text-muted-foreground">
-                <span class="group-hover:hidden">{{ index + 1 }}</span>
-                <AppIcon name="play" class="hidden h-4 w-4 fill-current text-foreground group-hover:block" />
+            <div v-else-if="!activePlaylistItems.length" class="playlist-empty">
+              <AppEmptyState variant="plain" icon="playlistVideo" title="暂无视频" copy="添加到列表的视频会显示在这里。" />
+            </div>
+
+            <div v-else class="playlist-queue-list">
+              <div class="playlist-table-head" aria-hidden="true">
+                <span>#</span>
+                <span>标题</span>
+                <span>来源</span>
+                <span>添加时间</span>
+                <span>时长</span>
+                <span />
               </div>
 
-              <div class="flex min-w-0 items-center gap-3">
-                <div class="playlist-row-thumb relative aspect-video w-20 shrink-0 overflow-hidden rounded-md">
-                  <VideoThumbnail
-                    v-if="item.video?.thumbnail"
-                    :src="item.video.thumbnail"
-                    fit="cover"
-                  />
-                  <div v-else class="flex h-full w-full items-center justify-center text-white/45">
-                    <AppIcon name="film" class="h-5 w-5" />
-                  </div>
-                  <span v-if="item.video?.duration" class="playlist-duration-badge">
-                    {{ formatDuration(item.video.duration) }}
-                  </span>
-                </div>
-                <div class="min-w-0">
-                  <div class="truncate text-sm font-medium text-foreground">{{ item.video?.title || '未知视频' }}</div>
-                  <div class="mt-1 text-xs text-muted-foreground md:hidden">
-                    {{ item.video?.site || '未知' }} · {{ formatDate(item.added_at) }}
-                  </div>
-                </div>
-              </div>
-
-              <div class="hidden truncate text-sm text-muted-foreground md:block">{{ item.video?.site || '未知' }}</div>
-              <div class="hidden text-sm text-muted-foreground md:block">{{ formatDate(item.added_at) }}</div>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                class="opacity-0 transition-opacity group-hover:opacity-100"
-                @click.stop="handleRemoveVideo(item)"
+              <article
+                v-for="(item, index) in activePlaylistItems"
+                :key="item.id"
+                class="playlist-item group"
+                :class="{ 'is-current': currentVideoId && String(item.video_id) === String(currentVideoId) }"
+                role="button"
+                tabindex="0"
+                @click="playVideo(item)"
+                @keydown.enter.prevent="playVideo(item)"
+                @keydown.space.prevent="playVideo(item)"
               >
-                <AppIcon name="close" class="h-4 w-4" />
-              </Button>
-            </article>
-          </div>
+                <div class="playlist-item-index">
+                  <span>{{ index + 1 }}</span>
+                  <AppIcon name="play" class="playlist-item-play h-4 w-4 fill-current" />
+                </div>
+
+                <div class="playlist-item-media">
+                  <div class="playlist-row-thumb">
+                    <VideoThumbnail v-if="item.video?.thumbnail" :src="item.video.thumbnail" fit="cover" />
+                    <div v-else class="flex h-full w-full items-center justify-center text-white/45">
+                      <AppIcon name="film" class="h-5 w-5" />
+                    </div>
+                    <span v-if="item.video?.duration" class="playlist-duration-badge">
+                      {{ formatDuration(item.video.duration) }}
+                    </span>
+                  </div>
+                  <div class="playlist-item-copy">
+                    <div class="playlist-item-title">{{ item.video?.title }}</div>
+                    <div class="playlist-item-meta">
+                      <span>{{ item.video?.site }}</span>
+                      <span class="playlist-meta-dot" />
+                      <span>{{ formatDate(item.added_at) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="playlist-item-site">{{ item.video?.site }}</div>
+                <div class="playlist-item-added">{{ formatDate(item.added_at) }}</div>
+                <div class="playlist-item-duration">
+                  {{ item.video?.duration ? formatDuration(item.video.duration) : '—' }}
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  class="playlist-item-remove"
+                  title="从播放列表移除"
+                  aria-label="从播放列表移除"
+                  @click.stop="handleRemoveVideo(item)"
+                >
+                  <AppIcon name="close" class="h-4 w-4" />
+                </Button>
+              </article>
+            </div>
+          </section>
         </div>
 
         <div v-else class="app-page-empty app-page-empty--compact">
@@ -328,6 +324,12 @@ const activePlaylistDurationSeconds = computed(() => (
 const activePlaylistDurationLabel = computed(() => (
   activePlaylistDurationSeconds.value ? formatDuration(activePlaylistDurationSeconds.value) : '暂无时长'
 ))
+const activePlaylistKindLabel = computed(() => (
+  activePlaylist.value?.is_default ? '默认播放列表' : '自定义播放列表'
+))
+const activePlaylistUpdatedLabel = computed(() => (
+  activePlaylist.value ? formatDate(activePlaylist.value.updated_at) : ''
+))
 
 // ponytail: cached 4-up thumbnail projection lives in usePlaylistThumbnails.
 // Only the active playlist has its items loaded in memory; others render a
@@ -442,25 +444,303 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.playlist-table-head {
-  min-height: 2rem;
+.playlist-workbench-content {
+  max-width: none;
+  min-height: 100%;
+  padding: var(--space-4) var(--space-6) var(--app-content-padding-bottom);
 }
 
 .playlist-nav-item {
-  min-height: 3rem;
+  min-height: 3.5rem;
+  align-items: stretch;
+  padding: 0.5rem;
 }
 
-.playlist-cover {
-  width: 6rem;
-  height: 6rem;
-  background: hsl(0 0% 0% / 0.55);
+.playlist-nav-thumb {
+  display: flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: hsl(0 0% 0% / 0.58);
   isolation: isolate;
+}
+
+.playlist-nav-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+}
+
+.playlist-nav-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.playlist-nav-title {
+  min-width: 0;
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-nav-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  background: hsl(var(--primary) / 0.1);
+  padding: 0.125rem 0.3rem;
+  color: hsl(var(--primary));
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.playlist-nav-meta {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.playlist-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.playlist-command-strip {
+  display: flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  border-bottom: 1px solid var(--app-hairline);
+  padding-bottom: var(--space-4);
+}
+
+.playlist-command-strip__copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.25rem;
+}
+
+.playlist-command-strip__eyebrow {
+  color: hsl(var(--foreground));
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.playlist-command-strip__copy p,
+.playlist-command-strip__meta {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.playlist-command-strip__meta {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-3);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.playlist-command-strip__meta span + span {
+  border-left: 1px solid var(--app-hairline);
+  padding-left: var(--space-3);
+}
+
+.playlist-table {
+  min-width: 0;
+}
+
+.playlist-table-toolbar {
+  display: none;
+}
+
+.playlist-queue-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.playlist-table-head,
+.playlist-item {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(20rem, 1fr) minmax(7rem, 10rem) minmax(7rem, 9rem) minmax(4rem, 5.5rem) 2rem;
+  align-items: center;
+  column-gap: var(--space-4);
+}
+
+.playlist-table-head {
+  min-height: 2rem;
+  border-bottom: 1px solid var(--app-hairline);
+  color: hsl(var(--muted-foreground) / 0.68);
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+.playlist-item {
+  min-height: 4.5rem;
+  border: 1px solid transparent;
+  border-bottom-color: var(--app-hairline);
+  border-radius: 0;
+  padding: 0.5rem 0;
+  cursor: pointer;
+  outline: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.playlist-item:hover,
+.playlist-item:focus-visible {
+  border-color: transparent;
+  border-bottom-color: var(--app-hairline);
+  background: var(--app-row-hover-bg);
+}
+
+.playlist-item:focus-visible {
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.42);
+}
+
+.playlist-item.is-current {
+  background: hsl(var(--primary) / 0.07);
+}
+
+.playlist-item-index {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.playlist-item-play {
+  display: none;
+  color: hsl(var(--foreground));
+}
+
+.playlist-item:hover .playlist-item-index span,
+.playlist-item:focus-visible .playlist-item-index span,
+.playlist-item.is-current .playlist-item-index span {
+  display: none;
+}
+
+.playlist-item:hover .playlist-item-play,
+.playlist-item:focus-visible .playlist-item-play,
+.playlist-item.is-current .playlist-item-play {
+  display: block;
+}
+
+.playlist-item-media {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .playlist-row-thumb {
+  position: relative;
+  width: 6.25rem;
+  aspect-ratio: 16 / 9;
+  flex: none;
+  overflow: hidden;
+  border-radius: var(--radius-md);
   border: 0;
   background: hsl(0 0% 0% / 0.55);
   isolation: isolate;
+}
+
+.playlist-item-copy {
+  min-width: 0;
+}
+
+.playlist-item-title {
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-item-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.375rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.playlist-item-site,
+.playlist-item-added,
+.playlist-item-duration {
+  overflow: hidden;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-item-added,
+.playlist-item-duration {
+  justify-self: start;
+}
+
+.playlist-meta-dot {
+  width: 0.1875rem;
+  height: 0.1875rem;
+  flex: none;
+  border-radius: 999px;
+  background: hsl(var(--muted-foreground) / 0.55);
+}
+
+.playlist-item-remove {
+  opacity: 0;
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.playlist-item:hover .playlist-item-remove,
+.playlist-item:focus-within .playlist-item-remove {
+  opacity: 1;
+}
+
+.playlist-item-remove:hover,
+.playlist-item-remove:focus-visible {
+  color: hsl(var(--destructive));
 }
 
 .playlist-duration-badge {
@@ -477,5 +757,31 @@ onMounted(async () => {
   font-size: 0.625rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.playlist-skeleton-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+@media (max-width: 1280px) {
+  .playlist-command-strip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .playlist-table-head,
+  .playlist-item {
+    grid-template-columns: 2.75rem minmax(0, 1fr) 2rem;
+  }
+
+  .playlist-item-site,
+  .playlist-item-added,
+  .playlist-item-duration,
+  .playlist-table-head span:nth-child(3),
+  .playlist-table-head span:nth-child(4),
+  .playlist-table-head span:nth-child(5) {
+    display: none;
+  }
 }
 </style>

@@ -2,6 +2,8 @@
 
 import logging
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from ...exceptions import DatabaseError
 from ..base import PipelineStage
 from ..context import PipelineContext
@@ -19,14 +21,12 @@ class PersistenceStage(PipelineStage):
     - Save to context.video_model
     """
 
-    def __init__(self, video_service, actor_service):
+    def __init__(self, video_service):
         """Args:
         video_service: Video persistence service
-        actor_service: Actor processing service
 
         """
         self.video_service = video_service
-        self.actor_service = actor_service
 
     @property
     def stage_name(self) -> str:
@@ -62,6 +62,7 @@ class PersistenceStage(PipelineStage):
                 description=dto.description,
                 subscription_id=task.metadata.get('subscription_id'),
                 subscription_sync_mode=task.metadata.get('sync_mode'),
+                actors=dto.actors,
             )
 
             context.video_model = video_model
@@ -69,7 +70,7 @@ class PersistenceStage(PipelineStage):
 
             logger.info('Video persisted: id=%s, is_new=%s, url=%s', video_model.id, is_new, dto.url)
 
-        except (ConnectionError, OSError, ValueError, TypeError) as e:
+        except (ConnectionError, OSError, ValueError, TypeError, SQLAlchemyError) as e:
             raise DatabaseError(
                 f'Failed to persist video: {e}',
                 context={
@@ -77,18 +78,6 @@ class PersistenceStage(PipelineStage):
                     'title': dto.title,
                 },
             ) from e
-
-        # 2. Process actors
-        if dto.has_actors():
-            try:
-                self.actor_service.process_actors(
-                    video_model.id,
-                    dto.actors,
-                )
-                logger.info('Actors processed: video_id=%s, count=%s', video_model.id, len(dto.actors))
-            except (ValueError, TypeError, AttributeError) as e:
-                # Actor processing failure should not interrupt the flow
-                logger.warning('Failed to process actors: video_id=%s, error=%s', video_model.id, e)
 
         return context
 

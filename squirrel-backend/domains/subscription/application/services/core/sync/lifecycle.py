@@ -137,39 +137,42 @@ class SubscriptionSyncLifecycle:
         if preflight is not None:
             return preflight
 
-        queued = self._queue_planner.queue_sync_state(
-            command,
-            domain=domain,
-            scheduled=command.trigger == UpdateTrigger.SCHEDULED,
-        )
-        if queued.status != 'ready':
-            return SubscriptionScheduleResult(
-                subscription_id=command.subscription_id,
-                sync_state_id=queued.sync_state_id,
-                status=queued.status,
-                run_id=queued.run_context.run_id if queued.run_context else command.run_id,
+        with self.session_factory() as session:
+            queued = self._queue_planner.queue_sync_state_in_session(
+                session,
+                command,
+                domain=domain,
+                scheduled=command.trigger == UpdateTrigger.SCHEDULED,
             )
+            if queued.status != 'ready':
+                return SubscriptionScheduleResult(
+                    subscription_id=command.subscription_id,
+                    sync_state_id=queued.sync_state_id,
+                    status=queued.status,
+                    run_id=queued.run_context.run_id if queued.run_context else command.run_id,
+                )
 
-        task_payload = build_task_payload(
-            command,
-            queued.sync_state_id,
-            queued.queue_token,
-            request_id=None,
-            run_id=queued.run_context.run_id,
-        )
-        _, task = self._crawl_tasks.create_job_with_task(
-            job_type='subscription_sync',
-            source_type='manual' if command.trigger == UpdateTrigger.MANUAL else 'scheduled',
-            site=domain,
-            subscription_id=command.subscription_id,
-            priority=resolve_priority(command.trigger, command.mode),
-            task_type=resolve_subscription_sync_task_type(command.mode.value),
-            payload=task_payload,
-            trace_id=command.trace_id,
-        )
-        request_id = str(task.id)
-        task.payload['request_id'] = request_id
-        self._set_task_request_id(task.id, request_id)
+            task_payload = build_task_payload(
+                command,
+                queued.sync_state_id,
+                queued.queue_token,
+                request_id=None,
+                run_id=queued.run_context.run_id,
+            )
+            _, task = self._crawl_tasks.create_job_with_task_in_session(
+                session,
+                job_type='subscription_sync',
+                source_type='manual' if command.trigger == UpdateTrigger.MANUAL else 'scheduled',
+                site=domain,
+                subscription_id=command.subscription_id,
+                priority=resolve_priority(command.trigger, command.mode),
+                task_type=resolve_subscription_sync_task_type(command.mode.value),
+                payload=task_payload,
+                trace_id=command.trace_id,
+            )
+            request_id = str(task.id)
+            task.payload = {**(task.payload or {}), 'request_id': request_id}
+            session.flush()
 
         logger.debug(
             'Queued subscription sync task subscription_id=%s sync_state_id=%s task_id=%s priority=%s',
@@ -477,11 +480,13 @@ class SubscriptionSyncLifecycle:
             allow_completion=False,
         )
 
-    def record_video_extraction_finished(self, sync_state_id: int | None, *, succeeded: bool) -> None:
-        self._sync_state_service.decrement_pending_video_count(
-            sync_state_id,
-            allow_completion=succeeded,
-        )
+    def record_video_extraction_terminal(self, sync_state_id: int | None, *, succeeded: bool) -> None:
+        if succeeded:
+            self._sync_state_service.decrement_pending_video_count(sync_state_id, allow_completion=True)
+            return
+        self._sync_state_service.decrement_pending_video_count(sync_state_id, allow_completion=False)
+        if sync_state_id:
+            self._sync_state_service.reconcile_terminal_drained_sync_states()
 
     def recover(self) -> SubscriptionSyncRecoveryResult:
         video_result = self._sync_state_service.reconcile_pending_video_counts()
@@ -564,15 +569,6 @@ class SubscriptionSyncLifecycle:
                     return False
 
         return True
-
-    def _set_task_request_id(self, task_id: int, request_id: str) -> None:
-        from domains.subscription.domain.models.crawl_task import CrawlTask
-
-        with self.session_factory() as session:
-            task = session.get(CrawlTask, task_id)
-            if task is None:
-                return
-            task.payload = {**(task.payload or {}), 'request_id': request_id}
 
     def _has_active_subscribers(self, subscription_id: int) -> bool:
         with self.session_factory() as session:

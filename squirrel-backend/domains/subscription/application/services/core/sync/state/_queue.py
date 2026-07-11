@@ -3,11 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import select, update
+from sqlalchemy.orm import Session
 
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
 
 from ._crud import _get_or_create_sync_state_in_session
-from ._intervals import INCREMENTAL_PENDING_THRESHOLD, build_retry_delay, get_mode_interval
+from ._intervals import INCREMENTAL_PENDING_THRESHOLD, RUNNING_TIMEOUT, build_retry_delay, get_mode_interval
 from ._stale import _recover_stale_running_state
 from .session import get_session
 
@@ -50,51 +51,92 @@ def prepare_sync_state_for_enqueue(
 ) -> tuple[SubscriptionSyncState | None, str]:
     now = datetime.now()
     with get_session() as session:
-        state = _get_or_create_sync_state_in_session(session, subscription_id, mode, url)
-        _recover_stale_running_state(state, now)
+        return prepare_sync_state_for_enqueue_in_session(
+            session,
+            subscription_id,
+            url,
+            mode,
+            scheduled=scheduled,
+            now=now,
+        )
 
-        if state.sync_status == SyncStatus.RUNNING.value:
-            return state, 'in_progress'
-        if state.sync_status == SyncStatus.QUEUED.value:
-            return state, 'queued'
 
-        if scheduled and has_incremental_backpressure(state):
-            state.sync_status = SyncStatus.SUCCESS.value
-            state.last_sync_at = now
-            state.last_error = 'queue_backpressure'
-            state.queue_token = None
-            state.queued_at = None
-            state.locked_at = None
-            state.next_sync_at = now + get_mode_interval(state.sync_mode)
-            state.version += 1
-            return state, 'deferred'
+def prepare_sync_state_for_enqueue_in_session(
+    session: Session,
+    subscription_id: int,
+    url: str | None,
+    mode: str,
+    *,
+    scheduled: bool,
+    now: datetime | None = None,
+) -> tuple[SubscriptionSyncState | None, str]:
+    current_time = now or datetime.now()
+    state = _get_or_create_sync_state_in_session(session, subscription_id, mode, url)
+    if (
+        state.sync_status == SyncStatus.RUNNING.value
+        and state.locked_at is not None
+        and state.locked_at <= current_time - RUNNING_TIMEOUT
+    ):
+        _recover_stale_running_state(state, current_time)
 
-        return state, 'ready'
+    if state.sync_status == SyncStatus.RUNNING.value:
+        return state, 'in_progress'
+    if state.sync_status == SyncStatus.QUEUED.value:
+        return state, 'queued'
+
+    if scheduled and has_incremental_backpressure(state):
+        state.sync_status = SyncStatus.SUCCESS.value
+        state.last_sync_at = current_time
+        state.last_error = 'queue_backpressure'
+        state.queue_token = None
+        state.queued_at = None
+        state.locked_at = None
+        state.next_sync_at = current_time + get_mode_interval(state.sync_mode)
+        state.version += 1
+        return state, 'deferred'
+
+    return state, 'ready'
 
 
 def queue_sync_state(sync_state_id: int, queue_token: str) -> SubscriptionSyncState | None:
     now = datetime.now()
     with get_session() as session:
-        session.execute(
-            update(SubscriptionSyncState)
-            .where(
-                SubscriptionSyncState.id == sync_state_id,
-                SubscriptionSyncState.sync_status.notin_(
-                    [SyncStatus.QUEUED.value, SyncStatus.RUNNING.value],
-                ),
-            )
-            .values(
-                sync_status=SyncStatus.QUEUED.value,
-                queue_token=queue_token,
-                queued_at=now,
-                locked_at=None,
-                last_error=None,
-                version=SubscriptionSyncState.version + 1,
+        return queue_sync_state_in_session(
+            session,
+            sync_state_id,
+            queue_token,
+            now=now,
+        )
+
+
+def queue_sync_state_in_session(
+    session: Session,
+    sync_state_id: int,
+    queue_token: str,
+    *,
+    now: datetime | None = None,
+) -> SubscriptionSyncState | None:
+    current_time = now or datetime.now()
+    session.execute(
+        update(SubscriptionSyncState)
+        .where(
+            SubscriptionSyncState.id == sync_state_id,
+            SubscriptionSyncState.sync_status.notin_(
+                [SyncStatus.QUEUED.value, SyncStatus.RUNNING.value],
             ),
         )
-        return session.execute(
-            select(SubscriptionSyncState).where(SubscriptionSyncState.id == sync_state_id),
-        ).scalar_one_or_none()
+        .values(
+            sync_status=SyncStatus.QUEUED.value,
+            queue_token=queue_token,
+            queued_at=current_time,
+            locked_at=None,
+            last_error=None,
+            version=SubscriptionSyncState.version + 1,
+        ),
+    )
+    return session.execute(
+        select(SubscriptionSyncState).where(SubscriptionSyncState.id == sync_state_id),
+    ).scalar_one_or_none()
 
 
 def claim_sync_state(

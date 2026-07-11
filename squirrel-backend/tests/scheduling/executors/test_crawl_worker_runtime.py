@@ -24,6 +24,20 @@ def _noop_runtime(**kwargs):
     )
 
 
+def _video_payload(sync_state_id=2):
+    return {
+        'url': 'https://www.youtube.com/watch?v=demo',
+        'subscribed': True,
+        'only_extract': True,
+        'subscription_id': 1,
+        'sync_state_id': sync_state_id,
+        'run_id': 'run-1',
+        'trigger': 'scheduled',
+        'is_manual': False,
+        'is_extract_all': False,
+    }
+
+
 def test_run_once_executes_video_extract_task(monkeypatch):
     calls = []
     task = CrawlTask(id=1, job_id=1, task_type='video_extract', site='youtube.com', payload={})
@@ -59,6 +73,44 @@ def test_run_once_executes_video_extract_task(monkeypatch):
         ('video', 1),
         ('complete', 1, 'worker-1'),
     ]
+
+
+def test_video_extract_success_records_terminal_progress(monkeypatch):
+    terminal_calls = []
+    task = CrawlTask(id=101, job_id=1, task_type='video_extract', site='youtube.com', payload=_video_payload())
+    completed_task = CrawlTask(
+        id=101,
+        job_id=1,
+        task_type='video_extract',
+        site='youtube.com',
+        payload=_video_payload(),
+        status='succeeded',
+    )
+    runtime = _noop_runtime(
+        dispatcher=SimpleNamespace(claim_next=lambda **kwargs: task),
+        worker_id='worker-1',
+        retry_delay_seconds=45,
+    )
+    runtime.task_runner.video_extraction_progress = SimpleNamespace(
+        record_terminal=lambda params, **kwargs: terminal_calls.append((params.sync_state_id, kwargs)),
+    )
+
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
+        lambda now=None, retry_delay_seconds=30: [],
+    )
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
+        lambda task_id, worker_id, now=None: task,
+    )
+    monkeypatch.setattr('workers.scheduling.executors.tasks.execute_video_extract_task', lambda current_task: None)
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.complete_task',
+        lambda task_id, worker_id, now=None: completed_task,
+    )
+
+    assert runtime.run_once() is True
+    assert terminal_calls == [(2, {'succeeded': True})]
 
 
 def test_run_once_executes_legacy_subscription_sync_task_type(monkeypatch):
@@ -186,6 +238,114 @@ def test_run_once_retries_task_on_failure(monkeypatch):
         ('retry', 3, 'worker-1', 'RuntimeError', 45),
     ]
     assert progress_calls == [(3, {'now': progress_calls[0][1]['now'], 'error_message': 'boom'})]
+
+
+def test_video_extract_retry_wait_does_not_record_terminal_progress(monkeypatch):
+    terminal_calls = []
+    task = CrawlTask(id=102, job_id=1, task_type='video_extract', site='youtube.com', payload=_video_payload())
+    retry_task = CrawlTask(
+        id=102,
+        job_id=1,
+        task_type='video_extract',
+        site='youtube.com',
+        payload=_video_payload(),
+        status='retry_wait',
+    )
+    runtime = _noop_runtime(
+        dispatcher=SimpleNamespace(claim_next=lambda **kwargs: task),
+        worker_id='worker-1',
+        retry_delay_seconds=45,
+    )
+    runtime.task_runner.video_extraction_progress = SimpleNamespace(
+        record_terminal=lambda params, **kwargs: terminal_calls.append((params.sync_state_id, kwargs)),
+    )
+
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
+        lambda now=None, retry_delay_seconds=30: [],
+    )
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
+        lambda task_id, worker_id, now=None: task,
+    )
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.execute_video_extract_task',
+        lambda current_task: (_ for _ in ()).throw(RuntimeError('boom')),
+    )
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.retry_task',
+        lambda **kwargs: retry_task,
+    )
+
+    assert runtime.run_once() is True
+    assert terminal_calls == []
+
+
+def test_video_extract_dead_records_terminal_progress(monkeypatch):
+    terminal_calls = []
+    task = CrawlTask(id=103, job_id=1, task_type='video_extract', site='youtube.com', payload=_video_payload())
+    dead_task = CrawlTask(
+        id=103,
+        job_id=1,
+        task_type='video_extract',
+        site='youtube.com',
+        payload=_video_payload(),
+        status='dead',
+    )
+    runtime = _noop_runtime(
+        dispatcher=SimpleNamespace(claim_next=lambda **kwargs: task),
+        worker_id='worker-1',
+        retry_delay_seconds=45,
+    )
+    runtime.task_runner.video_extraction_progress = SimpleNamespace(
+        record_terminal=lambda params, **kwargs: terminal_calls.append((params.sync_state_id, kwargs)),
+    )
+
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
+        lambda now=None, retry_delay_seconds=30: [],
+    )
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
+        lambda task_id, worker_id, now=None: task,
+    )
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.execute_video_extract_task',
+        lambda current_task: (_ for _ in ()).throw(RuntimeError('boom')),
+    )
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.retry_task',
+        lambda **kwargs: dead_task,
+    )
+
+    assert runtime.run_once() is True
+    assert terminal_calls == [(2, {'succeeded': False})]
+
+
+def test_video_extract_cancelled_records_terminal_progress(monkeypatch):
+    terminal_calls = []
+    task = CrawlTask(id=104, job_id=1, task_type='video_extract', site='youtube.com', payload=_video_payload())
+    cancelled_task = CrawlTask(
+        id=104,
+        job_id=1,
+        task_type='video_extract',
+        site='youtube.com',
+        payload=_video_payload(),
+        status='cancelled',
+    )
+    runtime = _noop_runtime(worker_id='worker-1', retry_delay_seconds=45)
+    runtime.task_runner.video_extraction_progress = SimpleNamespace(
+        record_terminal=lambda params, **kwargs: terminal_calls.append((params.sync_state_id, kwargs)),
+    )
+
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.cancel_task',
+        lambda task_id, now=None, reason='cancelled': cancelled_task,
+    )
+
+    runtime.task_runner.cancel_task(task, reason='manual_cancel', now=datetime(2026, 4, 2, 13, 0, 0))
+
+    assert terminal_calls == [(2, {'succeeded': False})]
 
 
 def test_run_once_returns_false_when_no_task_is_claimed(monkeypatch):

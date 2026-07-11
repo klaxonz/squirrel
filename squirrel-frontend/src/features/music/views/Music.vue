@@ -157,7 +157,6 @@
           :listen-rank="profileListenRank"
           :history-loading="profileHistoryLoading"
           :rank-loading="profileRankLoading"
-          :rank-type="profileRankType"
           :loading="profileLoading"
           :error="profileError"
           :logout-loading="logoutLoading"
@@ -165,7 +164,6 @@
           :create-playlist="handleCreatePlaylist"
           @retry="handleLoadProfile"
           @logout="handleLogout"
-          @toggle-rank-type="handleToggleRankType"
           @play-all-profile="handlePlayAllProfile"
           @select-playlist="handleSelectUserPlaylist"
           @select-artist="handleSelectArtistFromTrack"
@@ -360,10 +358,8 @@ const {
   profileListenRank,
   profileHistoryLoading,
   profileRankLoading,
-  profileRankType,
   loadAuthStatus,
   loadProfile,
-  toggleRankType,
   logout,
   createPlaylist,
   addToPlaylist,
@@ -467,6 +463,14 @@ onMounted(() => {
   loadAuthStatus()
   loadHomeData()
 })
+
+watch(
+  [() => activeView.value, () => authStatus.value?.logged_in],
+  ([view, loggedIn]) => {
+    if (view !== 'profile' || !loggedIn || kugouProfile.value || profileLoading.value) return
+    loadProfile()
+  },
+)
 
 onUnmounted(() => {
   qrLogin.close()
@@ -581,8 +585,8 @@ function handlePlayAllArtistTracks() {
   playAllArtistTracks()
 }
 
-function handlePlayAllProfile(shuffle: boolean) {
-  const tracksList = activeView.value === 'profile' ? profileHistory.value : profileListenRank.value
+function handlePlayAllProfile(category: 'history' | 'rank', shuffle: boolean) {
+  const tracksList = category === 'history' ? profileHistory.value : profileListenRank.value
   playerStore.shuffle = shuffle
   playerStore.playQueue(tracksList, 0)
 }
@@ -676,10 +680,6 @@ async function handleLoadProfile() {
     return
   }
   await loadProfile()
-}
-
-function handleToggleRankType(type: 0 | 1) {
-  toggleRankType(type)
 }
 
 async function handleLogout() {

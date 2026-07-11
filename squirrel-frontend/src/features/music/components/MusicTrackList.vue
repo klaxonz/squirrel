@@ -1,5 +1,5 @@
 <template>
-  <div class="music-track-list">
+  <div class="music-track-list" :class="{ 'music-track-list--no-selection': !showSelection }">
     <Transition
       enter-active-class="transition-[transform,opacity] duration-200 ease-out"
       leave-active-class="transition-[transform,opacity] duration-150 ease-in"
@@ -31,7 +31,7 @@
     </Transition>
 
     <header class="music-track-header">
-      <span class="music-track-col music-track-col--checkbox"></span>
+      <span v-if="showSelection" class="music-track-col music-track-col--checkbox"></span>
       <span class="music-track-col music-track-col--num">#</span>
       <span class="music-track-col music-track-col--cover"></span>
       <span class="music-track-col music-track-col--title">标题</span>
@@ -57,7 +57,7 @@
       @click="handleRowClick(track, $event)"
       @contextmenu.prevent="handleContextMenu(track, $event)"
     >
-      <div class="music-track-col music-track-col--checkbox">
+      <div v-if="showSelection" class="music-track-col music-track-col--checkbox">
         <MusicTrackCheckbox
           class="music-track-checkbox"
           :checked="selectedTracks.has(track.hash)"
@@ -70,7 +70,7 @@
         <span v-if="isPlaying(track) && player.playing" class="music-track-playing">
           <i></i><i></i><i></i>
         </span>
-        <span v-else class="music-track-num">{{ index + 1 }}</span>
+        <span v-else class="music-track-num">{{ indexOffset + index + 1 }}</span>
       </div>
 
       <div class="music-track-col music-track-col--cover">
@@ -170,11 +170,15 @@ const props = withDefaults(defineProps<{
   showMv?: boolean
   showRelated?: boolean
   showAddToPlaylist?: boolean
+  showSelection?: boolean
+  indexOffset?: number
 }>(), {
   loading: false,
   showMv: true,
   showRelated: true,
   showAddToPlaylist: true,
+  showSelection: true,
+  indexOffset: 0,
 })
 
 const emit = defineEmits<{
@@ -293,6 +297,11 @@ const {
   transition:
     background-color var(--duration-fast) var(--ease-default),
     color var(--duration-fast) var(--ease-default);
+}
+
+.music-track-list--no-selection .music-track-header,
+.music-track-list--no-selection .music-track-row {
+  grid-template-columns: 2.5rem 3.25rem 1fr minmax(0, 1fr) 4.5rem;
 }
 
 .music-track-row:hover {

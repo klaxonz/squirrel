@@ -9,6 +9,7 @@ export type VideoProfile = {
   avatar?: string
   total_videos?: number
   is_nsfw?: boolean
+  profile_source?: 'subscription' | 'creator' | 'metadata'
 }
 
 export type ClipMarker = {

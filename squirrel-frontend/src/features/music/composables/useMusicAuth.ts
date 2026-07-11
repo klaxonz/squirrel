@@ -61,17 +61,23 @@ export function useMusicAuth() {
     profileLoading.value = true
     profileError.value = ''
 
+    const contentLoads = [
+      loadUserPlaylists(),
+      loadProfileHistory(),
+      loadProfileListenRank(),
+    ]
+
     try {
       const data = await getMusicUserProfile()
       kugouProfile.value = data || null
-      loadProfileHistory()
-      loadProfileListenRank()
     } catch (err) {
       profileError.value = isApiError(err) ? err.message : '加载失败'
       kugouProfile.value = null
     } finally {
       profileLoading.value = false
     }
+
+    await Promise.allSettled(contentLoads)
   }
 
   async function loadProfileHistory() {

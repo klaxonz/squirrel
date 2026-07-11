@@ -8,7 +8,6 @@ one caller, one pipeline, no disabled/parametrized stages ever existed).
 
 import logging
 
-from domains.video.application.services.extraction.actor_processor import actor_processor_service
 from domains.video.application.services.extraction.thumbnail_downloader import thumbnail_downloader_service
 from domains.video.application.services.extraction.video_persistence import video_persistence_service
 
@@ -36,7 +35,7 @@ def create_video_extraction_pipeline(extractor_factory) -> ExtractionPipeline:
         [
             ExtractionStage(extractor_factory),
             ValidationStage(RuntimeDataAdapter()),
-            PersistenceStage(video_persistence_service, actor_processor_service),
+            PersistenceStage(video_persistence_service),
             PostProcessStage(thumbnail_downloader_service),
         ]
     )

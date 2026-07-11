@@ -68,6 +68,11 @@ class VideoExtractionCoordinator:
                     else:
                         failed_count += 1
                         logger.warning('Failed to extract video %s: %s', video_url, extracted.error)
+                    subscription_sync_lifecycle.record_video_extraction_terminal(
+                        request.sync_state_id,
+                        succeeded=bool(extracted.success),
+                    )
+                    reserved_pending = False
                 elif video_extraction_task_service.enqueue_video_extraction(params):
                     enqueued += 1
                 else:

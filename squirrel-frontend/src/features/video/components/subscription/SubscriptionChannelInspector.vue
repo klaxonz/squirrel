@@ -25,7 +25,11 @@
 
     <div class="subscription-inspector__body custom-scrollbar">
       <div class="subscription-inspector__actions">
-        <Button size="sm" @click="$emit('open-detail')">
+        <Button
+          variant="outline"
+          size="sm"
+          @click="$emit('open-detail')"
+        >
           打开频道
         </Button>
         <Button
@@ -174,13 +178,18 @@ const statusClass = computed(() => ({
 
 <style scoped>
 .subscription-inspector {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: calc(var(--z-content) + 1);
   display: flex;
   width: 22rem;
   min-height: 0;
-  flex: none;
   flex-direction: column;
   border-left: 1px solid var(--app-hairline);
   background: hsl(var(--background));
+  box-shadow: var(--app-panel-shadow);
 }
 
 .subscription-inspector__header {

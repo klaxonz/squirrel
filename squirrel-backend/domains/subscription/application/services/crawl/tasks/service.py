@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from datetime import datetime
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from domains.subscription.application.services.crawl.tasks import lease, lifecycle
 from domains.subscription.application.services.crawl.tasks import summary as task_summary
@@ -105,39 +106,76 @@ class CrawlTaskService:
         next_run_at: datetime | None = None,
     ) -> tuple[CrawlJob, CrawlTask]:
         with self.session_factory() as session:
-            ensure_dispatch_scope(session, scope_type='site', scope_key=site)
-            ensure_dispatch_scope(session, scope_type='task_type', scope_key=task_type)
-            job = CrawlJob(
+            return self.create_job_with_task_in_session(
+                session,
                 job_type=job_type,
                 source_type=source_type,
                 site=site,
+                task_type=task_type,
+                payload=payload,
                 subscription_id=subscription_id,
                 priority=priority,
-                status=CrawlJobStatus.PENDING.value,
-                trace_id=trace_id,
-                payload=payload,
-            )
-            session.add(job)
-            session.flush()
-
-            task = CrawlTask(
-                job_id=job.id,
+                dedupe_key=dedupe_key,
                 parent_task_id=parent_task_id,
-                task_type=task_type,
-                site=site,
-                subscription_id=subscription_id,
                 video_id=video_id,
                 video_url=video_url,
-                priority=priority,
-                payload=payload,
-                dedupe_key=dedupe_key,
                 trace_id=trace_id,
                 max_attempts=max_attempts,
-                next_run_at=next_run_at or datetime.now(),
+                next_run_at=next_run_at,
             )
-            session.add(task)
-            session.flush()
-            return job, task
+
+    @staticmethod
+    def create_job_with_task_in_session(
+        session: Session,
+        *,
+        job_type: str,
+        source_type: str,
+        site: str,
+        task_type: str,
+        payload: dict,
+        subscription_id: int | None = None,
+        priority: str = 'normal',
+        dedupe_key: str | None = None,
+        parent_task_id: int | None = None,
+        video_id: int | None = None,
+        video_url: str | None = None,
+        trace_id: str | None = None,
+        max_attempts: int = 3,
+        next_run_at: datetime | None = None,
+    ) -> tuple[CrawlJob, CrawlTask]:
+        ensure_dispatch_scope(session, scope_type='site', scope_key=site)
+        ensure_dispatch_scope(session, scope_type='task_type', scope_key=task_type)
+        job = CrawlJob(
+            job_type=job_type,
+            source_type=source_type,
+            site=site,
+            subscription_id=subscription_id,
+            priority=priority,
+            status=CrawlJobStatus.PENDING.value,
+            trace_id=trace_id,
+            payload=payload,
+        )
+        session.add(job)
+        session.flush()
+
+        task = CrawlTask(
+            job_id=job.id,
+            parent_task_id=parent_task_id,
+            task_type=task_type,
+            site=site,
+            subscription_id=subscription_id,
+            video_id=video_id,
+            video_url=video_url,
+            priority=priority,
+            payload=payload,
+            dedupe_key=dedupe_key,
+            trace_id=trace_id,
+            max_attempts=max_attempts,
+            next_run_at=next_run_at or datetime.now(),
+        )
+        session.add(task)
+        session.flush()
+        return job, task
 
     def claim_next_task(
         self,
@@ -324,6 +362,7 @@ crawl_task_service = CrawlTaskService()
 create_job = crawl_task_service.create_job
 create_task = crawl_task_service.create_task
 create_job_with_task = crawl_task_service.create_job_with_task
+create_job_with_task_in_session = crawl_task_service.create_job_with_task_in_session
 claim_next_task = crawl_task_service.claim_next_task
 renew_task_lease = crawl_task_service.renew_task_lease
 start_task = crawl_task_service.start_task

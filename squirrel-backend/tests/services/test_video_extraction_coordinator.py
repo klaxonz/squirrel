@@ -73,7 +73,6 @@ def test_enqueue_discovered_videos_reserves_pending_count_before_dispatching_vid
         pending_counts[sync_state_id] = max(0, pending_counts.get(sync_state_id, 0) - count)
 
     def _enqueue_video(params):
-        _decrement_pending(params.sync_state_id)
         return True
 
     with (
@@ -118,11 +117,12 @@ def test_enqueue_discovered_videos_reserves_pending_count_before_dispatching_vid
         enqueued = VideoExtractionCoordinator().enqueue_discovered_videos(fetch_result, request)
 
     assert enqueued == 1
-    assert pending_counts[2] == 0
+    assert pending_counts[2] == 1
 
 
 def test_enqueue_discovered_videos_extracts_inline_without_creating_video_task():
     extract_calls = []
+    terminal_calls = []
 
     with (
         patch(
@@ -150,6 +150,10 @@ def test_enqueue_discovered_videos_extracts_inline_without_creating_video_task()
             'domains.subscription.application.services.core.update.video_extraction_coordinator.extract_video',
             side_effect=lambda params: extract_calls.append(params) or SimpleNamespace(success=True),
         ),
+        patch(
+            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_terminal',
+            side_effect=lambda *args, **kwargs: terminal_calls.append((args, kwargs)),
+        ),
     ):
         request = SubscriptionUpdateRequest(
             subscription_id=1,
@@ -167,3 +171,4 @@ def test_enqueue_discovered_videos_extracts_inline_without_creating_video_task()
     assert len(extract_calls) == 1
     assert extract_calls[0].url == 'https://www.youtube.com/watch?v=demo'
     assert extract_calls[0].is_manual is True
+    assert terminal_calls == [((2,), {'succeeded': True})]

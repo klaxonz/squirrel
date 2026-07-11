@@ -22,6 +22,7 @@ export interface VideoProfile {
   is_special_followed?: boolean | null
   description?: string | null
   site?: string | null
+  profile_source?: 'subscription' | 'creator' | 'metadata'
 }
 
 /** Lighter shape returned by each item in GET /api/video/list `data[]`. */

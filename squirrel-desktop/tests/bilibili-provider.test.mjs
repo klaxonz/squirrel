@@ -354,6 +354,7 @@ test('desktop bilibili request runtime uses avid for av links', async () => {
 test('desktop bilibili provider does not reuse anonymous cache after login cookies change', async () => {
   clearBilibiliPlaybackCache()
 
+  const testUrl = `https://www.bilibili.com/video/BV1CacheTest1?test=${Date.now()}-${process.pid}`
   const calls = []
   const fetchImpl = async (input, options = {}) => {
     const url = new URL(String(input))
@@ -462,12 +463,12 @@ test('desktop bilibili provider does not reuse anonymous cache after login cooki
     throw new Error(`Unexpected injected fetch: ${url.toString()}`)
   }
 
-  const anonymousPayload = await resolveBilibiliPlayback('https://www.bilibili.com/video/BV1CacheTest1', {
+  const anonymousPayload = await resolveBilibiliPlayback(testUrl, {
     cookie: 'buvid3=guest',
     forceRefresh: true,
     fetchImpl,
   })
-  const loggedInPayload = await resolveBilibiliPlayback('https://www.bilibili.com/video/BV1CacheTest1', {
+  const loggedInPayload = await resolveBilibiliPlayback(testUrl, {
     cookie: 'buvid3=guest; SESSDATA=demo',
     fetchImpl,
   })

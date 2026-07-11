@@ -41,6 +41,16 @@ export class DesktopMusicServiceError extends Error {
   }
 }
 
+const musicServiceMessage = (body) => {
+  if (!body || typeof body !== 'object') return ''
+  return String(body.error || body.message || body.msg || body.error_msg || body.errmsg || '').trim()
+}
+
+const musicServiceErrorCode = (body) => {
+  if (!body || typeof body !== 'object') return ''
+  return String(body.error_code ?? body.errcode ?? '').trim()
+}
+
 const bodyFromResponse = (response, moduleName) => {
   const body = response?.body
   if (!body || typeof body !== 'object') {
@@ -48,11 +58,11 @@ const bodyFromResponse = (response, moduleName) => {
   }
   const status = body.status
   if (![undefined, null, '', 0, 1, '0', '1'].includes(status)) {
-    throw new DesktopMusicServiceError(String(body.error || body.message || body.msg || body.error_msg || body.errmsg || 'KuGouMusicApi rejected request'))
+    throw new DesktopMusicServiceError(musicServiceMessage(body) || 'KuGouMusicApi rejected request', response)
   }
   const errorCode = body.error_code ?? body.errcode
   if (![undefined, null, '', 0, '0', 200, '200'].includes(errorCode)) {
-    throw new DesktopMusicServiceError(String(body.error || body.message || body.msg || body.error_msg || body.errmsg || 'KuGouMusicApi rejected request'))
+    throw new DesktopMusicServiceError(musicServiceMessage(body) || 'KuGouMusicApi rejected request', response)
   }
   return body
 }
@@ -76,7 +86,7 @@ const responseFromKugou = async (moduleName, params = {}, { useAuth = true } = {
     if (error instanceof DesktopMusicServiceError) throw error
     const body = error?.body
     if (body && typeof body === 'object') {
-      const message = body.message || body.msg || body.error || body.error_msg
+      const message = musicServiceMessage(body)
       if (message) throw new DesktopMusicServiceError(String(message), error)
     }
     throw new DesktopMusicServiceError(`KuGouMusicApi request failed: ${error?.message || String(error)}`, error)
@@ -101,6 +111,33 @@ const requestKugou = async (moduleName, params = {}, { useAuth = true } = {}) =>
 const ok = () => ({ ok: true })
 
 const playlistTrackData = (track = {}) => [track.title, track.hash, track.album_id, track.album_audio_id].join('|')
+
+const playableUrlFromPayload = (payload) => {
+  for (const key of ['url', 'play_url', 'playUrl', 'audio_url']) {
+    const value = payload?.[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+    if (Array.isArray(value)) {
+      const url = value.find((item) => typeof item === 'string' && item.trim())
+      if (url) return url.trim()
+    }
+  }
+  for (const key of ['urls', 'backup_url', 'play_backup_url']) {
+    const value = payload?.[key]
+    if (!Array.isArray(value)) continue
+    const url = value.find((item) => typeof item === 'string' && item.trim())
+    if (url) return url.trim()
+  }
+  return ''
+}
+
+const throwPlaybackRejected = (body) => {
+  const code = musicServiceErrorCode(body)
+  const message = musicServiceMessage(body)
+  if (code === '20028') {
+    throw new DesktopMusicServiceError('酷狗播放接口需要验证，请重新登录音乐账号后再播放', body)
+  }
+  throw new DesktopMusicServiceError(message || '酷狗未返回可播放地址', body)
+}
 
 const service = {
   async searchTracks({ query, page = 1, page_size = 20 }) {
@@ -482,10 +519,8 @@ const service = {
     if (album_id) params.album_id = album_id
     if (album_audio_id) params.album_audio_id = album_audio_id
     const payload = await requestKugou('song_url', params)
-    const trackerUrl = payload.url
-    let url = ''
-    if (typeof trackerUrl === 'string') url = trackerUrl
-    else if (Array.isArray(trackerUrl)) url = trackerUrl.find((item) => typeof item === 'string' && item) || ''
+    const url = playableUrlFromPayload(payload)
+    if (!url) throwPlaybackRejected(payload)
     return { url, quality: String(payload.bitRate || payload.quality || quality), expires_at: payload.expire }
   },
 
@@ -568,18 +603,27 @@ const service = {
   },
 
   async userProfile() {
-    const payload = await requestKugou('user_detail', {})
-    const data = payload.data && typeof payload.data === 'object' ? payload.data : {}
+    const cookie = await effectiveCookie()
+    const token = cookieValue(cookie, 'token')
+    const userid = cookieValue(cookie, 'userid')
+    const [accountPayload, detailPayload, listenPayload] = await Promise.all([
+      requestKugou('login_token', { token, userid }),
+      requestKugou('user_detail', { userid }),
+      requestKugou('user_listen', { type: 1 }),
+    ])
+    const accountData = accountPayload.data && typeof accountPayload.data === 'object' ? accountPayload.data : accountPayload
+    const detailData = detailPayload.data && typeof detailPayload.data === 'object' ? detailPayload.data : detailPayload
+    const listenData = listenPayload.data && typeof listenPayload.data === 'object' ? listenPayload.data : listenPayload
     return {
-      userid: String(data.userid || data.user_id || ''),
-      nickname: data.nickname || data.k_nickname || data.user_name || '',
-      avatar: formatImageUrl(data.pic || data.k_pic || data.fx_pic || ''),
-      level: Number.parseInt(data.p_grade || data.level || 0, 10),
-      gender: String(data.gender || ''),
-      register_time: String(data.rtime || data.register_time || ''),
-      follow_count: Number.parseInt(data.follows || 0, 10),
-      fan_count: Number.parseInt(data.fans || 0, 10),
-      listen_count: Number.parseInt(data.duration || 0, 10),
+      userid: String(accountData.userid || detailData.userid || userid),
+      nickname: String(accountData.nickname || accountData.username || ''),
+      avatar: formatImageUrl(accountData.pic || accountData.k_pic || accountData.fx_pic || accountData.arttoy_avatar || ''),
+      level: Number.parseInt(detailData.p_grade || detailData.level || 0, 10),
+      gender: String(accountData.sex || detailData.gender || ''),
+      register_time: String(accountData.reg_time || accountData.register_time || detailData.rtime || ''),
+      follow_count: Number.parseInt(detailData.follows || 0, 10),
+      fan_count: Number.parseInt(detailData.fans || 0, 10),
+      listen_count: Number.parseInt(listenData.total_history || listenData.listen_total || 0, 10),
     }
   },
 

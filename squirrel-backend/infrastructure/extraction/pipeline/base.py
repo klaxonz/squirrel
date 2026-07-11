@@ -4,7 +4,7 @@ import logging
 from abc import ABC, abstractmethod
 
 from ..contracts import ExtractionResult
-from ..exceptions import StageExecutionError
+from ..exceptions import ExtractionError, StageExecutionError
 from .context import PipelineContext
 
 logger = logging.getLogger(__name__)
@@ -118,7 +118,7 @@ class ExtractionPipeline:
 
                     self.logger.debug("Stage '%s' completed: task_id=%s", stage.stage_name, context.task.task_id)
 
-                except (ValueError, TypeError, AttributeError, KeyError) as e:
+                except (ExtractionError, ValueError, TypeError, AttributeError, KeyError) as e:
                     # Stage execution failed
                     stage.on_error(context, e)
 

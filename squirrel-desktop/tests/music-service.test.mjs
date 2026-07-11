@@ -17,7 +17,10 @@ const withMockMusicRuntime = async (kugou, fn) => {
     clear: async () => { cookie = '' },
   })
   try {
-    return await fn({ get cookie() { return cookie } })
+    return await fn({
+      get cookie() { return cookie },
+      setCookie: (value) => { cookie = value },
+    })
   } finally {
     __setDesktopMusicKugouForTests(null)
     __setDesktopMusicAuthStoreForTests(null)
@@ -74,6 +77,39 @@ test('desktop music play url selects first returned url', async () => {
     assert.deepEqual(
       await musicService.playUrl({ hash: 'HASH', quality: '320' }),
       { url: 'http://cdn.test/a.mp3', quality: '320', expires_at: undefined },
+    )
+  })
+})
+
+test('desktop music play url reads current direct url fields', async () => {
+  await withMockMusicRuntime({
+    song_url: async () => ({ body: { play_url: 'http://cdn.test/direct.flac', quality: 'flac', expire: 3600 } }),
+  }, async () => {
+    assert.deepEqual(
+      await musicService.playUrl({ hash: 'HASH', quality: 'flac' }),
+      { url: 'http://cdn.test/direct.flac', quality: 'flac', expires_at: 3600 },
+    )
+  })
+})
+
+test('desktop music play url surfaces verification errors', async () => {
+  await withMockMusicRuntime({
+    song_url: async () => ({ body: { status: 0, errcode: 20028, error: '本次请求需要验证' } }),
+  }, async () => {
+    await assert.rejects(
+      musicService.playUrl({ hash: 'HASH' }),
+      /需要验证|重新登录/,
+    )
+  })
+})
+
+test('desktop music play url rejects empty playback payloads', async () => {
+  await withMockMusicRuntime({
+    song_url: async () => ({ body: { url: [], bitRate: '128' } }),
+  }, async () => {
+    await assert.rejects(
+      musicService.playUrl({ hash: 'HASH' }),
+      /未返回可播放地址/,
     )
   })
 })
@@ -181,6 +217,65 @@ test('desktop music user playlists returns kugou rows without remapping fields',
       is_def: 2,
       m_count: 99,
     }])
+  })
+})
+
+test('desktop music user profile refreshes token profile fields', async () => {
+  await withMockMusicRuntime({
+    login_token: async (params) => {
+      assert.equal(params.token, 'tok')
+      assert.equal(params.userid, '99')
+      return {
+        body: {
+          data: {
+            userid: 99,
+            nickname: 'Demo User',
+            username: 'kgopen99',
+            pic: 'http://imge.kugou.com/stdmusic/{size}/avatar.jpg',
+            sex: 1,
+            reg_time: '2024-01-02',
+          },
+        },
+      }
+    },
+    user_detail: async (params) => {
+      assert.equal(params.cookie, 'token=tok;userid=99')
+      assert.equal(params.userid, '99')
+      return {
+        body: {
+          data: {
+            p_grade: 7,
+            follows: 3,
+            fans: 4,
+          },
+        },
+      }
+    },
+    user_listen: async (params) => {
+      assert.equal(params.cookie, 'token=tok;userid=99')
+      assert.equal(params.type, 1)
+      return {
+        body: {
+          data: {
+            total_history: 730,
+          },
+        },
+      }
+    },
+  }, async (runtime) => {
+    runtime.setCookie('token=tok;userid=99')
+    const result = await musicService.userProfile()
+    assert.deepEqual(result, {
+      userid: '99',
+      nickname: 'Demo User',
+      avatar: 'http://imge.kugou.com/stdmusic/240/avatar.jpg',
+      level: 7,
+      gender: '1',
+      register_time: '2024-01-02',
+      follow_count: 3,
+      fan_count: 4,
+      listen_count: 730,
+    })
   })
 })
 

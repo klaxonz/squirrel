@@ -16,7 +16,7 @@ def _params():
     )
 
 
-def test_record_finished_clears_dedupe_and_completes_pending_on_success(monkeypatch):
+def test_record_terminal_clears_dedupe_and_completes_pending_on_success(monkeypatch):
     clear_calls = []
     decrement_calls = []
 
@@ -25,11 +25,11 @@ def test_record_finished_clears_dedupe_and_completes_pending_on_success(monkeypa
         lambda params: clear_calls.append(params.url),
     )
     monkeypatch.setattr(
-        'domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_finished',
+        'domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_terminal',
         lambda *args, **kwargs: decrement_calls.append((args, kwargs)),
     )
 
-    VideoExtractionProgressService().record_finished(_params(), succeeded=True, site='youtube.com')
+    VideoExtractionProgressService().record_terminal(_params(), succeeded=True)
 
     assert clear_calls == ['https://www.youtube.com/watch?v=demo']
     assert decrement_calls == [
@@ -42,7 +42,7 @@ def test_record_finished_clears_dedupe_and_completes_pending_on_success(monkeypa
     ]
 
 
-def test_record_finished_clears_dedupe_without_completing_pending_on_failure(monkeypatch):
+def test_record_terminal_clears_dedupe_without_completing_pending_on_failure(monkeypatch):
     clear_calls = []
     decrement_calls = []
 
@@ -51,11 +51,11 @@ def test_record_finished_clears_dedupe_without_completing_pending_on_failure(mon
         lambda params: clear_calls.append(params.url),
     )
     monkeypatch.setattr(
-        'domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_finished',
+        'domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_terminal',
         lambda *args, **kwargs: decrement_calls.append((args, kwargs)),
     )
 
-    VideoExtractionProgressService().record_finished(_params(), succeeded=False, site='youtube.com')
+    VideoExtractionProgressService().record_terminal(_params(), succeeded=False)
 
     assert clear_calls == ['https://www.youtube.com/watch?v=demo']
     assert decrement_calls == [

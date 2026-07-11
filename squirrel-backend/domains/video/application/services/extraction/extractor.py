@@ -6,7 +6,6 @@ Uses the new Pipeline architecture for video extraction.
 
 import logging
 
-import domains.video.application.services.extraction.progress_service as progress_service
 import infrastructure.site_catalog.url as url_helper
 from domains.video.interfaces.dto.video_dto import VideoExtractDto
 from infrastructure.extraction.contracts import ExtractionResult, ExtractionTask, TaskPriority
@@ -24,36 +23,31 @@ class VideoExtractionService:
 
     def extract_video(self, params: VideoExtractDto) -> ExtractionResult:
         domain = url_helper.extract_top_level_domain(params.url)
-        extraction_succeeded = False
 
-        try:
-            if not SiteCatalog.is_site_enabled(domain=domain):
-                logger.info('Skip video extraction because site is disabled: domain=%s, url=%s', domain, params.url)
-                return ExtractionResult(
-                    success=False,
-                    error='site_disabled',
-                )
+        if not SiteCatalog.is_site_enabled(domain=domain):
+            logger.info('Skip video extraction because site is disabled: domain=%s, url=%s', domain, params.url)
+            return ExtractionResult(
+                success=False,
+                error='site_disabled',
+            )
 
-            task = self._create_task(params)
+        task = self._create_task(params)
 
-            logger.debug('Starting video extraction: %s', task.url)
-            extraction_result = self.handler.process(task)
+        logger.debug('Starting video extraction: %s', task.url)
+        extraction_result = self.handler.process(task)
 
-            if extraction_result.success:
-                extraction_succeeded = True
-                video_title = extraction_result.data.title if extraction_result.data else 'N/A'
-                logger.info('Video extracted: platform=%s, url=%s, title=%s', domain, params.url, video_title)
-            else:
-                logger.error(
-                    'Video extraction failed: platform=%s, url=%s, error=%s',
-                    domain,
-                    params.url,
-                    extraction_result.error,
-                )
+        if extraction_result.success:
+            video_title = extraction_result.data.title if extraction_result.data else 'N/A'
+            logger.info('Video extracted: platform=%s, url=%s, title=%s', domain, params.url, video_title)
+        else:
+            logger.error(
+                'Video extraction failed: platform=%s, url=%s, error=%s',
+                domain,
+                params.url,
+                extraction_result.error,
+            )
 
-            return extraction_result
-        finally:
-            progress_service.record_finished(params, succeeded=extraction_succeeded, site=domain)
+        return extraction_result
 
     def _create_task(self, params: VideoExtractDto) -> ExtractionTask:
         priority = TaskPriority.HIGH if params.is_manual else TaskPriority.NORMAL

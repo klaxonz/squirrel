@@ -54,6 +54,7 @@ test('desktop pornhub provider exposes sorted hls qualities', async () => {
 })
 
 test('desktop pornhub provider does not reuse cached payload across cookie sessions', async () => {
+  const testUrl = `https://www.pornhub.com/view_video.php?viewkey=session-cache-${Date.now()}-${process.pid}`
   const anonymousHtml = `
     <script>
       var flashvars_123 = {
@@ -80,11 +81,11 @@ test('desktop pornhub provider does not reuse cached payload across cookie sessi
   }
 
   const anonymousPayload = await resolvePornhubPlayback(
-    'https://www.pornhub.com/view_video.php?viewkey=session-cache',
+    testUrl,
     { forceRefresh: true, fetchImpl },
   )
   const sessionPayload = await resolvePornhubPlayback(
-    'https://www.pornhub.com/view_video.php?viewkey=session-cache',
+    testUrl,
     { cookie: 'session=demo', fetchImpl },
   )
 

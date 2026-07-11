@@ -61,6 +61,7 @@ class VideoDetailLoader:
 
         counts_map = self._load_subscription_video_counts(session, video)
         subscriptions_data = self._subscription_profiles(video, counts_map)
+        creator_profiles = self._creator_profiles(video)
         video_history = max(video.histories, key=self._history_sort_key, default=None)
         video_interaction = max(video.interactions, key=self._interaction_sort_key, default=None)
         clip_markers = self._load_clip_markers(session, user_id=user_id, video_id=video_id)
@@ -73,10 +74,10 @@ class VideoDetailLoader:
             'domain': url_helper.extract_top_level_domain(video.url),
             'subscriptions': merge_profiles(subscriptions_data, video_extra_profiles(video, 'subscriptions')),
             'actors': merge_profiles(
-                [serialize_creator(creator) for creator in video.creators],
+                creator_profiles,
                 video_extra_profiles(video, 'actors'),
             ),
-            'creators': [serialize_creator(creator) for creator in video.creators],
+            'creators': creator_profiles,
             'clip_markers': [self.serialize_marker(marker) for marker in clip_markers],
         }
 
@@ -111,8 +112,18 @@ class VideoDetailLoader:
                 subscription_data['total_extract'],
             )
             subscription_data['is_nsfw'] = user_subscription.is_nsfw
+            subscription_data['profile_source'] = 'subscription'
             subscriptions_data.append(subscription_data)
         return subscriptions_data
+
+    @staticmethod
+    def _creator_profiles(video: Video) -> list[dict]:
+        profiles = []
+        for creator in video.creators:
+            profile = serialize_creator(creator)
+            profile['profile_source'] = 'creator'
+            profiles.append(profile)
+        return profiles
 
     @staticmethod
     def _load_clip_markers(session: Session, *, user_id: int, video_id: int) -> list[VideoClipMarker]:

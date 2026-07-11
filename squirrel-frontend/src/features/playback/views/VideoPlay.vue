@@ -595,7 +595,16 @@ const resolveRemoteChannelSite = (url: string) => {
   return ''
 }
 
+const isLocalSubscriptionProfile = (profile: VideoProfile) => {
+  return profile.profile_source === 'subscription' && profile.id != null && String(profile.id).trim() !== ''
+}
+
 const openChannelDetail = async (profile: VideoProfile) => {
+  if (isLocalSubscriptionProfile(profile)) {
+    await router.push({ name: 'SubscriptionAllVideos', params: { id: String(profile.id) } })
+    return
+  }
+
   const url = String(profile?.url || '').trim()
   const remoteSite = resolveRemoteChannelSite(url)
 
@@ -615,8 +624,6 @@ const openChannelDetail = async (profile: VideoProfile) => {
     }
     return
   }
-
-  if (profile?.id) router.push(`/subscription/${profile.id}/all`)
 }
 </script>
 

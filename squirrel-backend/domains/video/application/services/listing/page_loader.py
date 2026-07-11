@@ -128,6 +128,7 @@ class VideoListPageLoader:
                     'avatar': row.avatar,
                     'is_nsfw': row.is_nsfw,
                     'is_special_followed': row.is_special_followed,
+                    'profile_source': 'subscription',
                 }
             )
         return subscriptions_map
@@ -145,5 +146,7 @@ class VideoListPageLoader:
         ).all()
         actors_map: dict[int, list[dict]] = {}
         for video_id, creator in creator_rows:
-            actors_map.setdefault(video_id, []).append(serialize_creator(creator))
+            actor = serialize_creator(creator)
+            actor['profile_source'] = 'creator'
+            actors_map.setdefault(video_id, []).append(actor)
         return actors_map

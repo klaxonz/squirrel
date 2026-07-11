@@ -12,7 +12,10 @@ from domains.subscription.application.services.crawl.executors.subscription_sync
 from domains.subscription.application.services.crawl.executors.video_extract_executor import execute_video_extract_task
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError
+from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
 from domains.subscription.application.services.crawl.tasks.task_types import is_subscription_sync_task_type
+from domains.video.application.services.extraction.progress_service import VideoExtractionProgressService
+from domains.video.interfaces.dto.video_dto import VideoExtractDto
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +27,12 @@ class CrawlWorkerTaskRunner:
         worker_id: str,
         retry_delay_seconds: int,
         subscription_task_progress: SubscriptionSyncTaskProgressService | None = None,
+        video_extraction_progress: VideoExtractionProgressService | None = None,
     ) -> None:
         self.worker_id = worker_id
         self.retry_delay_seconds = retry_delay_seconds
         self.subscription_task_progress = subscription_task_progress or SubscriptionSyncTaskProgressService()
+        self.video_extraction_progress = video_extraction_progress or VideoExtractionProgressService()
 
     def run_task(self, task, claimed_at: datetime) -> None:
         try:
@@ -87,6 +92,7 @@ class CrawlWorkerTaskRunner:
                 now=retry_now,
                 error_message=str(exc),
             )
+            self._record_video_extract_terminal_if_needed(retried_task)
         except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
             logger.warning(
                 'Skip crawl task retry because lease is no longer owned: task_id=%s worker_id=%s',
@@ -96,10 +102,44 @@ class CrawlWorkerTaskRunner:
 
     def _complete_task(self, task) -> None:
         try:
-            crawl_task_service.complete_task(task_id=task.id, worker_id=self.worker_id, now=datetime.now())
+            completed_task = crawl_task_service.complete_task(task_id=task.id, worker_id=self.worker_id, now=datetime.now())
+            self._record_video_extract_terminal_if_needed(completed_task)
         except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
             logger.warning(
                 'Skip crawl task completion because lease is no longer owned: task_id=%s worker_id=%s',
                 task.id,
                 self.worker_id,
             )
+
+    def cancel_task(self, task, *, reason: str = 'cancelled', now: datetime | None = None) -> None:
+        try:
+            cancelled_task = crawl_task_service.cancel_task(task_id=task.id, now=now or datetime.now(), reason=reason)
+            self._record_video_extract_terminal_if_needed(cancelled_task)
+        except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
+            logger.warning(
+                'Skip crawl task cancellation because task is no longer available: task_id=%s worker_id=%s',
+                task.id,
+                self.worker_id,
+            )
+
+    def _record_video_extract_terminal_if_needed(self, task) -> None:
+        if task.task_type != 'video_extract':
+            return
+
+        match task.status:
+            case CrawlTaskStatus.SUCCEEDED.value:
+                self._record_video_extract_terminal(task, succeeded=True)
+            case CrawlTaskStatus.DEAD.value | CrawlTaskStatus.CANCELLED.value:
+                self._record_video_extract_terminal(task, succeeded=False)
+
+    def _record_video_extract_terminal(self, task, *, succeeded: bool) -> None:
+        try:
+            params = VideoExtractDto.model_validate(task.payload or {})
+        except (TypeError, ValueError, AttributeError) as exc:
+            logger.warning(
+                'Skip video extraction progress update for invalid payload: task_id=%s error=%s',
+                task.id,
+                exc,
+            )
+            return
+        self.video_extraction_progress.record_terminal(params, succeeded=succeeded)

@@ -24,7 +24,9 @@ from domains.subscription.application.services.core.sync.state._queue import (
     deactivate_sync_states,
     has_incremental_backpressure,
     prepare_sync_state_for_enqueue,
+    prepare_sync_state_for_enqueue_in_session,
     queue_sync_state,
+    queue_sync_state_in_session,
     reconcile_task_retry_state,
 )
 from domains.subscription.application.services.core.sync.state._recovery import (
@@ -57,7 +59,9 @@ __all__ = [
     'mark_sync_success',
     'mark_full_sync_requested',
     'prepare_sync_state_for_enqueue',
+    'prepare_sync_state_for_enqueue_in_session',
     'queue_sync_state',
+    'queue_sync_state_in_session',
     'reconcile_pending_video_counts',
     'reconcile_task_retry_state',
     'reconcile_terminal_drained_sync_states',

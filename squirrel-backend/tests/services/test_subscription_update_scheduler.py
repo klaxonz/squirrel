@@ -60,31 +60,14 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
     from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
+    sched.lifecycle._crawl_tasks = injected_cts
 
     with (
         patch('infrastructure.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True),
         patch.object(SubscriptionSyncLifecycle, '_has_active_subscribers', return_value=True),
-        patch.object(
-            ssss,
-            'prepare_sync_state_for_enqueue',
-            return_value=(
-                SimpleNamespace(id=11, pending_video_count=0, sync_mode=UpdateMode.FULL),
-                'ready',
-            ),
-        ),
         patch.object(ssss, 'build_queue_token', return_value='queue-token-1'),
-        patch.object(
-            ssss,
-            'queue_sync_state',
-            return_value=SimpleNamespace(
-                id=11,
-                queue_token='queue-token-1',
-                sync_status='queued',
-                queued_at='2026-04-01 12:00:00',
-                pending_video_count=0,
-            ),
-        ),
         patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task),
+        patch.object(crawl_task_service_mod, 'create_job_with_task_in_session', injected_cts.create_job_with_task_in_session),
         patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job),
         patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task),
         patch.object(crawl_task_service_mod, 'recover_expired_tasks', injected_cts.recover_expired_tasks),
@@ -134,31 +117,14 @@ def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factor
     from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
+    sched.lifecycle._crawl_tasks = injected_cts
 
     with (
         patch('infrastructure.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True),
         patch.object(SubscriptionSyncLifecycle, '_has_active_subscribers', return_value=True),
-        patch.object(
-            ssss,
-            'prepare_sync_state_for_enqueue',
-            return_value=(
-                SimpleNamespace(id=12, pending_video_count=0, sync_mode=UpdateMode.INCREMENTAL),
-                'ready',
-            ),
-        ),
         patch.object(ssss, 'build_queue_token', return_value='queue-token-2'),
-        patch.object(
-            ssss,
-            'queue_sync_state',
-            return_value=SimpleNamespace(
-                id=12,
-                queue_token='queue-token-2',
-                sync_status='queued',
-                queued_at='2026-04-01 12:00:00',
-                pending_video_count=0,
-            ),
-        ),
         patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task),
+        patch.object(crawl_task_service_mod, 'create_job_with_task_in_session', injected_cts.create_job_with_task_in_session),
         patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job),
         patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task),
         patch.object(crawl_task_service_mod, 'recover_expired_tasks', injected_cts.recover_expired_tasks),
@@ -385,9 +351,11 @@ def test_enqueue_due_states_creates_crawl_tasks_from_sync_state_store(engine, se
     from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
+    sched.lifecycle._crawl_tasks = injected_cts
 
     with (
         patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task),
+        patch.object(crawl_task_service_mod, 'create_job_with_task_in_session', injected_cts.create_job_with_task_in_session),
         patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job),
         patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task),
         patch.object(crawl_task_service_mod, 'recover_expired_tasks', injected_cts.recover_expired_tasks),
