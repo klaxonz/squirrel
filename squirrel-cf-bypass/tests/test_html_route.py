@@ -75,6 +75,51 @@ def test_html_route_forwards_request_headers_to_solver():
     assert solver.calls[0]['custom_headers']['origin'] == 'https://javdb.com'
     assert 'host' not in solver.calls[0]['custom_headers']
     assert 'x-bypass-cache' not in solver.calls[0]['custom_headers']
+    assert 'user-agent' not in solver.calls[0]['custom_headers']
+
+
+def test_html_route_keeps_user_agent_for_provided_cookie_seed_but_not_browser_solver(monkeypatch):
+    session_calls = []
+
+    class ChallengeSession:
+        async def get(self, url, headers=None, allow_redirects=False):
+            session_calls.append({
+                'url': url,
+                'headers': headers,
+                'allow_redirects': allow_redirects,
+            })
+
+            class Response:
+                status_code = 403
+                text = '<html><title>Just a moment...</title></html>'
+                url = 'https://javdb.com/page'
+
+            return Response()
+
+    monkeypatch.setattr(
+        'squirrel_cf_bypass.app.core.service.AsyncSession',
+        lambda **kwargs: ChallengeSession(),
+    )
+
+    solver = FakeSolver()
+    app = create_app(solver=solver)
+    client = TestClient(app)
+
+    response = client.get(
+        '/html',
+        params={'url': 'https://javdb.com/page'},
+        headers={
+            'Cookie': 'cf_clearance=provided; _jdb_session=session',
+            'User-Agent': 'Provided UA',
+            'Referer': 'https://javdb.com/',
+        },
+    )
+
+    assert response.status_code == 200
+    assert session_calls[0]['headers']['user-agent'] == 'Provided UA'
+    assert solver.calls[0]['custom_headers']['cookie'] == 'cf_clearance=provided; _jdb_session=session'
+    assert solver.calls[0]['custom_headers']['referer'] == 'https://javdb.com/'
+    assert 'user-agent' not in solver.calls[0]['custom_headers']
 
 
 def test_html_route_request_proxy_overrides_configured_default_proxy():
@@ -278,7 +323,7 @@ def test_html_route_can_force_cache_bypass():
     assert response.status_code == 200
     assert len(solver.calls) == 1
     assert solver.calls[0]['cached_record'] is None
-    assert 'x-bypass-cache' not in solver.calls[0]['custom_headers']
+    assert not solver.calls[0]['custom_headers'] or 'x-bypass-cache' not in solver.calls[0]['custom_headers']
 
 
 def test_html_route_returns_502_when_solver_cannot_bypass():

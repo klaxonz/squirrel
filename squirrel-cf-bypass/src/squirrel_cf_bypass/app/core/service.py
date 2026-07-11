@@ -87,7 +87,7 @@ class CloudflareBypassService:
             url,
             proxy=proxy,
             cached_record=cached_record,
-            custom_headers=custom_headers,
+            custom_headers=self._browser_navigation_headers(custom_headers),
         )
         if result is None:
             return None
@@ -248,6 +248,31 @@ class CloudflareBypassService:
             for key, value in headers.items()
             if key.lower() not in {"x-hostname", "x-proxy", "x-bypass-cache", "host"}
         }
+
+    @classmethod
+    def _browser_navigation_headers(cls, headers: dict[str, str] | None) -> dict[str, str] | None:
+        if not headers:
+            return None
+
+        upstream_headers = cls._strip_control_headers(headers)
+        browser_owned_headers = {
+            "accept",
+            "accept-encoding",
+            "connection",
+            "host",
+            "sec-fetch-dest",
+            "sec-fetch-mode",
+            "sec-fetch-site",
+            "sec-fetch-user",
+            "upgrade-insecure-requests",
+            "user-agent",
+        }
+        safe_headers = {
+            key: value
+            for key, value in upstream_headers.items()
+            if key.lower() not in browser_owned_headers
+        }
+        return safe_headers or None
 
     @staticmethod
     def _merge_cookie_header(existing_cookie: str, cf_cookies: dict[str, str]) -> str:
