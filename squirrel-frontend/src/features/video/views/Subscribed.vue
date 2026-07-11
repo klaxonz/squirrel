@@ -315,6 +315,7 @@ import { Switch } from '@/shared/ui/switch'
 import { useToast } from '@/shared/components/toast/useToast'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { useUIStore } from '@/shared/stores/ui'
+import { useUserSettings } from '@/shared/composables/useUserSettings'
 import SubscriptionCard from '@/features/video/components/feed/SubscriptionCard.vue'
 import SubscriptionCardSkeleton from '@/features/video/components/feed/SubscriptionCardSkeleton.vue'
 import SubscriptionInboxItem from '@/features/video/components/subscription/SubscriptionInboxItem.vue'
@@ -366,6 +367,7 @@ const toast = useToast()
 const desktopBridge = useDesktopBridge()
 const { openVideo, openSubscription } = useVideoCardNavigation(router)
 const { options: siteOptions, fetchSites } = useSites()
+const { settings, loadUserSettings } = useUserSettings()
 
 const activeView = ref<SubscriptionView>('inbox')
 const feedSearch = ref(uiStore.getSearchQuery('subscribed').trim())
@@ -412,6 +414,9 @@ const isFeedView = computed(() => (
 ))
 
 const siteOptionsList = computed(() => siteOptions.value || [])
+const visibleSiteOptions = computed(() => (
+  siteOptionsList.value.filter((option) => settings.value.showNsfw || option.isNsfw !== true)
+))
 const SITE_SHORT_LABELS: Record<string, string> = {
   bilibili: 'B站',
   youtube: '油管',
@@ -427,7 +432,7 @@ const subscriptionSiteFilterOptions = computed(() => [
     shortLabel: '全部',
     iconUrl: null as string | null,
   },
-  ...siteOptionsList.value.map((option) => ({
+  ...visibleSiteOptions.value.map((option) => ({
     value: option.value,
     label: option.label,
     shortLabel: SITE_SHORT_LABELS[option.value.toLowerCase()] || option.label,
@@ -936,6 +941,20 @@ watch(site, async () => {
   }
 })
 
+watch(
+  () => ({
+    currentSite: site.value,
+    showNsfw: settings.value.showNsfw,
+    options: siteOptionsList.value,
+  }),
+  ({ currentSite, showNsfw, options }) => {
+    if (!currentSite || showNsfw) return
+    const selected = options.find((option) => option.value === currentSite)
+    if (selected?.isNsfw === true) site.value = undefined
+  },
+  { immediate: true },
+)
+
 watch(nsfw, () => {
   if (isFeedView.value) void fetchFeed(true)
 })
@@ -966,7 +985,7 @@ watch(contentScroll, () => {
 })
 
 onMounted(async () => {
-  fetchSites()
+  await Promise.all([fetchSites(), loadUserSettings()])
   await Promise.all([fetchChannels(true), fetchFeed(true)])
   await nextTick()
   initObservers()

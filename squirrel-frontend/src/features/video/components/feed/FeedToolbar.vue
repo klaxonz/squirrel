@@ -298,6 +298,10 @@ const SITE_SHORT_LABELS: Record<string, string> = {
   youporn: 'YP',
 }
 
+const visibleSiteOptions = computed(() => (
+  (siteOptions.value ?? []).filter((option) => settings.value.showNsfw || option.isNsfw !== true)
+))
+
 const siteFilterOptions = computed(() => [
   {
     value: 'all',
@@ -305,7 +309,7 @@ const siteFilterOptions = computed(() => [
     shortLabel: '全部',
     iconUrl: null as string | null,
   },
-  ...(siteOptions.value ?? []).map((option) => ({
+  ...visibleSiteOptions.value.map((option) => ({
     value: option.value,
     label: option.label,
     shortLabel: SITE_SHORT_LABELS[option.value.toLowerCase()] || option.label,
@@ -360,6 +364,19 @@ watch(() => props.activeTab, (v) => { localActiveTab.value = v })
 watch(() => props.sortBy, (v) => { localSortBy.value = v })
 watch(localActiveTab, (v) => emit('update:activeTab', v))
 watch(localSortBy, (v) => emit('update:sortBy', v))
+watch(
+  () => ({
+    currentSite: props.site,
+    showNsfw: settings.value.showNsfw,
+    options: siteOptions.value ?? [],
+  }),
+  ({ currentSite, showNsfw, options }) => {
+    if (!currentSite || showNsfw) return
+    const selected = options.find((option) => option.value === currentSite)
+    if (selected?.isNsfw === true) emit('update:site', '')
+  },
+  { immediate: true },
+)
 
 const sortOptions = SORT_OPTIONS
 const timeRangeOptions = TIME_RANGE_OPTIONS

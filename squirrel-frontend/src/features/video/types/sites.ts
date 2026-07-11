@@ -34,4 +34,5 @@ export interface SiteOption {
   value: SiteSlug
   label: string
   iconUrl?: string | null
+  isNsfw?: boolean
 }

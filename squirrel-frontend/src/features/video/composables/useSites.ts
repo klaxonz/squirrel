@@ -18,6 +18,13 @@ const resetCache = () => {
   cached.value = null
 }
 
+const isNsfwSite = (site: { metadata?: unknown }) => {
+  const metadata = site.metadata
+  return typeof metadata === 'object'
+    && metadata !== null
+    && (metadata as Record<string, unknown>).nsfw === true
+}
+
 export async function fetchSites() {
   if (cached.value || loading.value) return { data: cached.value, error: null }
   loading.value = true
@@ -35,6 +42,7 @@ export async function fetchSites() {
           value: slug,
           label: site.label || slug,
           iconUrl: resolveServerAssetUrl(rawIcon),
+          isNsfw: isNsfwSite(site),
         })
       }
     }
