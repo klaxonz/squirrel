@@ -5,7 +5,7 @@
 **代码：** `src/shared/styles/layout.css`
 
 **Surface：** Organize（Dense 32px）；嵌在 Consume 页时控件高仍为 32px。  
-**条款：** [S2](../principles.md#s2--surface-规格) · [S3](../principles.md#s3--色意映射)
+**条款：** [S1](../principles.md#s1--surface-规格) · [S2](../principles.md#s2--色意映射)
 
 | Class | 用途 |
 |-------|------|

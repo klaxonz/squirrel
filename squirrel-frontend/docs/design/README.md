@@ -4,7 +4,7 @@
 
 | 页 | 内容 |
 |----|------|
-| [principles.md](./principles.md) | **Standards S1–S5**（归仓身份 + 验收） |
+| [principles.md](./principles.md) | **Standards S1–S4**（Surface / 色 / 状态 / 视觉） |
 | [decisions.md](./decisions.md) | 意图 → 标准实现 |
 | [foundations/](./foundations/) | 色 / 字 / 间距 / 层级 / 动效 |
 | [components/](./components/) | 单控件 |

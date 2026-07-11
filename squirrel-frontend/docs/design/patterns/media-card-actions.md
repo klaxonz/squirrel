@@ -2,9 +2,8 @@
 
 ← [Patterns](./README.md)
 
-**S1 路径：** 主（库 / 订阅流内的内容卡）  
-**Surface：** Consume（卡）嵌在 Organize 页时仍用本形态  
-**条款：** [S1](../principles.md#s1--产品身份) · [S3](../principles.md#s3--色意映射)
+**Surface：** Consume（卡）；嵌在 Organize 页时仍用本形态  
+**条款：** [S1](../principles.md#s1--surface-规格) · [S2](../principles.md#s2--色意映射)
 
 视频卡次要操作（已读 / 稍后看 / 喜欢）的标准形态。
 

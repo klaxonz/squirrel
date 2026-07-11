@@ -3,7 +3,7 @@
 ← [Foundations](./README.md)
 
 **代码：** `src/shared/styles/themes/dark.css` · 选中 token 在 `layout.css`  
-**条款：** [S3 色意映射](../principles.md#s3--色意映射)
+**条款：** [S2 色意映射](../principles.md#s2--色意映射)
 
 ## 色轴
 
@@ -75,7 +75,7 @@
 | 浮层 | 边框 + `--app-floating-shadow` |
 | Hairline | 相对 Dark 更清晰；少叠加重阴影 |
 
-## 验收（S3）
+## 验收（S2）
 
 - [ ] 任意「当前 / 选中 / 筛选开」UI 仅使用 `--app-selection-*`
 - [ ] 任意「健康 / 已连接」仅使用 success + 文案

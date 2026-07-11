@@ -1,6 +1,6 @@
 ---
 name: Squirrel Design System
-description: Self-hosted multi-site video subscription hub (归仓) — mandatory design standards
+description: UI design standards for Squirrel (归仓) — Surface, color, states, visual system
 source_of_truth:
   standards: docs/design/principles.md
   product: ../../README.md
@@ -12,39 +12,29 @@ source_of_truth:
 
 # Squirrel Design System
 
-**必须执行的规格。** 实现与评审以标准条款为准；冲突时先让代码与文档对齐，再合入。
+**必须执行的界面规格。** 实现与评审以标准条款为准；冲突时先让代码与文档对齐，再合入。
 
-产品身份与仓库根目录 [README](../README.md) 一致：自托管多站视频订阅中枢（归仓）。
+| 文档 | 管什么 |
+|------|--------|
+| [README](../README.md)（仓库根） | **产品**：是什么、主链、怎么部署 |
+| 本文 + [Standards](./docs/design/principles.md) | **设计**：界面必须用什么规格做 |
 
-结构：**Standards → Foundations → Components → Patterns → Content → Governance**。  
-详细条款在 [`docs/design/`](./docs/design/)。
+结构：**Standards → Foundations → Components → Patterns → Content → Governance**。
 
 ## 标准入口（必读）
 
-完整五条 → **[Standards](./docs/design/principles.md)**（S1–S5）
+完整条款 → **[Standards](./docs/design/principles.md)**（S1–S4）
 
 | 编号 | 标准 | 一句话 |
 |------|------|--------|
-| S1 | 产品身份 | 归仓：订阅 → 同步入库 → 浏览/处理 → 播放；站点/任务/日志为支撑 |
-| S2 | Surface | 每页 Consume / Organize / Operate 三选一规格 |
-| S3 | 色意映射 | 意图 → 固定 token 表；主行动每视图至多 1 个 primary |
-| S4 | 状态完整性 | 加载 / 空 / 错可感知；同步与鉴权失败可恢复 |
-| S5 | 视觉系统 | 字体、圆角、网格、焦点、色温、z/motion 全站统一 |
+| S1 | Surface | 每页 Consume / Organize / Operate 三选一规格 |
+| S2 | 色意映射 | 意图 → 固定 token；每视图 primary ≤ 1 |
+| S3 | 状态完整性 | 加载 / 空 / 错可感知且可操作 |
+| S4 | 视觉系统 | 字体、圆角、网格、焦点、色温、z/motion 统一 |
 
-## 主链（S1）
+产品是什么（订阅中枢 / 归仓）只作上下文，**不**在本页展开路径表。页面 → Surface 对照见 [Shell](./docs/design/patterns/shell.md)。
 
-```
-多站订阅 / 导入 → 同步入库 → 浏览 · 未读 · 稍后看 → 播放
-```
-
-| 路径 | 页面 | 目标 |
-|------|------|------|
-| 主 | 订阅、首页、视频库、播放 | 进得来、扫得清、播得了 |
-| 辅 | 筛选、历史、播放列表 | 可筛可标 |
-| 支撑 | 站点、定时、日志、设置 | 管道可修 |
-| 附属 | RSS、音乐 | 同壳，不定义气质 |
-
-## 意图 → Token（S3 速查）
+## 意图 → Token（S2 速查）
 
 | 意图 | Token |
 |------|-------|
@@ -72,8 +62,9 @@ source_of_truth:
 
 | 页 | 内容 |
 |----|------|
-| [Standards](./docs/design/principles.md) | S1–S5 与验收清单 |
+| [Standards](./docs/design/principles.md) | S1–S4 与验收清单 |
 | [决策表](./docs/design/decisions.md) | 意图 → 标准实现 |
+| [Shell](./docs/design/patterns/shell.md) | 壳结构与页面 → Surface |
 | [Color](./docs/design/foundations/color.md) | 色意映射全文 |
 | [Typography](./docs/design/foundations/typography.md) | 字体与字阶 |
 | [Spacing](./docs/design/foundations/spacing.md) | 间距、圆角、密度 |

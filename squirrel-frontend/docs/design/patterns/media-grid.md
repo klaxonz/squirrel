@@ -3,9 +3,8 @@
 ← [Patterns](./README.md)
 
 **代码：** `layout.css` → `.app-video-grid`  
-**S1 路径：** 主 / 辅（库与订阅流）  
 **Surface：** Consume 墙；Organize 页内网格仍复用本 token  
-**条款：** [S5](../principles.md#s5--视觉系统一致性)
+**条款：** [S4](../principles.md#s4--视觉系统一致性)
 
 ## 标准用法
 
