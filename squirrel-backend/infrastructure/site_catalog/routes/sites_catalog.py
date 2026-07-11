@@ -12,9 +12,10 @@ from infrastructure.site_catalog.service import SiteCatalogService
 from .sites_dependencies import get_catalog_service, get_login_service
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(prefix='/api/sites', tags=['Sites'])
 
 
+@router.get('')
 def get_supported_sites(
     catalog_svc: SiteCatalogService = Depends(get_catalog_service),
     login_svc: SiteLoginStatusService = Depends(get_login_service),
