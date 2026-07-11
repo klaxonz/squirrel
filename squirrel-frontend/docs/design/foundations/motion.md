@@ -2,7 +2,8 @@
 
 ← [Foundations](./README.md)
 
-**代码：** `src/shared/styles/layout.css`
+**代码：** `src/shared/styles/layout.css`  
+**规格：** [Spec 4](../standards.md#spec-4--视觉系统一致性)
 
 | Token | 值 | 场景 |
 |-------|-----|------|
