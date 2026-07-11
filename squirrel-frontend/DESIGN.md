@@ -37,7 +37,7 @@ source_of_truth:
 | [Elevation](./docs/design/foundations/elevation.md) | 阴影、z-index、单画布 |
 | [Motion](./docs/design/foundations/motion.md) | 时长与 easing |
 | [Components](./docs/design/components/README.md) | 按钮、表单、导航、浮层… |
-| [Patterns](./docs/design/patterns/README.md) | 壳、筛选、网格、状态 |
+| [Patterns](./docs/design/patterns/README.md) | 壳、筛选、网格、卡片操作、状态 |
 | [Token 地图](./docs/design/tokens.md) | token → 文件速查 |
 
 ## 最重要的一条

@@ -6,19 +6,41 @@
     :position="position"
     @close="$emit('close')"
   >
-    <AppContextMenuItem icon="check" @click="handleToggleRead(true)">
+    <AppContextMenuItem
+      icon="check"
+      :checked="isRead"
+      @click="handleToggleRead(true)"
+    >
       标记为已读
     </AppContextMenuItem>
 
-    <AppContextMenuItem icon="close" @click="handleToggleRead(false)">
+    <AppContextMenuItem
+      icon="close"
+      @click="handleToggleRead(false)"
+    >
       标记为未读
     </AppContextMenuItem>
 
     <AppContextMenuSeparator />
 
-    <AppContextMenuItem :icon="likeIcon" :danger="isLiked === 1" @click="handleLiked">
+    <AppContextMenuItem
+      :icon="isLater === 1 ? 'watchLaterActive' : 'watchLater'"
+      :checked="isLater === 1"
+      @click="handleLater"
+    >
+      {{ isLater === 1 ? '取消稍后看' : '稍后看' }}
+    </AppContextMenuItem>
+
+    <AppContextMenuItem
+      :icon="likeIcon"
+      :checked="isLiked === 1"
+      :danger="isLiked === 1"
+      @click="handleLiked"
+    >
       {{ likeLabel }}
     </AppContextMenuItem>
+
+    <AppContextMenuSeparator />
 
     <AppContextMenuItem icon="clipboard" @click="handleCopyVideoLink">
       复制链接
@@ -39,13 +61,16 @@ const props = defineProps<{
   isOpen: boolean
   video: VideoListItem
   isLiked: number | null
+  isLater?: number | null
+  isRead?: boolean
 }>()
 
 const emit = defineEmits<{
   close: []
   toggleReadStatus: [isRead: boolean]
+  toggleLike: []
+  toggleLater: []
   copyVideoLink: []
-  toggleLike: [video: VideoListItem]
 }>()
 
 const likeIcon = computed<AppIconName>(() => {
@@ -54,7 +79,7 @@ const likeIcon = computed<AppIconName>(() => {
 })
 
 const likeLabel = computed(() => {
-  if (props.isLiked === 1) return '已喜欢'
+  if (props.isLiked === 1) return '取消喜欢'
   if (props.isLiked === 0) return '不喜欢'
   return '喜欢'
 })
@@ -68,9 +93,11 @@ const handleCopyVideoLink = async () => {
   emit('close')
 }
 
-const handleLiked = async () => {
-  emit('toggleLike', props.video)
-  emit('close')
+const handleLiked = () => {
+  emit('toggleLike')
 }
 
+const handleLater = () => {
+  emit('toggleLater')
+}
 </script>

@@ -1,7 +1,7 @@
 <template>
   <article
     class="video-item group"
-    :class="layout === 'list' ? 'flex-row gap-4' : 'flex-col gap-2.5'"
+    :class="layout === 'list' ? 'video-item--list' : 'video-item--grid'"
     role="button"
     tabindex="0"
     @contextmenu.prevent="showContextMenu"
@@ -9,10 +9,10 @@
     @keydown.enter.prevent="handleClick"
     @keydown.space.prevent="handleClick"
   >
-    <div :class="[
-      'video-item__thumb',
-      layout === 'list' ? 'video-item__thumb--list' : 'video-item__thumb--grid'
-    ]">
+    <div
+      class="video-item__thumb"
+      :class="layout === 'list' ? 'video-item__thumb--list' : 'video-item__thumb--grid'"
+    >
       <VideoThumbnail
         :src="thumbnailSrc"
         :alt="video.title"
@@ -21,39 +21,21 @@
         :blur="shouldBlurThumbnail"
       />
 
-      <!-- Discrete action chips: no shared pill bar. Active states stay visible
-           so liked / later / read can be scanned without hovering. -->
-      <div class="video-item__actions" role="group" aria-label="视频快捷操作">
-        <button
-          type="button"
-          class="video-item__action"
-          :class="{ 'is-active': isRead, 'is-pinned': isRead }"
-          :title="isRead ? '标记未读' : '标记已读'"
-          :aria-pressed="isRead"
-          @click.stop="toggleReadStatus(!isRead)"
-        >
-          <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-[14px]" />
-        </button>
-        <button
-          type="button"
-          class="video-item__action"
-          :class="{ 'is-active': isLater === 1, 'is-later': isLater === 1, 'is-pinned': isLater === 1 }"
-          :title="isLater === 1 ? '取消稍后再看' : '稍后再看'"
-          :aria-pressed="isLater === 1"
-          @click.stop="toggleLater"
-        >
-          <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-[14px]" />
-        </button>
-        <button
-          type="button"
-          class="video-item__action"
-          :class="{ 'is-active': isLiked === 1, 'is-liked': isLiked === 1, 'is-pinned': isLiked === 1 }"
-          :title="isLiked === 1 ? '取消喜欢' : '喜欢'"
-          :aria-pressed="isLiked === 1"
-          @click.stop="toggleLikeVideo"
-        >
-          <AppIcon name="heart" class="size-[14px]" :class="{ 'fill-current': isLiked === 1 }" />
-        </button>
+      <!-- Active flags only — quiet, non-toolbar chrome. Full toggles live in meta. -->
+      <div
+        v-if="hasActiveFlags"
+        class="video-item__flags"
+        aria-hidden="true"
+      >
+        <span v-if="isRead" class="video-item__flag" title="已读">
+          <AppIcon name="check" class="size-3" />
+        </span>
+        <span v-if="isLater === 1" class="video-item__flag" title="稍后看">
+          <AppIcon name="watchLaterActive" class="size-3" />
+        </span>
+        <span v-if="isLiked === 1" class="video-item__flag" title="喜欢">
+          <AppIcon name="heart" class="size-3 fill-current" />
+        </span>
       </div>
 
       <span
@@ -82,20 +64,16 @@
       </div>
     </div>
 
-    <!-- Info Container -->
-    <div :class="[
-      'flex flex-col gap-1 px-0.5',
-      layout === 'list' ? 'flex-1 py-1 min-w-0' : ''
-    ]">
-      <h3 :class="[
-        'video-item__title',
-        layout === 'list' ? 'video-item__title--list' : 'video-item__title--grid'
-      ]">
+    <div class="video-item__body" :class="{ 'video-item__body--list': layout === 'list' }">
+      <h3
+        class="video-item__title"
+        :class="layout === 'list' ? 'video-item__title--list' : 'video-item__title--grid'"
+      >
         {{ video.title }}
       </h3>
 
-      <div class="flex items-start gap-3 min-w-0">
-        <div v-if="showAvatar && displayAvatars.length" class="shrink-0 mt-0.5">
+      <div class="video-item__meta">
+        <div v-if="showAvatar && displayAvatars.length" class="video-item__avatar">
           <SubscriptionAvatar
             :src="displayAvatars[0].avatar"
             :name="displayAvatars[0].name"
@@ -104,21 +82,75 @@
           />
         </div>
 
-        <div class="flex-1 min-w-0 flex flex-col gap-0.5">
-          <div class="flex items-center gap-1.5 text-xs text-muted-foreground/80 font-medium">
+        <div class="video-item__meta-main">
+          <div class="video-item__meta-line">
             <span class="video-item__source-name" @click.stop="goToSubscription(primarySubscriptionId)">
               {{ displayNames }}
             </span>
             <span v-if="video.site" class="video-item__site">{{ video.site }}</span>
           </div>
-          <div class="flex items-center gap-1 text-xs text-muted-foreground/70 font-medium">
+          <div class="video-item__meta-line video-item__meta-line--secondary">
             <span>{{ displayDateText }}</span>
-            <span v-if="layout === 'list' && video.duration" class="ml-2 font-mono bg-muted px-1 rounded">{{ formatDuration(video.duration) }}</span>
+            <span
+              v-if="layout === 'list' && video.duration"
+              class="video-item__list-duration app-mono"
+            >
+              {{ formatDuration(video.duration) }}
+            </span>
           </div>
+        </div>
+
+        <!-- Secondary ops: ghost icon toggles in meta, not on the poster. -->
+        <div
+          class="video-item__quick"
+          role="group"
+          aria-label="视频快捷操作"
+          @click.stop
+        >
+          <button
+            type="button"
+            class="video-item__quick-btn"
+            :class="{ 'is-on': isRead }"
+            :title="isRead ? '标记未读' : '标记已读'"
+            :aria-pressed="isRead"
+            @click="toggleReadStatus(!isRead)"
+          >
+            <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-3.5" />
+          </button>
+          <button
+            type="button"
+            class="video-item__quick-btn"
+            :class="{ 'is-on': isLater === 1 }"
+            :title="isLater === 1 ? '取消稍后再看' : '稍后再看'"
+            :aria-pressed="isLater === 1"
+            @click="toggleLater"
+          >
+            <AppIcon
+              :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'"
+              class="size-3.5"
+            />
+          </button>
+          <button
+            type="button"
+            class="video-item__quick-btn"
+            :class="{ 'is-on': isLiked === 1 }"
+            :title="isLiked === 1 ? '取消喜欢' : '喜欢'"
+            :aria-pressed="isLiked === 1"
+            @click="toggleLikeVideo"
+          >
+            <AppIcon
+              name="heart"
+              class="size-3.5"
+              :class="{ 'fill-current': isLiked === 1 }"
+            />
+          </button>
         </div>
       </div>
 
-      <div v-if="layout === 'list' && video.description" class="hidden md:block mt-1.5 text-xs text-muted-foreground/70 line-clamp-2">
+      <div
+        v-if="layout === 'list' && video.description"
+        class="video-item__description"
+      >
         {{ video.description }}
       </div>
     </div>
@@ -130,9 +162,12 @@
         :is-open="showMenu"
         :video="video"
         :is-liked="isLiked"
+        :is-later="isLater"
+        :is-read="isRead"
         @close="showMenu = false"
-        @toggleReadStatus="toggleReadStatus"
-        @toggleLike="toggleLikeVideo"
+        @toggle-read-status="toggleReadStatus"
+        @toggle-like="toggleLikeVideo"
+        @toggle-later="toggleLater"
       />
     </Teleport>
   </article>
@@ -178,6 +213,10 @@ const isRead = ref(false)
 const isLiked = ref<number | null>(null)
 const isLater = ref<number | null>(null)
 
+const hasActiveFlags = computed(
+  () => isRead.value || isLater.value === 1 || isLiked.value === 1,
+)
+
 const thumbnailSrc = computed(() => String(props.video?.thumbnail || '').trim())
 const isNsfwVideo = computed(() => props.video.subscriptions?.some((s) => s.is_nsfw))
 const shouldBlurThumbnail = computed(() => Boolean(systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value))
@@ -188,7 +227,9 @@ const progressRatio = computed(() => {
 })
 
 const displayDateText = computed(() => {
-  const t = props.sortBy === 'created_at' ? (props.video.created_at || props.video.uploaded_at) : (props.video.uploaded_at || props.video.created_at)
+  const t = props.sortBy === 'created_at'
+    ? (props.video.created_at || props.video.uploaded_at)
+    : (props.video.uploaded_at || props.video.created_at)
   return t ? formatDate(t) : ''
 })
 
@@ -256,6 +297,7 @@ const toggleLater = async () => {
   } catch {
     // silent — toggle failure leaves the prior later state
   }
+  showMenu.value = false
 }
 
 onMounted(() => document.addEventListener('closeAllContextMenus', closeMenuOnExternalClose))
@@ -271,20 +313,28 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   transition: color var(--duration-fast) var(--ease-default);
 }
 
+.video-item--grid {
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.video-item--list {
+  flex-direction: row;
+  gap: var(--space-4);
+}
+
 .video-item:focus-visible {
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
 }
 
+/* ── Thumbnail: media first, no action toolbar ─────────────────────────── */
 .video-item__thumb {
   position: relative;
   overflow: hidden;
-  /* No resting border — light-mode border/muted reads as a white hairline on
-     rounded clips. Cinema black fill + cover image = clean original frame. */
   border: 0;
   border-radius: var(--app-card-radius);
   background: hsl(0 0% 0% / 0.55);
   isolation: isolate;
-  /* Hover is media-first: soft lift only. No amber ring / outline. */
   transition: box-shadow var(--duration-base) var(--ease-default);
 }
 
@@ -312,118 +362,26 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   width: 100%;
 }
 
-/* ── Quick actions: independent chips, not a shared toolbar pill ─────────── */
-.video-item__actions {
+/* Quiet status chips — only when a flag is on; never three equal toolbar buttons */
+.video-item__flags {
   position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
+  top: 0.375rem;
+  left: 0.375rem;
   z-index: var(--z-content);
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.2rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: 999px;
+  background: hsl(0 0% 0% / 0.55);
+  color: hsl(0 0% 100% / 0.92);
   pointer-events: none;
 }
 
-.video-item__action {
+.video-item__flag {
   display: inline-flex;
-  width: 1.75rem;
-  height: 1.75rem;
-  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border: 0;
-  border-radius: 999px;
-  background: hsl(0 0% 0% / 0.58);
-  color: hsl(0 0% 100% / 0.9);
-  cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-0.2rem) scale(0.92);
-  transition:
-    opacity var(--duration-fast) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out),
-    background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-fast) var(--ease-default);
-}
-
-/* Staggered reveal on card hover / keyboard focus-within */
-.video-item:hover .video-item__action,
-.video-item:focus-within .video-item__action {
-  opacity: 1;
-  pointer-events: auto;
-  transform: none;
-}
-
-.video-item:hover .video-item__action:nth-child(1),
-.video-item:focus-within .video-item__action:nth-child(1) {
-  transition-delay: 0ms;
-}
-
-.video-item:hover .video-item__action:nth-child(2),
-.video-item:focus-within .video-item__action:nth-child(2) {
-  transition-delay: 30ms;
-}
-
-.video-item:hover .video-item__action:nth-child(3),
-.video-item:focus-within .video-item__action:nth-child(3) {
-  transition-delay: 55ms;
-}
-
-/* Active state remains scannable without hover */
-.video-item__action.is-pinned {
-  opacity: 1;
-  pointer-events: auto;
-  transform: none;
-}
-
-.video-item__action:hover {
-  background: hsl(0 0% 0% / 0.78);
-  color: hsl(0 0% 100%);
-  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.28);
-}
-
-.video-item__action:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px hsl(0 0% 0% / 0.55),
-    0 0 0 4px hsl(var(--ring) / 0.55);
-}
-
-.video-item__action:active {
-  transform: scale(0.94);
-}
-
-.video-item__action.is-active {
-  background: hsl(0 0% 0% / 0.72);
-  color: hsl(0 0% 100%);
-}
-
-/* Identity accent for the two affinity actions */
-.video-item__action.is-liked {
-  background: hsl(var(--primary) / 0.92);
-  color: hsl(var(--primary-foreground));
-  box-shadow: 0 2px 10px hsl(var(--primary) / 0.28);
-}
-
-.video-item__action.is-liked:hover {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-}
-
-.video-item__action.is-later {
-  background: hsl(0 0% 100% / 0.92);
-  color: hsl(0 0% 8%);
-  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.2);
-}
-
-.video-item__action.is-later:hover {
-  background: hsl(0 0% 100%);
-  color: hsl(0 0% 6%);
-}
-
-.video-item__action.is-active:not(.is-liked):not(.is-later) {
-  color: hsl(var(--primary));
 }
 
 .video-item__duration {
@@ -442,17 +400,10 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   font-variant-numeric: tabular-nums;
   font-weight: 500;
   letter-spacing: 0.01em;
-  transition:
-    opacity var(--duration-fast) var(--ease-default),
-    bottom var(--duration-fast) var(--ease-default);
 }
 
 .video-item__duration--with-progress {
   bottom: 0.55rem;
-}
-
-.video-item:hover .video-item__duration {
-  opacity: 0;
 }
 
 .video-item__scrim {
@@ -466,7 +417,6 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   background: linear-gradient(to top, hsl(0 0% 0% / 0.55), transparent);
 }
 
-/* Progress: edge-to-edge media scrub indicator (not a 1px hairline) */
 .video-item__progress {
   position: absolute;
   right: 0;
@@ -482,6 +432,79 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   height: 100%;
   background: hsl(0 0% 100% / 0.76);
   transition: width var(--duration-slow) var(--ease-out);
+}
+
+/* ── Body / meta ────────────────────────────────────────────────────────── */
+.video-item__body {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-inline: 0.125rem;
+}
+
+.video-item__body--list {
+  padding-block: 0.25rem;
+}
+
+.video-item__title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: hsl(var(--foreground) / 0.92);
+  font-weight: 600;
+  line-height: 1.3;
+  transition: color var(--duration-fast) var(--ease-default);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.video-item__title--grid {
+  font-size: 0.875rem;
+}
+
+.video-item__title--list {
+  margin-bottom: 0.125rem;
+  font-size: 1rem;
+  -webkit-line-clamp: 3;
+}
+
+.video-item:hover .video-item__title {
+  color: hsl(var(--foreground));
+}
+
+.video-item__meta {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+
+.video-item__avatar {
+  flex: 0 0 auto;
+  margin-top: 0.125rem;
+}
+
+.video-item__meta-main {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.video-item__meta-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+  color: hsl(var(--muted-foreground) / 0.82);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.video-item__meta-line--secondary {
+  color: hsl(var(--muted-foreground) / 0.7);
 }
 
 .video-item__source-name {
@@ -505,43 +528,96 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   font-weight: 700;
 }
 
-.video-item__title {
-  display: -webkit-box;
+.video-item__list-duration {
+  margin-left: 0.5rem;
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+  background: hsl(var(--muted));
+}
+
+/* Quick ops: meta-row ghost icons — media stays clean */
+.video-item__quick {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.125rem;
+  margin-top: 0.0625rem;
+  margin-inline-start: auto;
+}
+
+.video-item__quick-btn {
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: hsl(var(--muted-foreground) / 0.55);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
+}
+
+.video-item:hover .video-item__quick-btn,
+.video-item:focus-within .video-item__quick-btn,
+.video-item__quick-btn.is-on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.video-item__quick-btn:hover {
+  background: hsl(var(--foreground) / 0.06);
+  color: var(--app-selection-fg);
+}
+
+.video-item__quick-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.45);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.video-item__quick-btn.is-on {
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
+}
+
+.video-item__quick-btn.is-on:hover {
+  background: var(--app-selection-bg-hover);
+}
+
+.video-item__description {
+  display: none;
+  margin-top: 0.375rem;
   overflow: hidden;
-  color: hsl(var(--foreground) / 0.9);
-  font-weight: 600;
-  line-height: 1.3;
-  transition: color var(--duration-fast) var(--ease-default);
+  color: hsl(var(--muted-foreground) / 0.72);
+  font-size: 0.75rem;
+  line-height: 1.4;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-.video-item__title--grid {
-  font-size: 0.875rem;
-}
-
-.video-item__title--list {
-  margin-bottom: 0.125rem;
-  font-size: 1rem;
-  -webkit-line-clamp: 3;
-}
-
-.video-item:hover .video-item__title {
-  color: hsl(var(--primary));
+@media (min-width: 768px) {
+  .video-item__description {
+    display: -webkit-box;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .video-item,
   .video-item__thumb,
-  .video-item__duration,
+  .video-item__progress-fill,
+  .video-item__quick-btn,
   .video-item__source-name,
-  .video-item__action,
-  .video-item__progress-fill {
+  .video-item__title {
     transition: none;
-  }
-
-  .video-item__action {
-    transform: none;
   }
 }
 </style>
