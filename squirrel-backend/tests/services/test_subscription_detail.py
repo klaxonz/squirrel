@@ -5,9 +5,10 @@ subscription columns + per-subscription video count + incremental sync-state
 projection + synthetic is_nsfw/is_special_followed columns fed into SubscriptionDto.
 """
 
+from contextlib import contextmanager
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from contextlib import contextmanager
 
 from domains.subscription.application.services.core.listing.service import SubscriptionListService
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
@@ -15,6 +16,7 @@ from domains.subscription.domain.models.subscription import Subscription
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
+from domains.video.domain.models.video_history import VideoHistory
 from infrastructure.database.base import Base
 
 
@@ -26,6 +28,7 @@ def _make_service():
             Video.__table__,
             Subscription.__table__,
             SubscriptionVideo.__table__,
+            VideoHistory.__table__,
             UserSubscription.__table__,
             SubscriptionSyncState.__table__,
         ],
@@ -83,10 +86,140 @@ def test_get_subscription_detail_defaults_sync_state_when_absent():
     assert dto.pending_video_count == 0
 
 
+def test_list_subscriptions_hides_nsfw_channels_when_user_setting_is_disabled():
+    svc = SubscriptionListService(
+        session_factory=_make_service().session_factory,
+        get_user_config=lambda _user_id: {'showNsfw': False},
+    )
+    with svc.session_factory() as session:
+        session.add_all(
+            [
+                Subscription(
+                    id=10,
+                    type='CHANNEL',
+                    name='PH model',
+                    url='https://www.pornhub.com/model/demo',
+                    total_videos=8,
+                ),
+                UserSubscription(
+                    user_id=7,
+                    subscription_id=10,
+                    is_deleted=False,
+                    is_nsfw=True,
+                ),
+            ]
+        )
+        session.commit()
+
+    subscriptions, total = svc.list_subscriptions(
+        user_id=7,
+        query=None,
+        type=None,
+        nsfw='all',
+        page=1,
+        page_size=20,
+        domains=['pornhub.com'],
+    )
+
+    assert total == 0
+    assert subscriptions == []
+
+
+def test_list_subscriptions_includes_nsfw_channels_when_user_setting_is_enabled():
+    svc = SubscriptionListService(
+        session_factory=_make_service().session_factory,
+        get_user_config=lambda _user_id: {'showNsfw': True},
+    )
+    with svc.session_factory() as session:
+        session.add_all(
+            [
+                Subscription(
+                    id=13,
+                    type='CHANNEL',
+                    name='PH model',
+                    url='https://www.pornhub.com/model/demo',
+                    total_videos=8,
+                ),
+                UserSubscription(
+                    user_id=7,
+                    subscription_id=13,
+                    is_deleted=False,
+                    is_nsfw=True,
+                ),
+            ]
+        )
+        session.commit()
+
+    subscriptions, total = svc.list_subscriptions(
+        user_id=7,
+        query=None,
+        type=None,
+        nsfw='all',
+        page=1,
+        page_size=20,
+        domains=['pornhub.com'],
+    )
+
+    assert total == 1
+    assert [subscription['name'] for subscription in subscriptions] == ['PH model']
+    assert subscriptions[0]['is_nsfw'] is True
+
+
+def test_list_subscriptions_respects_explicit_nsfw_no_filter():
+    svc = SubscriptionListService(
+        session_factory=_make_service().session_factory,
+        get_user_config=lambda _user_id: {'showNsfw': True},
+    )
+    with svc.session_factory() as session:
+        session.add_all(
+            [
+                Subscription(
+                    id=11,
+                    type='CHANNEL',
+                    name='Safe channel',
+                    url='https://www.youtube.com/@safe',
+                    total_videos=2,
+                ),
+                Subscription(
+                    id=12,
+                    type='CHANNEL',
+                    name='PH model',
+                    url='https://www.pornhub.com/model/demo',
+                    total_videos=8,
+                ),
+                UserSubscription(
+                    user_id=7,
+                    subscription_id=11,
+                    is_deleted=False,
+                    is_nsfw=False,
+                ),
+                UserSubscription(
+                    user_id=7,
+                    subscription_id=12,
+                    is_deleted=False,
+                    is_nsfw=True,
+                ),
+            ]
+        )
+        session.commit()
+
+    subscriptions, total = svc.list_subscriptions(
+        user_id=7,
+        query=None,
+        type=None,
+        nsfw='no',
+        page=1,
+        page_size=20,
+    )
+
+    assert total == 1
+    assert [subscription['name'] for subscription in subscriptions] == ['Safe channel']
+
+
 def test_list_subscriptions_disables_pagination_unique(monkeypatch):
     svc = SubscriptionListService(
         session_factory=lambda: None,
-        get_user_config=lambda user_id: {'showNsfw': True},
+        get_user_config=lambda _user_id: {'showNsfw': True},
     )
     captured = {}
 

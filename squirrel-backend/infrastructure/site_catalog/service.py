@@ -105,6 +105,7 @@ class SiteCatalogService:
             'test_url': test_url,
             'config_enabled': catalog_entry.get('enabled', True),
             'icon_url': icon_url,
+            'metadata': dict(catalog_entry.get('metadata') or {}),
         }
 
     @staticmethod
