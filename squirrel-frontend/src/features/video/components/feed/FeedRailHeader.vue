@@ -2,7 +2,7 @@
   <div class="feed-rail-header">
     <!-- Left: title + geometric › (CSS, not font/SVG — true midline with CJK) -->
     <div class="feed-rail-header__lead">
-      <h2 class="feed-rail-header__title app-section-title__text">
+      <h2 class="feed-rail-header__title">
         <span class="feed-rail-header__title-text">{{ title }}</span>
         <button
           v-if="viewMore"
@@ -83,8 +83,8 @@ const showScrollControls = computed(
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
-  min-height: 2rem;
+  margin-bottom: 1.125rem;
+  min-height: 2.125rem;
 }
 
 .feed-rail-header__lead {
@@ -95,14 +95,19 @@ const showScrollControls = computed(
 .feed-rail-header__title {
   display: inline-flex;
   align-items: center;
-  gap: 0.3em;
+  gap: 0.35em;
   margin: 0;
   line-height: 1;
 }
 
 .feed-rail-header__title-text {
   display: block;
-  line-height: 1;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 650;
+  letter-spacing: -0.022em;
+  line-height: 1.15;
+  color: hsl(var(--foreground));
 }
 
 .feed-rail-header__more {

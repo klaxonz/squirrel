@@ -89,9 +89,9 @@ const showSidebarMusicPlayer = computed(() =>
   height: 100%;
   overflow: hidden;
   border: 0;
-  border-right: 1px solid var(--app-hairline);
+  border-right: 1px solid hsl(var(--border) / 0.38);
   border-radius: 0;
-  background: hsl(var(--sidebar));
+  background: hsl(var(--sidebar) / 0.72);
   color: hsl(var(--sidebar-foreground));
   box-shadow: none;
   user-select: none;
@@ -107,8 +107,8 @@ const showSidebarMusicPlayer = computed(() =>
   flex: 0 0 auto;
   flex-direction: column;
   gap: var(--sidebar-item-gap);
-  padding: var(--space-2);
-  border-bottom: 1px solid var(--app-hairline);
+  padding: var(--space-2) var(--space-2) 0.625rem;
+  border-bottom: 0;
 }
 
 .sidebar-nav {
@@ -116,37 +116,38 @@ const showSidebarMusicPlayer = computed(() =>
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: var(--space-3) var(--space-2) var(--space-2);
+  padding: var(--space-2);
 }
 
 .sidebar-group + .sidebar-group {
-  margin-top: var(--space-4);
+  margin-top: 1.125rem;
 }
 
 /* Quiet section label — text only, no chrome icons (DESIGN: quiet chrome). */
 .sidebar-group__label {
-  margin: 0 0 var(--space-1);
+  margin: 0 0 0.375rem;
   padding: 0 0.625rem;
-  color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground) / 0.58);
+  font-size: 0.625rem;
   font-weight: 600;
   line-height: 1.25;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .sidebar-group__items {
   display: flex;
   flex-direction: column;
-  gap: var(--sidebar-item-gap);
+  gap: 1px;
 }
 
 .sidebar-footer {
   display: flex;
   flex: 0 0 auto;
   flex-direction: column;
-  gap: var(--sidebar-item-gap);
-  padding: var(--space-2);
-  border-top: 1px solid var(--app-hairline);
+  gap: 1px;
+  padding: 0.375rem var(--space-2) var(--space-2);
+  border-top: 1px solid hsl(var(--border) / 0.28);
 }
 
 @media (prefers-reduced-motion: reduce) {

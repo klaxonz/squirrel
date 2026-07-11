@@ -715,7 +715,7 @@ onMounted(() => {
   max-width: 100%;
   overflow: hidden;
   color: hsl(var(--app-media-on-image));
-  font-family: var(--app-heading-font);
+  font-family: var(--font-display);
   font-size: clamp(1.125rem, 1.45vw, 1.4375rem);
   font-weight: 650;
   line-height: 1.32;
@@ -830,11 +830,11 @@ onMounted(() => {
 .home-queue__title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: 1rem;
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
   font-weight: 650;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 
 .home-queue__list {
@@ -980,7 +980,8 @@ onMounted(() => {
 
 .home-rails {
   display: grid;
-  gap: var(--space-8);
+  gap: 2.75rem;
+  padding-top: 0.25rem;
 }
 
 :deep(.home-feed-rail) {
@@ -988,6 +989,11 @@ onMounted(() => {
   margin: 0;
   padding: 0;
   overflow: visible;
+}
+
+:deep(.home-feed-rail + .home-feed-rail) {
+  /* Extra breathing room between stacked media rails */
+  margin-top: 0.125rem;
 }
 
 @media (max-width: 1360px) {

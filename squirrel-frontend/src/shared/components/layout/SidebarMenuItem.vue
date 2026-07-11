@@ -42,14 +42,14 @@ const targetPath = computed(() => {
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 0.55rem;
   width: 100%;
-  height: var(--sidebar-item-height);
+  height: 2.125rem;
   padding: 0 0.625rem;
   border: 0;
   border-radius: var(--radius-md);
   background: transparent;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.88);
   font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1.2;
@@ -62,8 +62,8 @@ const targetPath = computed(() => {
 }
 
 .sidebar-item:hover {
-  background: hsl(var(--foreground) / 0.055);
-  color: var(--app-selection-fg);
+  background: hsl(var(--foreground) / 0.04);
+  color: hsl(var(--foreground) / 0.92);
 }
 
 .sidebar-item:focus-visible {
@@ -81,10 +81,15 @@ const targetPath = computed(() => {
 }
 
 .sidebar-item__icon {
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 1.0625rem;
+  height: 1.0625rem;
   flex-shrink: 0;
   color: currentColor;
+  opacity: 0.88;
+}
+
+.sidebar-item.is-active .sidebar-item__icon {
+  opacity: 1;
 }
 
 .sidebar-item__label {

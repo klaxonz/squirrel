@@ -9,11 +9,11 @@
 
 | 角色 | Token | 标准 |
 |------|-------|------|
-| UI | `--font-sans` | 明确 UI 无衬线家族 + 中文系统 fallback；优先自托管 |
-| Display | `--font-display` | 与 body 在字重或 tracking 上可区分（可同家族） |
-| 等宽 | `--font-mono` | 日志、ID、计数（`.app-mono`） |
+| UI | `--font-sans` | Inter + 中文系统 fallback（`index.css`） |
+| Display | `--font-display` | **Plus Jakarta Sans**（与 Inter 分族）；rail / 舞台 / section 标题 |
+| 等宽 | `--font-mono` | JetBrains Mono；日志、ID、计数（`.app-mono`） |
 
-`--font-display` 必须解析为可区分的展示规格；与 sans 完全同值视为未达标。
+`--font-display` 不得等于 `--font-sans`。Display 标题默认更紧 tracking（约 -0.02em）与 ≥600 字重。
 
 ## 字阶
 

@@ -1488,13 +1488,14 @@
   display: flex;
   align-items: baseline;
   gap: 0.75rem;
-  margin: 0 0 1rem;
+  margin: 0 0 1.125rem;
 }
 .app-section-title__text {
   font-family: var(--font-display);
-  font-size: var(--app-h3-size);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: var(--app-h2-size);
+  font-weight: 650;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
   color: hsl(var(--foreground));
 }
 .app-section-title__eyebrow {

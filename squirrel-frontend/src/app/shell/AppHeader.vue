@@ -112,15 +112,16 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 
 <style scoped>
 .app-header {
-  height: 3.5rem;
+  height: 3.25rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(22rem, 40rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(20rem, 36rem) minmax(0, 1fr);
   align-items: center;
   gap: var(--space-4);
   padding: 0 var(--space-5);
-  border-bottom: 1px solid var(--app-hairline);
+  border-bottom: 1px solid hsl(var(--border) / 0.32);
   /* Flat chrome on the shared canvas — no card band that reads as a third box. */
-  background: hsl(var(--background));
+  background: hsl(var(--background) / 0.92);
+  backdrop-filter: blur(10px);
   position: relative;
   z-index: var(--z-header);
   user-select: none;
