@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { app, BrowserWindow, clipboard, Menu, shell } from 'electron'
 import {
   DEFAULT_WINDOW_STATE,
@@ -11,25 +12,97 @@ import { APP_NAME, __dirname } from './constants.mjs'
 
 let rendererUrl = ''
 let rendererOrigin = ''
+/** Absolute directory of packaged/dist index.html (renderer/dist). */
+let rendererFileRoot = ''
+
+const resolveRendererFileRoot = (url) => {
+  if (!String(url || '').startsWith('file:')) {
+    return ''
+  }
+  try {
+    return path.normalize(path.dirname(fileURLToPath(url)))
+  } catch {
+    return ''
+  }
+}
 
 export const setRendererOrigin = (url, origin) => {
   rendererUrl = url
   rendererOrigin = origin
+  rendererFileRoot = resolveRendererFileRoot(url)
+}
+
+const isPathInsideDir = (filePath, dirPath) => {
+  const normalizedFile = path.normalize(filePath)
+  const normalizedDir = path.normalize(dirPath)
+  const prefix = normalizedDir.endsWith(path.sep) ? normalizedDir : `${normalizedDir}${path.sep}`
+  return normalizedFile === normalizedDir || normalizedFile.startsWith(prefix)
 }
 
 const isTrustedNavigation = (targetUrl) => {
   try {
-    return new URL(targetUrl).origin === rendererOrigin
+    const target = new URL(targetUrl)
+    // Packaged builds use file://; only trust the shipped renderer/dist tree.
+    if (rendererUrl.startsWith('file:') || rendererOrigin === 'file://' || rendererOrigin === 'null') {
+      if (target.protocol !== 'file:' || !rendererFileRoot) {
+        return false
+      }
+      const targetPath = path.normalize(fileURLToPath(target))
+      return isPathInsideDir(targetPath, rendererFileRoot)
+    }
+    return target.origin === rendererOrigin
   } catch {
     console.debug('[squirrel-desktop] window: isTrustedNavigation invalid URL', targetUrl)
     return false
   }
 }
 
-const navigateToRenderer = async (mainWindow) => {
+const isAbortLoadError = (error) => {
+  const code = Number(error?.errno ?? error?.errorCode ?? error?.code)
+  if (code === -3) {
+    return true
+  }
+
+  const message = String(error?.message || error || '')
+  return /ERR_ABORTED|error code -3/i.test(message)
+}
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+export const navigateToRenderer = async (mainWindow, attempt = 1) => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return
+  }
+
+  const maxAttempts = rendererUrl.startsWith('file:') ? 1 : 5
+
   try {
+    if (rendererUrl.startsWith('file:')) {
+      await mainWindow.loadFile(fileURLToPath(rendererUrl))
+      return
+    }
     await mainWindow.loadURL(rendererUrl)
   } catch (error) {
+    // Chromium aborts in-flight navigations when another load supersedes them
+    // (e.g. recovery shell, reload, or single-instance focus). Treat as non-fatal.
+    if (isAbortLoadError(error)) {
+      console.debug('[squirrel-desktop] Renderer load aborted (superseded)', {
+        attempt,
+        url: rendererUrl,
+      })
+      return
+    }
+
+    if (attempt < maxAttempts) {
+      console.warn('[squirrel-desktop] Renderer load failed, retrying', {
+        attempt,
+        maxAttempts,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      await wait(400 * attempt)
+      return navigateToRenderer(mainWindow, attempt + 1)
+    }
+
     console.error('[squirrel-desktop] Failed to load renderer', error)
     await showErrorShell(mainWindow, {
       errorDescription: error instanceof Error ? error.message : 'Unknown load error',
@@ -294,6 +367,27 @@ export const createMainWindow = () => {
 
   void navigateToRenderer(mainWindow)
   return mainWindow
+}
+
+/**
+ * Focus recovery for second-instance / activate: only reload when the window
+ * left the trusted renderer origin (or loadFile tree).
+ */
+export const ensureRendererLoaded = (mainWindow) => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return
+  }
+
+  try {
+    const currentUrl = mainWindow.webContents.getURL()
+    if (currentUrl && isTrustedNavigation(currentUrl)) {
+      return
+    }
+  } catch {
+    // Fall through and force a trusted navigation.
+  }
+
+  void navigateToRenderer(mainWindow)
 }
 
 export { reloadRenderer, getDesktopWindowState }

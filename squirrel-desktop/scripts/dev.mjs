@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const desktopDir = path.resolve(__dirname, '..')
-const frontendDir = path.resolve(desktopDir, '..', 'squirrel-frontend')
+const rendererDir = path.resolve(desktopDir, 'renderer')
 const desktopSrcDir = path.resolve(desktopDir, 'src')
 
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm'
@@ -16,7 +16,7 @@ const rendererUrl = String(process.env.DESKTOP_RENDERER_URL || 'http://127.0.0.1
 const rendererPort = String(new URL(rendererUrl).port || '5173')
 const shouldUseShell = process.platform === 'win32'
 
-let frontendProcess = null
+let rendererProcess = null
 let electronProcess = null
 let desktopWatcher = null
 let restartTimer = null
@@ -62,21 +62,53 @@ const waitForProcessExit = (child, timeoutMs = 5000) => {
 
 const waitForServer = async (url, timeoutMs = 60000) => {
   const startedAt = Date.now()
+  let lastError = null
 
   while (Date.now() - startedAt < timeoutMs) {
     try {
-      const response = await fetch(url, { method: 'GET' })
-      if (response.ok || response.status === 404) {
-        return
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 2500)
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: controller.signal,
+        cache: 'no-store',
+      }).finally(() => clearTimeout(timer))
+
+      // Require a real Vite HTML shell, not a stale/foreign listener on the port.
+      if (response.ok) {
+        const contentType = String(response.headers.get('content-type') || '')
+        const body = await response.text()
+        // Require squirrel renderer entry signals — bare `type="module"` is too
+        // weak and can match unrelated apps bound to the same port.
+        const looksLikeVite =
+          contentType.includes('text/html')
+          && (
+            body.includes('/@vite/client')
+            || body.includes('/src/app/main.ts')
+            || body.includes('src="/src/app/main')
+            || body.includes("src='/src/app/main")
+          )
+
+        if (looksLikeVite) {
+          console.log(`[squirrel-desktop] Renderer ready at ${url}`)
+          return
+        }
+
+        lastError = new Error(
+          `Port responded but body is not a Vite renderer shell (status=${response.status}, content-type=${contentType})`
+        )
+      } else {
+        lastError = new Error(`Renderer HTTP ${response.status}`)
       }
-    } catch {
-      // Retry until the timeout is hit.
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
     }
 
-    await wait(500)
+    await wait(400)
   }
 
-  throw new Error(`Timed out waiting for renderer server: ${url}`)
+  const detail = lastError?.message ? ` Last error: ${lastError.message}` : ''
+  throw new Error(`Timed out waiting for renderer server: ${url}.${detail}`)
 }
 
 const terminate = async (child) => {
@@ -140,7 +172,7 @@ const shutdown = (exitCode = 0) => {
     }
     await Promise.allSettled([
       terminate(electronProcess),
-      terminate(frontendProcess),
+      terminate(rendererProcess),
     ])
     process.exit(exitCode)
   })()
@@ -156,7 +188,6 @@ const startElectron = () => {
       env: {
         ...process.env,
         DESKTOP_RENDERER_URL: rendererUrl,
-        DESKTOP_APP_URL: backendUrl,
       },
       stdio: 'inherit',
     }
@@ -252,10 +283,22 @@ const watchDesktopSource = () => {
 }
 
 const start = async () => {
-  frontendProcess = spawnNpm(
-    ['run', 'dev', '--', '--host', '127.0.0.1', '--port', rendererPort],
+  console.log(`[squirrel-desktop] Starting Vite renderer at ${rendererUrl}`)
+  rendererProcess = spawnNpm(
+    [
+      'exec',
+      'vite',
+      '--',
+      '--config',
+      path.join(rendererDir, 'vite.config.ts'),
+      '--host',
+      '127.0.0.1',
+      '--port',
+      rendererPort,
+      '--strictPort',
+    ],
     {
-      cwd: frontendDir,
+      cwd: desktopDir,
       env: {
         ...process.env,
         VITE_BACKEND_URL: backendUrl,
@@ -264,8 +307,9 @@ const start = async () => {
     }
   )
 
-  frontendProcess.on('exit', (code) => {
+  rendererProcess.on('exit', (code) => {
     if (!shuttingDown) {
+      console.error(`[squirrel-desktop] Renderer process exited (code=${code ?? 1})`)
       void shutdown(code ?? 1)
     }
   })

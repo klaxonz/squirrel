@@ -50,7 +50,20 @@ test('desktop cloudflare loader syncs camoufox cookies into electron session', a
   assert.match(source, /cf-turnstile|challenge-platform/)
 })
 
-test('frontend exposes javdb desktop login controls', { skip: 'PluginManager.vue not found' }, () => {
+test('renderer exposes javdb desktop login controls', async () => {
+  const siteRuntimeManagerPath = new URL(
+    '../renderer/src/features/settings/views/SiteRuntimeManager.vue',
+    import.meta.url,
+  )
+  const siteDesktopLoginPath = new URL(
+    '../renderer/src/features/settings/composables/useSiteDesktopLogin.ts',
+    import.meta.url,
+  )
+  const managerSource = await readFile(siteRuntimeManagerPath, 'utf8')
+  const loginSource = await readFile(siteDesktopLoginPath, 'utf8')
+
+  assert.match(managerSource, /useSiteDesktopLogin|openSiteLogin|getSiteLoginStatus/)
+  assert.match(loginSource, /javdb|openSiteLogin|getSiteLoginStatus/)
 })
 
 test('desktop youporn login verifies the session page', async () => {

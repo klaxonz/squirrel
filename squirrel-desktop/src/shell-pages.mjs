@@ -146,19 +146,31 @@ const buildShellPageUrl = ({ title, eyebrow, heading, body, status, tone = 'load
   return `data:text/html;charset=UTF-8,${encodeURIComponent(html)}`
 }
 
-export const showErrorShell = (mainWindow, details) => {
+export const showErrorShell = async (mainWindow, details) => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return
+  }
+
   const errorSummary = [
     rendererUrl,
     details?.errorCode ? `code=${details.errorCode}` : null,
     details?.errorDescription || null,
   ].filter(Boolean).join('\n')
 
-  return mainWindow.loadURL(buildShellPageUrl({
-    title: '连接失败',
-    eyebrow: 'Desktop Recovery',
-    heading: '页面入口暂时不可用',
-    body: '桌面壳已经启动，但还没有连接上前端页面。请确认前端地址可访问，或直接点击重试。',
-    status: errorSummary,
-    tone: 'error',
-  }))
+  try {
+    await mainWindow.loadURL(buildShellPageUrl({
+      title: '连接失败',
+      eyebrow: 'Desktop Recovery',
+      heading: '页面入口暂时不可用',
+      body: '桌面壳已经启动，但还没有连接上前端页面。请确认前端地址可访问，或直接点击重试。',
+      status: errorSummary,
+      tone: 'error',
+    }))
+  } catch (error) {
+    // Another navigation (retry / reload) may abort this recovery page; that is fine.
+    const message = String(error?.message || error || '')
+    if (!/ERR_ABORTED|error code -3/i.test(message) && Number(error?.errno) !== -3) {
+      console.error('[squirrel-desktop] Failed to show recovery shell', error)
+    }
+  }
 }

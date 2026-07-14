@@ -9,7 +9,7 @@ from fastapi.routing import APIRouter
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse
+from starlette.responses import JSONResponse
 from starlette.staticfiles import StaticFiles
 
 from application.lifespan import lifespan
@@ -170,11 +170,9 @@ def _register_routers(application: FastAPI) -> None:
 
 
 def _mount_static_assets(application: FastAPI) -> None:
+    # Thumbnails / clip previews only. SPA UI lives in squirrel-desktop renderer.
     _mount_static(application, '/static/thumbnails', settings.thumbnails_dir, 'thumbnails')
     _mount_static(application, '/static/clip-markers', settings.clip_marker_previews_dir, 'clip-marker-previews')
-    if not settings.is_dev:
-        _mount_static(application, '/static', settings.static_dir, 'static')
-        _register_spa_route(application)
 
 
 def _mount_static(application: FastAPI, path: str, directory: Path, name: str) -> None:
@@ -184,20 +182,3 @@ def _mount_static(application: FastAPI, path: str, directory: Path, name: str) -
         return
     application.mount(path, StaticFiles(directory=directory), name=name)
     logger.info('%s mounted: %s', name, directory)
-
-
-def _register_spa_route(application: FastAPI) -> None:
-
-    @application.get('/{full_path:path}', name='spa')
-    async def serve_spa(full_path: str):
-        static_dir = settings.static_dir
-
-        static_file = static_dir / full_path
-        if static_file.is_file():
-            return FileResponse(static_file)
-
-        index_file = static_dir / 'index.html'
-        if index_file.exists():
-            return FileResponse(index_file)
-
-        return response.not_found('Frontend static files not found')

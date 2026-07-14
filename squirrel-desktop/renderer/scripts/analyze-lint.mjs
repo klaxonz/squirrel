@@ -34,7 +34,7 @@ for (const file of files) {
   const messages = linter.verify(code, config, { filename: file })
   const hits = messages.filter((m) => m.ruleId === 'design-tokens/design-tokens')
   if (hits.length) {
-    perFile[file.replace(/.*squirrel-frontend[\\/]/, '')] = hits.length
+    perFile[file.replace(/.*renderer[\\/]/, '')] = hits.length
     total += hits.length
     for (const h of hits) {
       const tok = h.message.match(/`([^`]+)`/)?.[1] ?? '?'

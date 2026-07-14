@@ -71,8 +71,9 @@ redis/
 !.env.example
 
 # Build artifacts
-squirrel-frontend/dist/
-squirrel-frontend/node_modules/
+squirrel-desktop/renderer/dist/
+squirrel-desktop/node_modules/
+squirrel-desktop/release/
 plugin_packages/
 *.zip
 *.tar.gz

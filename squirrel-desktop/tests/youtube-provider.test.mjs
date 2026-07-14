@@ -9,7 +9,7 @@ const siteLoginPath = new URL('../src/site-login.mjs', import.meta.url)
 const ipcHandlersPath = new URL('../src/ipc-handlers.mjs', import.meta.url)
 const ipcPlaybackPath = new URL('../src/ipc-playback.mjs', import.meta.url)
 const pluginCorePath = new URL('../../squirrel-site-runtimes/youtube/src/squirrel_youtube/node/youtubei_core.mjs', import.meta.url)
-const frontendDetailPath = new URL('../../squirrel-frontend/src/features/video/composables/useVideoDetail.ts', import.meta.url)
+const frontendDetailPath = new URL('../renderer/src/features/video/composables/useVideoDetail.ts', import.meta.url)
 
 test('desktop youtube provider keeps complete dash payload for direct playback', async () => {
   const source = await readFile(providerPath, 'utf8')

@@ -6,9 +6,9 @@
 |--|--|
 | **主路径** | 订阅 → 同步入库 → 浏览 / 未读 / 稍后看 → 播放 |
 | **支撑** | 站点会话、定时任务、日志 |
-| **形态** | Web 服务 + 可选桌面端 + 浏览器扩展 |
+| **形态** | 后端 API + 桌面端（Electron）+ 浏览器扩展 |
 
-数据与配置在你自己的环境里。桌面端复用同一套 UI，并补齐站点登录、远端搜索与播流解析。
+数据与配置在你自己的环境里。UI 仅维护在桌面端；站点登录、远端搜索与播流解析由 Electron 主进程提供。
 
 ## 能力概览
 
@@ -23,8 +23,7 @@
 
 ```
 squirrel-backend/       API、同步与抽取、调度
-squirrel-frontend/      Web UI
-squirrel-desktop/       Electron 壳（登录 / 搜索 / 播流）
+squirrel-desktop/       Electron 桌面端（main + renderer UI）
 squirrel-extension/     浏览器扩展
 squirrel-site-runtimes/ 站点插件
 squirrel-cf-bypass/     Cloudflare bypass sidecar
@@ -45,15 +44,13 @@ mkdir -p config logs downloads thumbnails postgres/data redis/data
 docker compose up -d
 ```
 
-启动后访问：http://localhost:8001  
-
-健康检查：`curl http://localhost:8001/health`
+健康检查：`curl http://localhost:8001/health`（API；UI 在桌面端）
 
 默认会拉起：
 
 | 服务 | 作用 | 默认端口 |
 |------|------|----------|
-| `squirrel` | Web / API | `8001` |
+| `squirrel` | API | `8001` |
 | `squirrel-worker` | 消息与后台任务 | — |
 | `squirrel-scheduler` | 定时与 crawl 调度 | — |
 | `squirrel-cf-bypass` | Cloudflare bypass | `8002` |
@@ -73,11 +70,11 @@ docker compose up -d --no-deps \
 
 ### 3. 用起来
 
-1. 打开 Web，注册/登录。
+1. 启动桌面端（`npm run dev:desktop` 或安装包），连接本机 API（默认 `http://127.0.0.1:8001`），注册/登录。
 2. 在「订阅」添加频道 URL，或用浏览器扩展在站点页加订。
 3. 等待定时同步，或在界面中手动刷新。
 4. 在首页 / 视频库浏览，用未读、稍后看等整理；点开即可播放。
-5. 需要登录站或远端搜索时，使用桌面端维护站点会话。
+5. 站点登录、远端搜索与播流解析在桌面端完成。
 6. 同步异常时看「站点」「定时」「日志」。
 
 ## 配置要点
@@ -119,15 +116,22 @@ docker compose up -d
 
 ## 桌面端
 
+UI 在 `squirrel-desktop/renderer/`，与 Electron 主进程同包维护。
+
 ```bash
-cd squirrel-desktop
+# 仓库根目录
 npm install
-npm run dev      # 联动 frontend 开发服；后端默认 http://127.0.0.1:8001
-npm run build    # unpacked
-npm run dist     # 安装包
+npm run dev:desktop   # Vite renderer + Electron；后端默认 http://127.0.0.1:8001
+
+# 或
+cd squirrel-desktop
+npm run dev           # 开发
+npm run build:renderer
+npm run build         # UI + unpacked
+npm run dist          # 安装包
 ```
 
-环境变量见 `squirrel-desktop/README.md`（`DESKTOP_APP_URL`、`VITE_BACKEND_URL` 等）。
+环境变量见 `squirrel-desktop/README.md`（`DESKTOP_RENDERER_URL`、`VITE_BACKEND_URL` 等）。
 
 ## 浏览器扩展
 

@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import { DEFAULT_SETTINGS_TAB, SETTINGS_TABS } from '@/shared/constants/sidebar'
 import { useUserStore } from '@/shared/stores/user'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
@@ -447,8 +447,10 @@ const routes: RouteRecordRaw[] = [
   },
 ]
 
+// Hash history is required for packaged Electron loads (`file://…/index.html`).
+// HTML5 history breaks under the file protocol even with Vite `base: './'`.
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes,
   scrollBehavior(to, from, savedPosition) {
     // 滚动位置完全交给 AppLayout 里的 navigation history entry 决定；

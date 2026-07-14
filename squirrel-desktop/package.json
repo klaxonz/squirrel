@@ -2,18 +2,25 @@
   "name": "squirrel-desktop",
   "private": true,
   "version": "0.1.0",
-  "description": "Electron desktop shell for Squirrel",
+  "description": "Squirrel desktop app (Electron + Vue renderer)",
   "type": "module",
   "main": "src/main.mjs",
   "scripts": {
     "dev": "node ./scripts/dev.mjs",
+    "dev:renderer": "vite --config renderer/vite.config.ts",
+    "build:renderer": "vite build --config renderer/vite.config.ts",
+    "build": "npm run build:renderer && electron-builder --dir",
+    "dist": "npm run build:renderer && electron-builder",
+    "start": "electron .",
+    "typecheck": "vue-tsc --noEmit -p renderer/tsconfig.json",
+    "test": "node --test tests/*.test.mjs",
+    "test:renderer": "vitest run --config renderer/vitest.config.ts",
+    "test:renderer:watch": "vitest --config renderer/vitest.config.ts",
+    "lint": "eslint -c renderer/eslint.config.js renderer",
+    "lint:fix": "eslint -c renderer/eslint.config.js renderer --fix",
     "fetch:camoufox": "camoufox-js fetch",
     "postinstall": "npm run rebuild:electron-native",
-    "rebuild:electron-native": "node ./scripts/rebuild-electron-native.mjs",
-    "start": "electron .",
-    "test": "node --test tests/*.test.mjs",
-    "build": "electron-builder --dir",
-    "dist": "electron-builder"
+    "rebuild:electron-native": "node ./scripts/rebuild-electron-native.mjs"
   },
   "build": {
     "appId": "com.klaxon.squirrel.desktop",
@@ -23,6 +30,7 @@
     },
     "files": [
       "src/**/*",
+      "renderer/dist/**/*",
       "package.json"
     ],
     "win": {
@@ -34,14 +42,51 @@
     }
   },
   "dependencies": {
+    "@tanstack/vue-query": "^5.101.0",
+    "@vueuse/core": "^12.8.2",
+    "axios": "^1.14.0",
     "camoufox-js": "^0.10.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dashjs": "^4.7.3",
+    "hls.js": "^1.5.20",
     "kugoumusicapi": "https://github.com/MakcRe/KuGouMusicApi/archive/566de02034493af31c5a44f124429cbc1cb11b13.tar.gz",
+    "lucide-vue-next": "^0.577.0",
+    "pinia": "^3.0.4",
     "playwright-core": "1.53.1",
+    "reka-ui": "^2.9.2",
+    "shaka-player": "^5.1.0",
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss-animate": "^1.0.7",
+    "vue": "^3.4.35",
+    "vue-router": "^4.4.3",
+    "vue-virtual-scroller": "2.0.0-beta.8",
     "youtubei.js": "^17.0.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^24.10.1",
+    "@vitejs/plugin-vue": "^5.1.2",
+    "autoprefixer": "^10.4.20",
     "chokidar": "^3.6.0",
     "electron": "^41.2.0",
-    "electron-builder": "^26.8.1"
+    "electron-builder": "^26.8.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-vue": "^9.33.0",
+    "globals": "^15.15.0",
+    "postcss": "^8.4.41",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.61.1",
+    "vite": "^6.4.1",
+    "vite-plugin-checker": "^0.14.1",
+    "vitest": "^2.1.0",
+    "vue-eslint-parser": "^9.4.3",
+    "vue-tsc": "^3.2.6"
+  },
+  "overrides": {
+    "baseline-browser-mapping": "^2.10.10",
+    "browserslist": "^4.28.1",
+    "caniuse-lite": "^1.0.30001780"
   }
 }

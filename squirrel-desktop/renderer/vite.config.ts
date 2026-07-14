@@ -3,14 +3,20 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 const backendTarget = process.env.VITE_BACKEND_URL || 'http://localhost:8001'
+const rendererRoot = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
+  root: rendererRoot,
+  // Relative base so packaged Electron can load file:// assets.
+  base: './',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   build: {
+    outDir: 'dist',
+    emptyOutDir: true,
     chunkSizeWarningLimit: 900,
     rollupOptions: {
       output: {
@@ -43,20 +49,22 @@ export default defineConfig({
     },
   },
   server: {
+    host: '127.0.0.1',
+    port: 5173,
+    strictPort: true,
     proxy: {
       '/api': {
         target: backendTarget,
         changeOrigin: true,
-        ws: true
+        ws: true,
       },
       '/static': {
         target: backendTarget,
-        changeOrigin: true
-      }
-    }
+        changeOrigin: true,
+      },
+    },
   },
   plugins: [
     vue(),
   ],
-  base: '/',
 })

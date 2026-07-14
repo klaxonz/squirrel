@@ -64,23 +64,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     pip install --no-cache-dir build pipenv
 
 # ========================================
-# frontend-builder: 构建 Vue 前端
-# ========================================
-FROM build-base AS frontend-builder
-
-WORKDIR /app/squirrel-frontend
-
-COPY squirrel-frontend/package.json squirrel-frontend/package-lock.json ./
-
-RUN --mount=type=cache,target=/root/.npm,sharing=locked \
-    npm ci
-
-COPY squirrel-frontend/ ./
-
-RUN --mount=type=cache,target=/root/.npm,sharing=locked \
-    npm run build
-
-# ========================================
 # youtube-node-builder: 安装 YouTube runtime 的 node 生产依赖
 # ========================================
 FROM build-base AS youtube-node-builder
@@ -132,7 +115,7 @@ COPY --from=python-builder /usr/local/lib/python3.11/site-packages /usr/local/li
 COPY squirrel-backend ./
 COPY squirrel-site-runtimes /app/squirrel-site-runtimes
 
-COPY --from=frontend-builder /app/squirrel-frontend/dist ./static
+# UI ships in squirrel-desktop (Electron); backend image is API-only.
 COPY --from=youtube-node-builder /app/squirrel-site-runtimes/youtube/src/squirrel_youtube/node /app/squirrel-site-runtimes/youtube/src/squirrel_youtube/node
 
 RUN mkdir -p /app/config /app/logs /downloads /thumbnails \

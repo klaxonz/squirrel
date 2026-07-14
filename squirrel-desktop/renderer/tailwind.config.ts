@@ -1,9 +1,18 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { Config } from 'tailwindcss'
 import tailwindcssAnimate from 'tailwindcss-animate'
 
+// Absolute globs: vite may be invoked with cwd=squirrel-desktop while this
+// config lives under renderer/, so relative content paths would miss sources.
+const rendererRoot = path.dirname(fileURLToPath(import.meta.url))
+
 export default {
   darkMode: ['class'],
-  content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
+  content: [
+    path.join(rendererRoot, 'index.html'),
+    path.join(rendererRoot, 'src/**/*.{vue,js,ts,jsx,tsx}'),
+  ],
   theme: {
     extend: {
       fontFamily: {

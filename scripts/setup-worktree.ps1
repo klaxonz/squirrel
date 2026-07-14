@@ -65,7 +65,6 @@ Write-Host "[2/3] Setting up node_modules links..." -ForegroundColor Cyan
 
 # List of workspace subprojects (relative to repo root)
 $Workspaces = @(
-  "squirrel-frontend",
   "squirrel-desktop",
   "squirrel-site-runtimes/youtube/src/squirrel_youtube/node"
 )
@@ -113,5 +112,5 @@ Write-Host "  Worktree: $Path"
 Write-Host ""
 Write-Host "You can now cd to the worktree and run any npm script:"
 Write-Host "  cd $Path"
-Write-Host "  npm -w squirrel-front run dev"
 Write-Host "  npm -w squirrel-desktop run dev"
+Write-Host "  npm -w squirrel-desktop run dev:renderer"

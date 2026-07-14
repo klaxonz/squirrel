@@ -1,28 +1,48 @@
 # Squirrel Desktop
 
-`squirrel-desktop` 是一个 Electron 桌面端子项目，复用现有 Squirrel Web UI，不再维护第二套前端页面。
+Electron 桌面端：主进程（登录 / 搜索 / 播流）+ 内嵌 Vue renderer。只维护这一套 UI。
 
-## 设计
+## 布局
 
-- 开发模式：启动 `squirrel-frontend` 的 Vite dev server，再由 Electron 加载该地址。
-- 打包运行：Electron 默认加载 `http://127.0.0.1:8001`，也可以通过环境变量指向其他 Squirrel Web 地址。
-- preload 会注入 `window.desktopApp`，前端可显式识别桌面端能力。
+```
+squirrel-desktop/
+  src/           # Electron main / preload / IPC
+  renderer/      # Vue 3 + Vite UI（原 squirrel-frontend）
+  scripts/       # dev / native rebuild
+```
 
 ## 命令
 
 ```bash
+# 仓库根目录
 npm install
-npm run dev
-npm run build
-npm run dist
+npm run dev:desktop
+
+# 或在本包内
+cd squirrel-desktop
+npm run dev              # Vite renderer + Electron
+npm run build:renderer   # 仅构建 UI → renderer/dist
+npm run build            # UI + electron-builder --dir
+npm run dist             # UI + 安装包
+npm run typecheck
+npm run test             # main-process tests
+npm run test:renderer    # Vue/vitest
 ```
 
-- `npm run dev`：开发模式，要求后端已启动在 `http://127.0.0.1:8001`，或通过 `VITE_BACKEND_URL` 覆盖。
-- `npm run build`：生成 unpacked 桌面端产物。
-- `npm run dist`：生成安装包。
+## 加载方式
+
+| 模式 | Renderer |
+|------|----------|
+| `npm run dev` | Vite `http://127.0.0.1:5173`（`DESKTOP_RENDERER_URL`） |
+| 打包 / 本地 dist | `renderer/dist/index.html`（`file://` via `loadFile`） |
+
+后端 API 默认 `http://127.0.0.1:8001`，开发时代理见 `renderer/vite.config.ts`。
 
 ## 环境变量
 
-- `DESKTOP_APP_URL`：桌面端正式运行时加载的页面地址，默认 `http://127.0.0.1:8001`
-- `DESKTOP_RENDERER_URL`：仅开发模式使用，默认 `http://127.0.0.1:5173`
-- `VITE_BACKEND_URL`：开发模式下前端代理目标，默认 `http://127.0.0.1:8001`
+- `DESKTOP_RENDERER_URL`：开发模式 renderer 地址，默认 `http://127.0.0.1:5173`
+- `VITE_BACKEND_URL`：开发时 Vite 代理目标后端，默认 `http://127.0.0.1:8001`（仅 dev；运行时 API 地址由桌面端 server-config 配置）
+
+打包后 renderer 使用 hash 路由（`createWebHashHistory`），以便在 `file://` 下正常导航。
+
+preload 注入 `window.desktopApp`（`isDesktop: true` 及站点登录 / 播流 / 窗口控制等）。
