@@ -15,7 +15,7 @@
 |------|------|
 | 视频卡 | `features/video/components/feed/VideoItem.vue` |
 | 缩略图 | `features/video/components/feed/VideoThumbnail.vue` |
-| 网格 | `layout.css` → `.app-video-grid*` |
+| 网格 / Rail | `layout.css` → `.app-video-grid*` / `.app-video-rail*` |
 | 首页舞台 | `features/video/views/HomeView.vue`（`.home-stage*`） |
 | Rail 标题 | `features/video/components/feed/FeedRailHeader.vue` |
 

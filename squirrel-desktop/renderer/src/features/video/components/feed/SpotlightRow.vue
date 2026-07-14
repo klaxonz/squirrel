@@ -28,7 +28,7 @@
         :video="video"
         show-avatar
         show-duration
-        class="w-[18rem] shrink-0 snap-start"
+        class="app-video-rail-card"
         @openModal="$emit('openModal', video)"
         @goToProfile="(profile) => $emit('goToProfile', profile)"
         @goToSubscription="(id) => $emit('goToSubscription', id)"

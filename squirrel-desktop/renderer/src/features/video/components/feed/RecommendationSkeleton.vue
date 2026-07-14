@@ -2,7 +2,7 @@
   <article
     v-for="i in count"
     :key="i"
-    class="w-[18rem] shrink-0 snap-start"
+    class="app-video-rail-card"
     :style="{ animationDelay: `${i * 60}ms` }"
   >
     <div

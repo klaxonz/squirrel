@@ -55,6 +55,8 @@
 | 页边 gutter | `--app-page-gutter*` | `1rem` / `1.5rem` / `2rem` |
 | 视频网格 min | `--app-video-grid-min` | `280px` |
 | 视频网格 gap | `--app-video-grid-gap*` | `1.5rem` / `1.25rem`×`2.5rem` |
+| 视频 Rail 卡宽 | `--app-video-rail-card-width` | `18rem` |
+| 视频 Rail gap | `--app-video-rail-gap` | `1.25rem` |
 | 音乐网格 min | `--app-music-grid-min` | `180px` |
 | 圆角阶 | `--radius*` | `4–10px` 阶梯，禁止页面私有圆角 |
 | 控件库 | `components.json` | shadcn-vue **new-york** / **neutral** / lucide |

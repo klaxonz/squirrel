@@ -1,18 +1,19 @@
 <template>
   <div class="feed-rail-header">
-    <!-- Left: title + geometric › (CSS, not font/SVG — true midline with CJK) -->
     <div class="feed-rail-header__lead">
       <h2 class="feed-rail-header__title">
         <span class="feed-rail-header__title-text">{{ title }}</span>
-        <button
+        <Button
           v-if="viewMore"
           type="button"
+          variant="ghost"
+          size="icon-xs"
           class="feed-rail-header__more"
           :aria-label="viewMoreLabel"
           @click="$emit('viewMore')"
         >
-          <span class="feed-rail-header__more-chevron" aria-hidden="true" />
-        </button>
+          <AppIcon name="chevronRight" class="size-3.5" />
+        </Button>
       </h2>
     </div>
 
@@ -105,54 +106,19 @@ const showScrollControls = computed(
   font-family: var(--font-display);
   font-size: 1.125rem;
   font-weight: 650;
-  letter-spacing: -0.022em;
+  letter-spacing: 0;
   line-height: 1.15;
   color: hsl(var(--foreground));
 }
 
 .feed-rail-header__more {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
-  /* Same height as the 1em text line box → flex center is true optical center */
-  width: 0.75em;
-  height: 1em;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
+  margin-left: -0.125rem;
   color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  border-radius: 0.2rem;
-  transition: color 150ms ease;
 }
 
-.feed-rail-header__more:hover,
-.feed-rail-header__more:focus-visible {
+.feed-rail-header__more:hover {
   color: hsl(var(--foreground));
-}
-
-.feed-rail-header__more:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px hsl(var(--background)),
-    0 0 0 4px hsl(var(--ring) / 0.5);
-}
-
-/*
- * Geometric chevron (rotated square corner).
- * No font metrics, no SVG viewBox bias — pure box center.
- */
-.feed-rail-header__more-chevron {
-  display: block;
-  width: 0.34em;
-  height: 0.34em;
-  border-top: 1.5px solid currentColor;
-  border-right: 1.5px solid currentColor;
-  transform: rotate(45deg);
-  /* Pull slightly left so the visual tip sits tighter to the title */
-  margin-left: -0.05em;
 }
 
 .feed-rail-header__scroll {
@@ -174,9 +140,4 @@ const showScrollControls = computed(
   flex-shrink: 0;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .feed-rail-header__more {
-    transition: none;
-  }
-}
 </style>

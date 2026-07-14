@@ -87,6 +87,8 @@
   --app-video-grid-gap: 1.5rem;
   --app-video-grid-gap-x: 1.25rem;  /* remote/feed variant */
   --app-video-grid-gap-y: 2.5rem;   /* remote/feed variant */
+  --app-video-rail-card-width: 18rem;
+  --app-video-rail-gap: 1.25rem;
   --app-music-grid-min: 180px;
 
   --app-toolbar-padding-block: 0.75rem;
@@ -284,6 +286,23 @@
 
 .app-video-grid--compact {
   --app-grid-min: 240px;
+}
+
+/* Horizontal media rails share one geometry contract. Scroll controls read
+   these rendered dimensions instead of mirroring them as JavaScript numbers. */
+.app-video-rail {
+  display: flex;
+  gap: var(--app-video-rail-gap);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x proximity;
+}
+
+.app-video-rail-card {
+  width: var(--app-video-rail-card-width);
+  flex: 0 0 var(--app-video-rail-card-width);
+  scroll-snap-align: start;
 }
 
 .app-content-stack {

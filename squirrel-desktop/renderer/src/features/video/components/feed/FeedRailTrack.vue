@@ -1,7 +1,7 @@
 <template>
   <div
     ref="scrollContainer"
-    class="feed-rail-track no-scrollbar flex gap-5 overflow-x-auto pb-2 snap-x"
+    class="app-video-rail no-scrollbar"
     @scroll="updateScrollState"
   >
     <slot />
@@ -10,20 +10,15 @@
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { calculateMediaRailPageDistance } from '@/features/video/lib/mediaRail'
 
 const props = withDefaults(defineProps<{
-  /** Approximate width of one snap item (card + gap). Used for page scroll distance. */
-  itemExtent?: number
-  /** How many items to advance per click. */
-  pageSize?: number
   /**
    * Optional signal that content length changed (e.g. items.length).
    * Triggers a scroll-state remeasure after paint.
    */
   contentKey?: string | number
 }>(), {
-  itemExtent: 304,
-  pageSize: 2,
   contentKey: undefined,
 })
 
@@ -65,7 +60,15 @@ const updateScrollState = () => {
 const scroll = (direction: 'left' | 'right') => {
   const el = scrollContainer.value
   if (!el) return
-  const delta = props.itemExtent * props.pageSize
+  const firstItem = el.firstElementChild as HTMLElement | null
+  const trackStyle = window.getComputedStyle(el)
+  const gap = Number.parseFloat(trackStyle.columnGap || trackStyle.gap) || 0
+  const itemWidth = firstItem?.getBoundingClientRect().width || 0
+  const delta = calculateMediaRailPageDistance({
+    viewportWidth: el.clientWidth,
+    itemWidth,
+    gap,
+  })
   const prefersReduce =
     typeof window !== 'undefined'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
