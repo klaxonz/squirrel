@@ -140,7 +140,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 
 <style scoped>
 .app-header {
-  height: 3.25rem;
+  height: var(--app-header-height);
   display: grid;
   /* Equal side tracks keep the search optically centered in the header,
      independent of whether the left toggle or right user chip is wider. */

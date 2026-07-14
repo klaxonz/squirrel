@@ -150,7 +150,11 @@ const stripRelaxedResponseHeaders = (responseHeaders) => {
 }
 
 export const installDesktopMediaHeaders = () => {
-  const removeBeforeSend = session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+  const ses = session.defaultSession
+
+  // Electron webRequest listeners do NOT return an unsubscribe function.
+  // Passing `null` as the listener removes the previous handler (see Electron docs).
+  ses.webRequest.onBeforeSendHeaders((details, callback) => {
     const rule = matchMediaHeaderRule(details.url)
     if (!rule) {
       callback({ requestHeaders: details.requestHeaders })
@@ -180,7 +184,7 @@ export const installDesktopMediaHeaders = () => {
     })
   })
 
-  const removeHeadersReceived = session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+  ses.webRequest.onHeadersReceived((details, callback) => {
     // Strip X-Frame-Options and CSP headers for subFrame requests (iframes) to allow previewing inside the app
     if (details.resourceType === 'subFrame') {
       const responseHeaders = { ...details.responseHeaders }
@@ -209,7 +213,11 @@ export const installDesktopMediaHeaders = () => {
   })
 
   return () => {
-    removeBeforeSend()
-    removeHeadersReceived()
+    try {
+      ses.webRequest.onBeforeSendHeaders(null)
+      ses.webRequest.onHeadersReceived(null)
+    } catch (err) {
+      console.debug('[squirrel-desktop] media-headers cleanup error', err)
+    }
   }
 }

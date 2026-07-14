@@ -173,19 +173,21 @@ const designTokenGuardPlugin = {
 
 export default tseslint.config(
   {
+    // ESLint is launched by the desktop package scripts, so flat-config globs
+    // are resolved from squirrel-desktop rather than this config's directory.
     ignores: [
-      'dist/**',
-      'node_modules/**',
-      'output/**',
-      'public/**',
-      'scripts/**',
+      'renderer/dist/**',
+      'renderer/node_modules/**',
+      'renderer/output/**',
+      'renderer/public/**',
+      'renderer/scripts/**',
       '**/*.d.ts',
-      'src/vite-env.d.ts',
+      'renderer/src/vite-env.d.ts',
       // Config files reference token names (z-/text-/rounded-/raw colors) as
       // documentation in comments and example strings; they define the system,
       // not consume it, so the design-token guard does not apply.
-      'eslint.config.js',
-      'tailwind.config.ts',
+      'renderer/eslint.config.js',
+      'renderer/tailwind.config.ts',
     ],
   },
 
@@ -194,7 +196,7 @@ export default tseslint.config(
   ...pluginVue.configs['flat/recommended'],
 
   {
-    files: ['**/*.vue'],
+    files: ['renderer/**/*.vue'],
     languageOptions: {
       parser: vueParser,
       parserOptions: {
@@ -210,7 +212,7 @@ export default tseslint.config(
   },
 
   {
-    files: ['**/*.{ts,tsx,vue,js,mjs}'],
+    files: ['renderer/**/*.{ts,tsx,vue,js,mjs}'],
     languageOptions: {
       globals: {
         ...globals.browser,
@@ -276,8 +278,8 @@ export default tseslint.config(
   // the old paths silently stopped matching and re-introduced 8 no-console errors.
   {
     files: [
-      'src/shared/lib/logger.ts',
-      'src/features/playback/components/video-player/core/logger.ts',
+      'renderer/src/shared/lib/logger.ts',
+      'renderer/src/features/playback/components/video-player/core/logger.ts',
     ],
     rules: { 'no-console': 'off' },
   },
@@ -294,7 +296,7 @@ export default tseslint.config(
     // Promoted from warn → error once the subtree cleared its first-party anys
     // (EventEmitter.ts typed; AnalyticsPlugin.log → unknown[]). The third-party
     // boundary anys in adapters/ and plugins/ are exempted by the block below.
-    files: ['src/features/playback/components/video-player/**/*.{vue,ts}'],
+    files: ['renderer/src/features/playback/components/video-player/**/*.{vue,ts}'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       'vue/no-mutating-props': 'error',
@@ -308,8 +310,8 @@ export default tseslint.config(
     // they are exempt rather than carried as convergence debt. (Formerly
     // plugins/**; the stream technology moved to adapters/ per ADR-0001.)
     files: [
-      'src/features/playback/components/video-player/adapters/**/*.{ts,vue}',
-      'src/features/playback/components/video-player/plugins/**/*.{ts,vue}',
+      'renderer/src/features/playback/components/video-player/adapters/**/*.{ts,vue}',
+      'renderer/src/features/playback/components/video-player/plugins/**/*.{ts,vue}',
     ],
     rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
@@ -319,7 +321,7 @@ export default tseslint.config(
     // and their class lists (e.g. [&>svg]:absolute arbitrary variants) are
     // upstream-generated too, so the design-token guard would only flag
     // vendored code we can't meaningfully change.
-    files: ['src/shared/ui/**/*.{vue,ts}'],
+    files: ['renderer/src/shared/ui/**/*.{vue,ts}'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       'design-tokens/design-tokens': 'off',

@@ -4,6 +4,8 @@
 
 | 页 | 内容 |
 |----|------|
+| [ui-clone-anchors.md](./ui-clone-anchors.md) | **视觉宿主**（FreeTube / Fluent / YesPlayMusic / shadcn；冻结尺寸） |
+| [visual-verification.md](./visual-verification.md) | **布局契约验证**（L1 截图 / baseline / Electron L2） |
 | [principles.md](./principles.md) | **原则 P1–P5**（两难取舍） |
 | [standards.md](./standards.md) | **强制规格 Spec 1–4** + 验收 |
 | [decisions.md](./decisions.md) | 意图 → 标准实现 |

@@ -6,25 +6,30 @@
 
 | 文档 | 管什么 |
 |------|--------|
+| [UI Clone Anchors](./ui-clone-anchors.md) | 页面级视觉宿主与冻结规则（**好看 = 像锚点**） |
+| [Visual verification](./visual-verification.md) | 布局合入的截图契约 |
 | [Principles](./principles.md) | 决策取舍 |
 | [Standards](./standards.md) | 强制规格与验收 |
 | [README](../../../README.md) | 产品定义 |
 
 ## 源优先级
 
-1. 代码中的 token 与共享组件（`layout.css` / `themes/dark.css` / `shared/**`）  
-2. 本目录文档（与代码必须同变更集对齐）  
-3. 业务页样式：仅页面结构与一次性布局；视觉值必须引用 token
+1. [UI Clone Anchors](./ui-clone-anchors.md) 的宿主与冻结尺寸（页面级构图争议以此为准）
+2. 代码中的 token 与共享组件（`layout.css` / `themes/dark.css` / `shared/**`）
+3. 本目录其余文档（与代码必须同变更集对齐）
+4. 业务页样式：仅页面结构与一次性布局；视觉值必须引用 token
 
 ## 合入前必做
 
-1. 不违反 [Principles](./principles.md)  
-2. 标明 **Surface**（Consume / Organize / Operate）  
-3. 勾选 [Standards](./standards.md) 相关验收项  
-4. 意图用色符合 [Color](./foundations/color.md)  
-5. 组件来自 `shared/ui` 或已文档化 Pattern  
-6. 新 spacing / z-index / 色 / 动效：先写入 foundations  
-7. 若改路由归属：同步 [Surface 落地表](./patterns/surface.md)
+1. 不违反 [UI Clone Anchors](./ui-clone-anchors.md)（无锚点依据的「更好看」变更直接阻断）
+2. 不违反 [Principles](./principles.md)
+3. 标明 **Surface**（Consume / Organize / Operate）
+4. 勾选 [Standards](./standards.md) 相关验收项
+5. 意图用色符合 [Color](./foundations/color.md)
+6. 组件来自 `shared/ui` 或已文档化 Pattern
+7. 新 spacing / z-index / 色 / 动效：先写入 foundations
+8. 若改路由归属：同步 [Surface 落地表](./patterns/surface.md)
+9. 若改壳 / 网格 / 主题布局：按 [Visual verification](./visual-verification.md) 更新或通过 L1 baseline
 
 ## 新增组件 / Pattern（三步）
 
@@ -82,12 +87,16 @@
 | 缺 loading / empty / error，或假数据充数 | Spec 3 · P4 |
 | 失败态无可执行下一步 | Spec 3 |
 | display 与 sans 不可区分；随机圆角 / 魔法 z-index | Spec 4 · P5 |
+| 无宿主锚点依据的视觉微调 / 混搭多宿主 | [UI Clone Anchors](./ui-clone-anchors.md) |
+| 改壳或网格却不更新/通过 visual baseline | [Visual verification](./visual-verification.md) |
+| 用截图做开放式审美探索而非契约对比 | [Visual verification](./visual-verification.md) · AGENTS |
 
 ## 修订本系统
 
-1. 原则变更 → `principles.md`  
-2. 强制规格变更 → `standards.md` + 相关 foundation/pattern  
-3. 产品身份变更 → README（不在设计标准里复制主链表）  
-4. 再改 token / shared / 业务  
+1. 视觉宿主 / 冻结尺寸变更 → `ui-clone-anchors.md` + baseline
+2. 原则变更 → `principles.md`
+3. 强制规格变更 → `standards.md` + 相关 foundation/pattern
+4. 产品身份变更 → README（不在设计标准里复制主链表）
+5. 再改 token / shared / 业务
 
 只改口号、不改验收与代码，视为未完成。

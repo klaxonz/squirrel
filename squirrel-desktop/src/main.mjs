@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow } from 'electron'
@@ -11,6 +12,25 @@ import { closeCamoufoxDocumentLoader } from './document-loader.mjs'
 import { __dirname } from './constants.mjs'
 
 const DEFAULT_DEV_RENDERER_URL = 'http://127.0.0.1:5173/'
+
+/**
+ * Visual / automation harness (Playwright `_electron` + CDP).
+ * Isolates userData and skips single-instance lock so a test Electron can
+ * run beside a normal desktop session without stealing the window.
+ */
+const isVisualTestSession = () => {
+  const flag = String(process.env.SQUIRREL_VISUAL_TEST || '').trim().toLowerCase()
+  return flag === '1' || flag === 'true' || flag === 'yes'
+}
+
+if (isVisualTestSession()) {
+  const visualUserData = String(process.env.SQUIRREL_VISUAL_USER_DATA || '').trim()
+    || path.join(os.tmpdir(), 'squirrel-visual-userdata')
+  fs.mkdirSync(visualUserData, { recursive: true })
+  app.setPath('userData', visualUserData)
+  // Avoid colliding with a user's running Squirrel instance.
+  app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+}
 
 const resolvePackagedRendererUrl = () => {
   const indexHtml = path.join(__dirname, '..', 'renderer', 'dist', 'index.html')
@@ -58,28 +78,31 @@ const prewarmDesktopPlaybackProviders = () => {
   }, 1000)
 }
 
-const hasSingleInstanceLock = app.requestSingleInstanceLock()
+const visualTest = isVisualTestSession()
+const hasSingleInstanceLock = visualTest ? true : app.requestSingleInstanceLock()
 
 if (!hasSingleInstanceLock) {
   app.quit()
 } else {
-  app.on('second-instance', () => {
-    const mainWindow = BrowserWindow.getAllWindows()[0]
-    if (!mainWindow) {
-      return
-    }
+  if (!visualTest) {
+    app.on('second-instance', () => {
+      const mainWindow = BrowserWindow.getAllWindows()[0]
+      if (!mainWindow) {
+        return
+      }
 
-    if (mainWindow.isMinimized()) {
-      mainWindow.restore()
-    }
-    if (!mainWindow.isVisible()) {
-      mainWindow.show()
-    }
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore()
+      }
+      if (!mainWindow.isVisible()) {
+        mainWindow.show()
+      }
 
-    mainWindow.focus()
-    // Use the same loadFile/loadURL path as first launch (not raw loadURL).
-    ensureRendererLoaded(mainWindow)
-  })
+      mainWindow.focus()
+      // Use the same loadFile/loadURL path as first launch (not raw loadURL).
+      ensureRendererLoaded(mainWindow)
+    })
+  }
 
   app.whenReady().then(() => {
     installDesktopBridgeHandlers()

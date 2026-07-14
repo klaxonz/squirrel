@@ -47,6 +47,9 @@ runtime-logs/
 runtime-audit/
 **/runtime-audit/
 
+# Desktop visual baselines (local only — regenerate with npm run visual:update)
+squirrel-desktop/renderer/visual-baselines/*.png
+
 # Test related
 *.test
 coverage/

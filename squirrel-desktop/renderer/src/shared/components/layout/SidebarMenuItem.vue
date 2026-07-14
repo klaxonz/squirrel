@@ -44,7 +44,7 @@ const targetPath = computed(() => {
   align-items: center;
   gap: 0.55rem;
   width: 100%;
-  height: 2.125rem;
+  height: var(--sidebar-item-height);
   padding: 0 0.625rem;
   border: 0;
   border-radius: var(--radius-md);
@@ -81,8 +81,8 @@ const targetPath = computed(() => {
 }
 
 .sidebar-item__icon {
-  width: 1.0625rem;
-  height: 1.0625rem;
+  width: var(--sidebar-icon-size);
+  height: var(--sidebar-icon-size);
   flex-shrink: 0;
   color: currentColor;
   opacity: 0.88;

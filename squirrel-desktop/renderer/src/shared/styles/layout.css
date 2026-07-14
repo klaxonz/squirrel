@@ -95,6 +95,10 @@
 
   --container-max-width: 2560px;
 
+  /* Desktop shell geometry. These tokens are the implementation source for
+     the FreeTube-hosted title bar, global toolbar, and navigation rail. */
+  --app-titlebar-height: 2rem;
+  --app-header-height: 3.25rem;
   --sidebar-expanded-width: 15rem;
   --sidebar-icon-size: 1.25rem;
   --sidebar-item-height: 2.25rem;

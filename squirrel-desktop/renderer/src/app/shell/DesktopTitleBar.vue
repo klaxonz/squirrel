@@ -118,7 +118,7 @@ onUnmounted(() => {
 
 <style scoped>
 .titlebar {
-  height: 2rem;
+  height: var(--app-titlebar-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -183,7 +183,7 @@ onUnmounted(() => {
 
 .titlebar__control {
   width: 2.5rem;
-  height: 2rem;
+  height: var(--app-titlebar-height);
   color: hsl(var(--muted-foreground));
   border-radius: 0;
 }

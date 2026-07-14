@@ -4,6 +4,8 @@
 
 **规格：** [Spec 1 Surface](../standards.md#spec-1--surface)  
 **明细：** [Surface](./surface.md)
+**视觉宿主：** [UI Clone Anchors](../ui-clone-anchors.md)（壳 → FreeTube）
+**布局验证：** [Visual verification](../visual-verification.md)
 
 ## 桌面壳（标准结构）
 
@@ -18,6 +20,8 @@ Title bar
 
 | 项 | 标准值 / 行为 |
 |----|----------------|
+| 桌面标题栏 | `--app-titlebar-height` = `2rem`；仅承载窗口、侧栏、前进后退控制 |
+| 全局顶栏 | `--app-header-height` = `3.25rem`；搜索居中，账户入口靠右 |
 | 历史 | 应用级前进后退 |
 | 搜索 | 仅顶栏全局搜索 |
 | 侧栏宽 | `--sidebar-expanded-width` = `15rem` |
