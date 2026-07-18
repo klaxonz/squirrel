@@ -10,7 +10,7 @@
       class="music-bar"
       :class="{
         'music-bar--mini': !isMusicPage,
-        'music-bar--dock': !isMusicPage && !isSidebarOpen,
+        'music-bar--collapsed': isCompactSidebarPlayer,
         'music-bar--immersive': showImmersive,
       }"
     >
@@ -80,7 +80,7 @@
             <img v-if="store.currentTrack.cover" :src="store.currentTrack.cover" :alt="store.currentTrack.title || '封面'" />
             <AppIcon v-else name="playlistMusic" class="h-4 w-4" />
           </div>
-          <div class="music-mini-text">
+          <div v-if="!isCompactSidebarPlayer" class="music-mini-text">
             <span class="music-mini-title">{{ store.currentTrack.title || '未知歌曲' }}</span>
             <span
               v-if="store.error"
@@ -95,7 +95,7 @@
         </Button>
 
         <div class="music-mini-controls">
-          <Button text severity="secondary" size="sm" icon-only :disabled="!canStep" title="上一首" aria-label="上一首" @click="store.playPrevious()">
+          <Button v-if="!isCompactSidebarPlayer" text severity="secondary" size="sm" icon-only :disabled="!canStep" title="上一首" aria-label="上一首" @click="store.playPrevious()">
             <AppIcon name="previous" class="h-4 w-4" />
           </Button>
           <Button
@@ -112,10 +112,10 @@
             <AppIcon v-else-if="store.playing" name="pause" class="h-4 w-4" />
             <AppIcon v-else name="play" class="h-4 w-4" />
           </Button>
-          <Button text severity="secondary" size="sm" icon-only :disabled="!canStep" title="下一首" aria-label="下一首" @click="store.playNext()">
+          <Button v-if="!isCompactSidebarPlayer" text severity="secondary" size="sm" icon-only :disabled="!canStep" title="下一首" aria-label="下一首" @click="store.playNext()">
             <AppIcon name="next" class="h-4 w-4" />
           </Button>
-          <Button text severity="secondary" size="sm" icon-only title="播放队列" aria-label="播放队列" @click="showQueue = !showQueue">
+          <Button v-if="!isCompactSidebarPlayer" text severity="secondary" size="sm" icon-only title="播放队列" aria-label="播放队列" @click="showQueue = !showQueue">
             <AppIcon name="playlistMusic" class="h-4 w-4" />
           </Button>
         </div>
@@ -238,6 +238,7 @@ const commentsState = useMusicComments()
 
 const isMusicPage = computed(() => route.name === 'Music')
 const isSidebarOpen = computed(() => uiStore.isSidebarOpen)
+const isCompactSidebarPlayer = computed(() => !isMusicPage.value && !isSidebarOpen.value)
 const canStep = computed(() => store.queue.length > 1)
 
 // ponytail: formatDuration is the player-surface variant (zero-padded mm:ss)
@@ -293,6 +294,10 @@ watch(() => store.currentTrack?.album_audio_id, async (newId) => {
   }
 })
 
+watch(isCompactSidebarPlayer, (compact) => {
+  if (compact) showQueue.value = false
+})
+
 function playQueueItem(index: number) {
   if (store.queueIndex === index) {
     store.togglePlayback()
@@ -338,10 +343,10 @@ function removeQueueItem(index: number) {
 .music-bar--mini {
   right: auto;
   left: 0;
-  bottom: 0;
+  bottom: var(--sidebar-footer-height);
   z-index: var(--z-header);
   width: var(--sidebar-expanded-width);
-  height: auto;
+  height: var(--sidebar-player-height);
   max-width: none;
   border: 0;
   border-top: 1px solid var(--app-hairline);
@@ -352,33 +357,8 @@ function removeQueueItem(index: number) {
   overflow: hidden;
 }
 
-/*
-  When the app rail is collapsed, mini controls must stay reachable.
-  Dock to the workspace bottom-left instead of the inert sidebar slot.
-*/
-.music-bar--dock {
-  right: auto;
-  left: var(--space-3);
-  bottom: var(--space-3);
-  z-index: var(--z-header);
-  width: min(22rem, calc(100vw - 1.5rem));
-  transform: none;
-  border: 1px solid var(--app-hairline);
-  border-radius: var(--app-surface-radius);
-  background: hsl(var(--background) / 0.96);
-  box-shadow: var(--app-panel-shadow);
-}
-
-@media (min-width: 768px) {
-  .music-bar--mini {
-    left: 0;
-    width: var(--sidebar-expanded-width);
-  }
-
-  .music-bar--dock {
-    left: var(--space-3);
-    width: min(22rem, calc(100vw - var(--workspace-offset) - 1.5rem));
-  }
+.music-bar--collapsed {
+  width: var(--sidebar-collapsed-width);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -472,7 +452,15 @@ function removeQueueItem(index: number) {
   flex-direction: column;
   align-items: stretch;
   gap: 0.375rem;
+  height: 100%;
   padding: 0.5rem 0.75rem 0.625rem;
+}
+
+.music-bar--collapsed .music-mini {
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.375rem;
 }
 
 .music-mini-track {
@@ -480,6 +468,11 @@ function removeQueueItem(index: number) {
   min-width: 0;
   padding: 0.125rem;
   justify-content: flex-start;
+}
+
+.music-bar--collapsed .music-mini-track {
+  justify-content: center;
+  padding: 0;
 }
 
 .music-mini-cover {
@@ -549,6 +542,10 @@ function removeQueueItem(index: number) {
   gap: 0.25rem;
   width: 100%;
   flex-shrink: 0;
+}
+
+.music-bar--collapsed .music-mini-controls {
+  width: auto;
 }
 
 </style>

@@ -77,7 +77,6 @@ const showSidebarMusicPlayer = computed(() =>
 
 <style scoped>
 .sidebar-rail {
-  --sidebar-player-space: 6.25rem;
   display: flex;
   width: 100%;
   height: 100%;
@@ -87,11 +86,6 @@ const showSidebarMusicPlayer = computed(() =>
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   user-select: none;
-  transition: padding-bottom var(--duration-base) var(--ease-out);
-}
-
-.sidebar-rail.has-player {
-  padding-bottom: var(--sidebar-player-space);
 }
 
 .sidebar-top-nav,
@@ -117,6 +111,13 @@ const showSidebarMusicPlayer = computed(() =>
   overflow-x: hidden;
   overflow-y: auto;
   padding: 0.875rem 0.75rem;
+  transition: padding-bottom var(--duration-base) var(--ease-out);
+}
+
+/* The fixed mini player occupies the bottom of the scrollable rail, directly
+   above Settings. Reserve that space in nav instead of moving the footer. */
+.sidebar-rail.has-player .sidebar-nav {
+  padding-bottom: calc(0.875rem + var(--sidebar-player-height));
 }
 
 .sidebar-group + .sidebar-group {
@@ -159,7 +160,7 @@ const showSidebarMusicPlayer = computed(() =>
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebar-rail {
+  .sidebar-nav {
     transition: none;
   }
 }
