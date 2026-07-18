@@ -4,6 +4,7 @@ import { reactive, ref } from 'vue'
 export type VideoDensity = 'compact' | 'comfortable' | 'large'
 type VideoViewMode = 'grid' | 'list'
 type VideoViewPreference = { viewMode: VideoViewMode; density: VideoDensity }
+type SidebarStateOptions = { persist?: boolean }
 
 export const useUIStore = defineStore('ui', () => {
   const SIDEBAR_OPEN_KEY = 'ui.sidebarOpen'
@@ -47,14 +48,14 @@ export const useUIStore = defineStore('ui', () => {
   }
   const videoViewPreferences = reactive<Record<string, VideoViewPreference>>(readVideoViewPreferences())
 
-  const toggleSidebar = () => {
+  const toggleSidebar = (options?: SidebarStateOptions) => {
     isSidebarOpen.value = !isSidebarOpen.value
-    if (typeof localStorage !== 'undefined') {
+    if (options?.persist !== false && typeof localStorage !== 'undefined') {
       localStorage.setItem(SIDEBAR_OPEN_KEY, String(isSidebarOpen.value))
     }
   }
 
-  const setSidebarOpen = (open: boolean, options?: { persist?: boolean }) => {
+  const setSidebarOpen = (open: boolean, options?: SidebarStateOptions) => {
     isSidebarOpen.value = open
     const persist = options?.persist !== false
     if (persist && typeof localStorage !== 'undefined') {

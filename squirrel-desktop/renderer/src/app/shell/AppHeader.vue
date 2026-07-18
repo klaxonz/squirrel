@@ -19,7 +19,7 @@
         :title="isSidebarOpen ? '收起侧边栏 (Ctrl+B)' : '展开侧边栏 (Ctrl+B)'"
         :aria-label="isSidebarOpen ? '收起侧边栏' : '展开侧边栏'"
         :aria-expanded="isSidebarOpen"
-        @click="uiStore.toggleSidebar()"
+        @click="toggleSidebar"
       >
         <AppIcon name="panelLeft" class="size-4" />
       </Button>
@@ -76,6 +76,12 @@ import { Button } from '@/shared/ui/button'
 import { useUIStore } from '@/shared/stores/ui'
 import { useUserStore } from '@/shared/stores/user'
 
+const props = withDefaults(defineProps<{
+  persistSidebarToggle?: boolean
+}>(), {
+  persistSidebarToggle: true,
+})
+
 const route = useRoute()
 const router = useRouter()
 const uiStore = useUIStore()
@@ -84,6 +90,10 @@ const { isDesktop: isDesktopEnv } = useDesktopBridge()
 const isDesktopClient = isDesktopEnv()
 
 const isSidebarOpen = computed(() => uiStore.isSidebarOpen)
+
+const toggleSidebar = () => {
+  uiStore.toggleSidebar({ persist: props.persistSidebarToggle })
+}
 
 const userDisplayName = computed(() => {
   if (!userStore.currentUser) return '未登录'

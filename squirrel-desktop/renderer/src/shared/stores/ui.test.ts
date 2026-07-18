@@ -38,6 +38,16 @@ describe('ui search contexts', () => {
     expect(localStorage.setItem).toHaveBeenCalledWith('ui.videoDensity', 'large')
   })
 
+  it('keeps immersive sidebar toggles route-local', () => {
+    const store = useUIStore()
+
+    store.setSidebarOpen(false, { persist: false })
+    store.toggleSidebar({ persist: false })
+
+    expect(store.isSidebarOpen).toBe(true)
+    expect(localStorage.setItem).not.toHaveBeenCalledWith('ui.sidebarOpen', expect.any(String))
+  })
+
   it('remembers view preferences per video collection', () => {
     const store = useUIStore()
 

@@ -16,7 +16,7 @@
         :title="isSidebarOpen ? '收起侧边栏 (Ctrl+B)' : '展开侧边栏 (Ctrl+B)'"
         :aria-label="isSidebarOpen ? '收起侧边栏' : '展开侧边栏'"
         :aria-expanded="isSidebarOpen"
-        @click="uiStore.toggleSidebar()"
+        @click="toggleSidebar"
       >
         <AppIcon name="panelLeft" class="titlebar__navigation-icon" />
       </Button>
@@ -82,6 +82,12 @@ import type { AppIconName } from '@/shared/icons/app-icons'
 import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 import { useUIStore } from '@/shared/stores/ui'
 
+const props = withDefaults(defineProps<{
+  persistSidebarToggle?: boolean
+}>(), {
+  persistSidebarToggle: true,
+})
+
 const desktop = window.desktopApp
 const nav = useNavigationHistory()
 const uiStore = useUIStore()
@@ -109,6 +115,10 @@ function goBack() {
 
 function goForward() {
   void nav.goForward()
+}
+
+function toggleSidebar() {
+  uiStore.toggleSidebar({ persist: props.persistSidebarToggle })
 }
 
 onMounted(async () => {

@@ -7,17 +7,24 @@
     }"
     :style="{ '--workspace-offset': sidebarWidth }"
   >
-    <DesktopTitleBar v-if="isDesktop" class="app-layout__titlebar" />
+    <DesktopTitleBar
+      v-if="isDesktop"
+      class="app-layout__titlebar"
+      :persist-sidebar-toggle="persistSidebarToggle"
+    />
 
     <div class="app-layout__frame">
       <AppSidebar
-        v-if="!isSidebarHidden"
         class="app-layout__sidebar"
         :collapsed="!isSidebarOpen"
       />
 
       <main class="app-layout__workspace">
-        <AppHeader v-if="showAppHeader" class="app-layout__header" />
+        <AppHeader
+          v-if="showAppHeader"
+          class="app-layout__header"
+          :persist-sidebar-toggle="persistSidebarToggle"
+        />
 
         <div
           ref="mainScrollRef"
@@ -79,11 +86,10 @@ const sidebarRouteMeta = computed(() => {
 const isImmersiveSurface = computed(() =>
   Boolean(sidebarRouteMeta.value && sidebarRouteMeta.value.defaultOpen === false),
 )
-const isSidebarHidden = computed(() => route.name === 'VideoPlay')
-const sidebarWidth = computed(() => {
-  if (isSidebarHidden.value) return '0rem'
-  return isSidebarOpen.value ? 'var(--sidebar-expanded-width)' : 'var(--sidebar-collapsed-width)'
-})
+const persistSidebarToggle = computed(() => !isImmersiveSurface.value)
+const sidebarWidth = computed(() => (
+  isSidebarOpen.value ? 'var(--sidebar-expanded-width)' : 'var(--sidebar-collapsed-width)'
+))
 
 /**
  * Every ordinary authenticated surface keeps the same 44px desktop header and
@@ -154,7 +160,7 @@ function handleKeydown(e: KeyboardEvent) {
   const mod = e.metaKey || e.ctrlKey
   if (mod && (e.key === 'b' || e.key === 'B')) {
     e.preventDefault()
-    uiStore.toggleSidebar()
+    uiStore.toggleSidebar({ persist: persistSidebarToggle.value })
     return
   }
   // Back: Alt+← (cross-platform) or Cmd/Ctrl+[ (macOS-standard)
