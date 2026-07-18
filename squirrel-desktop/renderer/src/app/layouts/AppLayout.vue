@@ -168,10 +168,7 @@ function handleKeydown(e: KeyboardEvent) {
     }
     return
   }
-  // Esc: 优先让栈顶 modal 处理（modal 自己的 dismiss 逻辑接管），
-  // 仅当 modal 栈为空且 detail-like 页面才走 goBack。
-  // 之前用 `(target as HTMLElement).tagName === 'DIV'` 这种粗粒度判断，
-  // 会被设置行 / 歌单卡片等焦点元素误触发 goBack（UI-008）。
+  // Esc: modal stack first; only then goBack on bare body/main/div focus.
   if (e.key === 'Escape' && !modalApi.hasOpen() && nav.canGoBack.value) {
     const tag = (e.target as HTMLElement | null)?.tagName
     if (tag === 'BODY' || tag === 'MAIN' || tag === 'DIV') {

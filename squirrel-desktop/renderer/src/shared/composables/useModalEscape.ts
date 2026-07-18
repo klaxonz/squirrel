@@ -2,9 +2,6 @@
  * 模态栈：让全局 Esc 拦截器（`AppLayout.vue: handleKeydown`）知道当前顶层
  * 是否有模态/dialog/抽屉在打开。
  *
- * 之前 Esc 拦截用 `target.tagName === 'BODY' | 'MAIN' | 'DIV'` 这种粗粒度
- * 判断，会被设置行 / 歌单卡片等焦点元素误触发 goBack（UI-008）。
- *
  * 用法：
  *   - 任何 dialog / sheet / popover / drawer 在 mount 时调用
  *     `useModalEscape(openRef)`（最简），或者

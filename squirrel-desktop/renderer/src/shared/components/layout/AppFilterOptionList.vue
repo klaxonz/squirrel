@@ -1,4 +1,4 @@
-<!-- DESIGN.md § filter-popover — source tiles.
+<!-- Filter panel option tiles (e.g. site pickers).
      Selected = raised card + selection border (not ink-wash mud).
      role=group (honest; not full APG listbox). Idle brand marks stay full color. -->
 <template>

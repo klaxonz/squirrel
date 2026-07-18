@@ -9,59 +9,60 @@
       </Transition>
 
       <div class="auth-field">
-        <label for="nickname" class="auth-field__label">昵称</label>
-        <Input fluid
-          id="nickname"
-          v-model="form.nickname"
-          type="text"
-          required
-          placeholder="您希望被称呼的名字"
-          autocomplete="nickname"
-          class="auth-field__input"
-        />
-      </div>
-
-      <div class="auth-field">
-        <label for="email" class="auth-field__label">邮箱</label>
-        <Input fluid
-          id="email"
-          v-model="form.email"
-          type="email"
-          required
-          placeholder="name@example.com"
-          autocomplete="email"
-          class="auth-field__input"
-        />
-      </div>
-
-      <div class="auth-field">
-        <div class="auth-field__row">
-          <label for="password" class="auth-field__label">密码</label>
-          <span class="auth-field__hint">至少 8 位字符</span>
-        </div>
-        <div class="auth-field__wrap">
+        <FloatLabel variant="on" class="auth-field__float-label">
           <Input fluid
-            id="password"
-            v-model="form.password"
-            :type="showPassword ? 'text' : 'password'"
+            id="nickname"
+            v-model="form.nickname"
+            type="text"
             required
-            minlength="8"
-            placeholder="设置一个安全的密码"
-            autocomplete="new-password"
-            class="auth-field__input auth-field__input--with-action"
+            autocomplete="nickname"
+            class="auth-field__input"
           />
-          <Button
-            type="button"
-            text severity="secondary"
-            size="sm" icon-only
-            class="auth-field__action"
-            :title="showPassword ? '隐藏密码' : '显示密码'"
-            :aria-label="showPassword ? '隐藏密码' : '显示密码'"
-            @click="showPassword = !showPassword"
-          >
-            <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
-          </Button>
-        </div>
+          <label for="nickname">昵称</label>
+        </FloatLabel>
+      </div>
+
+      <div class="auth-field">
+        <FloatLabel variant="on" class="auth-field__float-label">
+          <Input fluid
+            id="email"
+            v-model="form.email"
+            type="email"
+            required
+            autocomplete="email"
+            class="auth-field__input"
+          />
+          <label for="email">邮箱</label>
+        </FloatLabel>
+      </div>
+
+      <div class="auth-field">
+        <FloatLabel variant="on" class="auth-field__float-label">
+          <div class="auth-field__wrap">
+            <Input fluid
+              id="password"
+              v-model="form.password"
+              :type="showPassword ? 'text' : 'password'"
+              required
+              minlength="8"
+              autocomplete="new-password"
+              class="auth-field__input auth-field__input--with-action"
+            />
+            <Button
+              type="button"
+              text severity="secondary"
+              size="sm" icon-only
+              class="auth-field__action"
+              :title="showPassword ? '隐藏密码' : '显示密码'"
+              :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+              @click="showPassword = !showPassword"
+            >
+              <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
+            </Button>
+          </div>
+          <label for="password">密码</label>
+        </FloatLabel>
+        <span class="auth-field__hint">至少 8 位字符</span>
       </div>
 
       <Button type="submit" size="lg" :loading="loading" class="auth-entry__submit">
@@ -83,6 +84,7 @@ import AuthEntryCard from '@/features/auth/components/AuthEntryCard.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
+import { FloatLabel } from '@/shared/ui/float-label'
 import { Input } from '@/shared/ui/input'
 import { useUserStore } from '@/shared/stores/user'
 

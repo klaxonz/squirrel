@@ -1,4 +1,4 @@
-<!-- DESIGN.md § filter-popover — compact filter menu (Organize 32px). -->
+<!-- Compact filter popover panel. -->
 <template>
   <div class="app-filter-panel">
     <header class="app-filter-panel__header">

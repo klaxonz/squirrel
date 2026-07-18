@@ -11,7 +11,7 @@ defineProps<{
 </script>
 
 <style scoped>
-/* Quiet meta label — system tokens only (media-craft / Spec 2). */
+/* Quiet meta label — system tokens only. */
 .site-tag {
   display: inline-flex;
   align-items: center;

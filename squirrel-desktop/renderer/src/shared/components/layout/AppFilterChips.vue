@@ -1,4 +1,4 @@
-<!-- DESIGN.md § filter-popover — compact segmented track (exclusive choice).
+<!-- Compact exclusive segmented track for filter panels.
      Dual-theme: track/raised tokens. role=group (honest; not full APG radiogroup). -->
 <template>
   <div

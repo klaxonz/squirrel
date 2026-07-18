@@ -108,9 +108,8 @@
 
   --container-max-width: 2560px;
 
-  /* Desktop shell geometry. These tokens are the implementation source for
-     the FreeTube-hosted title bar, global toolbar, and navigation rail.
-     Keep chrome short so content starts higher. */
+  /* Desktop shell geometry (title bar, global header, nav rail).
+     Values are implementation defaults — redesign may change them with tests. */
   --app-titlebar-height: 2rem;
   --app-header-height: 2.75rem;
   --sidebar-expanded-width: 15rem;
@@ -188,9 +187,7 @@
     0 36px 96px hsl(0 0% 0% / 0.18);
   --app-muted-surface: hsl(var(--muted) / 0.45);
 
-  /* Media craft — on-image overlays (docs/design/patterns/media-craft.md).
-     Darken frames with --overlay alpha; light ink stays H28 warm near-white
-     so dual themes do not introduce pure-black / pure-white canvas islands. */
+  /* On-image overlays: darken with --overlay alpha; ink stays H28 warm. */
   --app-media-on-image: 28 12% 97%;
   --app-media-on-image-muted: 28 8% 86%;
   --app-media-thumb-placeholder: hsl(var(--overlay) / 0.45);
@@ -300,9 +297,7 @@
   --app-grid-min: 240px;
 }
 
-/* Music artwork walls follow the YesPlayMusic-hosted density contract. Keep
-   their column math here so home, discovery, profile, and detail views cannot
-   quietly drift into separate 120–160px card grids. */
+/* Shared music artwork grid — keep one column formula for discovery walls. */
 .app-music-grid {
   display: grid;
   gap: var(--app-music-grid-gap);
@@ -695,8 +690,7 @@
   padding: var(--space-5) var(--app-page-gutter-lg, 2rem);
 }
 
-/* Media craft — shared on-image duration/status badge.
-   Prefer this over local bg-black/text-white so dual themes stay H28 warm. */
+/* Shared on-image duration/status badge (prefer over pure black/white). */
 .app-media-duration-badge {
   position: absolute;
   right: 0.375rem;
@@ -830,9 +824,7 @@
   color: var(--app-selection-fg);
 }
 
-/* Neutral selection language for secondary/outline/ghost toggles outside
-   the toolbar (music category chips, detail toggle buttons, etc.).
-   Spec 2: selected / current uses --app-selection-*, never brand primary. */
+/* Neutral selection for secondary toggles — use --app-selection-*, not primary. */
 .app-selection-active,
 button.app-selection-active,
 [data-state='on'].app-selection-active {

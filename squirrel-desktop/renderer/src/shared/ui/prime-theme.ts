@@ -10,6 +10,44 @@ import Aura from '@primeuix/themes/aura'
  */
 export const squirrelAuraPreset = definePreset(Aura, {
   semantic: {
+    // Aura is the visual host, while this map gives its neutral surface scale
+    // the product's single warm-neutral color axis. Without this mapping,
+    // page surfaces sourced from the legacy semantic tokens and controls
+    // sourced from Aura's Zinc defaults render as two unrelated dark themes.
+    colorScheme: {
+      light: {
+        surface: {
+          0: 'hsl(var(--card))',
+          50: 'hsl(var(--gray-50))',
+          100: 'hsl(var(--gray-100))',
+          200: 'hsl(var(--gray-200))',
+          300: 'hsl(var(--gray-300))',
+          400: 'hsl(var(--gray-400))',
+          500: 'hsl(var(--gray-500))',
+          600: 'hsl(var(--gray-600))',
+          700: 'hsl(var(--gray-700))',
+          800: 'hsl(var(--gray-800))',
+          900: 'hsl(var(--gray-900))',
+          950: 'hsl(var(--gray-950))',
+        },
+      },
+      dark: {
+        surface: {
+          0: 'hsl(var(--foreground))',
+          50: 'hsl(var(--gray-50))',
+          100: 'hsl(var(--gray-100))',
+          200: 'hsl(var(--gray-200))',
+          300: 'hsl(var(--gray-300))',
+          400: 'hsl(var(--gray-400))',
+          500: 'hsl(var(--gray-500))',
+          600: 'hsl(var(--gray-600))',
+          700: 'hsl(var(--gray-700))',
+          800: 'hsl(var(--gray-800))',
+          900: 'hsl(var(--gray-900))',
+          950: 'hsl(var(--gray-950))',
+        },
+      },
+    },
     typography: {
       fontFamily: 'var(--font-sans)',
       fontSize: '0.875rem',

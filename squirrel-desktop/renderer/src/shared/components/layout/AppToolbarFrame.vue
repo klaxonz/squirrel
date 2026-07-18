@@ -42,9 +42,7 @@ withDefaults(defineProps<{
 .app-toolbar-frame--sticky {
   position: sticky;
   top: 0;
-  /* UI-068: rely on background opacity instead of backdrop blur — keeps the
-     toolbar readable on top of any scroll content without the frosted-glass
-     effect DESIGN.md prohibits. */
+  /* Prefer solid background over backdrop blur for sticky toolbars. */
   z-index: var(--z-sticky);
 }
 

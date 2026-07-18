@@ -5,8 +5,7 @@
      light used H26/H36 — two independently-tuned palettes that made the
      whole UI feel inconsistent across themes. */
 
-  /* Semantic surfaces (see DESIGN.md §2). Sidebar is a quiet lift of the
-     canvas so chrome and content stay one temperature; hierarchy comes from
+  /* Semantic surfaces. Sidebar quietly lifts the canvas; hierarchy from
      hairlines/structure, not a second floating column. */
   --background: 28 10% 7%;
   --foreground: 28 10% 95%;

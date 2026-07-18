@@ -19,7 +19,7 @@ import { cn } from '@/shared/lib/utils'
 
 const props = withDefaults(defineProps<{
   selected?: boolean
-  /** default: padded card rows; flush: continuous list (Fluent Reader style). */
+  /** default: padded card rows; flush: continuous list. */
   variant?: 'default' | 'flush'
   class?: HTMLAttributes['class']
 }>(), {

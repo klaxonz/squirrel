@@ -54,7 +54,7 @@ const router = useRouter()
 
 const needsRelogin = computed(() => /登录|会话|鉴权|auth|login|token/i.test(String(props.error || '')))
 
-/** Keep the third of the player bar readable (Spec 3). */
+/** Keep the track-info third of the player bar readable. */
 const shortError = computed(() => {
   const raw = String(props.error || '').trim()
   if (!raw) return ''

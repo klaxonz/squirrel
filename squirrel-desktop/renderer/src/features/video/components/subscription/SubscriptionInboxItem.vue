@@ -237,7 +237,7 @@ const openVideo = () => {
 }
 
 .subscription-inbox-item__title:hover {
-  /* Media craft: title stays foreground; primary is for CTA/play only. */
+  /* Title stays foreground; primary is for CTA/play only. */
   color: hsl(var(--foreground));
 }
 

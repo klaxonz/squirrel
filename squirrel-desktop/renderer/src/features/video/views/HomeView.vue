@@ -47,7 +47,7 @@ import FeaturedVideos from '@/features/video/components/feed/FeaturedVideos.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 
-// Home: FreeTube-style recommendation rails. Tabbed library lives in VideosView.
+// Home: stacked recommendation rails. Tabbed library lives in VideosView.
 defineOptions({ name: 'HomeView' })
 
 const router = useRouter()

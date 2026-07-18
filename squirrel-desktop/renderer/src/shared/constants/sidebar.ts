@@ -239,7 +239,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     group: 'system',
     activePrefixes: ['/settings'],
     activeRouteNames: ['Settings', ...SETTINGS_TABS.map((tab) => tab.routeName)],
-    // UI-012: already under /settings → keep current tab; otherwise use default path.
+    // Already under /settings → keep current tab; otherwise use default path.
     resolvePath: (currentPath) => (currentPath.startsWith('/settings') ? currentPath : null),
   },
 ]
@@ -249,8 +249,8 @@ export const SIDEBAR_FOOTER_ITEMS = NAV_ITEMS.filter((item) => item.key === 'set
 
 /**
  * Home sits above grouped content navigation; Settings remains footed.
- * Labels stay product-Chinese; order mirrors FreeTube (Subscriptions-like media
- * first, library second, tools last) without inventing a third shell.
+ * Labels stay product-Chinese. Group order: media subscriptions → library → tools.
+ * Single app rail; visual redesign may change density/chrome without a second nav system.
  */
 export const NAV_GROUPS: NavigationGroup[] = [
   {

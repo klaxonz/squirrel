@@ -138,14 +138,14 @@ const showSidebarMusicPlayer = computed(() =>
 .sidebar-group__items {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--sidebar-item-gap);
 }
 
 .sidebar-footer {
   display: flex;
   flex: 0 0 auto;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--sidebar-item-gap);
   padding: 0.375rem var(--space-2) var(--space-2);
   border-top: 1px solid hsl(var(--border) / 0.28);
 }

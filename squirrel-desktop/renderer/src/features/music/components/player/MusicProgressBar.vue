@@ -212,7 +212,7 @@ onUnmounted(() => {
 .music-progress-bar {
   position: relative;
   width: 100%;
-  /* Visual track is hairline; expand the hit target so YesPlayMusic-style
+  /* Visual track is hairline; expand hit target for easier scrubbing.
      seeking stays reliable without thickening the chrome. */
   height: 12px;
   cursor: pointer;

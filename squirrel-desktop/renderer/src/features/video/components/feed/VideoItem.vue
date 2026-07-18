@@ -399,7 +399,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
 }
 
-/* ── Thumbnail: media first, no action toolbar (media-craft) ───────────── */
+/* Thumbnail: media first, no action toolbar. */
 .video-item__thumb {
   position: relative;
   overflow: hidden;

@@ -221,7 +221,7 @@ onUnmounted(() => {
 }
 
 .group:hover .remote-channel-video-title {
-  /* Media craft: title stays foreground — primary is for CTA/play only. */
+  /* Title stays foreground — primary is for CTA/play only. */
   color: hsl(var(--foreground));
 }
 

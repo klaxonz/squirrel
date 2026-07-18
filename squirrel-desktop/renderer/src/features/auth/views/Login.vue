@@ -9,42 +9,44 @@
       </Transition>
 
       <div class="auth-field">
-        <label for="email" class="auth-field__label">邮箱</label>
-        <Input fluid
-          id="email"
-          v-model="form.email"
-          type="email"
-          required
-          placeholder="name@example.com"
-          autocomplete="email"
-          class="auth-field__input"
-        />
+        <FloatLabel variant="on" class="auth-field__float-label">
+          <Input fluid
+            id="email"
+            v-model="form.email"
+            type="email"
+            required
+            autocomplete="email"
+            class="auth-field__input"
+          />
+          <label for="email">邮箱</label>
+        </FloatLabel>
       </div>
 
       <div class="auth-field">
-        <label for="password" class="auth-field__label">密码</label>
-        <div class="auth-field__wrap">
-          <Input fluid
-            id="password"
-            v-model="form.password"
-            :type="showPassword ? 'text' : 'password'"
-            required
-            placeholder="请输入密码"
-            autocomplete="current-password"
-            class="auth-field__input auth-field__input--with-action"
-          />
-          <Button
-            type="button"
-            text severity="secondary"
-            size="sm" icon-only
-            class="auth-field__action"
-            :title="showPassword ? '隐藏密码' : '显示密码'"
-            :aria-label="showPassword ? '隐藏密码' : '显示密码'"
-            @click="showPassword = !showPassword"
-          >
-            <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
-          </Button>
-        </div>
+        <FloatLabel variant="on" class="auth-field__float-label">
+          <div class="auth-field__wrap">
+            <Input fluid
+              id="password"
+              v-model="form.password"
+              :type="showPassword ? 'text' : 'password'"
+              required
+              autocomplete="current-password"
+              class="auth-field__input auth-field__input--with-action"
+            />
+            <Button
+              type="button"
+              text severity="secondary"
+              size="sm" icon-only
+              class="auth-field__action"
+              :title="showPassword ? '隐藏密码' : '显示密码'"
+              :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+              @click="showPassword = !showPassword"
+            >
+              <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
+            </Button>
+          </div>
+          <label for="password">密码</label>
+        </FloatLabel>
       </div>
 
       <label for="rememberMe" class="auth-checkbox">
@@ -72,6 +74,7 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import { Checkbox } from '@/shared/ui/checkbox'
+import { FloatLabel } from '@/shared/ui/float-label'
 import { Input } from '@/shared/ui/input'
 import { useUserStore } from '@/shared/stores/user'
 import { resetReactive as resetNavigationHistory } from '@/shared/lib/navigationHistory'

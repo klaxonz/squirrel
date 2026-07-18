@@ -57,9 +57,7 @@ const layout = computed(() => {
  *   - 后退：旧页向右推回，新页从左滑入；
  *   - 同级替换（如设置 tab 切换）：仅淡入淡出。
  */
-// UI-053: skip the first paint's transition. Without this guard the user
-// sees a fade-in on app launch (a "single-frame flash of nothing") for the
-// route they asked to be on. After the first navigation, normal rules apply.
+// Skip first paint transition to avoid a launch flash on the initial route.
 const isInitialMount = ref(true)
 const transitionName = computed(() => {
   if (isInitialMount.value) return ''

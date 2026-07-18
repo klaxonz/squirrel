@@ -389,6 +389,8 @@ const routes: RouteRecordRaw[] = [
       hideScrollbar: true,
       search: 'music',
       searchPlaceholder: '搜索歌曲、歌手、专辑',
+      // Music workbench owns the window — collapse the global app rail (α shell).
+      sidebar: SidebarMode.fixed,
       transitionKey: 'music',
       historyStrategy: 'push',
     }),
@@ -417,7 +419,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: false,
       title: '服务器配置',
-      layout: 'empty',
+      layout: 'auth',
       historyStrategy: 'replace',
     },
   },

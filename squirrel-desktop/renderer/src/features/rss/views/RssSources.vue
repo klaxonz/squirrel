@@ -1086,7 +1086,7 @@ const handleWorkspaceKeyDown = (event: KeyboardEvent) => {
     }
   }
 
-  // Fluent Reader-style list navigation (j/k and arrows).
+  // Entry list keyboard navigation (j/k and arrows).
   if (event.key === 'j' || event.key === 'J' || event.key === 'ArrowDown') {
     event.preventDefault()
     stepReadingEntry(1)

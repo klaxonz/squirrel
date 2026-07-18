@@ -1,5 +1,5 @@
 /**
- * Fluent Reader-style entry list navigation helpers.
+ * Entry list navigation helpers (j/k, arrows).
  * Pure index math so keyboard handlers stay thin and testable.
  */
 export function nextEntryIndex(
