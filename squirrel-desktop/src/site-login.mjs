@@ -12,6 +12,7 @@ import {
   isYouPornCookieTarget,
 } from './cookie-header.mjs'
 import {
+  APP_ICON_PATH,
   APP_NAME,
   desktopChromeUserAgent,
   desktopChromeUserAgentMetadata,
@@ -628,6 +629,7 @@ export const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
     minWidth: 900,
     minHeight: 640,
     title: `${APP_NAME} - ${profile.label} Login`,
+    icon: APP_ICON_PATH,
     parent: parentWindow && !parentWindow.isDestroyed() ? parentWindow : undefined,
     modal: false,
     webPreferences: {

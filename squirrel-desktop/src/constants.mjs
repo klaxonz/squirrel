@@ -6,6 +6,8 @@ export const __dirname = path.dirname(__filename)
 const repoRoot = path.resolve(__dirname, '..', '..')
 
 export const APP_NAME = 'Squirrel'
+export const APP_ID = 'com.klaxon.squirrel.desktop'
+export const APP_ICON_PATH = path.join(__dirname, 'assets', 'icon.png')
 export const DEFAULT_APP_URL = 'http://127.0.0.1:8001'
 export const SERVER_CONFIG_FILE = 'server-config.json'
 

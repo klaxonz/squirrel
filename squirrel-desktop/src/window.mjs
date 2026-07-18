@@ -8,7 +8,7 @@ import {
 } from './window-state.mjs'
 import { closeCamoufoxDocumentLoader } from './document-loader.mjs'
 import { showErrorShell, formatWindowTitle } from './shell-pages.mjs'
-import { APP_NAME, __dirname } from './constants.mjs'
+import { APP_ICON_PATH, APP_NAME, __dirname } from './constants.mjs'
 
 let rendererUrl = ''
 let rendererOrigin = ''
@@ -328,6 +328,7 @@ export const createMainWindow = () => {
     minHeight: DEFAULT_WINDOW_STATE.minHeight,
     show: false,
     title: APP_NAME,
+    icon: APP_ICON_PATH,
     autoHideMenuBar: true,
     backgroundColor: '#141110',
     ...(isMac

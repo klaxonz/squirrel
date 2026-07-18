@@ -26,7 +26,8 @@
     "appId": "com.klaxon.squirrel.desktop",
     "productName": "Squirrel",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "resources"
     },
     "files": [
       "src/**/*",
@@ -34,11 +35,18 @@
       "package.json"
     ],
     "win": {
-      "signAndEditExecutable": false,
+      "icon": "resources/icon.svg",
+      "signExecutable": false,
       "target": [
         "nsis",
         "portable"
       ]
+    },
+    "mac": {
+      "icon": "resources/icon.svg"
+    },
+    "linux": {
+      "icon": "resources/icon.svg"
     }
   },
   "dependencies": {
