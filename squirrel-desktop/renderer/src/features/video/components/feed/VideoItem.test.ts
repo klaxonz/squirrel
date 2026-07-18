@@ -1,0 +1,78 @@
+// @vitest-environment jsdom
+/** Video cards activate playback directly without stealing nested actions. */
+import { createApp, h, nextTick } from 'vue'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import VideoItem from './VideoItem.vue'
+import type { VideoListItem } from '@/features/video/types/video'
+
+vi.mock('@/shared/icons/AppIcon.vue', () => ({ default: { render: () => null } }))
+vi.mock('@/features/video/components/SubscriptionAvatar.vue', () => ({ default: { render: () => null } }))
+vi.mock('@/features/video/components/feed/VideoThumbnail.vue', () => ({ default: { render: () => null } }))
+vi.mock('./ContextMenu.vue', () => ({ default: { render: () => null } }))
+vi.mock('@/shared/api', () => ({ updateVideoReadState: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/shared/composables/useSystemConfig', () => ({
+  useSystemConfig: () => ({ config: { value: { blur_nsfw_thumbnails: false } } }),
+}))
+vi.mock('@/shared/components/toast/useToast', () => ({
+  useToast: () => ({ error: vi.fn() }),
+}))
+vi.mock('@/features/video/composables/useVideoInteraction', () => ({
+  default: () => ({
+    INTERACTION_TYPE: { LIKE: 1, LATER: 3 },
+    toggleLike: vi.fn().mockResolvedValue(undefined),
+    deleteInteraction: vi.fn().mockResolvedValue(undefined),
+  }),
+}))
+
+const mountedApps: Array<ReturnType<typeof createApp>> = []
+
+afterEach(() => {
+  mountedApps.splice(0).forEach((app) => app.unmount())
+  document.body.replaceChildren()
+})
+
+function mountVideoItem(onOpen: (video: VideoListItem) => void) {
+  const video: VideoListItem = {
+    id: 42,
+    title: '直接播放测试',
+    url: 'https://example.test/video/42',
+    thumbnail: '',
+    duration: null,
+    last_position: 0,
+    uploaded_at: null,
+    created_at: '2026-07-19T00:00:00Z',
+    subscriptions: [],
+    actors: [],
+    is_read: false,
+    interaction_type: null,
+  }
+  const host = document.createElement('div')
+  document.body.append(host)
+  const app = createApp({
+    render: () => h(VideoItem, { video, onOpenModal: onOpen }),
+  })
+  mountedApps.push(app)
+  app.mount(host)
+  return { host, video }
+}
+
+describe('VideoItem playback activation', () => {
+  it('opens playback on click and Enter while nested quick actions stay independent', async () => {
+    const onOpen = vi.fn()
+    const { host, video } = mountVideoItem(onOpen)
+    const card = host.querySelector<HTMLElement>('.video-item')
+    expect(card).not.toBeNull()
+
+    card?.click()
+    card?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    await nextTick()
+
+    expect(onOpen).toHaveBeenCalledTimes(2)
+    expect(onOpen).toHaveBeenNthCalledWith(1, video)
+    expect(onOpen).toHaveBeenNthCalledWith(2, video)
+
+    host.querySelector<HTMLButtonElement>('.video-item__quick-btn')?.click()
+    await nextTick()
+    expect(onOpen).toHaveBeenCalledTimes(2)
+  })
+})

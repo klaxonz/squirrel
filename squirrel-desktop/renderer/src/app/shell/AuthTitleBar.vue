@@ -71,18 +71,22 @@ onUnmounted(() => {
   align-items: stretch;
   user-select: none;
   -webkit-app-region: drag;
+  app-region: drag;
   background: transparent;
 }
 
 .auth-titlebar__drag {
   flex: 1 1 auto;
   min-width: 0;
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 
 .auth-titlebar__controls {
   display: inline-flex;
   flex: none;
   -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .auth-titlebar__control {

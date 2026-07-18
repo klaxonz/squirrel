@@ -46,7 +46,6 @@
     </div>
 
     <div class="app-header__actions">
-      <ServerStatusButton v-if="isDesktopClient" mode="inline" />
       <Button
         type="button"
         text severity="secondary"
@@ -71,7 +70,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import GlobalSearchBar from '@/shared/components/layout/GlobalSearchBar.vue'
-import ServerStatusButton from '@/shared/components/ServerStatusButton.vue'
 import { Button } from '@/shared/ui/button'
 import { useUIStore } from '@/shared/stores/ui'
 import { useUserStore } from '@/shared/stores/user'
@@ -215,21 +213,6 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   justify-content: flex-end;
   min-width: 0;
   gap: 0.5rem;
-}
-
-.app-header__actions :deep(.server-status-trigger--inline) {
-  height: 2rem;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  box-shadow: none;
-}
-
-.app-header__actions :deep(.server-status-trigger--inline:hover),
-.app-header__actions :deep(.server-status-trigger--inline.server-status-trigger--open) {
-  border: 0;
-  background: hsl(var(--accent) / 0.72);
-  color: hsl(var(--foreground));
 }
 
 .app-header__user {

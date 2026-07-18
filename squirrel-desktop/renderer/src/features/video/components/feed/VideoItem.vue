@@ -7,13 +7,11 @@
     ]"
     role="button"
     tabindex="0"
-    :aria-pressed="interaction === 'select' ? selected : undefined"
-    :aria-label="interaction === 'select' ? `选择：${video.title}，按回车播放` : `打开：${video.title}`"
+    :aria-label="`播放：${video.title}`"
     @contextmenu.prevent="showContextMenu"
-    @click="handleClick"
-    @dblclick="handleDoubleClick"
-    @keydown.enter.prevent="handleKeyboardOpen"
-    @keydown.space.prevent="handleClick"
+    @click="handleOpen"
+    @keydown.enter.prevent="handleOpen"
+    @keydown.space.prevent="handleOpen"
   >
     <div
       class="video-item__thumb"
@@ -210,15 +208,11 @@ const props = withDefaults(defineProps<{
   showDuration?: boolean
   thumbnailStatus?: 'full' | 'progress-only' | 'none'
   appearance?: 'default' | 'workbench'
-  interaction?: 'open' | 'select'
-  selected?: boolean
 }>(), {
   layout: 'grid',
   showDuration: true,
   thumbnailStatus: 'full',
   appearance: 'default',
-  interaction: 'open',
-  selected: false,
 })
 
 const emit = defineEmits<{
@@ -226,7 +220,6 @@ const emit = defineEmits<{
   /** @deprecated prefer goToProfile */
   goToSubscription: [id: number | string]
   openModal: [video: VideoListItem]
-  select: [video: VideoListItem]
 }>()
 
 const { config: systemConfig } = useSystemConfig()
@@ -302,17 +295,7 @@ const showContextMenu = async (event: MouseEvent) => {
   showMenu.value = true
 }
 
-const handleClick = () => {
-  if (props.interaction === 'select') {
-    emit('select', props.video)
-    return
-  }
-  emit('openModal', props.video)
-}
-const handleDoubleClick = () => {
-  if (props.interaction === 'select') emit('openModal', props.video)
-}
-const handleKeyboardOpen = () => emit('openModal', props.video)
+const handleOpen = () => emit('openModal', props.video)
 const goToProfile = (profile: VideoProfile | null | undefined) => {
   if (!profile) return
   // Fill profile_source when list payload omitted it, so navigation never
@@ -726,11 +709,6 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 
 .video-item--appearance-workbench:hover {
   background: hsl(var(--accent) / 0.34);
-}
-
-.video-item--appearance-workbench[aria-pressed='true'] {
-  background: hsl(var(--primary) / 0.1);
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.32);
 }
 
 .video-item--appearance-workbench .video-item__thumb {

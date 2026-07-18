@@ -50,7 +50,7 @@
       </Button>
     </div>
 
-    <AppHeader class="titlebar__command no-drag" />
+    <AppHeader class="titlebar__command" />
 
     <div class="titlebar__controls no-drag">
       <Button
@@ -147,6 +147,7 @@ onUnmounted(() => {
   background: hsl(var(--background));
   user-select: none;
   -webkit-app-region: drag;
+  app-region: drag;
 }
 
 .titlebar__brand {
@@ -202,6 +203,7 @@ onUnmounted(() => {
   border-right: 1px solid var(--app-hairline);
   flex: 0 0 auto;
   -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .titlebar__navigation-button {
@@ -228,7 +230,16 @@ onUnmounted(() => {
 .titlebar__command {
   flex: 1 1 auto;
   min-width: 0;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+/* Keep only real controls out of the native drag region. Marking the entire
+   command host as no-drag makes its large leading/spacer areas inert. */
+.titlebar__command:deep(.app-header__search-wrap),
+.titlebar__command:deep(.app-header__actions) {
   -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .titlebar__command:deep(.app-header) {
@@ -273,6 +284,7 @@ onUnmounted(() => {
   gap: 0;
   flex: 0 0 auto;
   -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .titlebar__control {

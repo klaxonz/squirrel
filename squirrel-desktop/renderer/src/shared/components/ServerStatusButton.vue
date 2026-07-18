@@ -10,7 +10,6 @@
         'server-status-trigger',
         {
           'server-status-trigger--open': popoverOpen,
-          'server-status-trigger--inline': mode === 'inline',
           'server-status-trigger--trust': mode === 'trust',
         },
       ]"
@@ -99,7 +98,6 @@
  * Server status / config control.
  *
  * - Default: fixed top-right icon (EmptyLayout).
- * - `inline`: document-flow server control for app chrome.
  * - `trust`: text action for the auth trust band.
  *
  * Never solid-primary; change-server is secondary.
@@ -113,7 +111,7 @@ import { useServerConfig } from '@/shared/composables/useServerConfig'
 import { Logger } from '@/shared/lib/logger'
 
 const props = withDefaults(defineProps<{
-  mode?: 'floating' | 'inline' | 'trust'
+  mode?: 'floating' | 'trust'
 }>(), {
   mode: 'floating',
 })
@@ -238,34 +236,6 @@ const handleTest = async () => {
 .server-status-trigger__icon {
   width: 1rem;
   height: 1rem;
-}
-
-.server-status-trigger--inline {
-  position: relative;
-  inset: auto;
-  z-index: auto;
-  width: auto;
-  height: 1.875rem;
-  gap: 0.4rem;
-  padding: 0 0.7rem 0 0.55rem;
-  border-color: hsl(var(--border) / 0.65);
-  border-radius: 999px;
-  background: hsl(var(--background) / 0.55);
-  color: hsl(var(--foreground) / 0.88);
-  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.02);
-}
-
-.server-status-trigger--inline:hover {
-  transform: none;
-  color: hsl(var(--foreground));
-  background: hsl(var(--accent) / 0.55);
-  border-color: hsl(var(--border));
-}
-
-.server-status-trigger--inline.server-status-trigger--open {
-  color: hsl(var(--foreground));
-  border-color: hsl(var(--primary) / 0.45);
-  background: hsl(var(--primary) / 0.1);
 }
 
 .server-status-trigger__label {

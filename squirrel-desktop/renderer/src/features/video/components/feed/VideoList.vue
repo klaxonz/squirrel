@@ -12,9 +12,6 @@
         :sort-by="sortBy"
         :layout="uiStore.viewMode"
         :appearance="presentation === 'workbench' ? 'workbench' : 'default'"
-        :interaction="resolvedInteraction"
-        :selected="selectedVideoId === video.id"
-        @select="emit('selectVideo', $event)"
         @goToProfile="emit('goToProfile', $event)"
         @goToSubscription="emit('goToSubscription', $event)"
         @openModal="emit('openModal', video)"
@@ -59,24 +56,16 @@ const props = withDefaults(defineProps<{
   sortBy?: string
   refreshing: boolean
   presentation?: 'standard' | 'workbench'
-  interaction?: 'open' | 'select'
-  selectedVideoId?: string | number | null
 }>(), {
   presentation: 'standard',
-  selectedVideoId: null,
 })
 
 const emit = defineEmits<{
   goToProfile: [profile: VideoProfile]
   goToSubscription: [id: string | number | null | undefined]
   openModal: [video: VideoListItem]
-  selectVideo: [video: VideoListItem]
   loadMore: []
 }>()
-
-const resolvedInteraction = computed(() => (
-  props.interaction ?? (props.presentation === 'workbench' ? 'select' : 'open')
-))
 
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 const densityMinWidth = computed(() => {
