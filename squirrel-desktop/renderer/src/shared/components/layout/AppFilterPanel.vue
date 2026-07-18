@@ -6,10 +6,10 @@
         <strong class="app-filter-panel__title">{{ title }}</strong>
         <span
           v-if="activeCount > 0"
-          class="app-filter-panel__count app-mono"
+          class="app-filter-panel__status"
           :aria-label="`已启用 ${activeCount} 项`"
         >
-          {{ activeCount }}
+          已启用 {{ activeCount }} 项
         </span>
       </div>
       <button
@@ -18,7 +18,7 @@
         class="app-filter-panel__reset"
         @click="$emit('reset')"
       >
-        重置
+        清除
       </button>
     </header>
 
@@ -45,6 +45,7 @@ defineEmits<{
 <style scoped>
 .app-filter-panel {
   display: flex;
+  max-height: inherit;
   flex-direction: column;
   min-width: 0;
 }
@@ -54,46 +55,39 @@ defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  min-height: 2rem;
-  padding: 0.55rem 0.85rem 0.15rem;
+  min-height: 2.875rem;
+  border-bottom: 1px solid var(--app-hairline);
+  padding: 0.625rem 0.875rem;
 }
 
 .app-filter-panel__title-row {
   display: flex;
   min-width: 0;
-  align-items: center;
-  gap: 0.375rem;
+  align-items: baseline;
+  gap: 0.5rem;
 }
 
 .app-filter-panel__title {
-  color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
+  color: hsl(var(--foreground));
+  font-size: 0.8125rem;
   font-weight: 650;
-  letter-spacing: 0.04em;
-  line-height: 1.2;
-  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
-.app-filter-panel__count {
-  display: inline-grid;
-  min-width: 1rem;
-  height: 1rem;
-  place-items: center;
-  padding: 0 0.25rem;
-  border-radius: 999px;
-  background: var(--app-selection-count-bg);
-  color: var(--app-selection-count-fg);
+.app-filter-panel__status {
+  color: hsl(var(--muted-foreground) / 0.72);
   font-size: var(--app-text-badge-size);
-  font-weight: 700;
-  line-height: 1;
+  font-weight: 550;
+  line-height: 1.25;
 }
 
 .app-filter-panel__reset {
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  padding: 0.2rem 0.375rem;
-  color: hsl(var(--muted-foreground) / 0.88);
+  padding: 0.25rem 0.375rem;
+  color: hsl(var(--muted-foreground) / 0.82);
   font-size: 0.75rem;
   font-weight: 550;
   line-height: 1.2;
@@ -116,8 +110,10 @@ defineEmits<{
 .app-filter-panel__body {
   display: flex;
   flex-direction: column;
-  gap: 0.05rem;
-  padding: 0.1rem 0.7rem 0.7rem;
+  min-height: 0;
+  gap: 0.25rem;
+  overflow-y: auto;
+  padding: 0.625rem 0.75rem 0.75rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

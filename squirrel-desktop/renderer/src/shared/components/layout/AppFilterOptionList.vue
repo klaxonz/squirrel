@@ -1,32 +1,34 @@
-<!-- Filter panel option tiles (e.g. site pickers).
-     Selected = raised card + selection border (not ink-wash mud).
-     role=group (honest; not full APG listbox). Idle brand marks stay full color. -->
+<!-- Exclusive source picker for filter panels. A compact grid keeps source
+     identity scannable without making the popover look like a navigation menu. -->
 <template>
   <div
-    class="app-filter-sites"
-    role="group"
+    class="app-filter-option-list"
+    role="radiogroup"
     :aria-label="label"
   >
     <button
-      v-for="option in options"
+      v-for="(option, index) in options"
       :key="option.value"
       type="button"
-      class="app-filter-site"
+      class="app-filter-option"
       :class="{ 'is-active': modelValue === option.value }"
-      :aria-pressed="modelValue === option.value"
+      role="radio"
+      :aria-checked="modelValue === option.value"
+      :tabindex="optionTabIndex(option, index)"
       :title="option.label"
       @click="emit('update:modelValue', option.value)"
+      @keydown="handleKeydown($event, index)"
     >
-      <span class="app-filter-site__icon">
+      <span class="app-filter-option__icon" aria-hidden="true">
         <slot name="leading" :option="option" />
       </span>
-      <span class="app-filter-site__label">{{ shortLabel(option) }}</span>
+      <span class="app-filter-option__label">{{ option.label }}</span>
       <span
         v-if="modelValue === option.value"
-        class="app-filter-site__check"
+        class="app-filter-option__check"
         aria-hidden="true"
       >
-        <AppIcon name="check" :stroke-width="3" />
+        <AppIcon name="check" :stroke-width="2.5" />
       </span>
     </button>
   </div>
@@ -38,12 +40,10 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 export type AppFilterListOption = {
   value: string
   label: string
-  /** Optional shorter label for tile grid. */
-  shortLabel?: string
   iconUrl?: string | null
 }
 
-defineProps<{
+const props = defineProps<{
   modelValue: string
   options: AppFilterListOption[]
   label: string
@@ -53,133 +53,153 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const shortLabel = (option: AppFilterListOption) => {
-  if (option.shortLabel) return option.shortLabel
-  const label = option.label
-  if (option.value === 'all') return '全部'
-  if (label.length <= 8) return label
-  return label.slice(0, 7)
+const optionTabIndex = (option: AppFilterListOption, index: number) => {
+  const hasSelectedOption = props.options.some((item) => item.value === props.modelValue)
+  return option.value === props.modelValue || (!hasSelectedOption && index === 0) ? 0 : -1
+}
+
+const handleKeydown = (event: KeyboardEvent, index: number) => {
+  if (props.options.length === 0) return
+
+  let nextIndex: number | null = null
+  if (event.key === 'Home') nextIndex = 0
+  if (event.key === 'End') nextIndex = props.options.length - 1
+  if (event.key === 'ArrowRight') {
+    nextIndex = (index + 1) % props.options.length
+  }
+  if (event.key === 'ArrowLeft') {
+    nextIndex = (index - 1 + props.options.length) % props.options.length
+  }
+  if (event.key === 'ArrowDown') nextIndex = (index + 2) % props.options.length
+  if (event.key === 'ArrowUp') {
+    nextIndex = (index - 2 + props.options.length) % props.options.length
+  }
+  if (nextIndex == null) return
+
+  event.preventDefault()
+  const nextOption = props.options[nextIndex]
+  if (!nextOption) return
+
+  emit('update:modelValue', nextOption.value)
+  const group = (event.currentTarget as HTMLButtonElement).closest('.app-filter-option-list')
+  group?.querySelectorAll<HTMLButtonElement>('.app-filter-option')[nextIndex]?.focus()
 }
 </script>
 
 <style scoped>
-.app-filter-sites {
+.app-filter-option-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-height: 13.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.375rem;
+  overflow-y: auto;
+  padding: 0.0625rem;
 }
 
-/*
-  Dual-theme tile language (tokens in layout.css + .light):
-  - idle: quiet field, full-color brand marks
-  - active: raised card + selection edge (border only)
-*/
-.app-filter-site {
-  position: relative;
-  display: flex;
+.app-filter-option {
+  display: grid;
   min-width: 0;
-  min-height: 3.375rem;
-  flex-direction: column;
+  min-height: 2.375rem;
+  grid-template-columns: 1.375rem minmax(0, 1fr) 0.875rem;
   align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  border: 1px solid var(--app-filter-tile-idle-border);
+  gap: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.42);
   border-radius: var(--radius-md);
-  background: var(--app-filter-tile-idle-bg);
-  padding: 0.4rem 0.2rem 0.35rem;
-  color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted) / 0.24);
+  padding: 0.25rem 0.5rem;
+  color: hsl(var(--foreground) / 0.78);
+  text-align: left;
   cursor: pointer;
   transition:
     color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default),
     border-color var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-fast) var(--ease-default);
+    background-color var(--duration-fast) var(--ease-default);
 }
 
-.app-filter-site:hover {
-  border-color: var(--app-selection-border);
-  background: var(--app-filter-tile-hover-bg);
+.app-filter-option:hover {
+  border-color: hsl(var(--border) / 0.72);
+  background: hsl(var(--muted) / 0.48);
   color: hsl(var(--foreground));
 }
 
-.app-filter-site.is-active {
+.app-filter-option.is-active {
   border-color: var(--app-selection-border);
-  background: var(--app-filter-raised-bg);
-  color: var(--app-filter-raised-fg);
-  box-shadow: var(--app-filter-tile-raised-shadow);
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
 }
 
-.app-filter-site.is-active:hover {
+.app-filter-option.is-active:hover {
   border-color: var(--app-selection-border-hover);
-  background: var(--app-filter-raised-bg);
-  box-shadow: var(--app-filter-tile-raised-shadow);
+  background: var(--app-selection-bg-hover);
 }
 
-.app-filter-site:focus-visible {
+.app-filter-option:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.42);
 }
 
-.app-filter-site.is-active:focus-visible {
-  box-shadow:
-    var(--app-filter-tile-raised-shadow),
-    0 0 0 2px hsl(var(--ring) / 0.4);
-}
-
-.app-filter-site__icon {
+.app-filter-option__icon {
   display: inline-flex;
-  width: 1.5rem;
-  height: 1.5rem;
-  flex-shrink: 0;
+  width: 1.375rem;
+  height: 1.375rem;
   align-items: center;
   justify-content: center;
 }
 
-.app-filter-site__icon :deep(.site-icon),
-.app-filter-site__icon :deep(.feed-filter-all-icon),
-.app-filter-site__icon :deep(.subscription-filter-all-icon) {
-  width: 1.5rem;
-  height: 1.5rem;
+.app-filter-option__icon :deep(.site-icon),
+.app-filter-option__icon :deep(.app-filter-all-icon) {
+  width: 1.375rem;
+  height: 1.375rem;
 }
 
-.app-filter-site__label {
-  max-width: 100%;
+.app-filter-option__icon :deep(.app-filter-all-icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(var(--border) / 0.48);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--background) / 0.72);
+  color: hsl(var(--muted-foreground) / 0.82);
+}
+
+.app-filter-option__icon :deep(.app-filter-all-icon svg) {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.app-filter-option.is-active .app-filter-option__icon :deep(.app-filter-all-icon) {
+  color: hsl(var(--primary));
+}
+
+.app-filter-option__label {
   overflow: hidden;
-  padding: 0 0.1rem;
-  font-size: var(--app-text-badge-size);
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  line-height: 1.15;
-  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 560;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.app-filter-site.is-active .app-filter-site__label {
-  color: var(--app-filter-raised-fg);
+.app-filter-option.is-active .app-filter-option__label {
   font-weight: 650;
 }
 
-.app-filter-site__check {
-  position: absolute;
-  top: 0.2rem;
-  right: 0.2rem;
-  display: grid;
+.app-filter-option__check {
+  display: inline-flex;
   width: 0.875rem;
   height: 0.875rem;
-  place-items: center;
-  border-radius: 999px;
-  background: hsl(var(--foreground));
-  color: hsl(var(--background));
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--primary));
 }
 
-.app-filter-site__check :deep(svg) {
-  width: 0.55rem;
-  height: 0.55rem;
+.app-filter-option__check :deep(svg) {
+  width: 0.75rem;
+  height: 0.75rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-filter-site {
+  .app-filter-option {
     transition: none;
   }
 }

@@ -1,11 +1,6 @@
 <template>
   <AppPageShell class="videos-workbench" variant="compact" surface="consume" width="fluid">
     <header class="videos-workbench__toolbar">
-      <div class="videos-workbench__title">
-        <h1>视频</h1>
-        <span>{{ isRefreshing ? '正在更新…' : `${loadedCount} 条已载入` }}</span>
-      </div>
-
       <FeedToolbar
         v-if="searchMode !== 'remote'"
         variant="workbench"
@@ -216,7 +211,6 @@ const { settings } = useUserSettings()
 const tabs = [...VIDEO_TABS, ...VIDEO_LIBRARY_TABS]
 const isRefreshing = ref(false)
 const loadError = ref<string | null>(null)
-const loadedCount = ref(0)
 const selectedVideo = ref<VideoListItem | null>(null)
 const videoChildRef = ref<{ refresh?: () => void } | null>(null)
 const remoteSearchRef = ref<{ refresh?: () => void } | null>(null)
@@ -267,7 +261,6 @@ const selectedProgress = computed(() => {
 })
 
 const handleLoaded = (items: unknown[]) => {
-  loadedCount.value = Array.isArray(items) ? items.length : 0
   loadError.value = null
   if (selectedVideo.value && !items.some((item) => (item as VideoListItem)?.id === selectedVideo.value?.id)) {
     selectedVideo.value = null
@@ -336,7 +329,6 @@ watch(() => route.query.mode, (value) => {
   if (!isActiveVideosRoute.value) return
   searchMode.value = value === 'remote' ? 'remote' : 'local'
   selectedVideo.value = null
-  loadedCount.value = 0
   uiStore.setHomeSearchMode(searchMode.value)
 }, { immediate: true })
 
@@ -370,32 +362,14 @@ watch(() => route.query.special, (value) => {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
   min-height: 4.25rem;
   align-items: center;
-  gap: 1.5rem;
   border-bottom: 1px solid var(--app-hairline);
   padding: 0 clamp(1.25rem, 2.5vw, 2.5rem);
   background: hsl(var(--background));
 }
 
-.videos-workbench__title {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  white-space: nowrap;
-}
-
-.videos-workbench__title h1 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.375rem;
-  font-weight: 690;
-  letter-spacing: -0.035em;
-}
-
-.videos-workbench__title span,
 .videos-workbench__remote-tools > span {
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
@@ -404,6 +378,7 @@ watch(() => route.query.special, (value) => {
 
 .videos-workbench__remote-tools {
   display: flex;
+  margin-left: auto;
   align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
@@ -643,8 +618,6 @@ button.videos-inspector__source:hover {
 
 @media (max-width: 1180px) {
   .videos-workbench__toolbar {
-    grid-template-columns: 1fr;
-    gap: 0;
     padding-block: 0.5rem;
   }
 

@@ -140,14 +140,9 @@
   --app-selection-count-bg: hsl(var(--foreground) / 0.1);
   --app-selection-count-fg: hsl(var(--foreground));
 
-  /* Filter raised on paper: card-on-secondary (white lift over soft track).
-     Elevation-only tile shadow; selection edge is border-color. */
+  /* Segmented controls on paper: card-on-secondary (white lift over soft track). */
   --app-filter-track-bg: hsl(var(--secondary));
   --app-filter-raised-bg: hsl(var(--card));
   --app-filter-raised-fg: hsl(var(--foreground));
   --app-filter-raised-shadow: var(--shadow-xs);
-  --app-filter-tile-idle-bg: hsl(var(--muted) / 0.75);
-  --app-filter-tile-idle-border: hsl(var(--border) / 0.95);
-  --app-filter-tile-hover-bg: hsl(var(--muted));
-  --app-filter-tile-raised-shadow: 0 1px 2px hsl(var(--foreground) / 0.06);
 }

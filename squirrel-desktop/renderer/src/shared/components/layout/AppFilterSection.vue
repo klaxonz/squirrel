@@ -28,36 +28,36 @@ withDefaults(defineProps<{
 <style scoped>
 .app-filter-section {
   display: grid;
-  gap: 0.4rem;
+  gap: 0.4375rem;
   min-width: 0;
-  padding: 0.35rem 0.1rem;
+  padding: 0.25rem 0.125rem;
 }
 
 .app-filter-section--divided {
-  margin-top: 0.15rem;
+  margin-top: 0.125rem;
   border-top: 1px solid var(--app-hairline);
-  padding-top: 0.65rem;
+  padding-top: 0.625rem;
 }
 
 .app-filter-section--row {
-  grid-template-columns: 2rem minmax(0, 1fr);
+  grid-template-columns: 2.5rem minmax(0, 1fr);
   align-items: center;
-  gap: 0.55rem;
-  padding-block: 0.12rem;
+  gap: 0.5rem;
+  padding-block: 0.125rem;
 }
 
 .app-filter-section--row .app-filter-section__label {
   padding-inline: 0;
-  color: hsl(var(--muted-foreground) / 0.68);
-  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground) / 0.78);
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
 .app-filter-section__label {
-  padding-inline: 0.1rem;
-  color: hsl(var(--muted-foreground) / 0.68);
+  padding-inline: 0.125rem;
+  color: hsl(var(--muted-foreground) / 0.76);
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 620;
   letter-spacing: 0.01em;
   line-height: 1.2;
 }

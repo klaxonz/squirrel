@@ -114,7 +114,7 @@
   --app-selection-count-bg: hsl(var(--foreground) / 0.16);
   --app-selection-count-fg: hsl(var(--foreground));
 
-  /* Filter popover surfaces — dual-theme raised language (chips + site tiles).
+  /* Segmented controls — dual-theme raised language.
      Dark defaults here; Light overrides in themes/dark.css `.light`.
      Raised must be LIGHTER than track in dark (card ~L9% is darker than
      secondary ~L13% and reads as a sunken pit — use a true lift step).
@@ -123,12 +123,6 @@
   --app-filter-raised-bg: hsl(28 8% 17%);
   --app-filter-raised-fg: hsl(var(--foreground));
   --app-filter-raised-shadow: var(--shadow-xs);
-  --app-filter-tile-idle-bg: hsl(var(--muted) / 0.45);
-  --app-filter-tile-idle-border: hsl(var(--border) / 0.7);
-  --app-filter-tile-hover-bg: hsl(var(--muted) / 0.65);
-  /* Elevation only — selection edge lives on border-color. */
-  --app-filter-tile-raised-shadow: 0 1px 2px hsl(0 0% 0% / 0.28);
-
   --app-dense-toolbar-gap: 0.75rem;
 
   /* Soft structural lines — strong enough to read, weak enough not to

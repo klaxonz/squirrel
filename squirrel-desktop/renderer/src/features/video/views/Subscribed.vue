@@ -51,9 +51,7 @@
                 </Button>
               </PopoverTrigger>
 
-              <PopoverContent
-                class="w-[17.25rem] overflow-hidden border-border/55 p-0 shadow-popover"
-              >
+              <PopoverContent class="app-filter-popover">
                 <AppFilterPanel
                   :active-count="activeFilterCount"
                   @reset="clearToolbarFilters"
@@ -68,7 +66,7 @@
                       <template #leading="{ option }">
                         <span
                           v-if="option.value === 'all'"
-                          class="subscription-filter-all-icon"
+                          class="app-filter-all-icon"
                           aria-hidden="true"
                         >
                           <AppIcon name="layoutGrid" />
@@ -86,10 +84,12 @@
                   </AppFilterSection>
 
                   <AppFilterSection v-if="isFeedView" label="分级" layout="row" divided>
-                    <AppFilterChips
+                    <AppSegmentedControl
                       :model-value="nsfw"
                       :options="nsfwOptions"
-                      label="内容分级"
+                      aria-label="内容分级"
+                      size="sm"
+                      fill
                       @update:model-value="handleNsfwFilterChange"
                     />
                   </AppFilterSection>
@@ -308,7 +308,6 @@ import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
-import AppFilterChips from '@/shared/components/layout/AppFilterChips.vue'
 import AppFilterOptionList from '@/shared/components/layout/AppFilterOptionList.vue'
 import AppFilterPanel from '@/shared/components/layout/AppFilterPanel.vue'
 import AppFilterSection from '@/shared/components/layout/AppFilterSection.vue'
@@ -428,25 +427,15 @@ const siteOptionsList = computed(() => siteOptions.value || [])
 const visibleSiteOptions = computed(() => (
   siteOptionsList.value.filter((option) => settings.value.showNsfw || option.isNsfw !== true)
 ))
-const SITE_SHORT_LABELS: Record<string, string> = {
-  bilibili: 'B站',
-  youtube: '油管',
-  javdb: 'JavDB',
-  pornhub: 'PH',
-  youporn: 'YP',
-}
-
 const subscriptionSiteFilterOptions = computed(() => [
   {
     value: 'all',
     label: '全部来源',
-    shortLabel: '全部',
     iconUrl: null as string | null,
   },
   ...visibleSiteOptions.value.map((option) => ({
     value: option.value,
     label: option.label,
-    shortLabel: SITE_SHORT_LABELS[option.value.toLowerCase()] || option.label,
     iconUrl: option.iconUrl ?? null,
   })),
 ])
@@ -572,7 +561,7 @@ const handleSiteFilterChange = (value: string) => {
   site.value = value === 'all' || value === '' ? undefined : value
 }
 
-const handleNsfwFilterChange = (value: string) => {
+const handleNsfwFilterChange = (value: string | number) => {
   if (value === 'all' || value === 'yes' || value === 'no') {
     nsfw.value = value
   }
@@ -1074,23 +1063,6 @@ onUnmounted(() => {
 
 .subscription-toolbar__icon-action {
   color: hsl(var(--muted-foreground) / 0.78);
-}
-
-.subscription-filter-all-icon {
-  display: inline-flex;
-  width: 1.5rem;
-  height: 1.5rem;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: var(--radius-sm);
-  background: hsl(var(--background));
-  color: hsl(var(--foreground) / 0.72);
-}
-
-.subscription-filter-all-icon :deep(svg) {
-  width: 0.8125rem;
-  height: 0.8125rem;
 }
 
 .subscription-toolbar__add {

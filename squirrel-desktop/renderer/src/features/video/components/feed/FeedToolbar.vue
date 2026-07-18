@@ -34,9 +34,7 @@
           </Button>
           </PopoverTrigger>
 
-        <PopoverContent
-          class="w-[17.25rem] overflow-hidden border-border/55 p-0 shadow-popover"
-        >
+        <PopoverContent class="app-filter-popover">
           <AppFilterPanel
             :active-count="activeFilterCount"
             @reset="clearAllFilters"
@@ -51,7 +49,7 @@
                 <template #leading="{ option }">
                   <span
                     v-if="option.value === 'all'"
-                    class="feed-filter-all-icon"
+                    class="app-filter-all-icon"
                     aria-hidden="true"
                   >
                     <AppIcon name="layoutGrid" />
@@ -69,37 +67,45 @@
             </AppFilterSection>
 
             <AppFilterSection label="时间" layout="row" divided>
-              <AppFilterChips
+              <AppSegmentedControl
                 :model-value="timeRange"
                 :options="timeRangeOptions"
-                label="按时间范围筛选"
+                aria-label="按时间范围筛选"
+                size="sm"
+                fill
                 @update:model-value="handleTimeRangeChange"
               />
             </AppFilterSection>
 
             <AppFilterSection label="时长" layout="row">
-              <AppFilterChips
+              <AppSegmentedControl
                 :model-value="duration"
                 :options="durationOptions"
-                label="按视频时长筛选"
+                aria-label="按视频时长筛选"
+                size="sm"
+                fill
                 @update:model-value="handleDurationChange"
               />
             </AppFilterSection>
 
             <AppFilterSection v-if="!subscriptionId" label="类型" layout="row">
-              <AppFilterChips
+              <AppSegmentedControl
                 :model-value="contentType"
                 :options="contentTypeOptions"
-                label="按来源类型筛选"
+                aria-label="按来源类型筛选"
+                size="sm"
+                fill
                 @update:model-value="handleContentTypeChange"
               />
             </AppFilterSection>
 
             <AppFilterSection v-if="settings.showNsfw" label="分级" layout="row">
-              <AppFilterChips
+              <AppSegmentedControl
                 :model-value="nsfw"
                 :options="nsfwOptions"
-                label="按内容分级筛选"
+                aria-label="按内容分级筛选"
+                size="sm"
+                fill
                 @update:model-value="handleNsfwChange"
               />
             </AppFilterSection>
@@ -200,7 +206,6 @@ import { ref, computed, watch, onMounted } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
-import AppFilterChips from '@/shared/components/layout/AppFilterChips.vue'
 import AppFilterOptionList from '@/shared/components/layout/AppFilterOptionList.vue'
 import AppFilterPanel from '@/shared/components/layout/AppFilterPanel.vue'
 import AppFilterSection from '@/shared/components/layout/AppFilterSection.vue'
@@ -285,28 +290,20 @@ const handleSiteChange = (value: string) => {
   emit('update:site', value === 'all' ? '' : value)
 }
 
-const handleTimeRangeChange = (value: string) => {
-  emit('update:timeRange', value as TimeRange)
+const handleTimeRangeChange = (value: string | number) => {
+  if (typeof value === 'string') emit('update:timeRange', value as TimeRange)
 }
 
-const handleDurationChange = (value: string) => {
-  emit('update:duration', value as Duration)
+const handleDurationChange = (value: string | number) => {
+  if (typeof value === 'string') emit('update:duration', value as Duration)
 }
 
-const handleContentTypeChange = (value: string) => {
-  emit('update:contentType', value as ContentType)
+const handleContentTypeChange = (value: string | number) => {
+  if (typeof value === 'string') emit('update:contentType', value as ContentType)
 }
 
-const handleNsfwChange = (value: string) => {
-  emit('update:nsfw', value)
-}
-
-const SITE_SHORT_LABELS: Record<string, string> = {
-  bilibili: 'B站',
-  youtube: '油管',
-  javdb: 'JavDB',
-  pornhub: 'PH',
-  youporn: 'YP',
+const handleNsfwChange = (value: string | number) => {
+  if (typeof value === 'string') emit('update:nsfw', value)
 }
 
 const visibleSiteOptions = computed(() => (
@@ -317,13 +314,11 @@ const siteFilterOptions = computed(() => [
   {
     value: 'all',
     label: '全部来源',
-    shortLabel: '全部',
     iconUrl: null as string | null,
   },
   ...visibleSiteOptions.value.map((option) => ({
     value: option.value,
     label: option.label,
-    shortLabel: SITE_SHORT_LABELS[option.value.toLowerCase()] || option.label,
     iconUrl: option.iconUrl ?? null,
   })),
 ])
@@ -460,23 +455,6 @@ const densityOptions = [
   width: 1px;
   height: 1rem;
   background: var(--app-hairline);
-}
-
-.feed-filter-all-icon {
-  display: inline-flex;
-  width: 1.5rem;
-  height: 1.5rem;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: var(--radius-sm);
-  background: hsl(var(--background));
-  color: hsl(var(--foreground) / 0.72);
-}
-
-.feed-filter-all-icon :deep(svg) {
-  width: 0.8125rem;
-  height: 0.8125rem;
 }
 
 .feed-toolbar--workbench {

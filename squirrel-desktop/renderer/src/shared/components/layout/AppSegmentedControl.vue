@@ -1,7 +1,10 @@
 <template>
   <div
     class="app-segmented-control"
-    :class="[`app-segmented-control--${size}`]"
+    :class="[
+      `app-segmented-control--${size}`,
+      { 'app-segmented-control--fill': fill },
+    ]"
     role="group"
     :aria-label="ariaLabel"
   >
@@ -41,9 +44,11 @@ const props = withDefaults(defineProps<{
   options: readonly AppSegmentedControlOption[]
   ariaLabel?: string
   size?: 'default' | 'sm' | 'icon'
+  fill?: boolean
 }>(), {
   ariaLabel: '',
   size: 'default',
+  fill: false,
 })
 
 const emit = defineEmits<{
@@ -108,6 +113,17 @@ const selectOption = (value: string | number) => {
   padding: 0.125rem 0.5rem;
   font-size: 0.75rem;
   height: auto;
+}
+
+.app-segmented-control--fill {
+  display: flex;
+  width: 100%;
+}
+
+.app-segmented-control--fill .app-segmented-control__item {
+  min-width: 0;
+  flex: 1 1 0;
+  justify-content: center;
 }
 
 .app-segmented-control--icon {
