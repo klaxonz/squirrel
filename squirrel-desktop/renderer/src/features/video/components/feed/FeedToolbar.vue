@@ -13,6 +13,8 @@
 
     <div class="feed-toolbar__actions">
       <template v-if="showFilter">
+        <PopoverRoot>
+          <PopoverTrigger as-child>
           <Button
             type="button"
             text severity="secondary"
@@ -20,7 +22,6 @@
             class="app-filter-toolbar-button"
             :class="{ 'is-active': activeFilterCount > 0 }"
             :aria-label="filterButtonLabel"
-            @click="toggleFilterPopover"
           >
             <AppIcon name="filter" class="h-3.5 w-3.5" />
             <span>筛选</span>
@@ -31,9 +32,9 @@
               {{ activeFilterCount }}
             </span>
           </Button>
+          </PopoverTrigger>
 
-        <PrimePopover
-          ref="filterPopover"
+        <PopoverContent
           class="w-[17.25rem] overflow-hidden border-border/55 p-0 shadow-popover"
         >
           <AppFilterPanel
@@ -118,7 +119,8 @@
               />
             </label>
           </AppFilterPanel>
-        </PrimePopover>
+        </PopoverContent>
+        </PopoverRoot>
       </template>
 
       <!--
@@ -132,7 +134,7 @@
       />
 
       <div class="feed-toolbar__group" role="group" aria-label="列表工具">
-        <PrimeSelect
+        <Select
           v-if="showSort"
           v-model="localSortBy"
           :options="sortOptions"
@@ -193,8 +195,8 @@ import type { TimeRange, Duration, ContentType } from '@/features/video/composab
 import { useSites } from '@/features/video/composables/useSites'
 import { useUserSettings } from '@/shared/composables/useUserSettings'
 import { Button } from '@/shared/ui/button'
-import PrimePopover from 'primevue/popover'
-import PrimeSelect from 'primevue/select'
+import { PopoverContent, PopoverRoot, PopoverTrigger } from '@/shared/ui/popover'
+import { Select } from '@/shared/ui/select'
 import { Switch } from '@/shared/ui/switch'
 import { useUIStore } from '@/shared/stores/ui'
 import type { VideoTab } from '@/features/video/constants/videos'
@@ -206,9 +208,6 @@ import {
   TIME_RANGE_OPTIONS,
 } from '@/features/video/constants/feedFilters'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
-
-const filterPopover = ref<{ toggle: (event: Event) => void } | null>(null)
-const toggleFilterPopover = (event: Event) => filterPopover.value?.toggle(event)
 
 const props = withDefaults(defineProps<{
   activeTab?: string

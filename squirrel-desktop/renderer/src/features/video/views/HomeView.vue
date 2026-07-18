@@ -2,13 +2,12 @@
   <AppPageShell class="home-view-page" variant="compact" surface="consume" width="media">
     <div class="app-page-content app-page-content--media home-page-content">
       <header class="home-page-header">
-        <h1 class="home-page-header__title">首页</h1>
-        <p>继续观看、订阅更新与精选内容。</p>
+        <div>
+          <p class="home-page-header__eyebrow">媒体工作台</p>
+          <h1 class="home-page-header__title">首页</h1>
+        </div>
+        <p>继续上次的播放，浏览订阅源新内容。</p>
       </header>
-      <!--
-        Home uses stacked media rails only.
-        No hero stage / side queue — content feed is the page.
-      -->
       <div class="home-dashboard" aria-label="首页内容">
         <div class="home-rails">
           <ContinueWatching
@@ -47,7 +46,6 @@ import FeaturedVideos from '@/features/video/components/feed/FeaturedVideos.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 
-// Home: stacked recommendation rails. Tabbed library lives in VideosView.
 defineOptions({ name: 'HomeView' })
 
 const router = useRouter()
@@ -87,7 +85,7 @@ onMounted(() => {
 <style scoped>
 .home-page-content {
   position: relative;
-  padding-top: var(--space-6);
+  padding-top: var(--space-5);
   padding-bottom: var(--space-8);
 }
 
@@ -98,9 +96,19 @@ onMounted(() => {
 }
 
 .home-page-header {
-  display: grid;
-  gap: var(--space-1);
-  margin-bottom: var(--space-6);
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.home-page-header__eyebrow {
+  margin: 0 0 0.25rem !important;
+  color: hsl(var(--primary)) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .home-page-header__title {
@@ -119,9 +127,15 @@ onMounted(() => {
   font-size: var(--app-text-secondary-size);
 }
 
+.home-page-header > p {
+  max-width: 24rem;
+  padding-bottom: 0.2rem;
+  text-align: right;
+}
+
 .home-rails {
   display: grid;
-  gap: var(--space-7);
+  gap: var(--space-6);
   min-width: 0;
 }
 
@@ -130,6 +144,10 @@ onMounted(() => {
   margin: 0;
   padding: 0;
   overflow: visible;
+}
+
+:deep(.home-feed-rail + .featured-workspace) {
+  margin-top: 0;
 }
 
 </style>

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
-import { inject } from 'vue'
-import PrimeDialog from 'primevue/dialog'
+import {
+  DialogContent as RekaDialogContent,
+  DialogOverlay,
+  DialogPortal,
+} from 'reka-ui'
 import { cn } from '@/shared/lib/utils'
-import { dialogContextKey } from './context'
 
 defineOptions({ inheritAttrs: false })
 
@@ -12,24 +14,16 @@ const props = defineProps<{
   contentClass?: HTMLAttributes['class']
   scrollable?: boolean
 }>()
-
-const dialog = inject(dialogContextKey)
-if (!dialog) throw new Error('DialogContent must be nested inside Dialog')
 </script>
 
 <template>
-  <PrimeDialog
-    v-bind="$attrs"
-    :visible="dialog.open.value"
-    modal
-    :closable="false"
-    :draggable="false"
-    :dismissable-mask="true"
-    append-to="body"
-    :class="cn('app-prime-dialog w-full max-w-lg', { 'app-prime-dialog--scroll': props.scrollable }, props.class)"
-    :pt="{ content: { class: cn('app-prime-dialog__content', { 'app-prime-dialog__content--scroll': props.scrollable }, props.contentClass) } }"
-    @update:visible="dialog.setOpen(Boolean($event))"
-  >
-    <slot />
-  </PrimeDialog>
+  <DialogPortal>
+    <DialogOverlay class="sq-dialog-overlay" />
+    <RekaDialogContent
+      v-bind="$attrs"
+      :class="cn('sq-dialog', props.scrollable && 'sq-dialog--scrollable', props.class, props.contentClass)"
+    >
+      <slot />
+    </RekaDialogContent>
+  </DialogPortal>
 </template>

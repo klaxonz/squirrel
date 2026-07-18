@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
-import { computed } from 'vue'
-import PrimeTag from 'primevue/tag'
+import { cn } from '@/shared/lib/utils'
 import type { BadgeVariant } from '.'
 
 const props = withDefaults(defineProps<{
@@ -10,18 +9,8 @@ const props = withDefaults(defineProps<{
 }>(), {
   variant: 'default',
 })
-
-const severity = computed(() => {
-  if (props.variant === 'success') return 'success'
-  if (props.variant === 'warning') return 'warn'
-  if (props.variant === 'destructive' || props.variant === 'error') return 'danger'
-  if (props.variant === 'secondary' || props.variant === 'muted' || props.variant === 'outline') return 'secondary'
-  return 'primary'
-})
 </script>
 
 <template>
-  <PrimeTag :severity="severity" :class="props.class">
-    <slot />
-  </PrimeTag>
+  <span :class="cn('sq-badge', `sq-badge--${props.variant}`, props.class)"><slot /></span>
 </template>

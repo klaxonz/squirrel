@@ -10,11 +10,11 @@
   --space-8: 3rem;
   --space-9: 4rem;
 
-  --radius: 6px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 10px;
+  --radius: 7px;
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 9px;
+  --radius-xl: 11px;
 
   /* Brand mark badge — a real 3-stop gradient with visible depth so the badge
      reads as "polished enamel" rather than a flat color block. Top-left is
@@ -70,7 +70,7 @@
   --ease-out: cubic-bezier(0, 0, 0.2, 1);          /* entering elements */
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* press/active bounce */
 
-  --app-page-gutter: 1rem;
+  --app-page-gutter: 1.25rem;
   --app-page-gutter-sm: 1.5rem;
   --app-page-gutter-lg: 2rem;
   --app-content-media-max: 110rem;
@@ -92,12 +92,12 @@
      --app-grid-min to control density (smaller min = more columns on wide
      screens; e.g. a 4K viewport with --app-grid-min:320px yields ~8 columns
      instead of the old 6-column cap). */
-  --app-video-grid-min: 320px;
-  --app-video-grid-gap: 1.5rem;
-  --app-video-grid-gap-x: 1.25rem;  /* remote/feed variant */
-  --app-video-grid-gap-y: 2.5rem;   /* remote/feed variant */
-  --app-video-rail-card-width: 19rem;
-  --app-video-rail-gap: 1.25rem;
+  --app-video-grid-min: 16.5rem;
+  --app-video-grid-gap: 1rem;
+  --app-video-grid-gap-x: 1rem;
+  --app-video-grid-gap-y: 1.25rem;
+  --app-video-rail-card-width: 16.75rem;
+  --app-video-rail-gap: 0.75rem;
   --app-music-grid-min: 180px;
   --app-music-grid-gap: var(--space-4) var(--space-3);
   --app-music-player-height: 4rem;
@@ -110,12 +110,13 @@
 
   /* Desktop shell geometry (title bar, global header, nav rail).
      Values are implementation defaults — redesign may change them with tests. */
-  --app-titlebar-height: 2rem;
-  --app-header-height: 2.75rem;
-  --sidebar-expanded-width: 15rem;
-  --sidebar-icon-size: 1.25rem;
+  --app-titlebar-height: 2.875rem;
+  --app-header-height: 2.875rem;
+  --sidebar-expanded-width: 14rem;
+  --sidebar-collapsed-width: 4rem;
+  --sidebar-icon-size: 1.125rem;
   --sidebar-item-height: 2.25rem;
-  --sidebar-item-gap: 2px;
+  --sidebar-item-gap: 0.1875rem;
 
   --app-control-bg: hsl(var(--secondary));
   --app-control-radius: var(--radius-md);
@@ -132,9 +133,9 @@
      Borders use foreground alpha (not --border) so selected edges stay readable
      on both dark canvas and light popovers. Light theme overrides alpha in
      themes/dark.css `.light` for paper surfaces. */
-  --app-selection-bg: hsl(var(--foreground) / 0.1);
-  --app-selection-bg-hover: hsl(var(--foreground) / 0.14);
-  --app-selection-border: hsl(var(--foreground) / 0.18);
+  --app-selection-bg: hsl(var(--primary) / 0.1);
+  --app-selection-bg-hover: hsl(var(--primary) / 0.15);
+  --app-selection-border: hsl(var(--primary) / 0.22);
   --app-selection-border-hover: hsl(var(--foreground) / 0.26);
   --app-selection-fg: hsl(var(--foreground));
   --app-selection-count-bg: hsl(var(--foreground) / 0.16);
@@ -166,14 +167,14 @@
   --app-empty-gap: 1rem;
   --app-empty-padding: 2rem;
   --app-empty-border-alpha: 0.5;
-  --app-surface-radius: var(--radius-lg);
-  --app-card-radius: var(--radius-xl);
+  --app-surface-radius: var(--radius-xl);
+  --app-card-radius: var(--radius-lg);
   --app-empty-copy-width: 22rem;
 
   --app-row-hover-bg: hsl(var(--foreground) / 0.03);
   --app-surface-border: hsl(var(--border) / 0.65);
   --app-surface-border-subtle: hsl(var(--border) / 0.5);
-  --app-surface-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+  --app-surface-shadow: 0 1px 0 hsl(var(--foreground) / 0.025);
   --app-panel-shadow:
     0 1px 0 hsl(var(--foreground) / 0.035) inset,
     0 10px 24px hsl(0 0% 0% / 0.12);
@@ -456,7 +457,7 @@
   min-height: 0;
   overflow: hidden;
   /* Flat chrome on the shared canvas — amber is state, not atmosphere. */
-  background: transparent;
+  background: hsl(var(--background));
   color: hsl(var(--foreground));
   --app-workbench-header-height: 3.5rem;
 }
@@ -469,7 +470,7 @@
   width: var(--app-workbench-sidebar-width, 17.5rem);
   /* Structure only — no tinted island that stacks a third "card" beside the rail. */
   border-right: 1px solid var(--app-hairline);
-  background: transparent;
+  background: hsl(var(--sidebar) / 0.62);
 }
 
 .app-workbench__sidebar--always {
@@ -502,7 +503,7 @@
   min-height: var(--app-workbench-header-height);
   flex: none;
   border-bottom: 1px solid var(--app-hairline);
-  background: transparent;
+  background: hsl(var(--card) / 0.56);
 }
 
 .app-workbench__header-content {
@@ -553,7 +554,7 @@
   flex: none;
   flex-direction: column;
   border-right: 1px solid var(--app-hairline);
-  background: transparent;
+  background: hsl(var(--card) / 0.32);
 }
 
 .app-pane--fluid {
@@ -561,6 +562,7 @@
   flex: 1 1 auto;
   overflow: hidden;
   border-right: 0;
+  background: hsl(var(--background));
 }
 
 .app-pane--list {

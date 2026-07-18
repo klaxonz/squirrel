@@ -1,5 +1,9 @@
 <template>
   <header class="titlebar">
+    <div class="titlebar__brand" aria-label="归仓">
+      <BrandLogo size="xs" />
+      <span>归仓</span>
+    </div>
     <div class="titlebar__navigation no-drag">
       <Button
         type="button"
@@ -14,8 +18,6 @@
       >
         <AppIcon name="panelLeft" class="titlebar__navigation-icon" />
       </Button>
-
-      <span class="titlebar__navigation-divider" aria-hidden="true" />
 
       <Button
         type="button"
@@ -46,7 +48,7 @@
       </Button>
     </div>
 
-    <div class="titlebar__drag" aria-hidden="true" />
+    <AppHeader class="titlebar__command no-drag" />
 
     <div class="titlebar__controls no-drag">
       <Button
@@ -71,6 +73,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import BrandLogo from '@/shared/components/BrandLogo.vue'
+import AppHeader from '@/app/shell/AppHeader.vue'
 import { Button } from '@/shared/ui/button'
 import type { AppIconName } from '@/shared/icons/app-icons'
 import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
@@ -127,10 +131,25 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0;
-  background: hsl(var(--background));
-  border-bottom: 1px solid var(--app-hairline);
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border) / 0.55);
   user-select: none;
   -webkit-app-region: drag;
+}
+
+.titlebar__brand {
+  display: inline-flex;
+  width: 7.25rem;
+  height: 100%;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0.75rem;
+  color: hsl(var(--foreground));
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 
 .titlebar__navigation {
@@ -138,7 +157,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.125rem;
   height: 100%;
-  padding: 0 0.25rem;
+  padding: 0 0.375rem 0 0;
   flex: 0 0 auto;
   -webkit-app-region: no-drag;
 }
@@ -164,17 +183,26 @@ onUnmounted(() => {
   height: 0.875rem;
 }
 
-.titlebar__navigation-divider {
-  width: 1px;
-  height: 0.875rem;
-  margin: 0 0.125rem;
-  background: var(--app-hairline);
-}
-
-.titlebar__drag {
+.titlebar__command {
   flex: 1 1 auto;
   min-width: 0;
-  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar__command:deep(.app-header) {
+  height: var(--app-titlebar-height);
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 38rem) auto;
+  border-bottom: 0;
+  padding: 0 0.75rem;
+  background: hsl(var(--card));
+}
+
+.titlebar__command:deep(.app-header__leading) {
+  min-width: 1rem;
+}
+
+.titlebar__command:deep(.app-header__user) {
+  max-width: 9rem;
 }
 
 .titlebar__controls {
@@ -193,7 +221,7 @@ onUnmounted(() => {
 }
 
 .titlebar__control:hover {
-  background: hsl(var(--accent));
+  background: hsl(var(--foreground) / 0.06);
   color: hsl(var(--foreground));
 }
 

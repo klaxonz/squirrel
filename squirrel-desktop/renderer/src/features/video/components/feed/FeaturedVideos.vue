@@ -1,12 +1,9 @@
 <template>
-  <section v-if="items.length > 0 || loading || loadError" class="home-feed-rail group/container">
+  <section v-if="items.length > 0 || loading || loadError" class="featured-workspace">
     <FeedRailHeader
       title="精选推荐"
       view-more
-      :can-scroll-left="canScrollLeft"
-      :can-scroll-right="canScrollRight"
       @view-more="$emit('viewMore')"
-      @scroll="onScroll"
     />
 
     <div v-if="loadError && !loading && items.length === 0" class="app-page-empty app-page-empty--compact">
@@ -17,12 +14,7 @@
       </AppEmptyState>
     </div>
 
-    <FeedRailTrack
-      v-else
-      ref="track"
-      :content-key="items.length"
-      @scroll-state="onScrollState"
-    >
+    <div v-else class="featured-workspace__grid app-video-grid app-video-grid--compact">
       <RecommendationSkeleton v-if="loading && items.length === 0" :count="6" />
       <VideoItem
         v-for="video in items"
@@ -30,12 +22,11 @@
         :video="video"
         show-duration
         thumbnail-status="none"
-        class="app-video-rail-card"
         @openModal="$emit('openModal', video)"
         @goToProfile="(profile) => $emit('goToProfile', profile)"
         @goToSubscription="(id) => $emit('goToSubscription', id)"
       />
-    </FeedRailTrack>
+    </div>
   </section>
 </template>
 
@@ -48,7 +39,6 @@ import { Logger } from '@/shared/lib/logger'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
 import FeedRailHeader from '@/features/video/components/feed/FeedRailHeader.vue'
-import FeedRailTrack from '@/features/video/components/feed/FeedRailTrack.vue'
 import VideoItem from '@/features/video/components/feed/VideoItem.vue'
 import RecommendationSkeleton from '@/features/video/components/feed/RecommendationSkeleton.vue'
 
@@ -62,19 +52,6 @@ defineEmits<{
 const items = ref<VideoListItem[]>([])
 const loading = ref(false)
 const loadError = ref('')
-const track = ref<InstanceType<typeof FeedRailTrack> | null>(null)
-const canScrollLeft = ref(false)
-const canScrollRight = ref(false)
-
-const onScrollState = (state: { canScrollLeft: boolean; canScrollRight: boolean }) => {
-  canScrollLeft.value = state.canScrollLeft
-  canScrollRight.value = state.canScrollRight
-}
-
-const onScroll = (direction: 'left' | 'right') => {
-  track.value?.scroll(direction)
-}
-
 const load = async () => {
   loading.value = true
   loadError.value = ''
@@ -94,3 +71,22 @@ onMounted(load)
 
 defineExpose({ refresh: load })
 </script>
+
+<style scoped>
+.featured-workspace {
+  min-width: 0;
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--app-hairline);
+}
+
+.featured-workspace__grid {
+  --app-grid-min: 15.5rem;
+  align-items: start;
+}
+
+.featured-workspace__grid :deep(.app-video-rail-card) {
+  width: auto;
+  min-width: 0;
+  flex: initial;
+}
+</style>

@@ -1,1 +1,1 @@
-export { default as Input } from 'primevue/inputtext'
+export { default as Input } from './Input.vue'

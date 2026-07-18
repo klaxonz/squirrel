@@ -9,7 +9,7 @@
           </div>
 
           <div class="log-toolbar__actions">
-            <PrimeSelect
+            <Select
               :model-value="filters.level"
               :options="levelOptions"
               option-label="label"
@@ -22,7 +22,7 @@
               @update:model-value="setLevelFilter"
             />
 
-            <PrimeSelect
+            <Select
               :model-value="filters.filename"
               :options="fileOptions"
               option-label="label"
@@ -209,7 +209,7 @@ import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import { Button } from '@/shared/ui/button'
-import PrimeSelect from 'primevue/select'
+import { Select } from '@/shared/ui/select'
 import { Switch } from '@/shared/ui/switch'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import { getLogFiles, queryLogs } from '@/shared/api'

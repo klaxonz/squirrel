@@ -11,6 +11,8 @@
           />
 
           <section class="subscription-toolbar" aria-label="订阅筛选和操作">
+            <PopoverRoot>
+              <PopoverTrigger as-child>
             <Button
               type="button"
               text severity="secondary"
@@ -18,7 +20,6 @@
               class="app-filter-toolbar-button"
               :class="{ 'is-active': activeFilterCount > 0 }"
               :aria-label="activeFilterCount > 0 ? `筛选，已启用 ${activeFilterCount} 项` : '筛选'"
-              @click="toggleSubscriptionFilterPopover"
             >
               <AppIcon name="filter" class="h-3.5 w-3.5" />
               <span>筛选</span>
@@ -29,9 +30,9 @@
                 {{ activeFilterCount }}
               </span>
             </Button>
+              </PopoverTrigger>
 
-              <PrimePopover
-                ref="subscriptionFilterPopover"
+              <PopoverContent
                 class="w-[17.25rem] overflow-hidden border-border/55 p-0 shadow-popover"
               >
                 <AppFilterPanel
@@ -89,7 +90,8 @@
                     />
                   </label>
                 </AppFilterPanel>
-              </PrimePopover>
+              </PopoverContent>
+            </PopoverRoot>
 
             <Button
               type="button"
@@ -304,7 +306,7 @@ import AppFilterPanel from '@/shared/components/layout/AppFilterPanel.vue'
 import AppFilterSection from '@/shared/components/layout/AppFilterSection.vue'
 import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
-import PrimePopover from 'primevue/popover'
+import { PopoverContent, PopoverRoot, PopoverTrigger } from '@/shared/ui/popover'
 import { Button } from '@/shared/ui/button'
 import { Switch } from '@/shared/ui/switch'
 import { useToast } from '@/shared/components/toast/useToast'
@@ -371,7 +373,6 @@ const channelSearch = ref('')
 const site = ref<string | undefined>()
 const nsfw = ref<'all' | 'yes' | 'no'>('all')
 const librarySpecialOnly = ref(false)
-const subscriptionFilterPopover = ref<{ toggle: (event: Event) => void } | null>(null)
 const showAddDialog = ref(false)
 const showImportDialog = ref(false)
 
@@ -379,9 +380,6 @@ const contentScroll = ref<HTMLElement | null>(null)
 const feedTrigger = ref<HTMLElement | null>(null)
 const channelTrigger = ref<HTMLElement | null>(null)
 
-const toggleSubscriptionFilterPopover = (event: Event) => {
-  subscriptionFilterPopover.value?.toggle(event)
-}
 let feedObserver: IntersectionObserver | null = null
 let channelObserver: IntersectionObserver | null = null
 

@@ -3,8 +3,9 @@
     :to="targetPath"
     :replace="!item.resolvePath"
     class="sidebar-item"
-    :class="{ 'is-active': isActive }"
+    :class="{ 'is-active': isActive, 'is-collapsed': collapsed }"
     :aria-current="isActive ? 'page' : undefined"
+    :title="collapsed ? item.name : undefined"
   >
     <AppIcon
       :name="item.icon"
@@ -26,6 +27,7 @@ import type { NavigationItem } from '@/shared/constants/sidebar'
 const props = defineProps<{
   item: NavigationItem
   isActive: boolean
+  collapsed?: boolean
 }>()
 
 const route = useRoute()
@@ -45,9 +47,9 @@ const targetPath = computed(() => {
   gap: 0.55rem;
   width: 100%;
   height: var(--sidebar-item-height);
-  padding: 0 0.625rem;
+  padding: 0 0.75rem;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: transparent;
   color: hsl(var(--muted-foreground) / 0.88);
   font-size: 0.8125rem;
@@ -62,7 +64,7 @@ const targetPath = computed(() => {
 }
 
 .sidebar-item:hover {
-  background: hsl(var(--foreground) / 0.04);
+  background: hsl(var(--foreground) / 0.035);
   color: hsl(var(--foreground) / 0.92);
 }
 
@@ -71,13 +73,41 @@ const targetPath = computed(() => {
 }
 
 .sidebar-item.is-active {
-  background: var(--app-selection-bg);
-  color: var(--app-selection-fg);
+  background: transparent;
+  color: hsl(var(--primary));
   font-weight: 600;
 }
 
+.sidebar-item.is-active::before {
+  content: '';
+  position: absolute;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  left: 0.2rem;
+  width: 2px;
+  border-radius: 2px;
+  background: hsl(var(--primary));
+}
+
 .sidebar-item.is-active:hover {
-  background: var(--app-selection-bg-hover);
+  background: hsl(var(--foreground) / 0.045);
+}
+
+.sidebar-item.is-collapsed {
+  justify-content: center;
+  gap: 0;
+  padding-inline: 0;
+}
+
+.sidebar-item.is-collapsed.is-active::before {
+  top: 0.55rem;
+  bottom: 0.55rem;
+  left: 0;
+}
+
+.sidebar-item.is-collapsed .sidebar-item__label {
+  width: 0;
+  opacity: 0;
 }
 
 .sidebar-item__icon {

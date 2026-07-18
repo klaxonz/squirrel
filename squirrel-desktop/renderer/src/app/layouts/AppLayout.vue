@@ -5,15 +5,15 @@
       'app-layout--desktop': isDesktop,
       'app-layout--immersive': isImmersiveSurface,
     }"
-    :style="{ '--workspace-offset': isSidebarOpen ? 'var(--sidebar-expanded-width)' : '0rem' }"
+    :style="{ '--workspace-offset': sidebarWidth }"
   >
     <DesktopTitleBar v-if="isDesktop" class="app-layout__titlebar" />
 
     <div class="app-layout__frame">
       <AppSidebar
+        v-if="!isSidebarHidden"
         class="app-layout__sidebar"
-        :inert="!isSidebarOpen"
-        :aria-hidden="!isSidebarOpen ? 'true' : undefined"
+        :collapsed="!isSidebarOpen"
       />
 
       <main class="app-layout__workspace">
@@ -79,13 +79,18 @@ const sidebarRouteMeta = computed(() => {
 const isImmersiveSurface = computed(() =>
   Boolean(sidebarRouteMeta.value && sidebarRouteMeta.value.defaultOpen === false),
 )
+const isSidebarHidden = computed(() => route.name === 'VideoPlay')
+const sidebarWidth = computed(() => {
+  if (isSidebarHidden.value) return '0rem'
+  return isSidebarOpen.value ? 'var(--sidebar-expanded-width)' : 'var(--sidebar-collapsed-width)'
+})
 
 /**
  * Every ordinary authenticated surface keeps the same 44px desktop header and
  * account entry. Routes without a search task render the header's balanced
  * spacer; only the video watch surface deliberately gives the player that row.
  */
-const showAppHeader = computed(() => route.name !== 'VideoPlay')
+const showAppHeader = computed(() => !isDesktop && route.name !== 'VideoPlay')
 
 const hasActiveMusicBar = computed(() =>
   Boolean(
@@ -232,9 +237,10 @@ onUnmounted(() => {
 .app-layout__sidebar {
   position: absolute;
   inset: 0 auto 0 0;
-  width: var(--sidebar-expanded-width);
+  width: var(--workspace-offset);
   overflow: hidden;
   z-index: 1;
+  transition: width var(--duration-base) var(--ease-out);
 }
 
 .app-layout__workspace {

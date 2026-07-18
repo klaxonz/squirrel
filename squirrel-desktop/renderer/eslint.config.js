@@ -229,6 +229,17 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       'no-console': 'error',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['primevue', 'primevue/*', '@primeuix/*', 'primeicons', 'primeicons/*'],
+              message: 'Squirrel owns its visual controls. Extend shared/ui or use the approved headless primitive layer instead.',
+            },
+          ],
+        },
+      ],
       // Design-token guard. Starts at 'warn' so the existing 40+68+54
       // violations surface in the report without failing CI; promoted to
       // 'error' in a follow-up once the backlog clears (same progressive-

@@ -1,1 +1,1 @@
-export { default as Switch } from 'primevue/toggleswitch'
+export { default as Switch } from './Switch.vue'

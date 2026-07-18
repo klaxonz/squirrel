@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import PrimeMenu from 'primevue/menu'
+import {
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuRoot,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from 'reka-ui'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import type { AppIconName } from '@/shared/icons/app-icons'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
@@ -28,41 +34,39 @@ withDefaults(defineProps<{
   disabled: false,
   icon: 'more',
 })
-
-const menu = ref<{ toggle: (event: Event) => void } | null>(null)
-
-const toggle = (event: Event) => {
-  menu.value?.toggle(event)
-}
 </script>
 
 <template>
-  <Button
-    type="button"
-    text severity="secondary"
-    size="sm" icon-only
-    :class="buttonClass"
-    :disabled="disabled"
-    :aria-label="triggerLabel"
-    :title="triggerLabel"
-    aria-haspopup="menu"
-    @click="toggle"
-  >
-    <slot name="trigger">
-      <AppIcon :name="icon" class="h-4 w-4" />
-    </slot>
-  </Button>
-
-  <PrimeMenu ref="menu" popup :model="items" class="app-action-menu">
-    <template #item="{ item, props: itemProps }">
-      <a
-        v-bind="itemProps.action"
-        :class="['app-action-menu__item', { 'app-action-menu__item--danger': item.danger }]"
+  <DropdownMenuRoot>
+    <DropdownMenuTrigger as-child>
+      <Button
+        type="button"
+        text severity="secondary"
+        size="sm" icon-only
+        :class="buttonClass"
+        :disabled="disabled"
+        :aria-label="triggerLabel"
+        :title="triggerLabel"
       >
-        <AppSpinner v-if="item.loading" size="sm" />
-        <AppIcon v-else-if="item.appIcon" :name="item.appIcon" class="app-action-menu__icon" />
-        <span>{{ item.label }}</span>
-      </a>
-    </template>
-  </PrimeMenu>
+        <slot name="trigger"><AppIcon :name="icon" class="h-4 w-4" /></slot>
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuPortal>
+      <DropdownMenuContent class="sq-menu" :side-offset="6" align="end">
+        <template v-for="(item, index) in items" :key="`${item.label || 'separator'}-${index}`">
+          <DropdownMenuSeparator v-if="item.separator" class="sq-menu__separator" />
+          <DropdownMenuItem
+            v-else-if="item.visible !== false"
+            :disabled="item.disabled || item.loading"
+            :class="['sq-menu__item', { 'sq-menu__item--danger': item.danger }]"
+            @select="item.command?.()"
+          >
+            <AppSpinner v-if="item.loading" size="sm" />
+            <AppIcon v-else-if="item.appIcon" :name="item.appIcon" class="h-4 w-4 shrink-0" />
+            <span>{{ item.label }}</span>
+          </DropdownMenuItem>
+        </template>
+      </DropdownMenuContent>
+    </DropdownMenuPortal>
+  </DropdownMenuRoot>
 </template>

@@ -1,7 +1,7 @@
 <template>
   <aside
     class="sidebar-rail"
-    :class="{ 'has-player': showSidebarMusicPlayer }"
+    :class="{ 'has-player': showSidebarMusicPlayer, 'is-collapsed': collapsed }"
     aria-label="应用侧边栏"
   >
     <nav class="sidebar-top-nav" aria-label="主要入口">
@@ -10,6 +10,7 @@
         :key="item.path"
         :item="item"
         :is-active="isNavigationItemActive(item, $route)"
+        :collapsed="collapsed"
       />
     </nav>
 
@@ -36,6 +37,7 @@
             :key="item.path"
             :item="item"
             :is-active="isNavigationItemActive(item, $route)"
+            :collapsed="collapsed"
           />
         </div>
       </section>
@@ -47,6 +49,7 @@
         :key="item.path"
         :item="item"
         :is-active="isNavigationItemActive(item, $route)"
+        :collapsed="collapsed"
       />
     </footer>
   </aside>
@@ -63,6 +66,8 @@ import {
   isNavigationItemActive,
 } from '@/shared/constants/sidebar'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
+
+defineProps<{ collapsed?: boolean }>()
 
 const NAV_ID = 'app-sidebar-nav'
 
@@ -89,13 +94,35 @@ const showSidebarMusicPlayer = computed(() =>
   height: 100%;
   overflow: hidden;
   border: 0;
-  border-right: 1px solid hsl(var(--border) / 0.38);
+  border-right: 1px solid hsl(var(--border) / 0.55);
   border-radius: 0;
   background: hsl(var(--sidebar));
   color: hsl(var(--sidebar-foreground));
   box-shadow: none;
   user-select: none;
   transition: padding-bottom var(--duration-base) var(--ease-out);
+}
+
+.sidebar-rail.is-collapsed .sidebar-top-nav,
+.sidebar-rail.is-collapsed .sidebar-nav,
+.sidebar-rail.is-collapsed .sidebar-footer {
+  padding-inline: 0.5rem;
+}
+
+.sidebar-rail.is-collapsed .sidebar-group + .sidebar-group {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid hsl(var(--border) / 0.32);
+}
+
+.sidebar-rail.is-collapsed .sidebar-group__label {
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .sidebar-rail.has-player {
@@ -127,12 +154,11 @@ const showSidebarMusicPlayer = computed(() =>
 .sidebar-group__label {
   margin: 0 0 0.375rem;
   padding: 0 0.625rem;
-  color: hsl(var(--muted-foreground) / 0.58);
+  color: hsl(var(--muted-foreground) / 0.72);
   font-size: var(--app-text-badge-size);
   font-weight: 600;
   line-height: 1.25;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .sidebar-group__items {

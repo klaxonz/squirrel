@@ -48,7 +48,7 @@
     </AppToolbarFrame>
     <AppToolbarFrame v-else bordered compact sticky>
       <div class="videos-view-remote-toolbar">
-        <PrimeSelect
+        <Select
           :model-value="remoteSite || 'all'"
           :options="remoteSiteSelectOptions"
           option-label="label"
@@ -141,7 +141,7 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { useSites } from '@/features/video/composables/useSites'
 import { useUserSettings } from '@/shared/composables/useUserSettings'
-import PrimeSelect from 'primevue/select'
+import { Select } from '@/shared/ui/select'
 
 // Videos tabbed feed: full toolbar + tabbed router-view. Recommendation rows
 // live in the separate HomeView (/home).

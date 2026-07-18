@@ -1,39 +1,45 @@
 <template>
-  <div>
-    <!-- Floating trigger: collapsed icon button anchored to the viewport
-         top-right. Hidden until useServerConfig has resolved. -->
-    <button
+  <PopoverRoot v-model:open="popoverOpen">
+    <PopoverTrigger as-child>
+    <Button
       type="button"
-
-      :class="['server-status-trigger', { 'server-status-trigger--open': popoverOpen }]"
+      text
+      severity="secondary"
+      :icon-only="mode === 'floating'"
+      :class="[
+        'server-status-trigger',
+        {
+          'server-status-trigger--open': popoverOpen,
+          'server-status-trigger--inline': mode === 'inline',
+          'server-status-trigger--trust': mode === 'trust',
+        },
+      ]"
       :title="currentServerLabel"
       :aria-label="triggerAriaLabel"
-      @click="togglePopover"
     >
-      <span
-        class="server-status-trigger__dot"
-        :class="{ 'server-status-trigger__dot--idle': !currentServerUrl }"
-        aria-hidden="true"
-      />
       <AppIcon name="server" class="server-status-trigger__icon" />
-    </button>
+      <span v-if="mode !== 'floating'" class="server-status-trigger__label">
+        {{ actionLabel }}
+      </span>
+    </Button>
+    </PopoverTrigger>
 
-    <PrimePopover
-      ref="serverPopover"
-      class="server-status-popover"
-      @show="popoverOpen = true"
-      @hide="popoverOpen = false"
+    <PopoverContent
+      :class="[
+        'server-status-popover',
+        { 'server-status-popover--trust': mode === 'trust' },
+      ]"
     >
       <header class="server-status-popover__head">
-        <span class="server-status-popover__eyebrow">后端引擎</span>
+        <span class="server-status-popover__eyebrow">服务器</span>
         <span
           class="server-status-popover__state"
-          :class="currentServerUrl
+          :class="hasFreshSuccess
             ? 'server-status-popover__state--ok'
             : 'server-status-popover__state--idle'"
         >
           <span class="server-status-popover__state-dot" />
-          {{ currentServerUrl ? '已连接' : '未配置' }}
+          {{ connectionStateLabel }}
         </span>
       </header>
 
@@ -45,7 +51,8 @@
       <div class="server-status-popover__actions">
         <Button
           type="button"
-          severity="secondary" outlined
+          severity="secondary"
+          outlined
           size="sm"
           class="server-status-popover__action"
           :disabled="!currentServerUrl || testing"
@@ -57,13 +64,15 @@
         </Button>
 
         <Button
-          as="router-link"
-          to="/server-config"
+          type="button"
+          severity="secondary"
+          outlined
           size="sm"
-          class="server-status-popover__action server-status-popover__action--primary"
+          class="server-status-popover__action"
+          @click="goToServerConfig"
         >
           <AppIcon name="settingsPanel" class="server-status-popover__action-icon" />
-          <span>{{ currentServerUrl ? '更换服务器' : '去配置服务器' }}</span>
+          <span>{{ currentServerUrl ? '更换地址' : '去配置' }}</span>
         </Button>
       </div>
 
@@ -72,59 +81,87 @@
         class="server-status-popover__feedback server-status-popover__feedback--ok"
       >
         <AppIcon name="statusSuccess" class="server-status-popover__feedback-icon" />
-        后端服务响应正常
+        连接正常
       </p>
       <p
         v-else-if="testResult === 'fail'"
         class="server-status-popover__feedback server-status-popover__feedback--err"
       >
         <AppIcon name="warning" class="server-status-popover__feedback-icon" />
-        {{ testFeedback || '无法连接至该地址' }}
+        {{ testFeedback || '无法连接该地址' }}
       </p>
-    </PrimePopover>
-  </div>
+    </PopoverContent>
+  </PopoverRoot>
 </template>
 
 <script setup lang="ts">
 /**
- * Floating "server status" affordance for the auth surface.
+ * Server status / config control.
  *
- * Replaces the inline `auth-brand__server-pill` that used to sit in the brand
- * panel's top bar. That pill had three problems:
- *   1. Visually lived on the left panel but the user reads it as "right side"
- *      because brand panels are usually navigation, not chrome.
- *   2. Always showed the full URL even when the user just wanted a glance at
- *      "is the server reachable".
- *   3. Mixed two concerns (display + edit) into one clickable element.
+ * - Default: fixed top-right icon (EmptyLayout).
+ * - `inline`: document-flow server control for app chrome.
+ * - `trust`: text action for the auth trust band.
  *
- * This component collapses to a compact icon button anchored to the viewport
- * top-right corner, with a status dot carrying the real semantic state. Click
- * opens a popover that shows the URL, a quick "Test connection" probe, and
- * the "Change server" action.
+ * Never solid-primary; change-server is secondary.
  */
-import { computed, ref } from 'vue'
-import PrimePopover from 'primevue/popover'
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
+import { PopoverContent, PopoverRoot, PopoverTrigger } from '@/shared/ui/popover'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
 import { Logger } from '@/shared/lib/logger'
 
+const props = withDefaults(defineProps<{
+  mode?: 'floating' | 'inline' | 'trust'
+}>(), {
+  mode: 'floating',
+})
+
 const { serverUrl: currentServerUrl, testServerConnection } = useServerConfig()
+const router = useRouter()
 
 const currentServerLabel = computed(() => currentServerUrl.value || '未配置服务器')
+
+const actionLabel = computed(() => {
+  if (props.mode === 'trust') {
+    return currentServerUrl.value ? '配置' : '去配置'
+  }
+  return currentServerUrl.value ? '管理' : '配置'
+})
+
 const triggerAriaLabel = computed(() => {
-  const state = currentServerUrl.value ? '已连接' : '未配置'
-  return `后端服务器：${state}，点击查看或修改`
+  if (props.mode === 'trust') {
+    return currentServerUrl.value ? '配置服务器地址' : '去配置服务器'
+  }
+  const state = currentServerUrl.value ? '已配置' : '未配置'
+  return `服务器：${state}，点击查看或修改`
 })
 
 const testing = ref(false)
-const serverPopover = ref<{ toggle: (event: Event) => void } | null>(null)
 const popoverOpen = ref(false)
 const testResult = ref<'ok' | 'fail' | null>(null)
 const testFeedback = ref('')
+const testedUrl = ref('')
 
-const togglePopover = (event: Event) => {
-  serverPopover.value?.toggle(event)
+const hasFreshSuccess = computed(() => (
+  testResult.value === 'ok' && testedUrl.value === currentServerUrl.value
+))
+
+const connectionStateLabel = computed(() => {
+  if (hasFreshSuccess.value) return '连接正常'
+  return currentServerUrl.value ? '地址已保存' : '未配置'
+})
+
+watch(currentServerUrl, () => {
+  testResult.value = null
+  testFeedback.value = ''
+  testedUrl.value = ''
+})
+
+const goToServerConfig = () => {
+  popoverOpen.value = false
+  void router.push('/server-config')
 }
 
 const handleTest = async () => {
@@ -133,8 +170,10 @@ const handleTest = async () => {
   testResult.value = null
   testFeedback.value = ''
   try {
-    const result = await testServerConnection(currentServerUrl.value)
+    const targetUrl = currentServerUrl.value
+    const result = await testServerConnection(targetUrl)
     testResult.value = result.ok ? 'ok' : 'fail'
+    testedUrl.value = targetUrl
     if (!result.ok) testFeedback.value = result.message
   } catch (err) {
     Logger.warn('[ServerStatusButton] Test failed', err)
@@ -201,44 +240,104 @@ const handleTest = async () => {
   height: 1rem;
 }
 
-.server-status-trigger__dot {
-  position: absolute;
-  top: 0.3125rem;
-  right: 0.3125rem;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  /* Configured endpoint present — operational readiness, not brand accent. */
-  background: hsl(var(--success));
-  box-shadow: 0 0 0 2px hsl(var(--card) / 0.9);
+.server-status-trigger--inline {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  width: auto;
+  height: 1.875rem;
+  gap: 0.4rem;
+  padding: 0 0.7rem 0 0.55rem;
+  border-color: hsl(var(--border) / 0.65);
+  border-radius: 999px;
+  background: hsl(var(--background) / 0.55);
+  color: hsl(var(--foreground) / 0.88);
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.02);
 }
 
-.server-status-trigger__dot--idle {
-  background: hsl(var(--muted-foreground));
-  box-shadow: 0 0 0 2px hsl(var(--card) / 0.9);
+.server-status-trigger--inline:hover {
+  transform: none;
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent) / 0.55);
+  border-color: hsl(var(--border));
+}
+
+.server-status-trigger--inline.server-status-trigger--open {
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--primary) / 0.45);
+  background: hsl(var(--primary) / 0.1);
+}
+
+.server-status-trigger__label {
+  color: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.server-status-trigger--trust {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  width: auto;
+  height: 2rem;
+  padding-inline: 0.75rem;
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: var(--radius-md);
+  background: hsl(var(--foreground) / 0.045);
+  color: hsl(var(--foreground) / 0.88);
+  box-shadow: none;
+}
+
+.server-status-trigger--trust:hover,
+.server-status-trigger--trust.server-status-trigger--open {
+  border-color: hsl(var(--border));
+  background: hsl(var(--foreground) / 0.08);
+  color: hsl(var(--foreground));
+  transform: none;
+}
+
+.server-status-trigger--trust .server-status-trigger__icon {
+  display: none;
 }
 
 /* ─── Popover ──────────────────────────────────────────────────────────── */
 .server-status-popover {
-  width: 18rem;
-  padding: 1rem;
+  width: 17.5rem;
+  padding: 0.875rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  /* Surface pulls up to --card so the popover reads as a raised panel against
-     the auth shell's warm wash. We deliberately omit a border: in dark mode
-     any hairline (--border, currentColor, white — pick your poison) reads as
-     a stark outline and breaks the floating-card illusion. A layered shadow
-     does the lifting work instead, which is the convention Linear / Vercel /
-     GitHub use for their popovers: a tight ambient shadow + a long, soft drop
-     so the panel feels physically above the page, not stamped onto it. */
-  background: hsl(var(--card));
-  border: 0;
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border) / 0.75);
   border-radius: var(--radius-lg);
-  box-shadow:
-    0 1px 2px hsl(var(--foreground) / 0.08),
-    0 12px 28px hsl(var(--foreground) / 0.22),
-    0 32px 64px -12px hsl(var(--foreground) / 0.32);
+  box-shadow: var(--shadow-md);
+}
+
+.server-status-popover--trust {
+  --background: 42 22% 95%;
+  --foreground: 228 9% 12%;
+  --popover: 42 30% 98%;
+  --secondary: 40 11% 90%;
+  --secondary-foreground: 228 9% 12%;
+  --accent: 38 10% 86%;
+  --muted: 40 11% 90%;
+  --muted-foreground: 225 6% 42%;
+  --control: 42 30% 98%;
+  --border: 228 8% 69%;
+  --primary: 12 81% 54%;
+  --primary-foreground: 42 30% 98%;
+  --ring: 12 81% 48%;
+
+  border-color: hsl(var(--foreground) / 0.28);
+  border-radius: 0.25rem;
+  box-shadow: 0 1.25rem 3rem hsl(var(--foreground) / 0.16);
+}
+
+.server-status-popover--trust .server-status-popover__url,
+.server-status-popover--trust .server-status-popover__action,
+.server-status-popover--trust .server-status-popover__feedback {
+  border-radius: 0.25rem;
 }
 
 .server-status-popover__head {
@@ -312,9 +411,6 @@ const handleTest = async () => {
 .server-status-popover__action {
   gap: 0.4375rem;
   width: 100%;
-}
-
-.server-status-popover__action--primary {
   justify-content: center;
 }
 

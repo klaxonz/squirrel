@@ -4,7 +4,7 @@ defineProps<{ class?: HTMLAttributes['class'] }>()
 </script>
 
 <template>
-  <header :class="['app-prime-dialog__header', $props.class]">
+  <header :class="['sq-dialog__header', $props.class]">
     <slot />
   </header>
 </template>

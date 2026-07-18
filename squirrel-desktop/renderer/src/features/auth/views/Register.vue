@@ -1,6 +1,9 @@
 <template>
-  <AuthEntryCard title="加入归仓" description="创建账户，开始管理您的内容订阅">
-    <form novalidate class="auth-entry__form" @submit.prevent="handleSubmit">
+  <AuthEntryCard
+    title="创建账户"
+    description="在此服务器上创建账户。"
+  >
+    <form class="auth-entry__form" @submit.prevent="handleSubmit">
       <Transition name="auth-alert">
         <Alert v-if="errorMessage" variant="error">
           <AppIcon name="error" class="h-4 w-4" />
@@ -9,64 +12,74 @@
       </Transition>
 
       <div class="auth-field">
-        <FloatLabel variant="on" class="auth-field__float-label">
-          <Input fluid
-            id="nickname"
-            v-model="form.nickname"
-            type="text"
-            required
-            autocomplete="nickname"
-            class="auth-field__input"
-          />
-          <label for="nickname">昵称</label>
-        </FloatLabel>
+        <label for="nickname" class="auth-field__label">昵称</label>
+        <Input
+          fluid
+          id="nickname"
+          v-model="form.nickname"
+          type="text"
+          required
+          size="lg"
+          :disabled="loading"
+          autocomplete="nickname"
+          placeholder="怎么称呼你"
+          class="auth-field__input"
+        />
       </div>
 
       <div class="auth-field">
-        <FloatLabel variant="on" class="auth-field__float-label">
-          <Input fluid
-            id="email"
-            v-model="form.email"
-            type="email"
-            required
-            autocomplete="email"
-            class="auth-field__input"
-          />
-          <label for="email">邮箱</label>
-        </FloatLabel>
+        <label for="email" class="auth-field__label">邮箱</label>
+        <Input
+          fluid
+          id="email"
+          v-model="form.email"
+          type="email"
+          required
+          size="lg"
+          :disabled="loading"
+          autocomplete="email"
+          placeholder="you@example.com"
+          class="auth-field__input"
+        />
       </div>
 
       <div class="auth-field">
-        <FloatLabel variant="on" class="auth-field__float-label">
-          <div class="auth-field__wrap">
-            <Input fluid
-              id="password"
-              v-model="form.password"
-              :type="showPassword ? 'text' : 'password'"
-              required
-              minlength="8"
-              autocomplete="new-password"
-              class="auth-field__input auth-field__input--with-action"
-            />
-            <Button
-              type="button"
-              text severity="secondary"
-              size="sm" icon-only
-              class="auth-field__action"
-              :title="showPassword ? '隐藏密码' : '显示密码'"
-              :aria-label="showPassword ? '隐藏密码' : '显示密码'"
-              @click="showPassword = !showPassword"
-            >
-              <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
-            </Button>
-          </div>
-          <label for="password">密码</label>
-        </FloatLabel>
-        <span class="auth-field__hint">至少 8 位字符</span>
+        <label for="password" class="auth-field__label">密码</label>
+        <div class="auth-field__wrap">
+          <Input
+            fluid
+            id="password"
+            v-model="form.password"
+            :type="showPassword ? 'text' : 'password'"
+            required
+            minlength="8"
+            size="lg"
+            :disabled="loading"
+            autocomplete="new-password"
+            placeholder="至少 8 位"
+            aria-describedby="password-hint"
+            class="auth-field__input auth-field__input--with-action"
+          />
+          <Button
+            type="button"
+            text
+            severity="secondary"
+            size="sm"
+            icon-only
+            class="auth-field__action"
+            :disabled="loading"
+            :title="showPassword ? '隐藏密码' : '显示密码'"
+            :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+            @click="showPassword = !showPassword"
+          >
+            <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
+          </Button>
+        </div>
+        <span id="password-hint" class="auth-field__hint">至少 8 个字符</span>
       </div>
 
       <Button type="submit" size="lg" :loading="loading" class="auth-entry__submit">
-        {{ loading ? '正在注册' : '创建账户' }}
+        {{ loading ? '正在创建…' : '创建账户' }}
       </Button>
     </form>
 
@@ -84,7 +97,6 @@ import AuthEntryCard from '@/features/auth/components/AuthEntryCard.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
-import { FloatLabel } from '@/shared/ui/float-label'
 import { Input } from '@/shared/ui/input'
 import { useUserStore } from '@/shared/stores/user'
 
@@ -100,16 +112,21 @@ const form = ref({
 })
 
 const handleSubmit = async () => {
+  if (loading.value) return
   loading.value = true
   errorMessage.value = ''
+  try {
+    const result = await userStore.register(form.value)
+    if (result.error) {
+      errorMessage.value = result.error instanceof Error ? result.error.message : '注册失败'
+      return
+    }
 
-  const result = await userStore.register(form.value)
-  loading.value = false
-  if (result.error) {
-    errorMessage.value = result.error instanceof Error ? result.error.message : '注册失败'
-    return
+    await router.push('/login')
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '注册失败，请重试'
+  } finally {
+    loading.value = false
   }
-
-  await router.push('/login')
 }
 </script>

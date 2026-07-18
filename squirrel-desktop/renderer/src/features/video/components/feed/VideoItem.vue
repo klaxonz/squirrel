@@ -380,9 +380,17 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 .video-item {
   display: flex;
   cursor: pointer;
+  border: 0;
   border-radius: var(--radius-lg);
+  background: transparent;
+  padding: 0;
   outline: none;
-  transition: color var(--duration-fast) var(--ease-default);
+  transition:
+    color var(--duration-fast) var(--ease-default);
+}
+
+.video-item:hover {
+  background: transparent;
 }
 
 .video-item--grid {
@@ -513,7 +521,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   flex: 1 1 auto;
   flex-direction: column;
   gap: 0.25rem;
-  padding-inline: 0.125rem;
+  padding: 0 0.125rem 0.25rem;
 }
 
 .video-item__body--list {
@@ -532,7 +540,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item__title--grid {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   line-height: 1.35;
 }
 

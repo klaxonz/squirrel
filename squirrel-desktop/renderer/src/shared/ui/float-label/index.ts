@@ -1,1 +1,1 @@
-export { default as FloatLabel } from 'primevue/floatlabel'
+export { default as FloatLabel } from './FloatLabel.vue'

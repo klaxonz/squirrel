@@ -1,1 +1,1 @@
-export { default as Checkbox } from 'primevue/checkbox'
+export { default as Checkbox } from './Checkbox.vue'

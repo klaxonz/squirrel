@@ -30,7 +30,7 @@
 
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">逻辑类</label>
-              <PrimeSelect
+              <Select
                 v-model="formData.task_class"
                 :options="taskClassOptions"
                 option-label="label"
@@ -47,7 +47,7 @@
                     <span v-if="option.description" class="max-w-[300px] truncate text-xs text-muted-foreground">{{ option.description }}</span>
                   </div>
                 </template>
-              </PrimeSelect>
+              </Select>
             </div>
 
             <div class="space-y-2">
@@ -75,7 +75,7 @@
             </div>
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">单位</label>
-              <PrimeSelect
+              <Select
                 v-model="formData.unit"
                 :options="intervalUnitOptions"
                 option-label="label"
@@ -150,7 +150,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog'
-import PrimeSelect from 'primevue/select'
+import { Select } from '@/shared/ui/select'
 import { Logger } from '@/shared/lib/logger'
 
 const props = defineProps({

@@ -1,10 +1,10 @@
 <template>
   <AuthEntryCard
-    title="归仓核心配置"
-    description="连接至您的后端服务引擎"
-    wide
+    title="连接服务器"
+    description="归仓将连接你指定的服务端，用于同步与登录。"
+    :show-server-action="false"
   >
-    <form novalidate class="auth-entry__form" @submit.prevent="handleConnect">
+    <form class="auth-entry__form" @submit.prevent="handleConnect">
       <Transition name="auth-alert">
         <Alert v-if="errorMessage" variant="error">
           <AppIcon name="error" class="h-4 w-4" />
@@ -13,31 +13,40 @@
       </Transition>
 
       <div class="auth-field">
-        <label for="server-url" class="auth-field__label">服务器接口地址</label>
+        <label for="server-url" class="auth-field__label">API 地址</label>
         <div class="auth-server-field">
-          <Input fluid
+          <Input
+            fluid
             id="server-url"
             v-model="form.serverUrl"
             type="url"
             required
+            size="lg"
             placeholder="http://127.0.0.1:8001"
-            :disabled="connecting"
+            :disabled="busy"
+            :aria-invalid="testResult === false || undefined"
+            aria-describedby="server-url-feedback"
             class="auth-field__input"
+            spellcheck="false"
+            autocomplete="url"
             @input="clearStatus"
           />
           <Button
             type="button"
-            severity="secondary" outlined
-            size="sm"
-            :disabled="!form.serverUrl.trim() || testing"
+            severity="secondary"
+            outlined
+            :disabled="!targetServerUrl || busy"
             :loading="testing"
             @click="handleTest"
           >
-            {{ testing ? '测试中' : '测试连接' }}
+            {{ testing ? '测试中…' : '测试' }}
           </Button>
         </div>
         <p
           v-if="connectionMessage"
+          id="server-url-feedback"
+          role="status"
+          aria-live="polite"
           class="auth-field__status"
           :class="testResult === null
             ? 'auth-field__status--idle'
@@ -51,79 +60,65 @@
           />
           {{ connectionMessage }}
         </p>
+        <p v-else id="server-url-feedback" class="auth-field__hint">本地默认端口 8001</p>
       </div>
 
-      <div v-if="quickServerUrls.length || recentServerUrls.length" class="auth-options">
-        <div v-if="quickServerUrls.length" class="auth-options__group">
-          <span class="auth-options__title">常用地址</span>
-          <ul class="auth-options__list">
-            <li v-for="url in quickServerUrls" :key="url">
-              <Button
-                type="button"
-                severity="secondary" outlined
-                size="sm"
-                class="auth-options__chip"
-                @click="applyServerUrl(url)"
-              >
-                <span class="auth-options__chip-text">{{ url }}</span>
-              </Button>
-            </li>
-          </ul>
+      <div v-if="addressSuggestions.length" class="auth-options">
+        <div class="auth-options__head">
+          <span class="auth-options__title">快捷填入</span>
+          <Button
+            v-if="recentServerUrls.length"
+            type="button"
+            text
+            severity="secondary"
+            size="sm"
+            :disabled="busy"
+            @click="handleClearRecent"
+          >
+            清空最近
+          </Button>
         </div>
-
-        <div v-if="recentServerUrls.length" class="auth-options__group">
-          <div class="auth-options__head">
-            <span class="auth-options__title">最近连接</span>
-            <Button type="button" text severity="secondary" size="sm" @click="handleClearRecent">
-              清空
+        <ul class="auth-options__list">
+          <li v-for="url in addressSuggestions" :key="url">
+            <Button
+              type="button"
+              severity="secondary"
+              outlined
+              size="sm"
+              class="auth-chip"
+              :class="{ 'auth-chip--active': form.serverUrl.trim() === url }"
+              :title="url"
+              :aria-pressed="form.serverUrl.trim() === url"
+              :disabled="busy"
+              @click="applyServerUrl(url)"
+            >
+              <span class="auth-chip__dot" aria-hidden="true" />
+              <span class="auth-chip__text">{{ formatSuggestionLabel(url) }}</span>
             </Button>
-          </div>
-          <ul class="auth-options__list">
-            <li v-for="url in recentServerUrls" :key="url">
-              <Button
-                type="button"
-                severity="secondary" outlined
-                size="sm"
-                class="auth-options__chip"
-                :title="url"
-                @click="applyServerUrl(url)"
-              >
-                <span class="auth-options__chip-text">{{ url }}</span>
-              </Button>
-            </li>
-          </ul>
-        </div>
+          </li>
+        </ul>
       </div>
 
       <Button
         type="submit"
         size="lg"
         :loading="connecting"
-        :disabled="!form.serverUrl.trim()"
+        :disabled="!targetServerUrl || busy"
         class="auth-entry__submit"
       >
-        {{ connecting ? '正在连接' : '确认并进入系统' }}
+        {{ connecting ? '正在保存…' : '保存并连接' }}
       </Button>
     </form>
 
-    <template #footer>
-      <span class="auth-entry__footer-text">本地开发？</span>
-      <Button type="button" link size="sm" class="auth-entry__link" @click="fillLocalhost">
-        快速切换至本机地址
-      </Button>
-    </template>
-
-    <template #below>
-      <router-link to="/login" class="auth-entry__back">
-        <AppIcon name="back" class="h-3.5 w-3.5" />
-        返回登录页面
-      </router-link>
+    <template v-if="hasSavedServer" #footer>
+      <span class="auth-entry__footer-text">已经配好了？</span>
+      <router-link to="/login" class="auth-entry__link">直接登录</router-link>
     </template>
   </AuthEntryCard>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AuthEntryCard from '@/features/auth/components/AuthEntryCard.vue'
 import { Logger } from '@/shared/lib/logger'
@@ -131,11 +126,12 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Alert } from '@/shared/ui/alert'
-import { useServerConfig } from '@/shared/composables/useServerConfig'
+import { normalizeServerUrl, useServerConfig } from '@/shared/composables/useServerConfig'
 
 const router = useRouter()
 const {
   getServerUrl,
+  serverUrl,
   initServerConfig,
   recentServerUrls,
   setServerUrl,
@@ -143,27 +139,45 @@ const {
   testServerConnection,
 } = useServerConfig()
 
-const quickServerUrls = ['http://127.0.0.1:8001', 'http://localhost:8001']
+const PRESET_URLS = ['http://127.0.0.1:8001', 'http://localhost:8001']
 
-const form = ref({
-  serverUrl: '',
-})
-
+const form = ref({ serverUrl: '' })
 const connecting = ref(false)
 const testing = ref(false)
 const testResult = ref(null)
 const errorMessage = ref('')
 const connectionMessage = ref('')
 
+const targetServerUrl = computed(() => normalizeServerUrl(form.value.serverUrl))
+const hasSavedServer = computed(() => Boolean(serverUrl.value))
+const busy = computed(() => testing.value || connecting.value)
+
+const addressSuggestions = computed(() => {
+  const seen = new Set()
+  const out = []
+  for (const url of [...PRESET_URLS, ...recentServerUrls.value]) {
+    const key = url.trim()
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    out.push(key)
+  }
+  return out
+})
+
+const formatSuggestionLabel = (url) => {
+  try {
+    const host = new URL(url).host || url
+    if (host.startsWith('127.0.0.1') || host.startsWith('localhost')) return host
+    return host
+  } catch {
+    return url
+  }
+}
+
 const clearStatus = () => {
   testResult.value = null
   errorMessage.value = ''
   connectionMessage.value = ''
-}
-
-const fillLocalhost = () => {
-  form.value.serverUrl = 'http://127.0.0.1:8001'
-  clearStatus()
 }
 
 const applyServerUrl = (url) => {
@@ -173,45 +187,70 @@ const applyServerUrl = (url) => {
 
 onMounted(async () => {
   await initServerConfig()
-  form.value.serverUrl = getServerUrl() || ''
+  form.value.serverUrl = getServerUrl() || PRESET_URLS[0]
 })
 
 const handleClearRecent = () => {
+  if (busy.value) return
   clearRecentServerUrls()
   clearStatus()
 }
 
 const handleTest = async () => {
-  if (!form.value.serverUrl.trim()) return
+  if (busy.value) return
+  const targetUrl = targetServerUrl.value
+  if (!targetUrl) {
+    testResult.value = false
+    connectionMessage.value = '请输入有效的 HTTP 或 HTTPS 地址'
+    return
+  }
   testing.value = true
   clearStatus()
   try {
-    const result = await testServerConnection(form.value.serverUrl)
+    const result = await testServerConnection(targetUrl)
+    if (targetServerUrl.value !== targetUrl) return
     testResult.value = result.ok
-    connectionMessage.value = result.ok ? '后端服务响应正常' : '无法连接至该地址'
+    connectionMessage.value = result.ok ? '连接正常，可以继续' : result.message
   } catch (err) {
     Logger.warn('[ServerConfig] Connection test failed', err)
     testResult.value = false
-    connectionMessage.value = '测试失败，请检查网络'
+    connectionMessage.value = '测试失败，请检查网络或地址'
   } finally {
     testing.value = false
   }
 }
 
 const handleConnect = async () => {
-  if (!form.value.serverUrl.trim()) return
+  if (busy.value) return
+  const targetUrl = targetServerUrl.value
+  if (!targetUrl) {
+    testResult.value = false
+    connectionMessage.value = '请输入有效的 HTTP 或 HTTPS 地址'
+    return
+  }
   connecting.value = true
   errorMessage.value = ''
+  connectionMessage.value = '正在验证服务器…'
+  testResult.value = null
   try {
-    const ok = await setServerUrl(form.value.serverUrl)
+    const connection = await testServerConnection(targetUrl)
+    if (!connection.ok) {
+      testResult.value = false
+      connectionMessage.value = connection.message
+      return
+    }
+
+    testResult.value = true
+    connectionMessage.value = '连接正常，正在保存…'
+    const ok = await setServerUrl(targetUrl)
     if (!ok) {
-      errorMessage.value = '无效的服务器地址，请检查格式'
+      errorMessage.value = '地址格式无效，请检查后重试'
       return
     }
     await router.replace('/login')
   } catch (err) {
     Logger.warn('[ServerConfig] Connection failed', err)
-    errorMessage.value = '连接失败，请重试'
+    errorMessage.value = '保存失败，请重试'
   } finally {
     connecting.value = false
   }

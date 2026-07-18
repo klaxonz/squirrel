@@ -78,22 +78,22 @@
         </Button>
       </header>
 
-      <PrimeTabs
+      <TabsRoot
         v-model:value="activeTab"
         class="music-profile-tabs-wrapper"
       >
         <div class="music-profile-tabs-header">
-          <PrimeTabList class="music-profile-tabs-list">
-            <PrimeTab value="playlists" class="music-profile-tab-btn">
+          <TabsList class="music-profile-tabs-list">
+            <TabsTrigger value="playlists" class="music-profile-tab-btn">
               <span>我的歌单</span>
-            </PrimeTab>
-            <PrimeTab value="history" class="music-profile-tab-btn">
+            </TabsTrigger>
+            <TabsTrigger value="history" class="music-profile-tab-btn">
               <span>最近播放</span>
-            </PrimeTab>
-            <PrimeTab value="rank" class="music-profile-tab-btn">
+            </TabsTrigger>
+            <TabsTrigger value="rank" class="music-profile-tab-btn">
               <span>听歌排行</span>
-            </PrimeTab>
-          </PrimeTabList>
+            </TabsTrigger>
+          </TabsList>
 
           <div class="music-profile-tab-actions">
             <MusicCreatePlaylistDialog
@@ -113,8 +113,8 @@
           </div>
         </div>
 
-      <PrimeTabPanels class="music-profile-panel">
-        <PrimeTabPanel value="playlists" class="music-profile-playlists">
+      <div class="music-profile-panel">
+        <TabsContent value="playlists" class="music-profile-playlists">
           <div class="music-profile-playlist-section">
             <div class="music-profile-section-header">
               <h3 class="music-profile-section-title">创建的歌单 ({{ createdPlaylists.length }})</h3>
@@ -157,9 +157,9 @@
               />
             </div>
           </div>
-        </PrimeTabPanel>
+        </TabsContent>
 
-        <PrimeTabPanel value="history" class="music-profile-tracks-list">
+        <TabsContent value="history" class="music-profile-tracks-list">
           <AppBlockLoader v-if="historyLoading" size="sm" text="正在载入播放历史..." />
           <AppEmptyState v-else-if="history.length === 0" class="py-12" variant="plain" icon="playlistMusic" title="暂无播放历史记录" />
           <MusicTrackList
@@ -186,9 +186,9 @@
               </Button>
             </div>
           </div>
-        </PrimeTabPanel>
+        </TabsContent>
 
-        <PrimeTabPanel value="rank" class="music-profile-tracks-list">
+        <TabsContent value="rank" class="music-profile-tracks-list">
           <AppBlockLoader v-if="rankLoading" size="sm" text="正在载入听歌排行..." />
           <AppEmptyState v-else-if="listenRank.length === 0" class="py-12" variant="plain" icon="playlistMusic" title="暂无听歌排行数据" />
           <MusicTrackList
@@ -215,20 +215,16 @@
               </Button>
             </div>
           </div>
-        </PrimeTabPanel>
-      </PrimeTabPanels>
-      </PrimeTabs>
+        </TabsContent>
+      </div>
+      </TabsRoot>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import PrimeTabs from 'primevue/tabs'
-import PrimeTabList from 'primevue/tablist'
-import PrimeTab from 'primevue/tab'
-import PrimeTabPanels from 'primevue/tabpanels'
-import PrimeTabPanel from 'primevue/tabpanel'
+import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'

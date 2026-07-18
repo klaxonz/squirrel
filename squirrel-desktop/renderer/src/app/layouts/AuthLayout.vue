@@ -1,20 +1,15 @@
 <template>
-  <div
-    class="auth-layout h-screen overflow-hidden flex flex-col bg-background"
-    :class="{ 'auth-layout--desktop': isDesktop }"
-  >
-    <DesktopTitleBar v-if="isDesktop" />
-    <div class="flex-1 overflow-auto">
+  <div class="auth-layout">
+    <AuthTitleBar v-if="isDesktop" class="auth-layout__chrome" />
+    <div class="auth-layout__body">
       <slot />
     </div>
     <ToastProvider />
-    <ServerStatusButton />
   </div>
 </template>
 
 <script setup lang="ts">
-import DesktopTitleBar from '@/app/shell/DesktopTitleBar.vue'
-import ServerStatusButton from '@/shared/components/ServerStatusButton.vue'
+import AuthTitleBar from '@/app/shell/AuthTitleBar.vue'
 import ToastProvider from '@/shared/components/toast/ToastProvider.vue'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 
@@ -22,7 +17,33 @@ const isDesktop = useDesktopBridge().isDesktop()
 </script>
 
 <style scoped>
-.auth-layout--desktop :deep(.server-status-trigger) {
-  top: calc(2.75rem + env(safe-area-inset-top, 0px));
+.auth-layout {
+  --background: 42 22% 95%;
+  --foreground: 228 9% 12%;
+  --card: 42 28% 97%;
+  --control: 42 30% 98%;
+  --border: 228 8% 69%;
+  --muted-foreground: 225 6% 42%;
+
+  position: relative;
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  overflow: hidden;
+  background: hsl(var(--background));
+}
+
+.auth-layout__chrome {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 20;
+}
+
+.auth-layout__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 </style>

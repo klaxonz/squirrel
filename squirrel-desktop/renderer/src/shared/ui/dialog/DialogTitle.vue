@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
+import { DialogTitle } from 'reka-ui'
 defineProps<{ class?: HTMLAttributes['class'] }>()
 </script>
 
 <template>
-  <h2 :class="['app-prime-dialog__title', $props.class]">
+  <DialogTitle as="h2" :class="['sq-dialog__title', $props.class]">
     <slot />
-  </h2>
+  </DialogTitle>
 </template>
