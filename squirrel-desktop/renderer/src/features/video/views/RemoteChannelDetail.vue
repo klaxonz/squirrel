@@ -4,7 +4,7 @@
       <div v-if="errorMessage">
         <AppEmptyState variant="error" title="加载失败" :copy="errorMessage">
           <template #actions>
-            <Button variant="outline" size="sm" @click="refresh">重试</Button>
+            <Button severity="secondary" outlined size="sm" @click="refresh">重试</Button>
           </template>
         </AppEmptyState>
       </div>
@@ -63,11 +63,11 @@
 
           <div class="remote-channel-header__actions">
             <div v-if="localSubscriptionRoute" class="remote-channel-switch">
-              <Button type="button" variant="ghost" size="sm" @click="openLocalChannel">
+              <Button type="button" text severity="secondary" size="sm" @click="openLocalChannel">
                 <AppIcon name="library" class="h-3.5 w-3.5" />
                 本地
               </Button>
-              <Button type="button" variant="secondary" size="sm" disabled>
+              <Button type="button" severity="secondary" size="sm" disabled>
                 <AppIcon name="siteFallback" class="h-3.5 w-3.5" />
                 远端
               </Button>
@@ -123,7 +123,7 @@
       <div v-if="items.length > 0 && !allLoaded" class="remote-channel-load-more">
         <Button
           type="button"
-          variant="outline"
+          severity="secondary" outlined
           :disabled="loading"
           @click="loadMore"
         >

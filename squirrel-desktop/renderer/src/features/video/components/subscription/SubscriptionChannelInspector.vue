@@ -13,8 +13,8 @@
       </div>
       <Button
         type="button"
-        variant="ghost"
-        size="icon-sm"
+        text severity="secondary"
+        size="sm" icon-only
         title="关闭频道详情"
         aria-label="关闭频道详情"
         @click="$emit('close')"
@@ -26,7 +26,7 @@
     <div class="subscription-inspector__body custom-scrollbar">
       <div class="subscription-inspector__actions">
         <Button
-          variant="outline"
+          severity="secondary" outlined
           size="sm"
           @click="$emit('open-detail')"
         >
@@ -34,7 +34,7 @@
         </Button>
         <Button
           type="button"
-          variant="outline"
+          severity="secondary" outlined
           size="sm"
         :loading="refreshing"
         @click="$emit('refresh')"
@@ -45,7 +45,7 @@
         <Button
           v-if="canOpenRemote"
           type="button"
-          variant="ghost"
+          text severity="secondary"
           size="sm"
           @click="$emit('open-remote')"
         >
@@ -56,7 +56,7 @@
 
       <Button
         type="button"
-        variant="ghost"
+        text severity="secondary"
         size="sm"
         class="subscription-inspector__special"
         :class="{ 'is-active': channel.is_special_followed }"
@@ -114,17 +114,17 @@
           <span>{{ channel.recent_videos.length }}</span>
         </div>
         <div v-if="channel.recent_videos.length" class="subscription-inspector__recent">
-          <Button
+          <button
             v-for="video in channel.recent_videos"
             :key="video.id"
-            unstyled
+
             type="button"
             class="subscription-inspector__recent-item"
             @click="$emit('open-video', video.id)"
           >
             <span>{{ video.title }}</span>
             <small>{{ formatDate(video.publish_date) }}</small>
-          </Button>
+          </button>
         </div>
         <p v-else class="subscription-inspector__muted">暂无最近内容</p>
       </section>

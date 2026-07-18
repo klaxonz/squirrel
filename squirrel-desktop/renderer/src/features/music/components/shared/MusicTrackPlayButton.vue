@@ -1,7 +1,7 @@
 <template>
   <Button
-    variant="player"
-    size="player-sm"
+    outlined rounded
+    size="sm" icon-only
     :class="{ 'bg-primary/10': isPlaying }"
     :aria-label="isPlaying ? '暂停' : '播放'"
     :aria-pressed="isPlaying"

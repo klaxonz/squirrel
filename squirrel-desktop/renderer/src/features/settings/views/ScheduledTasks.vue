@@ -13,8 +13,8 @@
         <div class="scheduled-toolbar__actions">
           <Button
             type="button"
-            variant="ghost"
-            size="icon-sm"
+            text severity="secondary"
+            size="sm" icon-only
             class="app-toolbar-control app-toolbar-icon-button"
             title="刷新任务"
             aria-label="刷新任务"
@@ -23,7 +23,7 @@
             <AppSpinner v-if="loading" size="sm" />
             <AppIcon v-else name="refresh" class="h-4 w-4" />
           </Button>
-          <Button type="button" variant="outline" size="sm" @click="showCreateDialog = true">
+          <Button type="button" severity="secondary" outlined size="sm" @click="showCreateDialog = true">
             <AppIcon name="plus" class="h-4 w-4" />
             新建任务
           </Button>
@@ -105,7 +105,7 @@
                   <Button
                     v-if="hasTaskFilters"
                     size="sm"
-                    variant="secondary"
+                    severity="secondary"
                     @click="clearTaskFilters"
                   >
                     清空筛选
@@ -153,8 +153,8 @@
 
                 <div class="flex items-center justify-end gap-1">
                   <Button
-                    variant="ghost"
-                    size="icon-sm"
+                    text severity="secondary"
+                    size="sm" icon-only
                     class="text-muted-foreground"
                     title="立即执行"
                     @click="executeTask(task)"
@@ -162,8 +162,8 @@
                     <AppIcon name="play" class="h-4 w-4 fill-current" />
                   </Button>
                   <Button
-                    variant="ghost"
-                    size="icon-sm"
+                    text severity="secondary"
+                    size="sm" icon-only
                     class="text-muted-foreground"
                     title="编辑"
                     @click="editTask(task)"
@@ -184,7 +184,7 @@
               </span>
               <div class="flex items-center gap-2">
                 <Button
-                  variant="outline"
+                  severity="secondary" outlined
                   size="sm"
                   :disabled="currentPage <= 1"
                   @click="goToPage(currentPage - 1)"
@@ -192,7 +192,7 @@
                   上一页
                 </Button>
                 <Button
-                  variant="outline"
+                  severity="secondary" outlined
                   size="sm"
                   :disabled="currentPage >= totalPages"
                   @click="goToPage(currentPage + 1)"

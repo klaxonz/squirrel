@@ -4,7 +4,7 @@
       <div class="sp-upnext-label">{{ label }}</div>
       <div class="sp-upnext-title">{{ nextTitle }}</div>
       <div class="sp-upnext-countdown">{{ countdown }}s</div>
-      <Button variant="player" size="sm" class="sp-upnext-btn" @click.stop="$emit('startNow')">{{ startNowLabel }}</Button>
+      <Button outlined rounded size="sm" class="sp-upnext-btn" @click.stop="$emit('startNow')">{{ startNowLabel }}</Button>
     </div>
   </transition>
 </template>

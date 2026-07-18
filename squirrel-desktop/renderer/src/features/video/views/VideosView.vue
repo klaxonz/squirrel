@@ -61,8 +61,8 @@
 
         <Button
           type="button"
-          variant="ghost"
-          size="icon-sm"
+          text severity="secondary"
+          size="sm" icon-only
           @click="refreshCurrentList"
           title="刷新内容"
           aria-label="刷新内容"
@@ -79,7 +79,7 @@
       <div v-if="loadError" class="videos-view-error">
         <AppEmptyState variant="error" title="加载失败" :copy="loadError">
           <template #actions>
-            <Button variant="outline" size="sm" @click="refreshCurrentList">重试</Button>
+            <Button severity="secondary" outlined size="sm" @click="refreshCurrentList">重试</Button>
           </template>
         </AppEmptyState>
       </div>

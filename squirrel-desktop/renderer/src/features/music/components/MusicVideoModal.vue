@@ -5,11 +5,9 @@
         <DialogTitle class="music-video-title truncate text-sm font-semibold">
           {{ title }}
         </DialogTitle>
-        <DialogClose as-child>
-          <Button variant="ghost" size="icon-sm" aria-label="关闭">
-            <AppIcon name="close" class="h-5 w-5" />
-          </Button>
-        </DialogClose>
+        <Button text severity="secondary" size="sm" icon-only aria-label="关闭" @click="$emit('close')">
+          <AppIcon name="close" class="h-5 w-5" />
+        </Button>
       </DialogHeader>
       <div class="music-video-player">
         <video
@@ -31,7 +29,6 @@ import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,

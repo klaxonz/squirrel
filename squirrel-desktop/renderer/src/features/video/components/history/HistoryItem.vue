@@ -75,8 +75,8 @@
     </div>
 
     <Button
-      variant="ghost"
-      size="mini-icon"
+      text severity="secondary"
+      size="sm" icon-only
       class="history-item__delete"
       title="删除此条历史"
       aria-label="删除此条历史"

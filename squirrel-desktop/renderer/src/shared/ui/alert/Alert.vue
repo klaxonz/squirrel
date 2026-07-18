@@ -4,6 +4,8 @@ import { computed } from 'vue'
 import Message from 'primevue/message'
 import type { AlertVariant } from '.'
 
+defineOptions({ inheritAttrs: false })
+
 const props = withDefaults(defineProps<{
   class?: HTMLAttributes['class']
   variant?: AlertVariant
@@ -22,6 +24,7 @@ const severity = computed(() => {
 
 <template>
   <Message
+    v-bind="$attrs"
     :severity="severity"
     :closable="false"
     :class="['app-prime-message', props.class]"

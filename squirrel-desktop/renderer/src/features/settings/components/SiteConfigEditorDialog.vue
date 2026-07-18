@@ -14,11 +14,9 @@
             <DialogDescription class="app-dialog-form-description">{{ siteEditorForm.slug }}</DialogDescription>
           </div>
         </div>
-        <DialogClose as-child>
-          <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="关闭">
-            <AppIcon name="close" class="h-3.5 w-3.5" />
-          </Button>
-        </DialogClose>
+        <Button text severity="secondary" size="sm" icon-only class="text-muted-foreground" aria-label="关闭" @click="$emit('close')">
+          <AppIcon name="close" class="h-3.5 w-3.5" />
+        </Button>
       </DialogHeader>
 
       <div class="app-dialog-form-body app-dialog-form-body--scroll site-editor-scroll">
@@ -29,15 +27,15 @@
           <div class="site-editor-fields">
             <div class="site-editor-field">
               <label class="app-dialog-form-label" for="site-editor-label">显示名称</label>
-              <Input id="site-editor-label" v-model="siteEditorForm.label" placeholder="展示给用户的名称" class="app-form-input" />
+              <Input fluid id="site-editor-label" v-model="siteEditorForm.label" placeholder="展示给用户的名称" class="app-form-input" />
             </div>
             <div class="site-editor-field">
               <label class="app-dialog-form-label" for="site-editor-aliases">站点别名</label>
-              <Textarea id="site-editor-aliases" v-model="siteEditorForm.aliasesText" :rows="2" placeholder="每行一个别名" class="app-form-input site-editor-textarea" />
+              <Textarea fluid id="site-editor-aliases" v-model="siteEditorForm.aliasesText" :rows="2" placeholder="每行一个别名" class="app-form-input site-editor-textarea" />
             </div>
             <div class="site-editor-field">
               <label class="app-dialog-form-label" for="site-editor-domains">域名</label>
-              <Textarea
+              <Textarea fluid
                 id="site-editor-domains"
                 :model-value="siteEditorForm.domainsText"
                 :rows="2"
@@ -59,16 +57,16 @@
           <div class="site-editor-fields">
             <div class="site-editor-field">
               <label class="app-dialog-form-label" for="site-editor-test-url">测试地址</label>
-              <Input id="site-editor-test-url" v-model="siteEditorForm.testUrl" placeholder="用于连通性检测的地址" class="app-form-input" />
+              <Input fluid id="site-editor-test-url" v-model="siteEditorForm.testUrl" placeholder="用于连通性检测的地址" class="app-form-input" />
             </div>
             <div class="site-editor-rate-row">
               <label class="app-dialog-form-label">频率限制</label>
               <div class="site-editor-rate-controls">
                 <Switch :model-value="!!siteEditorForm.rateLimitEnabled" @update:model-value="(v) => setSiteEditorBooleanField('rateLimitEnabled', v)" />
                 <span v-if="siteEditorForm.rateLimitEnabled" class="site-editor-rate-inputs">
-                  <Input v-model="siteEditorForm.rateLimitMin" type="number" step="0.1" class="app-form-input site-editor-number-input" placeholder="最小" />
+                  <Input fluid v-model="siteEditorForm.rateLimitMin" type="number" step="0.1" class="app-form-input site-editor-number-input" placeholder="最小" />
                   <span>~</span>
-                  <Input v-model="siteEditorForm.rateLimitMax" type="number" step="0.1" class="app-form-input site-editor-number-input" placeholder="最大" />
+                  <Input fluid v-model="siteEditorForm.rateLimitMax" type="number" step="0.1" class="app-form-input site-editor-number-input" placeholder="最大" />
                   <span>秒</span>
                 </span>
               </div>
@@ -109,7 +107,7 @@
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
         <Button
           size="sm"
-          variant="ghost"
+          text severity="secondary"
           @click="$emit('close')"
         >
           取消
@@ -137,7 +135,6 @@ import { Input } from '@/shared/ui/input'
 import { Textarea } from '@/shared/ui/textarea'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,

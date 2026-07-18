@@ -1,5 +1,5 @@
 <template>
-  <Button variant="ghost" size="icon-sm" :aria-label="label" @click="$emit('click', $event)">
+  <Button text severity="secondary" size="sm" icon-only :aria-label="label" @click="$emit('click', $event)">
     <AppIcon :name="icon" class="h-4 w-4" />
   </Button>
 </template>

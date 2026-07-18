@@ -1,6 +1,6 @@
 <template>
   <Dialog :open="show" @update:open="handleOpenChange">
-    <DialogScrollContent class="app-dialog-surface import-dialog max-w-4xl">
+    <DialogContent scrollable class="app-dialog-surface import-dialog max-w-4xl">
       <DialogHeader class="app-dialog-form-header">
         <DialogTitle class="app-dialog-form-title">导入订阅</DialogTitle>
         <DialogDescription class="app-dialog-form-description">
@@ -15,7 +15,7 @@
               v-for="site in supportedSites"
               :key="site"
               type="button"
-              variant="ghost"
+              text severity="secondary"
               :class="[
                 'import-dialog__site-card app-surface app-surface--subtle',
                 selectedSite === site && 'import-dialog__site-card--active',
@@ -33,7 +33,7 @@
           </div>
 
           <Alert v-if="requestError">
-            <AlertDescription>{{ requestError }}</AlertDescription>
+            <p class="text-sm [&_p]:leading-relaxed">{{ requestError }}</p>
           </Alert>
         </section>
 
@@ -46,8 +46,8 @@
           <template v-else>
             <div class="import-dialog__toolbar">
               <div class="import-dialog__toolbar-actions">
-                <Button size="sm" variant="secondary" @click="selectAllNotImported">全选已加载未导入</Button>
-                <Button size="sm" variant="ghost" @click="clearSelection">清空</Button>
+                <Button size="sm" severity="secondary" @click="selectAllNotImported">全选已加载未导入</Button>
+                <Button size="sm" text severity="secondary" @click="clearSelection">清空</Button>
               </div>
               <p class="import-dialog__loaded-count app-mono">
                 已加载 {{ loadedCount }} / {{ previewData.total ?? '未知' }}
@@ -59,7 +59,7 @@
             </div>
 
             <Alert v-if="requestError">
-              <AlertDescription>{{ requestError }}</AlertDescription>
+              <p class="text-sm [&_p]:leading-relaxed">{{ requestError }}</p>
             </Alert>
 
             <div class="import-dialog__list">
@@ -72,7 +72,7 @@
                   selectedUrlMap[sub.url] && !sub.is_imported && 'import-dialog__list-item--selected',
                 ]"
               >
-                <Checkbox
+                <Checkbox binary
                   class="import-dialog__checkbox"
                   :disabled="sub.is_imported"
                   :model-value="!!selectedUrlMap[sub.url]"
@@ -99,7 +99,7 @@
             </div>
 
             <div v-if="previewData.has_more" class="import-dialog__load-more">
-              <Button size="sm" variant="outline" :loading="loadingMorePreview" @click="loadMorePreview">
+              <Button size="sm" severity="secondary" outlined :loading="loadingMorePreview" @click="loadMorePreview">
                 {{ loadingMorePreview ? '加载中...' : '加载更多' }}
               </Button>
             </div>
@@ -132,12 +132,12 @@
       </div>
 
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
-        <Button v-if="step === 1" size="sm" variant="ghost" :disabled="loadingPreview" @click="handleClose">取消</Button>
+        <Button v-if="step === 1" size="sm" text severity="secondary" :disabled="loadingPreview" @click="handleClose">取消</Button>
         <Button v-if="step === 1" size="sm" :loading="loadingPreview" :disabled="!selectedSite" @click="handlePreview">
           预览订阅
         </Button>
 
-        <Button v-if="step === 2" size="sm" variant="ghost" :disabled="importing" @click="step = 1">返回</Button>
+        <Button v-if="step === 2" size="sm" text severity="secondary" :disabled="importing" @click="step = 1">返回</Button>
         <Button
           v-if="step === 2"
           size="sm"
@@ -150,7 +150,7 @@
 
         <Button v-if="step === 3" size="sm" @click="handleClose">完成</Button>
       </DialogFooter>
-    </DialogScrollContent>
+    </DialogContent>
   </Dialog>
 </template>
 
@@ -162,7 +162,7 @@ import {
   importSubscriptions,
 } from '@/shared/api'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
-import { Alert, AlertDescription } from '@/shared/ui/alert'
+import { Alert } from '@/shared/ui/alert'
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Checkbox } from '@/shared/ui/checkbox'
@@ -171,7 +171,6 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogScrollContent,
   DialogTitle,
 } from '@/shared/ui/dialog'
 import { useImageFallback } from '@/shared/composables/useImageFallback'

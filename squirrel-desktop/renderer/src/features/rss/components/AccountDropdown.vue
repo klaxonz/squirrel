@@ -1,7 +1,7 @@
 <template>
   <div ref="dropdownRef" class="account-dropdown">
     <Button
-      variant="ghost"
+      text severity="secondary"
       size="sm"
       @click="$emit('toggle')"
       class="account-dropdown__trigger"
@@ -44,8 +44,8 @@
           </span>
           <div class="app-selectable-list-item__actions account-dropdown__actions">
             <Button
-              variant="ghost"
-              size="mini-icon"
+              text severity="secondary"
+              size="sm" icon-only
               @click.stop="$emit('edit', acc)"
               class="account-dropdown__icon-button"
               title="编辑账号"
@@ -53,8 +53,8 @@
               <AppIcon name="pencil" class="h-3.5 w-3.5" />
             </Button>
             <Button
-              variant="ghost"
-              size="mini-icon"
+              text severity="secondary"
+              size="sm" icon-only
               @click.stop="$emit('delete', acc)"
               class="account-dropdown__icon-button account-dropdown__icon-button--danger"
               title="删除账号"

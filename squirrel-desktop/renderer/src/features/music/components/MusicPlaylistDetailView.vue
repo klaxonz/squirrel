@@ -7,8 +7,8 @@
       </div>
       <div class="music-playlist-topbar-actions">
         <Button
-          variant="ghost"
-          size="icon-sm"
+          text severity="secondary"
+          size="sm" icon-only
           :class="shuffle && 'app-selection-active'"
           title="随机播放"
           @click="shuffleAll"
@@ -17,15 +17,15 @@
         </Button>
         <Button
           v-if="showCollect"
-          variant="ghost"
-          size="icon-sm"
+          text severity="secondary"
+          size="sm" icon-only
           :class="collected && 'app-selection-active'"
           title="收藏"
           @click="$emit('collect')"
         >
           <AppIcon name="heart" class="h-4 w-4" :class="{ 'fill-current': collected }" />
         </Button>
-        <Button size="player-sm" title="播放全部" @click="playAll">
+        <Button size="sm" icon-only rounded title="播放全部" @click="playAll">
           <AppIcon name="play" class="h-4 w-4" />
         </Button>
       </div>
@@ -45,7 +45,7 @@
     </div>
 
     <div v-if="hasMore" class="music-playlist-load-more">
-      <Button variant="outline" :loading="loadingMore" @click="$emit('load-more')">
+      <Button severity="secondary" outlined :loading="loadingMore" @click="$emit('load-more')">
         加载更多
       </Button>
     </div>

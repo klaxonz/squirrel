@@ -5,8 +5,8 @@
     @click="$emit('close')"
   >
     <Button
-      variant="ghost"
-      size="icon"
+      text severity="secondary"
+      icon-only
       class="rss-image-lightbox__close"
       @click.stop="$emit('close')"
     >

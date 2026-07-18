@@ -10,6 +10,7 @@ defineOptions({ inheritAttrs: false })
 const props = defineProps<{
   class?: HTMLAttributes['class']
   contentClass?: HTMLAttributes['class']
+  scrollable?: boolean
 }>()
 
 const dialog = inject(dialogContextKey)
@@ -25,8 +26,8 @@ if (!dialog) throw new Error('DialogContent must be nested inside Dialog')
     :draggable="false"
     :dismissable-mask="true"
     append-to="body"
-    :class="cn('app-prime-dialog w-full max-w-lg', props.class)"
-    :pt="{ content: { class: cn('app-prime-dialog__content', props.contentClass) } }"
+    :class="cn('app-prime-dialog w-full max-w-lg', { 'app-prime-dialog--scroll': props.scrollable }, props.class)"
+    :pt="{ content: { class: cn('app-prime-dialog__content', { 'app-prime-dialog__content--scroll': props.scrollable }, props.contentClass) } }"
     @update:visible="dialog.setOpen(Boolean($event))"
   >
     <slot />

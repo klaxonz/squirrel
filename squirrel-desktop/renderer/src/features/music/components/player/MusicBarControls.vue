@@ -2,8 +2,8 @@
   <div class="music-bar-controls">
     <div class="music-bar-buttons">
       <Button
-        variant="ghost"
-        size="icon-sm"
+        text severity="secondary"
+        size="sm" icon-only
         :class="{ 'text-primary': shuffle }"
         title="随机播放"
         aria-label="随机播放"
@@ -14,8 +14,8 @@
       </Button>
 
       <Button
-        variant="ghost"
-        size="icon-sm"
+        text severity="secondary"
+        size="sm" icon-only
         :disabled="!canStep"
         title="上一首"
         aria-label="上一首"
@@ -25,8 +25,8 @@
       </Button>
 
       <Button
-        variant="player"
-        size="player-sm"
+        outlined rounded
+        size="sm" icon-only
         :disabled="loading"
         :title="playing ? '暂停' : '播放'"
         :aria-label="playing ? '暂停' : '播放'"
@@ -39,8 +39,8 @@
       </Button>
 
       <Button
-        variant="ghost"
-        size="icon-sm"
+        text severity="secondary"
+        size="sm" icon-only
         :disabled="!canStep"
         title="下一首"
         aria-label="下一首"
@@ -50,8 +50,8 @@
       </Button>
 
       <Button
-        variant="ghost"
-        size="icon-sm"
+        text severity="secondary"
+        size="sm" icon-only
         :class="{ 'text-primary': repeat !== 'none' }"
         :title="repeatTitle"
         :aria-label="repeatTitle"

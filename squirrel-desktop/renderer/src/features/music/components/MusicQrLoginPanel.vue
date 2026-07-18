@@ -10,12 +10,12 @@
             <AppIcon name="playlistMusic" class="h-10 w-10 text-primary" />
           </div>
         </div>
-        
+
         <h3 class="music-login-title">开启您的酷狗音乐之旅</h3>
         <p class="music-login-subtitle">
           登录后即可同步您在酷狗音乐创建的歌单与收藏，解锁海量曲库，更有个性化每日推荐、最近播放历史及听歌排行榜等专属特权。
         </p>
-        
+
         <div class="music-login-actions">
           <Button size="lg" class="music-login-primary-action" @click="$emit('open')">
             <AppIcon name="user" class="h-4 w-4 mr-2" />
@@ -27,10 +27,10 @@
       <template v-else>
         <div class="music-login-qr-inline">
           <div class="music-login-qr-header">
-            <Button variant="ghost" size="icon-sm" title="返回" @click="$emit('close')">
+            <Button text severity="secondary" size="sm" icon-only title="返回" @click="$emit('close')">
               <AppIcon name="chevronLeft" class="h-4 w-4" />
             </Button>
-            
+
             <div class="text-center flex-1">
               <h4 class="music-login-qr-title">扫码登录酷狗</h4>
               <p class="mt-0.5 flex items-center justify-center gap-1 text-xs font-medium text-muted-foreground">
@@ -39,7 +39,7 @@
               </p>
             </div>
 
-            <Button variant="ghost" size="icon-sm" :loading="qrLoading" title="刷新二维码" @click="$emit('refresh')">
+            <Button text severity="secondary" size="sm" icon-only :loading="qrLoading" title="刷新二维码" @click="$emit('refresh')">
               <AppIcon v-if="!qrLoading" name="refresh" class="h-4 w-4" />
             </Button>
           </div>
@@ -48,14 +48,14 @@
             <div class="music-qr-card" :class="{ 'qr-expired': isExpired }" @click="isExpired && $emit('refresh')">
               <img v-if="qrLogin?.base64" :src="qrLogin.base64" alt="KuGou login QR code" class="music-qr-img" :style="{ opacity: isExpired ? 0.15 : 1, filter: isExpired ? 'blur(3px)' : 'none' }" />
               <AppSpinner v-else size="lg" class="text-primary" />
-              
+
               <div v-if="isExpired" class="music-qr-expired-overlay">
                 <AppIcon name="refresh" class="h-5 w-5 text-primary mb-1 animate-pulse" />
                 <span class="music-qr-expired-title">二维码已失效</span>
                 <span class="mt-0.5 text-xs text-muted-foreground">点击重试</span>
               </div>
             </div>
-            
+
             <p class="text-xs text-muted-foreground max-w-[14rem] leading-relaxed mt-1">
               请使用酷狗音乐 App 扫描上方二维码
             </p>

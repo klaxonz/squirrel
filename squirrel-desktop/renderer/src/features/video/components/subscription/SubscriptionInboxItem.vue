@@ -3,8 +3,8 @@
     class="subscription-inbox-item"
     :class="{ 'subscription-inbox-item--read': isRead }"
   >
-    <Button
-      unstyled
+    <button
+
       type="button"
       class="subscription-inbox-item__thumbnail"
       :aria-label="`播放 ${video.title}`"
@@ -19,21 +19,21 @@
       <span v-if="video.duration" class="subscription-inbox-item__duration">
         {{ formatDuration(video.duration) }}
       </span>
-    </Button>
+    </button>
 
     <div class="subscription-inbox-item__copy">
-      <Button
-        unstyled
+      <button
+
         type="button"
         class="subscription-inbox-item__title"
         @click="openVideo"
       >
         {{ video.title }}
-      </Button>
+      </button>
       <div class="subscription-inbox-item__meta">
-        <Button
+        <button
           v-if="subscriptionId != null"
-          unstyled
+
           type="button"
           class="subscription-inbox-item__channel"
           @click="openChannel"
@@ -44,7 +44,7 @@
             size="xs"
           />
           <span>{{ channelName }}</span>
-        </Button>
+        </button>
         <span v-else class="subscription-inbox-item__channel">
           <SubscriptionAvatar
             :src="channelAvatar"
@@ -65,8 +65,8 @@
     <div class="subscription-inbox-item__actions">
       <Button
         type="button"
-        variant="ghost"
-        size="xs"
+        text severity="secondary"
+        size="sm"
         class="subscription-inbox-item__read-action"
         :loading="readBusy"
         :title="isRead ? '标记未读' : '标记已读'"

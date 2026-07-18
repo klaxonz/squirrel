@@ -4,7 +4,7 @@
       <section v-if="history.length" class="music-search-section">
         <div class="music-search-section-header">
           <h3 class="music-search-section-title">搜索历史</h3>
-          <Button variant="ghost" size="sm" @click="clearHistory">
+          <Button text severity="secondary" size="sm" @click="clearHistory">
             <AppIcon name="trash" class="h-4 w-4" />
             清空
           </Button>
@@ -13,7 +13,7 @@
           <Button
             v-for="(item, index) in history"
             :key="index"
-            variant="secondary"
+            severity="secondary"
             size="sm"
             @click="searchByKeyword(item)"
           >
@@ -29,7 +29,7 @@
           <Button
             v-for="(item, index) in hotSearches.slice(0, 20)"
             :key="item.keyword"
-            variant="ghost"
+            text severity="secondary"
             size="sm"
             class="music-hot-item"
             @click="searchByKeyword(item.keyword)"
@@ -47,7 +47,7 @@
 
       <AppEmptyState v-else-if="error" variant="error" title="搜索失败" :copy="error || '请稍后重试'">
         <template #actions>
-          <Button variant="outline" size="sm" @click="emit('retry')">重试</Button>
+          <Button severity="secondary" outlined size="sm" @click="emit('retry')">重试</Button>
         </template>
       </AppEmptyState>
 
@@ -88,8 +88,8 @@
                 <div class="music-search-col music-search-col--title music-search-song-title-cell">
                   <span class="music-search-song-title">{{ track.title || '未知歌曲' }}</span>
                   <Button
-                    variant="link"
-                    size="xs"
+                    link
+                    size="sm"
                     class="music-search-song-artist"
                     :disabled="!track.artist_id"
                     @click.stop="$emit('select-artist', createArtistFromTrack(track))"
@@ -98,8 +98,8 @@
                   </Button>
                 </div>
                 <Button
-                  variant="link"
-                  size="xs"
+                  link
+                  size="sm"
                   class="music-search-col music-search-col--album music-search-song-album"
                   :disabled="!track.album_id"
                   @click.stop="$emit('select-album', createAlbumFromTrack(track))"

@@ -3,8 +3,9 @@
     <div class="titlebar__navigation no-drag">
       <Button
         type="button"
-        variant="ghost"
-        size="mini-icon"
+        text severity="secondary"
+        size="sm"
+        icon-only
         class="titlebar__navigation-button"
         :title="isSidebarOpen ? '收起侧边栏 (Ctrl+B)' : '展开侧边栏 (Ctrl+B)'"
         :aria-label="isSidebarOpen ? '收起侧边栏' : '展开侧边栏'"
@@ -18,8 +19,9 @@
 
       <Button
         type="button"
-        variant="ghost"
-        size="mini-icon"
+        text severity="secondary"
+        size="sm"
+        icon-only
         class="titlebar__navigation-button"
         title="后退"
         aria-label="后退"
@@ -31,8 +33,9 @@
 
       <Button
         type="button"
-        variant="ghost"
-        size="mini-icon"
+        text severity="secondary"
+        size="sm"
+        icon-only
         class="titlebar__navigation-button"
         title="前进"
         aria-label="前进"
@@ -50,8 +53,9 @@
         v-for="btn in controls"
         :key="btn.label"
         type="button"
-        variant="ghost"
-        size="mini-icon"
+        text severity="secondary"
+        size="sm"
+        icon-only
         class="titlebar__control"
         :class="{ 'titlebar__control--close': btn.type === 'close' }"
         :title="btn.label"

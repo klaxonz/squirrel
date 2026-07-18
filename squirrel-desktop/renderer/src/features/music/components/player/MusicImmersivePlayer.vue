@@ -15,7 +15,7 @@
 
       <div class="immersive-container">
         <header class="immersive-header">
-          <Button variant="ghost" size="icon" title="关闭" aria-label="关闭沉浸播放" @click="$emit('close')">
+          <Button text severity="secondary" icon-only title="关闭" aria-label="关闭沉浸播放" @click="$emit('close')">
             <AppIcon name="chevronDown" class="h-5 w-5" />
           </Button>
           <div class="immersive-header-title">正在播放</div>
@@ -77,8 +77,8 @@
 
               <div class="immersive-buttons">
                 <Button
-                  variant="ghost"
-                  size="icon"
+                  text severity="secondary"
+                  icon-only
                   :class="{ 'text-primary': shuffle }"
                   title="随机播放"
                   aria-label="随机播放"
@@ -87,20 +87,20 @@
                 >
                   <AppIcon name="shuffle" class="h-5 w-5" />
                 </Button>
-                <Button variant="ghost" size="icon" :disabled="!canStep" title="上一首" aria-label="上一首" @click="$emit('previous')">
+                <Button text severity="secondary" icon-only :disabled="!canStep" title="上一首" aria-label="上一首" @click="$emit('previous')">
                   <AppIcon name="previous" class="h-5 w-5" />
                 </Button>
-                <Button variant="default" size="player-lg" :disabled="loading" :title="playing ? '暂停' : '播放'" :aria-label="playing ? '暂停' : '播放'" :aria-pressed="playing" @click="$emit('toggle')">
+                <Button size="lg" icon-only rounded :disabled="loading" :title="playing ? '暂停' : '播放'" :aria-label="playing ? '暂停' : '播放'" :aria-pressed="playing" @click="$emit('toggle')">
                   <AppSpinner v-if="loading" size="lg" />
                   <AppIcon v-else-if="playing" name="pause" class="h-6 w-6" />
                   <AppIcon v-else name="play" class="h-6 w-6" />
                 </Button>
-                <Button variant="ghost" size="icon" :disabled="!canStep" title="下一首" aria-label="下一首" @click="$emit('next')">
+                <Button text severity="secondary" icon-only :disabled="!canStep" title="下一首" aria-label="下一首" @click="$emit('next')">
                   <AppIcon name="next" class="h-5 w-5" />
                 </Button>
                 <Button
-                  variant="ghost"
-                  size="icon"
+                  text severity="secondary"
+                  icon-only
                   :class="{ 'text-primary': repeat !== 'none' }"
                   :title="repeat === 'one' ? '单曲循环' : '列表循环'"
                   :aria-label="repeat === 'one' ? '单曲循环' : '列表循环'"

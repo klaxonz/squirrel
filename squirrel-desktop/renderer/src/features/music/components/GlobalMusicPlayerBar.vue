@@ -75,7 +75,7 @@
       </template>
 
       <div v-else class="music-mini">
-        <Button variant="ghost" class="music-mini-track" title="打开沉浸播放" @click="openImmersive">
+        <Button text severity="secondary" class="music-mini-track" title="打开沉浸播放" @click="openImmersive">
           <div class="music-mini-cover">
             <img v-if="store.currentTrack.cover" :src="store.currentTrack.cover" :alt="store.currentTrack.title || '封面'" />
             <AppIcon v-else name="playlistMusic" class="h-4 w-4" />
@@ -95,12 +95,12 @@
         </Button>
 
         <div class="music-mini-controls">
-          <Button variant="ghost" size="mini-icon" :disabled="!canStep" title="上一首" aria-label="上一首" @click="store.playPrevious()">
+          <Button text severity="secondary" size="sm" icon-only :disabled="!canStep" title="上一首" aria-label="上一首" @click="store.playPrevious()">
             <AppIcon name="previous" class="h-4 w-4" />
           </Button>
           <Button
-            variant="default"
-            size="mini-icon"
+
+            size="sm" icon-only
             class="rounded-full"
             :disabled="store.resolvingUrl || isBuffering"
             :title="store.playing ? '暂停' : '播放'"
@@ -112,10 +112,10 @@
             <AppIcon v-else-if="store.playing" name="pause" class="h-4 w-4" />
             <AppIcon v-else name="play" class="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="mini-icon" :disabled="!canStep" title="下一首" aria-label="下一首" @click="store.playNext()">
+          <Button text severity="secondary" size="sm" icon-only :disabled="!canStep" title="下一首" aria-label="下一首" @click="store.playNext()">
             <AppIcon name="next" class="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="mini-icon" title="播放队列" aria-label="播放队列" @click="showQueue = !showQueue">
+          <Button text severity="secondary" size="sm" icon-only title="播放队列" aria-label="播放队列" @click="showQueue = !showQueue">
             <AppIcon name="playlistMusic" class="h-4 w-4" />
           </Button>
         </div>

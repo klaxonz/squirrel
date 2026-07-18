@@ -35,7 +35,7 @@
       <div v-if="loadError">
         <AppEmptyState variant="error" title="加载失败" :copy="loadError">
           <template #actions>
-            <Button variant="outline" size="sm" @click="refreshCurrentList">重试</Button>
+            <Button severity="secondary" outlined size="sm" @click="refreshCurrentList">重试</Button>
           </template>
         </AppEmptyState>
       </div>

@@ -37,8 +37,8 @@
             <Button
               v-if="hasActiveFilters"
               type="button"
-              size="icon-sm"
-              variant="ghost"
+              size="sm" icon-only
+              text severity="secondary"
               class="app-toolbar-control app-toolbar-icon-button"
               title="清空筛选"
               aria-label="清空筛选"
@@ -60,8 +60,8 @@
 
             <Button
               type="button"
-              variant="ghost"
-              size="icon-sm"
+              text severity="secondary"
+              size="sm" icon-only
               class="app-toolbar-control app-toolbar-icon-button"
               :class="{ 'is-active': allCopied }"
               :disabled="logs.length === 0"
@@ -74,8 +74,8 @@
 
             <Button
               type="button"
-              variant="ghost"
-              size="icon-sm"
+              text severity="secondary"
+              size="sm" icon-only
               class="app-toolbar-control app-toolbar-icon-button"
               :disabled="loading"
               title="立即刷新"
@@ -129,7 +129,7 @@
                 <Button
                   v-if="hasActiveFilters"
                   size="sm"
-                  variant="secondary"
+                  severity="secondary"
                   @click="clearFilters"
                 >
                   清空筛选
@@ -180,8 +180,8 @@
                     </div>
 
                     <Button
-                      size="mini-icon"
-                      variant="ghost"
+                      size="sm" icon-only
+                      text severity="secondary"
                       class="log-row-copy"
                       title="复制这条日志"
                       aria-label="复制这条日志"

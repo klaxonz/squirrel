@@ -1,7 +1,7 @@
 <template>
   <div class="music-bar-actions">
     <div class="music-bar-volume">
-      <Button variant="ghost" size="icon-sm" title="音量" aria-label="静音/取消静音" @click="$emit('toggle-mute')">
+      <Button text severity="secondary" size="sm" icon-only title="音量" aria-label="静音/取消静音" @click="$emit('toggle-mute')">
         <AppIcon :name="volumeIcon" class="h-4 w-4" />
       </Button>
       <input
@@ -17,7 +17,7 @@
       />
     </div>
 
-    <Button class="relative" variant="ghost" size="icon-sm" title="播放队列" aria-label="播放队列" @click="$emit('queue')">
+    <Button class="relative" text severity="secondary" size="sm" icon-only title="播放队列" aria-label="播放队列" @click="$emit('queue')">
       <AppIcon name="playlistMusic" class="h-4 w-4" />
       <Badge v-if="queueCount" class="music-bar-badge">
         {{ queueCount > 99 ? '99+' : queueCount }}

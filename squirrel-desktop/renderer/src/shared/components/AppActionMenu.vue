@@ -39,8 +39,8 @@ const toggle = (event: Event) => {
 <template>
   <Button
     type="button"
-    variant="ghost"
-    size="icon-sm"
+    text severity="secondary"
+    size="sm" icon-only
     :class="buttonClass"
     :disabled="disabled"
     :aria-label="triggerLabel"

@@ -81,8 +81,8 @@
 
           <Button
             type="button"
-            variant="ghost"
-            size="icon-sm"
+            text severity="secondary"
+            size="sm" icon-only
             :class="detail?.is_special_followed ? 'text-warning' : ''"
             :disabled="isTogglingSpecial"
             aria-label="切换特别关注"
@@ -99,7 +99,7 @@
           <div class="channel-sync-group">
             <Button
               type="button"
-              variant="ghost"
+              text severity="secondary"
               size="sm"
               :disabled="isSyncing"
               @click="handleDirectSync('incremental')"
@@ -118,7 +118,7 @@
 
           <Button
             type="button"
-            variant="destructive"
+            severity="danger"
             size="sm"
             :disabled="isUnsubscribing"
             @click="handleUnsubscribe"

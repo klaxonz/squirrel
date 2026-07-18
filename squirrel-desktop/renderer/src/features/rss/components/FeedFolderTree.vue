@@ -2,7 +2,7 @@
   <div class="feed-folder-tree custom-scrollbar" :aria-busy="loading">
     <div class="feed-folder-tree__all" :class="{ 'is-selected': !selectedFeedId }">
       <Button
-        variant="ghost"
+        text severity="secondary"
         size="sm"
         :disabled="loading"
         @click="$emit('selectAll')"
@@ -23,8 +23,8 @@
       </Button>
       <Button
         v-if="hasAccount"
-        variant="ghost"
-        size="mini-icon"
+        text severity="secondary"
+        size="sm" icon-only
         @click="$emit('addFeed')"
         class="feed-folder-tree__add"
         title="添加订阅源"
@@ -41,7 +41,7 @@
       <div class="feed-folder-tree__folders">
         <div v-for="folder in folders" :key="folder.name" class="feed-folder-tree__folder">
           <Button
-            variant="ghost"
+            text severity="secondary"
             size="sm"
             @click="$emit('toggleFolder', folder.name)"
             class="feed-folder-tree__folder-button"
@@ -73,8 +73,8 @@
               <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
               <span class="flex-1 truncate">{{ feed.title }}</span>
               <Button
-                variant="ghost"
-                size="icon-xs"
+                text severity="secondary"
+                size="sm" icon-only
                 @click.stop="$emit('unsubscribeFeed', feed)"
                 class="feed-folder-tree__remove"
                 title="取消订阅"

@@ -49,7 +49,7 @@
               </div>
               <div class="app-icon-field">
                 <AppIcon name="user" class="app-icon-field__icon" />
-                <Input
+                <Input fluid
                   id="profile-nickname"
                   v-model="form.nickname"
                   placeholder="请输入昵称"
@@ -63,7 +63,7 @@
               <label for="profile-avatar">头像图片链接</label>
               <div class="app-icon-field">
                 <AppIcon name="link" class="app-icon-field__icon" />
-                <Input
+                <Input fluid
                   id="profile-avatar"
                   ref="avatarInput"
                   v-model="form.avatar"
@@ -136,7 +136,7 @@
                 <div class="app-settings-row__title">退出当前账号</div>
                 <div class="app-settings-row__desc">清除本机会话并返回登录页。</div>
               </div>
-              <Button variant="outline" class="profile-logout-button" @click="handleLogout">
+              <Button severity="secondary" outlined class="profile-logout-button" @click="handleLogout">
                 <AppIcon name="logout" class="h-3.5 w-3.5" />
                 退出登录
               </Button>

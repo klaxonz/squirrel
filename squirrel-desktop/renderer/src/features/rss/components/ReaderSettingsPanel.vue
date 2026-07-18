@@ -7,7 +7,7 @@
       <span class="reader-settings-label">排版字体</span>
       <div class="reader-settings-grid">
         <Button
-          variant="ghost"
+          text severity="secondary"
           size="sm"
           @click="select('sans')"
           class="reader-settings-option"
@@ -15,7 +15,7 @@
           title="极简现代 (Inter)"
         >Inter</Button>
         <Button
-          variant="ghost"
+          text severity="secondary"
           size="sm"
           @click="select('outfit')"
           class="reader-settings-option"
@@ -23,7 +23,7 @@
           title="优雅圆润 (Outfit)"
         >Outfit</Button>
         <Button
-          variant="ghost"
+          text severity="secondary"
           size="sm"
           @click="select('serif')"
           class="reader-settings-option font-serif"
@@ -31,7 +31,7 @@
           title="经典衬线 (Georgia)"
         >Georgia</Button>
         <Button
-          variant="ghost"
+          text severity="secondary"
           size="sm"
           @click="select('lora')"
           class="reader-settings-option font-serif"
@@ -48,14 +48,14 @@
       </div>
       <div class="reader-settings-size-controls">
         <Button
-          variant="ghost"
+          text severity="secondary"
           size="sm"
           @click="changeSize(-1)"
           class="reader-settings-size-button"
           :disabled="fontSize <= 12"
         >A-</Button>
         <Button
-          variant="ghost"
+          text severity="secondary"
           size="sm"
           @click="changeSize(1)"
           class="reader-settings-size-button"

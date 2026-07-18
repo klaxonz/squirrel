@@ -2,8 +2,8 @@
   <section class="music-home-hero">
     <div class="music-hero-grid" :class="{ 'music-hero-grid--fm-only': !featuredPlaylist }">
       <article v-if="featuredPlaylist" class="music-featured">
-        <Button
-          unstyled
+        <button type="button"
+
           class="music-featured-cover"
           :aria-label="`打开歌单 ${featuredTitle}`"
           @click="$emit('open-featured', featuredPlaylist)"
@@ -16,7 +16,7 @@
           <span v-else class="music-featured-cover-placeholder">
             <AppIcon name="playlistMusic" class="h-10 w-10" />
           </span>
-        </Button>
+        </button>
 
         <div class="music-featured-content">
           <div class="music-featured-copy">
@@ -40,7 +40,7 @@
             </div>
             <div class="music-featured-actions">
               <Button
-                variant="secondary"
+                severity="secondary"
                 size="sm"
                 @click="$emit('play-featured', featuredPlaylist)"
               >
@@ -48,7 +48,7 @@
                 播放
               </Button>
               <Button
-                variant="ghost"
+                text severity="secondary"
                 size="sm"
                 class="music-featured-details"
                 @click="$emit('open-featured', featuredPlaylist)"
@@ -75,8 +75,8 @@
               </div>
             </div>
 
-            <Button
-              unstyled
+            <button type="button"
+
               class="music-fm-play"
               :title="fmButtonTitle"
               :loading="fmLoading"
@@ -84,7 +84,7 @@
             >
               <AppIcon v-if="!fmLoading && fmPlaying" name="pause" class="h-4 w-4" />
               <AppIcon v-else-if="!fmLoading" name="play" class="h-4 w-4" />
-            </Button>
+            </button>
           </header>
 
           <div class="music-fm-options">
@@ -94,8 +94,8 @@
                 <Button
                   v-for="modeOption in fmModes"
                   :key="modeOption.value"
-                  variant="ghost"
-                  size="xs"
+                  text severity="secondary"
+                  size="sm"
                   :class="{ 'is-active': fmMode === modeOption.value }"
                   :aria-pressed="fmMode === modeOption.value"
                   @click="$emit('switch-fm-mode', modeOption.value)"
@@ -110,8 +110,8 @@
                 <Button
                   v-for="poolOption in fmPools"
                   :key="poolOption.value"
-                  variant="ghost"
-                  size="xs"
+                  text severity="secondary"
+                  size="sm"
                   :class="{ 'is-active': fmPoolId === poolOption.value }"
                   :aria-pressed="fmPoolId === poolOption.value"
                   @click="$emit('switch-fm-pool', poolOption.value)"

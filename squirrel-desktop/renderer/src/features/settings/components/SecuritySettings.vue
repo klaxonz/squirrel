@@ -5,14 +5,14 @@
       variant="error"
     >
       <AppIcon name="warning" class="h-4 w-4" />
-      <AlertDescription>{{ securityError }}</AlertDescription>
+      <p class="text-sm [&_p]:leading-relaxed">{{ securityError }}</p>
     </Alert>
     <Alert
       v-if="securitySuccess"
       variant="success"
     >
       <AppIcon name="statusSuccess" class="h-4 w-4" />
-      <AlertDescription>{{ securitySuccess }}</AlertDescription>
+      <p class="text-sm [&_p]:leading-relaxed">{{ securitySuccess }}</p>
     </Alert>
 
     <section class="app-settings-section">
@@ -32,7 +32,7 @@
             <label :for="`security-${field.key}`" class="security-field__label">
               {{ field.label }}
             </label>
-            <Input
+            <Input fluid
               :id="`security-${field.key}`"
               v-model="securityForm[field.key]"
               :type="field.type"
@@ -63,7 +63,7 @@
             <div class="app-settings-row__desc">立即吊销除本机以外的全部会话令牌。</div>
           </div>
           <Button
-            variant="outline"
+            severity="secondary" outlined
             class="security-revoke-button"
             :loading="sessionSubmitting"
             @click="handleRevokeSessions"
@@ -82,7 +82,7 @@ import { ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { revokeUserSessions, updateUserPassword } from '@/shared/api'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import { Alert, AlertDescription } from '@/shared/ui/alert'
+import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 

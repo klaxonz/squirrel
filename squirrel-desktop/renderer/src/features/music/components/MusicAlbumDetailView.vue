@@ -10,8 +10,8 @@
       <template #meta>
         <Button
           v-if="album.artist_id"
-          variant="link"
-          size="xs"
+          link
+          size="sm"
           class="music-meta-link"
           @click="$emit('select-artist')"
         >
@@ -27,7 +27,7 @@
           播放全部
         </Button>
         <Button
-          variant="secondary"
+          severity="secondary"
           :class="shuffle && 'app-selection-active'"
           @click="shuffleAll"
         >
@@ -48,7 +48,7 @@
     />
 
     <div v-if="hasMore" class="music-detail-load-more">
-      <Button variant="outline" :loading="loadingMore" @click="$emit('load-more')">
+      <Button severity="secondary" outlined :loading="loadingMore" @click="$emit('load-more')">
         加载更多
       </Button>
     </div>

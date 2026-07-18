@@ -11,7 +11,7 @@
       <div class="app-dialog-form-body">
         <div class="app-dialog-form-field">
           <label class="app-dialog-form-label" for="add-channel-url">订阅地址</label>
-          <Input
+          <Input fluid
             id="add-channel-url"
             v-model="channelUrl"
             type="url"
@@ -25,12 +25,12 @@
         </div>
 
         <Alert v-if="error" variant="destructive">
-          <AlertDescription>{{ error }}</AlertDescription>
+          <p class="text-sm [&_p]:leading-relaxed">{{ error }}</p>
         </Alert>
       </div>
 
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
-        <Button size="sm" variant="ghost" :disabled="loading" @click="emit('close')">取消</Button>
+        <Button size="sm" text severity="secondary" :disabled="loading" @click="emit('close')">取消</Button>
         <Button size="sm" :loading="loading" :disabled="!channelUrl" @click="handleSubmit">
           确认添加
         </Button>
@@ -43,7 +43,7 @@
 import { ref, watch } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { subscribe } from '@/shared/api'
-import { Alert, AlertDescription } from '@/shared/ui/alert'
+import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,

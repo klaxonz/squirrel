@@ -1,7 +1,7 @@
 <template>
   <div class="app-search-input" :class="props.class">
     <AppIcon name="search" class="app-search-input__icon" />
-    <Input
+    <Input fluid
       :model-value="modelValue"
       :placeholder="placeholder"
       :aria-label="ariaLabel || placeholder"
@@ -11,8 +11,8 @@
     <Button
       v-if="modelValue"
       type="button"
-      variant="ghost"
-      size="mini-icon"
+      text severity="secondary"
+      size="sm" icon-only
       class="app-search-input__clear"
       :aria-label="clearLabel"
       :title="clearLabel"

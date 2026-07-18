@@ -4,6 +4,10 @@
 
 **代码：** `src/shared/ui`（Input / Select / Textarea / Switch）· 字段表面 token 在 `layout.css`
 
+`Input`、`Textarea`、`Checkbox` 与 `Switch` 是 PrimeVue 对应控件的直接导出，不在
+适配层重复实现受控/非受控状态。文本字段需要全宽时显式使用 `fluid`；Checkbox
+用于布尔值时显式使用 `binary`。
+
 ## Input · Select · Textarea
 
 | 用 | 不用 |

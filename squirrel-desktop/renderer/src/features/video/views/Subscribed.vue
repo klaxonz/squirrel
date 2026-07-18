@@ -13,7 +13,7 @@
           <section class="subscription-toolbar" aria-label="订阅筛选和操作">
             <Button
               type="button"
-              variant="ghost"
+              text severity="secondary"
               size="sm"
               class="app-filter-toolbar-button"
               :class="{ 'is-active': activeFilterCount > 0 }"
@@ -93,8 +93,8 @@
 
             <Button
               type="button"
-              variant="ghost"
-              size="icon-sm"
+              text severity="secondary"
+              size="sm" icon-only
               class="subscription-toolbar__icon-action"
               :loading="pageLoading"
               title="刷新当前视图"
@@ -106,8 +106,8 @@
             <Button
               v-if="activeView === 'channels'"
               type="button"
-              variant="ghost"
-              size="icon-sm"
+              text severity="secondary"
+              size="sm" icon-only
               class="subscription-toolbar__icon-action"
               title="导入订阅"
               aria-label="导入订阅"
@@ -117,7 +117,7 @@
             </Button>
             <Button
               type="button"
-              variant="ghost"
+              text severity="secondary"
               size="sm"
               class="subscription-toolbar__add"
               @click="showAddDialog = true"
@@ -135,7 +135,7 @@
             <div v-if="feedError && !feedItems.length" class="subscription-content__empty">
               <AppEmptyState variant="error" title="内容加载失败" :copy="feedError">
                 <template #actions>
-                  <Button variant="outline" size="sm" @click="fetchFeed(true)">重试</Button>
+                  <Button severity="secondary" outlined size="sm" @click="fetchFeed(true)">重试</Button>
                 </template>
               </AppEmptyState>
             </div>
@@ -159,7 +159,7 @@
               >
                 <template v-if="channelsTotal === 0 && !feedSearch" #actions>
                   <Button size="sm" @click="showAddDialog = true">添加订阅</Button>
-                  <Button variant="outline" size="sm" @click="showImportDialog = true">导入订阅</Button>
+                  <Button severity="secondary" outlined size="sm" @click="showImportDialog = true">导入订阅</Button>
                 </template>
               </AppEmptyState>
             </div>
@@ -201,7 +201,7 @@
               <div v-if="channelsError && !visibleChannels.length" class="subscription-content__empty">
                 <AppEmptyState variant="error" title="频道加载失败" :copy="channelsError">
                   <template #actions>
-                    <Button variant="outline" size="sm" @click="fetchChannels(true)">重试</Button>
+                    <Button severity="secondary" outlined size="sm" @click="fetchChannels(true)">重试</Button>
                   </template>
                 </AppEmptyState>
               </div>

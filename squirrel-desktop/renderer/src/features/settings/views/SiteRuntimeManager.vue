@@ -4,17 +4,15 @@
       <div class="site-runtime-toolbar">
         <div class="site-runtime-toolbar__actions">
           <Button
-            as-child
-            variant="ghost"
+            as="label"
+            text severity="secondary"
             size="sm"
             class="site-runtime-file-button"
             :class="{ 'is-active': selectedCookiesFile }"
           >
-            <label>
-              <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
-              <AppIcon name="cookie" class="h-4 w-4" />
-              <span>{{ cookiesFileName || '选择凭据' }}</span>
-            </label>
+            <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
+            <AppIcon name="cookie" class="h-4 w-4" />
+            <span>{{ cookiesFileName || '选择凭据' }}</span>
           </Button>
 
           <Button
@@ -29,7 +27,7 @@
           </Button>
 
           <Button
-            variant="ghost"
+            text severity="secondary"
             size="sm"
             class="site-runtime-toolbar__action"
             :disabled="testingAll"
@@ -42,8 +40,8 @@
           </Button>
 
           <Button
-            variant="ghost"
-            size="icon-sm"
+            text severity="secondary"
+            size="sm" icon-only
             class="app-toolbar-control app-toolbar-icon-button"
             :disabled="reloading || loading"
             title="重新加载站点"

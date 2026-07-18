@@ -6,18 +6,23 @@
         <span>归仓</span>
       </div>
 
-      <Card class="auth-entry__card">
-        <CardHeader class="auth-entry__header">
-          <h1 class="auth-entry__title">{{ title }}</h1>
-          <CardDescription>{{ description }}</CardDescription>
-        </CardHeader>
-        <CardContent class="auth-entry__content">
-          <slot />
-        </CardContent>
-        <CardFooter v-if="$slots.footer" class="auth-entry__footer">
-          <slot name="footer" />
-        </CardFooter>
-      </Card>
+      <PrimeCard
+        class="auth-entry__card"
+        :pt="{ body: { class: 'p-0' }, content: { class: 'p-0' } }"
+        >
+        <template #content>
+          <header class="auth-entry__header">
+            <h1 class="auth-entry__title">{{ title }}</h1>
+            <p class="auth-entry__description">{{ description }}</p>
+          </header>
+          <div class="auth-entry__content">
+            <slot />
+          </div>
+          <footer v-if="$slots.footer" class="auth-entry__footer">
+            <slot name="footer" />
+          </footer>
+        </template>
+      </PrimeCard>
 
       <slot name="below" />
     </div>
@@ -26,7 +31,7 @@
 
 <script setup lang="ts">
 import BrandLogo from '@/shared/components/BrandLogo.vue'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '@/shared/ui/card'
+import PrimeCard from 'primevue/card'
 
 withDefaults(defineProps<{
   title: string

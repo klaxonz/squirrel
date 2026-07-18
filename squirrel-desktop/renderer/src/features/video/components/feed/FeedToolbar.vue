@@ -15,7 +15,7 @@
       <template v-if="showFilter">
           <Button
             type="button"
-            variant="ghost"
+            text severity="secondary"
             size="sm"
             class="app-filter-toolbar-button"
             :class="{ 'is-active': activeFilterCount > 0 }"
@@ -160,8 +160,8 @@
         <Button
           v-if="showRefresh"
           type="button"
-          variant="ghost"
-          size="icon-sm"
+          text severity="secondary"
+          size="sm" icon-only
           class="app-toolbar-control app-toolbar-icon-button"
           title="刷新内容"
           aria-label="刷新内容"

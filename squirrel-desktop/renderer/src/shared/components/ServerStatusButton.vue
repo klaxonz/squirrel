@@ -2,9 +2,9 @@
   <div>
     <!-- Floating trigger: collapsed icon button anchored to the viewport
          top-right. Hidden until useServerConfig has resolved. -->
-    <Button
+    <button
       type="button"
-      unstyled
+
       :class="['server-status-trigger', { 'server-status-trigger--open': popoverOpen }]"
       :title="currentServerLabel"
       :aria-label="triggerAriaLabel"
@@ -16,7 +16,7 @@
         aria-hidden="true"
       />
       <AppIcon name="server" class="server-status-trigger__icon" />
-    </Button>
+    </button>
 
     <PrimePopover
       ref="serverPopover"
@@ -45,7 +45,7 @@
       <div class="server-status-popover__actions">
         <Button
           type="button"
-          variant="outline"
+          severity="secondary" outlined
           size="sm"
           class="server-status-popover__action"
           :disabled="!currentServerUrl || testing"
@@ -57,14 +57,13 @@
         </Button>
 
         <Button
-          as-child
+          as="router-link"
+          to="/server-config"
           size="sm"
           class="server-status-popover__action server-status-popover__action--primary"
         >
-          <router-link to="/server-config">
-            <AppIcon name="settingsPanel" class="server-status-popover__action-icon" />
-            <span>{{ currentServerUrl ? '更换服务器' : '去配置服务器' }}</span>
-          </router-link>
+          <AppIcon name="settingsPanel" class="server-status-popover__action-icon" />
+          <span>{{ currentServerUrl ? '更换服务器' : '去配置服务器' }}</span>
         </Button>
       </div>
 

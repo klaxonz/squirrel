@@ -4,8 +4,8 @@
     :class="[sizeClass, variantClass, { 'music-card--playing': isPlaying }]"
   >
     <div class="music-card-cover">
-      <Button
-        unstyled
+      <button type="button"
+
         class="music-card-cover-button"
         :aria-label="`打开 ${title}`"
         @click="$emit('select')"
@@ -20,17 +20,17 @@
         <span v-else class="music-card-placeholder">
           <AppIcon :name="placeholderIcon" class="h-7 w-7" />
         </span>
-      </Button>
+      </button>
 
-      <Button
+      <button type="button"
         v-if="playable"
-        unstyled
+
         class="music-card-play"
         :aria-label="`播放 ${title}`"
         @click.stop="$emit('play')"
       >
         <AppIcon name="play" class="music-card-play-icon" />
-      </Button>
+      </button>
 
       <span v-if="isPlaying" class="music-card-playing-badge">
         <AppIcon name="volumeHigh" class="h-3 w-3" />
@@ -39,18 +39,17 @@
       <span v-if="badge" class="music-card-badge">{{ badge }}</span>
     </div>
 
-    <Button unstyled class="music-card-info" @click="$emit('select')">
+    <button type="button" class="music-card-info" @click="$emit('select')">
       <span class="music-card-title" :title="title">{{ title }}</span>
       <span v-if="subtitle" class="music-card-subtitle" :title="subtitle">{{ subtitle }}</span>
       <span v-if="meta" class="music-card-meta">{{ meta }}</span>
-    </Button>
+    </button>
   </article>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import { Button } from '@/shared/ui/button'
 import type { AppIconName } from '@/shared/icons/app-icons'
 import { musicCardVariants, type MusicCardSize, type MusicCardVariant } from './music-card.variants'
 

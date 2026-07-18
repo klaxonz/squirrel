@@ -6,7 +6,7 @@
         <Button
           v-if="viewMore"
           type="button"
-          variant="ghost"
+          text severity="secondary"
           size="sm"
           class="feed-rail-header__more"
           :aria-label="viewMoreLabel"
@@ -27,8 +27,8 @@
     >
       <Button
         type="button"
-        variant="ghost"
-        size="icon-xs"
+        text severity="secondary"
+        size="sm" icon-only
         class="feed-rail-header__icon-btn"
         :disabled="!canScrollLeft"
         aria-label="向左滚动"
@@ -38,8 +38,8 @@
       </Button>
       <Button
         type="button"
-        variant="ghost"
-        size="icon-xs"
+        text severity="secondary"
+        size="sm" icon-only
         class="feed-rail-header__icon-btn"
         :disabled="!canScrollRight"
         aria-label="向右滚动"

@@ -18,7 +18,7 @@
               v-for="prov in providers"
               :key="prov.value"
               type="button"
-              variant="ghost"
+              text severity="secondary"
               size="sm"
               @click="form.provider = prov.value"
               class="account-dialog__provider"
@@ -34,7 +34,7 @@
           <label class="app-dialog-form-label">账号名称</label>
           <div class="app-icon-field">
             <AppIcon name="pencil" class="app-icon-field__icon" />
-            <Input
+            <Input fluid
               v-model="form.name"
               class="app-form-input app-form-input--with-icon"
               placeholder="例如: 我的 Miniflux"
@@ -49,7 +49,7 @@
           </label>
           <div class="app-icon-field">
             <AppIcon name="link" class="app-icon-field__icon" />
-            <Input
+            <Input fluid
               v-model="form.base_url"
               class="app-form-input app-form-input--with-icon"
               :placeholder="baseUrlPlaceholder"
@@ -72,7 +72,7 @@
           </label>
           <div class="app-icon-field">
             <AppIcon name="user" class="app-icon-field__icon" />
-            <Input
+            <Input fluid
               v-model="form.username"
               class="app-form-input app-form-input--with-icon"
               placeholder="用户名"
@@ -95,7 +95,7 @@
           </label>
           <div class="app-icon-field">
             <AppIcon name="security" class="app-icon-field__icon" />
-            <Input
+            <Input fluid
               v-model="form.credential"
               type="password"
               class="app-form-input app-form-input--with-icon"
@@ -134,7 +134,7 @@
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--between">
         <Button
           type="button"
-          variant="outline"
+          severity="secondary" outlined
           size="sm"
           :disabled="!canTestForm"
           :loading="testing"
@@ -146,7 +146,7 @@
         <div class="app-dialog-actions">
           <Button
             type="button"
-            variant="outline"
+            severity="secondary" outlined
             size="sm"
             @click="open = false"
           >
@@ -154,7 +154,7 @@
           </Button>
           <Button
             type="button"
-            variant="outline"
+            severity="secondary" outlined
             size="sm"
             class="account-dialog__confirm"
             :disabled="!canSaveForm"

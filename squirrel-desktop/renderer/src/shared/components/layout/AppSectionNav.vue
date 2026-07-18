@@ -1,9 +1,9 @@
 <template>
   <nav class="app-section-nav" :aria-label="ariaLabel">
-    <Button
+    <button
       v-for="option in options"
       :key="option.value"
-      unstyled
+
       type="button"
       class="app-section-nav__item"
       :class="{ 'is-active': modelValue === option.value }"
@@ -17,12 +17,11 @@
       >
         {{ option.badge }}
       </span>
-    </Button>
+    </button>
   </nav>
 </template>
 
 <script setup lang="ts">
-import { Button } from '@/shared/ui/button'
 
 export interface AppSectionNavOption {
   value: string | number

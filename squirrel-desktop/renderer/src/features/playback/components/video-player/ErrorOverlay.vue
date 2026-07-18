@@ -8,7 +8,7 @@
         <div class="sp-error-title">{{ title || fallbackTitle }}</div>
         <div class="sp-error-message">{{ message }}</div>
         <div class="sp-error-actions">
-          <Button v-if="canRetry" variant="player" size="sm" class="sp-error-retry-btn" @click.stop="$emit('retry')">
+          <Button v-if="canRetry" outlined rounded size="sm" class="sp-error-retry-btn" @click.stop="$emit('retry')">
             {{ retryLabel }}
           </Button>
         </div>

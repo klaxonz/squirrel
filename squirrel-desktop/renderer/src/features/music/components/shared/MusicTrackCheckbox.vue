@@ -1,7 +1,7 @@
 <template>
   <Button
-    variant="ghost"
-    size="icon-xs"
+    text severity="secondary"
+    size="sm" icon-only
     :class="checked && 'app-selection-active'"
     :aria-label="checked ? '取消选择' : '选择歌曲'"
     :aria-pressed="checked"

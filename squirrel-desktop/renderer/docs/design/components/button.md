@@ -4,6 +4,17 @@
 
 **代码：** `src/shared/ui/button`
 
+## 适配边界
+
+`Button` 是 PrimeVue Button 的薄语义适配：只映射本产品文档中的
+`default` / `secondary` / `outline` / `ghost` / `destructive` / `link` 意图，和
+`default` / `sm` / `lg` 三档密度。`icon-only` 使用 PrimeVue 的原生图标按钮
+样式。
+
+禁止把播放器、媒体卡、标题栏等业务场景继续塞进 Button 的 `variant` 或 `size`。
+媒体卡、列表行、时间轴标记等自定义交互应使用语义化原生 `button`，由对应 pattern
+持有布局和行为；不得以 `unstyled` 绕开 Aura。
+
 ## 是什么
 
 触发行动的控件。

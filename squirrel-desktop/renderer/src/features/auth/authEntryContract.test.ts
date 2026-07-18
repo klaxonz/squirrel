@@ -14,9 +14,9 @@ const entryViews = [
 
 describe('Aura auth entry contract', () => {
   it('uses one centered Card composition for every unauthenticated entry form', () => {
-    expect(authCard).toContain('<Card class="auth-entry__card">')
-    expect(authCard).toContain('<CardHeader')
-    expect(authCard).toContain('<CardContent')
+    expect(authCard).toContain('<PrimeCard')
+    expect(authCard).toContain('<header class="auth-entry__header">')
+    expect(authCard).toContain('<div class="auth-entry__content">')
     expect(authStyles).toMatch(/\.auth-entry\s*\{[^}]*place-items:\s*center;/s)
     expect(authStyles).toMatch(/\.auth-entry__stack\s*\{[^}]*width:\s*min\(100%,\s*24rem\);/s)
 
@@ -41,6 +41,6 @@ describe('Aura auth entry contract', () => {
     expect(login).toContain("import { Input } from '@/shared/ui/input'")
     expect(register).toContain("import { Button } from '@/shared/ui/button'")
     expect(serverConfig).toContain('class="auth-server-field"')
-    expect(serverConfig).toContain('variant="outline"')
+    expect(serverConfig).toContain('severity="secondary" outlined')
   })
 })

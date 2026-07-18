@@ -1,5 +1,5 @@
 <template>
-  <Button unstyled class="music-action-button" @click="$emit('click')">
+  <button type="button" class="music-action-button" @click="$emit('click')">
     <span class="music-action-icon">
       <AppIcon :name="icon" class="h-4 w-4" />
     </span>
@@ -8,12 +8,11 @@
       <span class="music-action-description">{{ description }}</span>
     </span>
     <AppIcon name="chevronRight" class="music-action-arrow h-4 w-4" />
-  </Button>
+  </button>
 </template>
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import { Button } from '@/shared/ui/button'
 import type { AppIconName } from '@/shared/icons/app-icons'
 
 defineProps<{

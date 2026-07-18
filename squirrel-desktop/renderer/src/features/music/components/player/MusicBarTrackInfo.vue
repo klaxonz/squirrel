@@ -1,6 +1,6 @@
 <template>
   <Button
-    variant="ghost"
+    text severity="secondary"
     class="music-bar-track-info"
     :class="{ 'music-bar-track-info--clickable': clickable }"
     @click="clickable && $emit('click')"

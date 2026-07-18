@@ -13,8 +13,8 @@
       <Button
         v-if="!isDesktopClient"
         type="button"
-        variant="ghost"
-        size="icon-sm"
+        text severity="secondary"
+        size="sm" icon-only
         class="app-header__sidebar-toggle"
         :title="isSidebarOpen ? '收起侧边栏 (Ctrl+B)' : '展开侧边栏 (Ctrl+B)'"
         :aria-label="isSidebarOpen ? '收起侧边栏' : '展开侧边栏'"
@@ -48,7 +48,7 @@
     <div class="app-header__actions">
       <Button
         type="button"
-        variant="ghost"
+        text severity="secondary"
         size="sm"
         class="app-header__user"
         :title="`${userDisplayName} - 个人资料`"

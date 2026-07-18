@@ -203,7 +203,7 @@
             <form class="settings-server-form" @submit.prevent="handleSwitchServer">
               <label for="settings-server-url" class="settings-field-label">更换服务器</label>
               <div class="settings-server-form__controls">
-                <Input
+                <Input fluid
                   id="settings-server-url"
                   v-model="serverForm.url"
                   type="url"
@@ -212,7 +212,7 @@
                 />
                 <Button
                   type="button"
-                  variant="outline"
+                  severity="secondary" outlined
                   :loading="serverTesting"
                   :disabled="serverSaving || !serverForm.url.trim()"
                   @click="handleTestServer"

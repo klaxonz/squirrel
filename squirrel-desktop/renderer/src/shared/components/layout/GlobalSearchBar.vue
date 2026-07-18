@@ -4,8 +4,8 @@
       <div v-if="searchModesList.length > 0" class="global-search__mode-wrap">
         <Button
           type="button"
-          variant="ghost"
-          size="xs"
+          text severity="secondary"
+          size="sm"
           class="global-search__mode"
           :aria-pressed="activeSearchMode === 'remote'"
           :aria-label="`搜索范围：${activeSearchModeLabel}`"
@@ -15,10 +15,10 @@
           {{ activeSearchModeLabel }}
         </Button>
       </div>
-      
+
       <div v-if="searchModesList.length > 0" class="global-search__divider" />
       <AppIcon v-else name="search" class="global-search__leading-icon" :stroke-width="2.5" />
-      
+
       <input
         ref="inputRef"
         v-model="inputValue"
@@ -36,15 +36,15 @@
 
       <div class="global-search__actions">
         <AppSpinner v-if="isTyping" size="sm" />
-        
-        <Button v-if="inputValue" variant="ghost" size="mini-icon" class="global-search__icon-button" @click="clearSearch">
+
+        <Button v-if="inputValue" text severity="secondary" size="sm" icon-only class="global-search__icon-button" @click="clearSearch">
           <AppIcon name="close" class="w-3.5 h-3.5" />
         </Button>
-        
+
         <Button
           type="button"
-          variant="ghost"
-          size="mini-icon"
+          text severity="secondary"
+          size="sm" icon-only
           class="global-search__icon-button"
           :disabled="!trimmedInputValue"
           title="搜索"
@@ -57,12 +57,12 @@
     </div>
 
     <!-- Suggestions Dropdown -->
-    <transition 
-      enter-active-class="transition duration-base ease-out" 
-      enter-from-class="opacity-0 translate-y-1" 
-      enter-to-class="opacity-100 translate-y-0" 
-      leave-active-class="transition duration-fast ease-default" 
-      leave-from-class="opacity-100 translate-y-0" 
+    <transition
+      enter-active-class="transition duration-base ease-out"
+      enter-from-class="opacity-0 translate-y-1"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition duration-fast ease-default"
+      leave-from-class="opacity-100 translate-y-0"
       leave-to-class="opacity-0 translate-y-1"
     >
       <div
@@ -73,15 +73,15 @@
       >
         <div class="global-search__suggestions-header">
           <span>{{ suggestionTitle }}</span>
-          <Button v-if="recentSearches.length" variant="link" size="xs" class="global-search__clear-recent" @click="clearRecentSearches">清空</Button>
+          <Button v-if="recentSearches.length" link size="sm" class="global-search__clear-recent" @click="clearRecentSearches">清空</Button>
         </div>
 
 
 
         <div v-for="(item, index) in suggestionItems" :key="item.id" class="global-search__suggestion-row">
           <Button
-            variant="ghost"
-            size="default"
+            text severity="secondary"
+
             class="global-search__suggestion"
             :class="{ 'is-active': index === activeSuggestionIndex }"
             @mouseenter="activeSuggestionIndex = index"
@@ -93,11 +93,11 @@
               <span v-if="item.meta" class="global-search__suggestion-meta">{{ item.meta }}</span>
             </div>
           </Button>
-          <Button v-if="item.type === 'recent'" variant="ghost" size="icon-sm" class="global-search__remove" @click.stop="removeRecentSearch(item.value)">
+          <Button v-if="item.type === 'recent'" text severity="secondary" size="sm" icon-only class="global-search__remove" @click.stop="removeRecentSearch(item.value)">
             <AppIcon name="close" class="w-3.5 h-3.5" />
           </Button>
         </div>
-        
+
         <div v-if="!suggestionItems.length" class="global-search__empty">暂无搜索记录</div>
       </div>
     </transition>
@@ -229,7 +229,7 @@ const handleInput = () => {
   isTyping.value = true
   clearTimeout(typingTimeout)
   typingTimeout = setTimeout(() => isTyping.value = false, 400)
-  
+
   clearTimeout(suggestionTimeout)
   suggestionTimeout = setTimeout(loadRemoteSuggestions, 300)
 }

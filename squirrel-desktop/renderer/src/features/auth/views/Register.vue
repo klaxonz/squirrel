@@ -4,13 +4,13 @@
       <Transition name="auth-alert">
         <Alert v-if="errorMessage" variant="error">
           <AppIcon name="error" class="h-4 w-4" />
-          <AlertDescription>{{ errorMessage }}</AlertDescription>
+          <p class="text-sm [&_p]:leading-relaxed">{{ errorMessage }}</p>
         </Alert>
       </Transition>
 
       <div class="auth-field">
         <label for="nickname" class="auth-field__label">昵称</label>
-        <Input
+        <Input fluid
           id="nickname"
           v-model="form.nickname"
           type="text"
@@ -23,7 +23,7 @@
 
       <div class="auth-field">
         <label for="email" class="auth-field__label">邮箱</label>
-        <Input
+        <Input fluid
           id="email"
           v-model="form.email"
           type="email"
@@ -40,7 +40,7 @@
           <span class="auth-field__hint">至少 8 位字符</span>
         </div>
         <div class="auth-field__wrap">
-          <Input
+          <Input fluid
             id="password"
             v-model="form.password"
             :type="showPassword ? 'text' : 'password'"
@@ -52,8 +52,8 @@
           />
           <Button
             type="button"
-            variant="ghost"
-            size="mini-icon"
+            text severity="secondary"
+            size="sm" icon-only
             class="auth-field__action"
             :title="showPassword ? '隐藏密码' : '显示密码'"
             :aria-label="showPassword ? '隐藏密码' : '显示密码'"
@@ -81,7 +81,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AuthEntryCard from '@/features/auth/components/AuthEntryCard.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import { Alert, AlertDescription } from '@/shared/ui/alert'
+import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { useUserStore } from '@/shared/stores/user'

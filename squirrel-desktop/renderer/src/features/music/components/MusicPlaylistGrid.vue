@@ -3,7 +3,7 @@
     <h3 class="text-sm font-semibold mb-3">热门精品歌单</h3>
     <div v-if="tags.length" class="music-tag-strip">
       <Button
-        variant="secondary"
+        severity="secondary"
         size="sm"
         :class="selectedCategory === 0 && 'app-selection-active'"
         @click="$emit('select-category', 0)"
@@ -13,7 +13,7 @@
       <Button
         v-for="tag in tags"
         :key="tag.id"
-        variant="secondary"
+        severity="secondary"
         size="sm"
         :class="selectedCategory === Number(tag.id) && 'app-selection-active'"
         @click="$emit('select-category', Number(tag.id))"
@@ -42,7 +42,7 @@
       />
     </div>
     <div class="app-page-actions mt-6" v-if="hasMore">
-      <Button variant="outline" size="sm" :loading="loading" @click="$emit('load-more')">
+      <Button severity="secondary" outlined size="sm" :loading="loading" @click="$emit('load-more')">
         加载更多歌单
       </Button>
     </div>

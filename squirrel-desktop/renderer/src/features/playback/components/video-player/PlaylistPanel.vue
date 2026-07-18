@@ -4,7 +4,7 @@
       <div class="sp-playlist-header">
         <span class="sp-playlist-title">{{ title }}</span>
         <span class="sp-playlist-count">{{ entries.length }} videos</span>
-        <Button variant="ghost" size="mini-icon" class="sp-icon-btn" @click="$emit('close')" :title="'Close'">
+        <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click="$emit('close')" :title="'Close'">
           <span style="font-size: 14px; line-height: 1">&times;</span>
         </Button>
       </div>

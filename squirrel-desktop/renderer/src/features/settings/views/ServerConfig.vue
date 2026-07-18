@@ -8,14 +8,14 @@
       <Transition name="auth-alert">
         <Alert v-if="errorMessage" variant="error">
           <AppIcon name="error" class="h-4 w-4" />
-          <AlertDescription>{{ errorMessage }}</AlertDescription>
+          <p class="text-sm [&_p]:leading-relaxed">{{ errorMessage }}</p>
         </Alert>
       </Transition>
 
       <div class="auth-field">
         <label for="server-url" class="auth-field__label">服务器接口地址</label>
         <div class="auth-server-field">
-          <Input
+          <Input fluid
             id="server-url"
             v-model="form.serverUrl"
             type="url"
@@ -27,7 +27,7 @@
           />
           <Button
             type="button"
-            variant="outline"
+            severity="secondary" outlined
             size="sm"
             :disabled="!form.serverUrl.trim() || testing"
             :loading="testing"
@@ -60,7 +60,7 @@
             <li v-for="url in quickServerUrls" :key="url">
               <Button
                 type="button"
-                variant="outline"
+                severity="secondary" outlined
                 size="sm"
                 class="auth-options__chip"
                 @click="applyServerUrl(url)"
@@ -74,7 +74,7 @@
         <div v-if="recentServerUrls.length" class="auth-options__group">
           <div class="auth-options__head">
             <span class="auth-options__title">最近连接</span>
-            <Button type="button" variant="ghost" size="xs" @click="handleClearRecent">
+            <Button type="button" text severity="secondary" size="sm" @click="handleClearRecent">
               清空
             </Button>
           </div>
@@ -82,7 +82,7 @@
             <li v-for="url in recentServerUrls" :key="url">
               <Button
                 type="button"
-                variant="outline"
+                severity="secondary" outlined
                 size="sm"
                 class="auth-options__chip"
                 :title="url"
@@ -108,7 +108,7 @@
 
     <template #footer>
       <span class="auth-entry__footer-text">本地开发？</span>
-      <Button type="button" variant="link" size="sm" class="auth-entry__link" @click="fillLocalhost">
+      <Button type="button" link size="sm" class="auth-entry__link" @click="fillLocalhost">
         快速切换至本机地址
       </Button>
     </template>
@@ -130,7 +130,7 @@ import { Logger } from '@/shared/lib/logger'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
-import { Alert, AlertDescription } from '@/shared/ui/alert'
+import { Alert } from '@/shared/ui/alert'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
 
 const router = useRouter()

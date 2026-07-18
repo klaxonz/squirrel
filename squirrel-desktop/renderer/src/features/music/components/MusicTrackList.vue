@@ -8,7 +8,7 @@
     >
       <div v-if="selectionMode && selectedTracks.size > 0" class="music-track-batch-bar">
         <div class="music-batch-left">
-          <Button variant="secondary" size="sm" @click="toggleSelectAll">
+          <Button severity="secondary" size="sm" @click="toggleSelectAll">
             <AppIcon :name="isAllSelected ? 'check' : 'circle'" class="h-4 w-4" />
             {{ isAllSelected ? '取消全选' : '全选' }}
           </Button>
@@ -19,11 +19,11 @@
             <AppIcon name="play" class="h-4 w-4" />
             播放选中
           </Button>
-          <Button variant="secondary" size="sm" @click="handleAddToPlaylist">
+          <Button severity="secondary" size="sm" @click="handleAddToPlaylist">
             <AppIcon name="addToPlaylist" class="h-4 w-4" />
             加入歌单
           </Button>
-          <Button variant="ghost" size="icon-sm" aria-label="退出多选" @click="exitSelectionMode">
+          <Button text severity="secondary" size="sm" icon-only aria-label="退出多选" @click="exitSelectionMode">
             <AppIcon name="close" class="h-4 w-4" />
           </Button>
         </div>
@@ -86,8 +86,8 @@
           <Badge v-if="isPlaying(track)" class="shrink-0">正在播放</Badge>
         </div>
         <Button
-          variant="link"
-          size="xs"
+          link
+          size="sm"
           class="music-track-artist"
           :disabled="!track.artist_id"
           @click.stop="$emit('select-artist', track)"
@@ -97,8 +97,8 @@
       </div>
 
       <Button
-        variant="link"
-        size="xs"
+        link
+        size="sm"
         class="music-track-col music-track-col--album"
         :disabled="!track.album_id"
         @click.stop="$emit('select-album', track)"

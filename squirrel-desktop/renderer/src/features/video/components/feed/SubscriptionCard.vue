@@ -6,8 +6,8 @@
       'subscription-row--selected': selected,
     }"
   >
-    <Button
-      unstyled
+    <button
+
       type="button"
       class="subscription-row__identity"
       :title="cardTitle"
@@ -27,7 +27,7 @@
         </span>
         <span v-if="subscription.site" class="subscription-row__site">{{ subscription.site }}</span>
       </span>
-    </Button>
+    </button>
 
     <span class="subscription-row__metric app-mono">{{ subscription.total_videos }}</span>
 
@@ -72,8 +72,8 @@
 
     <Button
       type="button"
-      variant="ghost"
-      size="mini-icon"
+      text severity="secondary"
+      size="sm" icon-only
       class="subscription-row__star"
       :class="{ 'is-active': subscription.is_special_followed }"
       :disabled="toggling"

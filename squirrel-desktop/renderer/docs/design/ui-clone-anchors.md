@@ -20,7 +20,7 @@
 ## 1. 总策略
 
 1. **全应用只认一个视觉宿主**：PrimeVue Aura Dark Desktop。禁止按 Surface 切换视觉语言。
-2. **Primitives 冻结**：交互控件来自 PrimeVue；`shared/ui/**` 只做稳定产品 API 与语义映射，禁止复制第二套 Button/Dialog。
+2. **Primitives 冻结**：交互控件来自 PrimeVue；`shared/ui/**` 优先直接导出 PrimeVue，只有稳定产品 API 与语义映射才保留薄适配，禁止复制第二套 Button/Dialog。
 3. **日常禁止拧视觉旋钮**（阴影、渐变、圆角微差、侧栏宽、网格 gap 的「感觉」调整）。需要改必须：对照锚点 + 更新本页或 shell/media pattern + 跑视觉验证。
 4. **外部产品只供 IA 参考**：FreeTube、YouTube、Fluent Reader、Spotify/YesPlayMusic 可决定栏数、内容顺序和媒体工作流，不得决定组件皮肤。
 5. **验收定义**：跨 Surface 的 typography、surface、control、state、motion 必须来自同一 Aura preset；页面布局再对照 IA 参考与冻结尺寸表。

@@ -2,10 +2,10 @@
   <div class="site-runtime-grid-content">
     <Alert v-if="discoveryErrors.length" variant="error" class="mb-5">
       <AppIcon name="error" class="h-4 w-4" />
-      <AlertTitle>发现 {{ discoveryErrors.length }} 个站点失败</AlertTitle>
-      <AlertDescription class="truncate text-xs">
+      <h5 class="mb-1 font-medium leading-none tracking-tight">发现 {{ discoveryErrors.length }} 个站点失败</h5>
+      <p class="text-sm [&_p]:leading-relaxed truncate text-xs">
         {{ discoveryErrors[0].metadata_path }} · {{ discoveryErrors[0].reason }}
-      </AlertDescription>
+      </p>
     </Alert>
 
     <div v-if="loading" class="site-runtime-grid" aria-label="正在加载站点">
@@ -38,7 +38,7 @@
         :copy="searchQuery ? '更换搜索关键词后再试。' : '本地站点发现后会显示在这里。'"
       >
         <template v-if="searchQuery" #actions>
-          <Button size="sm" variant="secondary" @click="$emit('clear-search')">清空搜索</Button>
+          <Button size="sm" severity="secondary" @click="$emit('clear-search')">清空搜索</Button>
         </template>
       </AppEmptyState>
     </div>
@@ -146,7 +146,7 @@ import AppActionMenu from '@/shared/components/AppActionMenu.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { Switch } from '@/shared/ui/switch'
-import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert'
+import { Alert } from '@/shared/ui/alert'
 import { useSiteRuntimeStatus } from '@/features/settings/composables/useSiteRuntimeStatus'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 

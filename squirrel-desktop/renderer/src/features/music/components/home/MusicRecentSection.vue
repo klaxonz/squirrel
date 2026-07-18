@@ -5,17 +5,17 @@
         <h2 class="music-recent-title">最近播放</h2>
         <p class="music-recent-description">继续刚才的收听</p>
       </div>
-      <Button variant="ghost" size="xs" @click="$emit('view-all')">
+      <Button text severity="secondary" size="sm" @click="$emit('view-all')">
         查看全部
         <AppIcon name="chevronRight" class="h-3.5 w-3.5" />
       </Button>
     </header>
 
     <div class="music-recent-list">
-      <Button
+      <button type="button"
         v-for="(track, index) in tracks"
         :key="track.hash"
-        unstyled
+
         class="music-recent-item"
         :class="{ 'music-recent-item--playing': isPlaying(track) }"
         @click="$emit('play-track', track)"
@@ -30,7 +30,7 @@
         </span>
         <MusicPlayingIndicator v-if="isPlaying(track)" />
         <span v-else class="music-recent-index">{{ String(index + 1).padStart(2, '0') }}</span>
-      </Button>
+      </button>
     </div>
   </section>
 </template>

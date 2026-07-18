@@ -11,8 +11,8 @@
         />
         <div class="history-toolbar__actions">
           <Button
-            variant="ghost"
-            size="icon-sm"
+            text severity="secondary"
+            size="sm" icon-only
             title="刷新历史"
             aria-label="刷新历史"
             :disabled="loading"
@@ -23,8 +23,8 @@
           </Button>
           <Button
             v-if="videos.length && !isContinueMode"
-            variant="ghost"
-            size="icon-sm"
+            text severity="secondary"
+            size="sm" icon-only
             class="history-toolbar__clear"
             title="清空历史"
             aria-label="清空历史"
@@ -54,7 +54,7 @@
       <div v-else-if="loadError" class="app-page-empty app-page-empty--compact">
         <AppEmptyState variant="error" title="加载失败" :copy="loadError">
           <template #actions>
-            <Button variant="outline" size="sm" @click="loadData">重试</Button>
+            <Button severity="secondary" outlined size="sm" @click="loadData">重试</Button>
           </template>
         </AppEmptyState>
       </div>
@@ -97,7 +97,7 @@
       </div>
 
       <div v-else-if="hasMore" class="app-page-actions app-page-actions--loose">
-        <Button variant="outline" @click="loadMore">加载更多</Button>
+        <Button severity="secondary" outlined @click="loadMore">加载更多</Button>
       </div>
     </main>
 

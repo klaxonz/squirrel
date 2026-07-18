@@ -7,21 +7,12 @@ export type ButtonVariant =
   | 'secondary'
   | 'contrast'
   | 'ghost'
-  | 'player'
   | 'link'
 
 export type ButtonSize =
   | 'default'
-  | 'xs'
   | 'sm'
   | 'lg'
-  | 'icon'
-  | 'icon-xs'
-  | 'icon-sm'
-  | 'mini-icon'
-  | 'card-play'
-  | 'player-sm'
-  | 'player-lg'
 
 export type ButtonVariants = {
   variant?: ButtonVariant

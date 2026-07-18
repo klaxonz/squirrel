@@ -5,7 +5,7 @@
         <AppSidebarHeader title="播放列表" :subtitle="`${playlists.length} 个列表`">
           <template #actions>
             <Button
-              size="icon-sm"
+              size="sm" icon-only
               title="新建播放列表"
               aria-label="新建播放列表"
               @click="openCreateModal"
@@ -55,8 +55,8 @@
               播放全部
             </Button>
             <Button
-              variant="ghost"
-              size="icon-sm"
+              text severity="secondary"
+              size="sm" icon-only
               :disabled="loading || isHydratingSelection"
               title="刷新"
               aria-label="刷新"
@@ -94,7 +94,7 @@
                 <AppIcon name="plus" class="h-4 w-4" />
                 新建播放列表
               </Button>
-              <Button v-else variant="outline" @click="reloadPlaylists">重试</Button>
+              <Button v-else severity="secondary" outlined @click="reloadPlaylists">重试</Button>
             </template>
           </AppEmptyState>
         </div>
@@ -183,8 +183,8 @@
                 </div>
 
                 <Button
-                  variant="ghost"
-                  size="icon-sm"
+                  text severity="secondary"
+                  size="sm" icon-only
                   class="playlist-item-remove"
                   title="从播放列表移除"
                   aria-label="从播放列表移除"
@@ -227,15 +227,15 @@
         <div class="space-y-4 p-5">
           <div class="space-y-2">
             <label for="name" class="text-sm font-medium">列表名称</label>
-            <Input id="name" v-model="formName" placeholder="例如：我的最爱" @keyup.enter="handleSave" />
+            <Input fluid id="name" v-model="formName" placeholder="例如：我的最爱" @keyup.enter="handleSave" />
           </div>
           <div class="space-y-2">
             <label for="description" class="text-sm font-medium">描述</label>
-            <Textarea id="description" v-model="formDesc" placeholder="添加一些关于这个列表的说明" rows="3" />
+            <Textarea fluid id="description" v-model="formDesc" placeholder="添加一些关于这个列表的说明" rows="3" />
           </div>
         </div>
         <DialogFooter class="gap-2 bg-muted/30 p-4">
-          <Button variant="outline" @click="closeModal">取消</Button>
+          <Button severity="secondary" outlined @click="closeModal">取消</Button>
           <Button :disabled="!formName.trim()" @click="handleSave">
             {{ editingPlaylist ? '保存' : '创建' }}
           </Button>

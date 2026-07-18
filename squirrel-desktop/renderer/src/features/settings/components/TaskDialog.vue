@@ -10,11 +10,9 @@
             {{ isEditing ? '编辑任务' : '新建任务' }}
           </DialogTitle>
         </div>
-        <DialogClose as-child>
-          <Button variant="ghost" size="icon-sm" aria-label="关闭任务对话框">
-            <AppIcon name="close" class="h-4 w-4" />
-          </Button>
-        </DialogClose>
+        <Button text severity="secondary" size="sm" icon-only aria-label="关闭任务对话框" @click="$emit('close')">
+          <AppIcon name="close" class="h-4 w-4" />
+        </Button>
       </DialogHeader>
 
       <div class="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
@@ -22,7 +20,7 @@
           <section class="space-y-4">
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground" for="task-dialog-name">任务名称</label>
-              <Input
+              <Input fluid
                 id="task-dialog-name"
                 v-model="formData.name"
                 required
@@ -54,7 +52,7 @@
 
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground" for="task-dialog-desc">描述</label>
-              <Textarea
+              <Textarea fluid
                 id="task-dialog-desc"
                 v-model="formData.description"
                 placeholder="简要说明任务用途"
@@ -67,7 +65,7 @@
             <div class="grid gap-4 md:grid-cols-3">
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground" for="task-dialog-interval">执行间隔</label>
-              <Input
+              <Input fluid
                 id="task-dialog-interval"
                 v-model.number="formData.interval"
                 type="number"
@@ -87,7 +85,7 @@
             </div>
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground" for="task-dialog-retries">最大重试</label>
-              <Input
+              <Input fluid
                 id="task-dialog-retries"
                 v-model.number="formData.max_retries"
                 type="number"
@@ -112,7 +110,7 @@
           <section class="app-divider-top space-y-2 pt-5">
             <label class="text-xs font-medium text-muted-foreground" for="task-dialog-params">任务参数</label>
             <div class="relative">
-              <Textarea
+              <Textarea fluid
                 id="task-dialog-params"
                 v-model="taskParamsJson"
                 rows="5"
@@ -129,8 +127,8 @@
       </div>
 
       <DialogFooter class="app-divider-top flex shrink-0 items-center justify-end gap-2 bg-muted/30 p-4 sm:justify-end">
-        <Button variant="outline" @click="$emit('close')">取消</Button>
-        <Button variant="contrast" :loading="loading" :disabled="!!jsonError" @click="handleSubmit">
+        <Button severity="secondary" outlined @click="$emit('close')">取消</Button>
+        <Button severity="contrast" :loading="loading" :disabled="!!jsonError" @click="handleSubmit">
           {{ isEditing ? '保存' : '创建' }}
         </Button>
       </DialogFooter>
@@ -147,7 +145,6 @@ import { Textarea } from '@/shared/ui/textarea'
 import { Switch } from '@/shared/ui/switch'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,

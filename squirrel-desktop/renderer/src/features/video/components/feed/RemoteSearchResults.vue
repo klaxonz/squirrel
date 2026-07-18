@@ -12,7 +12,7 @@
       <div v-if="errorMessage">
         <AppEmptyState variant="error" title="搜索失败" :copy="errorMessage">
           <template #actions>
-            <Button variant="outline" size="sm" @click="refresh">重试</Button>
+            <Button severity="secondary" outlined size="sm" @click="refresh">重试</Button>
           </template>
         </AppEmptyState>
       </div>
@@ -43,8 +43,8 @@
               <Button
                 v-if="primarySubscription(item)?.url"
                 type="button"
-                variant="ghost"
-                size="xs"
+                text severity="secondary"
+                size="sm"
                 class="remote-search-source-button"
                 @click.stop="openRemoteChannel(item, primarySubscription(item))"
               >
@@ -85,7 +85,7 @@
       </div>
 
       <div v-if="items.length > 0 && !allLoaded" class="app-page-actions">
-        <Button variant="outline" :disabled="loading" @click="loadMore">
+        <Button severity="secondary" outlined :disabled="loading" @click="loadMore">
           {{ loading ? '加载中' : '加载更多' }}
         </Button>
       </div>

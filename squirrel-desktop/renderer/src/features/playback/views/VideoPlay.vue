@@ -34,7 +34,7 @@
                 <span v-if="video.site" class="video-detail__site">{{ video.site }}</span>
               </div>
             </div>
-            
+
             <div class="video-detail__bar">
               <div class="video-detail__channel-actions">
                 <div
@@ -55,7 +55,7 @@
                 <Button
                   v-if="primarySubscriptionUrl"
                   type="button"
-                  variant="default"
+
                   size="sm"
                   class="video-detail__subscribe-button"
                   :class="{ 'is-subscribed': isSubscriptionChecked && isSubscribed }"
@@ -72,7 +72,7 @@
                     v-for="action in primaryVisibleActions"
                     :key="action.key"
                     type="button"
-                    variant="ghost"
+                    text severity="secondary"
                     size="sm"
                     class="video-detail__action-button"
                     :class="{ 'is-active': action.active }"
@@ -87,8 +87,8 @@
 
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="icon-sm"
+                  text severity="secondary"
+                  size="sm" icon-only
                   class="video-detail__icon-button"
                   title="分享链接"
                   aria-label="分享链接"
@@ -99,8 +99,8 @@
                 <div class="relative" ref="moreMenuRef">
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="icon-sm"
+                    text severity="secondary"
+                    size="sm" icon-only
                     class="video-detail__icon-button"
                     :aria-expanded="moreMenuOpen"
                     aria-haspopup="menu"
@@ -147,7 +147,7 @@
                   v-for="actor in displayedVideoActors"
                   :key="actor.url || actor.name"
                   type="button"
-                  variant="secondary"
+                  severity="secondary"
                   size="sm"
                   class="video-detail__actor"
                   @click="openProfile(actor)"
@@ -175,8 +175,8 @@
               <Button
                 v-if="hasLongDescription"
                 type="button"
-                variant="ghost"
-                size="xs"
+                text severity="secondary"
+                size="sm"
                 class="video-detail__description-toggle"
                 :aria-expanded="descriptionExpanded"
                 @click="descriptionExpanded = !descriptionExpanded"
@@ -186,7 +186,7 @@
               </Button>
             </div>
           </div>
-          
+
           <div v-else class="video-detail__skeleton">
             <div class="space-y-2">
               <AppSkeleton width="75%" height="1.75rem" rounded="var(--radius-lg)" shimmer />
@@ -345,7 +345,7 @@ const { goToPrev, goToNext } = usePlaylist()
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate, flushPendingReport } = usePlaybackReporting(video, sendReport)
 
 const { goToVideo, handleAutoplayNext, handlePrevVideoFromPlaylist, handleNextVideoFromPlaylist } = useVideoPageNavigation({
-  route, router, video, relatedVideos, 
+  route, router, video, relatedVideos,
   goToPrev,
   goToNext,
   onVideoEnded,

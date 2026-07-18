@@ -1,9 +1,9 @@
 <template>
   <div class="music-rank-list" aria-label="排行榜列表">
-    <Button
+    <button type="button"
       v-for="(rank, index) in ranks"
       :key="rank.id"
-      unstyled
+
       class="music-rank-item"
       :aria-label="`查看排行榜：${rank.name}`"
       @click="$emit('select', rank)"
@@ -18,13 +18,12 @@
         <span class="music-rank-meta">{{ rank.update_frequency || '实时更新' }}</span>
       </span>
       <AppIcon name="chevronRight" class="music-rank-arrow h-4 w-4" />
-    </Button>
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import { Button } from '@/shared/ui/button'
 import type { MusicRank } from '@/shared/api/music'
 
 defineProps<{

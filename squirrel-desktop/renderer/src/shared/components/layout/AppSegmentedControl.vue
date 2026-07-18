@@ -8,8 +8,9 @@
     <Button
       v-for="option in options"
       :key="option.value"
-      variant="ghost"
+      text severity="secondary"
       :size="buttonSize"
+      :icon-only="size === 'icon'"
       type="button"
       class="app-segmented-control__item"
       :class="{ 'is-active': modelValue === option.value }"
@@ -26,7 +27,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import { Button } from '@/shared/ui/button'
 import type { AppIconName } from '@/shared/icons/app-icons'
 
@@ -55,11 +55,7 @@ defineSlots<{
   option?: (props: { option: AppSegmentedControlOption }) => unknown
 }>()
 
-const buttonSize = computed(() => {
-  if (props.size === 'sm') return 'xs'
-  if (props.size === 'icon') return 'mini-icon'
-  return 'sm'
-})
+const buttonSize = 'sm'
 
 const selectOption = (value: string | number) => {
   if (value === props.modelValue) return

@@ -33,7 +33,7 @@
         </div>
       </div>
       <div v-if="hasMore" class="music-comments-more">
-        <Button variant="secondary" size="sm" :disabled="loading" @click="$emit('load-more')">
+        <Button severity="secondary" size="sm" :disabled="loading" @click="$emit('load-more')">
           加载更多评论
         </Button>
       </div>

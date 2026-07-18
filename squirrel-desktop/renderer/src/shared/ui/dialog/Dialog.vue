@@ -1,23 +1,18 @@
 <script setup lang="ts">
-import { computed, provide, ref } from 'vue'
+import { computed, provide } from 'vue'
 import { dialogContextKey } from './context'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   open?: boolean
-  defaultOpen?: boolean
-}>(), {
-  defaultOpen: false,
-})
+}>()
 
 const emit = defineEmits<{
   (event: 'update:open', value: boolean): void
 }>()
 
-const internalOpen = ref(props.defaultOpen)
 const open = computed({
-  get: () => props.open ?? internalOpen.value,
+  get: () => props.open ?? false,
   set: (value: boolean) => {
-    internalOpen.value = value
     emit('update:open', value)
   },
 })
