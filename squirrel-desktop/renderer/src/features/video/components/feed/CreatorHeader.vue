@@ -106,10 +106,12 @@ watch(() => props.creatorId, () => {
 
 .creator-header__avatar {
   flex: 0 0 auto;
-  width: 5.5rem;
-  height: 5.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
   overflow: hidden;
-  border-radius: 999px;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--app-surface-radius);
+  background: hsl(var(--muted));
 }
 
 .creator-header__copy {
@@ -117,7 +119,7 @@ watch(() => props.creatorId, () => {
   min-width: 0;
   flex: 1;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.375rem;
 }
 
 .creator-header__title-row {

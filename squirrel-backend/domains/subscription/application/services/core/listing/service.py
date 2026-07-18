@@ -43,6 +43,7 @@ class SubscriptionListService:
         page_size: int,
         domains: list[str] | None = None,
         special: str = 'all',
+        status: str = 'all',
     ) -> tuple[list[dict[str, Any]], int]:
         user_config = self.get_user_config(user_id)
         show_nsfw = user_config.get('showNsfw', False)
@@ -70,6 +71,17 @@ class SubscriptionListService:
                 conditions.append(UserSubscription.is_special_followed.is_(True))
             elif special == 'no':
                 conditions.append(UserSubscription.is_special_followed.is_(False))
+
+            if status == 'issues':
+                conditions.append(
+                    or_(
+                        SubscriptionSyncState.sync_status == SyncStatus.FAILED.value,
+                        and_(
+                            SubscriptionSyncState.last_error.is_not(None),
+                            func.trim(SubscriptionSyncState.last_error) != '',
+                        ),
+                    ),
+                )
 
             if domains:
                 normalized_domains = [domain for domain in dict.fromkeys(domains) if domain]

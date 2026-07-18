@@ -1,8 +1,10 @@
 <template>
   <header class="titlebar">
-    <div class="titlebar__brand" aria-label="归仓">
-      <BrandLogo size="xs" />
-      <span>归仓</span>
+    <div class="titlebar__brand" :class="{ 'is-collapsed': !isSidebarOpen }" aria-label="归仓">
+      <BrandMark class="titlebar__brand-mark" />
+      <span class="titlebar__brand-copy">
+        <strong>归仓</strong>
+      </span>
     </div>
     <div class="titlebar__navigation no-drag">
       <Button
@@ -73,7 +75,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import BrandLogo from '@/shared/components/BrandLogo.vue'
+import BrandMark from '@/shared/components/BrandMark.vue'
 import AppHeader from '@/app/shell/AppHeader.vue'
 import { Button } from '@/shared/ui/button'
 import type { AppIconName } from '@/shared/icons/app-icons'
@@ -131,25 +133,54 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0;
-  background: hsl(var(--card));
-  border-bottom: 1px solid hsl(var(--border) / 0.55);
+  border-bottom: 1px solid var(--app-hairline);
+  background: hsl(var(--background));
   user-select: none;
   -webkit-app-region: drag;
 }
 
 .titlebar__brand {
   display: inline-flex;
-  width: 7.25rem;
+  width: var(--workspace-offset);
   height: 100%;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0.5rem;
-  padding-left: 0.75rem;
+  gap: 0.625rem;
+  overflow: hidden;
+  border-right: 1px solid var(--app-hairline);
+  padding-inline: 0.875rem;
   color: hsl(var(--foreground));
+  transition: width var(--duration-base) var(--ease-out);
+}
+
+.titlebar__brand.is-collapsed {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.titlebar__brand-mark {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 auto;
+  color: hsl(var(--primary));
+}
+
+.titlebar__brand-copy {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.titlebar__brand-copy strong {
   font-family: var(--font-display);
-  font-size: 0.8125rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  font-size: 0.875rem;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+}
+
+.titlebar__brand.is-collapsed .titlebar__brand-copy {
+  display: none;
 }
 
 .titlebar__navigation {
@@ -157,7 +188,8 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.125rem;
   height: 100%;
-  padding: 0 0.375rem 0 0;
+  padding: 0 0.625rem;
+  border-right: 1px solid var(--app-hairline);
   flex: 0 0 auto;
   -webkit-app-region: no-drag;
 }
@@ -170,7 +202,7 @@ onUnmounted(() => {
 }
 
 .titlebar__navigation-button:hover:not(:disabled) {
-  background: hsl(var(--foreground) / 0.065);
+  background: hsl(var(--accent) / 0.7);
   color: hsl(var(--foreground));
 }
 
@@ -191,10 +223,10 @@ onUnmounted(() => {
 
 .titlebar__command:deep(.app-header) {
   height: var(--app-titlebar-height);
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 38rem) auto;
+  grid-template-columns: minmax(1rem, 1fr) minmax(18rem, 34rem) auto;
   border-bottom: 0;
-  padding: 0 0.75rem;
-  background: hsl(var(--card));
+  padding: 0 0.75rem 0 1rem;
+  background: hsl(var(--background));
 }
 
 .titlebar__command:deep(.app-header__leading) {
@@ -203,6 +235,26 @@ onUnmounted(() => {
 
 .titlebar__command:deep(.app-header__user) {
   max-width: 9rem;
+}
+
+.titlebar__command:deep(.global-search__box) {
+  height: 2rem;
+  border: 1px solid hsl(var(--border) / 0.62);
+  border-radius: var(--radius-md);
+  background: hsl(var(--muted) / 0.22);
+  box-shadow: none;
+}
+
+.titlebar__command:deep(.global-search__box:focus-within) {
+  border-color: hsl(var(--primary) / 0.55);
+  background: hsl(var(--background));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+}
+
+.titlebar__command:deep(.global-search__suggestions) {
+  border-color: hsl(var(--border) / 0.7);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
 }
 
 .titlebar__controls {
@@ -221,7 +273,7 @@ onUnmounted(() => {
 }
 
 .titlebar__control:hover {
-  background: hsl(var(--foreground) / 0.06);
+  background: hsl(var(--accent) / 0.72);
   color: hsl(var(--foreground));
 }
 
@@ -236,6 +288,7 @@ onUnmounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .titlebar__brand,
   .titlebar__navigation-button,
   .titlebar__control {
     transition: none;

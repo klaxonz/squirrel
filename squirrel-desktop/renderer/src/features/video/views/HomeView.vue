@@ -1,38 +1,35 @@
 <template>
-  <AppPageShell class="home-view-page" variant="compact" surface="consume" width="media">
-    <div class="app-page-content app-page-content--media home-page-content">
-      <header class="home-page-header">
-        <div>
-          <p class="home-page-header__eyebrow">媒体工作台</p>
-          <h1 class="home-page-header__title">首页</h1>
+  <AppPageShell class="home-workbench" variant="compact" surface="consume" width="fluid">
+    <div class="home-workbench__page">
+      <header class="home-workbench__context-bar">
+        <div class="home-workbench__context">
+          <time>{{ todayLabel }}</time>
+          <span>订阅动态与未完成内容</span>
         </div>
-        <p>继续上次的播放，浏览订阅源新内容。</p>
+        <div class="home-workbench__actions">
+          <RouterLink to="/subscribed">管理订阅</RouterLink>
+          <Button text severity="secondary" size="sm" icon-only title="刷新首页" aria-label="刷新首页" @click="refresh">
+            <AppIcon name="refresh" class="size-4" />
+          </Button>
+        </div>
       </header>
-      <div class="home-dashboard" aria-label="首页内容">
-        <div class="home-rails">
-          <ContinueWatching
-            ref="continueWatchingRef"
-            @openModal="openVideo"
-            @viewMore="goToContinueWatching"
-            @goToProfile="openProfile"
-            @goToSubscription="openSubscription"
-          />
-          <SpecialFollowVideos
-            ref="specialFollowRef"
-            @openModal="openVideo"
-            @goToProfile="openProfile"
-            @goToSubscription="openSubscription"
-            @viewMore="goToAllVideos"
-          />
-          <FeaturedVideos
-            ref="featuredRef"
-            @openModal="openVideo"
-            @goToProfile="openProfile"
-            @goToSubscription="openSubscription"
-            @viewMore="goToAllVideos"
-          />
-        </div>
-      </div>
+
+      <main class="home-workbench__content" aria-label="首页内容">
+        <ContinueWatching
+          ref="continueWatchingRef"
+          @openModal="openVideo"
+          @viewMore="goToContinueWatching"
+          @goToProfile="openProfile"
+          @goToSubscription="openSubscription"
+        />
+        <HomeInbox
+          ref="homeInboxRef"
+          @openModal="openVideo"
+          @goToProfile="openProfile"
+          @goToSubscription="openSubscription"
+          @viewMore="goToAllVideos"
+        />
+      </main>
     </div>
   </AppPageShell>
 </template>
@@ -41,20 +38,24 @@
 import { onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ContinueWatching from '@/features/video/components/feed/ContinueWatching.vue'
-import SpecialFollowVideos from '@/features/video/components/feed/SpecialFollowVideos.vue'
-import FeaturedVideos from '@/features/video/components/feed/FeaturedVideos.vue'
+import HomeInbox from '@/features/video/components/feed/HomeInbox.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppIcon from '@/shared/icons/AppIcon.vue'
+import { Button } from '@/shared/ui/button'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 
 defineOptions({ name: 'HomeView' })
 
 const router = useRouter()
 const { openVideo, openSubscription, openProfile } = useVideoCardNavigation(router)
+const todayLabel = new Intl.DateTimeFormat('zh-CN', {
+  month: 'long',
+  day: 'numeric',
+  weekday: 'short',
+}).format(new Date())
 
 const continueWatchingRef = ref<{ refresh?: () => void } | null>(null)
-const specialFollowRef = ref<{ refresh?: () => void } | null>(null)
-const featuredRef = ref<{ refresh?: () => void } | null>(null)
-
+const homeInboxRef = ref<{ refresh?: () => void } | null>(null)
 let lastRefreshedAt = 0
 
 const goToContinueWatching = () => router.push({ name: 'History', query: { mode: 'continue' } })
@@ -63,14 +64,12 @@ const goToAllVideos = () => router.push({ name: 'AllVideos' })
 const refresh = () => {
   Promise.allSettled([
     continueWatchingRef.value?.refresh?.(),
-    specialFollowRef.value?.refresh?.(),
-    featuredRef.value?.refresh?.(),
+    homeInboxRef.value?.refresh?.(),
   ]).finally(() => {
     lastRefreshedAt = Date.now()
   })
 }
 
-// keep-alive: refresh rails when returning home, throttled against rapid nav.
 onActivated(() => {
   const now = Date.now()
   if (now - lastRefreshedAt < 30_000) return
@@ -83,71 +82,69 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.home-page-content {
-  position: relative;
-  padding-top: var(--space-5);
-  padding-bottom: var(--space-8);
+.home-workbench {
+  background: hsl(var(--background));
 }
 
-.home-dashboard {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
+.home-workbench__page {
+  width: min(100%, 106rem);
+  margin-inline: auto;
+  padding: 1.5rem clamp(1.25rem, 2.5vw, 2.5rem) 4rem;
 }
 
-.home-page-header {
+.home-workbench__context-bar,
+.home-workbench__context,
+.home-workbench__actions {
   display: flex;
-  align-items: end;
+  align-items: center;
+}
+
+.home-workbench__context-bar {
+  min-height: 3rem;
   justify-content: space-between;
-  gap: var(--space-5);
-  margin-bottom: var(--space-5);
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--app-hairline);
 }
 
-.home-page-header__eyebrow {
-  margin: 0 0 0.25rem !important;
-  color: hsl(var(--primary)) !important;
-  font-size: 0.6875rem !important;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+.home-workbench__context {
+  min-width: 0;
+  gap: var(--space-2);
 }
 
-.home-page-header__title {
-  margin: 0;
+.home-workbench__context time {
   color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: var(--app-h1-size);
-  font-weight: var(--app-h1-weight);
-  line-height: var(--app-h1-leading);
-  letter-spacing: var(--app-h1-tracking);
+  font-size: 0.75rem;
+  font-weight: 650;
 }
 
-.home-page-header p {
-  margin: 0;
+.home-workbench__context span {
+  border-left: 1px solid var(--app-hairline);
+  padding-left: var(--space-2);
   color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-secondary-size);
+  font-size: 0.6875rem;
 }
 
-.home-page-header > p {
-  max-width: 24rem;
-  padding-bottom: 0.2rem;
-  text-align: right;
+.home-workbench__actions {
+  gap: 0.375rem;
 }
 
-.home-rails {
+.home-workbench__actions a {
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.625rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 580;
+  text-decoration: none;
+}
+
+.home-workbench__actions a:hover {
+  background: hsl(var(--accent) / 0.58);
+  color: hsl(var(--foreground));
+}
+
+.home-workbench__content {
   display: grid;
-  gap: var(--space-6);
-  min-width: 0;
+  gap: 2.5rem;
+  padding-top: 0.5rem;
 }
-
-:deep(.home-feed-rail) {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  overflow: visible;
-}
-
-:deep(.home-feed-rail + .featured-workspace) {
-  margin-top: 0;
-}
-
 </style>

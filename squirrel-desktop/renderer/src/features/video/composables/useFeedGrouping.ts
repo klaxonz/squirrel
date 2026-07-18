@@ -6,7 +6,7 @@ import type { VideoListItem } from '@/features/video/types/video'
  *
  * Buckets videos into 今天 / 昨天 / 本周 / 本月 / `YYYY年M月` sections based on
  * `uploaded_at` (falling back to `created_at`), in fixed display order. Items
- * without a date are dropped.
+ * without a usable date stay visible in a final 日期未明 bucket.
  *
  * Extracted from Subscribed.vue as a pure presentation transform — the bucketing
  * rule (today/yesterday/this-week/this-month/year-month, with the 7-/30-day
@@ -27,7 +27,8 @@ export interface UseFeedGroupingReturn {
 }
 
 // Display order of the non-year buckets; year-month buckets sort after.
-const BUCKET_ORDER = ['今天', '昨天', '本周', '本月']
+const UNKNOWN_DATE_BUCKET = '日期未明'
+const BUCKET_ORDER = ['今天', '昨天', '本周', '本月', UNKNOWN_DATE_BUCKET]
 
 export function useFeedGrouping(options: UseFeedGroupingOptions): UseFeedGroupingReturn {
   const { feedItems } = options
@@ -36,15 +37,19 @@ export function useFeedGrouping(options: UseFeedGroupingOptions): UseFeedGroupin
     const groups: Record<string, VideoListItem[]> = {}
     feedItems.value.forEach((video) => {
       const publishDate = video.uploaded_at || video.created_at
-      if (!publishDate) return
-
-      const date = new Date(publishDate)
+      const date = publishDate ? new Date(publishDate) : null
       const now = new Date()
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       const yesterday = new Date(today)
       yesterday.setDate(yesterday.getDate() - 1)
 
       let title = ''
+      if (!date || Number.isNaN(date.getTime())) {
+        title = UNKNOWN_DATE_BUCKET
+        if (!groups[title]) groups[title] = []
+        groups[title].push(video)
+        return
+      }
       const videoDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
       if (videoDate.getTime() === today.getTime()) title = '今天'
       else if (videoDate.getTime() === yesterday.getTime()) title = '昨天'

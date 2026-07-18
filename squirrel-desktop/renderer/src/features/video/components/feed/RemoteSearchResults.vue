@@ -1,5 +1,9 @@
 <template>
-  <div ref="root" class="w-full">
+  <div
+    ref="root"
+    class="remote-search w-full"
+    :class="`remote-search--${presentation}`"
+  >
     <div v-if="!isDesktop" class="app-page-empty">
       <AppEmptyState variant="plain" icon="search" title="远端搜索仅桌面端可用" copy="桌面端会直接请求源站并使用本机站点会话。" />
     </div>
@@ -17,11 +21,14 @@
         </AppEmptyState>
       </div>
 
-      <div v-if="items.length > 0" class="app-video-grid app-video-grid--feed">
+      <div
+        v-if="items.length > 0"
+        :class="presentation === 'workbench' ? 'remote-search__workbench-grid' : 'app-video-grid app-video-grid--feed'"
+      >
         <article
           v-for="item in items"
           :key="item.site + ':' + item.url"
-          class="group flex min-w-0 cursor-pointer flex-col gap-2.5 text-left"
+          class="remote-search-item group flex min-w-0 cursor-pointer flex-col gap-2.5 text-left"
           role="button"
           tabindex="0"
           @click="openResult(item)"
@@ -35,11 +42,11 @@
             </span>
           </div>
 
-          <div class="flex min-w-0 flex-col gap-1 px-0.5">
+          <div class="remote-search-item__body flex min-w-0 flex-col gap-1 px-0.5">
             <h3 class="remote-video-title">
               {{ item.title }}
             </h3>
-            <div class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/80">
+            <div class="remote-search-item__meta flex items-center gap-1.5 text-xs font-medium text-muted-foreground/80">
               <Button
                 v-if="primarySubscription(item)?.url"
                 type="button"
@@ -66,22 +73,30 @@
                   {{ primarySubscription(item)?.name || item.uploader }}
                 </span>
               </template>
-              <span class="shrink-0 rounded border border-border/60 bg-accent/40 px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+              <span class="remote-search-item__site shrink-0 rounded border border-border/60 bg-accent/40 px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
                 {{ siteLabel(item.site) }}
               </span>
             </div>
-            <div v-if="actorText(item)" class="truncate text-xs font-medium text-muted-foreground/60">
+            <div v-if="actorText(item)" class="remote-search-item__actors truncate text-xs font-medium text-muted-foreground/60">
               {{ actorText(item) }}
             </div>
-            <div class="text-xs font-medium text-muted-foreground/50">
+            <div class="remote-search-item__date text-xs font-medium text-muted-foreground/50">
               {{ displayDate(item) }}
             </div>
           </div>
         </article>
       </div>
 
-      <div v-if="loading" class="app-video-grid app-video-grid--feed">
-        <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" />
+      <div
+        v-if="loading"
+        :class="presentation === 'workbench' ? 'remote-search__workbench-grid' : 'app-video-grid app-video-grid--feed'"
+      >
+        <VideoSkeleton
+          v-for="i in skeletonCount"
+          :key="i"
+          :delay="(i - 1) * 50"
+          :appearance="presentation === 'workbench' ? 'workbench' : 'default'"
+        />
       </div>
 
       <div v-if="items.length > 0 && !allLoaded" class="app-page-actions">
@@ -147,13 +162,15 @@ const props = withDefaults(defineProps<{
   query?: string
   site?: string
   limit?: number
+  presentation?: 'standard' | 'workbench'
 }>(), {
   query: '',
   site: '',
   limit: 30,
+  presentation: 'standard',
 })
 
-const emit = defineEmits(['loading-change', 'error'])
+const emit = defineEmits(['loading-change', 'error', 'loaded'])
 
 const REMOTE_SEARCH_TIMEOUT_MS = 95000
 const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
@@ -442,6 +459,8 @@ watch(searchKey, (nextSearchKey) => {
   refresh()
 }, { immediate: true })
 
+watch(items, (value) => emit('loaded', value), { deep: true, immediate: true })
+
 onActivated(() => {
   if (searchKey.value === loadedSearchKey) return
   refresh()
@@ -473,8 +492,7 @@ defineExpose({ refresh })
 
 .group:hover .remote-search-thumb,
 .group:focus-visible .remote-search-thumb {
-  /* Soft lift only — no amber outline ring (matches VideoItem). */
-  box-shadow: var(--shadow-card-hover);
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 
 .remote-video-title {
@@ -492,5 +510,45 @@ defineExpose({ refresh })
 .group:hover .remote-video-title {
   /* Title stays foreground — primary is for CTA/play only. */
   color: hsl(var(--foreground));
+}
+
+.remote-search__workbench-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.5rem), 1fr));
+  align-items: start;
+  gap: 1.35rem 0.75rem;
+}
+
+.remote-search--workbench .remote-search-item {
+  border-radius: var(--radius-md);
+  padding: 0.25rem;
+}
+
+.remote-search--workbench .remote-search-item:hover {
+  background: hsl(var(--accent) / 0.34);
+}
+
+.remote-search--workbench .remote-search-thumb {
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+.remote-search--workbench .group:hover .remote-search-thumb,
+.remote-search--workbench .group:focus-visible .remote-search-thumb {
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
+}
+
+.remote-search--workbench .remote-search-item__body {
+  padding: 0.625rem 0.25rem 0.35rem;
+}
+
+.remote-search--workbench .remote-video-title {
+  font-weight: 620;
+  letter-spacing: -0.012em;
+}
+
+.remote-search--workbench .remote-search-item__site,
+.remote-search--workbench .remote-search-source-button {
+  border-radius: var(--radius-sm);
 }
 </style>

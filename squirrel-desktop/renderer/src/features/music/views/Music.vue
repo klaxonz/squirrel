@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell variant="compact" surface="immersive" width="table" fill>
+  <AppPageShell variant="compact" surface="consume" width="table" fill>
     <AppTwoColumnLayout preset="music">
       <template #header>
         <div class="music-nav-header">

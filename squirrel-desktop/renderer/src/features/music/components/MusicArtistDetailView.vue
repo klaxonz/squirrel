@@ -177,14 +177,14 @@ function playVideo(video: MusicVideo) {
 
 .music-artist-video-card:hover .music-artist-video-card__thumb,
 .music-artist-video-card:focus-visible .music-artist-video-card__thumb {
-  box-shadow: var(--shadow-card-hover);
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 
 .music-artist-video-card:focus-visible .music-artist-video-card__thumb {
   box-shadow:
     0 0 0 2px hsl(var(--background)),
     0 0 0 4px hsl(var(--ring) / 0.45),
-    var(--shadow-card-hover);
+    inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 
 .music-artist-video-card__thumb img {

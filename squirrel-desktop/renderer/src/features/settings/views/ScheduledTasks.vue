@@ -2,13 +2,19 @@
   <AppPageShell class="scheduled-tasks-page" variant="compact" surface="operate" width="table">
     <AppToolbarFrame bordered sticky>
       <section class="scheduled-toolbar" aria-label="定时任务工具栏">
-        <AppSectionNav
-          class="app-section-nav--optical"
-          :model-value="statusFilter"
-          :options="statusNavOptions"
-          aria-label="任务状态"
-          @change="handleStatusChange"
-        />
+        <div class="scheduled-toolbar__leading">
+          <div class="scheduled-toolbar__identity">
+            <h1>定时任务</h1>
+            <span>{{ taskSummary }}</span>
+          </div>
+          <AppSectionNav
+            class="app-section-nav--optical"
+            :model-value="statusFilter"
+            :options="statusNavOptions"
+            aria-label="任务状态"
+            @change="handleStatusChange"
+          />
+        </div>
 
         <div class="scheduled-toolbar__actions">
           <Button
@@ -32,31 +38,24 @@
     </AppToolbarFrame>
 
     <main class="app-page-content scheduled-tasks-content">
-      <header class="scheduled-page-header">
-        <div class="scheduled-page-header__copy">
-          <h1>定时任务</h1>
-          <p>{{ taskSummary }}</p>
+      <dl class="scheduled-status-strip" aria-label="任务概览">
+        <div class="scheduled-status-item">
+          <dt>活跃</dt>
+          <dd>{{ statistics.active_tasks }}</dd>
         </div>
-
-        <dl class="scheduled-metrics" aria-label="任务概览">
-          <div class="scheduled-metric">
-            <dt>活跃</dt>
-            <dd>{{ statistics.active_tasks }}</dd>
-          </div>
-          <div class="scheduled-metric">
-            <dt>运行中</dt>
-            <dd>{{ statistics.running_tasks }}</dd>
-          </div>
-          <div class="scheduled-metric" :class="{ 'is-alert': statistics.error_tasks > 0 }">
-            <dt>异常</dt>
-            <dd>{{ statistics.error_tasks }}</dd>
-          </div>
-          <div class="scheduled-metric">
-            <dt>今日执行</dt>
-            <dd>{{ statistics.today_executions }}</dd>
-          </div>
-        </dl>
-      </header>
+        <div class="scheduled-status-item">
+          <dt>运行中</dt>
+          <dd>{{ statistics.running_tasks }}</dd>
+        </div>
+        <div class="scheduled-status-item" :class="{ 'is-alert': statistics.error_tasks > 0 }">
+          <dt>异常</dt>
+          <dd>{{ statistics.error_tasks }}</dd>
+        </div>
+        <div class="scheduled-status-item">
+          <dt>今日执行</dt>
+          <dd>{{ statistics.today_executions }}</dd>
+        </div>
+      </dl>
 
       <section class="scheduled-table-region" :aria-label="`${activeStatusLabel}任务`">
         <div class="app-table-shell">
@@ -466,6 +465,34 @@ watch(searchQueryDebounced, () => {
   gap: var(--space-5);
 }
 
+.scheduled-toolbar__leading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.scheduled-toolbar__identity {
+  display: flex;
+  min-width: 0;
+  flex: none;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.scheduled-toolbar__identity h1 {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-family: var(--app-heading-font);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.scheduled-toolbar__identity span {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+}
+
 .scheduled-toolbar__actions {
   display: flex;
   min-width: 0;
@@ -483,73 +510,44 @@ watch(searchQueryDebounced, () => {
   padding-top: var(--space-4);
 }
 
-.scheduled-page-header {
+.scheduled-status-strip {
   display: flex;
-  min-width: 0;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-6);
-}
-
-.scheduled-page-header__copy {
-  display: grid;
-  min-width: 0;
-  gap: 0.25rem;
-}
-
-.scheduled-page-header__copy h1 {
+  min-height: 2.5rem;
+  align-items: center;
   margin: 0;
-  color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: 1.25rem;
-  font-weight: 650;
-  line-height: 1.3;
+  border-bottom: 1px solid var(--app-hairline);
 }
 
-.scheduled-page-header__copy p {
-  margin: 0;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  line-height: 1.4;
-}
-
-.scheduled-metrics {
+.scheduled-status-item {
   display: flex;
-  flex: 0 0 auto;
-  align-items: flex-end;
+  align-items: baseline;
+  gap: 0.375rem;
   margin: 0;
 }
 
-.scheduled-metric {
-  display: grid;
-  min-width: 5rem;
-  gap: 0.125rem;
-  margin: 0;
+.scheduled-status-item + .scheduled-status-item {
+  margin-left: var(--space-5);
   border-left: 1px solid var(--app-hairline);
-  padding-left: var(--space-4);
+  padding-left: var(--space-5);
 }
 
-.scheduled-metric + .scheduled-metric {
-  margin-left: var(--space-4);
-}
-
-.scheduled-metric dt {
+.scheduled-status-item dt {
   color: hsl(var(--muted-foreground) / 0.82);
   font-size: 0.6875rem;
   font-weight: 550;
   line-height: 1.25;
 }
 
-.scheduled-metric dd {
+.scheduled-status-item dd {
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: 1rem;
+  font-size: 0.75rem;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1.25;
 }
 
-.scheduled-metric.is-alert dd {
+.scheduled-status-item.is-alert dd {
   color: hsl(var(--destructive));
 }
 
@@ -570,9 +568,8 @@ watch(searchQueryDebounced, () => {
 }
 
 @media (max-width: 1180px) {
-  .scheduled-page-header {
-    align-items: flex-start;
-    flex-direction: column;
+  .scheduled-toolbar__identity span {
+    display: none;
   }
 }
 </style>

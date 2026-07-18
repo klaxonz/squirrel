@@ -148,7 +148,7 @@ def test_list_subscriptions_forwards_query_model_values(monkeypatch):
 
     class FakeListService:
         @staticmethod
-        def list_subscriptions(user_id, query, type, nsfw, page, page_size, domains, special):
+        def list_subscriptions(user_id, query, type, nsfw, page, page_size, domains, special, status):
             captured.update(
                 {
                     'user_id': user_id,
@@ -159,6 +159,7 @@ def test_list_subscriptions_forwards_query_model_values(monkeypatch):
                     'page_size': page_size,
                     'domains': domains,
                     'special': special,
+                    'status': status,
                 }
             )
             return [], 0
@@ -179,6 +180,7 @@ def test_list_subscriptions_forwards_query_model_values(monkeypatch):
             'type': 'channel',
             'nsfw': 'yes',
             'special': 'no',
+            'status': 'issues',
             'site': 'youtube',
             'page': 3,
             'pageSize': 25,
@@ -199,4 +201,5 @@ def test_list_subscriptions_forwards_query_model_values(monkeypatch):
         'page_size': 25,
         'domains': ['youtube.com'],
         'special': 'no',
+        'status': 'issues',
     }

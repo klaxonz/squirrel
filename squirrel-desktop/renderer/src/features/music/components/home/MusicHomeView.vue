@@ -1,7 +1,6 @@
 <template>
   <div class="music-home">
-    <MusicHomeHero
-      :featured-playlist="featuredPlaylist"
+    <MusicHomeControlBar
       :fm-mode="fmMode"
       :fm-pool-id="fmPoolId"
       :fm-loading="fmLoading"
@@ -10,8 +9,6 @@
       @fm-play="$emit('fm-play')"
       @everyday="$emit('navigate', 'everyday')"
       @new-songs="$emit('navigate', 'new-songs')"
-      @open-featured="$emit('select-playlist', $event)"
-      @play-featured="$emit('play-playlist', $event)"
       @switch-fm-mode="$emit('switch-fm-mode', $event)"
       @switch-fm-pool="$emit('switch-fm-pool', $event)"
     />
@@ -26,8 +23,8 @@
     <div class="music-home-board">
       <MusicSection
         class="music-home-recommendations"
-        title="为你推荐"
-        description="从你的收听偏好中挑选"
+        title="推荐歌单"
+        description="按当前曲库与收听记录整理"
         :more-action="true"
         @more="$emit('navigate', 'playlists')"
       >
@@ -105,7 +102,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import MusicHomeHero from './MusicHomeHero.vue'
+import MusicHomeControlBar from './MusicHomeControlBar.vue'
 import MusicRecentSection from './MusicRecentSection.vue'
 import MusicSection from '../shared/MusicSection.vue'
 import MusicCard from '../shared/MusicCard.vue'
@@ -149,8 +146,7 @@ defineEmits<{
 const player = useMusicPlayerStore()
 
 const recentTracks = computed(() => props.historyTracks?.slice(0, 5) || [])
-const featuredPlaylist = computed(() => props.playlists[0] || null)
-const recommendedPlaylists = computed(() => props.playlists.slice(1, 8))
+const recommendedPlaylists = computed(() => props.playlists.slice(0, 8))
 
 function handlePlayTrack(track: MusicTrack) {
   player.playTrack(track)

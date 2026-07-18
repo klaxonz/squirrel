@@ -14,21 +14,14 @@
       />
     </nav>
 
-    <nav
-      :id="NAV_ID"
-      class="sidebar-nav custom-scrollbar"
-      aria-label="主导航"
-    >
+    <nav :id="NAV_ID" class="sidebar-nav custom-scrollbar" aria-label="主导航">
       <section
         v-for="group in primaryNavGroups"
         :key="group.key"
         class="sidebar-group"
         :aria-labelledby="`sidebar-group-${group.key}`"
       >
-        <h2
-          :id="`sidebar-group-${group.key}`"
-          class="sidebar-group__label"
-        >
+        <h2 :id="`sidebar-group-${group.key}`" class="sidebar-group__label">
           {{ group.label }}
         </h2>
         <div class="sidebar-group__items">
@@ -70,10 +63,8 @@ import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 defineProps<{ collapsed?: boolean }>()
 
 const NAV_ID = 'app-sidebar-nav'
-
 const route = useRoute()
 const musicPlayerStore = useMusicPlayerStore()
-
 const primaryNavGroups = NAV_GROUPS
 
 const showSidebarMusicPlayer = computed(() =>
@@ -85,80 +76,60 @@ const showSidebarMusicPlayer = computed(() =>
 </script>
 
 <style scoped>
-/* Main app rail — quiet lift of canvas, single-canvas shell (DESIGN elevation). */
 .sidebar-rail {
   --sidebar-player-space: 6.25rem;
   display: flex;
-  flex-direction: column;
   width: 100%;
   height: 100%;
+  flex-direction: column;
   overflow: hidden;
-  border: 0;
-  border-right: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 0;
-  background: hsl(var(--sidebar));
-  color: hsl(var(--sidebar-foreground));
-  box-shadow: none;
+  border-right: 1px solid var(--app-hairline);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
   user-select: none;
   transition: padding-bottom var(--duration-base) var(--ease-out);
-}
-
-.sidebar-rail.is-collapsed .sidebar-top-nav,
-.sidebar-rail.is-collapsed .sidebar-nav,
-.sidebar-rail.is-collapsed .sidebar-footer {
-  padding-inline: 0.5rem;
-}
-
-.sidebar-rail.is-collapsed .sidebar-group + .sidebar-group {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid hsl(var(--border) / 0.32);
-}
-
-.sidebar-rail.is-collapsed .sidebar-group__label {
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 .sidebar-rail.has-player {
   padding-bottom: var(--sidebar-player-space);
 }
 
-.sidebar-top-nav {
+.sidebar-top-nav,
+.sidebar-footer {
   display: flex;
   flex: 0 0 auto;
   flex-direction: column;
   gap: var(--sidebar-item-gap);
-  padding: var(--space-2) var(--space-2) 0.625rem;
-  border-bottom: 0;
+  padding: 0.75rem;
+}
+
+.sidebar-top-nav {
+  border-bottom: 1px solid var(--app-hairline);
+}
+
+.sidebar-footer {
+  border-top: 1px solid var(--app-hairline);
 }
 
 .sidebar-nav {
-  flex: 1 1 auto;
   min-height: 0;
+  flex: 1 1 auto;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: var(--space-2);
+  padding: 0.875rem 0.75rem;
 }
 
 .sidebar-group + .sidebar-group {
-  margin-top: 1.125rem;
+  margin-top: 1.25rem;
 }
 
-/* Quiet section label — text only, no chrome icons (DESIGN: quiet chrome). */
 .sidebar-group__label {
   margin: 0 0 0.375rem;
   padding: 0 0.625rem;
   color: hsl(var(--muted-foreground) / 0.72);
-  font-size: var(--app-text-badge-size);
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: 0.02em;
+  font-size: 0.6875rem;
+  font-weight: 620;
+  line-height: 1.6;
 }
 
 .sidebar-group__items {
@@ -167,13 +138,24 @@ const showSidebarMusicPlayer = computed(() =>
   gap: var(--sidebar-item-gap);
 }
 
-.sidebar-footer {
-  display: flex;
-  flex: 0 0 auto;
-  flex-direction: column;
-  gap: var(--sidebar-item-gap);
-  padding: 0.375rem var(--space-2) var(--space-2);
-  border-top: 1px solid hsl(var(--border) / 0.28);
+.sidebar-rail.is-collapsed :is(.sidebar-top-nav, .sidebar-nav, .sidebar-footer) {
+  padding-inline: 0.375rem;
+}
+
+.sidebar-rail.is-collapsed .sidebar-group + .sidebar-group {
+  margin-top: 0.625rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--app-hairline);
+}
+
+.sidebar-rail.is-collapsed .sidebar-group__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {

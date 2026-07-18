@@ -1,7 +1,8 @@
 from collections.abc import Callable, Generator
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import domains.user.application.services.config as user_config_service
@@ -29,6 +30,39 @@ class VideoHistoryService:
     def batch_update_histories(self, user_id: int, reports: list[HistoryCreate]) -> None:
         with self._session_factory() as session:
             apply_history_updates(session, user_id, reports)
+            session.commit()
+
+    def set_read_state(self, user_id: int, video_id: int, is_read: bool) -> None:
+        with self._session_factory() as session:
+            history = session.scalars(
+                select(VideoHistory).where(
+                    VideoHistory.user_id == user_id,
+                    VideoHistory.video_id == video_id,
+                ),
+            ).first()
+
+            if history is None:
+                if not is_read:
+                    return
+                now = datetime.now()
+                session.add(
+                    VideoHistory(
+                        user_id=user_id,
+                        video_id=video_id,
+                        start_time=now,
+                        end_time=now,
+                        duration=0,
+                        watch_duration=0,
+                        last_position=0,
+                        is_read=True,
+                        has_playback=False,
+                    ),
+                )
+            else:
+                history.is_read = is_read
+                if not is_read and not history.has_playback:
+                    session.delete(history)
+
             session.commit()
 
     def list_histories(self, user_id: int, filters: dict, page: int, page_size: int) -> dict[str, Any]:
@@ -83,14 +117,17 @@ class VideoHistoryService:
 
     def delete_history(self, user_id: int, history_id: int) -> int:
         with self._session_factory() as session:
-            query_result = session.execute(
-                delete(VideoHistory).where(
+            history = session.scalars(
+                select(VideoHistory).where(
                     VideoHistory.id == history_id,
                     VideoHistory.user_id == user_id,
                 ),
-            )
+            ).first()
+            if history is None:
+                return 0
+            self._clear_playback_state(session, history)
             session.commit()
-            return query_result.rowcount
+            return 1
 
     def clear_histories(self, user_id: int, video_ids: list[int] | None = None):
         with self._session_factory() as session:
@@ -99,8 +136,18 @@ class VideoHistoryService:
             if video_ids:
                 conditions.append(VideoHistory.video_id.in_(video_ids))
 
-            query_result = session.execute(
-                delete(VideoHistory).where(*conditions),
-            )
+            histories = list(session.scalars(select(VideoHistory).where(*conditions)).all())
+            for history in histories:
+                self._clear_playback_state(session, history)
             session.commit()
-            return query_result.rowcount
+            return len(histories)
+
+    @staticmethod
+    def _clear_playback_state(session: Session, history: VideoHistory) -> None:
+        if not history.is_read:
+            session.delete(history)
+            return
+        history.has_playback = False
+        history.duration = 0
+        history.watch_duration = 0
+        history.last_position = 0

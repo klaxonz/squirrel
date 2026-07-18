@@ -167,13 +167,17 @@
 .sq-alert--warning { border-color: hsl(var(--warning) / 0.28); background: hsl(var(--warning) / 0.08); }
 .sq-alert--info { border-color: hsl(var(--info) / 0.28); background: hsl(var(--info) / 0.08); }
 
-.sq-dialog-overlay { position: fixed; inset: 0; z-index: var(--z-dialog); background: hsl(var(--overlay) / 0.68); backdrop-filter: blur(3px); }
+.sq-dialog-overlay { position: fixed; inset: 0; z-index: var(--z-dialog); background: hsl(var(--overlay) / 0.68); }
+.sq-dialog-positioner {
+  position: fixed; inset: 0; z-index: calc(var(--z-dialog) + 1); display: grid; place-items: center;
+  padding: 1rem; pointer-events: none;
+}
 .sq-dialog {
-  position: fixed; z-index: calc(var(--z-dialog) + 1); top: 50%; left: 50%; width: min(calc(100vw - 2rem), 32rem);
-  max-height: min(88vh, 54rem); transform: translate(-50%, -50%); overflow: auto;
+  position: relative; width: 100%; max-height: min(calc(100vh - 2rem), 54rem); overflow: auto; pointer-events: auto;
   border: 1px solid hsl(var(--border) / 0.82); border-radius: var(--radius-xl); background: hsl(var(--popover));
   color: hsl(var(--popover-foreground)); box-shadow: var(--app-overlay-shadow); outline: none;
 }
+:where(.sq-dialog) { max-width: 32rem; }
 .sq-dialog--scrollable { display: flex; flex-direction: column; overflow: hidden; }
 .sq-dialog__header { display: flex; flex-direction: column; gap: 0.375rem; }
 .sq-dialog__title { margin: 0; color: hsl(var(--foreground)); font-family: var(--font-display); font-size: 1rem; font-weight: 650; }

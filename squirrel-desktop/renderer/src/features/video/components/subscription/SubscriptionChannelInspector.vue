@@ -36,9 +36,9 @@
           type="button"
           severity="secondary" outlined
           size="sm"
-        :loading="refreshing"
-        @click="$emit('refresh')"
-      >
+          :loading="refreshing"
+          @click="$emit('refresh')"
+        >
           <AppIcon v-if="!refreshing" name="refresh" class="h-4 w-4" />
           立即同步
         </Button>
@@ -117,7 +117,6 @@
           <button
             v-for="video in channel.recent_videos"
             :key="video.id"
-
             type="button"
             class="subscription-inspector__recent-item"
             @click="$emit('open-video', video.id)"
@@ -178,18 +177,16 @@ const statusClass = computed(() => ({
 
 <style scoped>
 .subscription-inspector {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
   z-index: calc(var(--z-content) + 1);
   display: flex;
   width: 22rem;
   min-height: 0;
+  flex: 0 0 22rem;
   flex-direction: column;
   border-left: 1px solid var(--app-hairline);
   background: hsl(var(--background));
-  box-shadow: var(--app-panel-shadow);
+  box-shadow: none;
 }
 
 .subscription-inspector__header {
@@ -397,5 +394,16 @@ const statusClass = computed(() => ({
 
 .subscription-inspector__muted {
   margin-top: var(--space-3);
+}
+
+@media (max-width: 1180px) {
+  .subscription-inspector {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(22rem, calc(100% - 3rem));
+    box-shadow: var(--app-panel-shadow);
+  }
 }
 </style>

@@ -13,3 +13,8 @@ class HistoryCreate(HistoryBase):
 
 class HistoryBatchUpdate(BaseModel):
     reports: list[HistoryCreate] = Field(default_factory=list, description='批量上报的播放历史')
+
+
+class VideoReadStateUpdate(BaseModel):
+    video_id: int = Field(..., description='视频ID')
+    is_read: bool = Field(..., description='是否已读')

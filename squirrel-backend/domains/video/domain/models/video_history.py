@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Float, Index, Integer
+from sqlalchemy import Boolean, DateTime, Float, Index, Integer
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from infrastructure.database.base import Base
@@ -25,6 +25,7 @@ class VideoHistory(Base):
         Index('ux_video_history_user_video', 'user_id', 'video_id', unique=True),
         Index('ix_video_history_video_id', 'video_id'),
         Index('ix_video_history_user_end_time', 'user_id', 'end_time'),
+        Index('ix_video_history_user_read', 'user_id', 'is_read', 'video_id'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -35,6 +36,8 @@ class VideoHistory(Base):
     duration: Mapped[float] = mapped_column(Float)
     watch_duration: Mapped[int] = mapped_column(Integer, default=0)
     last_position: Mapped[float] = mapped_column(Float, default=0.0)
+    is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    has_playback: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(),

@@ -1,10 +1,9 @@
 <template>
-  <div ref="root" class="w-full">
-    <!-- List/Grid Container -->
-    <div v-if="videos.length > 0"
-         :class="uiStore.viewMode === 'grid'
-           ? 'app-video-grid'
-           : 'video-list__list'">
+  <div ref="root" class="video-list" :class="`video-list--${presentation}`">
+    <div
+      v-if="videos.length > 0"
+      :class="contentLayoutClass"
+    >
       <VideoItem
         v-for="video in videos"
         :key="video.id"
@@ -12,29 +11,30 @@
         :show-avatar="showAvatar"
         :sort-by="sortBy"
         :layout="uiStore.viewMode"
-        @goToProfile="$emit('goToProfile', $event)"
-        @goToSubscription="$emit('goToSubscription', $event)"
-        @openModal="$emit('openModal', video)"
+        :appearance="presentation === 'workbench' ? 'workbench' : 'default'"
+        :interaction="resolvedInteraction"
+        :selected="selectedVideoId === video.id"
+        @select="emit('selectVideo', $event)"
+        @goToProfile="emit('goToProfile', $event)"
+        @goToSubscription="emit('goToSubscription', $event)"
+        @openModal="emit('openModal', video)"
       />
     </div>
 
-    <!-- Loading State: only the initial load shows the skeleton grid.
-         On tab switch / refresh / load-more, `videos` already holds
-         content and `refreshing` is true — we must NOT render the
-         skeleton block alongside the stale items. -->
-    <div v-if="loading && !refreshing"
-         :class="uiStore.viewMode === 'grid'
-           ? 'app-video-grid'
-           : 'video-list__list'">
-      <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" :layout="uiStore.viewMode" />
+    <div v-if="loading && !refreshing" :class="loadingLayoutClass">
+      <VideoSkeleton
+        v-for="index in skeletonCount"
+        :key="index"
+        :delay="(index - 1) * 40"
+        :layout="uiStore.viewMode"
+        :appearance="presentation === 'workbench' ? 'workbench' : 'default'"
+      />
     </div>
 
-    <!-- Empty State -->
     <div v-if="!loading && videos.length === 0" class="app-page-empty">
-      <AppEmptyState variant="plain" icon="inbox" title="未找到内容" copy="请调整筛选条件或搜索关键词后再试。" />
+      <AppEmptyState variant="plain" icon="inbox" title="没有符合条件的视频" copy="调整筛选条件或搜索关键词后再试。" />
     </div>
 
-    <!-- Infinite Scroll Trigger -->
     <div ref="loadMoreTrigger" class="h-20 w-full" />
   </div>
 </template>
@@ -47,36 +47,69 @@ import VideoSkeleton from './VideoSkeleton.vue'
 import { useUIStore } from '@/shared/stores/ui'
 import { useInfiniteScrollSentinel } from '@/shared/composables/useInfiniteScrollSentinel'
 import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
-import type { VideoListItem } from '@/features/video/types/video'
+import type { VideoListItem, VideoProfile } from '@/features/video/types/video'
 
 const uiStore = useUIStore()
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   videos: VideoListItem[]
   loading: boolean
   allLoaded: boolean
   showAvatar: boolean
   sortBy?: string
   refreshing: boolean
+  presentation?: 'standard' | 'workbench'
+  interaction?: 'open' | 'select'
+  selectedVideoId?: string | number | null
+}>(), {
+  presentation: 'standard',
+  selectedVideoId: null,
+})
+
+const emit = defineEmits<{
+  goToProfile: [profile: VideoProfile]
+  goToSubscription: [id: string | number | null | undefined]
+  openModal: [video: VideoListItem]
+  selectVideo: [video: VideoListItem]
+  loadMore: []
 }>()
 
-const emit = defineEmits(['goToProfile', 'goToSubscription', 'openModal', 'loadMore'])
+const resolvedInteraction = computed(() => (
+  props.interaction ?? (props.presentation === 'workbench' ? 'select' : 'open')
+))
 
 const loadMoreTrigger = ref<HTMLElement | null>(null)
+const densityMinWidth = computed(() => {
+  if (uiStore.videoDensity === 'compact') return 224
+  if (uiStore.videoDensity === 'large') return 352
+  return 280
+})
 
-// Skeleton column count is derived from the same auto-fill formula the CSS grid
-// uses (minCardWidth + gap → column count), so it stays in sync with the real
-// `.app-video-grid` without a hand-mirrored breakpoint table. List mode forces
-// a single column by setting an impossibly large min card width.
+const workbenchGridClass = computed(() => [
+  'video-list__workbench-grid',
+  `is-${uiStore.videoDensity}`,
+])
+
+const contentLayoutClass = computed(() => {
+  if (props.presentation === 'workbench') {
+    return uiStore.viewMode === 'grid' ? workbenchGridClass.value : 'video-list__workbench-list'
+  }
+  return uiStore.viewMode === 'grid' ? 'app-video-grid' : 'video-list__list'
+})
+
+const loadingLayoutClass = computed(() => {
+  if (props.presentation === 'workbench') {
+    return uiStore.viewMode === 'grid' ? workbenchGridClass.value : 'video-list__workbench-list'
+  }
+  return uiStore.viewMode === 'grid' ? 'app-video-grid' : 'video-list__list'
+})
+
 const { count: skeletonCount, attachRef: root } = useSkeletonCount({
-  minCardWidth: computed(() => (uiStore.viewMode === 'grid' ? 280 : Number.MAX_SAFE_INTEGER)),
-  gap: 24, // matches --app-video-grid-gap (1.5rem)
+  minCardWidth: computed(() => (uiStore.viewMode === 'grid' ? densityMinWidth.value : Number.MAX_SAFE_INTEGER)),
+  gap: 16,
   cardHeight: computed(() => (uiStore.viewMode === 'grid' ? 220 : 140)),
 })
 
-// ponytail: the sentinel IntersectionObserver + mount/unmount lifecycle lives
-// in useInfiniteScrollSentinel (deduped from 3 video-feed components). The
-// loading/allLoaded guards stay in the callback since they're component-specific.
 useInfiniteScrollSentinel({
   sentinel: loadMoreTrigger,
   onIntersect: () => {
@@ -84,15 +117,50 @@ useInfiniteScrollSentinel({
   },
   rootMargin: '600px',
 })
-
 </script>
 
 <style scoped>
+.video-list {
+  width: 100%;
+}
+
 .video-list__list {
   display: flex;
   max-width: 56rem;
   margin-inline: auto;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.video-list__workbench-grid {
+  --video-canvas-min: 17.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--video-canvas-min)), 1fr));
+  align-items: start;
+  gap: 1.35rem 0.75rem;
+}
+
+.video-list__workbench-grid.is-compact {
+  --video-canvas-min: 14rem;
+}
+
+.video-list__workbench-grid.is-large {
+  --video-canvas-min: 22rem;
+  gap: 1.75rem 1rem;
+}
+
+.video-list__workbench-list {
+  display: flex;
+  max-width: 76rem;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.video-list__workbench-list :deep(.video-item) {
+  padding-block: 0.5rem;
+}
+
+.video-list__workbench-list :deep(.video-item + .video-item) {
+  border-top: 1px solid var(--app-hairline);
 }
 </style>

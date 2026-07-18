@@ -36,6 +36,7 @@ class SubscriptionListQuery:
         type: str = Query(None, description='Content type'),
         nsfw: str = Query('all', description='NSFW filter: all|yes|no', pattern=r'^(all|yes|no)$'),
         special: str = Query('all', description='Special follow filter: all|yes|no', pattern=r'^(all|yes|no)$'),
+        status: str = Query('all', description='Sync status filter: all|issues', pattern=r'^(all|issues)$'),
         site: str = Query(None, description='Site filter: e.g. youtube, bilibili (supports aliases)'),
         page: int = Query(1, ge=1, description='Page number'),
         page_size: int = Query(10, ge=1, le=100, alias='pageSize', description='Page size'),
@@ -44,6 +45,7 @@ class SubscriptionListQuery:
         self.type = type
         self.nsfw = nsfw
         self.special = special
+        self.status = status
         self.site = site
         self.page = page
         self.page_size = page_size

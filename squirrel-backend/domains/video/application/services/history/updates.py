@@ -86,6 +86,8 @@ def apply_history_updates(session: Session, user_id: int, reports: list[HistoryC
 
             history.watch_duration += 0
             history.last_position = report.last_position
+            history.is_read = True
+            history.has_playback = True
             history.end_time = max(reported_at, existing_end_time)
             continue
 
@@ -98,5 +100,7 @@ def apply_history_updates(session: Session, user_id: int, reports: list[HistoryC
                 duration=0,
                 watch_duration=0,
                 last_position=report.last_position,
+                is_read=True,
+                has_playback=True,
             ),
         )

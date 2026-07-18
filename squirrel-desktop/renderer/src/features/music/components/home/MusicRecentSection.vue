@@ -13,7 +13,7 @@
 
     <div class="music-recent-list">
       <button type="button"
-        v-for="(track, index) in tracks"
+        v-for="track in tracks"
         :key="track.hash"
 
         class="music-recent-item"
@@ -29,7 +29,7 @@
           <span class="music-recent-artist">{{ track.artist || '未知歌手' }}</span>
         </span>
         <MusicPlayingIndicator v-if="isPlaying(track)" />
-        <span v-else class="music-recent-index">{{ String(index + 1).padStart(2, '0') }}</span>
+        <AppIcon v-else name="play" class="music-recent-play" />
       </button>
     </div>
   </section>
@@ -89,7 +89,7 @@ function isPlaying(track: MusicTrack): boolean {
 
 .music-recent-list {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   overflow: hidden;
   border: 1px solid var(--app-surface-border-subtle);
   border-radius: var(--radius-lg);
@@ -102,15 +102,18 @@ function isPlaying(track: MusicTrack): boolean {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3);
-  border-right: 1px solid var(--app-surface-border-subtle);
   color: hsl(var(--foreground));
   text-align: left;
   cursor: pointer;
   transition: background-color var(--duration-fast) var(--ease-default);
 }
 
-.music-recent-item:last-child {
-  border-right: 0;
+.music-recent-item:nth-child(odd) {
+  border-right: 1px solid var(--app-surface-border-subtle);
+}
+
+.music-recent-item:nth-child(n + 3) {
+  border-top: 1px solid var(--app-surface-border-subtle);
 }
 
 .music-recent-item:hover {
@@ -172,23 +175,23 @@ function isPlaying(track: MusicTrack): boolean {
   font-size: 0.6875rem;
 }
 
-.music-recent-index {
+.music-recent-play {
+  width: 0.875rem;
+  height: 0.875rem;
   flex: none;
   color: hsl(var(--muted-foreground) / 0.52);
-  font-family: var(--font-mono);
-  font-size: var(--app-text-badge-size);
 }
 
 @media (max-width: 1180px) {
   .music-recent-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .music-recent-item:nth-child(3) {
+  .music-recent-item:nth-child(odd) {
     border-right: 0;
   }
 
-  .music-recent-item:nth-child(n + 4) {
+  .music-recent-item:nth-child(n + 2) {
     border-top: 1px solid var(--app-surface-border-subtle);
   }
 }

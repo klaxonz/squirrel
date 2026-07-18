@@ -12,9 +12,7 @@
       class="sidebar-item__icon"
       :stroke-width="isActive ? 2 : 1.75"
     />
-    <span class="sidebar-item__label">
-      {{ item.name }}
-    </span>
+    <span class="sidebar-item__label">{{ item.name }}</span>
   </RouterLink>
 </template>
 
@@ -31,32 +29,27 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
-
-const targetPath = computed(() => {
-  const resolved = props.item.resolvePath?.(route.path)
-  return resolved ?? props.item.path
-})
+const targetPath = computed(() => props.item.resolvePath?.(route.path) ?? props.item.path)
 </script>
 
 <style scoped>
-/* Nav item: neutral ink selection (DESIGN color + navigation). Never primary. */
 .sidebar-item {
   position: relative;
   display: flex;
-  align-items: center;
-  gap: 0.55rem;
   width: 100%;
-  height: var(--sidebar-item-height);
-  padding: 0 0.75rem;
-  border: 0;
-  border-radius: var(--radius-sm);
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.7rem;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 0 0.625rem;
   background: transparent;
-  color: hsl(var(--muted-foreground) / 0.88);
+  color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 520;
   line-height: 1.2;
   text-decoration: none;
-  overflow: hidden;
   outline: none;
   transition:
     background-color var(--duration-fast) var(--ease-default),
@@ -64,33 +57,18 @@ const targetPath = computed(() => {
 }
 
 .sidebar-item:hover {
-  background: hsl(var(--foreground) / 0.035);
-  color: hsl(var(--foreground) / 0.92);
+  background: hsl(var(--accent) / 0.56);
+  color: hsl(var(--foreground));
 }
 
 .sidebar-item:focus-visible {
-  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.55);
+  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.46);
 }
 
 .sidebar-item.is-active {
-  background: transparent;
-  color: hsl(var(--primary));
-  font-weight: 600;
-}
-
-.sidebar-item.is-active::before {
-  content: '';
-  position: absolute;
-  top: 0.5rem;
-  bottom: 0.5rem;
-  left: 0.2rem;
-  width: 2px;
-  border-radius: 2px;
-  background: hsl(var(--primary));
-}
-
-.sidebar-item.is-active:hover {
-  background: hsl(var(--foreground) / 0.045);
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--foreground));
+  font-weight: 620;
 }
 
 .sidebar-item.is-collapsed {
@@ -99,27 +77,19 @@ const targetPath = computed(() => {
   padding-inline: 0;
 }
 
-.sidebar-item.is-collapsed.is-active::before {
-  top: 0.55rem;
-  bottom: 0.55rem;
-  left: 0;
-}
-
 .sidebar-item.is-collapsed .sidebar-item__label {
-  width: 0;
-  opacity: 0;
+  display: none;
 }
 
 .sidebar-item__icon {
   width: var(--sidebar-icon-size);
   height: var(--sidebar-icon-size);
-  flex-shrink: 0;
-  color: currentColor;
-  opacity: 0.88;
+  flex: 0 0 auto;
+  color: hsl(var(--muted-foreground));
 }
 
 .sidebar-item.is-active .sidebar-item__icon {
-  opacity: 1;
+  color: hsl(var(--primary));
 }
 
 .sidebar-item__label {

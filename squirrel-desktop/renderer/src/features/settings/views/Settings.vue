@@ -1,11 +1,11 @@
 <template>
-  <!-- Desktop settings dashboard — left nav + dense content, not top tabs. -->
+  <!-- Desktop settings workbench — left nav + dense content, not top tabs. -->
   <AppPageShell class="settings-page" variant="compact" surface="operate" width="form" fill>
     <AppTwoColumnLayout preset="settings" sidebar-always>
       <template #sidebar>
       <div class="settings-nav" aria-label="设置分区">
         <header class="settings-nav__header">
-          <h1 class="settings-nav__title">设置</h1>
+          <div class="settings-nav__title">设置</div>
           <span v-if="hasUnsavedChanges" class="settings-save-state">
             <AppIcon name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
             保存中

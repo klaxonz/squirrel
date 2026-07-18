@@ -1,13 +1,18 @@
 <template>
   <article
     class="video-item group"
-    :class="layout === 'list' ? 'video-item--list' : 'video-item--grid'"
+    :class="[
+      layout === 'list' ? 'video-item--list' : 'video-item--grid',
+      `video-item--appearance-${appearance}`,
+    ]"
     role="button"
     tabindex="0"
-    :aria-label="`打开：${video.title}`"
+    :aria-pressed="interaction === 'select' ? selected : undefined"
+    :aria-label="interaction === 'select' ? `选择：${video.title}，按回车播放` : `打开：${video.title}`"
     @contextmenu.prevent="showContextMenu"
     @click="handleClick"
-    @keydown.enter.prevent="handleClick"
+    @dblclick="handleDoubleClick"
+    @keydown.enter.prevent="handleKeyboardOpen"
     @keydown.space.prevent="handleClick"
   >
     <div
@@ -185,8 +190,8 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import ContextMenu from './ContextMenu.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
-import { useVideoHistory } from '@/features/video/composables/useVideoHistory'
 import useVideoInteraction from '@/features/video/composables/useVideoInteraction'
+import { updateVideoReadState } from '@/shared/api'
 import { useSystemConfig } from '@/shared/composables/useSystemConfig'
 import { useToast } from '@/shared/components/toast/useToast'
 import { errorMessage } from '@/shared/lib/errorMessage'
@@ -204,10 +209,16 @@ const props = withDefaults(defineProps<{
   layout?: 'grid' | 'list'
   showDuration?: boolean
   thumbnailStatus?: 'full' | 'progress-only' | 'none'
+  appearance?: 'default' | 'workbench'
+  interaction?: 'open' | 'select'
+  selected?: boolean
 }>(), {
   layout: 'grid',
   showDuration: true,
   thumbnailStatus: 'full',
+  appearance: 'default',
+  interaction: 'open',
+  selected: false,
 })
 
 const emit = defineEmits<{
@@ -215,10 +226,10 @@ const emit = defineEmits<{
   /** @deprecated prefer goToProfile */
   goToSubscription: [id: number | string]
   openModal: [video: VideoListItem]
+  select: [video: VideoListItem]
 }>()
 
 const { config: systemConfig } = useSystemConfig()
-const { clearHistory, sendReport } = useVideoHistory()
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction()
 const toast = useToast()
 
@@ -227,7 +238,7 @@ const menuPosition = ref({ x: 0, y: 0 })
 
 /**
  * Local optimistic engagement state, seeded from list fields:
- * - is_read: history row exists
+ * - is_read: explicit inbox state, independent from playback progress
  * - interaction_type: exclusive 1=like / 2=dislike / 3=later
  *
  * Like and later share one backend row — setting one replaces the other.
@@ -291,7 +302,17 @@ const showContextMenu = async (event: MouseEvent) => {
   showMenu.value = true
 }
 
-const handleClick = () => emit('openModal', props.video)
+const handleClick = () => {
+  if (props.interaction === 'select') {
+    emit('select', props.video)
+    return
+  }
+  emit('openModal', props.video)
+}
+const handleDoubleClick = () => {
+  if (props.interaction === 'select') emit('openModal', props.video)
+}
+const handleKeyboardOpen = () => emit('openModal', props.video)
 const goToProfile = (profile: VideoProfile | null | undefined) => {
   if (!profile) return
   // Fill profile_source when list payload omitted it, so navigation never
@@ -315,12 +336,7 @@ const toggleReadStatus = async (markRead: boolean) => {
   const previous = isRead.value
   isRead.value = markRead
   try {
-    if (markRead) {
-      const pos = Number(props.video.duration || 0)
-      await sendReport(props.video.id, pos, { force: true })
-    } else {
-      await clearHistory([props.video.id])
-    }
+    await updateVideoReadState(props.video.id, markRead)
   } catch (err) {
     isRead.value = previous
     toast.error(errorMessage(err, markRead ? '标记已读失败' : '标记未读失败'))
@@ -422,7 +438,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 
 .video-item:hover .video-item__thumb,
 .video-item:focus-visible .video-item__thumb {
-  box-shadow: var(--shadow-card-hover);
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 
 .video-item__thumb--list {
@@ -527,6 +543,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 .video-item__body--list {
   padding-block: 0.25rem;
 }
+
 
 .video-item__title {
   display: -webkit-box;
@@ -700,6 +717,43 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   line-height: 1.4;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.video-item--appearance-workbench {
+  border-radius: var(--radius-md);
+  padding: 0.25rem;
+}
+
+.video-item--appearance-workbench:hover {
+  background: hsl(var(--accent) / 0.34);
+}
+
+.video-item--appearance-workbench[aria-pressed='true'] {
+  background: hsl(var(--primary) / 0.1);
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.32);
+}
+
+.video-item--appearance-workbench .video-item__thumb {
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+.video-item--appearance-workbench:hover .video-item__thumb,
+.video-item--appearance-workbench:focus-visible .video-item__thumb {
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
+}
+
+.video-item--appearance-workbench .video-item__scrim {
+  display: none;
+}
+
+.video-item--appearance-workbench .video-item__body {
+  padding: 0.625rem 0.25rem 0.35rem;
+}
+
+.video-item--appearance-workbench .video-item__title {
+  font-weight: 620;
+  letter-spacing: -0.012em;
 }
 
 @media (min-width: 768px) {

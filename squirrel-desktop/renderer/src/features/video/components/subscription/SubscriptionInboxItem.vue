@@ -4,7 +4,6 @@
     :class="{ 'subscription-inbox-item--read': isRead }"
   >
     <button
-
       type="button"
       class="subscription-inbox-item__thumbnail"
       :aria-label="`播放 ${video.title}`"
@@ -23,7 +22,6 @@
 
     <div class="subscription-inbox-item__copy">
       <button
-
         type="button"
         class="subscription-inbox-item__title"
         @click="openVideo"
@@ -33,7 +31,6 @@
       <div class="subscription-inbox-item__meta">
         <button
           v-if="subscriptionId != null"
-
           type="button"
           class="subscription-inbox-item__channel"
           @click="openChannel"
@@ -67,6 +64,7 @@
         type="button"
         text severity="secondary"
         size="sm"
+        icon-only
         class="subscription-inbox-item__read-action"
         :loading="readBusy"
         :title="isRead ? '标记未读' : '标记已读'"
@@ -74,7 +72,11 @@
         :aria-pressed="isRead"
         @click="toggleRead"
       >
-        {{ isRead ? '标为未读' : '标为已读' }}
+        <AppIcon
+          v-if="!readBusy"
+          :name="isRead ? 'circle' : 'check'"
+          class="h-3.5 w-3.5"
+        />
       </Button>
     </div>
   </article>
@@ -89,7 +91,7 @@ import { errorMessage } from '@/shared/lib/errorMessage'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
-import { useVideoHistory } from '@/features/video/composables/useVideoHistory'
+import { updateVideoReadState } from '@/shared/api'
 import type { VideoListItem } from '@/features/video/types/video'
 
 const props = defineProps<{
@@ -106,31 +108,25 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
-const { clearHistory, sendReport } = useVideoHistory()
 const readBusy = ref(false)
-const isRead = ref(props.video.last_position > 0)
+const isRead = ref(props.video.is_read ?? props.video.last_position > 0)
 
 const displayDate = computed(() => (
   formatDate(props.video.uploaded_at || props.video.created_at)
 ))
 
-watch(() => props.video.last_position, (value) => {
-  isRead.value = value > 0
-})
+watch(
+  () => [props.video.is_read, props.video.last_position] as const,
+  ([readState, position]) => {
+    isRead.value = readState ?? position > 0
+  },
+)
 
 const setReadState = async (nextValue: boolean) => {
   if (readBusy.value || isRead.value === nextValue) return true
   readBusy.value = true
   try {
-    if (nextValue) {
-      await sendReport(
-        props.video.id,
-        Math.max(1, Number(props.video.duration || 1)),
-        { force: true },
-      )
-    } else {
-      await clearHistory([props.video.id])
-    }
+    await updateVideoReadState(props.video.id, nextValue)
     isRead.value = nextValue
     emit('read-change', { videoId: props.video.id, isRead: nextValue })
     return true
@@ -160,24 +156,23 @@ const openVideo = () => {
 .subscription-inbox-item {
   display: grid;
   min-width: 0;
-  grid-template-columns: 10rem minmax(0, 1fr) auto;
+  min-height: 7.25rem;
+  grid-template-columns: 11rem minmax(0, 1fr) 2rem;
   align-items: center;
   gap: var(--space-5);
-  margin: 0 -0.75rem;
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) 0.75rem;
+  padding: 0.875rem var(--space-2);
   transition: background-color var(--duration-fast) var(--ease-default);
 }
 
 .subscription-inbox-item:hover,
 .subscription-inbox-item:focus-within {
-  background: var(--app-row-hover-bg);
+  background: hsl(var(--muted) / 0.24);
 }
 
 .subscription-inbox-item__thumbnail {
   position: relative;
   overflow: hidden;
-  width: 10rem;
+  width: 11rem;
   aspect-ratio: 16 / 9;
   border-radius: var(--radius-lg);
   background: var(--app-media-thumb-placeholder);
@@ -302,8 +297,9 @@ button.subscription-inbox-item__channel:focus-visible {
 }
 
 .subscription-inbox-item__read-action {
+  width: 1.875rem;
+  height: 1.875rem;
   color: hsl(var(--muted-foreground) / 0.82);
-  font-weight: 550;
 }
 
 @media (hover: none), (prefers-reduced-motion: reduce) {
@@ -316,6 +312,21 @@ button.subscription-inbox-item__channel:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .subscription-inbox-item__actions {
     transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .subscription-inbox-item {
+    grid-template-columns: 7rem minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .subscription-inbox-item__thumbnail {
+    width: 7rem;
+  }
+
+  .subscription-inbox-item__actions {
+    display: none;
   }
 }
 </style>

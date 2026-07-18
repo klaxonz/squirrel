@@ -3,6 +3,7 @@
     title="连接服务器"
     description="归仓将连接你指定的服务端，用于同步与登录。"
     :show-server-action="false"
+    stage="server"
   >
     <form class="auth-entry__form" @submit.prevent="handleConnect">
       <Transition name="auth-alert">
@@ -35,6 +36,7 @@
             type="button"
             severity="secondary"
             outlined
+            size="lg"
             :disabled="!targetServerUrl || busy"
             :loading="testing"
             @click="handleTest"

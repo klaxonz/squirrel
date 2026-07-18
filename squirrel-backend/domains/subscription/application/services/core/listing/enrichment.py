@@ -39,6 +39,7 @@ def load_subscription_unread_counts(session: Session, user_id: int, subscription
             and_(
                 VideoHistory.video_id == SubscriptionVideo.video_id,
                 VideoHistory.user_id == user_id,
+                VideoHistory.is_read.is_(True),
             ),
         )
         .where(

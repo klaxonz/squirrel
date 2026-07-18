@@ -471,7 +471,10 @@ def fetch_user_state_video_ids(
         cursor_decoded = decode_cursor_for_key(cursor, _CURSOR_KEY_HISTORY)
         stmt = (
             select(VideoHistory.id, VideoHistory.video_id, VideoHistory.end_time)
-            .where(VideoHistory.user_id == user_id)
+            .where(
+                VideoHistory.user_id == user_id,
+                VideoHistory.is_read.is_(True),
+            )
             .order_by(VideoHistory.end_time.desc(), VideoHistory.id.desc())
             .limit(limit + 1)  # 多取 1 条判断 has_more
         )
@@ -539,7 +542,10 @@ def fetch_user_state_id_set(
     if category == 'read':
         stmt = (
             select(VideoHistory.video_id)
-            .where(VideoHistory.user_id == user_id)
+            .where(
+                VideoHistory.user_id == user_id,
+                VideoHistory.is_read.is_(True),
+            )
             .order_by(VideoHistory.end_time.desc())
         )
     else:

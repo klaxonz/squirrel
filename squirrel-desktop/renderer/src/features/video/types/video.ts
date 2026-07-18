@@ -3,8 +3,9 @@
 //
 // Key facts from backend tracing:
 // - List response uses `data` only (no `items` key).
-// - List items carry is_read + interaction_type (page_loader). Read = history row
-//   exists; interaction_type is a single exclusive value (1 like / 2 dislike / 3 later).
+// - List items carry is_read + interaction_type (page_loader). Read state is
+//   independent from playback progress; interaction_type is a single exclusive
+//   value (1 like / 2 dislike / 3 later).
 // - subscriptions[]/actors[] are unions (PG profile ∪ extra-data profile); only
 //   id/name/url are guaranteed, the rest optional.
 
@@ -32,7 +33,7 @@ export interface VideoListItem {
   thumbnail: string | null
   duration: number | null
   last_position: number
-  /** True when the user has any history row for this video (matches read/unread filters). */
+  /** Explicit inbox state. A video can be unread while retaining playback progress. */
   is_read?: boolean
   /**
    * Exclusive engagement flag from video_interaction:
@@ -74,6 +75,7 @@ export interface VideoDetail {
   // enriched by detail_loader
   interaction_type: number | null
   last_position: number
+  is_read: boolean
   subscriptions: VideoProfile[]
   actors: VideoProfile[]
   creators: VideoProfile[]

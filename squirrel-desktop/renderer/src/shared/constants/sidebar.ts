@@ -255,7 +255,7 @@ export const SIDEBAR_FOOTER_ITEMS = NAV_ITEMS.filter((item) => item.key === 'set
 export const NAV_GROUPS: NavigationGroup[] = [
   {
     key: 'media',
-    label: '订阅与内容',
+    label: '媒体',
     items: NAV_ITEMS.filter((item) => item.group === 'media' && item.key !== 'home'),
   },
   {

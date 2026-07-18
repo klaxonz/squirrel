@@ -28,4 +28,30 @@ describe('ui search contexts', () => {
     expect(store.getSearchTrigger('rss')).toBe(1)
     expect(store.getSearchTrigger('history')).toBe(0)
   })
+
+  it('persists video canvas density', () => {
+    const store = useUIStore()
+
+    store.setVideoDensity('large')
+
+    expect(store.videoDensity).toBe('large')
+    expect(localStorage.setItem).toHaveBeenCalledWith('ui.videoDensity', 'large')
+  })
+
+  it('remembers view preferences per video collection', () => {
+    const store = useUIStore()
+
+    store.setViewMode('list', 'local:later')
+    store.setVideoDensity('compact', 'local:later')
+    store.setViewMode('grid')
+    store.setVideoDensity('large')
+    store.applyVideoViewPreference('local:later')
+
+    expect(store.viewMode).toBe('list')
+    expect(store.videoDensity).toBe('compact')
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      'ui.videoViewPreferences',
+      expect.stringContaining('local:later'),
+    )
+  })
 })

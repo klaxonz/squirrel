@@ -1,29 +1,19 @@
 <template>
-  <div class="site-runtime-grid-content">
+  <div class="site-runtime-content">
     <Alert v-if="discoveryErrors.length" variant="error" class="mb-5">
-      <AppIcon name="error" class="h-4 w-4" />
+      <AppIcon name="error" class="size-4" />
       <h5 class="mb-1 font-medium leading-none tracking-tight">发现 {{ discoveryErrors.length }} 个站点失败</h5>
-      <p class="text-sm [&_p]:leading-relaxed truncate text-xs">
+      <p class="truncate text-xs">
         {{ discoveryErrors[0].metadata_path }} · {{ discoveryErrors[0].reason }}
       </p>
     </Alert>
 
-    <div v-if="loading" class="site-runtime-grid" aria-label="正在加载站点">
-      <AppSkeleton
-        v-for="i in 5"
-        :key="i"
-        height="13rem"
-        rounded="var(--radius-lg)"
-        shimmer
-      />
+    <div v-if="loading" class="site-runtime-loading" aria-label="正在加载站点">
+      <AppSkeleton v-for="i in 6" :key="i" height="3.75rem" rounded="var(--radius-md)" shimmer />
     </div>
 
     <div v-else-if="loadError" class="app-page-empty">
-      <AppEmptyState
-        variant="error"
-        title="站点加载失败"
-        :copy="loadError"
-      >
+      <AppEmptyState variant="error" title="站点加载失败" :copy="loadError">
         <template #actions>
           <Button size="sm" @click="$emit('retry')">重试</Button>
         </template>
@@ -43,96 +33,93 @@
       </AppEmptyState>
     </div>
 
-    <div v-else class="site-runtime-grid">
-      <article
-        v-for="runtime in runtimes"
-        :key="runtime.runtime_id"
-        class="site-runtime-card"
-      >
-        <header class="site-runtime-card__header">
-          <div class="site-runtime-card__identity">
+    <section v-else class="site-runtime-table app-table-shell" aria-label="站点运行状态">
+      <div class="site-runtime-table__frame app-table-frame">
+        <header class="site-runtime-table__head site-runtime-columns" aria-hidden="true">
+          <span>站点</span>
+          <span>网络</span>
+          <span>登录</span>
+          <span>能力</span>
+          <span>启用</span>
+          <span />
+        </header>
+
+        <article
+          v-for="runtime in runtimes"
+          :key="runtime.runtime_id"
+          class="site-runtime-row site-runtime-columns"
+        >
+          <div class="site-runtime-row__identity">
             <SiteIcon
               v-if="runtime.primarySite"
               :icon-url="runtime.primarySite.icon_url"
               :label="runtime.primarySite.site_name || runtime.display_name"
               size="md"
-              class="site-runtime-card__icon"
+              class="site-runtime-row__icon"
             />
-            <div v-else class="site-runtime-card__placeholder">
-              <AppIcon name="cube" class="h-5 w-5" />
+            <div v-else class="site-runtime-row__placeholder">
+              <AppIcon name="cube" class="size-4" />
             </div>
 
-            <div class="site-runtime-card__copy">
+            <div class="site-runtime-row__copy">
               <h3>{{ runtime.display_name }}</h3>
+              <span>{{ runtime.runtime_id }}</span>
             </div>
           </div>
 
-          <div class="site-runtime-card__header-actions">
-            <div class="site-runtime-card__enable">
-              <span>启用</span>
-              <AppSpinner v-if="actioning === runtime.runtime_id" size="sm" />
-              <Switch
-                :model-value="runtime.enabled"
-                :disabled="actioning === runtime.runtime_id"
-                :aria-label="runtime.enabled ? `停用 ${runtime.display_name}` : `启用 ${runtime.display_name}`"
-                @update:model-value="(enabled) => $emit(enabled ? 'enable' : 'disable', runtime)"
-              />
-            </div>
-
-            <AppActionMenu
-              :items="runtimeActionItems(runtime)"
-              :trigger-label="`${runtime.display_name} 管理操作`"
-              button-class="site-runtime-card__menu"
-            />
+          <div class="site-runtime-row__status" :data-tone="getNetworkVariant(runtime)">
+            <AppSpinner v-if="runtime.siteTesting" size="sm" />
+            <span>{{ runtime.siteTesting ? '检测中' : getNetworkText(runtime) }}</span>
           </div>
-        </header>
 
-        <dl class="site-runtime-card__statuses" aria-label="站点状态">
-          <div class="site-runtime-card__status">
-            <dt>网络连通</dt>
-            <dd :data-tone="getNetworkVariant(runtime)">
-              <AppSpinner v-if="runtime.siteTesting" size="sm" />
-              {{ runtime.siteTesting ? '检测中' : getNetworkText(runtime) }}
-            </dd>
-          </div>
-          <div class="site-runtime-card__status">
-            <dt>登录状态</dt>
-            <dd :data-tone="supportsLogin(runtime) ? getLoginVariant(runtime) : 'muted'">
-              <AppSpinner v-if="runtime.siteLoginTesting" size="sm" />
+          <div
+            class="site-runtime-row__status"
+            :data-tone="supportsLogin(runtime) ? getLoginVariant(runtime) : 'muted'"
+          >
+            <AppSpinner v-if="runtime.siteLoginTesting" size="sm" />
+            <span>
               {{ runtime.siteLoginTesting
                 ? '检测中'
                 : supportsLogin(runtime)
                   ? getLoginText(runtime)
                   : '无需登录' }}
-            </dd>
-          </div>
-        </dl>
-
-        <div class="site-runtime-card__capabilities">
-          <div class="site-runtime-card__section-heading">
-            <span class="site-runtime-card__section-label">能力</span>
-            <span v-if="runtime.capabilities.length" class="site-runtime-card__capability-count">
-              {{ runtime.capabilities.length }} 项
             </span>
           </div>
-          <div v-if="runtime.capabilities.length" class="site-runtime-card__capability-list">
+
+          <div v-if="runtime.capabilities.length" class="site-runtime-row__capabilities">
             <span
-              v-for="cap in runtime.capabilities.slice(0, 4)"
+              v-for="cap in runtime.capabilities.slice(0, 3)"
               :key="cap.name"
-              class="site-runtime-card__capability"
+              class="site-runtime-row__capability"
               :title="cap.name"
             >
               {{ getCapabilityLabel(cap.name) }}
             </span>
-            <span v-if="runtime.capabilities.length > 4" class="site-runtime-card__capability-more">
-              +{{ runtime.capabilities.length - 4 }}
+            <span v-if="runtime.capabilities.length > 3" class="site-runtime-row__capability-more">
+              +{{ runtime.capabilities.length - 3 }}
             </span>
           </div>
-          <span v-else class="site-runtime-card__capability-empty">未声明能力</span>
-        </div>
+          <span v-else class="site-runtime-row__capability-empty">未声明</span>
 
-      </article>
-    </div>
+          <div class="site-runtime-row__enable">
+            <AppSpinner v-if="actioning === runtime.runtime_id" size="sm" />
+            <Switch
+              v-else
+              :model-value="runtime.enabled"
+              :disabled="actioning === runtime.runtime_id"
+              :aria-label="runtime.enabled ? `停用 ${runtime.display_name}` : `启用 ${runtime.display_name}`"
+              @update:model-value="(enabled) => $emit(enabled ? 'enable' : 'disable', runtime)"
+            />
+          </div>
+
+          <AppActionMenu
+            :items="runtimeActionItems(runtime)"
+            :trigger-label="`${runtime.display_name} 管理操作`"
+            button-class="site-runtime-row__menu"
+          />
+        </article>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -237,219 +224,167 @@ const runtimeActionItems = runtime => {
 </script>
 
 <style scoped>
-.site-runtime-grid-content {
+.site-runtime-content {
   width: 100%;
 }
 
-.site-runtime-grid {
+.site-runtime-loading {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-  gap: var(--space-4);
+  gap: var(--space-2);
 }
 
-.site-runtime-card {
-  display: flex;
-  min-width: 0;
-  min-height: 13rem;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: var(--radius-lg);
-  background: hsl(var(--card) / 0.72);
-  transition: border-color var(--duration-fast) var(--ease-default);
+.site-runtime-table {
+  overflow-x: auto;
 }
 
-.site-runtime-card:hover,
-.site-runtime-card:focus-within {
-  border-color: hsl(var(--border));
+.site-runtime-table__frame {
+  min-width: 56rem;
 }
 
-.site-runtime-card__header {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-4);
-}
-
-.site-runtime-card__identity {
-  display: flex;
-  min-width: 0;
+.site-runtime-columns {
+  display: grid;
+  grid-template-columns: minmax(13rem, 1.6fr) minmax(6.5rem, 0.7fr) minmax(7rem, 0.8fr) minmax(12rem, 1.4fr) 4rem 2.25rem;
   align-items: center;
   gap: var(--space-3);
 }
 
-.site-runtime-card__icon,
-.site-runtime-card__placeholder {
-  width: 2.5rem;
-  height: 2.5rem;
+.site-runtime-table__head {
+  min-height: 2.5rem;
+  border-bottom: 1px solid var(--app-hairline);
+  padding-inline: var(--space-4);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.site-runtime-row {
+  min-height: 4rem;
+  border-bottom: 1px solid var(--app-hairline);
+  padding: 0.625rem var(--space-4);
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.site-runtime-row:last-child {
+  border-bottom: 0;
+}
+
+.site-runtime-row:hover,
+.site-runtime-row:focus-within {
+  background: var(--app-row-hover-bg);
+}
+
+.site-runtime-row__identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.site-runtime-row__icon,
+.site-runtime-row__placeholder {
+  width: 2rem;
+  height: 2rem;
   flex: 0 0 auto;
   border: 1px solid hsl(var(--border) / 0.6);
   border-radius: var(--radius-md);
 }
 
-.site-runtime-card__placeholder {
+.site-runtime-row__placeholder {
   display: grid;
   place-items: center;
   background: hsl(var(--muted) / 0.45);
   color: hsl(var(--muted-foreground));
 }
 
-.site-runtime-card__copy {
+.site-runtime-row__copy {
+  display: grid;
   min-width: 0;
+  gap: 0.125rem;
 }
 
-.site-runtime-card__copy h3 {
+.site-runtime-row__copy h3,
+.site-runtime-row__copy span {
   overflow: hidden;
   margin: 0;
-  color: hsl(var(--foreground) / 0.92);
-  font-family: var(--app-heading-font);
-  font-size: 1rem;
-  font-weight: 650;
-  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.site-runtime-card__header-actions {
+.site-runtime-row__copy h3 {
+  color: hsl(var(--foreground));
+  font-size: 0.8125rem;
+  font-weight: 620;
+}
+
+.site-runtime-row__copy span {
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+}
+
+.site-runtime-row__status {
   display: flex;
-  flex: 0 0 auto;
+  min-width: 0;
   align-items: center;
-  gap: var(--space-1);
+  gap: 0.375rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 520;
 }
 
-.site-runtime-card__menu {
-  flex: 0 0 auto;
-  color: hsl(var(--muted-foreground) / 0.72);
+.site-runtime-row__status span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.site-runtime-card__status dd[data-tone='success'] {
+.site-runtime-row__status[data-tone='success'] {
   color: hsl(var(--success));
 }
 
-.site-runtime-card__status dd[data-tone='critical'] {
+.site-runtime-row__status[data-tone='critical'] {
   color: hsl(var(--destructive) / 0.82);
 }
 
-.site-runtime-card__status dd[data-tone='muted'] {
+.site-runtime-row__status[data-tone='muted'] {
   color: hsl(var(--muted-foreground) / 0.68);
 }
 
-.site-runtime-card__statuses {
-  display: flex;
-  flex-direction: column;
-  margin: 0 var(--space-4);
-  border-radius: var(--radius-md);
-  padding: 0 var(--space-3);
-  background: hsl(var(--muted) / 0.34);
-}
-
-.site-runtime-card__status {
-  display: flex;
-  min-width: 0;
-  min-height: 2.25rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.site-runtime-card__status + .site-runtime-card__status {
-  border-top: 1px solid hsl(var(--border) / 0.42);
-}
-
-.site-runtime-card__status dt {
-  color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.site-runtime-card__status dd {
+.site-runtime-row__capabilities {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 0.4rem;
   overflow: hidden;
-  margin: 0;
-  color: hsl(var(--muted-foreground) / 0.92);
-  font-size: 0.75rem;
-  font-weight: 550;
-  text-overflow: ellipsis;
+  gap: 0.2rem 0.45rem;
   white-space: nowrap;
 }
 
-.site-runtime-card__capabilities {
-  display: flex;
-  min-height: 4.25rem;
-  flex: 1;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: var(--space-3) var(--space-4) var(--space-4);
-}
-
-.site-runtime-card__section-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.site-runtime-card__section-label {
-  color: hsl(var(--foreground) / 0.72);
-  font-size: 0.6875rem;
-  font-weight: 600;
-}
-
-.site-runtime-card__capability-count {
-  color: hsl(var(--muted-foreground) / 0.54);
-  font-size: var(--app-text-badge-size);
-  font-variant-numeric: tabular-nums;
-}
-
-.site-runtime-card__capability-list {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.2rem 0.45rem;
-}
-
-.site-runtime-card__capability {
+.site-runtime-row__capability,
+.site-runtime-row__capability-empty {
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
-  line-height: 1.55;
-  white-space: nowrap;
 }
 
-.site-runtime-card__capability:not(:last-child)::after {
+.site-runtime-row__capability:not(:last-child)::after {
   margin-left: 0.45rem;
   color: hsl(var(--muted-foreground) / 0.38);
   content: '·';
 }
 
-.site-runtime-card__capability-more {
+.site-runtime-row__capability-more {
   color: hsl(var(--foreground) / 0.62);
   font-size: 0.6875rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.site-runtime-card__capability-empty {
-  color: hsl(var(--muted-foreground) / 0.64);
-  font-size: 0.6875rem;
-}
-
-.site-runtime-card__enable {
+.site-runtime-row__enable {
   display: flex;
-  flex: 0 0 auto;
   align-items: center;
-  gap: var(--space-2);
-  color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .site-runtime-card {
+  .site-runtime-row {
     transition: none;
   }
 }

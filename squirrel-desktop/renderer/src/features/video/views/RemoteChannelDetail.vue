@@ -1,21 +1,15 @@
 <template>
   <AppPageShell variant="compact" surface="consume" width="media">
-    <div ref="root" class="app-page-content app-page-content--media">
-      <div v-if="errorMessage">
+    <div v-if="errorMessage" class="app-page-content app-page-content--media">
         <AppEmptyState variant="error" title="加载失败" :copy="errorMessage">
           <template #actions>
             <Button severity="secondary" outlined size="sm" @click="refresh">重试</Button>
           </template>
         </AppEmptyState>
-      </div>
+    </div>
 
+    <template v-else>
       <section class="app-media-header remote-channel-header">
-        <div
-          v-if="profile.banner"
-          class="remote-channel-banner"
-          :style="{ backgroundImage: `url(${profile.banner})` }"
-          aria-hidden="true"
-        />
         <div class="app-media-header__inner remote-channel-header__inner">
           <div class="remote-channel-header__identity">
             <a
@@ -25,13 +19,13 @@
               rel="noopener noreferrer"
               class="remote-channel-header__avatar-link"
             >
-              <SubscriptionAvatar :src="profile.avatar" :name="profile.name || siteLabel" size="xl" class="remote-channel-header__avatar" />
+            <SubscriptionAvatar :src="profile.avatar" :name="profile.name || siteLabel" size="full" class="remote-channel-header__avatar" />
             </a>
             <SubscriptionAvatar
               v-else
               :src="profile.avatar"
               :name="profile.name || siteLabel"
-              size="xl"
+              size="full"
               class="remote-channel-header__avatar"
             />
             <div class="remote-channel-header__copy">
@@ -86,6 +80,8 @@
         </div>
       </section>
 
+      <div ref="root" class="app-page-content app-page-content--media">
+
       <div v-if="items.length > 0" class="remote-channel-grid app-video-grid app-video-grid--feed">
         <!-- Native article card — shared Button defaults to h-9 and collapses media. -->
         <article
@@ -136,7 +132,8 @@
       </div>
 
       <div ref="loadMoreTrigger" class="h-20 w-full" />
-    </div>
+      </div>
+    </template>
   </AppPageShell>
 </template>
 
@@ -511,10 +508,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.remote-channel-header {
-  margin-inline: calc(var(--app-page-gutter-lg, 2rem) * -1);
-}
-
 .remote-channel-header__inner {
   --app-page-max-width: var(--app-content-media-max);
   align-items: flex-start;
@@ -528,16 +521,6 @@ onUnmounted(() => {
   gap: var(--space-4);
 }
 
-.remote-channel-banner {
-  width: 100%;
-  height: 8.5rem;
-  margin-bottom: var(--space-4);
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-  border-bottom: 1px solid var(--app-surface-border-subtle);
-}
-
 .remote-channel-header__avatar-link {
   display: block;
   flex: none;
@@ -545,6 +528,8 @@ onUnmounted(() => {
 }
 
 .remote-channel-header__avatar {
+  width: 3.5rem;
+  height: 3.5rem;
   flex: none;
   border: 1px solid var(--app-surface-border-subtle);
   border-radius: var(--app-surface-radius);
@@ -685,15 +670,14 @@ onUnmounted(() => {
 
 .remote-channel-card:hover .remote-channel-thumb,
 .remote-channel-card:focus-visible .remote-channel-thumb {
-  /* Soft lift only — no amber outline ring (matches VideoItem). */
-  box-shadow: var(--shadow-card-hover);
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 
 .remote-channel-card:focus-visible .remote-channel-thumb {
   box-shadow:
     0 0 0 2px hsl(var(--background)),
     0 0 0 4px hsl(var(--ring) / 0.45),
-    var(--shadow-card-hover);
+    inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 
 .remote-channel-title {

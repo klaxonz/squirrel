@@ -19,11 +19,13 @@ const props = defineProps<{
 <template>
   <DialogPortal>
     <DialogOverlay class="sq-dialog-overlay" />
-    <RekaDialogContent
-      v-bind="$attrs"
-      :class="cn('sq-dialog', props.scrollable && 'sq-dialog--scrollable', props.class, props.contentClass)"
-    >
-      <slot />
-    </RekaDialogContent>
+    <div class="sq-dialog-positioner">
+      <RekaDialogContent
+        v-bind="$attrs"
+        :class="cn('sq-dialog', props.scrollable && 'sq-dialog--scrollable', props.class, props.contentClass)"
+      >
+        <slot />
+      </RekaDialogContent>
+    </div>
   </DialogPortal>
 </template>

@@ -1,35 +1,54 @@
 <template>
   <AppPageShell variant="compact" surface="organize" width="table" fill>
     <div class="subscription-page">
-      <div class="subscription-control-bar">
-        <div class="subscription-control-bar__inner">
-          <AppSectionNav
-            v-model="activeView"
-            class="app-section-nav--optical"
-            :options="viewOptions"
-            aria-label="订阅视图"
-          />
+      <AppToolbarFrame bordered compact>
+        <div class="subscription-toolbar">
+          <div class="subscription-toolbar__navigation">
+            <AppSectionNav
+              v-model="workspaceMode"
+              :options="workspaceOptions"
+              aria-label="订阅工作区"
+            />
+            <span class="subscription-toolbar__divider" aria-hidden="true" />
+            <AppSegmentedControl
+              :model-value="activeScope"
+              :options="scopeOptions"
+              aria-label="订阅范围"
+              size="sm"
+              @update:model-value="handleScopeChange"
+            >
+              <template #option="{ option }">
+                <span>{{ option.label }}</span>
+                <span
+                  v-if="option.value === 'issues' && issueCount > 0"
+                  class="subscription-toolbar__scope-count app-mono"
+                >
+                  {{ issueCount > 999 ? '999+' : issueCount }}
+                </span>
+              </template>
+            </AppSegmentedControl>
+          </div>
 
-          <section class="subscription-toolbar" aria-label="订阅筛选和操作">
+          <section class="subscription-toolbar__actions" aria-label="订阅筛选和操作">
             <PopoverRoot>
               <PopoverTrigger as-child>
-            <Button
-              type="button"
-              text severity="secondary"
-              size="sm"
-              class="app-filter-toolbar-button"
-              :class="{ 'is-active': activeFilterCount > 0 }"
-              :aria-label="activeFilterCount > 0 ? `筛选，已启用 ${activeFilterCount} 项` : '筛选'"
-            >
-              <AppIcon name="filter" class="h-3.5 w-3.5" />
-              <span>筛选</span>
-              <span
-                v-if="activeFilterCount > 0"
-                class="app-filter-toolbar-button__count app-mono"
-              >
-                {{ activeFilterCount }}
-              </span>
-            </Button>
+                <Button
+                  type="button"
+                  text severity="secondary"
+                  size="sm"
+                  class="app-filter-toolbar-button"
+                  :class="{ 'is-active': activeFilterCount > 0 }"
+                  :aria-label="activeFilterCount > 0 ? `筛选，已启用 ${activeFilterCount} 项` : '筛选'"
+                >
+                  <AppIcon name="filter" class="h-3.5 w-3.5" />
+                  <span>筛选</span>
+                  <span
+                    v-if="activeFilterCount > 0"
+                    class="app-filter-toolbar-button__count app-mono"
+                  >
+                    {{ activeFilterCount }}
+                  </span>
+                </Button>
               </PopoverTrigger>
 
               <PopoverContent
@@ -74,21 +93,6 @@
                       @update:model-value="handleNsfwFilterChange"
                     />
                   </AppFilterSection>
-
-                  <label
-                    v-else-if="activeView === 'channels'"
-                    class="app-filter-toggle"
-                    :class="{ 'is-active': librarySpecialOnly }"
-                  >
-                    <span class="app-filter-toggle__copy">
-                      <span class="app-filter-toggle__title">特别关注</span>
-                    </span>
-                    <Switch
-                      :model-value="librarySpecialOnly"
-                      aria-label="只显示特别关注的频道"
-                      @update:model-value="librarySpecialOnly = $event"
-                    />
-                  </label>
                 </AppFilterPanel>
               </PopoverContent>
             </PopoverRoot>
@@ -106,7 +110,7 @@
               <AppIcon v-if="!pageLoading" name="refresh" class="h-4 w-4" />
             </Button>
             <Button
-              v-if="activeView === 'channels'"
+              v-if="!isFeedView"
               type="button"
               text severity="secondary"
               size="sm" icon-only
@@ -129,7 +133,7 @@
             </Button>
           </section>
         </div>
-      </div>
+      </AppToolbarFrame>
 
       <div class="subscription-workspace">
         <main ref="contentScroll" class="subscription-content custom-scrollbar">
@@ -155,11 +159,11 @@
             <div v-else-if="!feedItems.length" class="subscription-content__empty">
               <AppEmptyState
                 variant="plain"
-                :icon="activeView === 'inbox' ? 'inbox' : 'subscriptions'"
+                :icon="activityScope === 'unread' ? 'inbox' : 'subscriptions'"
                 :title="feedEmptyTitle"
                 :copy="feedEmptyCopy"
               >
-                <template v-if="channelsTotal === 0 && !feedSearch" #actions>
+                <template v-if="subscriptionCount === 0 && !feedSearch" #actions>
                   <Button size="sm" @click="showAddDialog = true">添加订阅</Button>
                   <Button severity="secondary" outlined size="sm" @click="showImportDialog = true">导入订阅</Button>
                 </template>
@@ -200,7 +204,7 @@
 
           <template v-else>
             <div class="subscription-list-view">
-              <div v-if="channelsError && !visibleChannels.length" class="subscription-content__empty">
+              <div v-if="channelsError && !channels.length" class="subscription-content__empty">
                 <AppEmptyState variant="error" title="频道加载失败" :copy="channelsError">
                   <template #actions>
                     <Button severity="secondary" outlined size="sm" @click="fetchChannels(true)">重试</Button>
@@ -208,18 +212,18 @@
                 </AppEmptyState>
               </div>
 
-              <div v-else-if="loadingChannels && !visibleChannels.length" class="subscription-channel-table">
+              <div v-else-if="loadingChannels && !channels.length" class="subscription-channel-table">
                 <div class="subscription-channel-table__body">
                   <SubscriptionCardSkeleton v-for="index in 10" :key="index" />
                 </div>
               </div>
 
-              <div v-else-if="!visibleChannels.length" class="subscription-content__empty">
+              <div v-else-if="!channels.length" class="subscription-content__empty">
                 <AppEmptyState
                   variant="plain"
-                  :icon="activeView === 'issues' ? 'statusSuccess' : 'subscriptions'"
-                  :title="activeView === 'issues' ? '没有需要处理的频道' : '没有匹配频道'"
-                  :copy="activeView === 'issues' ? '当前所有频道同步状态正常。' : '调整搜索或筛选条件后再试。'"
+                  :icon="channelScope === 'issues' ? 'statusSuccess' : 'subscriptions'"
+                  :title="channelScope === 'issues' ? '没有需要处理的频道' : '没有匹配频道'"
+                  :copy="channelScope === 'issues' ? '当前所有频道同步状态正常。' : '调整搜索或筛选条件后再试。'"
                 />
               </div>
 
@@ -234,7 +238,7 @@
                 </div>
                 <div class="subscription-channel-table__body">
                   <SubscriptionCard
-                    v-for="channel in visibleChannels"
+                    v-for="channel in channels"
                     :key="channel.id"
                     :subscription="channel"
                     :selected="selectedChannel?.id === channel.id"
@@ -245,16 +249,20 @@
                 </div>
               </section>
 
-              <div
-                v-if="activeView === 'channels'"
-                ref="channelTrigger"
-                class="subscription-load-trigger"
-              >
+              <div ref="channelTrigger" class="subscription-load-trigger">
                 <AppSpinner v-if="loadingMoreChannels" />
               </div>
             </div>
           </template>
         </main>
+
+        <button
+          v-if="selectedChannel"
+          type="button"
+          class="subscription-inspector-backdrop"
+          aria-label="关闭频道详情"
+          @click="selectedChannelSnapshot = null"
+        />
 
         <SubscriptionChannelInspector
           v-if="selectedChannel"
@@ -304,11 +312,12 @@ import AppFilterChips from '@/shared/components/layout/AppFilterChips.vue'
 import AppFilterOptionList from '@/shared/components/layout/AppFilterOptionList.vue'
 import AppFilterPanel from '@/shared/components/layout/AppFilterPanel.vue'
 import AppFilterSection from '@/shared/components/layout/AppFilterSection.vue'
+import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
+import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { PopoverContent, PopoverRoot, PopoverTrigger } from '@/shared/ui/popover'
 import { Button } from '@/shared/ui/button'
-import { Switch } from '@/shared/ui/switch'
 import { useToast } from '@/shared/components/toast/useToast'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { useUIStore } from '@/shared/stores/ui'
@@ -324,7 +333,6 @@ import { NSFW_OPTIONS } from '@/features/video/constants/feedFilters'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import { sortSubscriptions } from '@/features/video/lib/subscriptionSort'
-import { isSubscriptionSyncFailed } from '@/features/video/lib/subscriptionPresenters'
 import {
   getSubscriptionDetail,
   getSubscriptions,
@@ -343,7 +351,9 @@ import type {
 
 defineOptions({ name: 'Subscribed' })
 
-type SubscriptionView = 'inbox' | 'activity' | 'special' | 'issues' | 'channels'
+type SubscriptionWorkspace = 'activity' | 'channels'
+type ActivityScope = 'unread' | 'all' | 'special'
+type ChannelScope = 'all' | 'issues' | 'special'
 
 type FeedDayItem = {
   video: VideoListItem
@@ -367,12 +377,13 @@ const { openVideo, openSubscription } = useVideoCardNavigation(router)
 const { options: siteOptions, fetchSites } = useSites()
 const { settings, loadUserSettings } = useUserSettings()
 
-const activeView = ref<SubscriptionView>('inbox')
+const workspaceMode = ref<SubscriptionWorkspace>('activity')
+const activityScope = ref<ActivityScope>('unread')
+const channelScope = ref<ChannelScope>('all')
 const feedSearch = ref(uiStore.getSearchQuery('subscribed').trim())
 const channelSearch = ref('')
 const site = ref<string | undefined>()
 const nsfw = ref<'all' | 'yes' | 'no'>('all')
-const librarySpecialOnly = ref(false)
 const showAddDialog = ref(false)
 const showImportDialog = ref(false)
 
@@ -385,6 +396,8 @@ let channelObserver: IntersectionObserver | null = null
 
 const channels = ref<SubscriptionListItem[]>([])
 const channelsTotal = ref(0)
+const subscriptionCount = ref<number | null>(null)
+const issueCount = ref(0)
 const channelsPage = ref(1)
 const channelsFinished = ref(false)
 const loadingChannels = ref(false)
@@ -406,10 +419,9 @@ const selectedChannelSnapshot = ref<SubscriptionListItem | null>(null)
 const togglingSpecialIds = ref<Set<string | number>>(new Set())
 const refreshingChannelId = ref<string | number | null>(null)
 
-const isFeedView = computed(() => (
-  activeView.value === 'inbox'
-  || activeView.value === 'activity'
-  || activeView.value === 'special'
+const isFeedView = computed(() => workspaceMode.value === 'activity')
+const activeScope = computed(() => (
+  isFeedView.value ? activityScope.value : channelScope.value
 ))
 
 const siteOptionsList = computed(() => siteOptions.value || [])
@@ -438,10 +450,6 @@ const subscriptionSiteFilterOptions = computed(() => [
     iconUrl: option.iconUrl ?? null,
   })),
 ])
-const issueChannels = computed(() => channels.value.filter(isSubscriptionSyncFailed))
-const visibleChannels = computed(() => (
-  activeView.value === 'issues' ? issueChannels.value : channels.value
-))
 const selectedChannel = computed(() => {
   const snapshot = selectedChannelSnapshot.value
   if (!snapshot) return null
@@ -458,33 +466,28 @@ const canOpenSelectedRemote = computed(() => (
 
 const nsfwOptions = NSFW_OPTIONS
 
-const viewOptions = computed<{
-  value: SubscriptionView
+const workspaceOptions: {
+  value: SubscriptionWorkspace
   label: string
   badge: string | null
-}[]>(() => [
-  {
-    value: 'inbox',
-    label: '收件箱',
-    badge: null,
-  },
-  { value: 'activity', label: '全部动态', badge: null },
-  { value: 'special', label: '特别关注', badge: null },
-  {
-    value: 'issues',
-    label: '需要处理',
-    badge: channelsFinished.value && issueChannels.value.length > 0
-      ? issueChannels.value.length > 999
-        ? '999+'
-        : String(issueChannels.value.length)
-      : null,
-  },
-  {
-    value: 'channels',
-    label: '频道库',
-    badge: null,
-  },
-])
+}[] = [
+  { value: 'activity', label: '动态', badge: null },
+  { value: 'channels', label: '频道', badge: null },
+]
+
+const scopeOptions = computed(() => (
+  isFeedView.value
+    ? [
+        { value: 'unread', label: '未读' },
+        { value: 'all', label: '全部' },
+        { value: 'special', label: '特别关注' },
+      ]
+    : [
+        { value: 'all', label: '全部' },
+        { value: 'issues', label: '需处理' },
+        { value: 'special', label: '特别关注' },
+      ]
+))
 
 const pageLoading = computed(() => (
   isFeedView.value
@@ -495,21 +498,20 @@ const pageLoading = computed(() => (
 const activeFilterCount = computed(() => {
   let count = site.value ? 1 : 0
   if (isFeedView.value && nsfw.value !== 'all') count += 1
-  if (activeView.value === 'channels' && librarySpecialOnly.value) count += 1
   return count
 })
 
 const feedEmptyTitle = computed(() => {
   if (feedSearch.value.trim()) return '没有匹配内容'
-  if (activeView.value === 'inbox') return '收件箱已清空'
-  if (activeView.value === 'special') return '特别关注暂无更新'
+  if (activityScope.value === 'unread') return '收件箱已清空'
+  if (activityScope.value === 'special') return '特别关注暂无更新'
   return '暂无订阅动态'
 })
 
 const feedEmptyCopy = computed(() => {
   if (feedSearch.value.trim()) return '调整搜索关键词或筛选条件后再试。'
-  if (activeView.value === 'inbox') return '新的未读视频会按日期和频道出现在这里。'
-  if (activeView.value === 'special') return '将频道设为特别关注后，其更新会集中显示在这里。'
+  if (activityScope.value === 'unread') return '新的未读视频会按日期和频道出现在这里。'
+  if (activityScope.value === 'special') return '将频道设为特别关注后，其更新会集中显示在这里。'
   return '频道更新后，最新内容会显示在这里。'
 })
 
@@ -576,13 +578,21 @@ const handleNsfwFilterChange = (value: string) => {
   }
 }
 
+const handleScopeChange = (value: string | number) => {
+  if (isFeedView.value) {
+    if (value === 'unread' || value === 'all' || value === 'special') {
+      activityScope.value = value
+    }
+    return
+  }
+  if (value === 'all' || value === 'issues' || value === 'special') {
+    channelScope.value = value
+  }
+}
+
 const clearToolbarFilters = () => {
   site.value = undefined
-  if (isFeedView.value) {
-    nsfw.value = 'all'
-  } else if (activeView.value === 'channels') {
-    librarySpecialOnly.value = false
-  }
+  if (isFeedView.value) nsfw.value = 'all'
 }
 
 const channelListParams = (page: number) => {
@@ -593,11 +603,10 @@ const channelListParams = (page: number) => {
     nsfw: 'all',
   }
   if (site.value) params.site = site.value
-  if (activeView.value === 'channels') {
-    const query = channelSearch.value.trim()
-    if (query) params.query = query
-    if (librarySpecialOnly.value) params.special = 'yes'
-  }
+  const query = channelSearch.value.trim()
+  if (query) params.query = query
+  if (channelScope.value === 'special') params.special = 'yes'
+  if (channelScope.value === 'issues') params.status = 'issues'
   return params
 }
 
@@ -615,25 +624,21 @@ const fetchChannels = async (reset = false) => {
   }
 
   const requestToken = ++channelsRequestToken
-  const loadAllPages = activeView.value !== 'channels'
   let nextPage = reset ? 1 : channelsPage.value
   let merged = reset ? [] : [...channels.value]
-  let reachedEnd = false
 
   try {
-    do {
-      const result = await getSubscriptions(channelListParams(nextPage))
-      if (requestToken !== channelsRequestToken) return
+    const result = await getSubscriptions(channelListParams(nextPage))
+    if (requestToken !== channelsRequestToken) return
 
-      const items = result?.data || []
-      const total = Number(result?.total)
-      channelsTotal.value = Number.isFinite(total) && total >= 0
-        ? total
-        : merged.length + items.length
-      merged = nextPage === 1 ? items : [...merged, ...items]
-      reachedEnd = items.length < CHANNEL_PAGE_SIZE || merged.length >= channelsTotal.value
-      nextPage += 1
-    } while (loadAllPages && !reachedEnd)
+    const items = result?.data || []
+    const total = Number(result?.total)
+    channelsTotal.value = Number.isFinite(total) && total >= 0
+      ? total
+      : merged.length + items.length
+    merged = nextPage === 1 ? items : [...merged, ...items]
+    const reachedEnd = items.length < CHANNEL_PAGE_SIZE || merged.length >= channelsTotal.value
+    nextPage += 1
 
     channels.value = sortSubscriptions(merged)
     channelsPage.value = nextPage
@@ -661,6 +666,22 @@ const fetchChannels = async (reset = false) => {
   }
 }
 
+const fetchWorkspaceCounts = async () => {
+  try {
+    const [allResult, issueResult] = await Promise.all([
+      getSubscriptions({ page: 1, pageSize: 1, nsfw: 'all' }),
+      getSubscriptions({ page: 1, pageSize: 1, nsfw: 'all', status: 'issues' }),
+    ])
+    const allTotal = Number(allResult?.total)
+    const issueTotal = Number(issueResult?.total)
+    subscriptionCount.value = Number.isFinite(allTotal) && allTotal >= 0 ? allTotal : 0
+    issueCount.value = Number.isFinite(issueTotal) && issueTotal >= 0 ? issueTotal : 0
+  } catch {
+    // Counts are supporting metadata; keep the current values when their
+    // lightweight request fails so the primary workspace remains usable.
+  }
+}
+
 const fetchFeed = async (reset = false) => {
   if (!isFeedView.value) return
   if (!reset && (loadingFeed.value || loadingMoreFeed.value || feedFinished.value)) return
@@ -682,8 +703,8 @@ const fetchFeed = async (reset = false) => {
       pageSize: FEED_PAGE_SIZE,
       page_size: FEED_PAGE_SIZE,
       query: feedSearch.value.trim() || undefined,
-      category: activeView.value === 'inbox' ? 'unread' : 'all',
-      special: activeView.value === 'special' ? 'yes' : undefined,
+      category: activityScope.value === 'unread' ? 'unread' : 'all',
+      special: activityScope.value === 'special' ? 'yes' : undefined,
       site: site.value,
       nsfw: nsfw.value,
       sort_by: 'publish_date',
@@ -741,8 +762,8 @@ const inspectChannelById = async (id: string | number | null) => {
 
 const applySpecialFollowState = (subscriptionId: string | number, enabled: boolean) => {
   const removeFromFilteredLibrary = (
-    activeView.value === 'channels'
-    && librarySpecialOnly.value
+    workspaceMode.value === 'channels'
+    && channelScope.value === 'special'
     && !enabled
   )
 
@@ -778,7 +799,9 @@ const toggleSpecialFollow = async (channel: SubscriptionListItem) => {
   try {
     await updateSpecialFollowStatus(channel.id, nextValue)
     applySpecialFollowState(channel.id, nextValue)
-    if (activeView.value === 'special') void fetchFeed(true)
+    if (workspaceMode.value === 'activity' && activityScope.value === 'special') {
+      void fetchFeed(true)
+    }
   } catch (error) {
     toast.error(errorMessage(error, nextValue ? '设为特别关注失败' : '取消特别关注失败'))
   } finally {
@@ -795,7 +818,7 @@ const refreshSelectedChannel = async () => {
   try {
     await triggerRefresh(channel.id)
     toast.success('同步任务已加入队列')
-    await fetchChannels(true)
+    await Promise.all([fetchChannels(true), fetchWorkspaceCounts()])
   } catch (error) {
     toast.error(errorMessage(error, '同步频道失败'))
   } finally {
@@ -827,12 +850,12 @@ const handleReadChange = (payload: { videoId: number; isRead: boolean }) => {
   const video = feedItems.value.find((item) => item.id === payload.videoId)
   if (!video) return
 
-  if (activeView.value === 'inbox' && payload.isRead) {
+  if (activityScope.value === 'unread' && payload.isRead) {
     feedItems.value = feedItems.value.filter((item) => item.id !== payload.videoId)
   } else {
     feedItems.value = feedItems.value.map((item) => (
       item.id === payload.videoId
-        ? { ...item, last_position: payload.isRead ? Math.max(1, Number(item.duration || 1)) : 0 }
+        ? { ...item, is_read: payload.isRead }
         : item
     ))
   }
@@ -855,9 +878,9 @@ const handleReadChange = (payload: { videoId: number; isRead: boolean }) => {
 
 const refreshCurrentView = async () => {
   if (isFeedView.value) {
-    await Promise.all([fetchChannels(true), fetchFeed(true)])
+    await Promise.all([fetchFeed(true), fetchWorkspaceCounts()])
   } else {
-    await fetchChannels(true)
+    await Promise.all([fetchChannels(true), fetchWorkspaceCounts()])
   }
 }
 
@@ -891,7 +914,7 @@ const initObservers = () => {
   channelObserver = new IntersectionObserver((entries) => {
     if (
       entries[0]?.isIntersecting
-      && activeView.value === 'channels'
+      && workspaceMode.value === 'channels'
       && !loadingChannels.value
       && !loadingMoreChannels.value
       && !channelsFinished.value
@@ -902,18 +925,16 @@ const initObservers = () => {
   if (channelTrigger.value) channelObserver.observe(channelTrigger.value)
 }
 
-watch(activeView, async () => {
+watch(workspaceMode, async () => {
   scrollToTop()
-  if (activeView.value === 'channels') {
+  if (workspaceMode.value === 'channels') {
     uiStore.setSearchQuery('subscribed', channelSearch.value)
-  } else if (isFeedView.value) {
-    uiStore.setSearchQuery('subscribed', feedSearch.value)
   } else {
-    uiStore.setSearchQuery('subscribed', '')
+    uiStore.setSearchQuery('subscribed', feedSearch.value)
   }
 
   if (isFeedView.value) {
-    await Promise.all([fetchChannels(true), fetchFeed(true)])
+    await fetchFeed(true)
   } else {
     await fetchChannels(true)
   }
@@ -924,7 +945,7 @@ watch(activeView, async () => {
 watch(site, async () => {
   scrollToTop()
   if (isFeedView.value) {
-    await Promise.all([fetchChannels(true), fetchFeed(true)])
+    await fetchFeed(true)
   } else {
     await fetchChannels(true)
   }
@@ -948,25 +969,32 @@ watch(nsfw, () => {
   if (isFeedView.value) void fetchFeed(true)
 })
 
-watch(librarySpecialOnly, () => {
-  if (activeView.value === 'channels') void fetchChannels(true)
+watch(activityScope, () => {
+  if (workspaceMode.value === 'activity') {
+    scrollToTop()
+    void fetchFeed(true)
+  }
+})
+
+watch(channelScope, () => {
+  if (workspaceMode.value === 'channels') {
+    scrollToTop()
+    void fetchChannels(true)
+  }
 })
 
 watch(() => uiStore.getSearchTrigger('subscribed'), async () => {
   const query = uiStore.getSearchQuery('subscribed').trim()
 
   scrollToTop()
-  if (activeView.value === 'channels') {
+  if (workspaceMode.value === 'channels') {
     channelSearch.value = query
     await fetchChannels(true)
     return
   }
 
-  const viewChanged = activeView.value !== 'activity'
   feedSearch.value = query
-  activeView.value = 'activity'
-
-  if (!viewChanged) await fetchFeed(true)
+  await fetchFeed(true)
 })
 
 watch(contentScroll, () => {
@@ -975,7 +1003,7 @@ watch(contentScroll, () => {
 
 onMounted(async () => {
   await Promise.all([fetchSites(), loadUserSettings()])
-  await Promise.all([fetchChannels(true), fetchFeed(true)])
+  await Promise.all([fetchFeed(true), fetchWorkspaceCounts()])
   await nextTick()
   initObservers()
 })
@@ -988,7 +1016,7 @@ onUnmounted(() => {
 
 <style scoped>
 .subscription-page {
-  --subscription-content-width: 88rem;
+  --subscription-content-width: var(--app-content-media-max);
   display: flex;
   width: 100%;
   height: 100%;
@@ -997,30 +1025,51 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.subscription-control-bar {
-  min-height: 3.5rem;
-  flex: none;
-  border-bottom: 1px solid var(--app-hairline);
-}
-
-.subscription-control-bar__inner {
-  display: flex;
-  width: min(100%, var(--subscription-content-width));
-  min-height: 3.5rem;
-  margin: 0 auto;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-5);
-  padding: 0 var(--space-6);
+.subscription-page :deep(.app-toolbar-frame__inner) {
+  max-width: var(--subscription-content-width);
 }
 
 .subscription-toolbar {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.subscription-toolbar__navigation,
+.subscription-toolbar__actions {
   display: flex;
   min-width: 0;
   min-height: 0;
   flex: none;
   align-items: center;
   gap: var(--space-2);
+}
+
+.subscription-toolbar__navigation {
+  overflow-x: auto;
+  padding-inline: 0.125rem;
+  scrollbar-width: none;
+}
+
+.subscription-toolbar__navigation::-webkit-scrollbar {
+  display: none;
+}
+
+.subscription-toolbar__divider {
+  width: 1px;
+  height: 1.25rem;
+  flex: none;
+  margin-inline: var(--space-1);
+  background: var(--app-hairline);
+}
+
+.subscription-toolbar__scope-count {
+  margin-left: 0.25rem;
+  color: hsl(var(--destructive));
+  font-size: var(--app-text-badge-size);
 }
 
 .subscription-toolbar__icon-action {
@@ -1060,7 +1109,7 @@ onUnmounted(() => {
 
 .subscription-workspace {
   position: relative;
-  display: block;
+  display: flex;
   min-height: 0;
   flex: 1 1 auto;
   overflow: hidden;
@@ -1071,8 +1120,13 @@ onUnmounted(() => {
   height: 100%;
   min-width: 0;
   min-height: 0;
+  flex: 1 1 auto;
   overflow-y: auto;
   scrollbar-gutter: stable;
+}
+
+.subscription-inspector-backdrop {
+  display: none;
 }
 
 .subscription-content__empty {
@@ -1102,41 +1156,45 @@ onUnmounted(() => {
 }
 
 .subscription-feed-day + .subscription-feed-day {
-  margin-top: var(--space-8);
+  margin-top: var(--space-9);
+}
+
+.subscription-feed-day {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
 }
 
 .subscription-feed-day__header {
+  position: sticky;
+  top: var(--space-4);
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-4);
-  border-bottom: 1px solid var(--app-hairline);
-  padding-bottom: var(--space-3);
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding-top: var(--space-4);
 }
 
 .subscription-feed-day__header h2 {
   color: hsl(var(--foreground));
   font-family: var(--app-heading-font);
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
 }
 
 .subscription-feed-day__header span {
   color: hsl(var(--muted-foreground) / 0.64);
   font-size: 0.6875rem;
-  font-weight: 500;
+  font-weight: 550;
 }
 
 .subscription-feed-day__items {
   min-width: 0;
-}
-
-@media (min-width: 1500px) {
-  .subscription-feed-day__items {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: var(--space-6);
-  }
+  width: min(100%, 82rem);
+  border-top: 1px solid var(--app-hairline);
 }
 
 .subscription-feed-day__items > * + * {
@@ -1190,15 +1248,80 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1200px) {
-  .subscription-control-bar__inner {
+  .subscription-toolbar {
     gap: var(--space-3);
-    padding-inline: var(--space-4);
   }
 
   .subscription-feed,
   .subscription-feed-skeletons,
   .subscription-list-view {
     padding-inline: var(--space-4);
+  }
+
+  .subscription-feed-day {
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+@media (max-width: 1180px) {
+  .subscription-inspector-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-content);
+    display: block;
+    border: 0;
+    background: hsl(var(--foreground) / 0.12);
+    cursor: default;
+  }
+}
+
+@media (max-width: 900px) {
+  .subscription-toolbar__add {
+    width: 2rem;
+    overflow: hidden;
+    padding-inline: 0.4375rem;
+    white-space: nowrap;
+  }
+
+  .subscription-channel-table {
+    --subscription-table-columns:
+      minmax(12rem, 1fr)
+      4rem
+      4rem
+      minmax(6.5rem, 7.5rem)
+      1.75rem;
+  }
+
+  .subscription-channel-table__header > :nth-child(4),
+  .subscription-channel-table :deep(.subscription-row__updated) {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .subscription-feed-day {
+    display: block;
+  }
+
+  .subscription-feed-day__header {
+    position: static;
+    align-items: baseline;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 0 0 var(--space-3);
+  }
+}
+
+@media (max-width: 640px) {
+  .subscription-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .subscription-toolbar__actions {
+    justify-content: flex-end;
   }
 
 }

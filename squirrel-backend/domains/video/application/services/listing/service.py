@@ -791,7 +791,7 @@ class VideoListService:
         - PG keyset: Video ⨝ SubscriptionVideo ⨝ UserSubscription(归属校验)
           按 sort_by(publish_date/created_at)DESC, id DESC;publish_date 边界由 category 决定(preview 取未来)
         - 取出 video_ids 后走 filter_recalled_ids 做 nsfw/special/content_type + unread EXISTS 过滤
-          (category 透传:unread 仍需 NOT EXISTS VideoHistory,all/preview 不需)
+          (category 透传:unread 排除 is_read=true 的 VideoHistory,all/preview 不需)
         - has_more 看 PG keyset 是否还有更多,与 user-state/special-follow 一致
         """
         fetch_limit = max(page_size * _RECALL_BUFFER_FACTOR, 20)

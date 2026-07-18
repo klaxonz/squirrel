@@ -3,7 +3,6 @@
     <button
       v-for="option in options"
       :key="option.value"
-
       type="button"
       class="app-section-nav__item"
       :class="{ 'is-active': modelValue === option.value }"
@@ -22,7 +21,6 @@
 </template>
 
 <script setup lang="ts">
-
 export interface AppSectionNavOption {
   value: string | number
   label: string
@@ -78,7 +76,8 @@ const selectOption = (value: string | number) => {
   transition: color var(--duration-fast) var(--ease-default);
 }
 
-.app-section-nav__item:hover {
+.app-section-nav__item:hover,
+.app-section-nav__item.is-active {
   color: hsl(var(--foreground));
 }
 
@@ -89,7 +88,6 @@ const selectOption = (value: string | number) => {
 }
 
 .app-section-nav__item.is-active {
-  color: hsl(var(--foreground));
   font-weight: 620;
 }
 
@@ -100,7 +98,7 @@ const selectOption = (value: string | number) => {
   left: 0;
   height: 2px;
   border-radius: 999px;
-  background: hsl(var(--foreground) / 0.72);
+  background: hsl(var(--primary));
   content: '';
 }
 

@@ -6,10 +6,14 @@
     :showAvatar="showChannelAvatar"
     :sortBy="sortBy"
     :refreshing="loading && videos.length > 0"
+    :presentation="presentation"
+    :interaction="interaction"
+    :selected-video-id="selectedVideoId"
     @loadMore="loadMore"
     @openModal="(video) => emit('openModal', video, videos)"
     @goToProfile="(profile) => emit('goToProfile', profile)"
     @goToSubscription="(id) => emit('goToSubscription', id)"
+    @selectVideo="(video) => emit('selectVideo', video)"
   />
 </template>
 
@@ -19,7 +23,7 @@ import VideoList from './VideoList.vue'
 import { useLatestVideos } from '@/features/video/composables/useLatestVideos'
 import type { FeedFilters } from '@/features/video/composables/useFeedFilters'
 
-const emit = defineEmits(['openModal', 'goToProfile', 'goToSubscription', 'loading-change', 'error', 'loaded'])
+const emit = defineEmits(['openModal', 'goToProfile', 'goToSubscription', 'selectVideo', 'loading-change', 'error', 'loaded'])
 
 const props = defineProps<{
   filters?: FeedFilters
@@ -33,7 +37,13 @@ const props = defineProps<{
   duration?: string
   contentType?: string
   special?: string
+  presentation?: 'standard' | 'workbench'
+  interaction?: 'open' | 'select'
+  selectedVideoId?: string | number | null
 }>()
+
+const presentation = computed(() => props.presentation ?? 'standard')
+const interaction = computed(() => props.interaction)
 
 const currentFilters = computed(() => ({
   tab: props.filters?.tab ?? props.activeTab ?? 'all',

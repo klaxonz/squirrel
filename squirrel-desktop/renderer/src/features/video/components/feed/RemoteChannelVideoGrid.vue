@@ -25,7 +25,7 @@
         @keydown.enter.prevent="$emit('open', item)"
         @keydown.space.prevent="$emit('open', item)"
       >
-        <div class="remote-channel-video-thumb group-hover:brightness-110">
+        <div class="remote-channel-video-thumb">
           <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" />
           <span v-if="item.duration" class="app-media-duration-badge app-mono">
             {{ formatDuration(item.duration) }}
@@ -197,15 +197,14 @@ onUnmounted(() => {
 
 .remote-channel-video-card:hover .remote-channel-video-thumb,
 .remote-channel-video-card:focus-visible .remote-channel-video-thumb {
-  /* Soft lift only — no amber outline ring (matches VideoItem). */
-  box-shadow: var(--shadow-card-hover);
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 
 .remote-channel-video-card:focus-visible .remote-channel-video-thumb {
   box-shadow:
     0 0 0 2px hsl(var(--background)),
     0 0 0 4px hsl(var(--ring) / 0.45),
-    var(--shadow-card-hover);
+    inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 
 .remote-channel-video-title {

@@ -49,16 +49,16 @@ withDefaults(defineProps<{
 <style scoped>
 .music-detail-header {
   display: flex;
-  align-items: flex-end;
-  gap: var(--space-5);
+  align-items: center;
+  gap: var(--space-4);
   margin-bottom: var(--space-6);
   padding-bottom: var(--space-5);
   border-bottom: 1px solid var(--app-hairline);
 }
 
 .music-detail-cover {
-  width: 11rem;
-  height: 11rem;
+  width: 7.5rem;
+  height: 7.5rem;
   flex: none;
   overflow: hidden;
   border: 1px solid var(--app-surface-border-subtle);
@@ -99,8 +99,7 @@ withDefaults(defineProps<{
   font-size: 0.75rem;
   font-weight: 650;
   line-height: 1.25;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .music-detail-title {
@@ -152,8 +151,8 @@ withDefaults(defineProps<{
   }
 
   .music-detail-cover {
-    width: 9rem;
-    height: 9rem;
+    width: 7.5rem;
+    height: 7.5rem;
   }
 }
 </style>

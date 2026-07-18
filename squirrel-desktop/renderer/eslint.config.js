@@ -250,6 +250,13 @@ export default tseslint.config(
       // compiler covers undefined identifiers — per typescript-eslint guidance.
       'no-undef': 'off',
       'vue/no-mutating-props': 'error',
+      // Unresolved PascalCase tags silently become native custom elements in
+      // production. Keep router's globally registered primitives allowlisted,
+      // and require every product component used by a template to be imported.
+      'vue/no-undef-components': [
+        'error',
+        { ignorePatterns: ['router-view', 'router-link', 'RouterView', 'RouterLink'] },
+      ],
       // ponytail: no-dupe-keys is an Options-API rule; it false-positives on
       // composable return destructures in <script setup>.
       'vue/no-dupe-keys': 'off',

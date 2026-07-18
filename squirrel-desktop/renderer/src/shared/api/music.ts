@@ -757,18 +757,6 @@ export const getMusicRankDetail = (rank_id: string) => {
   }>('rankDetail', '/api/music/rank/detail', { rank_id })
 }
 
-export const getMusicBanner = () => {
-  return musicGet<{
-    items: Array<{
-      id: string
-      title: string
-      cover: string
-      type: string
-      target_id: string
-    }>
-  }>('banner', '/api/music/banner')
-}
-
 export const searchMusicComplex = (query: string) => {
   return musicGet<{
     songs: MusicTrack[]

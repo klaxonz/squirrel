@@ -250,3 +250,51 @@ def test_list_subscriptions_disables_pagination_unique(monkeypatch):
     assert subscriptions == []
     assert total == 0
     assert captured['unique'] is False
+
+
+def test_list_subscriptions_filters_sync_issues_server_side():
+    svc = SubscriptionListService(
+        session_factory=_make_service().session_factory,
+        get_user_config=lambda _user_id: {'showNsfw': True},
+    )
+    with svc.session_factory() as session:
+        session.add_all(
+            [
+                Subscription(id=21, type='CHANNEL', name='Healthy', url='https://example.com/healthy'),
+                Subscription(id=22, type='CHANNEL', name='Failed', url='https://example.com/failed'),
+                Subscription(id=23, type='CHANNEL', name='Error detail', url='https://example.com/error'),
+                UserSubscription(user_id=7, subscription_id=21, is_deleted=False),
+                UserSubscription(user_id=7, subscription_id=22, is_deleted=False),
+                UserSubscription(user_id=7, subscription_id=23, is_deleted=False),
+                SubscriptionSyncState(
+                    subscription_id=21,
+                    sync_mode='incremental',
+                    sync_status='success',
+                ),
+                SubscriptionSyncState(
+                    subscription_id=22,
+                    sync_mode='incremental',
+                    sync_status='failed',
+                ),
+                SubscriptionSyncState(
+                    subscription_id=23,
+                    sync_mode='incremental',
+                    sync_status='success',
+                    last_error='extractor failed',
+                ),
+            ],
+        )
+        session.commit()
+
+    subscriptions, total = svc.list_subscriptions(
+        user_id=7,
+        query=None,
+        type=None,
+        nsfw='all',
+        page=1,
+        page_size=20,
+        status='issues',
+    )
+
+    assert total == 2
+    assert {item['name'] for item in subscriptions} == {'Failed', 'Error detail'}

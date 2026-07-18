@@ -37,12 +37,15 @@ class VideoListPageLoader:
         video_map = {video.id: video for video in videos}
 
         history_rows = session.execute(
-            select(VideoHistory.video_id, VideoHistory.last_position).where(
+            select(VideoHistory.video_id, VideoHistory.last_position, VideoHistory.is_read).where(
                 VideoHistory.user_id == user_id,
                 VideoHistory.video_id.in_(video_ids),
             ),
         ).all()
-        history_map = {row.video_id: row.last_position for row in history_rows}
+        history_map = {
+            row.video_id: (row.last_position, row.is_read)
+            for row in history_rows
+        }
 
         # One row per user/video: like (1) / dislike (2) / later (3) are mutually exclusive.
         interaction_rows = session.execute(
@@ -70,8 +73,7 @@ class VideoListPageLoader:
             video = video_map.get(video_id)
             if not video:
                 continue
-            # "Read" matches list filters: any history row for this user/video.
-            is_read = video.id in history_map
+            history_state = history_map.get(video.id)
             video_list.append(
                 {
                     'id': video.id,
@@ -79,8 +81,8 @@ class VideoListPageLoader:
                     'url': video.url,
                     'thumbnail': thumbnail_map.get(video.id),
                     'duration': video.duration,
-                    'last_position': history_map.get(video.id, 0),
-                    'is_read': is_read,
+                    'last_position': history_state[0] if history_state else 0,
+                    'is_read': history_state[1] if history_state else False,
                     'interaction_type': interaction_map.get(video.id),
                     'uploaded_at': video.publish_date.strftime('%Y-%m-%d %H:%M:%S') if video.publish_date else None,
                     'created_at': video.created_at.strftime('%Y-%m-%d %H:%M:%S'),

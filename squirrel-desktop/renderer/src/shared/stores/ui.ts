@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia'
 import { reactive, ref } from 'vue'
 
+export type VideoDensity = 'compact' | 'comfortable' | 'large'
+type VideoViewMode = 'grid' | 'list'
+type VideoViewPreference = { viewMode: VideoViewMode; density: VideoDensity }
+
 export const useUIStore = defineStore('ui', () => {
   const SIDEBAR_OPEN_KEY = 'ui.sidebarOpen'
   const readPersistedSidebarOpen = (): boolean => {
@@ -15,11 +19,33 @@ export const useUIStore = defineStore('ui', () => {
   const homeSearchMode = ref<'local' | 'remote'>('local')
 
   const VIEW_MODE_KEY = 'ui.viewMode'
-  const readPersistedViewMode = (): 'grid' | 'list' => {
+  const readPersistedViewMode = (): VideoViewMode => {
     if (typeof localStorage === 'undefined') return 'grid'
     return localStorage.getItem(VIEW_MODE_KEY) === 'list' ? 'list' : 'grid'
   }
   const viewMode = ref<'grid' | 'list'>(readPersistedViewMode())
+  const VIDEO_DENSITY_KEY = 'ui.videoDensity'
+  const readPersistedVideoDensity = (): VideoDensity => {
+    if (typeof localStorage === 'undefined') return 'comfortable'
+    const value = localStorage.getItem(VIDEO_DENSITY_KEY)
+    return value === 'compact' || value === 'large' ? value : 'comfortable'
+  }
+  const videoDensity = ref<VideoDensity>(readPersistedVideoDensity())
+  const VIDEO_VIEW_PREFERENCES_KEY = 'ui.videoViewPreferences'
+  const readVideoViewPreferences = (): Record<string, VideoViewPreference> => {
+    if (typeof localStorage === 'undefined') return {}
+    try {
+      const parsed = JSON.parse(localStorage.getItem(VIDEO_VIEW_PREFERENCES_KEY) || '{}') as Record<string, Partial<VideoViewPreference>>
+      return Object.fromEntries(Object.entries(parsed).flatMap(([key, value]) => {
+        const validMode = value.viewMode === 'grid' || value.viewMode === 'list'
+        const validDensity = value.density === 'compact' || value.density === 'comfortable' || value.density === 'large'
+        return validMode && validDensity ? [[key, { viewMode: value.viewMode!, density: value.density! }]] : []
+      }))
+    } catch {
+      return {}
+    }
+  }
+  const videoViewPreferences = reactive<Record<string, VideoViewPreference>>(readVideoViewPreferences())
 
   const toggleSidebar = () => {
     isSidebarOpen.value = !isSidebarOpen.value
@@ -60,9 +86,29 @@ export const useUIStore = defineStore('ui', () => {
     homeSearchMode.value = mode
   }
 
-  const setViewMode = (mode: 'grid' | 'list') => {
+  const persistVideoViewPreference = (key: string) => {
+    if (!key || typeof localStorage === 'undefined') return
+    videoViewPreferences[key] = { viewMode: viewMode.value, density: videoDensity.value }
+    localStorage.setItem(VIDEO_VIEW_PREFERENCES_KEY, JSON.stringify(videoViewPreferences))
+  }
+
+  const applyVideoViewPreference = (key: string) => {
+    const preference = videoViewPreferences[key]
+    if (!preference) return
+    viewMode.value = preference.viewMode
+    videoDensity.value = preference.density
+  }
+
+  const setViewMode = (mode: VideoViewMode, preferenceKey?: string) => {
     viewMode.value = mode
     if (typeof localStorage !== 'undefined') localStorage.setItem(VIEW_MODE_KEY, mode)
+    if (preferenceKey) persistVideoViewPreference(preferenceKey)
+  }
+
+  const setVideoDensity = (density: VideoDensity, preferenceKey?: string) => {
+    videoDensity.value = density
+    if (typeof localStorage !== 'undefined') localStorage.setItem(VIDEO_DENSITY_KEY, density)
+    if (preferenceKey) persistVideoViewPreference(preferenceKey)
   }
 
   const setVideoWidescreen = (enabled: boolean) => {
@@ -80,6 +126,7 @@ export const useUIStore = defineStore('ui', () => {
     isVideoSidebarOpen,
     homeSearchMode,
     viewMode,
+    videoDensity,
     toggleSidebar,
     setSidebarOpen,
     restorePersistedSidebarOpen,
@@ -89,6 +136,8 @@ export const useUIStore = defineStore('ui', () => {
     triggerSearch,
     setHomeSearchMode,
     setViewMode,
+    setVideoDensity,
+    applyVideoViewPreference,
     setVideoWidescreen
   }
 })

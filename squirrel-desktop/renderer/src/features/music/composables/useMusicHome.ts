@@ -1,6 +1,5 @@
 import { ref } from 'vue'
 import {
-  getMusicBanner,
   getMusicRanks,
   getMusicPlaylists,
   getMusicPlaylistTags,
@@ -19,8 +18,6 @@ import {
 import { Logger } from '@/shared/lib/logger'
 
 export function useMusicHome() {
-  const banners = ref<Array<{ id: string; title: string; cover: string }>>([])
-  const bannerLoading = ref(false)
   const ranks = ref<MusicRank[]>([])
   const ranksLoading = ref(false)
   const playlists = ref<MusicPlaylist[]>([])
@@ -40,7 +37,6 @@ export function useMusicHome() {
 
   async function loadHomeData() {
     await Promise.all([
-      loadBanners(),
       loadRanks(),
       loadPlaylists(),
       loadNewAlbums(),
@@ -52,19 +48,6 @@ export function useMusicHome() {
   // + `if (error) { log; reset; return }` boilerplate collapses to a try/catch
   // where the catch resets the section to empty. Loaders stay silent on failure
   // (a failed section just renders empty; the view's empty state takes over).
-  async function loadBanners() {
-    bannerLoading.value = true
-    try {
-      const data = await getMusicBanner()
-      banners.value = data?.items || []
-    } catch (err) {
-      Logger.warn('loadBanners failed', err)
-      banners.value = []
-    } finally {
-      bannerLoading.value = false
-    }
-  }
-
   async function loadRanks() {
     ranksLoading.value = true
     try {
@@ -208,7 +191,6 @@ export function useMusicHome() {
   }
 
   return {
-    banners, bannerLoading,
     ranks, ranksLoading,
     playlists, playlistsLoading, playlistTags, selectedPlaylistCategory, playlistHasMore,
     newAlbums, newAlbumsLoading,

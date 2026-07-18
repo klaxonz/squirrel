@@ -21,7 +21,7 @@
     </div>
 
     <div v-else-if="profile" class="music-profile-layout">
-      <header class="music-profile-banner">
+      <header class="music-profile-header">
         <div class="music-profile-identity">
           <div class="music-profile-avatar-wrap">
             <img
@@ -36,7 +36,7 @@
             <span v-if="profile?.level" class="music-profile-level-badge">LV.{{ profile.level }}</span>
           </div>
 
-          <div class="music-profile-banner-info">
+          <div class="music-profile-header-info">
             <div class="music-profile-name-row">
               <h2 class="music-profile-nickname">{{ profileName }}</h2>
               <span v-if="profile?.gender" class="music-gender-tag">
@@ -51,7 +51,7 @@
           </div>
         </div>
 
-        <div class="music-profile-banner-stats" aria-label="账号统计">
+        <div class="music-profile-header-stats" aria-label="账号统计">
           <div class="music-profile-stat-item">
             <span class="music-profile-stat-num">{{ profile?.follow_count ?? 0 }}</span>
             <span class="music-profile-stat-name">关注</span>
@@ -327,15 +327,15 @@ watch(activeTab, (tab) => {
   gap: var(--space-5);
 }
 
-.music-profile-banner {
+.music-profile-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 2rem;
-  min-height: 6.25rem;
-  padding: 1.125rem 1.5rem;
-  border-block: 1px solid hsl(var(--border) / 0.24);
-  background: linear-gradient(180deg, hsl(var(--muted) / 0.18), transparent);
+  min-height: 5rem;
+  padding: 0 0 var(--space-4);
+  border-bottom: 1px solid var(--app-hairline);
+  background: transparent;
 }
 
 .music-profile-identity {
@@ -351,17 +351,17 @@ watch(activeTab, (tab) => {
 }
 
 .music-profile-avatar {
-  width: 4rem;
-  height: 4rem;
-  border-radius: 1rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--app-surface-radius);
   object-fit: cover;
   border: 1px solid hsl(var(--border) / 0.36);
 }
 
 .music-profile-avatar-fallback {
-  width: 4rem;
-  height: 4rem;
-  border-radius: 1rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--app-surface-radius);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -383,7 +383,7 @@ watch(activeTab, (tab) => {
   border-radius: 0.375rem;
 }
 
-.music-profile-banner-info {
+.music-profile-header-info {
   flex: 1 1 auto;
   min-width: 0;
   text-align: left;
@@ -460,7 +460,7 @@ watch(activeTab, (tab) => {
   color: hsl(var(--foreground));
 }
 
-.music-profile-banner-stats {
+.music-profile-header-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(4.75rem, 1fr));
   gap: 0;
@@ -635,12 +635,12 @@ watch(activeTab, (tab) => {
 }
 
 @media (max-width: 860px) {
-  .music-profile-banner {
+  .music-profile-header {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 1rem;
   }
 
-  .music-profile-banner-stats {
+  .music-profile-header-stats {
     grid-column: 1 / -1;
     width: 100%;
     min-width: 0;

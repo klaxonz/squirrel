@@ -106,6 +106,7 @@ def list_subscriptions(
         params.page_size,
         domains,
         params.special,
+        params.status,
     )
     return response.success(
         {

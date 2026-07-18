@@ -38,9 +38,7 @@ defineEmits<{
 <style scoped>
 .music-rank-list {
   overflow: hidden;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--radius-lg);
-  background: hsl(var(--card) / 0.38);
+  border-block: 1px solid var(--app-surface-border-subtle);
 }
 
 .music-rank-item {

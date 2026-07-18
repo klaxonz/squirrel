@@ -100,19 +100,6 @@
         </div>
 
         <div v-else-if="activePlaylist" class="playlist-workspace">
-          <section class="playlist-command-strip">
-            <div class="playlist-command-strip__copy">
-              <span class="playlist-command-strip__eyebrow">{{ activePlaylistKindLabel }}</span>
-              <p v-if="activePlaylist.description">{{ activePlaylist.description }}</p>
-              <p v-else>按添加顺序管理这个播放列表中的视频。</p>
-            </div>
-            <div class="playlist-command-strip__meta">
-              <span>{{ activePlaylistItems.length }} 个视频</span>
-              <span>{{ activePlaylistDurationLabel }}</span>
-              <span>{{ activePlaylistUpdatedLabel }} 更新</span>
-            </div>
-          </section>
-
           <section class="playlist-table">
             <header class="playlist-table-toolbar">
               <div>
@@ -318,13 +305,6 @@ const activePlaylistDurationSeconds = computed(() => (
 const activePlaylistDurationLabel = computed(() => (
   activePlaylistDurationSeconds.value ? formatDuration(activePlaylistDurationSeconds.value) : '暂无时长'
 ))
-const activePlaylistKindLabel = computed(() => (
-  activePlaylist.value?.is_default ? '默认播放列表' : '自定义播放列表'
-))
-const activePlaylistUpdatedLabel = computed(() => (
-  activePlaylist.value ? formatDate(activePlaylist.value.updated_at) : ''
-))
-
 // ponytail: cached 4-up thumbnail projection lives in usePlaylistThumbnails.
 // Only the active playlist has its items loaded in memory; others render a
 // placeholder until opened.
@@ -515,52 +495,6 @@ onMounted(async () => {
   flex-direction: column;
   gap: var(--space-4);
   width: 100%;
-}
-
-.playlist-command-strip {
-  display: flex;
-  min-height: 3.25rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-5);
-  border-bottom: 1px solid var(--app-hairline);
-  padding-bottom: var(--space-4);
-}
-
-.playlist-command-strip__copy {
-  display: grid;
-  min-width: 0;
-  gap: 0.25rem;
-}
-
-.playlist-command-strip__eyebrow {
-  color: hsl(var(--foreground));
-  font-size: 0.8125rem;
-  font-weight: 650;
-  line-height: 1.25;
-}
-
-.playlist-command-strip__copy p,
-.playlist-command-strip__meta {
-  margin: 0;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.playlist-command-strip__meta {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: var(--space-3);
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.playlist-command-strip__meta span + span {
-  border-left: 1px solid var(--app-hairline);
-  padding-left: var(--space-3);
 }
 
 .playlist-table {
@@ -755,11 +689,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 1280px) {
-  .playlist-command-strip {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
   .playlist-table-head,
   .playlist-item {
     grid-template-columns: 2.75rem minmax(0, 1fr) 2rem;

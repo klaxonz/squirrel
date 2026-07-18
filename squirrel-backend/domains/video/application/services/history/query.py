@@ -28,6 +28,7 @@ def _recall_video_ids_for_history(query: str | None) -> list[int]:
 def build_history_conditions(user_id: int, filters: dict, effective_nsfw: str) -> list[Any] | None:
     conditions = [
         VideoHistory.user_id == user_id,
+        VideoHistory.has_playback.is_(True),
         exists(
             select(1).select_from(Video).where(Video.id == VideoHistory.video_id),
         ),

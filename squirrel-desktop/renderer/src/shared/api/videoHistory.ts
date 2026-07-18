@@ -17,6 +17,13 @@ export const batchUpdateVideoHistory = async (reports: VideoHistoryReport[] = []
   return post('/api/video-history/batch-update', { reports })
 }
 
+export const updateVideoReadState = async (videoId: number, isRead: boolean) => {
+  return post('/api/video-history/read-state', {
+    video_id: videoId,
+    is_read: isRead,
+  })
+}
+
 export const listVideoHistory = async (params: Record<string, unknown> = {}) => {
   return get<VideoHistoryListResponse>('/api/video-history/list', params)
 }

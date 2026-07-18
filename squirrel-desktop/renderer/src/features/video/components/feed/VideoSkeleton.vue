@@ -3,6 +3,7 @@
     :class="[
       layout === 'list' ? 'flex flex-row gap-4' : 'flex flex-col gap-3',
       'video-skeleton',
+      `video-skeleton--${appearance}`,
     ]"
     :style="{ animationDelay: `${delay}ms` }"
   >
@@ -14,7 +15,12 @@
       ]"
       :style="{ borderRadius: 'var(--radius-xl)' }"
     >
-      <AppSkeleton width="100%" height="100%" rounded="var(--radius-xl)" shimmer />
+      <AppSkeleton
+        width="100%"
+        height="100%"
+        rounded="var(--radius-xl)"
+        shimmer
+      />
     </div>
     <div
       :class="[
@@ -44,10 +50,13 @@
 <script setup lang="ts">
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 
-defineProps<{
+withDefaults(defineProps<{
   delay?: number
   layout?: 'grid' | 'list'
-}>()
+  appearance?: 'default' | 'workbench'
+}>(), {
+  appearance: 'default',
+})
 </script>
 
 <style scoped>

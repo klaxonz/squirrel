@@ -18,13 +18,6 @@ const isDesktop = useDesktopBridge().isDesktop()
 
 <style scoped>
 .auth-layout {
-  --background: 42 22% 95%;
-  --foreground: 228 9% 12%;
-  --card: 42 28% 97%;
-  --control: 42 30% 98%;
-  --border: 228 8% 69%;
-  --muted-foreground: 225 6% 42%;
-
   position: relative;
   display: flex;
   height: 100vh;

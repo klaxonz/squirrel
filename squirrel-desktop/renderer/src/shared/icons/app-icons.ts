@@ -126,8 +126,8 @@ export const APP_ICON_MAP = {
   bookmark: Bookmark,
   bookmarkCheck: BookmarkCheck,
   bookmarkPlus: BookmarkPlus,
-  // `brand` is intentionally not mapped here — the BrandLogo component draws
-  // its own inline SVG (a spiral glyph) and does not need a Lucide fallback.
+  // `brand` is intentionally not mapped here — BrandMark owns the product
+  // glyph and does not need a Lucide fallback.
   breadcrumb: ChevronRight,
   camera: Camera,
   chevronDown: ChevronDown,

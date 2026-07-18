@@ -71,6 +71,7 @@ class VideoDetailLoader:
             'thumbnail': self.thumbnail_downloader.get_thumbnail_url(video.id, video.thumbnail, video.url),
             'interaction_type': video_interaction.interaction_type if video_interaction else None,
             'last_position': video_history.last_position if video_history else 0,
+            'is_read': video_history.is_read if video_history else False,
             'domain': url_helper.extract_top_level_domain(video.url),
             'subscriptions': merge_profiles(subscriptions_data, video_extra_profiles(video, 'subscriptions')),
             'actors': merge_profiles(

@@ -1,5 +1,5 @@
 <template>
-  <section class="feed-toolbar">
+  <section class="feed-toolbar" :class="`feed-toolbar--${variant}`">
     <div class="feed-toolbar__primary">
       <AppSectionNav
         v-if="showTabs"
@@ -159,6 +159,20 @@
           </template>
         </AppSegmentedControl>
 
+        <AppSegmentedControl
+          v-if="variant === 'workbench' && uiStore.viewMode === 'grid'"
+          :model-value="uiStore.videoDensity"
+          :options="densityOptions"
+          aria-label="缩略图密度"
+          size="icon"
+          class="feed-toolbar__density"
+          @update:model-value="handleDensityChange"
+        >
+          <template #option="{ option }">
+            <span class="feed-toolbar__density-mark" :class="`is-${option.value}`" />
+          </template>
+        </AppSegmentedControl>
+
         <Button
           v-if="showRefresh"
           type="button"
@@ -225,6 +239,8 @@ const props = withDefaults(defineProps<{
   duration?: Duration
   contentType?: ContentType
   special?: string
+  variant?: 'default' | 'workbench'
+  preferenceKey?: string
 }>(), {
   activeTab: 'all',
   nsfw: 'all',
@@ -239,6 +255,7 @@ const props = withDefaults(defineProps<{
   duration: 'all',
   contentType: 'all',
   special: 'all',
+  variant: 'default',
 })
 
 const emit = defineEmits([
@@ -317,7 +334,12 @@ const handleSpecialChange = (value: boolean) => {
 
 const handleViewModeChange = (value: string | number) => {
   if (value !== 'grid' && value !== 'list') return
-  uiStore.setViewMode(value)
+  uiStore.setViewMode(value, props.preferenceKey)
+}
+
+const handleDensityChange = (value: string | number) => {
+  if (value !== 'compact' && value !== 'comfortable' && value !== 'large') return
+  uiStore.setVideoDensity(value, props.preferenceKey)
 }
 
 const activeFilterCount = computed(() => {
@@ -348,6 +370,13 @@ const clearAllFilters = () => {
 
 watch(() => props.activeTab, (v) => { localActiveTab.value = v })
 watch(() => props.sortBy, (v) => { localSortBy.value = v })
+watch(
+  () => props.preferenceKey,
+  (key) => {
+    if (key) uiStore.applyVideoViewPreference(key)
+  },
+  { immediate: true },
+)
 watch(localActiveTab, (v) => emit('update:activeTab', v))
 watch(localSortBy, (v) => emit('update:sortBy', v))
 watch(
@@ -373,6 +402,12 @@ const nsfwOptions = NSFW_OPTIONS
 const viewModeOptions = [
   { value: 'grid', label: '网格视图', icon: 'layoutGrid' },
   { value: 'list', label: '列表视图', icon: 'list' },
+] as const
+
+const densityOptions = [
+  { value: 'compact', label: '紧凑缩略图' },
+  { value: 'comfortable', label: '标准缩略图' },
+  { value: 'large', label: '大缩略图' },
 ] as const
 </script>
 
@@ -442,6 +477,52 @@ const viewModeOptions = [
 .feed-filter-all-icon :deep(svg) {
   width: 0.8125rem;
   height: 0.8125rem;
+}
+
+.feed-toolbar--workbench {
+  min-height: 2.75rem;
+  gap: 1rem;
+}
+
+.feed-toolbar--workbench .feed-toolbar__primary {
+  gap: 1rem;
+}
+
+.feed-toolbar--workbench .feed-toolbar__actions {
+  gap: 0.375rem;
+}
+
+.feed-toolbar__density-mark {
+  display: block;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+}
+
+.feed-toolbar__density-mark.is-compact {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.feed-toolbar__density-mark.is-comfortable {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.feed-toolbar__density-mark.is-large {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+@media (max-width: 980px) {
+  .feed-toolbar--workbench {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .feed-toolbar--workbench .feed-toolbar__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 
 </style>

@@ -2,6 +2,10 @@
   <AppPageShell class="site-runtime-page" variant="compact" surface="operate" width="table">
     <AppToolbarFrame bordered compact sticky>
       <div class="site-runtime-toolbar">
+        <div class="site-runtime-toolbar__identity">
+          <h1>站点</h1>
+          <span>{{ displaySiteRuntimes.length }} 个来源</span>
+        </div>
         <div class="site-runtime-toolbar__actions">
           <Button
             as="label"
@@ -56,11 +60,6 @@
     </AppToolbarFrame>
 
     <div class="app-page-content app-page-content--media site-runtime-page__content">
-      <header class="site-runtime-page__intro">
-        <h1>站点</h1>
-        <p>管理内容来源、登录状态和桌面会话。</p>
-      </header>
-
       <SiteRuntimeGrid
         :runtimes="displaySiteRuntimes"
         :loading="isInitialLoading"
@@ -489,7 +488,7 @@ const {
 
 /**
  * On enter, restore cache; if nothing has been tested yet, run a light
- * connectivity probe so cards are not stuck on permanent「未检测」. Full login
+ * connectivity probe so rows are not stuck on permanent「未检测」. Full login
  * probes stay behind the explicit「全量检测」CTA (avoid thrash / captcha storms).
  */
 const autoProbeConnectivityIfEmpty = async () => {
@@ -533,8 +532,28 @@ onMounted(() => {
   min-width: 0;
   min-height: 2.5rem;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: var(--space-5);
+}
+
+.site-runtime-toolbar__identity {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.site-runtime-toolbar__identity h1 {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-family: var(--app-heading-font);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.site-runtime-toolbar__identity span {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
 }
 
 .site-runtime-toolbar__actions {
@@ -574,27 +593,6 @@ onMounted(() => {
   gap: var(--space-4);
   padding-top: var(--space-5);
   padding-bottom: var(--space-8);
-}
-
-.site-runtime-page__intro {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.site-runtime-page__intro h1 {
-  margin: 0;
-  color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: 1.25rem;
-  font-weight: 650;
-  line-height: 1.3;
-}
-
-.site-runtime-page__intro p {
-  margin: 0;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
-  line-height: 1.5;
 }
 
 </style>

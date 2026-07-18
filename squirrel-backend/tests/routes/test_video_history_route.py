@@ -67,3 +67,27 @@ def test_clear_history_uses_current_user_id():
     assert response.status_code == 200
     assert response.json()['code'] == 0
     assert captured == {'user_id': 7, 'video_ids': [1, 2]}
+
+
+def test_update_read_state_forwards_explicit_state_to_service():
+    captured = {}
+
+    class FakeVideoHistoryService:
+        @staticmethod
+        def set_read_state(user_id, video_id, is_read):
+            captured.update(user_id=user_id, video_id=video_id, is_read=is_read)
+
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_current_user] = lambda: type('User', (), {'id': 7})()
+    app.dependency_overrides[get_video_history_service] = lambda: FakeVideoHistoryService()
+    client = TestClient(app)
+
+    response = client.post(
+        '/api/video-history/read-state',
+        json={'video_id': 42, 'is_read': False},
+    )
+
+    assert response.status_code == 200
+    assert response.json()['code'] == 0
+    assert captured == {'user_id': 7, 'video_id': 42, 'is_read': False}

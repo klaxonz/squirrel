@@ -363,7 +363,7 @@ const {
 .music-track-playing i {
   width: 3px;
   height: 100%;
-  background: linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.7) 100%);
+  background: hsl(var(--primary));
   border-radius: 1px;
   animation: track-playing 0.6s ease-in-out infinite;
 }

@@ -21,7 +21,16 @@ pytestmark = [pytest.mark.anyio]
 @pytest.fixture
 def engine():
     engine = create_engine('sqlite:///:memory:')
-    Base.metadata.create_all(engine)
+    Base.metadata.create_all(
+        engine,
+        tables=[
+            Video.__table__,
+            VideoHistory.__table__,
+            Subscription.__table__,
+            SubscriptionVideo.__table__,
+            UserSubscription.__table__,
+        ],
+    )
     return engine
 
 
@@ -72,6 +81,8 @@ def _seed_history(engine, histories):
             if existing:
                 existing.end_time = item['end_time']
                 existing.last_position = item.get('last_position', existing.last_position)
+                existing.is_read = item.get('is_read', existing.is_read)
+                existing.has_playback = item.get('has_playback', existing.has_playback)
                 existing.created_at = item.get('history_created_at', existing.created_at)
                 existing.updated_at = item.get('history_updated_at', existing.updated_at)
             else:
@@ -83,6 +94,8 @@ def _seed_history(engine, histories):
                     duration=item.get('history_duration', 0),
                     watch_duration=item.get('watch_duration', 0),
                     last_position=item.get('last_position', 0),
+                    is_read=item.get('is_read', True),
+                    has_playback=item.get('has_playback', True),
                     created_at=item.get('history_created_at', item['end_time']),
                     updated_at=item.get('history_updated_at', item['end_time']),
                 )
@@ -356,6 +369,96 @@ def test_update_history_merges_duplicate_rows_for_same_video(engine, svc):
     result = svc.list_histories(1, {}, 1, 20)
     assert result['total'] == 1
     assert result['items'][0]['last_position'] == 30
+
+
+def test_mark_read_creates_zero_progress_state_without_faking_playback(engine, svc):
+    _seed_videos(engine, [{'video_id': 11, 'domain': 'example.com'}])
+
+    svc.set_read_state(1, 11, True)
+
+    history = svc.get_video_history(1, 11)
+    assert history is not None
+    assert history.is_read is True
+    assert history.has_playback is False
+    assert history.last_position == 0
+    assert svc.list_histories(1, {}, 1, 20)['total'] == 0
+
+
+def test_mark_unread_preserves_existing_progress_and_history(engine, svc):
+    _seed_history(
+        engine,
+        [
+            {
+                'video_id': 12,
+                'domain': 'example.com',
+                'end_time': datetime(2024, 6, 1),
+                'last_position': 42,
+            },
+        ],
+    )
+
+    svc.set_read_state(1, 12, False)
+
+    history = svc.get_video_history(1, 12)
+    assert history is not None
+    assert history.is_read is False
+    assert history.has_playback is True
+    assert history.last_position == 42
+    assert svc.list_histories(1, {}, 1, 20)['total'] == 1
+
+
+def test_new_playback_report_marks_unread_video_read_again(engine, svc):
+    _seed_history(
+        engine,
+        [
+            {
+                'video_id': 13,
+                'domain': 'example.com',
+                'end_time': datetime(2024, 6, 1),
+                'last_position': 42,
+                'is_read': False,
+            },
+        ],
+    )
+
+    svc.update_history(
+        1,
+        HistoryCreate(
+            video_id=13,
+            timestamp=int(datetime(2024, 6, 2).timestamp() * 1000),
+            last_position=43,
+        ),
+    )
+
+    history = svc.get_video_history(1, 13)
+    assert history is not None
+    assert history.is_read is True
+    assert history.has_playback is True
+    assert history.last_position == 43
+
+
+def test_clear_history_preserves_read_state_without_leaving_watch_history(engine, svc):
+    _seed_history(
+        engine,
+        [
+            {
+                'video_id': 14,
+                'domain': 'example.com',
+                'end_time': datetime(2024, 6, 1),
+                'last_position': 42,
+                'is_read': True,
+            },
+        ],
+    )
+
+    svc.clear_histories(1, [14])
+
+    history = svc.get_video_history(1, 14)
+    assert history is not None
+    assert history.is_read is True
+    assert history.has_playback is False
+    assert history.last_position == 0
+    assert svc.list_histories(1, {}, 1, 20)['total'] == 0
 
 
 def test_batch_update_histories_updates_existing_rows_and_creates_missing_rows(engine, svc):

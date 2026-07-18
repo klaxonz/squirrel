@@ -167,10 +167,6 @@
                 <p class="text-sm leading-relaxed text-foreground/75 whitespace-pre-wrap">
                   {{ videoDescription }}
                 </p>
-                <div
-                  v-if="!descriptionExpanded && hasLongDescription"
-                  class="video-detail__description-fade"
-                />
               </div>
               <Button
                 v-if="hasLongDescription"
@@ -897,20 +893,8 @@ const {
 
 .video-detail__description {
   margin-top: 0.5rem;
-  padding: 1rem;
-  border: 1px solid hsl(var(--border) / 0.14);
-  border-radius: 0.625rem;
-  background: hsl(var(--muted) / 0.28);
-}
-
-.video-detail__description-fade {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 2.5rem;
-  pointer-events: none;
-  background: linear-gradient(to top, hsl(var(--muted) / 0.3), transparent);
+  padding-top: 1rem;
+  border-top: 1px solid hsl(var(--border) / 0.3);
 }
 
 .video-detail__description-toggle {

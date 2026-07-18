@@ -315,29 +315,8 @@ const handleTest = async () => {
 }
 
 .server-status-popover--trust {
-  --background: 42 22% 95%;
-  --foreground: 228 9% 12%;
-  --popover: 42 30% 98%;
-  --secondary: 40 11% 90%;
-  --secondary-foreground: 228 9% 12%;
-  --accent: 38 10% 86%;
-  --muted: 40 11% 90%;
-  --muted-foreground: 225 6% 42%;
-  --control: 42 30% 98%;
-  --border: 228 8% 69%;
-  --primary: 12 81% 54%;
-  --primary-foreground: 42 30% 98%;
-  --ring: 12 81% 48%;
-
-  border-color: hsl(var(--foreground) / 0.28);
-  border-radius: 0.25rem;
-  box-shadow: 0 1.25rem 3rem hsl(var(--foreground) / 0.16);
-}
-
-.server-status-popover--trust .server-status-popover__url,
-.server-status-popover--trust .server-status-popover__action,
-.server-status-popover--trust .server-status-popover__feedback {
-  border-radius: 0.25rem;
+  border-color: hsl(var(--border) / 0.82);
+  box-shadow: var(--shadow-md);
 }
 
 .server-status-popover__head {

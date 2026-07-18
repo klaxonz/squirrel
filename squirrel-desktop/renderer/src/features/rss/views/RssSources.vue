@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell variant="compact" surface="immersive" width="fluid" fill>
+  <AppPageShell variant="compact" surface="organize" width="fluid" fill>
     <!--
       The RSS three-pane owns the window (global app rail
       collapses via route meta). Source column is a quiet tree + one sync menu.

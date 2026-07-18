@@ -43,6 +43,7 @@ def feed_category_predicate(
                     and_(
                         VideoHistory.user_id == user_id,
                         VideoHistory.video_id == video_id_column,
+                        VideoHistory.is_read.is_(True),
                     ),
                 ),
             ),
@@ -55,6 +56,7 @@ def feed_category_predicate(
                     and_(
                         VideoHistory.user_id == user_id,
                         VideoHistory.video_id == video_id_column,
+                        VideoHistory.is_read.is_(True),
                     ),
                 ),
             ),

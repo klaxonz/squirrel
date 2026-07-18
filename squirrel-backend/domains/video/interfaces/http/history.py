@@ -6,6 +6,7 @@ from domains.video.application.services.history.service import VideoHistoryServi
 from domains.video.interfaces.dto.video_history import (
     HistoryBatchUpdate,
     HistoryCreate,
+    VideoReadStateUpdate,
 )
 from domains.video.interfaces.http.query_params import VideoHistoryListQuery
 from infrastructure.http import response
@@ -37,6 +38,16 @@ def batch_update_history(
     svc: VideoHistoryService = Depends(get_video_history_service),
 ):
     svc.batch_update_histories(current_user.id, data.reports)
+    return response.success()
+
+
+@router.post('/read-state')
+def update_read_state(
+    data: VideoReadStateUpdate,
+    current_user: CurrentUserDto = Depends(get_current_user),
+    svc: VideoHistoryService = Depends(get_video_history_service),
+):
+    svc.set_read_state(current_user.id, data.video_id, data.is_read)
     return response.success()
 
 

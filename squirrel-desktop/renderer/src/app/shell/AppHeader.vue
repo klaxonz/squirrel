@@ -146,11 +146,11 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   display: grid;
   /* Equal side tracks keep the search optically centered in the header,
      independent of whether the left toggle or right user chip is wider. */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 40rem) minmax(0, 1fr);
+  grid-template-columns: minmax(3rem, 1fr) minmax(18rem, 34rem) minmax(3rem, 1fr);
   align-items: center;
   gap: var(--space-3);
-  padding: 0 var(--space-5) 0 var(--space-3);
-  border-bottom: 1px solid hsl(var(--border) / 0.32);
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--app-hairline);
   background: hsl(var(--background));
   position: relative;
   z-index: var(--z-header);
@@ -166,12 +166,13 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 }
 
 .app-header__sidebar-toggle {
+  border-radius: var(--radius-sm);
   color: hsl(var(--muted-foreground));
 }
 
 .app-header__sidebar-toggle:hover {
   color: hsl(var(--foreground));
-  background: hsl(var(--accent));
+  background: hsl(var(--accent) / 0.72);
 }
 
 .app-header__center {
@@ -184,7 +185,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 
 .app-header__search-wrap {
   width: 100%;
-  max-width: 40rem;
+  max-width: 34rem;
   display: flex;
   justify-content: center;
 }
@@ -203,7 +204,22 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   align-items: center;
   justify-content: flex-end;
   min-width: 0;
-  gap: var(--space-2);
+  gap: 0.5rem;
+}
+
+.app-header__actions :deep(.server-status-trigger--inline) {
+  height: 2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-header__actions :deep(.server-status-trigger--inline:hover),
+.app-header__actions :deep(.server-status-trigger--inline.server-status-trigger--open) {
+  border: 0;
+  background: hsl(var(--accent) / 0.72);
+  color: hsl(var(--foreground));
 }
 
 .app-header__user {
@@ -211,19 +227,21 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   max-width: 11rem;
   gap: 0.5rem;
   height: 2rem;
-  padding: 0 0.5rem 0 0.375rem;
+  border-radius: var(--radius-sm);
+  padding: 0 0.5rem 0 0.25rem;
 }
 
 .app-header__user:hover {
-  background: hsl(var(--accent));
+  background: hsl(var(--accent) / 0.72);
   color: hsl(var(--foreground));
 }
 
 .app-header__avatar {
   width: 1.5rem;
   height: 1.5rem;
-  border-radius: var(--radius-md);
-  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--foreground) / 0.28);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--muted) / 0.32);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -232,6 +250,29 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   color: hsl(var(--foreground));
   flex: 0 0 auto;
   letter-spacing: 0;
+}
+
+.app-header__user:hover .app-header__avatar {
+  border-color: hsl(var(--background) / 0.45);
+}
+
+.app-header__center :deep(.global-search__box) {
+  border: 1px solid hsl(var(--border) / 0.62);
+  border-radius: var(--radius-md);
+  background: hsl(var(--muted) / 0.22);
+  box-shadow: none;
+}
+
+.app-header__center :deep(.global-search__box:focus-within) {
+  border-color: hsl(var(--primary) / 0.55);
+  background: hsl(var(--background));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+}
+
+.app-header__center :deep(.global-search__suggestions) {
+  border-color: hsl(var(--border) / 0.7);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
 }
 
 .app-header__user-name {
