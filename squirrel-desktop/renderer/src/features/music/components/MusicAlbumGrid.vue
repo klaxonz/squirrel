@@ -8,7 +8,7 @@
       icon="disc"
       title="暂无专辑"
     />
-    <MusicCardGrid v-else layout="grid-auto">
+    <MusicCardGrid v-else>
       <MusicCard
         v-for="album in albums"
         :key="album.id"

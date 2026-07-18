@@ -1,6 +1,9 @@
 <template>
   <Dialog :open="true" @update:open="!$event && $emit('close')">
-    <DialogContent class="flex max-h-[90vh] w-full max-w-xl flex-col gap-0 overflow-hidden rounded-lg p-0">
+    <DialogContent
+      class="max-h-[90vh] min-h-0 w-full max-w-xl overflow-hidden rounded-lg p-0"
+      content-class="flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
       <DialogHeader class="app-divider-bottom flex shrink-0 flex-row items-center justify-between space-y-0 p-5 text-left">
         <div class="min-w-0">
           <DialogTitle class="text-base font-semibold text-foreground">
@@ -8,13 +11,13 @@
           </DialogTitle>
         </div>
         <DialogClose as-child>
-          <Button variant="ghost" size="icon-sm">
+          <Button variant="ghost" size="icon-sm" aria-label="关闭任务对话框">
             <AppIcon name="close" class="h-4 w-4" />
           </Button>
         </DialogClose>
       </DialogHeader>
 
-      <div class="flex-1 overflow-y-auto custom-scrollbar">
+      <div class="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
         <form class="space-y-6 p-5" @submit.prevent="handleSubmit">
           <section class="space-y-4">
             <div class="space-y-2">
@@ -29,28 +32,24 @@
 
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">逻辑类</label>
-              <Select v-model="formData.task_class" :disabled="isEditing">
-                <SelectTrigger>
-                  <SelectValue placeholder="选择任务执行逻辑" />
-                </SelectTrigger>
-                <SelectContent class="rounded-lg border-border/50 bg-background shadow-lg">
-                  <SelectGroup v-for="(group, groupName) in groupedTaskClasses" :key="groupName">
-                    <SelectLabel class="px-3 py-2 text-xs font-medium text-muted-foreground">{{ groupName }}</SelectLabel>
-                    <SelectItem
-                      v-for="(taskClass, className) in group"
-                      :key="className"
-                      :value="className"
-                      :text-value="taskClass.name"
-                      class="mx-1 rounded-md px-3 py-2 text-sm"
-                    >
-                      <div class="flex min-w-0 flex-col">
-                        <span class="font-medium">{{ taskClass.name }}</span>
-                        <span v-if="taskClass.description" class="max-w-[300px] truncate text-xs text-muted-foreground">{{ taskClass.description }}</span>
-                      </div>
-                    </SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              <PrimeSelect
+                v-model="formData.task_class"
+                :options="taskClassOptions"
+                option-label="label"
+                option-value="value"
+                option-group-label="label"
+                option-group-children="items"
+                placeholder="选择任务执行逻辑"
+                :disabled="isEditing"
+                fluid
+              >
+                <template #option="{ option }">
+                  <div class="flex min-w-0 flex-col">
+                    <span class="font-medium">{{ option.label }}</span>
+                    <span v-if="option.description" class="max-w-[300px] truncate text-xs text-muted-foreground">{{ option.description }}</span>
+                  </div>
+                </template>
+              </PrimeSelect>
             </div>
 
             <div class="space-y-2">
@@ -78,17 +77,13 @@
             </div>
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">单位</label>
-              <Select v-model="formData.unit">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent class="rounded-lg border-border/50 bg-background">
-                  <SelectItem value="seconds">秒</SelectItem>
-                  <SelectItem value="minutes">分钟</SelectItem>
-                  <SelectItem value="hours">小时</SelectItem>
-                  <SelectItem value="days">天</SelectItem>
-                </SelectContent>
-              </Select>
+              <PrimeSelect
+                v-model="formData.unit"
+                :options="intervalUnitOptions"
+                option-label="label"
+                option-value="value"
+                fluid
+              />
             </div>
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground" for="task-dialog-retries">最大重试</label>
@@ -158,15 +153,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectLabel
-} from '@/shared/ui/select'
+import PrimeSelect from 'primevue/select'
 import { Logger } from '@/shared/lib/logger'
 
 const props = defineProps({
@@ -179,6 +166,22 @@ const emit = defineEmits(['close', 'save'])
 const isEditing = computed(() => !!props.task)
 const loading = ref(false)
 const jsonError = ref('')
+
+const intervalUnitOptions = [
+  { value: 'seconds', label: '秒' },
+  { value: 'minutes', label: '分钟' },
+  { value: 'hours', label: '小时' },
+  { value: 'days', label: '天' },
+]
+
+const taskClassOptions = computed(() => Object.entries(groupedTaskClasses.value).map(([label, group]) => ({
+  label,
+  items: Object.entries(group).map(([value, taskClass]) => ({
+    value,
+    label: taskClass.name,
+    description: taskClass.description,
+  })),
+})))
 
 const formData = ref({
   name: '',

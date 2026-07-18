@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell class="creator-detail-page" variant="compact" :fill="false">
+  <AppPageShell class="creator-detail-page" variant="compact" surface="consume" width="media">
     <CreatorHeader
       :creator-id="creatorId"
       @loaded="creatorDetail = $event"
@@ -117,6 +117,6 @@ watch(() => route.query.special, (value) => {
 
 <style scoped>
 .creator-detail-page {
-  --app-page-max-width: 2400px;
+  --app-page-max-width: var(--app-content-media-max);
 }
 </style>

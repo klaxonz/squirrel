@@ -1,46 +1,78 @@
 <script setup lang="ts">
-import type { PrimitiveProps } from "reka-ui"
-import type { HTMLAttributes } from "vue"
-import type { ButtonVariants } from "."
-import { computed } from "vue"
-import { Primitive } from "reka-ui"
-import { cn } from '@/shared/lib/utils'
-import { buttonVariants } from "."
+import type { Component, HTMLAttributes } from 'vue'
+import { computed } from 'vue'
+import PrimeButton from 'primevue/button'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { cn } from '@/shared/lib/utils'
+import type { ButtonSize, ButtonVariant } from '.'
 
-interface Props extends PrimitiveProps {
-  variant?: ButtonVariants["variant"]
-  size?: ButtonVariants["size"]
-  class?: HTMLAttributes["class"]
-  /**
-   * Show a spinner before the slot content and disable interaction. Replaces
-   * the 27 hand-rolled `<AppIcon name="loadingSpinner" class="... animate-spin">`
-   * patterns scattered across features.
-   */
+const props = withDefaults(defineProps<{
+  variant?: ButtonVariant
+  size?: ButtonSize
+  class?: HTMLAttributes['class']
   loading?: boolean
-  /** Disable the button. */
   disabled?: boolean
   unstyled?: boolean
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  as: "button",
+  as?: string | Component
+  asChild?: boolean
+}>(), {
+  variant: 'default',
+  size: 'default',
   loading: false,
   disabled: false,
   unstyled: false,
+  as: 'button',
+  asChild: false,
 })
 
-const isDisabled = computed(() => props.disabled || props.loading)
+const severity = computed(() => {
+  if (props.variant === 'destructive') return 'danger'
+  if (props.variant === 'secondary' || props.variant === 'outline' || props.variant === 'ghost') return 'secondary'
+  if (props.variant === 'contrast') return 'contrast'
+  return undefined
+})
+
+const primeSize = computed(() => {
+  if (props.size === 'lg') return 'large'
+  if (props.size === 'xs' || props.size === 'sm') return 'small'
+  return undefined
+})
+
+const classes = computed(() => cn(
+  `app-prime-button--${props.size}`,
+  `app-prime-button--${props.variant}`,
+  props.unstyled && 'app-prime-button--unstyled',
+  props.class,
+))
 </script>
 
 <template>
-  <Primitive
-    :as="as"
-    :as-child="asChild"
-    :disabled="isDisabled"
-    :class="cn(unstyled ? undefined : buttonVariants({ variant, size }), props.class)"
+  <component
+    :is="as"
+    v-if="unstyled"
+    v-bind="$attrs"
+    :disabled="disabled || loading"
+    :class="classes"
   >
     <AppSpinner v-if="loading" size="sm" />
     <slot />
-  </Primitive>
+  </component>
+
+  <PrimeButton
+    v-else
+    v-bind="$attrs"
+    :as="as"
+    :as-child="asChild"
+    :disabled="disabled || loading"
+    :severity="severity"
+    :size="primeSize"
+    :text="variant === 'ghost'"
+    :outlined="variant === 'outline' || variant === 'player'"
+    :rounded="variant === 'player' || size === 'player-sm' || size === 'player-lg'"
+    :link="variant === 'link'"
+    :class="classes"
+  >
+    <AppSpinner v-if="loading" size="sm" />
+    <slot />
+  </PrimeButton>
 </template>

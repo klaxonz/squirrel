@@ -106,7 +106,7 @@ def _build_recall_filter(
         filters.append(f'duration >= {lo}')
         if hi is not None:
             filters.append(f'duration <= {hi}')
-    cutoff = compute_time_range_cutoff(time_range)
+    cutoff = compute_time_range_cutoff(time_range, now=now)
     if cutoff is not None:
         filters.append(f'{time_field} >= {cutoff}')
     # 未来视频只在 preview tab 显式展示;其余场景(all/未读/搜索等)一律排除未发布视频

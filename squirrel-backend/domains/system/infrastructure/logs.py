@@ -36,6 +36,7 @@ class LogService:
         level: str | None = None,
         start_line: int = 0,
         limit: int = 500,
+        newest_first: bool = True,
     ) -> tuple[list[dict[str, any]], int, bool]:
         """Read log file contents
 
@@ -45,6 +46,7 @@ class LogService:
             level: Log level filter (INFO, WARNING, ERROR, DEBUG)
             start_line: Starting line number
             limit: Max number of lines to return
+            newest_first: Whether to return newest matching entries first
 
         Returns:
             (log lines list, total count, whether there are more)
@@ -127,8 +129,8 @@ class LogService:
         total_count = len(filtered_lines)
         has_more = start_line + limit < total_count
 
-        # 倒序显示(最新的在前)
-        filtered_lines.reverse()
+        if newest_first:
+            filtered_lines.reverse()
 
         # 分页
         result_lines = filtered_lines[start_line : start_line + limit]

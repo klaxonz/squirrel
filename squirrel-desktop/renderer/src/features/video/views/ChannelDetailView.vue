@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell class="channel-detail-page" variant="compact" :fill="false">
+  <AppPageShell class="channel-detail-page" variant="compact" surface="consume" width="media">
     <!-- Channel Header -->
     <ChannelHeader
       :subscription-id="subscriptionId"
@@ -227,7 +227,7 @@ onMounted(() => {
 
 <style scoped>
 .channel-detail-page {
-  --app-page-max-width: 2400px;
+  --app-page-max-width: var(--app-content-media-max);
 }
 
 .channel-remote-toolbar {

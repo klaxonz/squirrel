@@ -126,6 +126,7 @@ export type MusicRankResult = {
 }
 
 export type MusicPlaylist = {
+  kind?: 'theme' | 'playlist'
   specialid?: string
   global_collection_id?: string
   id?: string
@@ -356,6 +357,7 @@ export const getMusicSimilarPlaylists = (playlist_id: string) => {
 
 export const getMusicPlaylistTracks = (params: {
   playlist_id: string
+  playlist_kind?: MusicPlaylist['kind']
   page?: number
   page_size?: number
 }) => {

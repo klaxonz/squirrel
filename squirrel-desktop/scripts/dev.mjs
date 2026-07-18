@@ -12,8 +12,8 @@ const desktopSrcDir = path.resolve(desktopDir, 'src')
 
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const backendUrl = String(process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8001').trim()
-const rendererUrl = String(process.env.DESKTOP_RENDERER_URL || 'http://127.0.0.1:5173').trim()
-const rendererPort = String(new URL(rendererUrl).port || '5173')
+const rendererUrl = String(process.env.DESKTOP_RENDERER_URL || 'http://127.0.0.1:5174').trim()
+const rendererPort = String(new URL(rendererUrl).port || '5174')
 const shouldUseShell = process.platform === 'win32'
 
 let rendererProcess = null

@@ -47,7 +47,7 @@ Surface 描述**界面工作类型对应的密度与强调规格**，不是产�
 ## 与 Media craft
 
 Consume 的密度与强调见上表；**媒体如何排才达到品质下限**见 [Media craft](./media-craft.md)。  
-两者都要满足：Surface 管场景规格，Media craft 管卡/墙/舞台配方。
+两者都要满足：Surface 管场景规格，Media craft 管卡/墙/首页 rail 配方。
 
 ## 验收
 

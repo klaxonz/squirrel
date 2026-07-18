@@ -4,6 +4,18 @@ const trimDecimal = (value: string) => {
   return value.replace(/\.0$/, '').replace(/(\.\d*[1-9])0+$/, '$1')
 }
 
+/** Calendar-style absolute date (local timezone of the parsed Date). */
+const formatAbsoluteDate = (date: Date): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Relative / calendar copy for feed timestamps.
+ *
+ * Past and near-future stay relative (Fluent-style scannable list). Far-future
+ * or garbage schedule dates never become “N年后” — those render as absolute
+ * YYYY-MM-DD. Near future (≤30d) still uses 天后/周后/月后.
+ */
 export const formatDate = (dateString: DateLike | null | undefined): string => {
   if (!dateString) return '未知日期'
 
@@ -39,35 +51,31 @@ export const formatDate = (dateString: DateLike | null | undefined): string => {
       }
     }
 
-    const diffTime = Math.abs(now.getTime() - date.getTime())
-    const diffDays = diffTime / (1000 * 60 * 60 * 24)
+    const signedMs = date.getTime() - now.getTime()
+    const isFuture = signedMs > 0
+    const diffDays = Math.abs(signedMs) / (1000 * 60 * 60 * 24)
+
+    // Far-future / bad feed dates → absolute, never “N年后”.
+    if (isFuture && diffDays > 30) {
+      return formatAbsoluteDate(date)
+    }
 
     if (diffDays <= 7) {
-      if (date > now) {
+      if (isFuture) {
         return `${Math.floor(diffDays)}天后`
-      } else {
-        return `${Math.floor(diffDays)}天前`
       }
+      return `${Math.floor(diffDays)}天前`
     }
     if (diffDays <= 30) {
-      if (date > now) {
+      if (isFuture) {
         return `${Math.floor(diffDays / 7)}周后`
-      } else {
-        return `${Math.floor(diffDays / 7)}周前`
       }
+      return `${Math.floor(diffDays / 7)}周前`
     }
     if (diffDays <= 365) {
-      if (date > now) {
-        return `${Math.floor(diffDays / 30)}个月后`
-      } else {
-        return `${Math.floor(diffDays / 30)}个月前`
-      }
+      return `${Math.floor(diffDays / 30)}个月前`
     }
-    if (date > now) {
-      return `${Math.floor(diffDays / 365)}年后`
-    } else {
-      return `${Math.floor(diffDays / 365)}年前`
-    }
+    return `${Math.floor(diffDays / 365)}年前`
   }
 
   const diffTime = Math.abs(now.getTime() - date.getTime())
@@ -90,7 +98,7 @@ export const formatDate = (dateString: DateLike | null | undefined): string => {
   const datePart = raw.includes('T') ? raw.split('T')[0] : raw.split(' ')[0]
 
   if (datePart === raw || datePart.length > 10) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    return formatAbsoluteDate(date)
   }
 
   return formatDate(datePart)

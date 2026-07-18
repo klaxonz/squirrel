@@ -13,13 +13,13 @@ from domains.subscription.application.services.core.runtime_models import (
 from domains.subscription.domain.models.subscription import Subscription
 from domains.system.domain.models import constants
 from infrastructure.database.session import get_session
-from shared_kernel.domain.exceptions import ValidationError
 from infrastructure.messaging.framework.producer import RedisStreamProducer
 from infrastructure.messaging.models.message import Message
 from infrastructure.messaging.payload import serialize_message
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
 from infrastructure.site_plugins.registry import SitePluginRegistry, get_site_plugin_registry
+from shared_kernel.domain.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 

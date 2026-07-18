@@ -83,7 +83,7 @@ defineEmits<{
   border-radius: 999px;
   background: var(--app-selection-count-bg);
   color: var(--app-selection-count-fg);
-  font-size: 0.5625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 700;
   line-height: 1;
 }

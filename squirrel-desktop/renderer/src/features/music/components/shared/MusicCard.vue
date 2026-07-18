@@ -257,7 +257,7 @@ function handleCoverError() {
   padding: 0.2rem 0.45rem;
   background: var(--app-media-badge-bg);
   color: hsl(var(--app-media-on-image) / 0.92);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 650;
 }
 

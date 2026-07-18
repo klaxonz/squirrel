@@ -1,6 +1,6 @@
 <template>
-  <AppPageShell variant="compact" fill>
-    <AppTwoColumnLayout content-width="none">
+  <AppPageShell variant="compact" surface="organize" width="fluid" fill>
+    <AppTwoColumnLayout preset="playlist">
       <template #sidebar>
         <AppSidebarHeader title="播放列表" :subtitle="`${playlists.length} 个列表`">
           <template #actions>
@@ -65,24 +65,11 @@
               <AppSpinner v-if="loading || isHydratingSelection" size="sm" />
               <AppIcon v-else name="refresh" class="h-4 w-4" />
             </Button>
-            <DropdownMenu v-if="activePlaylist && !activePlaylist.is_default">
-              <DropdownMenuTrigger as-child>
-                <Button variant="ghost" size="icon-sm" aria-label="更多操作">
-                  <AppIcon name="more" class="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" class="w-40">
-                <DropdownMenuItem @click="openEditModal">
-                  <AppIcon name="pencil" class="mr-2 h-4 w-4" />
-                  编辑列表
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem class="text-destructive focus:text-destructive" @click="handleDelete(activePlaylist.id)">
-                  <AppIcon name="trash" class="mr-2 h-4 w-4" />
-                  删除列表
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <AppActionMenu
+              v-if="activePlaylist && !activePlaylist.is_default"
+              :items="playlistActionItems"
+              trigger-label="更多操作"
+            />
           </template>
         </AppPaneHeader>
       </template>
@@ -265,6 +252,7 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppActionMenu from '@/shared/components/AppActionMenu.vue'
 import AppListOption from '@/shared/components/layout/AppListOption.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppPaneHeader from '@/shared/components/layout/AppPaneHeader.vue'
@@ -280,13 +268,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
 import { Input } from '@/shared/ui/input'
 import { Textarea } from '@/shared/ui/textarea'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
@@ -317,6 +298,19 @@ const {
 } = usePlaylist()
 
 const isHydratingSelection = ref(false)
+
+const playlistActionItems = computed(() => [
+  { label: '编辑列表', appIcon: 'pencil' as const, command: openEditModal },
+  { separator: true },
+  {
+    label: '删除列表',
+    appIcon: 'trash' as const,
+    danger: true,
+    command: () => {
+      if (activePlaylist.value) handleDelete(activePlaylist.value.id)
+    },
+  },
+])
 
 const activePlaylistDurationSeconds = computed(() => (
   activePlaylistItems.value.reduce((sum, item) => sum + Number(item.video?.duration || 0), 0)
@@ -504,7 +498,7 @@ onMounted(async () => {
   background: var(--app-selection-count-bg);
   padding: 0.125rem 0.3rem;
   color: var(--app-selection-count-fg);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 700;
   line-height: 1;
 }
@@ -741,6 +735,18 @@ onMounted(async () => {
 .playlist-item-remove:hover,
 .playlist-item-remove:focus-visible {
   color: hsl(var(--destructive));
+}
+
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .playlist-item-remove {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playlist-item-remove {
+    transition: none;
+  }
 }
 
 .playlist-skeleton-list {

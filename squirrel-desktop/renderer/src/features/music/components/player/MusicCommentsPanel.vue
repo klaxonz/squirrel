@@ -133,7 +133,7 @@ defineEmits<{
 }
 
 .music-comment-time {
-  font-size: 0.5625rem;
+  font-size: var(--app-text-badge-size);
   color: hsl(var(--foreground) / 0.35);
 }
 
@@ -155,7 +155,7 @@ defineEmits<{
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.5625rem;
+  font-size: var(--app-text-badge-size);
   color: hsl(var(--foreground) / 0.4);
 }
 

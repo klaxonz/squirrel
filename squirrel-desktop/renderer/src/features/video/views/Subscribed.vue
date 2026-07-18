@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell variant="compact" fill>
+  <AppPageShell variant="compact" surface="organize" width="table" fill>
     <div class="subscription-page">
       <div class="subscription-control-bar">
         <div class="subscription-control-bar__inner">
@@ -11,30 +11,27 @@
           />
 
           <section class="subscription-toolbar" aria-label="订阅筛选和操作">
-            <Popover>
-              <PopoverTrigger as-child>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  class="app-filter-toolbar-button"
-                  :class="{ 'is-active': activeFilterCount > 0 }"
-                  :aria-label="activeFilterCount > 0 ? `筛选，已启用 ${activeFilterCount} 项` : '筛选'"
-                >
-                  <AppIcon name="filter" class="h-3.5 w-3.5" />
-                  <span>筛选</span>
-                  <span
-                    v-if="activeFilterCount > 0"
-                    class="app-filter-toolbar-button__count app-mono"
-                  >
-                    {{ activeFilterCount }}
-                  </span>
-                </Button>
-              </PopoverTrigger>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="app-filter-toolbar-button"
+              :class="{ 'is-active': activeFilterCount > 0 }"
+              :aria-label="activeFilterCount > 0 ? `筛选，已启用 ${activeFilterCount} 项` : '筛选'"
+              @click="toggleSubscriptionFilterPopover"
+            >
+              <AppIcon name="filter" class="h-3.5 w-3.5" />
+              <span>筛选</span>
+              <span
+                v-if="activeFilterCount > 0"
+                class="app-filter-toolbar-button__count app-mono"
+              >
+                {{ activeFilterCount }}
+              </span>
+            </Button>
 
-              <PopoverContent
-                align="end"
-                :side-offset="8"
+              <PrimePopover
+                ref="subscriptionFilterPopover"
                 class="w-[17.25rem] overflow-hidden border-border/55 p-0 shadow-popover"
               >
                 <AppFilterPanel
@@ -92,8 +89,7 @@
                     />
                   </label>
                 </AppFilterPanel>
-              </PopoverContent>
-            </Popover>
+              </PrimePopover>
 
             <Button
               type="button"
@@ -308,8 +304,8 @@ import AppFilterPanel from '@/shared/components/layout/AppFilterPanel.vue'
 import AppFilterSection from '@/shared/components/layout/AppFilterSection.vue'
 import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
+import PrimePopover from 'primevue/popover'
 import { Button } from '@/shared/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
 import { Switch } from '@/shared/ui/switch'
 import { useToast } from '@/shared/components/toast/useToast'
 import { errorMessage } from '@/shared/lib/errorMessage'
@@ -375,12 +371,17 @@ const channelSearch = ref('')
 const site = ref<string | undefined>()
 const nsfw = ref<'all' | 'yes' | 'no'>('all')
 const librarySpecialOnly = ref(false)
+const subscriptionFilterPopover = ref<{ toggle: (event: Event) => void } | null>(null)
 const showAddDialog = ref(false)
 const showImportDialog = ref(false)
 
 const contentScroll = ref<HTMLElement | null>(null)
 const feedTrigger = ref<HTMLElement | null>(null)
 const channelTrigger = ref<HTMLElement | null>(null)
+
+const toggleSubscriptionFilterPopover = (event: Event) => {
+  subscriptionFilterPopover.value?.toggle(event)
+}
 let feedObserver: IntersectionObserver | null = null
 let channelObserver: IntersectionObserver | null = null
 
@@ -1132,6 +1133,14 @@ onUnmounted(() => {
   min-width: 0;
 }
 
+@media (min-width: 1500px) {
+  .subscription-feed-day__items {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-6);
+  }
+}
+
 .subscription-feed-day__items > * + * {
   border-top: 1px solid var(--app-hairline);
 }
@@ -1161,7 +1170,7 @@ onUnmounted(() => {
   background: hsl(var(--background) / 0.96);
   padding: 0.5rem 0.75rem;
   color: hsl(var(--muted-foreground) / 0.68);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 600;
 }
 

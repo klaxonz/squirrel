@@ -355,6 +355,14 @@ function onOpacityPointerDown(e: PointerEvent) {
   if (!rail) return
   emit('updateOpacity', computeOpacityFromEvent(rail, e.clientX))
 
+  if (typeof rail.setPointerCapture === 'function') {
+    try {
+      rail.setPointerCapture(e.pointerId)
+    } catch {
+      // Capture may be unsupported for this pointer.
+    }
+  }
+
   const onMove = (ev: PointerEvent) => {
     if (opacityRailRef.value) {
       emit('updateOpacity', computeOpacityFromEvent(opacityRailRef.value, ev.clientX))
@@ -363,9 +371,11 @@ function onOpacityPointerDown(e: PointerEvent) {
   const onUp = () => {
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('pointerup', onUp)
+    window.removeEventListener('pointercancel', onUp)
   }
   window.addEventListener('pointermove', onMove)
   window.addEventListener('pointerup', onUp)
+  window.addEventListener('pointercancel', onUp)
 }
 </script>
 
@@ -377,21 +387,11 @@ function onOpacityPointerDown(e: PointerEvent) {
   width: 220px;
   background: var(--sp-menu-bg);
   border: 1px solid var(--sp-menu-border);
-  border-radius: 8px;
+  border-radius: 3px;
   padding: 6px;
   z-index: 100;
-  box-shadow: var(--sp-menu-shadow);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
   overflow: hidden;
-}
-
-.sp-settings-pop::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(var(--sp-primary-rgb), 0.05) 50%);
-  background-size: 100% 4px;
-  pointer-events: none;
-  opacity: 0.2;
 }
 
 .sp-menu-list {
@@ -406,7 +406,7 @@ function onOpacityPointerDown(e: PointerEvent) {
   color: var(--sp-text-secondary);
   font-size: 12px;
   font-family: var(--sp-font-family);
-  border-radius: 6px;
+  border-radius: 3px;
   cursor: pointer;
   transition:
     color var(--duration-normal) var(--ease-default),
@@ -414,7 +414,7 @@ function onOpacityPointerDown(e: PointerEvent) {
     transform var(--duration-normal) var(--ease-default);
   position: relative;
   z-index: 1;
-  letter-spacing: 0.03em;
+  letter-spacing: 0;
 }
 
 .sp-menu-item:hover {
@@ -494,12 +494,11 @@ function onOpacityPointerDown(e: PointerEvent) {
 
 .sp-subtitle-color-swatch:hover {
   transform: scale(1.15);
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .sp-subtitle-color-swatch.is-active {
   border-color: var(--sp-primary);
-  box-shadow: 0 0 8px rgba(var(--sp-primary-rgb), 0.5);
 }
 
 .sp-subtitle-opacity-row {
@@ -544,7 +543,7 @@ function onOpacityPointerDown(e: PointerEvent) {
   height: 12px;
   background: #fff;
   border-radius: 50%;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   cursor: grab;
   transform: translate(-50%, -50%);
 }

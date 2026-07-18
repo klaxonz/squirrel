@@ -7,7 +7,7 @@ Patterns = 多组件组合。新功能先对 Pattern，再填字段。
 | 页 | 内容 |
 |----|------|
 | [surface.md](./surface.md) | **Surface 场景密度**（Consume / Organize / Operate） |
-| [media-craft.md](./media-craft.md) | **Consume 媒体品质配方**（卡 / 墙 / 舞台） |
+| [media-craft.md](./media-craft.md) | **Consume 媒体品质配方**（卡 / 墙 / FreeTube 首页 rail） |
 | [shell.md](./shell.md) | 桌面壳、Workbench、页头工具栏 |
 | [filter-popover.md](./filter-popover.md) | 筛选 |
 | [media-grid.md](./media-grid.md) | 媒体网格 |

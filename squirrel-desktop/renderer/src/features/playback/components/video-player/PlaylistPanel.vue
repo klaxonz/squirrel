@@ -142,7 +142,7 @@ defineEmits(['close', 'select'])
 }
 
 .sp-playlist-item-duration {
-  font-size: 10px;
+  font-size: var(--app-text-badge-size);
   font-family: var(--sp-font-mono);
   color: rgba(255, 255, 255, 0.35);
   margin-top: 2px;

@@ -2,11 +2,11 @@
   <div
     class="app-workbench app-two-column"
     :class="{
+      [`app-two-column--preset-${preset}`]: true,
       'app-two-column--sidebar-always': sidebarAlways,
       'app-two-column--fill': fill,
       'app-two-column--no-main-scroll': !mainScroll,
     }"
-    :style="rootStyle"
   >
     <aside
       v-if="$slots.sidebar"
@@ -47,15 +47,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
-const props = withDefaults(defineProps<{
-  /** Sidebar width CSS value (default 17.5rem). */
-  sidebarWidth?: string
+withDefaults(defineProps<{
+  /** Named desktop layout; prevents page-local width drift. */
+  preset?: 'settings' | 'playlist' | 'music' | 'rss'
   /** Always show sidebar (desktop + smaller widths). Default false = lg+ only. */
   sidebarAlways?: boolean
-  /** Content max-width inside main scroll (CSS value or null for token default). */
-  contentWidth?: string | null
   /** Stretch to parent height (default true for workbench pages). */
   fill?: boolean
   /**
@@ -64,9 +62,8 @@ const props = withDefaults(defineProps<{
    */
   mainScroll?: boolean
 }>(), {
-  sidebarWidth: '17.5rem',
+  preset: 'playlist',
   sidebarAlways: false,
-  contentWidth: null,
   fill: true,
   mainScroll: true,
 })
@@ -75,15 +72,6 @@ const props = withDefaults(defineProps<{
 const scrollEl = ref<HTMLElement | null>(null)
 defineExpose({ scrollEl })
 
-const rootStyle = computed(() => {
-  const style: Record<string, string> = {
-    '--app-workbench-sidebar-width': props.sidebarWidth,
-  }
-  if (props.contentWidth) {
-    style['--app-workbench-content-width'] = props.contentWidth
-  }
-  return style
-})
 </script>
 
 <style scoped>
@@ -100,6 +88,26 @@ const rootStyle = computed(() => {
 .app-two-column--fill {
   height: 100%;
   min-height: 0;
+}
+
+.app-two-column--preset-settings {
+  --app-workbench-sidebar-width: 12rem;
+  --app-workbench-content-width: var(--app-content-form-max);
+}
+
+.app-two-column--preset-playlist {
+  --app-workbench-sidebar-width: 17.5rem;
+  --app-workbench-content-width: none;
+}
+
+.app-two-column--preset-music {
+  --app-workbench-sidebar-width: 12rem;
+  --app-workbench-content-width: var(--app-content-table-max);
+}
+
+.app-two-column--preset-rss {
+  --app-workbench-sidebar-width: 15.5rem;
+  --app-workbench-content-width: none;
 }
 
 /* Default: hide sidebar below lg; --always keeps it visible. */

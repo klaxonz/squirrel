@@ -104,4 +104,5 @@ def test_get_videos_forwards_query_model_values(monkeypatch):
         'duration': 'long',
         'content_type': 'PLAYLIST',
         'special': 'no',
+        'creator_id': None,
     }

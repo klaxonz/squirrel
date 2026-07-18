@@ -1,51 +1,38 @@
 <template>
-  <AppPageShell class="log-viewer" variant="compact" fill>
+  <AppPageShell class="log-viewer" variant="compact" surface="operate" width="table" fill>
     <div class="log-page">
       <AppToolbarFrame bordered compact sticky>
         <div class="log-toolbar">
-          <div class="log-toolbar__actions">
-            <Select
-              :model-value="filters.level"
-              @update:model-value="setLevelFilter"
-            >
-              <SelectTrigger
-                class="app-toolbar-control app-toolbar-select-trigger log-toolbar__level"
-                :class="{ 'is-active': Boolean(filters.level) }"
-                aria-label="按日志级别筛选"
-              >
-                <SelectValue placeholder="全部级别" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  v-for="option in levelOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          <div class="log-toolbar__identity">
+            <h1>日志</h1>
+            <span>{{ logs.length }} 条</span>
+          </div>
 
-            <Select
+          <div class="log-toolbar__actions">
+            <PrimeSelect
+              :model-value="filters.level"
+              :options="levelOptions"
+              option-label="label"
+              option-value="value"
+              placeholder="全部级别"
+              size="small"
+              class="app-toolbar-control app-toolbar-select-trigger log-toolbar__level"
+              :class="{ 'is-active': filters.level !== LEVEL_FILTER_ALL }"
+              aria-label="按日志级别筛选"
+              @update:model-value="setLevelFilter"
+            />
+
+            <PrimeSelect
               :model-value="filters.filename"
+              :options="fileOptions"
+              option-label="label"
+              option-value="value"
+              placeholder="选择日志文件"
+              size="small"
+              class="app-toolbar-control app-toolbar-select-trigger log-toolbar__file"
+              aria-label="选择日志文件"
               @update:model-value="setFileFilter"
-            >
-              <SelectTrigger
-                class="app-toolbar-control app-toolbar-select-trigger log-toolbar__file"
-                aria-label="选择日志文件"
-              >
-                <SelectValue placeholder="选择日志文件" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  v-for="option in fileOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            />
 
             <Button
               v-if="hasActiveFilters"
@@ -222,13 +209,7 @@ import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import { Button } from '@/shared/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/ui/select'
+import PrimeSelect from 'primevue/select'
 import { Switch } from '@/shared/ui/switch'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import { getLogFiles, queryLogs } from '@/shared/api'
@@ -237,10 +218,7 @@ import { Logger } from '@/shared/lib/logger'
 import { useUIStore } from '@/shared/stores/ui'
 import { useLogClipboard } from '@/features/settings/composables/useLogClipboard'
 import { useLogAutoRefresh } from '@/features/settings/composables/useLogAutoRefresh'
-import {
-  formatFileSize,
-  formatLogTimestamp,
-} from '@/features/settings/lib/logPresenters'
+import { formatLogTimestamp } from '@/features/settings/lib/logPresenters'
 
 const SEARCH_SCOPE = 'logs'
 const uiStore = useUIStore()
@@ -252,15 +230,18 @@ let latestRequestId = 0
 
 const filters = ref({
   keyword: uiStore.getSearchQuery(SEARCH_SCOPE).trim(),
-  level: '',
+  level: LEVEL_FILTER_ALL,
   filename: 'app.log',
 })
 
 const searchQuery = computed(() => uiStore.getSearchQuery(SEARCH_SCOPE))
 const searchTrigger = computed(() => uiStore.getSearchTrigger(SEARCH_SCOPE))
 
+// Keep the UI's "all" option explicit and map it to an empty API filter.
+const LEVEL_FILTER_ALL = 'all'
+
 const levelOptions = [
-  { value: '', label: '全部级别' },
+  { value: LEVEL_FILTER_ALL, label: '全部级别' },
   { value: 'DEBUG', label: '调试' },
   { value: 'INFO', label: '信息' },
   { value: 'WARNING', label: '警告' },
@@ -271,11 +252,15 @@ const levelOptions = [
 const fileOptions = computed(() => {
   return logFiles.value.map((file) => ({
     value: file.name,
-    label: `${file.name} · ${formatFileSize(file.size)}`,
+    // The active file size changes while the desktop app writes logs, making
+    // the toolbar label jitter and stealing attention from the chosen source.
+    label: file.name,
   }))
 })
 
-const hasActiveFilters = computed(() => Boolean(filters.value.keyword || filters.value.level))
+const hasActiveFilters = computed(() => Boolean(
+  filters.value.keyword || filters.value.level !== LEVEL_FILTER_ALL,
+))
 
 onMounted(() => {
   loadLogFiles()
@@ -307,7 +292,7 @@ async function loadLogs() {
     const params = {
       filename: filters.value.filename,
       keyword: filters.value.keyword || undefined,
-      level: filters.value.level || undefined,
+      level: filters.value.level === LEVEL_FILTER_ALL ? undefined : filters.value.level,
       page: 1,
       pageSize: 500,
     }
@@ -333,12 +318,12 @@ async function loadLogs() {
 }
 
 function clearFilters() {
-  filters.value.level = ''
+  filters.value.level = LEVEL_FILTER_ALL
   uiStore.triggerSearch(SEARCH_SCOPE, '')
 }
 
 function filterByTraceId(traceId) {
-  filters.value.level = ''
+  filters.value.level = LEVEL_FILTER_ALL
   uiStore.triggerSearch(SEARCH_SCOPE, traceId)
 }
 
@@ -362,7 +347,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 
 <style scoped>
 .log-viewer {
-  --app-page-max-width: 2400px;
+  --app-page-max-width: var(--app-content-table-max);
   min-height: 0;
 }
 
@@ -389,13 +374,37 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   min-width: 0;
   min-height: 2.5rem;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.log-toolbar__identity {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.log-toolbar__identity h1 {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-family: var(--app-heading-font);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.log-toolbar__identity span {
+  color: hsl(var(--muted-foreground) / 0.78);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .log-toolbar__actions {
   display: flex;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
@@ -450,7 +459,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   background: hsl(var(--muted) / 0.14);
   padding: 0.4375rem 0.75rem;
   color: hsl(var(--muted-foreground) / 0.7);
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 650;
 }
 
@@ -472,7 +481,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 
 .log-row {
   position: relative;
-  min-height: 2.5rem;
+  min-height: 2.75rem;
   align-items: start;
   border-bottom: 1px solid hsl(var(--border) / 0.26);
   padding: 0.5rem 0.75rem;
@@ -487,7 +496,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 .log-time {
   padding-top: 0.125rem;
   color: hsl(var(--muted-foreground) / 0.7);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -504,7 +513,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   background: hsl(var(--foreground) / 0.035);
   padding: 0 0.375rem;
   color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 650;
   line-height: 1;
 }
@@ -542,7 +551,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   align-items: baseline;
   padding-top: 0.0625rem;
   color: hsl(var(--muted-foreground) / 0.64);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
 }
 
 .log-source__name {
@@ -562,8 +571,8 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   align-items: flex-start;
   gap: var(--space-2);
   color: hsl(var(--foreground) / 0.86);
-  font-size: 0.75rem;
-  line-height: 1.55;
+  font-size: 0.8125rem;
+  line-height: 1.5;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   word-break: break-word;
@@ -578,7 +587,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   padding: 0 0.3125rem;
   color: hsl(var(--muted-foreground));
   font: inherit;
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   line-height: 1.125rem;
   cursor: pointer;
   transition:
@@ -644,6 +653,12 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 
   .log-toolbar__file {
     width: 11.5rem;
+  }
+}
+
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .log-row-copy {
+    opacity: 1;
   }
 }
 

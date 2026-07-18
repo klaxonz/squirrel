@@ -1,7 +1,13 @@
 <template>
   <component :is="layout">
     <router-view v-slot="{ Component, route }">
-      <Transition :name="transitionName" mode="out-in" @enter="handleEnter">
+      <!--
+        Crossfade (no mode="out-in"): old + new pages coexist briefly so the
+        stage is never empty. out-in waits for leave to finish before enter;
+        if leave aborts (render throw, keep-alive edge), enter never starts
+        and the user is stuck on a blank workspace until full reload.
+      -->
+      <Transition :name="transitionName" @enter="handleEnter">
         <keep-alive :include="keepAliveIncludes" :max="10">
           <component
             :is="Component"
@@ -105,15 +111,12 @@ html, body {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Page-level transitions. The router-view already positions the
-   leaving page absolutely so the entering page can overlap it.
-   These are direction-aware:
+   Page-level transitions (crossfade, no out-in).
+   Leaving page is taken out of flow and sunk under the entering
+   page so the workspace never flashes empty mid-navigation.
      - .page-fade      — same-level swap (Settings tab, music view)
      - .page-forward   — entering a detail page (push)
      - .page-back      — popping back (replace into parent)
-   Durations are deliberately short (180–220ms) to feel snappy
-   while still giving spatial context. Easing matches the rest of
-   the app (cubic-bezier(0.4, 0, 0.2, 1) ≈ material standard).
    ───────────────────────────────────────────────────────────── */
 .page-fade-enter-active,
 .page-fade-leave-active,
@@ -127,13 +130,22 @@ html, body {
   will-change: opacity, transform;
 }
 
-/* Forward: old page slides left & fades, new page enters from the right.
-   Distance matches for both legs so a fast user never sees a >offset. */
-.page-forward-leave-active {
+.page-fade-enter-active,
+.page-forward-enter-active,
+.page-back-enter-active {
+  position: relative;
+  z-index: 1;
+}
+
+.page-fade-leave-active,
+.page-forward-leave-active,
+.page-back-leave-active {
   position: absolute;
   inset: 0;
   z-index: 0;
 }
+
+/* Forward: old page slides left & fades, new page enters from the right. */
 .page-forward-leave-to {
   opacity: 0;
   transform: translateX(-2rem);
@@ -144,11 +156,6 @@ html, body {
 }
 
 /* Back: old page slides right & fades, new page enters from the left. */
-.page-back-leave-active {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
 .page-back-leave-to {
   opacity: 0;
   transform: translateX(2rem);
@@ -159,18 +166,7 @@ html, body {
 }
 
 /* Same-level: pure fade. */
-.page-fade-enter-active {
-  position: relative;
-  z-index: 1;
-}
-.page-fade-leave-active {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-.page-fade-enter-from {
-  opacity: 0;
-}
+.page-fade-enter-from,
 .page-fade-leave-to {
   opacity: 0;
 }

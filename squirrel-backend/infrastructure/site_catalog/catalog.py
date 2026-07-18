@@ -2,7 +2,7 @@ import json
 import os
 from pathlib import Path
 
-from infrastructure.site_catalog.icons import build_site_icon_url, resolve_site_icon_path
+from infrastructure.site_catalog.icons import build_site_icon_url, normalize_site_icon_url, resolve_site_icon_path
 from infrastructure.site_plugins.registry import get_site_plugin_registry
 
 
@@ -53,7 +53,7 @@ class SiteCatalog:
         for key in extra_keys:
             value = info.get(key)
             if value is not None:
-                entry[key] = value
+                entry[key] = normalize_site_icon_url(slug, value) if key == 'icon_url' else value
         return entry
 
     @classmethod
@@ -81,7 +81,7 @@ class SiteCatalog:
                 continue
             value = info.get(key)
             if value is not None:
-                entry[key] = value
+                entry[key] = normalize_site_icon_url(slug, value) if key == 'icon_url' else value
 
         return entry
 

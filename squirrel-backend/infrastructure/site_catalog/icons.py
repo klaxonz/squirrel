@@ -23,6 +23,19 @@ def build_site_icon_url(site_name: str | None) -> str | None:
     return f'/api/sites/{slug}/icon'
 
 
+def normalize_site_icon_url(site_name: str | None, icon_url: object) -> str | None:
+    """Preserve custom icons while migrating the removed plugin-icon route."""
+    value = str(icon_url or '').strip()
+    if not value:
+        return None
+
+    slug = normalize_site_slug(site_name)
+    legacy_url = f'/api/plugins/sites/{slug}/icon' if slug else ''
+    if legacy_url and value == legacy_url:
+        return build_site_icon_url(slug)
+    return value
+
+
 def resolve_site_icon_path(site_name: str | None) -> Path | None:
     slug = normalize_site_slug(site_name)
     if not slug:

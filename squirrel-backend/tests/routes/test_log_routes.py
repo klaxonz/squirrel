@@ -11,7 +11,7 @@ class FakeLogService:
     def __init__(self):
         self.calls = []
 
-    def read_log_lines(self, *, filename, keyword, level, start_line, limit):
+    def read_log_lines(self, *, filename, keyword, level, start_line, limit, newest_first):
         self.calls.append(
             {
                 'filename': filename,
@@ -19,6 +19,7 @@ class FakeLogService:
                 'level': level,
                 'start_line': start_line,
                 'limit': limit,
+                'newest_first': newest_first,
             }
         )
         return ['line one'], 9, True
@@ -59,5 +60,21 @@ def test_query_logs_forwards_query_model_values():
             'level': 'ERROR',
             'start_line': 50,
             'limit': 25,
+            'newest_first': True,
         }
     ]
+
+
+def test_query_logs_forwards_oldest_first_ordering():
+    fake_service = FakeLogService()
+
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=7)
+    app.dependency_overrides[get_log_service] = lambda: fake_service
+    client = TestClient(app)
+
+    route_response = client.get('/api/logs/query', params={'order': 'oldest'})
+
+    assert route_response.status_code == 200
+    assert fake_service.calls[0]['newest_first'] is False

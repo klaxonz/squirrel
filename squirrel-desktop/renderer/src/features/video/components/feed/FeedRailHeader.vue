@@ -7,12 +7,13 @@
           v-if="viewMore"
           type="button"
           variant="ghost"
-          size="icon-xs"
+          size="sm"
           class="feed-rail-header__more"
           :aria-label="viewMoreLabel"
           @click="$emit('viewMore')"
         >
-          <AppIcon name="chevronRight" class="size-3.5" />
+          <span>{{ viewMoreLabel }}</span>
+          <AppIcon name="chevronRight" class="size-3.5" aria-hidden="true" />
         </Button>
       </h2>
     </div>
@@ -112,9 +113,16 @@ const showScrollControls = computed(
 }
 
 .feed-rail-header__more {
+  display: inline-flex;
+  min-height: 1.5rem;
+  align-items: center;
+  gap: 0.125rem;
   flex-shrink: 0;
-  margin-left: -0.125rem;
+  margin-left: 0.125rem;
+  padding-inline: 0.25rem;
   color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .feed-rail-header__more:hover {

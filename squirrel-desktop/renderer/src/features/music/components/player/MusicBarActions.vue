@@ -51,38 +51,44 @@ const volumeIcon = computed(() => {
   if (props.volume < 0.4) return 'volumeLow'
   return 'volumeHigh'
 })
-
 </script>
 
 <style scoped>
 .music-bar-actions {
   display: flex;
+  width: 100%;
+  min-width: 0;
   align-items: center;
-  gap: 0.125rem;
-  flex-shrink: 0;
-  width: auto;
   justify-content: flex-end;
+  gap: 0.25rem;
 }
 
 .music-bar-volume {
   display: flex;
   align-items: center;
   gap: 0.125rem;
+  min-width: 0;
 }
 
 .music-bar-range {
   -webkit-appearance: none;
   appearance: none;
   height: 3px;
-  width: 4.25rem;
+  width: 5rem;
+  max-width: 30vw;
   border-radius: 9999px;
-  background: linear-gradient(to right, hsl(var(--foreground) / 0.8) var(--slider-progress, 0%), hsl(var(--border) / 0.4) var(--slider-progress, 0%));
+  background: linear-gradient(
+    to right,
+    hsl(var(--foreground) / 0.8) var(--slider-progress, 0%),
+    hsl(var(--border) / 0.4) var(--slider-progress, 0%)
+  );
   outline: none;
   cursor: pointer;
   transition: height 0.15s ease;
 }
 
-.music-bar-range:hover {
+.music-bar-range:hover,
+.music-bar-range:focus-visible {
   height: 5px;
 }
 
@@ -96,10 +102,10 @@ const volumeIcon = computed(() => {
   border: 2px solid hsl(var(--background));
   opacity: 0;
   transition: opacity 0.15s ease;
-  box-shadow: 0 2px 6px hsl(var(--foreground) / 0.2);
 }
 
-.music-bar-range:hover::-webkit-slider-thumb {
+.music-bar-range:hover::-webkit-slider-thumb,
+.music-bar-range:focus-visible::-webkit-slider-thumb {
   opacity: 1;
 }
 
@@ -107,7 +113,7 @@ const volumeIcon = computed(() => {
   position: absolute;
   top: -0.125rem;
   right: -0.25rem;
-  font-size: 0.5rem;
+  font-size: var(--app-text-badge-size);
   line-height: 1;
   padding: 0.0625rem 0.25rem;
 }

@@ -1,195 +1,133 @@
 <template>
-  <div class="auth-shell auth-shell--enter">
-    <div class="auth-shell__layout">
-      <div class="auth-shell__atmosphere" aria-hidden="true" />
+  <AuthEntryCard
+    title="归仓核心配置"
+    description="连接至您的后端服务引擎"
+    wide
+  >
+    <form novalidate class="auth-entry__form" @submit.prevent="handleConnect">
+      <Transition name="auth-alert">
+        <Alert v-if="errorMessage" variant="error">
+          <AppIcon name="error" class="h-4 w-4" />
+          <AlertDescription>{{ errorMessage }}</AlertDescription>
+        </Alert>
+      </Transition>
 
-      <aside class="auth-brand">
-        <div class="auth-brand__glow" aria-hidden="true" />
-
-        <div class="auth-brand__inner">
-          <div class="auth-brand__top">
-            <div class="auth-brand__mark">
-              <BrandLogo size="sm" />
-              <span class="auth-brand__product">归仓</span>
-            </div>
-          </div>
-
-          <div class="auth-brand__copy">
-            <span class="auth-brand__eyebrow">归仓 / 引擎</span>
-            <h1 class="auth-brand__headline">
-              把归仓，
-              <span class="auth-brand__headline-accent">接到您的引擎。</span>
-            </h1>
-            <p class="auth-brand__sub">
-              归仓的前端只是一扇窗。告诉它您后端引擎的地址，它就会为您拉取所有订阅与媒体。
-            </p>
-
-            <ul class="auth-brand__features">
-              <li class="auth-brand__feature">
-                <AppIcon name="server" class="auth-brand__feature-icon" />
-                <span>支持自部署与本地开发</span>
-              </li>
-              <li class="auth-brand__feature">
-                <AppIcon name="shieldCheck" class="auth-brand__feature-icon" />
-                <span>连接信息仅保存在本机</span>
-              </li>
-              <li class="auth-brand__feature">
-                <AppIcon name="bolt" class="auth-brand__feature-icon" />
-                <span>连上即可立即进入系统</span>
-              </li>
-            </ul>
-          </div>
-
-          <div class="auth-brand__foot">
-            <span>归仓 · 个人内容订阅中心</span>
-          </div>
-        </div>
-      </aside>
-
-      <section class="auth-form">
-        <div class="auth-form__inner">
-          <header class="auth-form__header">
-            <h2 class="auth-form__title app-h1">归仓核心配置</h2>
-            <p class="auth-form__subtitle">连接至您的后端服务引擎</p>
-          </header>
-
-          <form
-            novalidate
-            class="auth-form__form"
-            @submit.prevent="handleConnect"
+      <div class="auth-field">
+        <label for="server-url" class="auth-field__label">服务器接口地址</label>
+        <div class="auth-server-field">
+          <Input
+            id="server-url"
+            v-model="form.serverUrl"
+            type="url"
+            required
+            placeholder="http://127.0.0.1:8001"
+            :disabled="connecting"
+            class="auth-field__input"
+            @input="clearStatus"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            :disabled="!form.serverUrl.trim() || testing"
+            :loading="testing"
+            @click="handleTest"
           >
-            <Transition name="auth-alert">
-              <Alert v-if="errorMessage" variant="error">
-                <AppIcon name="error" class="h-4 w-4" />
-                <AlertDescription>{{ errorMessage }}</AlertDescription>
-              </Alert>
-            </Transition>
-
-            <div class="auth-field">
-              <label for="server-url" class="auth-field__label">服务器接口地址</label>
-              <div class="auth-field__wrap">
-                <AppIcon name="server" class="auth-field__icon" />
-                <Input
-                  id="server-url"
-                  v-model="form.serverUrl"
-                  type="url"
-                  required
-                  placeholder="http://127.0.0.1:8001"
-                  :disabled="connecting"
-                  class="auth-field__input auth-field__input--with-icon auth-field__input--with-action"
-                  @input="clearStatus"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  :disabled="!form.serverUrl.trim() || testing"
-                  :loading="testing"
-                  class="auth-field__action auth-field__action--wide"
-                  @click="handleTest"
-                >
-                  {{ testing ? '测试中' : '测试连接' }}
-                </Button>
-              </div>
-              <p
-                v-if="connectionMessage"
-                class="auth-field__status"
-                :class="testResult === null
-                  ? 'auth-field__status--idle'
-                  : testResult ? 'auth-field__status--success' : 'auth-field__status--error'"
-              >
-                <AppIcon
-                  :name="testResult === null
-                    ? 'info'
-                    : testResult ? 'statusSuccess' : 'warning'"
-                  class="auth-field__status-icon"
-                />
-                {{ connectionMessage }}
-              </p>
-            </div>
-
-            <div v-if="quickServerUrls.length || recentServerUrls.length" class="auth-options">
-              <div v-if="quickServerUrls.length" class="auth-options__group">
-                <span class="auth-options__title">常用地址</span>
-                <ul class="auth-options__list">
-                  <li v-for="url in quickServerUrls" :key="url">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      class="auth-options__chip"
-                      @click="applyServerUrl(url)"
-                    >
-                      <span class="auth-options__chip-text">{{ url }}</span>
-                    </Button>
-                  </li>
-                </ul>
-              </div>
-
-              <div v-if="recentServerUrls.length" class="auth-options__group">
-                <div class="auth-options__head">
-                  <span class="auth-options__title">最近连接</span>
-                  <Button type="button" variant="ghost" size="xs" class="auth-options__clear" @click="handleClearRecent">
-                    清空
-                  </Button>
-                </div>
-                <ul class="auth-options__list">
-                  <li v-for="url in recentServerUrls" :key="url">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      class="auth-options__chip"
-                      :title="url"
-                      @click="applyServerUrl(url)"
-                    >
-                      <span class="auth-options__chip-text">{{ url }}</span>
-                    </Button>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              size="lg"
-              :loading="connecting"
-              :disabled="!form.serverUrl.trim()"
-              class="auth-form__submit"
-            >
-              {{ connecting ? '正在连接' : '确认并进入系统' }}
-            </Button>
-          </form>
-
-          <footer class="auth-form__foot">
-            <span class="auth-form__foot-text">本地开发？</span>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              class="auth-form__foot-link"
-              @click="fillLocalhost"
-            >
-              快速切换至本机地址
-            </Button>
-          </footer>
-
-          <router-link to="/login" class="auth-form__back">
-            <AppIcon name="back" class="auth-form__back-icon" />
-            返回登录页面
-          </router-link>
+            {{ testing ? '测试中' : '测试连接' }}
+          </Button>
         </div>
-      </section>
-    </div>
-  </div>
+        <p
+          v-if="connectionMessage"
+          class="auth-field__status"
+          :class="testResult === null
+            ? 'auth-field__status--idle'
+            : testResult ? 'auth-field__status--success' : 'auth-field__status--error'"
+        >
+          <AppIcon
+            :name="testResult === null
+              ? 'info'
+              : testResult ? 'statusSuccess' : 'warning'"
+            class="auth-field__status-icon"
+          />
+          {{ connectionMessage }}
+        </p>
+      </div>
+
+      <div v-if="quickServerUrls.length || recentServerUrls.length" class="auth-options">
+        <div v-if="quickServerUrls.length" class="auth-options__group">
+          <span class="auth-options__title">常用地址</span>
+          <ul class="auth-options__list">
+            <li v-for="url in quickServerUrls" :key="url">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                class="auth-options__chip"
+                @click="applyServerUrl(url)"
+              >
+                <span class="auth-options__chip-text">{{ url }}</span>
+              </Button>
+            </li>
+          </ul>
+        </div>
+
+        <div v-if="recentServerUrls.length" class="auth-options__group">
+          <div class="auth-options__head">
+            <span class="auth-options__title">最近连接</span>
+            <Button type="button" variant="ghost" size="xs" @click="handleClearRecent">
+              清空
+            </Button>
+          </div>
+          <ul class="auth-options__list">
+            <li v-for="url in recentServerUrls" :key="url">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                class="auth-options__chip"
+                :title="url"
+                @click="applyServerUrl(url)"
+              >
+                <span class="auth-options__chip-text">{{ url }}</span>
+              </Button>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <Button
+        type="submit"
+        size="lg"
+        :loading="connecting"
+        :disabled="!form.serverUrl.trim()"
+        class="auth-entry__submit"
+      >
+        {{ connecting ? '正在连接' : '确认并进入系统' }}
+      </Button>
+    </form>
+
+    <template #footer>
+      <span class="auth-entry__footer-text">本地开发？</span>
+      <Button type="button" variant="link" size="sm" class="auth-entry__link" @click="fillLocalhost">
+        快速切换至本机地址
+      </Button>
+    </template>
+
+    <template #below>
+      <router-link to="/login" class="auth-entry__back">
+        <AppIcon name="back" class="h-3.5 w-3.5" />
+        返回登录页面
+      </router-link>
+    </template>
+  </AuthEntryCard>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import AuthEntryCard from '@/features/auth/components/AuthEntryCard.vue'
 import { Logger } from '@/shared/lib/logger'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import BrandLogo from '@/shared/components/BrandLogo.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Alert, AlertDescription } from '@/shared/ui/alert'

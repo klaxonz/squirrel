@@ -52,7 +52,7 @@
   --sp-error-btn-hover-bg: rgba(211, 212, 216, 0.12);
   --sp-error-btn-active-bg: rgba(211, 212, 216, 0.18);
 
-  --sp-shadow-sm: 0 0 10px rgba(211, 212, 216, 0.1);
-  --sp-shadow-md: 0 0 20px rgba(211, 212, 216, 0.15);
-  --sp-shadow-lg: 0 0 40px rgba(211, 212, 216, 0.2);
+  --sp-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --sp-shadow-md: 0 4px 10px rgba(0, 0, 0, 0.35);
+  --sp-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.45);
 }

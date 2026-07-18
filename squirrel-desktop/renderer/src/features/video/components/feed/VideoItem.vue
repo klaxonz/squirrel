@@ -24,7 +24,7 @@
 
       <!-- Active flags only — quiet, non-toolbar chrome. Full toggles live in meta. -->
       <div
-        v-if="hasActiveFlags"
+        v-if="showThumbnailFlags"
         class="video-item__flags"
         aria-hidden="true"
       >
@@ -50,7 +50,7 @@
       <div class="video-item__scrim" />
 
       <div
-        v-if="progressRatio > 0"
+        v-if="showThumbnailProgress"
         class="video-item__progress"
         role="progressbar"
         :aria-valuenow="Math.round(progressRatio * 100)"
@@ -84,14 +84,16 @@
         </div>
 
         <div class="video-item__meta-main">
+          <!-- One scannable meta line — source · date (site demoted / list-only). -->
           <div class="video-item__meta-line">
             <span class="video-item__source-name" @click.stop="goToProfile(primaryProfile)">
               {{ displayNames }}
             </span>
-            <span v-if="video.site" class="video-item__site">{{ video.site }}</span>
-          </div>
-          <div class="video-item__meta-line video-item__meta-line--secondary">
-            <span>{{ displayDateText }}</span>
+            <span v-if="displayDateText" class="video-item__date">{{ displayDateText }}</span>
+            <span
+              v-if="layout === 'list' && video.site"
+              class="video-item__site"
+            >{{ video.site }}</span>
             <span
               v-if="layout === 'list' && video.duration"
               class="video-item__list-duration app-mono"
@@ -201,9 +203,11 @@ const props = withDefaults(defineProps<{
   sortBy?: string
   layout?: 'grid' | 'list'
   showDuration?: boolean
+  thumbnailStatus?: 'full' | 'progress-only' | 'none'
 }>(), {
   layout: 'grid',
   showDuration: true,
+  thumbnailStatus: 'full',
 })
 
 const emit = defineEmits<{
@@ -250,6 +254,7 @@ watch(
 const hasActiveFlags = computed(
   () => isRead.value || isLater.value === 1 || isLiked.value === 1,
 )
+const showThumbnailFlags = computed(() => props.thumbnailStatus === 'full' && hasActiveFlags.value)
 
 const thumbnailSrc = computed(() => String(props.video?.thumbnail || '').trim())
 const isNsfwVideo = computed(() => props.video.subscriptions?.some((s) => s.is_nsfw))
@@ -259,6 +264,7 @@ const progressRatio = computed(() => {
   const d = Number(props.video?.duration || 0)
   return d > 0 ? Math.min(1, Number(props.video?.last_position || 0) / d) : 0
 })
+const showThumbnailProgress = computed(() => props.thumbnailStatus !== 'none' && progressRatio.value > 0)
 
 const displayDateText = computed(() => {
   const t = props.sortBy === 'created_at'
@@ -526,7 +532,8 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item__title--grid {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
+  line-height: 1.35;
 }
 
 .video-item__title--list {
@@ -556,21 +563,31 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   min-width: 0;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0;
 }
 
 .video-item__meta-line {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.35rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 500;
 }
 
-.video-item__meta-line--secondary {
+.video-item__date {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: hsl(var(--muted-foreground) / 0.88);
+}
+
+.video-item__date::before {
+  content: '·';
+  margin-right: 0.3rem;
+  color: hsl(var(--muted-foreground) / 0.45);
 }
 
 .video-item__source-name {
@@ -680,6 +697,13 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 @media (min-width: 768px) {
   .video-item__description {
     display: -webkit-box;
+  }
+}
+
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .video-item__quick-btn {
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 

@@ -79,6 +79,7 @@ export function useRssReader(options: {
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && activeLightboxImg.value) {
+      e.preventDefault()
       closeLightbox()
     }
   }

@@ -144,7 +144,7 @@ defineEmits<{
   min-height: 2.125rem;
   border: 0;
   border-radius: var(--radius-md);
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.9);
   transition:
     color 0.16s ease,
     background-color 0.16s ease;
@@ -170,13 +170,13 @@ defineEmits<{
   min-width: 0;
   padding: 0 0.625rem 0 0.75rem;
   overflow: hidden;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .feed-folder-tree__total {
   margin-left: auto;
+  color: hsl(var(--muted-foreground) / 0.78);
   font-size: 0.75rem;
-  opacity: 0.65;
 }
 
 .feed-folder-tree__add,
@@ -219,9 +219,9 @@ defineEmits<{
   width: 100%;
   min-height: 2rem;
   padding: 0.25rem 0.625rem;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.9);
 }
 
 .feed-folder-tree__folder-button:hover {
@@ -240,8 +240,8 @@ defineEmits<{
 .feed-folder-tree__count {
   flex: 0 0 auto;
   min-width: 1.25rem;
-  color: hsl(var(--muted-foreground) / 0.7);
-  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground) / 0.8);
+  font-size: 0.75rem;
   line-height: 1.1;
   text-align: right;
 }
@@ -258,7 +258,7 @@ defineEmits<{
   gap: 0.625rem;
   padding: 0 0.5rem 0 0.75rem;
   overflow: hidden;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   cursor: pointer;
 }
 
@@ -286,6 +286,12 @@ defineEmits<{
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   text-align: center;
+}
+
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .feed-folder-tree__remove {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

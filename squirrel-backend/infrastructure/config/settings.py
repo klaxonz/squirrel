@@ -169,7 +169,7 @@ class Settings(BaseSettings):
             )
         return v
 
-    CORS_ALLOW_ORIGINS: str = 'http://localhost:5173,http://127.0.0.1:5173'
+    CORS_ALLOW_ORIGINS: str = 'http://localhost:5174,http://127.0.0.1:5174'
 
     # Crawl-related fields whose env-var names carry no CRAWL_ prefix.
     FULL_SYNC_MAX_INFLIGHT: int = 2

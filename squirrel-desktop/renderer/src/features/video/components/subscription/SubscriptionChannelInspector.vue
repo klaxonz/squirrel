@@ -274,7 +274,7 @@ const statusClass = computed(() => ({
 .subscription-inspector__metrics dt,
 .subscription-inspector__details dt {
   color: hsl(var(--muted-foreground) / 0.68);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 600;
 }
 
@@ -306,7 +306,7 @@ const statusClass = computed(() => ({
 
 .subscription-inspector__section-heading > span {
   color: hsl(var(--muted-foreground) / 0.7);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 600;
 }
 
@@ -391,7 +391,7 @@ const statusClass = computed(() => ({
 .subscription-inspector__recent-item small,
 .subscription-inspector__muted {
   color: hsl(var(--muted-foreground) / 0.7);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 500;
 }
 

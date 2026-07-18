@@ -1,27 +1,38 @@
 <template>
-  <AppPageShell class="settings-page" variant="compact" :fill="false">
-    <AppToolbarFrame bordered sticky>
-      <div class="settings-toolbar">
-        <AppSectionNav
-          class="app-section-nav--optical"
-          :model-value="currentTab"
-          :options="tabNavOptions"
-          aria-label="设置分区"
-          @change="handleTabChange"
-        />
-
-        <span v-if="hasUnsavedChanges" class="settings-save-state">
-          <AppIcon name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
-          正在保存
-        </span>
+  <!-- Desktop settings dashboard — left nav + dense content, not top tabs. -->
+  <AppPageShell class="settings-page" variant="compact" surface="operate" width="form" fill>
+    <AppTwoColumnLayout preset="settings" sidebar-always>
+      <template #sidebar>
+      <div class="settings-nav" aria-label="设置分区">
+        <header class="settings-nav__header">
+          <h1 class="settings-nav__title">设置</h1>
+          <span v-if="hasUnsavedChanges" class="settings-save-state">
+            <AppIcon name="loadingSpinner" class="h-3.5 w-3.5 animate-spin" />
+            保存中
+          </span>
+        </header>
+        <nav class="settings-nav__list">
+          <button
+            v-for="tab in settingsTabs"
+            :key="tab.key"
+            type="button"
+            class="settings-nav__item"
+            :class="{ 'is-active': currentTab === tab.key }"
+            :aria-current="currentTab === tab.key ? 'page' : undefined"
+            @click="handleTabChange(tab.key)"
+          >
+            <AppIcon :name="tab.icon" class="h-4 w-4 shrink-0" />
+            <span>{{ tab.label }}</span>
+          </button>
+        </nav>
       </div>
-    </AppToolbarFrame>
+      </template>
 
-    <main class="app-page-content settings-content">
+      <main class="settings-content custom-scrollbar">
       <div v-if="pageLoading" class="settings-loading">
         <AppSkeleton height="1.5rem" width="8rem" rounded="var(--radius-md)" shimmer />
-        <AppSkeleton height="5rem" rounded="var(--radius-lg)" shimmer />
-        <AppSkeleton height="5rem" rounded="var(--radius-lg)" shimmer />
+        <AppSkeleton height="3.25rem" rounded="var(--radius-lg)" shimmer />
+        <AppSkeleton height="3.25rem" rounded="var(--radius-lg)" shimmer />
       </div>
 
       <div v-else-if="pageLoadError" class="app-page-empty app-page-empty--compact">
@@ -36,15 +47,25 @@
         </AppEmptyState>
       </div>
 
+      <!-- Section intro + row descriptions keep the settings stack scannable. -->
       <div v-else class="settings-sections">
+        <header class="settings-page-intro">
+          <h1>{{ activeTab.label }}</h1>
+          <p>{{ settingsTabDescriptions[currentTab] }}</p>
+        </header>
+
         <section v-if="currentTab === 'appearance'" class="app-settings-section">
           <div class="app-settings-section-title">
-            <h2>主题</h2>
+            <h2>外观</h2>
+            <p>控制桌面端配色与对比；改动立即生效，无需保存。</p>
           </div>
 
           <div class="app-settings-panel">
             <div class="app-settings-row settings-theme-row">
-              <div class="app-settings-row__title">颜色模式</div>
+              <div class="app-settings-row__copy">
+                <div class="app-settings-row__title">颜色模式</div>
+                <div class="app-settings-row__desc">浅色、深色或跟随操作系统主题。</div>
+              </div>
               <AppSegmentedControl
                 :model-value="themeMode"
                 :options="themeOptions"
@@ -63,25 +84,42 @@
 
         <section v-if="currentTab === 'content'" class="app-settings-section">
           <div class="app-settings-section-title">
-            <h2>内容过滤</h2>
+            <h2>内容</h2>
+            <p>过滤与封面展示策略，影响订阅列表与首页推荐。</p>
           </div>
 
           <div class="app-settings-panel">
-            <div class="app-settings-row">
-              <div class="app-settings-row__title">显示敏感内容</div>
+            <div
+              class="app-settings-row app-settings-row--toggle"
+              :class="{ 'is-disabled': userSaving }"
+              @click="toggleUserSettingRow('showNsfw', Boolean(settings.showNsfw), userSaving)"
+            >
+              <div class="app-settings-row__copy">
+                <div class="app-settings-row__title">显示敏感内容</div>
+                <div class="app-settings-row__desc">关闭后隐藏标记为敏感的条目（账号级）。</div>
+              </div>
               <Switch
                 :model-value="Boolean(settings.showNsfw)"
                 :disabled="userSaving"
                 aria-label="显示敏感内容"
+                @click.stop
                 @update:model-value="updateUserSetting('showNsfw', $event)"
               />
             </div>
-            <div class="app-settings-row">
-              <div class="app-settings-row__title">模糊敏感封面</div>
+            <div
+              class="app-settings-row app-settings-row--toggle"
+              :class="{ 'is-disabled': systemLoading || systemSaving }"
+              @click="toggleSystemSettingRow('blur_nsfw_thumbnails', Boolean(systemConfig?.blur_nsfw_thumbnails), systemLoading || systemSaving)"
+            >
+              <div class="app-settings-row__copy">
+                <div class="app-settings-row__title">模糊敏感封面</div>
+                <div class="app-settings-row__desc">仍可打开条目，但缩略图默认模糊（系统级）。</div>
+              </div>
               <Switch
                 :model-value="Boolean(systemConfig?.blur_nsfw_thumbnails)"
                 :disabled="systemLoading || systemSaving"
                 aria-label="模糊敏感封面"
+                @click.stop
                 @update:model-value="onSystemToggle('blur_nsfw_thumbnails', $event)"
               />
             </div>
@@ -90,16 +128,27 @@
 
         <section v-if="currentTab === 'playback'" class="app-settings-section">
           <div class="app-settings-section-title">
-            <h2>连续播放</h2>
+            <h2>播放</h2>
+            <p>控制视频打开后的自动播放与续播行为。</p>
           </div>
 
           <div class="app-settings-panel">
-            <div v-for="item in playbackItems" :key="item.key" class="app-settings-row">
-              <div class="app-settings-row__title">{{ item.title }}</div>
+            <div
+              v-for="item in playbackItems"
+              :key="item.key"
+              class="app-settings-row app-settings-row--toggle"
+              :class="{ 'is-disabled': userSaving }"
+              @click="toggleUserSettingRow(item.key, Boolean(settings[item.key]), userSaving)"
+            >
+              <div class="app-settings-row__copy">
+                <div class="app-settings-row__title">{{ item.title }}</div>
+                <div class="app-settings-row__desc">{{ item.description }}</div>
+              </div>
               <Switch
                 :model-value="Boolean(settings[item.key])"
                 :disabled="userSaving"
                 :aria-label="item.title"
+                @click.stop
                 @update:model-value="updateUserSetting(item.key, $event)"
               />
             </div>
@@ -110,16 +159,27 @@
 
         <section v-if="currentTab === 'system'" class="app-settings-section">
           <div class="app-settings-section-title">
-            <h2>后台服务</h2>
+            <h2>系统服务</h2>
+            <p>后台调度与异步任务进程；关闭后定时同步会暂停。</p>
           </div>
 
           <div class="app-settings-panel">
-            <div v-for="item in systemItems" :key="item.key" class="app-settings-row">
-              <div class="app-settings-row__title">{{ item.title }}</div>
+            <div
+              v-for="item in systemItems"
+              :key="item.key"
+              class="app-settings-row app-settings-row--toggle"
+              :class="{ 'is-disabled': systemLoading || systemSaving }"
+              @click="toggleSystemSettingRow(item.key, Boolean(systemConfig?.[item.key]), systemLoading || systemSaving)"
+            >
+              <div class="app-settings-row__copy">
+                <div class="app-settings-row__title">{{ item.title }}</div>
+                <div class="app-settings-row__desc">{{ item.description }}</div>
+              </div>
               <Switch
                 :model-value="Boolean(systemConfig?.[item.key])"
                 :disabled="systemLoading || systemSaving"
                 :aria-label="item.title"
+                @click.stop
                 @update:model-value="onSystemToggle(item.key, $event)"
               />
             </div>
@@ -129,6 +189,7 @@
         <section v-if="currentTab === 'server'" class="app-settings-section">
           <div class="app-settings-section-title">
             <h2>后端连接</h2>
+            <p>桌面端当前连接的 API 地址；切换后会重新载入会话。</p>
           </div>
 
           <div class="app-settings-panel">
@@ -184,7 +245,8 @@
           </div>
         </section>
       </div>
-    </main>
+      </main>
+    </AppTwoColumnLayout>
   </AppPageShell>
 </template>
 
@@ -196,15 +258,15 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
-import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
+import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
-import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Switch } from '@/shared/ui/switch'
 import SecuritySettings from '@/features/settings/components/SecuritySettings.vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import {
+  DEFAULT_SETTINGS_TAB,
   SETTINGS_TABS,
   getSettingsTabByRouteName,
   type SettingsTabItem,
@@ -219,23 +281,34 @@ import { Logger } from '@/shared/lib/logger'
 import { useSystemConfig } from '@/shared/composables/useSystemConfig'
 import { useUserSettings } from '@/shared/composables/useUserSettings'
 import { useServerConfigForm } from '@/features/settings/composables/useServerConfigForm'
+import { nextSettingsToggleValue } from '@/features/settings/lib/settingsToggleRow'
 
 const route = useRoute()
 const router = useRouter()
 
-const tabs = SETTINGS_TABS
-const tabNavOptions = tabs.map((tab) => ({
-  value: tab.key,
-  label: tab.label,
-  badge: tab.badge,
-}))
+const defaultSettingsTab = SETTINGS_TABS.find((tab) => tab.key === DEFAULT_SETTINGS_TAB) ?? SETTINGS_TABS[0]
+const settingsTabs = SETTINGS_TABS
+const settingsTabDescriptions: Record<SettingsTabKey, string> = {
+  appearance: '控制桌面端配色与对比。',
+  content: '过滤与封面展示策略。',
+  playback: '视频自动播放与续播行为。',
+  security: '密码与已登录设备。',
+  system: '后台调度与异步任务服务。',
+  server: '桌面端连接的后端服务器。',
+}
 
+/**
+ * Resolve the active settings tab from the leaf route name.
+ *
+ * Must NOT throw when `route.name` leaves the settings tree. App.vue uses
+ * `<Transition mode="out-in">`; during leave the component is still mounted
+ * while `useRoute()` already reflects the destination (e.g. HomeView /
+ * Profile). A throw here aborts the leave→enter handshake and leaves
+ * `.app-layout__stage` empty until a full reload — the blank-page bug after
+ * clicking another sidebar item from 设置.
+ */
 const activeTab = computed<SettingsTabItem>(() => {
-  const tab = getSettingsTabByRouteName(route.name)
-  if (!tab) {
-    throw new Error(`[Settings] Unknown settings route: ${String(route.name)}`)
-  }
-  return tab
+  return getSettingsTabByRouteName(route.name) ?? defaultSettingsTab
 })
 const currentTab = computed<SettingsTabKey>(() => activeTab.value.key)
 
@@ -250,14 +323,14 @@ const themeOptions: Array<{
 ]
 
 const playbackItems = [
-  { key: 'autoplay', title: '自动播放' },
-  { key: 'autoplayNext', title: '自动续播' },
-  { key: 'loop', title: '单项循环' },
+  { key: 'autoplay', title: '自动播放', description: '打开视频页后立即尝试起播。' },
+  { key: 'autoplayNext', title: '自动续播', description: '当前视频结束后播放下一集/相关项。' },
+  { key: 'loop', title: '单项循环', description: '仅循环当前视频，忽略续播队列。' },
 ] as const
 
 const systemItems = [
-  { key: 'enable_scheduler', title: '任务调度器' },
-  { key: 'enable_worker', title: '异步工作进程' },
+  { key: 'enable_scheduler', title: '任务调度器', description: '定时同步订阅与计划任务入口。' },
+  { key: 'enable_worker', title: '异步工作进程', description: '处理导入、抽帧等后台作业。' },
 ] as const
 
 const themeStore = useThemeStore()
@@ -304,8 +377,8 @@ const navigateToTab = (path: string) => {
   }
 }
 
-const handleTabChange = (value: string | number) => {
-  const tab = tabs.find((item) => item.key === value)
+const handleTabChange = (value: SettingsTabKey) => {
+  const tab = SETTINGS_TABS.find((item) => item.key === value)
   if (!tab) {
     throw new Error(`[Settings] Unknown settings tab: ${String(value)}`)
   }
@@ -322,6 +395,26 @@ const updateUserSetting = (
 ) => {
   settings.value[key] = value
   void saveUserSettingChanges()
+}
+
+const toggleUserSettingRow = (
+  key: 'showNsfw' | (typeof playbackItems)[number]['key'],
+  current: boolean,
+  disabled: boolean,
+) => {
+  const next = nextSettingsToggleValue(current, disabled)
+  if (next === null) return
+  updateUserSetting(key, next)
+}
+
+const toggleSystemSettingRow = (
+  key: string,
+  current: boolean,
+  disabled: boolean,
+) => {
+  const next = nextSettingsToggleValue(current, disabled)
+  if (next === null) return
+  void onSystemToggle(key, next)
 }
 
 const reloadSettingsPage = async () => {
@@ -351,7 +444,6 @@ const saveUserSettingChanges = async () => {
   hasUnsavedChanges.value = true
   try {
     await saveUserSettings()
-    toast.success('设置已更新')
   } catch (error) {
     Logger.warn('[Settings] Failed to save user settings', error)
     toast.error('更新失败')
@@ -365,7 +457,6 @@ const onSystemToggle = async (key: string, value: boolean) => {
   systemSaving.value = true
   try {
     await updateSystemConfig({ [key]: value })
-    toast.success('系统配置已更新')
   } catch (error) {
     Logger.warn('[Settings] Failed to update system config', error)
     toast.error('更新失败')
@@ -377,16 +468,81 @@ const onSystemToggle = async (key: string, value: boolean) => {
 
 <style scoped>
 .settings-page {
-  --settings-content-width: 72rem;
+  --settings-nav-width: 12rem;
+  --settings-content-width: var(--app-content-form-max);
 }
 
-.settings-toolbar {
+.settings-nav {
   display: flex;
-  width: 100%;
-  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-right: 1px solid hsl(var(--border) / 0.35);
+  padding: var(--space-6) var(--space-3);
+  background: hsl(var(--background));
+  height: 100%;
+}
+
+.settings-nav__header {
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-5);
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+}
+
+.settings-nav__title {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.settings-nav__list {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  overflow: auto;
+}
+
+.settings-nav__item {
+  display: flex;
+  width: 100%;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.55rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 0 0.625rem;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.settings-nav__item:hover {
+  background: hsl(var(--foreground) / 0.04);
+  color: hsl(var(--foreground));
+}
+
+.settings-nav__item.is-active {
+  background: var(--app-selection-bg);
+  color: var(--app-selection-fg);
+  font-weight: 600;
+}
+
+.settings-nav__item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.55);
 }
 
 .settings-save-state {
@@ -395,30 +551,64 @@ const onSystemToggle = async (key: string, value: boolean) => {
   align-items: center;
   gap: var(--space-1);
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 600;
 }
 
 .settings-content {
   display: flex;
+  min-width: 0;
+  min-height: 0;
   flex-direction: column;
-  padding-top: var(--space-5);
+  overflow: auto;
+  padding: var(--space-6) var(--space-6) var(--space-8);
 }
 
 .settings-loading,
 .settings-sections {
   display: flex;
   width: min(100%, var(--settings-content-width));
+  flex: 0 0 auto;
   flex-direction: column;
-  gap: var(--space-6);
+  align-self: center;
+  gap: var(--space-7);
 }
 
-.settings-theme-row {
-  min-height: 5rem;
+.settings-page-intro h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.settings-page-intro p {
+  margin: var(--space-2) 0 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+}
+
+/* Multi-line settings rows stay scannable (title + description + control). */
+.settings-theme-row,
+.settings-sections :deep(.app-settings-row) {
+  min-height: 3.5rem;
+  align-items: flex-start;
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+}
+
+.settings-sections :deep(.app-settings-row__copy) {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.settings-sections :deep(.app-settings-row > :not(.app-settings-row__copy)) {
+  flex: 0 0 auto;
+  margin-top: 0.125rem;
 }
 
 .settings-theme-control {
-  width: min(100%, 24rem);
+  width: min(100%, 22rem);
 }
 
 .settings-theme-control :deep(.app-segmented-control__item) {
@@ -429,7 +619,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
 }
 
 .settings-server-summary {
-  min-height: 5rem;
+  min-height: 3.25rem;
 }
 
 .settings-server-url {

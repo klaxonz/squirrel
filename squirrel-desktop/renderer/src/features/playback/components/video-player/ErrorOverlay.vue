@@ -77,7 +77,7 @@ defineEmits<{ retry: [] }>()
   color: #fff;
   font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0;
 }
 
 .sp-error-message {
@@ -100,7 +100,7 @@ defineEmits<{ retry: [] }>()
   font-weight: 600;
   cursor: pointer;
   transition: opacity var(--duration-fast) var(--ease-default);
-  letter-spacing: 0.03em;
+  letter-spacing: 0;
 }
 
 .sp-error-retry-btn:hover {

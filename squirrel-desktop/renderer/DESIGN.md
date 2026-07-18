@@ -19,7 +19,6 @@ source_of_truth:
 |------|--------|
 | [README](../README.md)（仓库根） | **产品** |
 | [UI Clone Anchors](./docs/design/ui-clone-anchors.md) | **视觉宿主**（页面级构图唯一锚点；好看 = 像宿主） |
-| [Visual verification](./docs/design/visual-verification.md) | **布局契约验证**（L1 renderer 截图 / baseline） |
 | [Principles](./docs/design/principles.md) | **原则**（两难取舍） |
 | [Standards](./docs/design/standards.md) | **强制规格** + 验收 |
 | Foundations → Components → Patterns | **怎么做** |
@@ -74,5 +73,4 @@ Consume 品质 → [patterns/media-craft.md](./docs/design/patterns/media-craft.
 | [Content](./docs/design/content.md) / [A11y](./docs/design/accessibility.md) | 文案与无障碍 |
 | [Governance](./docs/design/governance.md) | 扩展、新增三步、阻断 |
 | [UI Clone Anchors](./docs/design/ui-clone-anchors.md) | 宿主 UI、冻结尺寸、禁止清单 |
-| [Visual verification](./docs/design/visual-verification.md) | 桌面端视觉验证（Vite + Playwright） |
 | [Token 地图](./docs/design/tokens.md) | token → 文件 |

@@ -1,49 +1,63 @@
 <template>
-  <AppPageShell class="videos-view-page" variant="compact" :fill="false">
+  <AppPageShell class="videos-view-page" variant="compact" surface="consume" width="media">
     <AppToolbarFrame v-if="searchMode !== 'remote'" bordered compact sticky>
-      <FeedToolbar
-        :active-tab="activeTab"
-        :nsfw="nsfw"
-        :sort-by="sortBy"
-        :site="site"
-        :special="special"
-        :time-range="timeRange"
-        :duration="duration"
-        :content-type="contentType"
-        :tabs="tabs"
-        :is-refreshing="isRefreshing"
-        :show-tabs="true"
-        :show-sort="true"
-        :show-filter="true"
-        @update:activeTab="activeTab = $event"
-        @update:nsfw="nsfw = $event"
-        @update:sortBy="sortBy = $event"
-        @update:site="site = $event"
-        @update:timeRange="timeRange = $event"
-        @update:duration="duration = $event"
-        @update:contentType="contentType = $event"
-        @update:special="setSpecialFilter"
-        @refresh="refreshCurrentList"
-      />
+      <div class="videos-view-header">
+        <div class="videos-view-title">
+          <h1>视频库</h1>
+        </div>
+        <FeedToolbar
+          :active-tab="activeTab"
+          :nsfw="nsfw"
+          :sort-by="sortBy"
+          :site="site"
+          :special="special"
+          :time-range="timeRange"
+          :duration="duration"
+          :content-type="contentType"
+          :tabs="tabs"
+          :is-refreshing="isRefreshing"
+          :show-tabs="true"
+          :show-sort="true"
+          :show-filter="true"
+          @update:activeTab="activeTab = $event"
+          @update:nsfw="nsfw = $event"
+          @update:sortBy="sortBy = $event"
+          @update:site="site = $event"
+          @update:timeRange="timeRange = $event"
+          @update:duration="duration = $event"
+          @update:contentType="contentType = $event"
+          @update:special="setSpecialFilter"
+          @refresh="refreshCurrentList"
+        >
+          <template #after-tabs>
+            <nav class="videos-view-library" aria-label="视频收藏">
+              <button
+                v-for="item in libraryTabs"
+                :key="item.value"
+                type="button"
+                class="videos-view-library__item"
+                :class="{ 'is-active': activeTab === item.value }"
+                @click="activeTab = item.value"
+              >
+                {{ item.label }}
+              </button>
+            </nav>
+          </template>
+        </FeedToolbar>
+      </div>
     </AppToolbarFrame>
     <AppToolbarFrame v-else bordered compact sticky>
       <div class="videos-view-remote-toolbar">
-        <Select :model-value="remoteSite || 'all'" @update:model-value="updateRemoteSite">
-          <SelectTrigger class="app-toolbar-select-trigger app-toolbar-control w-auto min-w-[7.5rem]">
-            <SelectValue placeholder="全部站点" />
-          </SelectTrigger>
-          <SelectContent class="min-w-44">
-            <SelectItem value="all" class="text-xs">全部站点</SelectItem>
-            <SelectItem
-              v-for="opt in visibleRemoteSiteOptions"
-              :key="opt.value"
-              :value="opt.value"
-              class="text-xs"
-            >
-              {{ opt.label }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        <PrimeSelect
+          :model-value="remoteSite || 'all'"
+          :options="remoteSiteSelectOptions"
+          option-label="label"
+          option-value="value"
+          placeholder="全部站点"
+          size="small"
+          class="app-toolbar-select-trigger app-toolbar-control w-auto min-w-[7.5rem]"
+          @update:model-value="updateRemoteSite"
+        />
 
         <Button
           type="button"
@@ -81,6 +95,13 @@
         />
       </keep-alive>
 
+      <div v-else-if="searchMode === 'remote'" class="videos-view-remote-empty">
+        <AppEmptyState
+          title="搜索远端内容"
+          copy="在上方输入关键词后开始搜索；远端结果不会混入本地视频库。"
+        />
+      </div>
+
       <!-- Local feed -->
       <router-view v-else v-slot="{ Component, route: childRoute }">
         <keep-alive :max="10">
@@ -114,13 +135,13 @@ import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
-import { VIDEO_TABS } from '@/features/video/constants/videos'
+import { VIDEO_LIBRARY_TABS, VIDEO_TABS } from '@/features/video/constants/videos'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { useSites } from '@/features/video/composables/useSites'
 import { useUserSettings } from '@/shared/composables/useUserSettings'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
+import PrimeSelect from 'primevue/select'
 
 // Videos tabbed feed: full toolbar + tabbed router-view. Recommendation rows
 // live in the separate HomeView (/home).
@@ -137,9 +158,14 @@ const { options: siteOptions } = useSites()
 const { settings } = useUserSettings()
 
 const tabs = ref(VIDEO_TABS)
+const libraryTabs = VIDEO_LIBRARY_TABS
 const visibleRemoteSiteOptions = computed(() =>
   (siteOptions.value || []).filter((option) => settings.value.showNsfw || option.isNsfw !== true),
 )
+const remoteSiteSelectOptions = computed(() => [
+  { value: 'all', label: '全部站点' },
+  ...visibleRemoteSiteOptions.value,
+])
 const isRefreshing = ref(false)
 const loadError = ref<string | null>(null)
 // ponytail: child components (VideoTab / RemoteSearchResults) share a refresh() surface;
@@ -230,7 +256,49 @@ watch(() => route.query.special, (value) => {
 
 <style scoped>
 .videos-view-page {
-  --app-page-max-width: 2400px;
+  --app-page-max-width: var(--app-content-media-max);
+}
+
+.videos-view-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.videos-view-title h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.videos-view-library {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border-left: 1px solid var(--app-hairline);
+  padding-left: var(--space-5);
+}
+
+.videos-view-library__item {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.videos-view-library__item:hover,
+.videos-view-library__item.is-active {
+  color: hsl(var(--foreground));
+}
+
+.videos-view-library__item.is-active {
+  font-weight: 600;
 }
 
 .videos-view-remote-toolbar {
@@ -242,6 +310,17 @@ watch(() => route.query.special, (value) => {
 
 .videos-view-error {
   padding: 0 0 var(--space-5);
+}
+
+.videos-view-remote-empty {
+  min-height: 26rem;
+}
+
+@media (max-width: 1100px) {
+  .videos-view-header {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
 }
 
 </style>

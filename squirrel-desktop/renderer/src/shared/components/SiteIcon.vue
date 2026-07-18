@@ -158,7 +158,7 @@ const iconClass = computed(() => {
 .site-icon__mono {
   max-width: 100%;
   padding: 0 1px;
-  font-size: 0.5rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 750;
   letter-spacing: -0.04em;
   line-height: 1;
@@ -168,7 +168,7 @@ const iconClass = computed(() => {
 
 .site-icon--sm .site-icon__mono,
 .site-icon--md .site-icon__mono {
-  font-size: 0.5625rem;
+  font-size: var(--app-text-badge-size);
 }
 
 .site-icon--lg .site-icon__mono {

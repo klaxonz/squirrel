@@ -1,7 +1,5 @@
 <template>
   <div class="music-bar-controls">
-    <slot name="time" />
-
     <div class="music-bar-buttons">
       <Button
         variant="ghost"
@@ -64,6 +62,8 @@
         <AppIcon v-else name="refresh" class="h-4 w-4" />
       </Button>
     </div>
+
+    <slot name="time" />
   </div>
 </template>
 
@@ -100,23 +100,23 @@ const repeatTitle = computed(() => {
   if (props.repeat === 'one') return '单曲循环'
   return '顺序播放'
 })
-
 </script>
 
 <style scoped>
 .music-bar-controls {
   display: flex;
-  flex: 1;
-  flex-direction: row;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.625rem;
+  gap: 0.125rem;
 }
 
 .music-bar-buttons {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.1875rem;
 }
-
 </style>

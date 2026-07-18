@@ -6,8 +6,8 @@ from domains.user.application.services.auth import get_current_user
 from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from domains.video.application.services.crud import VideoCrudService
 from domains.video.application.services.listing.service import VideoListService
-from domains.video.interfaces.http.dependencies import get_video_crud_service, get_video_list_service
 from domains.video.interfaces.dto.request.video import RemoteVideoSaveRequest
+from domains.video.interfaces.http.dependencies import get_video_crud_service, get_video_list_service
 from infrastructure.http import response
 
 logger = logging.getLogger(__name__)

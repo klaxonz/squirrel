@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { useVModel } from '@vueuse/core'
 import type { HTMLAttributes } from 'vue'
-import { cn } from '@/shared/lib/utils'
+import { computed, ref, watch } from 'vue'
+import InputText from 'primevue/inputtext'
+
+defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
   defaultValue?: string | number
@@ -9,24 +11,37 @@ const props = defineProps<{
   class?: HTMLAttributes['class']
 }>()
 
-const emits = defineEmits<{
-  (e: 'update:modelValue', payload: string | number): void
+const emit = defineEmits<{
+  (event: 'update:modelValue', value: string | number): void
 }>()
 
-const modelValue = useVModel(props, 'modelValue', emits, {
-  passive: true,
-  defaultValue: props.defaultValue,
+const input = ref<{ $el: HTMLInputElement } | null>(null)
+
+const internalValue = ref(String(props.defaultValue ?? ''))
+watch(() => props.defaultValue, (value) => {
+  if (props.modelValue === undefined) internalValue.value = String(value ?? '')
+})
+
+const value = computed({
+  get: () => String(props.modelValue ?? internalValue.value),
+  set: (next: string) => {
+    internalValue.value = next
+    emit('update:modelValue', next)
+  },
+})
+
+defineExpose({
+  focus: () => input.value?.$el?.focus(),
+  select: () => input.value?.$el?.select(),
 })
 </script>
 
 <template>
-  <input
-    v-model="modelValue"
-    :class="
-      cn(
-        'flex h-9 w-full rounded-md border border-border/65 bg-card/60 px-3 py-2 text-sm text-foreground shadow-surface transition-[border-color,background-color,box-shadow] duration-fast ease-default placeholder:text-muted-foreground/70 hover:border-border/85 hover:bg-card/72 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none',
-        props.class,
-      )
-    "
-  >
+  <InputText
+    ref="input"
+    v-model="value"
+    v-bind="$attrs"
+    :class="props.class"
+    fluid
+  />
 </template>

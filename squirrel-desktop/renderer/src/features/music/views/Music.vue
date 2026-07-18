@@ -1,6 +1,6 @@
 <template>
-  <AppPageShell variant="compact" fill>
-    <AppTwoColumnLayout content-width="90rem">
+  <AppPageShell variant="compact" surface="immersive" width="table" fill>
+    <AppTwoColumnLayout preset="music">
       <template #header>
         <div class="music-nav-header">
           <AppSectionNav
@@ -66,6 +66,7 @@
           :has-more="playlistHasMore"
           :loading="playlistsLoading"
           @select="handleSelectPlaylist"
+          @play="handlePlayPlaylist"
           @select-category="handleSelectPlaylistCategoryLocal"
           @load-more="handleLoadMorePlaylistsLocal"
         />
@@ -447,7 +448,7 @@ const favoriteTracks = computed(() => {
   return []
 })
 
-watch(() => uiStore.getSearchTrigger('music'), () => {
+watch(() => uiStore.getSearchTrigger('music'), async () => {
   if (route.name === 'Music') {
     const query = uiStore.getSearchQuery('music').trim()
     if (!query) {
@@ -455,7 +456,7 @@ watch(() => uiStore.getSearchTrigger('music'), () => {
       return
     }
     handleNavigate('search')
-    handleSearch(query)
+    await handleSearch(query)
   }
 })
 
@@ -591,10 +592,10 @@ function handlePlayAllProfile(category: 'history' | 'rank', shuffle: boolean) {
   playerStore.playQueue(tracksList, 0)
 }
 
-function handlePlayPlaylist(playlist: MusicPlaylist) {
-  selectPlaylist(playlist).then(() => {
+async function handlePlayPlaylist(playlist: MusicPlaylist) {
+  if (await selectPlaylist(playlist)) {
     playAll(false)
-  })
+  }
 }
 
 async function handlePlayAlbum(album: MusicAlbum) {
@@ -698,9 +699,8 @@ async function handleLogout() {
 }
 
 .music-content {
-  --app-workbench-content-width: 90rem;
+  --app-workbench-content-width: var(--app-content-table-max);
   min-height: 100%;
   padding-block: var(--space-4) var(--space-7);
 }
-
 </style>

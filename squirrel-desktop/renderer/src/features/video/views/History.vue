@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell class="history-page" variant="compact" :fill="false">
+  <AppPageShell class="history-page" variant="compact" surface="organize" width="table">
     <AppToolbarFrame bordered sticky>
       <div class="history-toolbar">
         <AppSectionNav
@@ -63,8 +63,15 @@
         <AppEmptyState variant="plain" icon="history" :title="emptyTitle" :copy="emptyDescription" />
       </div>
 
-      <div v-else class="history-groups">
-        <section v-for="group in groupedVideos" :key="group.key" class="history-day">
+      <!-- Stable list contract for filters, visual checks and CDP probes. -->
+      <div
+        v-else
+        class="history-groups"
+        data-history-list
+        :data-history-mode="historyMode"
+        :data-history-count="String(displayVideos.length)"
+      >
+        <section v-for="group in groupedVideos" :key="group.key" class="history-day" data-history-day>
           <header class="history-day__header">
             <div class="history-day__heading">
               <h2 class="history-day__title">{{ group.label }}</h2>
@@ -328,7 +335,7 @@ onMounted(() => {
 
 <style scoped>
 .history-page {
-  --app-page-max-width: 88rem;
+  --app-page-max-width: var(--app-content-table-max);
 }
 
 .history-content {

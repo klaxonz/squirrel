@@ -28,11 +28,17 @@ export const useUIStore = defineStore('ui', () => {
     }
   }
 
-  const setSidebarOpen = (open: boolean) => {
+  const setSidebarOpen = (open: boolean, options?: { persist?: boolean }) => {
     isSidebarOpen.value = open
-    if (typeof localStorage !== 'undefined') {
+    const persist = options?.persist !== false
+    if (persist && typeof localStorage !== 'undefined') {
       localStorage.setItem(SIDEBAR_OPEN_KEY, String(open))
     }
+  }
+
+  /** Restore the last user-persisted rail preference (route immersion must not poison it). */
+  const restorePersistedSidebarOpen = () => {
+    isSidebarOpen.value = readPersistedSidebarOpen()
   }
 
   const getSearchQuery = (scope: string) => searchQueries[scope] ?? ''
@@ -76,6 +82,7 @@ export const useUIStore = defineStore('ui', () => {
     viewMode,
     toggleSidebar,
     setSidebarOpen,
+    restorePersistedSidebarOpen,
     getSearchQuery,
     setSearchQuery,
     getSearchTrigger,

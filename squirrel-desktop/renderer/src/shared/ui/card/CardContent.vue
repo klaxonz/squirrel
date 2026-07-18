@@ -1,14 +1,5 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import { cn } from '@/shared/lib/utils'
-
-const props = defineProps<{
-  class?: HTMLAttributes["class"]
-}>()
+import type { HTMLAttributes } from 'vue'
+defineProps<{ class?: HTMLAttributes['class'] }>()
 </script>
-
-<template>
-  <div :class="cn('p-5 pt-0', props.class)">
-    <slot />
-  </div>
-</template>
+<template><div :class="['app-prime-card__body', $props.class]"><slot /></div></template>

@@ -1,7 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Config } from 'tailwindcss'
-import tailwindcssAnimate from 'tailwindcss-animate'
 
 // Absolute globs: vite may be invoked with cwd=squirrel-desktop while this
 // config lives under renderer/, so relative content paths would miss sources.
@@ -109,5 +108,5 @@ export default {
       },
     },
   },
-  plugins: [tailwindcssAnimate],
+  plugins: [],
 } satisfies Config

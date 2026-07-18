@@ -97,7 +97,7 @@ function toggleExpand() {
 }
 
 .music-user-playlist-count {
-  font-size: 0.5625rem;
+  font-size: var(--app-text-badge-size);
   color: hsl(var(--muted-foreground) / 0.5);
   margin-left: auto;
   font-variant-numeric: tabular-nums;

@@ -1,76 +1,70 @@
-/**
- * Video Player - 亮色主题
- */
+/* Player chrome stays dark over video in every app theme, matching the
+   Artplayer/Shaka defaults instead of inventing a light canvas skin. */
 
 .sp-player.sp-theme-light,
 .sp-player[data-sp-theme="light"] {
-  /* 核心颜色 (Muted Blue-Gray - 与应用 muted-foreground 色调统一，确保在视频上可见) */
-  --sp-theme-primary: #707078;
-  --sp-theme-primary-hover: #8a8a94;
-  --sp-theme-primary-active: #585860;
-  --sp-theme-primary-rgb: 112, 112, 120;
+  --sp-theme-primary: #d3d4d8;
+  --sp-theme-primary-hover: #e4e5e8;
+  --sp-theme-primary-active: #b8b9be;
+  --sp-theme-primary-rgb: 211, 212, 216;
 
   /* 背景 */
-  --sp-bg-elevated: rgba(252, 247, 240, 0.98);
-  --sp-bg-overlay: rgba(246, 239, 230, 0.84);
-  --sp-surface: rgba(252, 246, 239, 0.92);
-  --sp-overlay-soft: rgba(29, 33, 40, 0.09);
-  --sp-overlay-weak: rgba(29, 33, 40, 0.15);
-  --sp-overlay: rgba(29, 33, 40, 0.26);
-  --sp-overlay-strong: rgba(29, 33, 40, 0.4);
-  --sp-bg-hover: rgba(112, 112, 120, 0.08);
-  --sp-bg-active: rgba(112, 112, 120, 0.14);
+  --sp-bg-elevated: rgba(18, 18, 18, 0.85);
+  --sp-bg-overlay: rgba(0, 0, 0, 0.65);
+  --sp-surface: rgba(30, 30, 30, 0.6);
+  --sp-overlay-soft: rgba(0, 0, 0, 0.4);
+  --sp-overlay-weak: rgba(0, 0, 0, 0.55);
+  --sp-overlay: rgba(0, 0, 0, 0.7);
+  --sp-overlay-strong: rgba(0, 0, 0, 0.85);
+  --sp-bg-hover: rgba(211, 212, 216, 0.08);
+  --sp-bg-active: rgba(211, 212, 216, 0.14);
 
   /* 文字 */
-  --sp-text: #1c252e;
-  --sp-text-strong: rgba(28, 37, 46, 0.9);
-  --sp-text-secondary: rgba(28, 37, 46, 0.7);
-  --sp-text-muted: rgba(28, 37, 46, 0.58);
-  --sp-text-tertiary: rgba(28, 37, 46, 0.44);
-  --sp-text-disabled: rgba(28, 37, 46, 0.28);
+  --sp-text: #ffffff;
+  --sp-text-strong: #ffffff;
+  --sp-text-secondary: rgba(255, 255, 255, 0.75);
+  --sp-text-muted: rgba(255, 255, 255, 0.55);
+  --sp-text-tertiary: rgba(255, 255, 255, 0.4);
+  --sp-text-disabled: rgba(255, 255, 255, 0.25);
 
   /* 边框 */
-  --sp-border: rgba(112, 112, 120, 0.15);
-  --sp-border-hover: rgba(112, 112, 120, 0.25);
+  --sp-border: rgba(211, 212, 216, 0.12);
+  --sp-border-hover: rgba(211, 212, 216, 0.22);
 
   /* 控制栏 */
-  --sp-controls-bg: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.85) 0%,
-    rgba(0, 0, 0, 0.4) 40%,
-    transparent 100%
-  );
+  --sp-controls-bg: transparent;
+  --sp-controls-group-bg: rgba(0, 0, 0, 0.72);
 
   /* 进度条 */
-  --sp-progress-bg: rgba(28, 37, 46, 0.15);
-  --sp-progress-buffered: rgba(28, 37, 46, 0.24);
+  --sp-progress-bg: rgba(255, 255, 255, 0.12);
+  --sp-progress-buffered: rgba(255, 255, 255, 0.2);
 
   /* 菜单 */
-  --sp-menu-bg: rgba(252, 247, 240, 0.98);
-  --sp-menu-border: rgba(28, 37, 46, 0.1);
-  --sp-menu-shadow: 0 20px 44px rgba(28, 37, 46, 0.16);
-  --sp-btn-toggled-bg: rgba(112, 112, 120, 0.14);
-  --sp-switch-bg: rgba(28, 37, 46, 0.18);
-  --sp-switch-thumb: rgba(252, 248, 242, 0.95);
+  --sp-menu-bg: rgba(10, 10, 10, 0.88);
+  --sp-menu-border: rgba(211, 212, 216, 0.1);
+  --sp-menu-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --sp-btn-toggled-bg: rgba(211, 212, 216, 0.14);
+  --sp-switch-bg: rgba(255, 255, 255, 0.15);
+  --sp-switch-thumb: #fff;
 
   /* 提示 */
-  --sp-tooltip-bg: rgba(29, 33, 40, 0.95);
+  --sp-tooltip-bg: rgba(30, 30, 30, 0.95);
 
   /* 字幕 */
-  --sp-subtitle-color: #f7f1ea;
-  --sp-subtitle-highlight: #707078;
-  --sp-subtitle-bg-rgb: 24, 31, 40;
+  --sp-subtitle-color: #ffffff;
+  --sp-subtitle-highlight: #d3d4d8;
+  --sp-subtitle-bg-rgb: 0, 0, 0;
   --sp-subtitle-bg-opacity: 0.8;
   --sp-subtitle-bg: rgba(var(--sp-subtitle-bg-rgb), var(--sp-subtitle-bg-opacity));
-  --sp-spinner-stroke-color: rgba(112, 112, 120, 0.85);
-  --sp-error-bg: rgba(24, 31, 40, 0.76);
-  --sp-error-btn-border: rgba(112, 112, 120, 0.25);
-  --sp-error-btn-bg: rgba(112, 112, 120, 0.1);
-  --sp-error-btn-hover-bg: rgba(112, 112, 120, 0.16);
-  --sp-error-btn-active-bg: rgba(112, 112, 120, 0.22);
+  --sp-spinner-stroke-color: #d3d4d8;
+  --sp-error-bg: rgba(10, 10, 10, 0.9);
+  --sp-error-btn-border: rgba(211, 212, 216, 0.22);
+  --sp-error-btn-bg: rgba(211, 212, 216, 0.06);
+  --sp-error-btn-hover-bg: rgba(211, 212, 216, 0.12);
+  --sp-error-btn-active-bg: rgba(211, 212, 216, 0.18);
 
   /* 阴影 */
-  --sp-shadow-sm: 0 1px 3px rgba(112, 112, 120, 0.15);
-  --sp-shadow-md: 0 8px 18px rgba(112, 112, 120, 0.2);
-  --sp-shadow-lg: 0 14px 30px rgba(112, 112, 120, 0.25);
+  --sp-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --sp-shadow-md: 0 4px 10px rgba(0, 0, 0, 0.35);
+  --sp-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.45);
 }

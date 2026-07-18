@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell class="scheduled-tasks-page" variant="compact" :fill="false">
+  <AppPageShell class="scheduled-tasks-page" variant="compact" surface="operate" width="table">
     <AppToolbarFrame bordered sticky>
       <section class="scheduled-toolbar" aria-label="定时任务工具栏">
         <AppSectionNav
@@ -170,31 +170,10 @@
                   >
                     <AppIcon name="pencil" class="h-4 w-4" />
                   </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger as-child>
-                      <Button variant="ghost" size="icon-sm">
-                        <AppIcon name="more" class="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" class="w-40">
-                      <DropdownMenuItem v-if="task.is_active" @click="disableTask(task.id)">
-                        <AppIcon name="pause" class="mr-2 h-4 w-4" />
-                        暂停任务
-                      </DropdownMenuItem>
-                      <DropdownMenuItem v-else @click="enableTask(task.id)">
-                        <AppIcon name="sync" class="mr-2 h-4 w-4" />
-                        恢复任务
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        class="text-destructive focus:text-destructive"
-                        @click="confirmDeleteTask(task)"
-                      >
-                        <AppIcon name="trash" class="mr-2 h-4 w-4" />
-                        删除任务
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <AppActionMenu
+                    :items="taskActionItems(task)"
+                    :trigger-label="`${task.name} 管理操作`"
+                  />
                 </div>
               </div>
             </div>
@@ -283,17 +262,11 @@ import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
+import AppActionMenu from '@/shared/components/AppActionMenu.vue'
 import TaskDialog from '@/features/settings/components/TaskDialog.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import { Button } from '@/shared/ui/button'
 import { Badge } from '@/shared/ui/badge'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
 import type { ScheduledTask } from '@/features/settings/types/scheduler'
 import {
   getUnitFull,
@@ -325,6 +298,19 @@ const showDeleteDialog = ref(false)
 const deletingTask = ref<ScheduledTask | null>(null)
 const showExecuteDialog = ref(false)
 const executingTask = ref<ScheduledTask | null>(null)
+
+const taskActionItems = (task: ScheduledTask) => [
+  task.is_active
+    ? { label: '暂停任务', appIcon: 'pause' as const, command: () => disableTask(task.id) }
+    : { label: '恢复任务', appIcon: 'sync' as const, command: () => enableTask(task.id) },
+  { separator: true },
+  {
+    label: '删除任务',
+    appIcon: 'trash' as const,
+    danger: true,
+    command: () => confirmDeleteTask(task),
+  },
+]
 
 const hasTaskFilters = computed(() => Boolean(searchQuery.value || statusFilter.value !== 'all'))
 
@@ -468,7 +454,7 @@ watch(searchQueryDebounced, () => {
 
 <style scoped>
 .scheduled-tasks-page {
-  --app-page-max-width: 96rem;
+  --app-page-max-width: var(--app-content-table-max);
 }
 
 .scheduled-toolbar {
@@ -515,7 +501,7 @@ watch(searchQueryDebounced, () => {
   margin: 0;
   color: hsl(var(--foreground));
   font-family: var(--app-heading-font);
-  font-size: 1rem;
+  font-size: 1.25rem;
   font-weight: 650;
   line-height: 1.3;
 }

@@ -13,9 +13,6 @@
     @keydown="handleKeyDown"
     tabindex="0"
   >
-    <!-- 暗角遮罩-->
-    <div class="sp-vignette-overlay"></div>
-
     <VideoInfoOverlay
       :visible="showVideoInfo"
       :fullscreen="isFullscreen"
@@ -200,14 +197,14 @@
                 <Button variant="ghost" size="icon-sm" class="sp-icon-btn" @click="toggleMute" :title="t('mute')" :aria-label="isMuted ? t('unmute') : t('mute')">
                   <PlayerIcon :name="volumeIconName" />
                 </Button>
-                <div class="sp-volume-slider-wrap" 
+                <div ref="volumeRailRef"
+                     class="sp-volume-slider-wrap"
                      @pointerdown.prevent="onVolumePointerDown"
                      @pointermove="onVolumePointerMove"
-                     @pointerup="onVolumePointerUp">
+                     @pointerup="onVolumePointerUp"
+                     @pointercancel="onVolumePointerUp">
                   <div class="sp-volume-bar">
-                    <div class="sp-volume-fill" :style="{ width: `${isMuted ? 0 : volumeFillPercent}%` }">
-                      <div class="sp-volume-glow"></div>
-                    </div>
+                    <div class="sp-volume-fill" :style="{ width: `${isMuted ? 0 : volumeFillPercent}%` }" />
                   </div>
                 </div>
                 <span v-if="isVolumeScrubbing || isVolumeHovered" class="sp-volume-percent">{{ volumeText }}</span>
@@ -653,6 +650,8 @@ const {
 // live in useVolumeScrub. `setUserVolume` is also consumed by the keyboard
 // shortcut table, so it stays destructured here.
 const {
+  volumeRailRef,
+  cleanup: cleanupVolumeScrub,
   isVolumeScrubbing,
   isVolumeHovered,
   volumeIconName,
@@ -982,6 +981,7 @@ onUnmounted(() => {
   cleanupSourceSync()
   releaseMarkerPointerCapture()
   cleanupProgressScrub()
+  cleanupVolumeScrub()
   removeMarkerDragListeners()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   stopSleepTimer()
@@ -1004,7 +1004,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   cursor: none;
   font-family: var(--sp-font-family);
   user-select: none;
-  letter-spacing: 0.015em;
+  letter-spacing: 0;
 }
 
 .sp-player:focus,
@@ -1038,7 +1038,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: #101010;
   z-index: 1;
 }
 
@@ -1074,15 +1074,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   50% { height: 36px; }
 }
 
-/* 暗角遮罩 */
-.sp-vignette-overlay {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.4) 100%);
-  pointer-events: none;
-  z-index: 5;
-}
-
 /* 中央 HUD 提示 */
 .sp-central-hud {
   position: absolute;
@@ -1110,12 +1101,10 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   align-items: center;
   gap: 14px;
   padding: 10px 16px;
-  border-radius: var(--sp-radius-full);
+  border-radius: 3px;
   background: rgba(0, 0, 0, 0.6);
   border: 1px solid var(--sp-border);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .sp-vol-icon-wrap {
@@ -1151,7 +1140,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   height: 100%;
   border-radius: var(--sp-radius-full);
   background: var(--sp-primary);
-  box-shadow: 0 0 8px rgba(var(--sp-primary-rgb), 0.6);
   transition: width var(--duration-normal) var(--ease-default);
 }
 
@@ -1172,7 +1160,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   font-family: var(--sp-font-mono);
   font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   min-width: 40px;
   text-align: right;
   flex-shrink: 0;
@@ -1189,9 +1177,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border-radius: var(--sp-radius-full);
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid var(--sp-border);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .sp-notice-icon {
@@ -1205,7 +1191,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   font-family: var(--sp-font-mono);
   font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
   padding: 3px 14px;
   border-radius: var(--sp-radius-full);
@@ -1248,7 +1234,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   height: 6px;
   background: var(--sp-primary);
   border-radius: 50%;
-  box-shadow: 0 0 8px var(--sp-primary);
 }
 
 .sp-hud-dot.is-pulsing {
@@ -1263,32 +1248,31 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-hud-text {
   color: var(--sp-primary);
-  font-size: 10px;
+  font-size: var(--app-text-badge-size);
   font-family: var(--sp-font-mono);
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
   font-weight: 700;
-  text-shadow: 0 0 4px rgba(var(--sp-primary-rgb), 0.4);
 }
 
 .sp-hud-separator {
   opacity: 0.2;
   color: #fff;
-  font-size: 10px;
+  font-size: var(--app-text-badge-size);
 }
 
 .sp-hud-code {
   color: rgba(255, 255, 255, 0.6);
   font-family: var(--sp-font-mono);
-  font-size: 10px;
+  font-size: var(--app-text-badge-size);
   width: 60px;
 }
 
-/* 底部渐变遮罩 */
+/* Artplayer default control readability gradient. */
 .sp-gradient-overlay {
   position: absolute;
   inset: auto 0 0 0;
-  height: 120px;
-  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
+  height: 100px;
+  background: linear-gradient(to top, #000, rgb(0 0 0 / 40%), transparent);
   pointer-events: none;
   z-index: 15;
 }
@@ -1321,15 +1305,15 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-progress-area {
   position: relative;
-  height: 4px;
+  height: 6px;
   display: flex;
   align-items: center;
 }
 
 .sp-progress-rail {
   width: 100%;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.12);
+  height: 3px;
+  background: rgba(255, 255, 255, 0.25);
   transition:
     height var(--duration-normal) var(--ease-default);
   border-radius: 2px;
@@ -1338,13 +1322,13 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-progress-container:hover .sp-progress-rail {
-  height: 4px;
+  height: 6px;
 }
 
 .sp-progress-buffered {
   position: absolute;
   height: 100%;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.25);
   border-radius: 2px;
 }
 
@@ -1352,7 +1336,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   position: absolute;
   height: 100%;
   background: var(--sp-primary, #d3d4d8);
-  box-shadow: 0 0 10px rgba(var(--sp-primary-rgb), 0.5);
   border-radius: 2px;
   display: flex;
   align-items: center;
@@ -1389,12 +1372,11 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-clip-marker--pending .sp-clip-marker-track {
   background: hsla(0, 84%, 60%, 0.45);
-  box-shadow: 0 0 10px hsla(0, 84%, 60%, 0.5);
 }
 
 .sp-clip-marker--pending .sp-clip-marker-dot {
   background: hsl(0, 84%, 60%);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5), 0 0 10px hsl(0, 84%, 60%);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55);
   animation: pending-dot-pulse 1s ease-in-out infinite;
 }
 
@@ -1412,7 +1394,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   transform: translateY(-50%);
   border-radius: 999px;
   background: color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 40%, transparent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 30%, transparent);
   transition:
     height var(--duration-fast) var(--ease-default),
     background var(--duration-normal) var(--ease-default);
@@ -1432,10 +1413,8 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   transform: translate(50%, -50%);
   border-radius: 999px;
   background: var(--marker-color, hsl(24 100% 50%));
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 6px color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 50%, transparent);
-  transition:
-    transform var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-normal) var(--ease-default);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55);
+  transition: transform var(--duration-fast) var(--ease-default);
 }
 
 .sp-clip-marker:hover .sp-clip-marker-dot {
@@ -1456,12 +1435,11 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-clip-marker.is-active .sp-clip-marker-track {
   background: color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 85%, transparent);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 50%, transparent);
 }
 
 .sp-clip-marker.is-active .sp-clip-marker-dot {
   background: var(--marker-color, hsl(24 100% 50%));
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.88), 0 0 10px var(--marker-color, hsl(24 100% 50%));
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.88);
 }
 
 .sp-clip-marker-tooltip {
@@ -1502,7 +1480,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-clip-marker-tooltip__time {
   color: rgba(255,255,255,0.6);
-  font-size: 10px;
+  font-size: var(--app-text-badge-size);
 }
 
 .sp-clip-marker-tooltip__actions {
@@ -1542,7 +1520,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   padding: 0 3px;
   background: var(--sp-primary);
   color: #fff;
-  font-size: 9px;
+  font-size: var(--app-text-badge-size);
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
   border-radius: 999px;
@@ -1555,7 +1533,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-marker-count--capturing {
   background: hsl(0 84% 60%);
-  font-size: 6px;
+  font-size: var(--app-text-badge-size);
   animation: capture-blink 1s ease-in-out infinite;
 }
 
@@ -1565,20 +1543,19 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-progress-dot {
-  width: 10px;
-  height: 100%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
   background: #fff;
   position: absolute;
   right: 0;
-  transform: scaleX(0);
-  transform-origin: right;
+  transform: translate(50%, -50%) scale(0);
   transition: transform var(--duration-normal) var(--ease-default);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
 }
 
 .sp-progress-container:hover .sp-progress-dot {
-  transform: scaleX(1);
-  width: 2px;
+  transform: translate(50%, -50%) scale(1);
 }
 
 /* 进度条悬停预览 */
@@ -1600,7 +1577,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   background: rgba(10, 10, 10, 0.95);
   border: 1px solid rgba(var(--sp-primary-rgb), 0.25);
   color: #fff;
-  font-size: 10px;
+  font-size: var(--app-text-badge-size);
   font-family: var(--sp-font-mono);
   border-radius: 4px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.6);
@@ -1643,20 +1620,20 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 36px;
+  height: 46px;
   margin-top: 0;
 }
 
 .sp-controls-left, .sp-controls-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0;
 }
 
 /* 质量标签 */
 .sp-quality-tag {
   font-family: var(--sp-font-mono);
-  font-size: 10px;
+  font-size: var(--app-text-badge-size);
   font-weight: 700;
   color: rgba(255, 255, 255, 0.7);
   padding: 2px 6px;
@@ -1668,7 +1645,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
     border-color var(--duration-normal) var(--ease-default),
     background-color var(--duration-normal) var(--ease-default);
   background: transparent;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
   margin-right: 4px;
 }
 
@@ -1685,46 +1662,30 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border: none;
   color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition:
-    color var(--duration-slow) var(--ease-out),
-    transform var(--duration-slow) var(--ease-out);
+  opacity: 0.75;
+  transition: opacity var(--duration-normal) var(--ease-default), transform var(--duration-normal) var(--ease-default);
   position: relative;
 }
 
-.sp-icon-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--sp-bg-hover);
-  border: 1px solid var(--sp-border);
-  border-radius: 6px;
-  transform: scale(0.85);
-  opacity: 0;
-  transition:
-    opacity var(--duration-normal) var(--ease-default),
-    transform var(--duration-normal) var(--ease-default);
-}
-
 .sp-icon-btn:hover {
-  color: var(--sp-primary, #d3d4d8);
-  transform: translateY(-1px);
+  color: #fff;
+  opacity: 1;
 }
 
-.sp-icon-btn:hover::after {
-  transform: scale(1);
-  opacity: 1;
+.sp-icon-btn:active {
+  transform: scale(0.85);
 }
 
 .sp-icon-btn :deep(svg) {
   width: 18px;
   height: 18px;
-  filter: drop-shadow(0 0 4px rgba(0,0,0,0.4));
 }
 
 /* 时间显示 */
@@ -1735,7 +1696,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   display: flex;
   align-items: center;
   padding-left: 6px;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   font-weight: 700;
 }
 
@@ -1789,15 +1750,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   background: var(--sp-primary);
   border-radius: 1.5px;
   position: relative;
-}
-
-.sp-volume-glow {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 100%;
-  width: 100%;
-  box-shadow: 0 0 10px rgba(var(--sp-primary-rgb), 0.6);
 }
 
 .sp-volume-percent {
@@ -1877,7 +1829,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   padding: 4px 10px;
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid rgba(var(--sp-primary-rgb), 0.25);
-  border-radius: 16px;
+  border-radius: 3px;
   color: var(--sp-primary);
   font-family: var(--sp-font-mono);
   font-size: 12px;
@@ -1901,12 +1853,11 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   padding: 4px 10px;
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid rgba(var(--sp-primary-rgb), 0.4);
-  border-radius: 16px;
+  border-radius: 3px;
   color: var(--sp-primary);
   font-family: var(--sp-font-mono);
   font-size: 11px;
   font-weight: 700;
-  animation: abloop-pulse 2s ease-in-out infinite;
 }
 
 .sp-abloop-indicator :deep(svg) {
@@ -1919,11 +1870,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   font-weight: 400;
 }
 
-@keyframes abloop-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
 /* Up next overlay */
 .sp-upnext-overlay {
   position: absolute;
@@ -1933,7 +1879,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   padding: 12px 16px;
   background: rgba(0, 0, 0, 0.85);
   border: 1px solid var(--sp-border);
-  border-radius: 8px;
+  border-radius: 3px;
   min-width: 200px;
   cursor: default;
 }
@@ -1989,7 +1935,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   padding: 8px;
   background: rgba(0, 0, 0, 0.85);
   border: 1px solid var(--sp-border);
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 3px 3px;
 }
 
 .sp-chapter-overlay-title {

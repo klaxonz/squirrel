@@ -1,5 +1,15 @@
-/* UI: Inter. Display: Plus Jakarta Sans — real family split (Spec 4 / typography). */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+/* UI: Inter. Display: Plus Jakarta Sans - bundled so Electron never races a remote stylesheet. */
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/inter/latin-700.css';
+@import '@fontsource/jetbrains-mono/latin-400.css';
+@import '@fontsource/jetbrains-mono/latin-500.css';
+@import '@fontsource/jetbrains-mono/latin-600.css';
+@import '@fontsource/plus-jakarta-sans/latin-500.css';
+@import '@fontsource/plus-jakarta-sans/latin-600.css';
+@import '@fontsource/plus-jakarta-sans/latin-700.css';
+@import '@fontsource/plus-jakarta-sans/latin-800.css';
 
 @tailwind base;
 @tailwind components;
@@ -29,6 +39,7 @@
   body {
     @apply text-foreground;
     font-family: var(--font-sans);
+    font-size: var(--app-text-body-size);
     letter-spacing: 0;
   }
 
@@ -45,7 +56,7 @@
 
   /* Global keyboard-focus fallback.
      Every interactive element gets a visible :focus-visible ring bound to the
-     brand --ring token unless a component supplies its own (shadcn primitives,
+     brand --ring token unless a component supplies its own (Aura components,
      .app-tab-button, <Button>, etc. already do). This closes the WCAG 2.4.7 gap
      where hand-written <button>/<div role=button> elements across the app had
      hover/active states but no focus feedback. `:focus-visible` only fires for

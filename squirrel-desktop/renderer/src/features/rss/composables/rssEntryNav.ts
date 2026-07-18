@@ -1,0 +1,15 @@
+/**
+ * Fluent Reader-style entry list navigation helpers.
+ * Pure index math so keyboard handlers stay thin and testable.
+ */
+export function nextEntryIndex(
+  length: number,
+  currentIndex: number,
+  delta: number,
+): number {
+  if (length <= 0) return -1
+  if (currentIndex < 0) {
+    return delta > 0 ? 0 : length - 1
+  }
+  return Math.max(0, Math.min(length - 1, currentIndex + delta))
+}

@@ -869,9 +869,10 @@ class VideoListService:
 
         # Category-only filter for unread (no subscription join).
         if category and category not in ('all', 'read', 'liked', 'later', 'preview'):
+            from sqlalchemy import select
+
             from domains.video.application.services.listing.query_filters import feed_category_predicate
             from domains.video.domain.models.video import Video
-            from sqlalchemy import select
 
             stmt = select(Video.id).where(
                 Video.id.in_(video_ids),
@@ -935,8 +936,9 @@ class VideoListService:
 
         if not settings.meili.url:
             # Fall back to title ILIKE when Meili unavailable.
-            from domains.video.domain.models.video import Video
             from sqlalchemy import select
+
+            from domains.video.domain.models.video import Video
 
             q = (query or '').strip()
             stmt = select(Video.id).where(

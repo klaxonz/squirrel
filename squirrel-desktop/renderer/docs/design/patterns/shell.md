@@ -5,7 +5,6 @@
 **规格：** [Spec 1 Surface](../standards.md#spec-1--surface)  
 **明细：** [Surface](./surface.md)
 **视觉宿主：** [UI Clone Anchors](../ui-clone-anchors.md)（壳 → FreeTube）
-**布局验证：** [Visual verification](../visual-verification.md)
 
 ## 桌面壳（标准结构）
 
@@ -21,13 +20,15 @@ Title bar
 | 项 | 标准值 / 行为 |
 |----|----------------|
 | 桌面标题栏 | `--app-titlebar-height` = `2rem`；仅承载窗口、侧栏、前进后退控制 |
-| 全局顶栏 | `--app-header-height` = `3.25rem`；搜索居中，账户入口靠右 |
+| 全局顶栏 | `--app-header-height` = `2.75rem`；搜索居中，账户入口靠右（中性头像，非 primary） |
+| 沉浸路由 | 播放 / RSS / 音乐：`meta.sidebar.defaultOpen=false` 默认收起全局侧栏；播放页隐藏全局搜索顶栏 |
 | 历史 | 应用级前进后退 |
 | 搜索 | 仅顶栏全局搜索 |
 | 侧栏宽 | `--sidebar-expanded-width` = `15rem` |
-| 侧栏分组 | 与 `sidebar.ts` 一致：媒体 · 资料库 · 管理；见 [Navigation](../components/navigation.md) |
+| 侧栏分组 | 与 `sidebar.ts` 一致：订阅与内容 · 资料库 · 工具；见 [Navigation](../components/navigation.md) |
 | 侧栏菜单 | 文字分组 + `--app-selection-*` 当前态 |
 | 折叠 | 被遮内容 `inert`，移出 a11y 树 |
+| 音乐底栏 | Music 页按 YesPlayMusic 固定为 `--app-music-player-height` = `4rem`；跨全窗口、仅顶边 hairline、进度条贴顶，曲目信息 / 播放控制 / 音量队列三等分；离开 Music 后保留侧栏 mini/dock 行为 |
 | 壳角色 | 安静导航与搜索；内容在滚动区 |
 
 ## Workbench
@@ -51,5 +52,6 @@ Title bar
 ## 验收
 
 - [ ] 壳结构与上表一致
+- [ ] Music 页活动播放器为 4rem 全宽底栏，内容区使用三等分且不遮住主内容
 - [ ] 页面 Surface 见 [Surface](./surface.md)
 - [ ] 工具栏 / 筛选仅使用文档化 class 与 shared 组件

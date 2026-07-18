@@ -28,29 +28,18 @@
       icon="playlistMusic"
       title="暂无歌单"
     />
-    <div v-else class="music-grid">
-      <div
+    <div v-else class="app-music-grid">
+      <MusicCard
         v-for="playlist in playlists"
         :key="playlist.specialid"
-        class="music-grid-card"
-        role="button"
-        tabindex="0"
-        @click="$emit('select', playlist)"
-        @keydown.enter.prevent="$emit('select', playlist)"
-        @keydown.space.prevent="$emit('select', playlist)"
-      >
-        <div class="music-source-cover-wrap">
-          <img v-if="playlist.imgurl" :src="playlist.imgurl" :alt="playlist.specialname" class="music-source-cover" />
-          <div v-else class="music-source-cover">
-            <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
-          </div>
-          <div class="music-source-play-overlay">
-            <AppIcon name="play" class="h-6 w-6 fill-current" />
-          </div>
-        </div>
-        <span class="music-grid-card-title">{{ playlist.specialname }}</span>
-        <span class="music-grid-card-subtitle">{{ playlist.nickname || '歌单' }}</span>
-      </div>
+        :cover="playlist.imgurl"
+        :title="playlist.specialname || playlist.name || '未命名歌单'"
+        :subtitle="playlist.nickname || '歌单'"
+        variant="playlist"
+        playable
+        @select="$emit('select', playlist)"
+        @play="$emit('play', playlist)"
+      />
     </div>
     <div class="app-page-actions mt-6" v-if="hasMore">
       <Button variant="outline" size="sm" :loading="loading" @click="$emit('load-more')">
@@ -61,11 +50,11 @@
 </template>
 
 <script setup lang="ts">
-import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import type { MusicPlaylist, MusicPlaylistTag } from '@/shared/api/music'
+import MusicCard from './shared/MusicCard.vue'
 
 defineProps<{
   playlists: MusicPlaylist[]
@@ -77,6 +66,7 @@ defineProps<{
 
 defineEmits<{
   'select': [playlist: MusicPlaylist]
+  'play': [playlist: MusicPlaylist]
   'select-category': [categoryId: number]
   'load-more': []
 }>()
@@ -95,81 +85,4 @@ defineEmits<{
   margin-bottom: 1.5rem;
 }
 
-.music-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 1.5rem;
-}
-
-.music-grid-card {
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.music-grid-card:hover {
-  transform: translateY(-6px);
-}
-
-.music-source-cover-wrap {
-  position: relative;
-  aspect-ratio: 1;
-  border-radius: var(--app-card-radius);
-  overflow: hidden;
-  background: var(--app-media-thumb-placeholder);
-  box-shadow: var(--app-surface-shadow);
-}
-
-.music-source-cover {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.music-grid-card:hover .music-source-cover {
-  transform: scale(1.08);
-}
-
-.music-source-play-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, transparent 0%, var(--app-media-scrim-mid) 100%);
-  color: hsl(var(--app-media-on-image));
-  opacity: 0;
-  transition: opacity var(--duration-base) var(--ease-default);
-}
-
-.music-grid-card:hover .music-source-play-overlay {
-  opacity: 1;
-}
-
-.music-grid-card-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin-top: 0.75rem;
-  color: hsl(var(--foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 0 0.125rem;
-}
-
-.music-grid-card-subtitle {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 0 0.125rem;
-  margin-top: 0.25rem;
-  font-weight: 500;
-}
 </style>

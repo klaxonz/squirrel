@@ -24,6 +24,7 @@ export interface UseVolumeScrubOptions {
 }
 
 export interface UseVolumeScrubReturn {
+  volumeRailRef: Ref<HTMLElement | null>
   isVolumeScrubbing: Ref<boolean>
   isVolumeHovered: Ref<boolean>
   volumeIconName: ComputedRef<IconName>
@@ -33,18 +34,21 @@ export interface UseVolumeScrubReturn {
   setUserVolume: (value: number) => void
   onVolumePointerDown: (e: PointerEvent) => void
   onVolumePointerMove: (e: PointerEvent) => void
-  onVolumePointerUp: () => void
+  onVolumePointerUp: (e?: PointerEvent) => void
+  cleanup: () => void
 }
 
 export function useVolumeScrub(options: UseVolumeScrubOptions): UseVolumeScrubReturn {
   const { volume, isMuted, setVolume, showCentralHud, maxVolume = 200 } = options
 
+  const volumeRailRef = ref<HTMLElement | null>(null)
   const isVolumeScrubbing = ref(false)
   const isVolumeHovered = ref(false)
   // One-shot: set just before a user-driven setVolume so the volume watcher can
   // tell "this change came from the user" apart from engine/restore writes, and
   // only then surface the central HUD. Null = don't show HUD.
   const pendingUserVolumeHud = ref<number | null>(null)
+  let activeVolumePointerId: number | null = null
 
   const volumeIconName = computed<IconName>(() =>
     isMuted.value || volume.value === 0 ? 'volumeOff' : volume.value < 50 ? 'volumeLow' : 'volumeHigh',
@@ -60,19 +64,80 @@ export function useVolumeScrub(options: UseVolumeScrubOptions): UseVolumeScrubRe
   }
 
   const updateVol = (e: PointerEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const rail = volumeRailRef.value
+    if (!rail) return
+    const rect = rail.getBoundingClientRect()
+    if (rect.width <= 0) return
     setUserVolume(Math.max(0, Math.min(maxVolume, ((e.clientX - rect.left) / rect.width) * maxVolume)))
   }
 
-  const onVolumePointerDown = (e: PointerEvent) => {
-    isVolumeScrubbing.value = true
+  const releaseVolumePointerCapture = () => {
+    const rail = volumeRailRef.value
+    if (!rail || activeVolumePointerId === null || typeof rail.hasPointerCapture !== 'function') return
+    if (!rail.hasPointerCapture(activeVolumePointerId)) return
+    try {
+      rail.releasePointerCapture(activeVolumePointerId)
+    } catch {
+      // Capture may already be gone.
+    }
+  }
+
+  const addVolumeListeners = () => {
+    window.addEventListener('pointermove', onWindowVolumePointerMove)
+    window.addEventListener('pointerup', onWindowVolumePointerUp)
+    window.addEventListener('pointercancel', onWindowVolumePointerUp)
+  }
+
+  const removeVolumeListeners = () => {
+    window.removeEventListener('pointermove', onWindowVolumePointerMove)
+    window.removeEventListener('pointerup', onWindowVolumePointerUp)
+    window.removeEventListener('pointercancel', onWindowVolumePointerUp)
+  }
+
+  const stopVolumeScrub = (pointerId?: number) => {
+    if (activeVolumePointerId !== null && typeof pointerId === 'number' && pointerId !== activeVolumePointerId) return
+    releaseVolumePointerCapture()
+    removeVolumeListeners()
+    activeVolumePointerId = null
+    isVolumeScrubbing.value = false
+  }
+
+  const onWindowVolumePointerMove = (e: PointerEvent) => {
+    if (!isVolumeScrubbing.value) return
+    if (activeVolumePointerId !== null && e.pointerId !== activeVolumePointerId) return
     updateVol(e)
   }
+
+  const onWindowVolumePointerUp = (e: PointerEvent) => {
+    stopVolumeScrub(e.pointerId)
+  }
+
+  const onVolumePointerDown = (e: PointerEvent) => {
+    activeVolumePointerId = e.pointerId
+    isVolumeScrubbing.value = true
+    addVolumeListeners()
+    const rail = volumeRailRef.value
+    if (rail && typeof rail.setPointerCapture === 'function') {
+      try {
+        rail.setPointerCapture(e.pointerId)
+      } catch {
+        // Ignore browsers that reject capture for this pointer.
+      }
+    }
+    updateVol(e)
+  }
+
   const onVolumePointerMove = (e: PointerEvent) => {
+    // Element-local move is only useful before window listeners / capture take over.
     if (isVolumeScrubbing.value) updateVol(e)
   }
-  const onVolumePointerUp = () => {
-    isVolumeScrubbing.value = false
+
+  const onVolumePointerUp = (e?: PointerEvent) => {
+    stopVolumeScrub(e?.pointerId)
+  }
+
+  const cleanup = () => {
+    stopVolumeScrub()
   }
 
   // Only react to a change we can attribute to the user (pendingUserVolumeHud
@@ -88,6 +153,7 @@ export function useVolumeScrub(options: UseVolumeScrubOptions): UseVolumeScrubRe
   })
 
   return {
+    volumeRailRef,
     isVolumeScrubbing,
     isVolumeHovered,
     volumeIconName,
@@ -97,5 +163,6 @@ export function useVolumeScrub(options: UseVolumeScrubOptions): UseVolumeScrubRe
     onVolumePointerDown,
     onVolumePointerMove,
     onVolumePointerUp,
+    cleanup,
   }
 }

@@ -89,7 +89,7 @@ defineEmits<{
 .music-action-description {
   margin-top: 0.125rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
 }
 
 .music-action-arrow {

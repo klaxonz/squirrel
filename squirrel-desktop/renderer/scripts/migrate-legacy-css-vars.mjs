@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-// Replace legacy CSS variables (var(--bg-*), var(--text-*), etc.) with shadcn token usage.
+// Replace legacy CSS variables (var(--bg-*), var(--text-*), etc.) with semantic token usage.
 // This is a plain text replacement. Always review the diff.
 
 const PROJECT_ROOT = process.cwd()

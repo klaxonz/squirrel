@@ -2,8 +2,10 @@
   <section v-if="items.length > 0 || loading || loadError" class="home-feed-rail group/container">
     <FeedRailHeader
       title="最新更新"
+      view-more
       :can-scroll-left="canScrollLeft"
       :can-scroll-right="canScrollRight"
+      @view-more="$emit('viewMore')"
       @scroll="onScroll"
     />
 
@@ -26,8 +28,8 @@
         v-for="video in items"
         :key="video.id"
         :video="video"
-        show-avatar
         show-duration
+        thumbnail-status="none"
         class="app-video-rail-card"
         @openModal="$emit('openModal', video)"
         @goToProfile="(profile) => $emit('goToProfile', profile)"
@@ -50,7 +52,7 @@ import FeedRailTrack from '@/features/video/components/feed/FeedRailTrack.vue'
 import VideoItem from '@/features/video/components/feed/VideoItem.vue'
 import RecommendationSkeleton from '@/features/video/components/feed/RecommendationSkeleton.vue'
 
-defineEmits(['openModal', 'goToProfile', 'goToSubscription'])
+defineEmits(['openModal', 'goToProfile', 'goToSubscription', 'viewMore'])
 
 const items = ref<VideoListItem[]>([])
 const loading = ref(false)

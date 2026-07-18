@@ -1,6 +1,6 @@
 <template>
-  <AppPageShell variant="default" scrollable>
-    <div class="app-page-content app-page-content--narrow profile-page">
+  <AppPageShell variant="default" surface="operate" width="form" scrollable>
+    <div class="app-page-content profile-page">
       <header class="profile-header">
         <button
           type="button"
@@ -167,9 +167,7 @@ const userStore = useUserStore()
 const { form, saving, saved, saveError, hasChanges, hydrate, handleSave } = useProfileEditForm({ userStore })
 
 const avatarError = ref(false)
-// ponytail: shadcn Input wrapper exposes its inner <input> via $el.querySelector;
-// minimal structural type avoids importing the generated ui component type.
-const avatarInput = ref<{ $el?: HTMLElement } | null>(null)
+const avatarInput = ref<{ focus: () => void } | null>(null)
 
 const userInitial = computed(() => {
   const name = userStore.currentUser?.nickname || ''
@@ -196,10 +194,7 @@ onMounted(() => {
 })
 
 const focusAvatarInput = () => {
-  if (avatarInput.value) {
-    const inputEl = (avatarInput.value.$el?.querySelector?.('input') as HTMLElement | null) ?? avatarInput.value.$el
-    inputEl?.focus?.()
-  }
+  avatarInput.value?.focus()
 }
 
 const handleLogout = async () => {
@@ -210,6 +205,7 @@ const handleLogout = async () => {
 
 <style scoped>
 .profile-page {
+  --app-page-max-width: var(--app-content-form-max);
   padding-top: var(--space-6);
   padding-bottom: var(--space-8);
 }
@@ -405,6 +401,12 @@ const handleLogout = async () => {
   border-color: hsl(var(--destructive) / 0.4);
   background: hsl(var(--destructive) / 0.08);
   color: hsl(var(--destructive));
+}
+
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .profile-avatar-mask {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

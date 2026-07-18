@@ -91,7 +91,7 @@ const showSidebarMusicPlayer = computed(() =>
   border: 0;
   border-right: 1px solid hsl(var(--border) / 0.38);
   border-radius: 0;
-  background: hsl(var(--sidebar) / 0.72);
+  background: hsl(var(--sidebar));
   color: hsl(var(--sidebar-foreground));
   box-shadow: none;
   user-select: none;
@@ -128,7 +128,7 @@ const showSidebarMusicPlayer = computed(() =>
   margin: 0 0 0.375rem;
   padding: 0 0.625rem;
   color: hsl(var(--muted-foreground) / 0.58);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 600;
   line-height: 1.25;
   letter-spacing: 0.06em;

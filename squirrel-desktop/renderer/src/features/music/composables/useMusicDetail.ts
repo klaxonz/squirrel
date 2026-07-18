@@ -86,7 +86,19 @@ export function useMusicDetail() {
     }
   }
 
-  async function selectPlaylist(playlist: MusicPlaylist) {
+  async function loadSimilarPlaylists(playlist: MusicPlaylist, playlistId: string) {
+    if (playlist.kind === 'theme') return
+    try {
+      const data = await getMusicSimilarPlaylists(playlistId)
+      if (selectedPlaylist.value === playlist) {
+        similarPlaylists.value = (data?.items || []).slice(0, 6)
+      }
+    } catch (err) {
+      Logger.warn('selectPlaylist similar failed', err)
+    }
+  }
+
+  async function selectPlaylist(playlist: MusicPlaylist): Promise<boolean> {
     selectedPlaylist.value = playlist
     selectedUserPlaylist.value = null
     selectedArtist.value = null
@@ -94,30 +106,40 @@ export function useMusicDetail() {
     selectedRank.value = null
     currentPage.value = 1
     tracks.value = []
+    total.value = 0
+    tracksHasMore.value = false
+    similarPlaylists.value = []
 
     const playlistId = String(playlist.specialid || playlist.global_collection_id || playlist.id || '')
 
     tracksLoading.value = true
     try {
-      const [tracksData, similarData] = await Promise.all([
-        getMusicPlaylistTracks({ playlist_id: playlistId, page: 1, page_size: 30 }),
-        getMusicSimilarPlaylists(playlistId).catch((err: unknown) => {
-          Logger.warn('selectPlaylist similar failed', err)
-          return [] as MusicPlaylist[]
-        }),
-      ]) as [TrackPage, MusicPlaylist[]]
+      const tracksData = await getMusicPlaylistTracks({
+        playlist_id: playlistId,
+        playlist_kind: playlist.kind,
+        page: 1,
+        page_size: 30,
+      }) as TrackPage
+
+      if (selectedPlaylist.value !== playlist) return false
 
       tracks.value = tracksData?.items || []
       total.value = tracksData?.total || 0
       tracksHasMore.value = tracks.value.length < total.value
-      similarPlaylists.value = (similarData || []).slice(0, 6)
 
-      loadFavoriteCounts(tracks.value)
+      void loadFavoriteCounts(tracks.value)
+      void loadSimilarPlaylists(playlist, playlistId)
+      return tracks.value.length > 0
     } catch (err) {
       Logger.warn('selectPlaylist failed', err)
-      tracks.value = []
+      if (selectedPlaylist.value === playlist) {
+        tracks.value = []
+        total.value = 0
+        tracksHasMore.value = false
+      }
+      return false
     } finally {
-      tracksLoading.value = false
+      if (selectedPlaylist.value === playlist) tracksLoading.value = false
     }
   }
 
@@ -285,6 +307,7 @@ export function useMusicDetail() {
         const pl = selectedPlaylist.value
         data = await getMusicPlaylistTracks({
           playlist_id: String(pl.specialid || pl.global_collection_id || pl.id || ''),
+          playlist_kind: pl.kind,
           page: currentPage.value,
           page_size: 30,
         }) as TrackPage

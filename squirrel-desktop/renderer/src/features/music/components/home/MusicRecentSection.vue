@@ -176,7 +176,7 @@ function isPlaying(track: MusicTrack): boolean {
   flex: none;
   color: hsl(var(--muted-foreground) / 0.52);
   font-family: var(--font-mono);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
 }
 
 @media (max-width: 1180px) {

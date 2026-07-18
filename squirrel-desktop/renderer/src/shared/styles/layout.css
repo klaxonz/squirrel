@@ -45,7 +45,7 @@
 
   /* Z-index scale — single source of truth for stacking order across the app.
      Replaces scattered magic stacking values with named overlay layers aligned
-     with reka-ui primitives. */
+     with the shared Aura component adapters. */
   --z-base: 0;
   --z-content: 10;            /* sticky toolbars, sticky table heads */
   --z-sticky: 20;             /* page-level sticky bands (music nav-row, toolbar-frame--sticky) */
@@ -73,23 +73,34 @@
   --app-page-gutter: 1rem;
   --app-page-gutter-sm: 1.5rem;
   --app-page-gutter-lg: 2rem;
-  --app-page-max-width: 1400px;
-  --app-page-readable-width: 48rem;
+  --app-content-media-max: 110rem;
+  --app-content-table-max: 96rem;
+  --app-content-form-max: 64rem;
+  --app-content-reading-max: 48rem;
+  --app-page-max-width: var(--app-content-table-max);
+  --app-page-readable-width: var(--app-content-reading-max);
+
+  /* Desktop typography floor. Product metadata may be quiet, never microscopic. */
+  --app-text-body-size: 0.875rem;
+  --app-text-secondary-size: 0.75rem;
+  --app-text-badge-size: 0.6875rem;
 
   /* Responsive card grids — auto-fill + minmax so column count follows the
      container width instead of hardcoded breakpoints. This is the desktop-first
      replacement for the 13 hand-rolled `grid-cols-1 sm:grid-cols-2 ...
      3xl:grid-cols-6` declarations across the video feed. Callers can override
      --app-grid-min to control density (smaller min = more columns on wide
-     screens; e.g. a 4K viewport with --app-grid-min:280px yields ~9 columns
+     screens; e.g. a 4K viewport with --app-grid-min:320px yields ~8 columns
      instead of the old 6-column cap). */
-  --app-video-grid-min: 280px;
+  --app-video-grid-min: 320px;
   --app-video-grid-gap: 1.5rem;
   --app-video-grid-gap-x: 1.25rem;  /* remote/feed variant */
   --app-video-grid-gap-y: 2.5rem;   /* remote/feed variant */
-  --app-video-rail-card-width: 18rem;
+  --app-video-rail-card-width: 19rem;
   --app-video-rail-gap: 1.25rem;
   --app-music-grid-min: 180px;
+  --app-music-grid-gap: var(--space-4) var(--space-3);
+  --app-music-player-height: 4rem;
 
   --app-toolbar-padding-block: 0.75rem;
   --app-content-padding-top: 0.75rem;
@@ -98,9 +109,10 @@
   --container-max-width: 2560px;
 
   /* Desktop shell geometry. These tokens are the implementation source for
-     the FreeTube-hosted title bar, global toolbar, and navigation rail. */
+     the FreeTube-hosted title bar, global toolbar, and navigation rail.
+     Keep chrome short so content starts higher. */
   --app-titlebar-height: 2rem;
-  --app-header-height: 3.25rem;
+  --app-header-height: 2.75rem;
   --sidebar-expanded-width: 15rem;
   --sidebar-icon-size: 1.25rem;
   --sidebar-item-height: 2.25rem;
@@ -193,22 +205,22 @@
   --app-heading-color: hsl(var(--foreground));
   --app-heading-color-muted: hsl(var(--foreground) / 0.82);
 
-  --app-h1-size: 1.6875rem;     /* 27px */
+  --app-h1-size: 1.6875rem;
   --app-h1-weight: 600;
   --app-h1-leading: 1.15;
   --app-h1-tracking: -0.02em;
 
-  --app-h2-size: 1.25rem;       /* 20px */
+  --app-h2-size: 1.25rem;
   --app-h2-weight: 600;
   --app-h2-leading: 1.25;
   --app-h2-tracking: -0.015em;
 
-  --app-h3-size: 1.0625rem;     /* 17px */
+  --app-h3-size: 1.0625rem;
   --app-h3-weight: 600;
   --app-h3-leading: 1.3;
   --app-h3-tracking: -0.01em;
 
-  --app-h4-size: 0.875rem;      /* 14px */
+  --app-h4-size: 0.875rem;
   --app-h4-weight: 600;
   --app-h4-leading: 1.4;
   --app-h4-tracking: -0.005em;
@@ -288,6 +300,15 @@
   --app-grid-min: 240px;
 }
 
+/* Music artwork walls follow the YesPlayMusic-hosted density contract. Keep
+   their column math here so home, discovery, profile, and detail views cannot
+   quietly drift into separate 120–160px card grids. */
+.app-music-grid {
+  display: grid;
+  gap: var(--app-music-grid-gap);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--app-music-grid-min)), 1fr));
+}
+
 /* Horizontal media rails share one geometry contract. Scroll controls read
    these rendered dimensions instead of mirroring them as JavaScript numbers. */
 .app-video-rail {
@@ -321,22 +342,22 @@
 }
 
 .app-table-content {
-  --app-page-max-width: var(--app-table-content-width, 1400px);
+  --app-page-max-width: var(--app-content-table-max);
   padding-top: var(--space-5);
 }
 
 .app-page-content--narrow {
-  max-width: var(--app-page-readable-width);
+  max-width: var(--app-content-reading-max);
   margin-left: auto;
   margin-right: auto;
 }
 
 .app-page-content--wide {
-  --app-page-max-width: 1800px;
+  --app-page-max-width: var(--app-content-table-max);
 }
 
 .app-page-content--media {
-  --app-page-max-width: 2400px;
+  --app-page-max-width: var(--app-content-media-max);
 }
 
 .app-page-section {
@@ -379,11 +400,11 @@
 }
 
 .app-copy-wide {
-  max-width: 64rem;
+  max-width: var(--app-content-form-max);
 }
 
 .app-reader-width {
-  max-width: 42rem;
+  max-width: var(--app-content-reading-max);
   margin-inline: auto;
 }
 
@@ -698,7 +719,7 @@
 .app-media-duration-badge--compact {
   right: 0.25rem;
   bottom: 0.25rem;
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 600;
 }
 
@@ -872,7 +893,7 @@ button.app-selection-active:hover {
   border-radius: 999px;
   background: var(--app-selection-count-bg);
   color: var(--app-selection-count-fg);
-  font-size: 0.5625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 700;
   line-height: 1;
 }
@@ -890,7 +911,7 @@ button.app-selection-active:hover {
   padding: 0 0.25rem;
   background: hsl(var(--foreground));
   color: hsl(var(--background));
-  font-size: 0.5625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 800;
   box-shadow: 0 0 0 2px hsl(var(--background));
 }
@@ -1221,11 +1242,40 @@ button.app-selection-active:hover {
 
 .app-settings-row {
   display: flex;
-  min-height: 4.125rem;
+  /* Operate density — 36px-class rows, not sparse marketing blocks. */
+  min-height: 3.25rem;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-4);
+  padding: 0.75rem 1rem;
+}
+
+/* Operate: whole-row hit target for boolean switches */
+.app-settings-row--toggle {
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.app-settings-row--toggle:hover {
+  background: hsl(var(--foreground) / 0.025);
+}
+
+.app-settings-row--toggle:focus-within {
+  background: hsl(var(--foreground) / 0.03);
+}
+
+.app-settings-row--toggle.is-disabled {
+  cursor: not-allowed;
+}
+
+.app-settings-row--toggle.is-disabled:hover {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-settings-row--toggle {
+    transition: none;
+  }
 }
 
 .app-settings-row__title {
@@ -1423,15 +1473,12 @@ button.app-selection-active:hover {
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1440px) {
   .app-page-content {
     padding-left: var(--app-page-gutter-lg);
     padding-right: var(--app-page-gutter-lg);
   }
 
-  .app-workbench__sidebar {
-    display: flex;
-  }
 }
 
 /* No <768px / mobile breakpoints: this is a desktop-only product (Electron +

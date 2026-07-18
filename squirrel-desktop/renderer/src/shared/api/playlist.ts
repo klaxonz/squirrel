@@ -1,8 +1,13 @@
 import { get, post, put, del } from '@/shared/lib/request'
 import type { Playlist, PlaylistDetail, PlaylistItem } from '@/features/video/types/playlist'
 
+// FastAPI defines the collection route with a trailing slash. Using the
+// slashless form makes the Vite proxy follow a 307 to the backend origin,
+// where the renderer-origin authentication cookie is no longer available.
+const PLAYLIST_COLLECTION_PATH = '/api/playlist/'
+
 export const listPlaylists = async (params: Record<string, unknown> = {}) => {
-  return get<Playlist[]>('/api/playlist', params)
+  return get<Playlist[]>(PLAYLIST_COLLECTION_PATH, params)
 }
 
 export const getPlaylistDetail = async (playlistId: number | string) => {
@@ -17,7 +22,7 @@ export const createPlaylist = async (data: {
   name: string
   description?: string | null
 }) => {
-  return post<Playlist>('/api/playlist', data)
+  return post<Playlist>(PLAYLIST_COLLECTION_PATH, data)
 }
 
 export const updatePlaylist = async (

@@ -146,7 +146,7 @@ const shortLabel = (option: AppFilterListOption) => {
   max-width: 100%;
   overflow: hidden;
   padding: 0 0.1rem;
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 600;
   letter-spacing: 0.01em;
   line-height: 1.15;

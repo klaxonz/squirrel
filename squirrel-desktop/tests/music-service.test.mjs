@@ -98,8 +98,34 @@ test('desktop music play url surfaces verification errors', async () => {
   }, async () => {
     await assert.rejects(
       musicService.playUrl({ hash: 'HASH' }),
-      /需要验证|重新登录/,
+      /酷狗播放接口需要验证，请重新登录音乐账号后再播放/,
     )
+  })
+})
+
+test('desktop music play url revalidates session once after captcha error', async () => {
+  let songUrlCalls = 0
+  let loginTokenCalls = 0
+  await withMockMusicRuntime({
+    song_url: async () => {
+      songUrlCalls += 1
+      if (songUrlCalls === 1) {
+        return { body: { status: 0, errcode: 20028, error: '本次请求需要验证' } }
+      }
+      return { body: { url: 'http://cdn.test/recovered.mp3', bitRate: '128' } }
+    },
+    login_token: async () => {
+      loginTokenCalls += 1
+      return { body: { status: 1, data: { userid: '1', token: 'tok' } } }
+    },
+  }, async (runtime) => {
+    runtime.setCookie('token=tok;userid=1')
+    assert.deepEqual(
+      await musicService.playUrl({ hash: 'HASH' }),
+      { url: 'http://cdn.test/recovered.mp3', quality: '128', expires_at: undefined },
+    )
+    assert.equal(songUrlCalls, 2)
+    assert.equal(loginTokenCalls, 1)
   })
 })
 
@@ -354,6 +380,55 @@ test('desktop music user listen rank reads kugou lists field', async () => {
       album_id: '',
       album_audio_id: '445459508',
       duration: 320,
+      cover: 'http://imge.kugou.com/stdmusic/240/cover.jpg',
+    }])
+  })
+})
+
+test('desktop theme playlists use the matching theme track endpoint', async () => {
+  await withMockMusicRuntime({
+    theme_playlist_track: async (params) => {
+      assert.equal(params.theme_id, '39')
+      return {
+        body: {
+          data: {
+            song_list_size: 1,
+            song_list: [{
+              songid: 517186507,
+              songname: '珠玉',
+              author_name: '单依纯',
+              album_name: '珠玉',
+              hash: 'C1B40CC00A2B9C31450F89275ED28DC6',
+              album_id: '146854336',
+              album_audio_id: '753057489',
+              timelength: 202,
+              sizable_cover: 'http://imge.kugou.com/stdmusic/{size}/cover.jpg',
+            }],
+          },
+        },
+      }
+    },
+    playlist_track_all: async () => {
+      assert.fail('theme playlists must not use the ordinary playlist endpoint')
+    },
+  }, async () => {
+    const result = await musicService.playlistTracks({
+      playlist_id: '39',
+      playlist_kind: 'theme',
+      page: 1,
+      page_size: 30,
+    })
+
+    assert.equal(result.total, 1)
+    assert.deepEqual(result.items, [{
+      id: '753057489',
+      title: '珠玉',
+      artist: '单依纯',
+      album: '珠玉',
+      hash: 'C1B40CC00A2B9C31450F89275ED28DC6',
+      album_id: '146854336',
+      album_audio_id: '753057489',
+      duration: 202,
       cover: 'http://imge.kugou.com/stdmusic/240/cover.jpg',
     }])
   })

@@ -84,7 +84,7 @@ function toggleExpand() {
 }
 
 .music-nav-title {
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 700;
   color: hsl(var(--muted-foreground) / 0.7);
 }

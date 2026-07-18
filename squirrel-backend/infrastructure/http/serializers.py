@@ -5,7 +5,7 @@ mirror the historical ``SerializerMixin`` datetime format
 (``YYYY-MM-DD HH:MM:SS``, no timezone) uses :func:`serialize_datetime`.
 """
 
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import field_serializer

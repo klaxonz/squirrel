@@ -226,7 +226,7 @@ const cardTitle = computed(() => {
 .subscription-row__nsfw {
   flex: none;
   color: hsl(var(--destructive));
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 700;
   line-height: 1;
 }
@@ -306,6 +306,12 @@ const cardTitle = computed(() => {
   opacity: 0.78;
 }
 
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .subscription-row__star {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .subscription-row {
     transition: none;
@@ -313,10 +319,6 @@ const cardTitle = computed(() => {
 
   .subscription-row__identity:active {
     transform: none;
-  }
-
-  .subscription-row__star {
-    opacity: 1;
   }
 }
 </style>

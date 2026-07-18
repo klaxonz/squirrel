@@ -42,7 +42,7 @@ def test_failing_listener_does_not_block_others_and_is_swallowed():
 
 def test_register_is_idempotent():
     dispatcher = DomainEventDispatcher()
-    listener = lambda p: None  # noqa: E731
+    listener = lambda p: None
     dispatcher.register(DomainEvents.VIDEO_SAVED, listener)
     dispatcher.register(DomainEvents.VIDEO_SAVED, listener)
     assert dispatcher.listener_count(DomainEvents.VIDEO_SAVED) == 1

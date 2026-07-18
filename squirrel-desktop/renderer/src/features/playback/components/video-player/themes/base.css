@@ -223,8 +223,6 @@
   box-shadow: var(--sp-shadow-lg);
   overflow-y: auto;
   z-index: var(--sp-z-menu);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 
 .sp-menu-header {

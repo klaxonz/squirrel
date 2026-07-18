@@ -331,6 +331,12 @@ const {
   opacity: 0;
 }
 
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .music-track-checkbox {
+    opacity: 1;
+  }
+}
+
 .music-track-col--num {
   text-align: center;
   color: hsl(var(--muted-foreground));

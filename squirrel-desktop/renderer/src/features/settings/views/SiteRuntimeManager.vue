@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell class="site-runtime-page" variant="compact" :fill="false">
+  <AppPageShell class="site-runtime-page" variant="compact" surface="operate" width="table">
     <AppToolbarFrame bordered compact sticky>
       <div class="site-runtime-toolbar">
         <div class="site-runtime-toolbar__actions">
@@ -33,11 +33,12 @@
             size="sm"
             class="site-runtime-toolbar__action"
             :disabled="testingAll"
+            :title="hasCachedProbe ? '重新检测全部站点连通与登录' : '一键检测全部站点（首屏也会自动连通探测）'"
             @click="handleTestAll"
           >
             <AppSpinner v-if="testingAll" size="sm" />
             <AppIcon v-else name="diagnostics" class="h-4 w-4" />
-            全量检测
+            {{ testingAll ? '检测中…' : (hasCachedProbe ? '重新全量检测' : '全量检测') }}
           </Button>
 
           <Button
@@ -57,6 +58,11 @@
     </AppToolbarFrame>
 
     <div class="app-page-content app-page-content--media site-runtime-page__content">
+      <header class="site-runtime-page__intro">
+        <h1>站点</h1>
+        <p>管理内容来源、登录状态和桌面会话。</p>
+      </header>
+
       <SiteRuntimeGrid
         :runtimes="displaySiteRuntimes"
         :loading="isInitialLoading"
@@ -149,11 +155,17 @@ const {
   connectivityResults,
   loginStatusResults,
   loginStatusTesting,
+  lastTestedAt,
   clearLoginStatusCache,
   saveResultsToCache,
   loadResultsFromCache,
   upsertLoginStatus,
 } = useSiteConnectivityCache()
+
+/** True once any probe (auto or manual) has written results. */
+const hasCachedProbe = computed(
+  () => connectivityResults.value.length > 0 || Boolean(lastTestedAt.value),
+)
 
 // ponytail: desktop-app site login/session handlers + site-name normalisation
 // live in useSiteDesktopLogin. loginStatusTesting/upsert/save are injected
@@ -477,17 +489,44 @@ const {
   openExternalUrl,
 })
 
+/**
+ * On enter, restore cache; if nothing has been tested yet, run a light
+ * connectivity probe so cards are not stuck on permanent「未检测」. Full login
+ * probes stay behind the explicit「全量检测」CTA (avoid thrash / captcha storms).
+ */
+const autoProbeConnectivityIfEmpty = async () => {
+  if (connectivityResults.value.length > 0 || lastTestedAt.value) return
+  if (testingAll.value) return
+  testingAll.value = true
+  try {
+    const data = await testAllSitesConnectivity()
+    if (data) {
+      connectivityResults.value = [data]
+      saveResultsToCache()
+    }
+  } catch (error) {
+    Logger.warn('Auto site connectivity probe failed', error)
+  } finally {
+    testingAll.value = false
+  }
+}
+
 onMounted(() => {
-  fetchSiteRuntimes()
-  loadCatalog()
   loadResultsFromCache()
-  fetchSupportedSites()
+  void (async () => {
+    await Promise.all([
+      fetchSiteRuntimes(),
+      loadCatalog(),
+      fetchSupportedSites(),
+    ])
+    await autoProbeConnectivityIfEmpty()
+  })()
 })
 </script>
 
 <style scoped>
 .site-runtime-page {
-  --app-page-max-width: 2400px;
+  --app-page-max-width: var(--app-content-table-max);
 }
 
 .site-runtime-toolbar {
@@ -532,8 +571,32 @@ onMounted(() => {
 }
 
 .site-runtime-page__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   padding-top: var(--space-5);
   padding-bottom: var(--space-8);
+}
+
+.site-runtime-page__intro {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.site-runtime-page__intro h1 {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-family: var(--app-heading-font);
+  font-size: 1.25rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.site-runtime-page__intro p {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  line-height: 1.5;
 }
 
 </style>

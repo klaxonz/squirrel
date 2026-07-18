@@ -174,10 +174,6 @@ const openVideo = () => {
   background: var(--app-row-hover-bg);
 }
 
-.subscription-inbox-item--read {
-  opacity: 1;
-}
-
 .subscription-inbox-item__thumbnail {
   position: relative;
   overflow: hidden;
@@ -203,7 +199,7 @@ const openVideo = () => {
   padding: 0.125rem 0.3rem;
   color: hsl(var(--app-media-on-image) / 0.94);
   font-family: var(--font-mono);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   line-height: 1;
 }
 
@@ -232,8 +228,12 @@ const openVideo = () => {
 }
 
 .subscription-inbox-item--read .subscription-inbox-item__title {
-  color: hsl(var(--foreground) / 0.7);
-  font-weight: 550;
+  color: hsl(var(--muted-foreground) / 0.9);
+  font-weight: 500;
+}
+
+.subscription-inbox-item--read .subscription-inbox-item__meta {
+  opacity: 0.86;
 }
 
 .subscription-inbox-item__title:hover {
@@ -306,10 +306,15 @@ button.subscription-inbox-item__channel:focus-visible {
   font-weight: 550;
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (hover: none), (prefers-reduced-motion: reduce) {
   .subscription-inbox-item__actions {
     opacity: 1;
     pointer-events: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .subscription-inbox-item__actions {
     transition: none;
   }
 }

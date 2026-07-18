@@ -231,7 +231,7 @@ function handlePlaySong(track: MusicTrack) {
 <style scoped>
 .music-search {
   padding: 1.5rem;
-  max-width: 1280px;
+  max-width: var(--app-content-table-max);
   margin: 0 auto;
 }
 

@@ -78,6 +78,7 @@ export const normalizeTrack = (row = {}) => {
     || row.time_length
     || millisecondsToSeconds(row.duration)
     || millisecondsToSeconds(row.timelen)
+    || millisecondsToSeconds(row.timelength)
     || millisecondsToSeconds(audioInfo.duration_128 || audioInfo.duration || row.timelength_128)
 
   const payload = {

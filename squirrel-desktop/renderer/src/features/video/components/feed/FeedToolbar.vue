@@ -8,11 +8,11 @@
         :options="tabs"
         aria-label="视频分类"
       />
+      <slot name="after-tabs" />
     </div>
 
     <div class="feed-toolbar__actions">
-      <Popover v-if="showFilter">
-        <PopoverTrigger as-child>
+      <template v-if="showFilter">
           <Button
             type="button"
             variant="ghost"
@@ -20,6 +20,7 @@
             class="app-filter-toolbar-button"
             :class="{ 'is-active': activeFilterCount > 0 }"
             :aria-label="filterButtonLabel"
+            @click="toggleFilterPopover"
           >
             <AppIcon name="filter" class="h-3.5 w-3.5" />
             <span>筛选</span>
@@ -30,11 +31,9 @@
               {{ activeFilterCount }}
             </span>
           </Button>
-        </PopoverTrigger>
 
-        <PopoverContent
-          align="end"
-          :side-offset="8"
+        <PrimePopover
+          ref="filterPopover"
           class="w-[17.25rem] overflow-hidden border-border/55 p-0 shadow-popover"
         >
           <AppFilterPanel
@@ -119,48 +118,45 @@
               />
             </label>
           </AppFilterPanel>
-        </PopoverContent>
-      </Popover>
+        </PrimePopover>
+      </template>
 
-      <div v-if="showSort" class="feed-toolbar__divider" aria-hidden="true" />
+      <!--
+        Consume toolbar stays light — sort + presentation live in the
+        filter popover / a single overflow group, not a second Operate strip.
+      -->
+      <div
+        v-if="showSort || showRefresh"
+        class="feed-toolbar__divider"
+        aria-hidden="true"
+      />
 
-      <!-- Sort: separate from filters, labels read as order criteria -->
-      <div v-if="showSort" class="feed-toolbar__group" role="group" aria-label="排序">
-        <Select v-model="localSortBy">
-          <SelectTrigger
-            class="app-toolbar-control app-toolbar-select-trigger"
-            :class="{ 'is-active': localSortBy !== 'publish_date' }"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent class="min-w-36">
-            <SelectItem
-              v-for="opt in sortOptions"
-              :key="opt.value"
-              :value="opt.value"
-              class="text-xs"
-            >
-              {{ opt.label }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <div class="feed-toolbar__group" role="group" aria-label="列表工具">
+        <PrimeSelect
+          v-if="showSort"
+          v-model="localSortBy"
+          :options="sortOptions"
+          option-label="label"
+          option-value="value"
+          size="small"
+          class="app-toolbar-control app-toolbar-select-trigger min-w-36"
+          :class="{ 'is-active': localSortBy !== 'publish_date' }"
+          aria-label="视频排序"
+        />
 
-      <div class="feed-toolbar__divider" aria-hidden="true" />
-
-      <!-- Presentation: view mode + refresh -->
-      <div class="feed-toolbar__group" role="group" aria-label="视图">
         <AppSegmentedControl
           :model-value="uiStore.viewMode"
           :options="viewModeOptions"
           aria-label="视频视图"
           size="icon"
+          class="feed-toolbar__view-mode"
           @update:model-value="handleViewModeChange"
         >
           <template #option="{ option }">
             <AppIcon v-if="option.icon" :name="option.icon" class="h-4 w-4" />
           </template>
         </AppSegmentedControl>
+
         <Button
           v-if="showRefresh"
           type="button"
@@ -197,8 +193,8 @@ import type { TimeRange, Duration, ContentType } from '@/features/video/composab
 import { useSites } from '@/features/video/composables/useSites'
 import { useUserSettings } from '@/shared/composables/useUserSettings'
 import { Button } from '@/shared/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
+import PrimePopover from 'primevue/popover'
+import PrimeSelect from 'primevue/select'
 import { Switch } from '@/shared/ui/switch'
 import { useUIStore } from '@/shared/stores/ui'
 import type { VideoTab } from '@/features/video/constants/videos'
@@ -210,6 +206,9 @@ import {
   TIME_RANGE_OPTIONS,
 } from '@/features/video/constants/feedFilters'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
+
+const filterPopover = ref<{ toggle: (event: Event) => void } | null>(null)
+const toggleFilterPopover = (event: Event) => filterPopover.value?.toggle(event)
 
 const props = withDefaults(defineProps<{
   activeTab?: string
@@ -396,6 +395,7 @@ const viewModeOptions = [
   min-width: 0;
   display: flex;
   align-items: center;
+  gap: var(--space-5);
 }
 
 .feed-toolbar__tabs {

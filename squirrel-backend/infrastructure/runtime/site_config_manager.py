@@ -9,12 +9,13 @@ from infrastructure.runtime.import_paths import install_runtime_import_paths
 
 install_runtime_import_paths()
 
-from crawl import configure_rate_limit as configure_crawl_rate_limit
-from crawl import configure_rate_limit_enabled as configure_crawl_rate_limit_enabled
+# Runtime package roots must be installed before these imports resolve.
+from crawl import configure_rate_limit as configure_crawl_rate_limit  # noqa: E402
+from crawl import configure_rate_limit_enabled as configure_crawl_rate_limit_enabled  # noqa: E402
 
-from infrastructure.site_catalog.catalog import SiteCatalog
-from infrastructure.site_catalog.runtime_config import set_site_configs
-from shared_kernel.infrastructure.rate_limiter import rate_limiter as backend_rate_limiter
+from infrastructure.site_catalog.catalog import SiteCatalog  # noqa: E402
+from infrastructure.site_catalog.runtime_config import set_site_configs  # noqa: E402
+from shared_kernel.infrastructure.rate_limiter import rate_limiter as backend_rate_limiter  # noqa: E402
 
 
 def _deep_merge(base: dict, overrides: dict) -> dict:

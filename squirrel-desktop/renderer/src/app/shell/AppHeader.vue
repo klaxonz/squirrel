@@ -149,9 +149,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   gap: var(--space-3);
   padding: 0 var(--space-5) 0 var(--space-3);
   border-bottom: 1px solid hsl(var(--border) / 0.32);
-  /* Flat chrome on the shared canvas — no card band that reads as a third box. */
-  background: hsl(var(--background) / 0.92);
-  backdrop-filter: blur(10px);
+  background: hsl(var(--background));
   position: relative;
   z-index: var(--z-header);
   user-select: none;
@@ -222,13 +220,13 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   width: 1.5rem;
   height: 1.5rem;
   border-radius: var(--radius-md);
-  background: hsl(var(--primary));
+  background: hsl(var(--muted));
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 0.6875rem;
   font-weight: 700;
-  color: hsl(var(--primary-foreground));
+  color: hsl(var(--foreground));
   flex: 0 0 auto;
   letter-spacing: 0;
 }

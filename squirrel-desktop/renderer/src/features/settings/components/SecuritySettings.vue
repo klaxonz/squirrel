@@ -18,6 +18,7 @@
     <section class="app-settings-section">
       <div class="app-settings-section-title">
         <h2>登录密码</h2>
+        <p>更新本账号密码；提交后需用新密码登录其他设备。</p>
       </div>
 
       <form class="app-settings-panel security-password-form" @submit.prevent="handlePasswordUpdate">
@@ -52,13 +53,18 @@
     <section class="app-settings-section">
       <div class="app-settings-section-title">
         <h2>登录会话</h2>
+        <p>管理其它设备上的有效会话，当前设备不会被踢出。</p>
       </div>
 
       <div class="app-settings-panel">
         <div class="app-settings-row">
-          <div class="app-settings-row__title">注销其他设备</div>
+          <div class="app-settings-row__copy">
+            <div class="app-settings-row__title">注销其他设备</div>
+            <div class="app-settings-row__desc">立即吊销除本机以外的全部会话令牌。</div>
+          </div>
           <Button
-            variant="destructive"
+            variant="outline"
+            class="security-revoke-button"
             :loading="sessionSubmitting"
             @click="handleRevokeSessions"
           >
@@ -177,6 +183,7 @@ const handleRevokeSessions = async () => {
 }
 
 .security-password-form {
+  max-width: 40rem;
   padding: var(--space-4);
 }
 
@@ -204,10 +211,14 @@ const handleRevokeSessions = async () => {
 
 .security-form-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   border-top: 1px solid var(--app-surface-border-subtle);
   margin: var(--space-4) calc(var(--space-4) * -1) calc(var(--space-4) * -1);
   padding: var(--space-4);
+}
+
+.security-revoke-button {
+  color: hsl(var(--destructive));
 }
 
 @media (max-width: 900px) {

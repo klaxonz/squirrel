@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import type { DialogCloseProps } from "reka-ui"
-import { DialogClose } from "reka-ui"
+import { inject } from 'vue'
+import { dialogContextKey } from './context'
 
-const props = defineProps<DialogCloseProps>()
+const dialog = inject(dialogContextKey)
+if (!dialog) throw new Error('DialogClose must be nested inside Dialog')
 </script>
 
 <template>
-  <DialogClose v-bind="props">
+  <span class="app-prime-dialog__close" @click="dialog.setOpen(false)">
     <slot />
-  </DialogClose>
+  </span>
 </template>

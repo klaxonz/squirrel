@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
+from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.service import SiteCatalogService
 
 
@@ -113,3 +114,23 @@ def test_save_site_overrides_merges_patch_and_prunes_values_equal_to_plugin_defa
     assert result['youtube']['enabled'] is True
     saved = json.loads(config_path.read_text(encoding='utf-8'))
     assert saved == {}
+
+
+def test_load_site_overrides_migrates_removed_plugin_icon_route(tmp_path):
+    config_path = tmp_path / 'sites.json'
+    config_path.write_text(
+        json.dumps(
+            {
+                'youtube': {'icon_url': '/api/plugins/sites/youtube/icon'},
+                'custom': {'icon_url': 'https://cdn.example.com/custom.png'},
+            }
+        ),
+        encoding='utf-8',
+    )
+
+    with patch.object(SiteCatalog, '_config_path', return_value=str(config_path)):
+        catalog = SiteCatalog.load_override_catalog()
+
+    assert catalog is not None
+    assert catalog['youtube']['icon_url'] == '/api/sites/youtube/icon'
+    assert catalog['custom']['icon_url'] == 'https://cdn.example.com/custom.png'

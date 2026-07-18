@@ -38,7 +38,7 @@
           icon="playlistMusic"
           title="暂无推荐歌单"
         />
-        <MusicCardGrid v-else layout="grid-compact">
+        <MusicCardGrid v-else>
           <MusicCard
             v-for="item in recommendedPlaylists"
             :key="item.specialid"
@@ -85,7 +85,7 @@
         icon="disc"
         title="暂无新专辑"
       />
-      <MusicCardGrid v-else layout="grid-auto">
+      <MusicCardGrid v-else>
         <MusicCard
           v-for="album in albums"
           :key="album.id"

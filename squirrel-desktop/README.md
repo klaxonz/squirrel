@@ -33,14 +33,14 @@ npm run test:renderer    # Vue/vitest
 
 | 模式 | Renderer |
 |------|----------|
-| `npm run dev` | Vite `http://127.0.0.1:5173`（`DESKTOP_RENDERER_URL`） |
+| `npm run dev` | Vite `http://127.0.0.1:5174`（`DESKTOP_RENDERER_URL`） |
 | 打包 / 本地 dist | `renderer/dist/index.html`（`file://` via `loadFile`） |
 
 后端 API 默认 `http://127.0.0.1:8001`，开发时代理见 `renderer/vite.config.ts`。
 
 ## 环境变量
 
-- `DESKTOP_RENDERER_URL`：开发模式 renderer 地址，默认 `http://127.0.0.1:5173`
+- `DESKTOP_RENDERER_URL`：开发模式 renderer 地址，默认 `http://127.0.0.1:5174`
 - `VITE_BACKEND_URL`：开发时 Vite 代理目标后端，默认 `http://127.0.0.1:8001`（仅 dev；运行时 API 地址由桌面端 server-config 配置）
 
 打包后 renderer 使用 hash 路由（`createWebHashHistory`），以便在 `file://` 下正常导航。

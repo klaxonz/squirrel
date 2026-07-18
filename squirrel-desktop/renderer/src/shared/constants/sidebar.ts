@@ -247,10 +247,15 @@ export const NAV_ITEMS: NavigationItem[] = [
 export const SIDEBAR_TOP_ITEMS = NAV_ITEMS.filter((item) => item.key === 'home')
 export const SIDEBAR_FOOTER_ITEMS = NAV_ITEMS.filter((item) => item.key === 'settings')
 
+/**
+ * Home sits above grouped content navigation; Settings remains footed.
+ * Labels stay product-Chinese; order mirrors FreeTube (Subscriptions-like media
+ * first, library second, tools last) without inventing a third shell.
+ */
 export const NAV_GROUPS: NavigationGroup[] = [
   {
     key: 'media',
-    label: '媒体',
+    label: '订阅与内容',
     items: NAV_ITEMS.filter((item) => item.group === 'media' && item.key !== 'home'),
   },
   {
@@ -260,7 +265,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
   },
   {
     key: 'system',
-    label: '管理',
+    label: '工具',
     items: NAV_ITEMS.filter((item) => item.group === 'system' && item.key !== 'settings'),
   },
 ]

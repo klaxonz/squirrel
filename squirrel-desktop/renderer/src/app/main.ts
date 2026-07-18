@@ -1,13 +1,18 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { VueQueryPlugin } from '@tanstack/vue-query'
+import PrimeVue from 'primevue/config'
+import Tooltip from 'primevue/tooltip'
 import App from './App.vue'
 import router from './router'
 import { queryClient } from '@/shared/lib/queryClient'
 import { useThemeStore } from '@/shared/stores/theme'
 import { Logger } from '@/shared/lib/logger'
+import { squirrelAuraPreset } from '@/shared/ui/prime-theme'
 
+import 'primeicons/primeicons.css'
 import '@/shared/styles/index.css'
+import '@/shared/styles/primevue.css'
 import '@/shared/styles/layout.css'
 import '@/shared/styles/themes/dark.css'
 import '@/features/auth/styles/auth-entry.css'
@@ -25,6 +30,24 @@ const bootstrap = async () => {
   app.use(pinia)
   app.use(router)
   app.use(VueQueryPlugin, { queryClient })
+  app.use(PrimeVue, {
+    ripple: false,
+    inputVariant: 'filled',
+    theme: {
+      preset: squirrelAuraPreset,
+      options: {
+        darkModeSelector: '.dark',
+        cssLayer: false,
+      },
+    },
+    zIndex: {
+      modal: 1300,
+      overlay: 1200,
+      menu: 1200,
+      tooltip: 1400,
+    },
+  })
+  app.directive('tooltip', Tooltip)
 
   // ponytail: global last-resort sinks. Per-request API errors surface as
   // thrown ApiError (caught by vue-query's MutationCache → toast, or by each

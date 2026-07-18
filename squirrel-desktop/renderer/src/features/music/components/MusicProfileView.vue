@@ -78,22 +78,22 @@
         </Button>
       </header>
       
-      <Tabs
-        v-model="activeTab"
+      <PrimeTabs
+        v-model:value="activeTab"
         class="music-profile-tabs-wrapper"
       >
         <div class="music-profile-tabs-header">
-          <TabsList class="music-profile-tabs-list">
-            <TabsTrigger value="playlists" class="music-profile-tab-btn">
+          <PrimeTabList class="music-profile-tabs-list">
+            <PrimeTab value="playlists" class="music-profile-tab-btn">
               <span>我的歌单</span>
-            </TabsTrigger>
-            <TabsTrigger value="history" class="music-profile-tab-btn">
+            </PrimeTab>
+            <PrimeTab value="history" class="music-profile-tab-btn">
               <span>最近播放</span>
-            </TabsTrigger>
-            <TabsTrigger value="rank" class="music-profile-tab-btn">
+            </PrimeTab>
+            <PrimeTab value="rank" class="music-profile-tab-btn">
               <span>听歌排行</span>
-            </TabsTrigger>
-          </TabsList>
+            </PrimeTab>
+          </PrimeTabList>
 
           <div class="music-profile-tab-actions">
             <MusicCreatePlaylistDialog
@@ -113,8 +113,8 @@
           </div>
         </div>
       
-      <div class="music-profile-panel">
-        <TabsContent value="playlists" class="music-profile-playlists">
+      <PrimeTabPanels class="music-profile-panel">
+        <PrimeTabPanel value="playlists" class="music-profile-playlists">
           <div class="music-profile-playlist-section">
             <div class="music-profile-section-header">
               <h3 class="music-profile-section-title">创建的歌单 ({{ createdPlaylists.length }})</h3>
@@ -127,29 +127,16 @@
               title="还没有创建歌单"
               copy="创建一个歌单，用来整理和持续收听喜欢的歌曲。"
             />
-            <div v-else class="music-grid">
-              <div
+            <div v-else class="app-music-grid">
+              <MusicCard
                 v-for="playlist in createdPlaylists"
                 :key="playlist.listid"
-                class="music-grid-card"
-                role="button"
-                tabindex="0"
-                @click="$emit('select-playlist', playlist)"
-                @keydown.enter.prevent="$emit('select-playlist', playlist)"
-                @keydown.space.prevent="$emit('select-playlist', playlist)"
-              >
-                <div class="music-source-cover-wrap">
-                  <img v-if="playlist.pic" :src="formatMusicImageUrl(playlist.pic)" :alt="playlist.name" class="music-source-cover" />
-                  <div v-else class="music-source-cover">
-                    <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <div class="music-source-play-overlay">
-                    <AppIcon name="play" class="h-6 w-6 fill-current" />
-                  </div>
-                </div>
-                <span class="music-grid-card-title">{{ playlist.name }}</span>
-                <span class="music-grid-card-subtitle">{{ playlist.m_count || playlist.count || 0 }} 首歌曲</span>
-              </div>
+                :cover="playlist.pic ? formatMusicImageUrl(playlist.pic) : undefined"
+                :title="playlist.name"
+                :subtitle="`${playlist.m_count || playlist.count || 0} 首歌曲`"
+                variant="playlist"
+                @select="$emit('select-playlist', playlist)"
+              />
             </div>
           </div>
 
@@ -158,34 +145,21 @@
             <div v-if="collectedPlaylists.length === 0" class="music-profile-playlist-empty">
               暂无收藏歌单，浏览热门歌单并收藏后将在此显示
             </div>
-            <div v-else class="music-grid">
-              <div
+            <div v-else class="app-music-grid">
+              <MusicCard
                 v-for="playlist in collectedPlaylists"
                 :key="playlist.listid"
-                class="music-grid-card"
-                role="button"
-                tabindex="0"
-                @click="$emit('select-playlist', playlist)"
-                @keydown.enter.prevent="$emit('select-playlist', playlist)"
-                @keydown.space.prevent="$emit('select-playlist', playlist)"
-              >
-                <div class="music-source-cover-wrap">
-                  <img v-if="playlist.pic" :src="formatMusicImageUrl(playlist.pic)" :alt="playlist.name" class="music-source-cover" />
-                  <div v-else class="music-source-cover">
-                    <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <div class="music-source-play-overlay">
-                    <AppIcon name="play" class="h-6 w-6 fill-current" />
-                  </div>
-                </div>
-                <span class="music-grid-card-title">{{ playlist.name }}</span>
-                <span class="music-grid-card-subtitle">{{ playlist.m_count || playlist.count || 0 }} 首歌曲</span>
-              </div>
+                :cover="playlist.pic ? formatMusicImageUrl(playlist.pic) : undefined"
+                :title="playlist.name"
+                :subtitle="`${playlist.m_count || playlist.count || 0} 首歌曲`"
+                variant="playlist"
+                @select="$emit('select-playlist', playlist)"
+              />
             </div>
           </div>
-        </TabsContent>
+        </PrimeTabPanel>
 
-        <TabsContent value="history" class="music-profile-tracks-list">
+        <PrimeTabPanel value="history" class="music-profile-tracks-list">
           <AppBlockLoader v-if="historyLoading" size="sm" text="正在载入播放历史..." />
           <AppEmptyState v-else-if="history.length === 0" class="py-12" variant="plain" icon="playlistMusic" title="暂无播放历史记录" />
           <MusicTrackList
@@ -212,9 +186,9 @@
               </Button>
             </div>
           </div>
-        </TabsContent>
+        </PrimeTabPanel>
 
-        <TabsContent value="rank" class="music-profile-tracks-list">
+        <PrimeTabPanel value="rank" class="music-profile-tracks-list">
           <AppBlockLoader v-if="rankLoading" size="sm" text="正在载入听歌排行..." />
           <AppEmptyState v-else-if="listenRank.length === 0" class="py-12" variant="plain" icon="playlistMusic" title="暂无听歌排行数据" />
           <MusicTrackList
@@ -241,21 +215,26 @@
               </Button>
             </div>
           </div>
-        </TabsContent>
-      </div>
-      </Tabs>
+        </PrimeTabPanel>
+      </PrimeTabPanels>
+      </PrimeTabs>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import PrimeTabs from 'primevue/tabs'
+import PrimeTabList from 'primevue/tablist'
+import PrimeTab from 'primevue/tab'
+import PrimeTabPanels from 'primevue/tabpanels'
+import PrimeTabPanel from 'primevue/tabpanel'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import MusicTrackList from './MusicTrackList.vue'
+import MusicCard from './shared/MusicCard.vue'
 import MusicCreatePlaylistDialog from './profile/MusicCreatePlaylistDialog.vue'
 import { formatMusicImageUrl, formatRegTime } from '@/features/music/lib/musicFormatters'
 import type { MusicUserProfile, MusicUserPlaylist, MusicTrack, MusicAuthStatus } from '@/shared/api/music'
@@ -399,7 +378,7 @@ watch(activeTab, (tab) => {
   position: absolute;
   right: -0.375rem;
   bottom: -0.25rem;
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 600;
   padding: 0.125rem 0.4375rem;
   color: hsl(var(--foreground));
@@ -633,82 +612,6 @@ watch(activeTab, (tab) => {
   background: hsl(var(--muted) / 0.12);
 }
 
-.music-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8.75rem, 8.75rem));
-  gap: 1rem;
-  justify-content: flex-start;
-}
-
-.music-grid-card {
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  outline: none;
-}
-
-.music-source-cover-wrap {
-  position: relative;
-  aspect-ratio: 1;
-  border-radius: var(--app-card-radius);
-  overflow: hidden;
-  background: var(--app-media-thumb-placeholder);
-  border: 1px solid hsl(var(--border) / 0.28);
-  box-shadow: var(--app-surface-shadow);
-  transition:
-    border-color var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-base) var(--ease-default);
-}
-
-.music-grid-card:hover .music-source-cover-wrap,
-.music-grid-card:focus-visible .music-source-cover-wrap {
-  border-color: hsl(var(--border));
-  box-shadow: var(--shadow-card-hover);
-}
-
-.music-source-cover {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.music-source-play-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, transparent 0%, var(--app-media-scrim-mid) 100%);
-  color: hsl(var(--app-media-on-image));
-  opacity: 0;
-  transition: opacity var(--duration-base) var(--ease-default);
-}
-
-.music-grid-card:hover .music-source-play-overlay {
-  opacity: 1;
-}
-
-.music-grid-card-title {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  margin-top: 0.5rem;
-  color: hsl(var(--foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.music-grid-card-subtitle {
-  font-size: 0.6875rem;
-  color: hsl(var(--muted-foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .music-profile-tracks-list {
   display: flex;
   flex-direction: column;
@@ -752,9 +655,7 @@ watch(activeTab, (tab) => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .music-profile-tab-btn,
-  .music-source-cover-wrap,
-  .music-source-play-overlay {
+  .music-profile-tab-btn {
     transition: none;
   }
 }

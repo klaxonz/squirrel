@@ -2,9 +2,9 @@ import logging
 import os
 from contextlib import contextmanager
 
+from alembic.config import Config as AlembicConfig
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
-from alembic.config import Config as AlembicConfig
 
 from alembic import command
 from infrastructure.config.settings import settings

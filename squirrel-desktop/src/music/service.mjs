@@ -32,7 +32,6 @@ let authStore = {
 }
 
 const DEFAULT_COOKIE = String(process.env.KUGOU_MUSIC_COOKIE || '')
-
 export class DesktopMusicServiceError extends Error {
   constructor(message, details = undefined) {
     super(message)
@@ -311,6 +310,7 @@ const service = {
       cover: item.pic_net_save || item.pic,
       intro: item.intro,
       play_count: item.play_count,
+      kind: 'theme',
     }))
     return { items, page, page_size, has_more: false }
   },
@@ -327,7 +327,20 @@ const service = {
     return { items: firstList(data, ['info', 'list', 'lists', 'special_list', 'data']) }
   },
 
-  async playlistTracks({ playlist_id, page = 1, page_size = 20 }) {
+  async playlistTracks({ playlist_id, playlist_kind = 'playlist', page = 1, page_size = 20 }) {
+    if (playlist_kind === 'theme') {
+      const payload = await requestKugou('theme_playlist_track', { theme_id: playlist_id })
+      const data = payload.data && typeof payload.data === 'object' ? payload.data : {}
+      const rows = Array.isArray(data.song_list) ? data.song_list : []
+      const start = (page - 1) * page_size
+      return {
+        items: rows.slice(start, start + page_size).map(normalizeTrack),
+        page,
+        page_size,
+        total: data.song_list_size || rows.length,
+      }
+    }
+
     const payload = await requestKugou('playlist_track_all', { id: playlist_id, page, pagesize: page_size })
     const data = payload.data && typeof payload.data === 'object' ? payload.data : {}
     const rows = Array.isArray(data.songs) ? data.songs : []
@@ -518,7 +531,40 @@ const service = {
     const params = { hash, quality }
     if (album_id) params.album_id = album_id
     if (album_audio_id) params.album_audio_id = album_audio_id
-    const payload = await requestKugou('song_url', params)
+
+    // Captcha/session errors are often one-shot after a stale desktop cookie.
+    // Re-validate token once (when we still have credentials) then retry song_url
+    // before surfacing “请重新登录”. Avoids empty audioSrc flakiness on soft 20028.
+    const requestSongUrl = async () => {
+      try {
+        return await requestKugou('song_url', params)
+      } catch (error) {
+        if (musicServiceErrorCode(error?.details?.body) === '20028') {
+          throw new DesktopMusicServiceError('酷狗播放接口需要验证，请重新登录音乐账号后再播放', error.details)
+        }
+        throw error
+      }
+    }
+
+    let payload
+    try {
+      payload = await requestSongUrl()
+    } catch (error) {
+      if (!(error instanceof DesktopMusicServiceError) || !String(error.message || '').includes('重新登录')) {
+        throw error
+      }
+      const cookie = await effectiveCookie()
+      const token = cookieValue(cookie, 'token')
+      const userid = cookieValue(cookie, 'userid')
+      if (!token || !userid) throw error
+      try {
+        await requestKugou('login_token', { token, userid })
+        payload = await requestSongUrl()
+      } catch {
+        throw error
+      }
+    }
+
     const url = playableUrlFromPayload(payload)
     if (!url) throwPlaybackRejected(payload)
     return { url, quality: String(payload.bitRate || payload.quality || quality), expires_at: payload.expire }

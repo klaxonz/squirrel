@@ -1,7 +1,10 @@
 <template>
   <div
     class="app-layout"
-    :class="{ 'app-layout--desktop': isDesktop }"
+    :class="{
+      'app-layout--desktop': isDesktop,
+      'app-layout--immersive': isImmersiveSurface,
+    }"
     :style="{ '--workspace-offset': isSidebarOpen ? 'var(--sidebar-expanded-width)' : '0rem' }"
   >
     <DesktopTitleBar v-if="isDesktop" class="app-layout__titlebar" />
@@ -14,7 +17,7 @@
       />
 
       <main class="app-layout__workspace">
-        <AppHeader class="app-layout__header" />
+        <AppHeader v-if="showAppHeader" class="app-layout__header" />
 
         <div
           ref="mainScrollRef"
@@ -64,12 +67,51 @@ const modalApi = useModalEscapeApi()
 
 const isSidebarOpen = computed(() => uiStore.isSidebarOpen)
 
+/** Route meta.sidebar drives immersive surfaces (playback / RSS / music). */
+type SidebarRouteMeta = { mode?: string; defaultOpen?: boolean }
+
+const sidebarRouteMeta = computed(() => {
+  const raw = route.meta.sidebar
+  if (!raw || typeof raw !== 'object') return null
+  return raw as SidebarRouteMeta
+})
+
+const isImmersiveSurface = computed(() =>
+  Boolean(sidebarRouteMeta.value && sidebarRouteMeta.value.defaultOpen === false),
+)
+
+/**
+ * Every ordinary authenticated surface keeps the same 44px desktop header and
+ * account entry. Routes without a search task render the header's balanced
+ * spacer; only the video watch surface deliberately gives the player that row.
+ */
+const showAppHeader = computed(() => route.name !== 'VideoPlay')
+
 const hasActiveMusicBar = computed(() =>
-  Boolean(musicPlayerStore.currentTrack && (musicPlayerStore.resolvingUrl || musicPlayerStore.audioSrc))
+  Boolean(
+    musicPlayerStore.currentTrack
+    && (musicPlayerStore.resolvingUrl || musicPlayerStore.audioSrc || musicPlayerStore.error),
+  )
 )
 
 const musicBarPadding = computed(() =>
-  route.name === 'Music' && hasActiveMusicBar.value ? 'pb-20' : ''
+  route.name === 'Music' && hasActiveMusicBar.value ? 'app-layout__scroll--music-player' : ''
+)
+
+// Immersive host routes (playback / RSS / music) collapse the global app rail
+// without writing localStorage, then restore the user preference on exit.
+watch(
+  () => sidebarRouteMeta.value?.defaultOpen,
+  (defaultOpen, previous) => {
+    if (typeof defaultOpen === 'boolean') {
+      uiStore.setSidebarOpen(defaultOpen, { persist: false })
+      return
+    }
+    if (typeof previous === 'boolean') {
+      uiStore.restorePersistedSidebarOpen()
+    }
+  },
+  { immediate: true },
 )
 
 const mainScrollRef = ref<HTMLElement | null>(null)
@@ -224,6 +266,10 @@ onUnmounted(() => {
   scroll-behavior: auto;
 }
 
+.app-layout__scroll--music-player {
+  padding-bottom: var(--app-music-player-height);
+}
+
 /*
   Stage is a fixed-height flex host equal to the scrollport. Document-style
   pages (fill=false) still outer-scroll because their content overflows the
@@ -231,6 +277,7 @@ onUnmounted(() => {
   own their own scroll regions — see :has(.app-page-shell--fill) below.
 */
 .app-layout__stage {
+  position: relative;
   display: flex;
   height: 100%;
   min-height: 100%;

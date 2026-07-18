@@ -82,7 +82,14 @@
           </div>
           <div class="music-mini-text">
             <span class="music-mini-title">{{ store.currentTrack.title || '未知歌曲' }}</span>
-            <span v-if="store.error" class="music-mini-error" :title="store.error">{{ store.error }}</span>
+            <span
+              v-if="store.error"
+              class="music-mini-error"
+              :class="{ 'music-mini-error--action': needsRelogin }"
+              :title="store.error"
+              :role="needsRelogin ? 'link' : undefined"
+              @click.stop="onMiniErrorAction"
+            >{{ shortMiniError }}</span>
             <span v-else class="music-mini-artist">{{ store.currentTrack.artist || '未知歌手' }}</span>
           </div>
         </Button>
@@ -165,7 +172,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import { Button } from '@/shared/ui/button'
@@ -186,6 +193,7 @@ import { useUIStore } from '@/shared/stores/ui'
 const store = useMusicPlayerStore()
 const uiStore = useUIStore()
 const route = useRoute()
+const router = useRouter()
 
 // ponytail: the <audio> element <-> store bridge (ref registration + the
 // imperative src/volume/play/error lifecycle on audioSrc change) lives in
@@ -196,6 +204,23 @@ const { audioEl } = useAudioElementBridge({ store })
 
 const isBuffering = ref(false)
 const showQueue = ref(false)
+
+const needsRelogin = computed(() => /登录|会话|鉴权|auth|login|token/i.test(String(store.error || '')))
+
+const shortMiniError = computed(() => {
+  const raw = String(store.error || '').trim()
+  if (!raw) return ''
+  // Recoverable path — short label + click-through login.
+  if (needsRelogin.value) return '需重新登录'
+  if (/网络|timeout|fetch|连接/i.test(raw)) return '网络异常'
+  if (raw.length <= 16) return raw
+  return '播放失败'
+})
+
+const onMiniErrorAction = () => {
+  if (!needsRelogin.value) return
+  void router.push({ name: 'Music', query: { view: 'profile' } })
+}
 
 // ponytail: HTML5 drag-and-drop queue reorder (drag source index + drop guard)
 // lives in useQueueReorder. Any queue surface that wants drag-to-reorder can
@@ -290,20 +315,18 @@ function removeQueueItem(index: number) {
 <style scoped>
 .music-bar {
   position: fixed;
-  bottom: 0.875rem;
-  left: 50%;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: var(--z-sidebar);
-  width: calc(100vw - 2rem);
-  max-width: 90rem;
+  display: flex;
+  width: auto;
+  height: var(--app-music-player-height);
+  flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--app-hairline);
-  border-radius: var(--app-surface-radius);
+  border-top: 1px solid var(--app-hairline);
   background: hsl(var(--background) / 0.96);
-  box-shadow: var(--app-panel-shadow);
-  transform: translateX(-50%);
   transition:
-    left var(--duration-base) var(--ease-out),
-    width var(--duration-base) var(--ease-out),
     border-color var(--duration-fast) var(--ease-default);
 }
 
@@ -313,12 +336,13 @@ function removeQueueItem(index: number) {
 }
 
 .music-bar--mini {
+  right: auto;
   left: 0;
   bottom: 0;
   z-index: var(--z-header);
   width: var(--sidebar-expanded-width);
+  height: auto;
   max-width: none;
-  transform: none;
   border: 0;
   border-top: 1px solid var(--app-hairline);
   border-right: 1px solid var(--app-hairline);
@@ -333,6 +357,7 @@ function removeQueueItem(index: number) {
   Dock to the workspace bottom-left instead of the inert sidebar slot.
 */
 .music-bar--dock {
+  right: auto;
   left: var(--space-3);
   bottom: var(--space-3);
   z-index: var(--z-header);
@@ -345,11 +370,6 @@ function removeQueueItem(index: number) {
 }
 
 @media (min-width: 768px) {
-  .music-bar {
-    left: calc(50vw + var(--workspace-offset) / 2);
-    width: min(90rem, calc(100vw - var(--workspace-offset) - 2rem));
-  }
-
   .music-bar--mini {
     left: 0;
     width: var(--sidebar-expanded-width);
@@ -368,18 +388,50 @@ function removeQueueItem(index: number) {
 }
 
 .music-bar-inner {
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  height: 100%;
+  min-height: 0;
   align-items: center;
-  gap: 0.875rem;
-  min-height: 2.75rem;
-  padding: 0.25rem 0.875rem 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding: 2px 10vw 0;
 }
 
+/* Progress stays glued to the top edge of the full-width bar with a larger
+   invisible hit target; the visual hairline is centered inside that target. */
 .music-bar :deep(.music-progress-bar) {
-  width: calc(100% - 1.75rem);
-  margin: 0.375rem auto 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 100%;
+  margin: 0;
   padding: 0;
+}
+
+.music-bar-inner :deep(.music-bar-track-info),
+.music-bar-inner :deep(.music-bar-controls),
+.music-bar-inner :deep(.music-bar-actions) {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 1336px) {
+  .music-bar-inner {
+    padding-inline: 5vw;
+  }
+}
+
+@media (max-width: 900px) {
+  .music-bar-inner {
+    gap: var(--space-1);
+    padding-inline: var(--space-2);
+  }
+
+  .music-bar .music-bar-time-wrap,
+  .music-bar-inner :deep(.music-bar-range) {
+    display: none;
+  }
 }
 
 .music-bar-time-wrap {
@@ -393,11 +445,11 @@ function removeQueueItem(index: number) {
   content: '/';
   order: 1;
   color: hsl(var(--muted-foreground) / 0.45);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
 }
 
 .music-bar-time {
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   color: hsl(var(--muted-foreground) / 0.7);
   min-width: 2.25rem;
   text-align: center;
@@ -470,7 +522,7 @@ function removeQueueItem(index: number) {
 
 .music-mini-artist {
   margin-top: 0.0625rem;
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   color: hsl(var(--muted-foreground));
 }
 
@@ -479,9 +531,15 @@ function removeQueueItem(index: number) {
   margin-top: 0.0625rem;
   overflow: hidden;
   color: hsl(var(--destructive));
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.music-mini-error--action {
+  text-decoration: underline;
+  text-underline-offset: 0.1rem;
+  cursor: pointer;
 }
 
 .music-mini-controls {

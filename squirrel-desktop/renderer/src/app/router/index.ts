@@ -151,6 +151,8 @@ const routes: RouteRecordRaw[] = [
       searchPlaceholder: '搜索文章',
       searchSuggestions: false,
       historyStrategy: 'push',
+      // Collapse the global app rail so the RSS three-pane owns the window.
+      sidebar: SidebarMode.fixed,
     }),
   },
   {
@@ -387,6 +389,7 @@ const routes: RouteRecordRaw[] = [
       hideScrollbar: true,
       search: 'music',
       searchPlaceholder: '搜索歌曲、歌手、专辑',
+      transitionKey: 'music',
       historyStrategy: 'push',
     }),
   },
@@ -394,13 +397,14 @@ const routes: RouteRecordRaw[] = [
     path: '/video/:videoId',
     name: 'VideoPlay',
     component: VideoPlay,
-    meta: createSearchMeta('视频播放', {
+    meta: createNoSearchMeta('视频播放', {
       navKey: 'videos',
       sectionLabel: '视频',
       searchRedirectName: 'AllVideos',
       searchPersistKey: 'VideosView',
       scrollable: true,
       hideScrollbar: true,
+      // Watch immersion — no global search header, app rail collapsed.
       sidebar: SidebarMode.fixed,
       transitionKey: 'video',
       historyStrategy: 'push',

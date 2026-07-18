@@ -10,6 +10,12 @@
  * @param fallback  returned when err isn't an Error with a usable message
  */
 export const errorMessage = (err: unknown, fallback: string): string => {
-  if (err instanceof Error && err.message) return err.message
+  if (err instanceof Error && err.message) {
+    const message = err.message
+      .replace(/^Error invoking remote method '[^']+':\s*/, '')
+      .replace(/^[A-Za-z_$][\w.$]*Error:\s*/, '')
+      .trim()
+    return message || fallback
+  }
   return fallback
 }

@@ -13,7 +13,7 @@ import { computed, onMounted, onUnmounted, ref, shallowRef, toValue, watch, type
 export interface SkeletonCountOptions {
   /**
    * Minimum card width in px — MUST match the `--app-grid-min` the grid is
-   * rendered with (defaults to `--app-video-grid-min`, 280px). Used to compute
+   * rendered with (defaults to `--app-video-grid-min`, 320px). Used to compute
    * the auto-fill column count: `cols = floor((width + gap) / (min + gap))`.
    * Set to a very large number (e.g. Number.MAX_SAFE_INTEGER) for single-column
    * layouts (list view).
@@ -32,7 +32,7 @@ export interface SkeletonCountOptions {
 }
 
 const DEFAULTS = {
-  minCardWidth: 280,
+  minCardWidth: 320,
   gap: 24,
   cardHeight: 220,
   min: 4,
@@ -145,4 +145,3 @@ export type SkeletonCountReturn = {
   columns: Ref<number>
   attachRef: Ref<HTMLElement | null>
 }
-

@@ -52,16 +52,16 @@
 
     <section v-if="similar.length" class="music-playlist-similar">
       <h2 class="music-playlist-similar-title">相似歌单</h2>
-      <div class="music-playlist-similar-grid">
-        <article
+      <div class="app-music-grid">
+        <MusicCard
           v-for="item in similar"
           :key="item.specialid"
-          class="music-playlist-similar-card"
-          @click="$emit('change', item)"
-        >
-          <img :src="item.imgurl" :alt="item.specialname" loading="lazy" />
-          <h3>{{ item.specialname }}</h3>
-        </article>
+          :cover="item.imgurl"
+          :title="item.specialname || item.name || '未命名歌单'"
+          :subtitle="item.nickname || item.creator || '歌单'"
+          variant="playlist"
+          @select="$emit('change', item)"
+        />
       </div>
     </section>
   </div>
@@ -73,6 +73,7 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import MusicTrackList from './MusicTrackList.vue'
+import MusicCard from './shared/MusicCard.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import type { MusicPlaylist, MusicTrack } from '@/shared/api/music'
 
@@ -189,36 +190,4 @@ function shuffleAll() {
   letter-spacing: var(--app-h3-tracking);
 }
 
-.music-playlist-similar-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
-  gap: 1rem;
-}
-
-.music-playlist-similar-card {
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.music-playlist-similar-card:hover {
-  transform: translateY(-4px);
-}
-
-.music-playlist-similar-card img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 0.625rem;
-  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.08);
-}
-
-.music-playlist-similar-card h3 {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  margin-top: 0.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 </style>

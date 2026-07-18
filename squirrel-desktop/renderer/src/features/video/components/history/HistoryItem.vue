@@ -1,5 +1,16 @@
 <template>
-  <article class="history-item">
+  <!--
+    Stable DOM contract (automation + visual):
+    - root: article.history-item[data-history-item]
+    - stable selectors: .history-item, [data-history-item], .history-groups .history-item
+    - unfinished flag: data-unfinished="true|false"
+  -->
+  <article
+    class="history-item"
+    data-history-item
+    :data-history-id="String(video.history_id)"
+    :data-unfinished="isUnfinished ? 'true' : 'false'"
+  >
     <div
       class="history-item__open"
       role="button"
@@ -308,9 +319,17 @@ const displayChannel = computed(
   opacity: 1;
 }
 
-.history-item__delete:hover {
+.history-item__delete:hover,
+.history-item__delete:focus-visible {
   background: hsl(var(--destructive) / 0.12);
   color: hsl(var(--destructive));
+}
+
+/* Touch + reduced-motion: hover-reveal is unusable; keep delete discoverable. */
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .history-item__delete {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

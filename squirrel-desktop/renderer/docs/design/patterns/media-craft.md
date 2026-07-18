@@ -16,7 +16,7 @@
 | 视频卡 | `features/video/components/feed/VideoItem.vue` |
 | 缩略图 | `features/video/components/feed/VideoThumbnail.vue` |
 | 网格 / Rail | `layout.css` → `.app-video-grid*` / `.app-video-rail*` |
-| 首页舞台 | `features/video/views/HomeView.vue`（`.home-stage*`） |
+| 首页 feed | `features/video/views/HomeView.vue`（`.home-rails` 堆叠；**无** hero 舞台） |
 | Rail 标题 | `features/video/components/feed/FeedRailHeader.vue` |
 
 ---
@@ -66,7 +66,7 @@ Title                        ← 主文案
 | 卡圆角 | 容器 / 封面使用 `--radius-xl` 或文档化等价（Spec 4） |
 | 封面→标题 | **0.5–0.75rem**（现参照约 `0.625rem`） |
 | 网格 gap | 仅 `.app-video-grid*` + `--app-video-grid-gap*`；不手写长 breakpoint 链 |
-| 最小列宽 | `--app-grid-min` 默认约 280px；紧凑变体单独覆盖 |
+| 最小列宽 | `--app-grid-min` 默认约 320px；紧凑变体单独覆盖 |
 
 ### 2.3 交互
 
@@ -115,26 +115,28 @@ Title                        ← 主文案
 
 ---
 
-## 4. 焦点舞台（首页 Hero / 继续看主视觉）
+## 4. 首页 feed（FreeTube · 无 Hero 舞台）
 
-Consume 焦点区允许更强层次，但必须 **同色温、可扫、可点**。
+**宿主：** [UI Clone Anchors](../ui-clone-anchors.md) 视频 Consume → FreeTube。
+首页 **不是** 流媒体运营大舞台。
 
 | 项 | 配方 |
 |----|------|
-| 媒体 | 大图或主推封面；加载时占位尺寸稳定（防 CLS） |
-| Scrim | 仅 `hsl(var(--background) / α)` 或 `hsl(var(--overlay) / α)` 多层；**禁止**与画布脱节的纯黑/纯白孤岛 |
-| 标题 | Hero 或 H1 + display；最多 **2 行**；对比足够 |
-| 副文 | meta ≤ 约 1–2 行；muted 或半透明 foreground，仍可读 |
-| 主 CTA | 每视图 1 个 primary（播放 / 继续）；次操作 ghost |
-| 进度 | 若有：文案 + 细条，primary 填充可接受 |
-| 与下方墙 | 舞台底与第一 rail 间距明确；不黏成一片 |
+| 结构 | 仅 **纵向堆叠横向 rail**（继续观看 / 精选 / 特别关注 / 最新更新…）；**禁止** `.home-stage` 大海报 + 侧栏队列 |
+| 分区 | 每段 `FeedRailHeader` + `.app-video-rail`；标题与卡墙左缘对齐 |
+| 卡片 | 与 §2 视频卡相同；进度在封面上细条，不在页级 Hero 文案块 |
+| 精选 | 若有 curated API，进 **rail**（`FeaturedVideos`），不进全宽舞台 |
+| 空态 | 各 rail 独立 Spec 3；允许整页无 rail 时由首个错误/空组件表达 |
+| 与壳 | 页边用 `--app-page-gutter*`；不发明第二套首页 chrome |
 
-### 验收 · 舞台
+### 验收 · 首页
 
-- [ ] scrim 可指出 token 来源  
-- [ ] 标题/CTA 无需滚动即可理解主行动（桌面主栏宽度下）  
-- [ ] 仅一个实心 primary  
-- [ ] 与下方内容同色温连续  
+- [ ] 无 `.home-stage` / `.home-queue` / `.home-focus`
+- [ ] 至少一种 rail 有真实卡或 skeleton/空/错闭环
+- [ ] rail 间距与 media-grid 横向几何一致
+- [ ] contract：`homeFeedContract.test.ts`
+
+> 历史「焦点舞台」配方已废弃。若产品再要运营位，须先改 Anchors，不得静默加回。
 
 ---
 
@@ -192,7 +194,7 @@ Organize 页内的视频卡仍按本页卡配方（媒体不降级）；工具�
 
 - [ ] 卡：结构、比例、标题行数、操作分离达标  
 - [ ] 墙：grid token、rail 节奏、skeleton 成形  
-- [ ] 舞台（若有）：同色温 scrim、单 primary、标题可读  
+- [ ] 首页：FreeTube 堆叠 rail，无 hero 舞台（§4）
 - [ ] 对比与封面上文字达标  
 - [ ] 无纯黑/纯白色温断裂、无缩略图工具栏回潮  
 

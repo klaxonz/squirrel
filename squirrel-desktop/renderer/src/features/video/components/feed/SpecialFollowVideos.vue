@@ -1,9 +1,8 @@
 <template>
   <section v-if="items.length > 0 || loading || loadError" class="home-feed-rail group/container">
     <FeedRailHeader
-      title="特别关注"
+      title="订阅更新"
       view-more
-      view-more-label="查看更多"
       :can-scroll-left="canScrollLeft"
       :can-scroll-right="canScrollRight"
       @view-more="emit('viewMore')"
@@ -11,7 +10,7 @@
     />
 
     <div v-if="loadError && !loading && items.length === 0" class="app-page-empty app-page-empty--compact">
-      <AppEmptyState variant="error" title="特别关注加载失败" :copy="loadError">
+      <AppEmptyState variant="error" title="订阅更新加载失败" :copy="loadError">
         <template #actions>
           <Button size="sm" @click="load">重试</Button>
         </template>
@@ -29,8 +28,8 @@
         v-for="item in items"
         :key="item.id"
         :video="item"
-        show-avatar
         show-duration
+        thumbnail-status="none"
         class="app-video-rail-card"
         @openModal="emit('openModal', item)"
         @goToProfile="(profile) => emit('goToProfile', profile)"

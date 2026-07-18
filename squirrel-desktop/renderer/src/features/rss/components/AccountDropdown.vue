@@ -177,7 +177,7 @@ defineEmits<{
 .account-dropdown__provider {
   overflow: hidden;
   color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 500;
   line-height: 1.2;
   text-overflow: ellipsis;

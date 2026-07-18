@@ -1,15 +1,33 @@
 <script setup lang="ts">
-import type { DialogRootEmits, DialogRootProps } from "reka-ui"
-import { DialogRoot, useForwardPropsEmits } from "reka-ui"
+import { computed, provide, ref } from 'vue'
+import { dialogContextKey } from './context'
 
-const props = defineProps<DialogRootProps>()
-const emits = defineEmits<DialogRootEmits>()
+const props = withDefaults(defineProps<{
+  open?: boolean
+  defaultOpen?: boolean
+}>(), {
+  defaultOpen: false,
+})
 
-const forwarded = useForwardPropsEmits(props, emits)
+const emit = defineEmits<{
+  (event: 'update:open', value: boolean): void
+}>()
+
+const internalOpen = ref(props.defaultOpen)
+const open = computed({
+  get: () => props.open ?? internalOpen.value,
+  set: (value: boolean) => {
+    internalOpen.value = value
+    emit('update:open', value)
+  },
+})
+
+provide(dialogContextKey, {
+  open,
+  setOpen: (value) => { open.value = value },
+})
 </script>
 
 <template>
-  <DialogRoot v-bind="forwarded">
-    <slot />
-  </DialogRoot>
+  <slot />
 </template>

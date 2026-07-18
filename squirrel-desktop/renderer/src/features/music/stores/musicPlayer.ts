@@ -43,6 +43,8 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
 
   const audioRef = shallowRef<HTMLAudioElement | null>(null)
   let lyricRequestId = 0
+  /** Ignore stale resolve results when the user skips tracks quickly. */
+  let resolveRequestId = 0
   // Cache for prefetched play URLs to avoid re-fetching
   const urlCache = new Map<string, string>()
   let prefetchAbortId = 0
@@ -295,6 +297,7 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
 
   async function _resolveAndPlay(track: MusicTrack, startAt = 0) {
     if (!track.hash) return
+    const requestId = ++resolveRequestId
     resolvingUrl.value = true
     error.value = ''
     playing.value = false
@@ -306,6 +309,7 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
     const cacheKey = `${track.hash}:${quality.value}`
     const cached = urlCache.get(cacheKey)
     if (cached) {
+      if (requestId !== resolveRequestId) return
       resolvingUrl.value = false
       audioSrc.value = cached
       if (startAt > 0) seekAfterAudioReady(startAt)
@@ -322,6 +326,7 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
         album_audio_id: track.album_audio_id || undefined,
         quality: quality.value,
       })
+      if (requestId !== resolveRequestId) return
       if (!data?.url) {
         markPlaybackError('当前歌曲没有可播放地址，可能是无版权、VIP 或地区限制')
         Logger.error('Failed to resolve music play url: no url in response', data)
@@ -339,10 +344,16 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
       void _prefetchNextTrack()
       await nextTick()
     } catch (err) {
-      markPlaybackError(errorMessage(err, '播放地址获取失败'))
+      if (requestId !== resolveRequestId) return
+      // Auth failures must not poison the URL cache; next play retries live.
+      urlCache.delete(cacheKey)
+      const message = errorMessage(err, '播放地址获取失败')
+      markPlaybackError(message)
       Logger.error('Failed to resolve music play url', err)
     } finally {
-      resolvingUrl.value = false
+      if (requestId === resolveRequestId) {
+        resolvingUrl.value = false
+      }
     }
   }
 
@@ -351,6 +362,19 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
     playing.value = false
     audioSrc.value = ''
     error.value = message
+  }
+
+  /** Clear auth/session playback errors after user re-logs in. */
+  function clearPlaybackError() {
+    error.value = ''
+  }
+
+  function retryCurrentTrack() {
+    if (!currentTrack.value) return
+    if (currentTrack.value.hash) {
+      urlCache.delete(`${currentTrack.value.hash}:${quality.value}`)
+    }
+    _resolveAndPlay(currentTrack.value, currentTime.value)
   }
 
   function seekAfterAudioReady(time: number) {
@@ -520,6 +544,8 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
     removeFromQueue,
     reorderQueue,
     markPlaybackError,
+    clearPlaybackError,
+    retryCurrentTrack,
     loadLyric,
     handleEnded,
   }

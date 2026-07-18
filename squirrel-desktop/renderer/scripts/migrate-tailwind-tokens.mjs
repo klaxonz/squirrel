@@ -3,7 +3,7 @@ import path from 'node:path'
 
 // This codemod performs simple, deterministic string replacements for Tailwind
 // utility class names used by the legacy token system (bg-bg-*, text-text-*, etc.)
-// to shadcn-style utility classes.
+// to shared semantic utility classes.
 //
 // It is intentionally dumb: it does not parse Vue templates or CSS ASTs.
 // Always review the diff after running.

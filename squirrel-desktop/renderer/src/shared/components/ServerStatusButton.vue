@@ -1,28 +1,28 @@
 <template>
-  <Popover v-slot="{ open }">
+  <div>
     <!-- Floating trigger: collapsed icon button anchored to the viewport
          top-right. Hidden until useServerConfig has resolved. -->
-    <PopoverTrigger as-child>
-      <Button
-        type="button"
-        unstyled
-        :class="['server-status-trigger', { 'server-status-trigger--open': open }]"
-        :title="currentServerLabel"
-        :aria-label="triggerAriaLabel"
-      >
-        <span
-          class="server-status-trigger__dot"
-          :class="{ 'server-status-trigger__dot--idle': !currentServerUrl }"
-          aria-hidden="true"
-        />
-        <AppIcon name="server" class="server-status-trigger__icon" />
-      </Button>
-    </PopoverTrigger>
+    <Button
+      type="button"
+      unstyled
+      :class="['server-status-trigger', { 'server-status-trigger--open': popoverOpen }]"
+      :title="currentServerLabel"
+      :aria-label="triggerAriaLabel"
+      @click="togglePopover"
+    >
+      <span
+        class="server-status-trigger__dot"
+        :class="{ 'server-status-trigger__dot--idle': !currentServerUrl }"
+        aria-hidden="true"
+      />
+      <AppIcon name="server" class="server-status-trigger__icon" />
+    </Button>
 
-    <PopoverContent
-      :align="'end'"
-      :side-offset="10"
+    <PrimePopover
+      ref="serverPopover"
       class="server-status-popover"
+      @show="popoverOpen = true"
+      @hide="popoverOpen = false"
     >
       <header class="server-status-popover__head">
         <span class="server-status-popover__eyebrow">后端引擎</span>
@@ -82,8 +82,8 @@
         <AppIcon name="warning" class="server-status-popover__feedback-icon" />
         {{ testFeedback || '无法连接至该地址' }}
       </p>
-    </PopoverContent>
-  </Popover>
+    </PrimePopover>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -104,9 +104,9 @@
  * the "Change server" action.
  */
 import { computed, ref } from 'vue'
+import PrimePopover from 'primevue/popover'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
-import { Popover, PopoverTrigger, PopoverContent } from '@/shared/ui/popover'
 import { useServerConfig } from '@/shared/composables/useServerConfig'
 import { Logger } from '@/shared/lib/logger'
 
@@ -119,8 +119,14 @@ const triggerAriaLabel = computed(() => {
 })
 
 const testing = ref(false)
+const serverPopover = ref<{ toggle: (event: Event) => void } | null>(null)
+const popoverOpen = ref(false)
 const testResult = ref<'ok' | 'fail' | null>(null)
 const testFeedback = ref('')
+
+const togglePopover = (event: Event) => {
+  serverPopover.value?.toggle(event)
+}
 
 const handleTest = async () => {
   if (!currentServerUrl.value) return

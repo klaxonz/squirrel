@@ -24,9 +24,13 @@
               <h1 class="app-h2">
                 {{ video.title }}
               </h1>
-              <div class="video-detail__meta">
-                <span>{{ videoPublishedText }}</span>
-                <span class="video-detail__dot">·</span>
+              <div v-if="videoPublishedText || video.site" class="video-detail__meta">
+                <span v-if="videoPublishedText">{{ videoPublishedText }}</span>
+                <span
+                  v-if="videoPublishedText && video.site"
+                  class="video-detail__dot"
+                  aria-hidden="true"
+                >·</span>
                 <span v-if="video.site" class="video-detail__site">{{ video.site }}</span>
               </div>
             </div>
@@ -297,7 +301,7 @@ import useVideoInteraction from '@/features/video/composables/useVideoInteractio
 import { usePlaylist } from '@/features/video/composables/usePlaylist'
 import { saveRemoteVideo } from '@/shared/api'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
-import type { VideoPageVideo, VideoProfile } from '@/features/playback/types/videoPlayback'
+import type { VideoPageVideo } from '@/features/playback/types/videoPlayback'
 
 const { isDesktop: isDesktopEnv } = useDesktopBridge()
 
@@ -593,7 +597,7 @@ const {
   grid-template-columns: minmax(0, 1fr);
   gap: 2rem;
   width: 100%;
-  max-width: 1800px;
+  max-width: var(--app-content-media-max);
   margin: 0 auto;
   padding: 1.5rem;
   transition:
@@ -623,13 +627,13 @@ const {
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.36);
-  border-radius: 0.75rem;
+  border: 0;
+  border-radius: 0;
   background: black;
 }
 
 .video-player-stage.is-widescreen {
-  border-radius: 0.75rem;
+  border-radius: 0;
 }
 
 .video-player-host {

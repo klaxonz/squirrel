@@ -108,29 +108,12 @@
               <AppIcon v-else name="refresh" class="h-3.5 w-3.5" />
               {{ isSyncing ? '同步中' : '同步' }}
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger as-child>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  :disabled="isSyncing"
-                  aria-label="选择同步模式"
-                >
-                  <AppIcon name="chevronDown" class="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" class="w-36">
-                <DropdownMenuItem @click="handleDirectSync('incremental')">
-                  <AppIcon name="refresh" class="mr-2 h-3.5 w-3.5" />
-                  增量同步
-                </DropdownMenuItem>
-                <DropdownMenuItem @click="handleDirectSync('full')">
-                  <AppIcon name="sync" class="mr-2 h-3.5 w-3.5" />
-                  全量同步
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <AppActionMenu
+              :items="syncMenuItems"
+              :disabled="isSyncing"
+              trigger-label="选择同步模式"
+              icon="chevronDown"
+            />
           </div>
 
           <Button
@@ -153,15 +136,10 @@ import { computed, ref, watch } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
+import AppActionMenu from '@/shared/components/AppActionMenu.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import { Button } from '@/shared/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
 import { getSubscriptionDetail, triggerDirectRefresh, unsubscribe as apiUnsubscribe, updateSpecialFollowStatus } from '@/shared/api'
 import { notifySubscriptionRemoved } from '@/shared/lib/subscriptionEvents'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
@@ -188,6 +166,11 @@ const syncError = ref('')
 const syncMessage = ref('')
 const DISMISS_MS = 180
 const isDesktop = useDesktopBridge().isDesktop()
+
+const syncMenuItems = computed(() => [
+  { label: '增量同步', appIcon: 'refresh', command: () => handleDirectSync('incremental') },
+  { label: '全量同步', appIcon: 'sync', command: () => handleDirectSync('full') },
+])
 
 const canOpenRemote = computed(() => {
   return isDesktop && !!detail.value?.site && !!detail.value?.url
@@ -314,7 +297,7 @@ watch(() => props.subscriptionId, () => {
 
 <style scoped>
 .channel-header__inner {
-  --app-page-max-width: 2400px;
+  --app-page-max-width: var(--app-content-media-max);
   align-items: flex-start;
   gap: var(--space-5);
 }

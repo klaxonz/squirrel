@@ -64,11 +64,12 @@ const selectOption = (value: string | number) => {
 }
 
 .app-section-nav__item {
+  position: relative;
   display: inline-flex;
-  height: 3.5rem;
+  height: 2.5rem;
   align-items: center;
   gap: 0.325rem;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   padding: 0;
   color: hsl(var(--muted-foreground) / 0.86);
   font-size: 0.8125rem;
@@ -93,10 +94,21 @@ const selectOption = (value: string | number) => {
   font-weight: 620;
 }
 
+.app-section-nav__item.is-active::after {
+  position: absolute;
+  right: 0;
+  bottom: -0.4375rem;
+  left: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: hsl(var(--foreground) / 0.72);
+  content: '';
+}
+
 .app-section-nav__badge {
   min-width: 0.75rem;
   color: hsl(var(--muted-foreground) / 0.76);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   line-height: 1;
   text-align: center;
 }

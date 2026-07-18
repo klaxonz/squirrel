@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 
@@ -23,12 +24,14 @@ class LogQuery:
         level: str | None = Query(None, description='Log level (INFO, WARNING, ERROR, DEBUG)'),
         page: int = Query(1, ge=1, description='Page number'),
         page_size: int = Query(500, ge=1, le=2000, alias='pageSize', description='Page size'),
+        order: Literal['newest', 'oldest'] = Query('newest', description='Log ordering'),
     ) -> None:
         self.filename = filename
         self.keyword = keyword
         self.level = level
         self.page = page
         self.page_size = page_size
+        self.order = order
 
 
 @router.get('/files')
@@ -65,6 +68,7 @@ def query_logs(
             level=params.level,
             start_line=start_line,
             limit=params.page_size,
+            newest_first=params.order == 'newest',
         )
 
         return response.success(

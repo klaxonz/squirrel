@@ -112,7 +112,7 @@ onUnmounted(() => {
   font-weight: 700;
   color: var(--sp-primary, #d3d4d8);
   margin-bottom: 6px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
 
 .sp-stats-grid {

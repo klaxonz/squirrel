@@ -13,6 +13,7 @@ from infrastructure.site_catalog.routes import site_cookies_single_upload as sit
 from infrastructure.site_catalog.routes import sites_catalog as _sites_catalog
 from infrastructure.site_catalog.routes import sites_dependencies as _sites_dependencies
 from infrastructure.site_catalog.routes import sites_login as _sites_login
+from application.app import site_cookie_operations_router, site_operations_router
 
 site_routes = SimpleNamespace(
     catalog=_sites_catalog,
@@ -20,6 +21,18 @@ site_routes = SimpleNamespace(
     dependencies=_sites_dependencies,
     login=_sites_login,
 )
+
+
+def test_application_registers_site_operation_prefixes():
+    site_paths = {route.path for route in site_operations_router.routes}
+    cookie_paths = {route.path for route in site_cookie_operations_router.routes}
+
+    assert '/api/sites/test-connectivity/all' in site_paths
+    assert '/api/sites/{site_name}/test-connectivity' in site_paths
+    assert '/api/sites/{site_name}/login-status' in site_paths
+    assert '/api/sites/youtube/oauth/status' in site_paths
+    assert '/api/site-cookies/import-all' in cookie_paths
+    assert '/api/site-cookies/{site_name}' in cookie_paths
 
 
 class FakeCatalogService:

@@ -79,74 +79,11 @@
               />
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger as-child>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  class="site-runtime-card__menu"
-                  :aria-label="`${runtime.display_name} 管理操作`"
-                  title="更多操作"
-                >
-                  <AppIcon name="more" class="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" class="w-52">
-                <DropdownMenuItem
-                  :disabled="!runtime.siteName || runtime.siteTesting || runtime.siteLoginTesting"
-                  @click="$emit('test-runtime', runtime)"
-                >
-                  <AppSpinner v-if="runtime.siteTesting || runtime.siteLoginTesting" size="sm" />
-                  <AppIcon v-else name="diagnostics" class="h-4 w-4" />
-                  <span>
-                    {{ runtime.siteTesting || runtime.siteLoginTesting ? '检测中' : '检测站点' }}
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  v-if="supportsLogin(runtime)"
-                  :disabled="runtime.siteLoginTesting"
-                  @click="$emit('test-login', runtime.siteName)"
-                >
-                  <AppIcon name="security" class="h-4 w-4" />
-                  <span>刷新登录状态</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  v-if="isDesktopApp && runtime.siteDesktopLoginSupported"
-                  :disabled="runtime.siteLoginTesting"
-                  @click="$emit('desktop-login', runtime.siteName)"
-                >
-                  <AppIcon name="user" class="h-4 w-4" />
-                  <span>{{ runtime.siteLoginStatus?.logged_in ? '重新登录桌面会话' : '打开桌面登录' }}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  v-if="isDesktopApp && runtime.siteDesktopLoginSupported && runtime.siteLoginStatus?.logged_in"
-                  class="text-destructive focus:text-destructive"
-                  @click="$emit('clear-desktop-session', runtime.siteName)"
-                >
-                  <AppIcon name="logout" class="h-4 w-4" />
-                  <span>清除桌面会话</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  v-if="runtime.siteName === 'youtube'"
-                  @click="$emit(runtime.siteOAuthStatus === 'authenticated' || runtime.siteOAuthStatus === 'pending' ? 'revoke-oauth' : 'start-oauth')"
-                >
-                  <AppIcon
-                    :name="runtime.siteOAuthStatus === 'authenticated' ? 'unlink' : 'link'"
-                    class="h-4 w-4"
-                  />
-                  <span>
-                    {{ runtime.siteOAuthStatus === 'authenticated' || runtime.siteOAuthStatus === 'pending'
-                      ? '撤销 YouTube 授权'
-                      : '授权 YouTube' }}
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem @click="$emit('edit-site', runtime)">
-                  <AppIcon name="settingsPanel" class="h-4 w-4" />
-                  <span>站点配置</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <AppActionMenu
+              :items="runtimeActionItems(runtime)"
+              :trigger-label="`${runtime.display_name} 管理操作`"
+              button-class="site-runtime-card__menu"
+            />
           </div>
         </header>
 
@@ -205,17 +142,11 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppActionMenu from '@/shared/components/AppActionMenu.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { Switch } from '@/shared/ui/switch'
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
 import { useSiteRuntimeStatus } from '@/features/settings/composables/useSiteRuntimeStatus'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 
@@ -228,7 +159,7 @@ defineProps({
   loadError: { type: String, default: '' },
 })
 
-defineEmits([
+const emit = defineEmits([
   'enable',
   'disable',
   'test-runtime',
@@ -257,6 +188,52 @@ const supportsLogin = runtime => Boolean(
   || runtime.siteDesktopLoginSupported
   || runtime.siteName === 'youtube',
 )
+
+const runtimeActionItems = runtime => {
+  const oauthConnected = runtime.siteOAuthStatus === 'authenticated' || runtime.siteOAuthStatus === 'pending'
+  return [
+    {
+      label: runtime.siteTesting || runtime.siteLoginTesting ? '检测中' : '检测站点',
+      appIcon: 'diagnostics',
+      loading: runtime.siteTesting || runtime.siteLoginTesting,
+      disabled: !runtime.siteName || runtime.siteTesting || runtime.siteLoginTesting,
+      command: () => emit('test-runtime', runtime),
+    },
+    {
+      label: '刷新登录状态',
+      appIcon: 'security',
+      visible: supportsLogin(runtime),
+      disabled: runtime.siteLoginTesting,
+      command: () => emit('test-login', runtime.siteName),
+    },
+    {
+      label: runtime.siteLoginStatus?.logged_in ? '重新登录桌面会话' : '打开桌面登录',
+      appIcon: 'user',
+      visible: isDesktopApp.value && runtime.siteDesktopLoginSupported,
+      disabled: runtime.siteLoginTesting,
+      command: () => emit('desktop-login', runtime.siteName),
+    },
+    {
+      label: '清除桌面会话',
+      appIcon: 'logout',
+      danger: true,
+      visible: isDesktopApp.value && runtime.siteDesktopLoginSupported && runtime.siteLoginStatus?.logged_in,
+      command: () => emit('clear-desktop-session', runtime.siteName),
+    },
+    {
+      label: oauthConnected ? '撤销 YouTube 授权' : '授权 YouTube',
+      appIcon: oauthConnected ? 'unlink' : 'link',
+      visible: runtime.siteName === 'youtube',
+      command: () => emit(oauthConnected ? 'revoke-oauth' : 'start-oauth'),
+    },
+    { separator: true },
+    {
+      label: '站点配置',
+      appIcon: 'settingsPanel',
+      command: () => emit('edit-site', runtime),
+    },
+  ]
+}
 </script>
 
 <style scoped>
@@ -266,7 +243,7 @@ const supportsLogin = runtime => Boolean(
 
 .site-runtime-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: var(--space-4);
 }
 
@@ -425,7 +402,7 @@ const supportsLogin = runtime => Boolean(
 
 .site-runtime-card__capability-count {
   color: hsl(var(--muted-foreground) / 0.54);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-variant-numeric: tabular-nums;
 }
 

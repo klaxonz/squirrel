@@ -99,7 +99,7 @@ let observer: IntersectionObserver | null = null
 // Skeleton count mirrors the auto-fill grid via the same minCardWidth/gap
 // formula — no breakpoint table to keep in sync with the CSS class.
 const { count: skeletonCount, attachRef: root } = useSkeletonCount({
-  minCardWidth: 280,   // matches --app-video-grid-min
+  minCardWidth: 320,   // matches --app-video-grid-min
   gap: 32,             // matches --app-video-grid-gap-y (2rem)
   cardHeight: 200,     // thumbnail + 2-line title + date
 })

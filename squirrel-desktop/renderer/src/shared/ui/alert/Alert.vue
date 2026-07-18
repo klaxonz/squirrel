@@ -1,17 +1,31 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import type { AlertVariants } from "."
-import { cn } from '@/shared/lib/utils'
-import { alertVariants } from "."
+import type { HTMLAttributes } from 'vue'
+import { computed } from 'vue'
+import Message from 'primevue/message'
+import type { AlertVariant } from '.'
 
-const props = defineProps<{
-  class?: HTMLAttributes["class"]
-  variant?: AlertVariants["variant"]
-}>()
+const props = withDefaults(defineProps<{
+  class?: HTMLAttributes['class']
+  variant?: AlertVariant
+}>(), {
+  variant: 'default',
+})
+
+const severity = computed(() => {
+  if (props.variant === 'destructive' || props.variant === 'error') return 'error'
+  if (props.variant === 'success') return 'success'
+  if (props.variant === 'warning') return 'warn'
+  if (props.variant === 'info') return 'info'
+  return 'secondary'
+})
 </script>
 
 <template>
-  <div :class="cn(alertVariants({ variant }), props.class)" role="alert">
+  <Message
+    :severity="severity"
+    :closable="false"
+    :class="['app-prime-message', props.class]"
+  >
     <slot />
-  </div>
+  </Message>
 </template>

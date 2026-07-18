@@ -7,18 +7,26 @@ biased toward those with thumbnails for the home hero.
 import random
 from collections.abc import Callable, Generator
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
 from domains.video.application.services.listing.page_loader import VideoListPageLoader
-from domains.video.application.services.listing.profiles import merge_profiles, video_extra_profiles
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
 from infrastructure.database.session import get_session as _default_get_session
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
+
+
+def order_featured_video_ids(video_ids: list[int], *, stable: bool) -> list[int]:
+    """Order a featured candidate pool for interactive or visual consumers."""
+    ordered_ids = list(video_ids)
+    if stable:
+        return sorted(ordered_ids)
+    random.shuffle(ordered_ids)
+    return ordered_ids
 
 
 class VideoFeaturedService:
@@ -43,7 +51,7 @@ class VideoFeaturedService:
         if page_loader is None:
             self._page_loader = VideoListPageLoader(thumbnail_downloader_service)
 
-    def get_featured_videos(self, user_id: int, count: int = 5) -> list[dict]:
+    def get_featured_videos(self, user_id: int, count: int = 5, *, stable: bool = False) -> list[dict]:
         """Return up to *count* videos for the home hero.
 
         Selection strategy (no Meilisearch, PG-only):
@@ -75,8 +83,10 @@ class VideoFeaturedService:
             if not sub_video_rows:
                 return []
 
-            all_ids = [row.video_id for row in sub_video_rows]
-            random.shuffle(all_ids)
+            all_ids = order_featured_video_ids(
+                [row.video_id for row in sub_video_rows],
+                stable=stable,
+            )
 
             # 2. Pick the first *count* that have thumbnails
             picked: list[int] = []

@@ -8,9 +8,10 @@
     </header>
 
     <section v-if="featuredRanks.length" class="music-rank-featured" aria-label="重点排行榜">
-      <div
+      <button
         v-for="rank in featuredRanks"
         :key="rank.id"
+        type="button"
         class="music-rank-featured-card"
         @click="$emit('select', rank)"
       >
@@ -26,7 +27,7 @@
         <div class="music-rank-featured-action" aria-hidden="true">
           <AppIcon name="play" class="h-4 w-4" />
         </div>
-      </div>
+      </button>
     </section>
 
     <section class="music-rank-all">
@@ -34,25 +35,16 @@
         <h3 class="music-rank-section-title">全部榜单</h3>
       </header>
 
-      <div class="music-grid">
-        <div
+      <div class="app-music-grid">
+        <MusicCard
           v-for="rank in restRanks"
           :key="rank.id"
-          class="music-grid-card"
-          @click="$emit('select', rank)"
-        >
-          <div class="music-source-cover-wrap">
-            <img v-if="rank.cover" :src="rank.cover" :alt="rank.name || '榜单封面'" class="music-source-cover" />
-            <div v-else class="music-source-cover">
-              <AppIcon name="playlistMusic" class="h-6 w-6 text-muted-foreground" />
-            </div>
-            <div class="music-source-play-overlay">
-              <AppIcon name="play" class="h-6 w-6 fill-current" />
-            </div>
-          </div>
-          <span class="music-grid-card-title">{{ rank.name }}</span>
-          <span class="music-grid-card-subtitle">{{ rank.update_frequency || '排行榜' }}</span>
-        </div>
+          :cover="rank.cover"
+          :title="rank.name"
+          :subtitle="rank.update_frequency || '排行榜'"
+          variant="rank"
+          @select="$emit('select', rank)"
+        />
       </div>
     </section>
   </div>
@@ -62,6 +54,7 @@
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import type { MusicRank } from '@/shared/api/music'
+import MusicCard from './shared/MusicCard.vue'
 
 const props = defineProps<{
   ranks: MusicRank[]
@@ -113,9 +106,13 @@ const restRanks = computed(() => props.ranks.slice(4))
   aspect-ratio: 8 / 5;
   min-width: 0;
   overflow: hidden;
+  padding: 0;
   border: 1px solid hsl(var(--border) / 0.38);
   border-radius: var(--radius-lg);
   background: hsl(var(--muted) / 0.35);
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
@@ -202,76 +199,6 @@ const restRanks = computed(() => props.ranks.slice(4))
   font-size: 0.9375rem;
   font-weight: 800;
   color: hsl(var(--foreground));
-}
-
-.music-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(7.75rem, 1fr));
-  gap: 1rem 0.875rem;
-}
-
-.music-grid-card {
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.music-grid-card:hover {
-  transform: translateY(-3px);
-}
-
-.music-source-cover-wrap {
-  position: relative;
-  aspect-ratio: 1;
-  border-radius: var(--app-card-radius);
-  overflow: hidden;
-  background: var(--app-media-thumb-placeholder);
-  box-shadow: var(--app-surface-shadow);
-}
-
-.music-source-cover {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.music-source-play-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, transparent 0%, var(--app-media-scrim-mid) 100%);
-  color: hsl(var(--app-media-on-image));
-  opacity: 0;
-  transition: opacity var(--duration-base) var(--ease-default);
-}
-
-.music-grid-card:hover .music-source-play-overlay {
-  opacity: 1;
-}
-
-.music-grid-card-title {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  margin-top: 0.5rem;
-  color: hsl(var(--foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.music-grid-card-subtitle {
-  font-size: 0.6875rem;
-  color: hsl(var(--muted-foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 0.125rem;
 }
 
 @media (min-width: 769px) and (max-width: 1180px) {

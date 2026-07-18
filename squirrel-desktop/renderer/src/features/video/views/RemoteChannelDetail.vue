@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell variant="compact" :fill="false">
+  <AppPageShell variant="compact" surface="consume" width="media">
     <div ref="root" class="app-page-content app-page-content--media">
       <div v-if="errorMessage">
         <AppEmptyState variant="error" title="加载失败" :copy="errorMessage">
@@ -230,7 +230,7 @@ let loadedChannelKey = ''
 // Mirrors the auto-fill `.app-video-grid--feed` via the same minCardWidth/gap
 // formula — no breakpoint table to keep in sync with the CSS class.
 const { count: skeletonCount, attachRef: root } = useSkeletonCount({
-  minCardWidth: 280,   // matches --app-video-grid-min
+  minCardWidth: 320,   // matches --app-video-grid-min
   gap: 40,             // matches --app-video-grid-gap-y (2.5rem)
   cardHeight: 220,     // thumbnail + 2-line title + date
 })
@@ -516,7 +516,7 @@ onUnmounted(() => {
 }
 
 .remote-channel-header__inner {
-  --app-page-max-width: 2400px;
+  --app-page-max-width: var(--app-content-media-max);
   align-items: flex-start;
 }
 

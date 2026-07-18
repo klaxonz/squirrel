@@ -1,8 +1,12 @@
 <template>
-  <AppPageShell variant="compact" fill>
+  <AppPageShell variant="compact" surface="immersive" width="fluid" fill>
+    <!--
+      The RSS three-pane owns the window (global app rail
+      collapses via route meta). Source column is a quiet tree + one sync menu.
+    -->
     <AppTwoColumnLayout
       sidebar-always
-      sidebar-width="18rem"
+      preset="rss"
       :main-scroll="false"
       class="rss-workspace"
     >
@@ -50,27 +54,28 @@
             <span class="rss-sync-status__copy" :title="statusMessage">
               {{ statusMessage || (selectedAccount.last_sync_at ? '上次同步 ' + formatDate(selectedAccount.last_sync_at) : '尚未同步') }}
             </span>
-            <div class="rss-sync-status__actions" role="group" aria-label="同步方式">
+            <div class="rss-sync-status__menu" role="group" aria-label="同步">
               <Button
                 variant="ghost"
-                size="xs"
-                @click="syncSelectedAccount(false)"
-                class="rss-sync-status__action"
+                size="icon-sm"
+                class="rss-sync-status__menu-btn"
                 :disabled="syncing"
                 title="轻量同步"
+                aria-label="轻量同步"
+                @click="syncSelectedAccount(false)"
               >
-                <span>轻量</span>
+                <AppIcon name="refresh" class="h-3.5 w-3.5" />
               </Button>
-              <span class="rss-sync-status__action-separator" aria-hidden="true" />
               <Button
                 variant="ghost"
-                size="xs"
-                @click="syncSelectedAccount(true)"
-                class="rss-sync-status__action"
+                size="icon-sm"
+                class="rss-sync-status__menu-btn"
                 :disabled="syncing"
                 title="全量同步"
+                aria-label="全量同步"
+                @click="syncSelectedAccount(true)"
               >
-                <span>全量</span>
+                <AppIcon name="download" class="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
@@ -185,7 +190,10 @@
               <AppSelectableListItem
                 v-for="entry in filteredEntries"
                 :key="entry.id"
+                :data-entry-id="String(entry.id)"
                 class="rss-entry-item group"
+                :class="{ 'is-read': entry.is_read }"
+                variant="flush"
                 :selected="readingEntry !== null && String(readingEntry.id) === String(entry.id)"
                 :aria-label="entry.is_read ? `已读：${entry.title}` : `未读：${entry.title}`"
                 @click="openReader(entry)"
@@ -219,20 +227,12 @@
                 <div class="rss-entry-item__content">
                   <h4
                     class="rss-entry-item__title"
-                    :class="[
-                      readingEntry && String(readingEntry.id) === String(entry.id)
-                        ? 'text-foreground'
-                        : entry.is_read
-                          ? 'text-muted-foreground/75 group-hover:text-foreground/80'
-                          : 'text-foreground/90 group-hover:text-foreground font-semibold',
-                    ]"
                   >
                     {{ entry.title }}
                   </h4>
                   <p
                     v-if="entry.summary"
                     class="rss-entry-item__summary"
-                    :class="entry.is_read ? 'text-muted-foreground/50' : 'text-muted-foreground/70'"
                   >{{ stripHtmlTags(entry.summary) }}</p>
                 </div>
 
@@ -694,6 +694,7 @@
 </template>
 
 <script setup lang="ts">
+import { nextEntryIndex } from '@/features/rss/composables/rssEntryNav'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
@@ -1019,6 +1020,90 @@ const openReader = (entry: RssEntry) => {
   }
 }
 
+
+const isTypingTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  return target.isContentEditable
+    || tag === 'INPUT'
+    || tag === 'TEXTAREA'
+    || tag === 'SELECT'
+    || target.closest('[contenteditable="true"], [role="textbox"]') != null
+}
+
+const scrollEntryIntoView = (entryId: string | number) => {
+  const root = entriesContainer.value
+  if (!root) return
+  const el = root.querySelector(`[data-entry-id="${String(entryId)}"]`)
+  if (el instanceof HTMLElement) {
+    el.scrollIntoView({ block: 'nearest' })
+  }
+}
+
+const stepReadingEntry = (delta: number) => {
+  const list = filteredEntries.value
+  if (!list.length) return
+  const currentId = readingEntry.value ? String(readingEntry.value.id) : null
+  const index = currentId
+    ? list.findIndex((entry) => String(entry.id) === currentId)
+    : -1
+  const nextIndex = nextEntryIndex(list.length, index, delta)
+  if (nextIndex < 0) return
+  const next = list[nextIndex]
+  if (!next) return
+  if (currentId && String(next.id) === currentId) return
+  openReader(next)
+  nextTick(() => scrollEntryIntoView(next.id))
+}
+
+const handleWorkspaceKeyDown = (event: KeyboardEvent) => {
+  // Lightbox and other reader chrome first.
+  handleKeyDown(event)
+  if (event.defaultPrevented || event.isComposing || isTypingTarget(event.target)) return
+
+  if (event.key === 'Escape') {
+    if (showReaderSettings.value) {
+      event.preventDefault()
+      showReaderSettings.value = false
+      return
+    }
+    if (showInAppBrowser.value) {
+      event.preventDefault()
+      showInAppBrowser.value = false
+      return
+    }
+    if (readingEntry.value) {
+      event.preventDefault()
+      readingEntry.value = null
+      return
+    }
+  }
+
+  // Fluent Reader-style list navigation (j/k and arrows).
+  if (event.key === 'j' || event.key === 'J' || event.key === 'ArrowDown') {
+    event.preventDefault()
+    stepReadingEntry(1)
+    return
+  }
+  if (event.key === 'k' || event.key === 'K' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    stepReadingEntry(-1)
+    return
+  }
+
+  if (!readingEntry.value) return
+
+  if (event.key === 's' || event.key === 'S') {
+    event.preventDefault()
+    void toggleStarStatus(readingEntry.value)
+    return
+  }
+  if (event.key === 'm' || event.key === 'M') {
+    event.preventDefault()
+    void toggleReadStatus(readingEntry.value)
+  }
+}
+
 const resetIframeState = () => {
   iframeProgress.value = 0
 }
@@ -1051,7 +1136,7 @@ watch(selectedAccountId, () => {
 let releaseInternalBack: (() => void) | null = null
 
 onMounted(async () => {
-  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keydown', handleWorkspaceKeyDown)
   releaseInternalBack = appNavigation.registerInternalBackHandler(handleFeedBack)
   await loadAll()
   nextTick(() => {
@@ -1062,7 +1147,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('keydown', handleWorkspaceKeyDown)
   stopSyncPolling()
   disposeStatus()
   releaseInternalBack?.()
@@ -1098,8 +1183,8 @@ onUnmounted(() => {
   gap: 0.4375rem;
   min-height: 2rem;
   padding-left: 0.5rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground) / 0.88);
+  font-size: 0.75rem;
 }
 
 .rss-sync-status__indicator {
@@ -1136,22 +1221,24 @@ onUnmounted(() => {
   color: hsl(var(--destructive));
 }
 
-.rss-sync-status__actions {
+.rss-sync-status__menu {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0.1875rem;
+  gap: 0.125rem;
   margin-left: auto;
 }
 
-.rss-sync-status__action-separator {
-  width: 1px;
-  height: 0.75rem;
-  background: hsl(var(--border) / 0.58);
+.rss-sync-status__menu-btn {
+  color: hsl(var(--muted-foreground));
+}
+
+.rss-sync-status__menu-btn:hover {
+  color: hsl(var(--foreground));
 }
 
 .rss-entry-pane {
-  --app-pane-list-width: clamp(22rem, 24vw, 27rem);
+  --app-pane-list-width: 30rem;
   background: hsl(var(--muted) / 0.045);
 }
 
@@ -1241,45 +1328,9 @@ onUnmounted(() => {
   gap: 0;
   width: 100%;
   min-height: 0;
-  padding: 0.875rem 1rem;
-  border: 0;
-  border-bottom: 1px solid hsl(var(--border) / 0.2);
-  border-radius: 0;
+  padding: 1rem 1.125rem;
   text-align: left;
   outline: none;
-}
-
-.rss-entry-item:hover,
-.rss-entry-item:focus-visible {
-  background: hsl(var(--accent) / 0.32);
-}
-
-.rss-entry-item.is-selected {
-  border-color: hsl(var(--border) / 0.2);
-  background: hsl(var(--accent) / 0.58);
-  color: inherit;
-}
-
-.rss-entry-item:focus-visible {
-  box-shadow: inset 0 0 0 1px hsl(var(--ring) / 0.42);
-}
-
-.rss-sync-status__action {
-  flex: 0 0 auto;
-  height: 1.375rem;
-  padding-inline: 0.375rem;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: hsl(var(--muted-foreground) / 0.82);
-  font-size: 0.625rem;
-  font-weight: 600;
-}
-
-.rss-sync-status__action:hover {
-  border-color: transparent;
-  background: hsl(var(--accent) / 0.42);
-  color: hsl(var(--foreground));
 }
 
 .rss-entry-item__meta-row {
@@ -1298,8 +1349,8 @@ onUnmounted(() => {
   max-width: calc(100% - 5.5rem);
   height: auto;
   padding: 0;
-  color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.6875rem;
+  color: hsl(var(--muted-foreground) / 0.9);
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -1326,8 +1377,8 @@ onUnmounted(() => {
 }
 
 .rss-entry-item__date {
-  color: hsl(var(--muted-foreground) / 0.6);
-  font-size: 0.625rem;
+  color: hsl(var(--muted-foreground) / 0.78);
+  font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1335,10 +1386,10 @@ onUnmounted(() => {
 .rss-entry-item__title {
   min-width: 0;
   margin: 0;
-  color: hsl(var(--foreground) / 0.9);
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.45;
+  color: hsl(var(--foreground) / 0.94);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.4;
   transition: color var(--duration-fast) var(--ease-default);
   overflow: hidden;
   display: -webkit-box;
@@ -1346,9 +1397,21 @@ onUnmounted(() => {
   -webkit-box-orient: vertical;
 }
 
+.rss-entry-item.is-read .rss-entry-item__title {
+  color: hsl(var(--muted-foreground) / 0.9);
+  font-weight: 550;
+}
+
+.rss-entry-item:hover .rss-entry-item__title,
+.rss-entry-item:focus-visible .rss-entry-item__title,
+.rss-entry-item.is-selected .rss-entry-item__title {
+  color: hsl(var(--foreground));
+}
+
 .rss-entry-item__summary {
   margin: 0.375rem 0 0;
-  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground) / 0.82);
+  font-size: 0.8125rem;
   line-height: 1.5;
   transition: color var(--duration-fast) var(--ease-default);
   overflow: hidden;
@@ -1357,14 +1420,18 @@ onUnmounted(() => {
   -webkit-box-orient: vertical;
 }
 
+.rss-entry-item.is-read .rss-entry-item__summary {
+  color: hsl(var(--muted-foreground) / 0.7);
+}
+
 .rss-entry-item__footer {
   display: flex;
   align-items: center;
   gap: 0.3rem;
   min-width: 0;
   margin-top: 0.625rem;
-  color: hsl(var(--muted-foreground) / 0.58);
-  font-size: 0.625rem;
+  color: hsl(var(--muted-foreground) / 0.72);
+  font-size: 0.6875rem;
 }
 
 .rss-reader-pane {
@@ -1423,7 +1490,7 @@ onUnmounted(() => {
   overflow: hidden;
   max-width: 12rem;
   color: hsl(var(--muted-foreground) / 0.58);
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1433,7 +1500,7 @@ onUnmounted(() => {
 }
 
 .rss-reader-article {
-  max-width: 46rem;
+  max-width: var(--app-content-reading-max);
 }
 
 .rss-reader-article__header {
@@ -1533,7 +1600,7 @@ onUnmounted(() => {
   background: hsl(var(--muted) / 0.28);
   padding: 0.25rem 0.75rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.625rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 600;
 }
 

@@ -5,7 +5,14 @@
     enter-from-class="opacity-0 translate-y-2"
     leave-to-class="opacity-0 translate-y-2"
   >
-    <div v-if="visible" class="music-queue-panel">
+    <div
+      v-if="visible"
+      ref="panelRef"
+      class="music-queue-panel"
+      role="dialog"
+      aria-label="播放队列"
+      tabindex="-1"
+    >
       <header class="music-queue-header">
         <h3>播放队列</h3>
         <span class="music-queue-count">{{ queue.length }} 首</span>
@@ -64,19 +71,20 @@
 </template>
 
 <script setup lang="ts">
+import { onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import MusicPlayingIndicator from '../shared/MusicPlayingIndicator.vue'
 import { Button } from '@/shared/ui/button'
 import type { MusicTrack } from '@/shared/api/music'
 
-defineProps<{
+const props = defineProps<{
   visible: boolean
   queue: MusicTrack[]
   currentIndex: number
   playing: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   close: []
   clear: []
   play: [index: number]
@@ -84,12 +92,39 @@ defineEmits<{
   'drag-start': [index: number, event: DragEvent]
   'drop': [index: number, event: DragEvent]
 }>()
+
+const panelRef = ref<HTMLElement | null>(null)
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    emit('close')
+  }
+}
+
+watch(
+  () => props.visible,
+  (visible) => {
+    if (visible) {
+      window.addEventListener('keydown', onKeydown)
+      queueMicrotask(() => panelRef.value?.focus())
+      return
+    }
+    window.removeEventListener('keydown', onKeydown)
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+})
 </script>
 
 <style scoped>
 .music-queue-panel {
   position: fixed;
-  bottom: 4.5rem;
+  outline: none;
+  bottom: calc(var(--app-music-player-height) + var(--space-2));
   right: 1.5rem;
   width: 24rem;
   max-height: 28rem;

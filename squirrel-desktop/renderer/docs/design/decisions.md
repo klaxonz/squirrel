@@ -25,7 +25,7 @@
 | 媒体墙 | `.app-video-grid*` | Spec 4 · [Media grid](./patterns/media-grid.md) · [Media craft](./patterns/media-craft.md) |
 | 视频卡品质 | 16:9、标题 2 行、层级、同色温 scrim | [Media craft](./patterns/media-craft.md) |
 | 视频卡次要操作 | flag + meta ghost + 右键 | [Media card actions](./patterns/media-card-actions.md) |
-| 首页舞台 | 同色温 scrim、单 primary、标题可读 | [Media craft · 舞台](./patterns/media-craft.md#4-焦点舞台首页-hero--继续看主视觉) |
+| 首页 | FreeTube 堆叠 rail（无 hero 舞台 / 侧队列） | [Media craft · 首页 feed](./patterns/media-craft.md#4-首页-feedfreetube--无-hero-舞台) |
 | 空 / 加载 / 错 | `AppEmptyState` / Skeleton / 原因+动作 | Spec 3 · [States](./patterns/states.md) |
 | 新 token | 先 foundations，再引用 | Spec 4 · [Token 分层](./foundations/README.md#token-分层) · [Governance](./governance.md) |
 

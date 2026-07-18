@@ -31,33 +31,41 @@
 
     <section v-if="albums.length" class="music-detail-section">
       <h2 class="music-detail-section-title">专辑</h2>
-      <div class="music-detail-grid music-detail-grid--albums">
-        <button
+      <div class="app-music-grid">
+        <MusicCard
           v-for="album in albums"
           :key="album.id"
-          type="button"
-          class="music-detail-tile"
-          @click="$emit('select-album', album)"
-        >
-          <img :src="album.cover" :alt="album.name" loading="lazy" />
-          <span class="music-detail-tile__title">{{ album.name }}</span>
-        </button>
+          :cover="album.cover"
+          :title="album.name"
+          :subtitle="album.artist"
+          variant="album"
+          @select="$emit('select-album', album)"
+        />
       </div>
     </section>
 
     <section v-if="videos.length" class="music-detail-section">
       <h2 class="music-detail-section-title">MV</h2>
-      <div class="music-detail-grid music-detail-grid--videos">
-        <button
+      <div class="app-video-grid">
+        <article
           v-for="video in videos"
           :key="video.id"
-          type="button"
-          class="music-detail-tile music-detail-tile--video"
-          @click="$emit('play-video', video)"
+          class="music-artist-video-card"
+          role="button"
+          tabindex="0"
+          :aria-label="`播放 MV：${video.name}`"
+          @click="playVideo(video)"
+          @keydown.enter.prevent="playVideo(video)"
+          @keydown.space.prevent="playVideo(video)"
         >
-          <img :src="video.cover" :alt="video.name" loading="lazy" />
-          <span class="music-detail-tile__title">{{ video.name }}</span>
-        </button>
+          <div class="music-artist-video-card__thumb">
+            <img :src="video.cover" :alt="video.name" loading="lazy" />
+          </div>
+          <div class="music-artist-video-card__body">
+            <h3 class="music-artist-video-card__title" :title="video.name">{{ video.name }}</h3>
+            <p class="music-artist-video-card__meta">{{ video.artist }}</p>
+          </div>
+        </article>
       </div>
     </section>
 
@@ -85,6 +93,7 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import MusicDetailHeader from './shared/MusicDetailHeader.vue'
+import MusicCard from './shared/MusicCard.vue'
 import MusicTrackList from './MusicTrackList.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { formatCount } from '@/shared/lib/dateFormat'
@@ -123,6 +132,10 @@ function handleFollow() {
   if (props.followed) emit('unfollow')
   else emit('follow')
 }
+
+function playVideo(video: MusicVideo) {
+  emit('play-video', video)
+}
 </script>
 
 <style scoped>
@@ -144,60 +157,75 @@ function handleFollow() {
   line-height: var(--app-h3-leading);
 }
 
-.music-detail-grid {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.music-detail-grid--albums {
-  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
-}
-
-.music-detail-grid--videos {
-  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-}
-
-.music-detail-tile {
+.music-artist-video-card {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  text-align: left;
+  gap: 0.625rem;
   cursor: pointer;
-}
-
-.music-detail-tile:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.5);
-  border-radius: var(--radius-md);
 }
 
-.music-detail-tile img {
+.music-artist-video-card__thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--app-card-radius);
+  background: var(--app-media-thumb-placeholder);
+  transition: box-shadow var(--duration-base) var(--ease-default);
+}
+
+.music-artist-video-card:hover .music-artist-video-card__thumb,
+.music-artist-video-card:focus-visible .music-artist-video-card__thumb {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.music-artist-video-card:focus-visible .music-artist-video-card__thumb {
+  box-shadow:
+    0 0 0 2px hsl(var(--background)),
+    0 0 0 4px hsl(var(--ring) / 0.45),
+    var(--shadow-card-hover);
+}
+
+.music-artist-video-card__thumb img {
   display: block;
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
   object-fit: cover;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--radius-md);
-  background: hsl(var(--muted) / 0.4);
 }
 
-.music-detail-tile--video img {
-  aspect-ratio: 16 / 9;
+.music-artist-video-card__body {
+  min-width: 0;
+  padding-inline: 0.125rem;
 }
 
-.music-detail-tile__title {
+.music-artist-video-card__title {
+  display: -webkit-box;
   overflow: hidden;
+  margin: 0;
   color: hsl(var(--foreground));
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.3;
   text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.music-artist-video-card__meta {
+  overflow: hidden;
+  margin: 0.25rem 0 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-artist-video-card__thumb {
+    transition: none;
+  }
 }
 
 .music-detail-load-more {

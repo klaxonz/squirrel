@@ -37,8 +37,8 @@ import globals from 'globals'
 // motion (duration/delay). Sizing & position dimensions (w/h/min-*/max-*/top/
 //right/left/inset/translate) are intentionally EXCLUDED — component layout
 // measures (card width, panel width, absolute offsets) are legitimate per-
-// component decisions, not design-token concerns; shadcn itself uses
-// `max-w-[Npx]`. This keeps the guard focused on real system bypasses.
+// component decisions, not design-token concerns. This keeps the guard focused
+// on real system bypasses.
 const ARBITRARY_VALUE_UTILITIES = [
   'z', 'text', 'rounded',
   'p', 'px', 'py', 'pt', 'pb', 'pl', 'pr', 'm', 'mx', 'my', 'mt', 'mb', 'ml', 'mr',
@@ -314,17 +314,5 @@ export default tseslint.config(
       'renderer/src/features/playback/components/video-player/plugins/**/*.{ts,vue}',
     ],
     rules: { '@typescript-eslint/no-explicit-any': 'off' },
-  },
-  {
-    // ponytail: shadcn-vue/reka generated primitives. Hand-editing these fights
-    // upstream regenerations; their any usage stays non-blocking permanently,
-    // and their class lists (e.g. [&>svg]:absolute arbitrary variants) are
-    // upstream-generated too, so the design-token guard would only flag
-    // vendored code we can't meaningfully change.
-    files: ['renderer/src/shared/ui/**/*.{vue,ts}'],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      'design-tokens/design-tokens': 'off',
-    },
   },
 )

@@ -1,21 +1,11 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
-import { cn } from '@/shared/lib/utils'
-
-const props = defineProps<{
-  class?: HTMLAttributes['class']
-}>()
+import PrimeCard from 'primevue/card'
+defineProps<{ class?: HTMLAttributes['class'] }>()
 </script>
 
 <template>
-  <div
-    :class="
-      cn(
-        'rounded-lg border border-border/60 bg-card/72 text-card-foreground shadow-surface',
-        props.class,
-      )
-    "
-  >
-    <slot />
-  </div>
+  <PrimeCard :class="['app-prime-card', $props.class]">
+    <template #content><slot /></template>
+  </PrimeCard>
 </template>

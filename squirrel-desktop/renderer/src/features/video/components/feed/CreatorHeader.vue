@@ -89,7 +89,7 @@ watch(() => props.creatorId, () => {
 
 <style scoped>
 .creator-header__inner {
-  --app-page-max-width: 2400px;
+  --app-page-max-width: var(--app-content-media-max);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;

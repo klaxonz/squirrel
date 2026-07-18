@@ -3,6 +3,8 @@
     class="app-page-shell"
     :class="[
       `app-page-shell--${variant}`,
+      `app-page-shell--surface-${surface}`,
+      `app-page-shell--width-${width}`,
       {
         'app-page-shell--fill': fill,
         'app-page-shell--scrollable': scrollable,
@@ -14,11 +16,19 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   variant?: 'default' | 'compact'
+  surface?: 'consume' | 'organize' | 'operate' | 'immersive'
+  width?: 'media' | 'table' | 'form' | 'reading' | 'fluid'
   fill?: boolean
   scrollable?: boolean
-}>()
+}>(), {
+  variant: 'default',
+  surface: 'operate',
+  width: 'table',
+  fill: false,
+  scrollable: false,
+})
 </script>
 
 <style scoped>
@@ -67,7 +77,7 @@ defineProps<{
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1440px) {
   .app-page-shell--default {
     padding-left: var(--app-page-gutter-lg);
     padding-right: var(--app-page-gutter-lg);
@@ -76,5 +86,25 @@ defineProps<{
 
 .app-page-shell--compact {
   padding: 0;
+}
+
+.app-page-shell--width-media {
+  --app-page-max-width: var(--app-content-media-max);
+}
+
+.app-page-shell--width-table {
+  --app-page-max-width: var(--app-content-table-max);
+}
+
+.app-page-shell--width-form {
+  --app-page-max-width: var(--app-content-form-max);
+}
+
+.app-page-shell--width-reading {
+  --app-page-max-width: var(--app-content-reading-max);
+}
+
+.app-page-shell--width-fluid {
+  --app-page-max-width: none;
 }
 </style>

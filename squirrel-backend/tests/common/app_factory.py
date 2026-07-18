@@ -18,10 +18,10 @@ _BACKEND_ROOT = Path(__file__).resolve().parents[2]
 if str(_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(_BACKEND_ROOT))
 
-from fastapi import FastAPI  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
-from application.app import _EXCEPTION_HANDLERS  # noqa: E402
+from application.app import _EXCEPTION_HANDLERS
 
 
 def create_test_app(**kwargs) -> FastAPI:

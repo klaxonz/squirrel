@@ -1,14 +1,5 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import { cn } from '@/shared/lib/utils'
-
-const props = defineProps<{
-  class?: HTMLAttributes["class"]
-}>()
+import type { HTMLAttributes } from 'vue'
+defineProps<{ class?: HTMLAttributes['class'] }>()
 </script>
-
-<template>
-  <div :class="cn('flex flex-col gap-y-1.5 p-5 pb-3', props.class)">
-    <slot />
-  </div>
-</template>
+<template><header :class="['app-prime-card__header', $props.class]"><slot /></header></template>

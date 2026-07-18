@@ -179,7 +179,7 @@ const searchKey = computed(() => `${trimmedQuery.value}::${props.site || 'all'}:
 // skeleton grid and the real grid agree on column count without a breakpoint
 // table.
 const { count: skeletonCount, attachRef: root } = useSkeletonCount({
-  minCardWidth: 280,   // matches --app-video-grid-min
+  minCardWidth: 320,   // matches --app-video-grid-min
   gap: 40,             // matches --app-video-grid-gap-y (2.5rem)
   cardHeight: 260,     // thumbnail + 2-line title + meta + actor + date
 })

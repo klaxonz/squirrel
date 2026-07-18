@@ -38,13 +38,32 @@ from infrastructure.http.middleware.auth import (
 from infrastructure.http.middleware.trace import RequestContextMiddleware
 from infrastructure.http.response import ErrorCode
 from infrastructure.scheduling.routes import router as scheduler_router
-from shared_kernel.domain.exceptions import DomainError
 from infrastructure.site_catalog.routes.connectivity_batch import router as connectivity_router
 from infrastructure.site_catalog.routes.site_cookies_bulk_import import router as site_cookies_router
+from infrastructure.site_catalog.routes.site_cookies_cookiecloud import router as site_cookiecloud_router
+from infrastructure.site_catalog.routes.site_cookies_single_upload import router as site_cookie_upload_router
 from infrastructure.site_catalog.routes.site_plugins import router as site_plugins_router
 from infrastructure.site_catalog.routes.sites_catalog import router as sites_router
+from infrastructure.site_catalog.routes.sites_connectivity_all import router as sites_connectivity_all_router
+from infrastructure.site_catalog.routes.sites_connectivity_batch import router as sites_connectivity_batch_router
+from infrastructure.site_catalog.routes.sites_connectivity_single import router as sites_connectivity_single_router
+from infrastructure.site_catalog.routes.sites_login import router as sites_login_router
+from infrastructure.site_catalog.routes.sites_youtube_oauth import router as sites_youtube_oauth_router
+from shared_kernel.domain.exceptions import DomainError
 
 logger = logging.getLogger(__name__)
+
+site_operations_router = APIRouter(prefix='/api/sites', tags=['Sites'])
+site_operations_router.include_router(sites_connectivity_all_router)
+site_operations_router.include_router(sites_connectivity_batch_router)
+site_operations_router.include_router(sites_connectivity_single_router)
+site_operations_router.include_router(sites_login_router)
+site_operations_router.include_router(sites_youtube_oauth_router)
+
+site_cookie_operations_router = APIRouter(prefix='/api/site-cookies', tags=['Site Cookies'])
+site_cookie_operations_router.include_router(site_cookies_router)
+site_cookie_operations_router.include_router(site_cookie_upload_router)
+site_cookie_operations_router.include_router(site_cookiecloud_router)
 
 # HTTP 状态码 → 业务错误码映射;未列出的状态码归 UNKNOWN_ERROR。
 # 与 infrastructure.http.response._http_status_for_code 方向相反:那边是 code→status,
@@ -157,7 +176,8 @@ _ROUTERS: tuple[APIRouter, ...] = (
     system_config_router,
     site_plugins_router,
     sites_router,
-    site_cookies_router,
+    site_operations_router,
+    site_cookie_operations_router,
     connectivity_router,
     scheduler_router,
     logs_router,
