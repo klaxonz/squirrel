@@ -61,7 +61,6 @@ const selectOption = (value: string | number) => {
 }
 
 .app-section-nav__item {
-  position: relative;
   display: inline-flex;
   height: 2.5rem;
   align-items: center;
@@ -89,17 +88,6 @@ const selectOption = (value: string | number) => {
 
 .app-section-nav__item.is-active {
   font-weight: 620;
-}
-
-.app-section-nav__item.is-active::after {
-  position: absolute;
-  right: 0;
-  bottom: -0.4375rem;
-  left: 0;
-  height: 2px;
-  border-radius: 999px;
-  background: hsl(var(--primary));
-  content: '';
 }
 
 .app-section-nav__badge {

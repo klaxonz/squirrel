@@ -451,7 +451,10 @@
   min-height: var(--app-workbench-header-height);
   flex: none;
   border-bottom: 1px solid var(--app-hairline);
-  background: hsl(var(--card) / 0.56);
+  /* Keep secondary navigation on the workbench canvas. A translucent card
+     layer creates a visible light band in the light theme and fragments the
+     otherwise flat shell hierarchy. */
+  background: transparent;
 }
 
 .app-workbench__header-content {
