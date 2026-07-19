@@ -56,17 +56,17 @@
         <p>管理其它设备上的有效会话，当前设备不会被踢出。</p>
       </div>
 
-      <div class="app-settings-panel">
-        <div class="app-settings-row">
+      <div class="app-settings-panel security-session-panel">
+        <div class="app-settings-row security-session-row">
           <div class="app-settings-row__copy">
-            <div class="app-settings-row__title">注销其他设备</div>
-            <div class="app-settings-row__desc">立即吊销除本机以外的全部会话令牌。</div>
+            <div class="app-settings-row__title">其他设备</div>
+            <div class="app-settings-row__desc">撤销所有其他设备的登录状态；当前设备保持登录。</div>
           </div>
           <Button
             severity="secondary" outlined
             class="security-revoke-button"
             :loading="sessionSubmitting"
-            @click="handleRevokeSessions"
+            @click="showRevokeDialog = true"
           >
             <AppIcon name="logout" class="h-4 w-4" />
             注销其他设备
@@ -74,6 +74,18 @@
         </div>
       </div>
     </section>
+
+    <ConfirmDialog
+      v-model:open="showRevokeDialog"
+      icon="logout"
+      icon-bg-class="bg-destructive/10 text-destructive"
+      title="注销其他设备？"
+      description="其他设备上的登录会话将立即失效，正在进行的操作可能会中断；当前设备不会退出。"
+      cancel-label="取消"
+      confirm-label="确认注销"
+      confirm-variant="destructive"
+      @confirm="handleRevokeSessions"
+    />
   </div>
 </template>
 
@@ -82,6 +94,7 @@ import { ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { revokeUserSessions, updateUserPassword } from '@/shared/api'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -124,6 +137,7 @@ const securityForm = ref<SecurityForm>({
 })
 const passwordSubmitting = ref(false)
 const sessionSubmitting = ref(false)
+const showRevokeDialog = ref(false)
 const securityError = ref('')
 const securitySuccess = ref('')
 
@@ -162,13 +176,14 @@ const handlePasswordUpdate = async () => {
 }
 
 const handleRevokeSessions = async () => {
+  showRevokeDialog.value = false
   resetSecurityFeedback()
   sessionSubmitting.value = true
   try {
     await revokeUserSessions()
-    securitySuccess.value = '其他会话已撤销'
-  } catch {
-    securityError.value = '撤销失败'
+    securitySuccess.value = '其他设备已注销'
+  } catch (err) {
+    securityError.value = errorMessage(err, '注销其他设备失败')
   } finally {
     sessionSubmitting.value = false
   }
@@ -185,6 +200,15 @@ const handleRevokeSessions = async () => {
 .security-password-form {
   max-width: 40rem;
   padding: var(--space-4);
+}
+
+.security-session-panel {
+  width: 100%;
+  max-width: 40rem;
+}
+
+.security-session-row {
+  min-height: 4rem;
 }
 
 .security-password-grid {
@@ -218,6 +242,7 @@ const handleRevokeSessions = async () => {
 }
 
 .security-revoke-button {
+  min-width: 7.5rem;
   color: hsl(var(--destructive));
 }
 
