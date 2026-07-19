@@ -4,6 +4,7 @@ import logging
 import urllib.parse
 from dataclasses import replace
 from datetime import datetime
+from threading import Thread
 from typing import Any
 
 from sqlalchemy import delete, select
@@ -37,10 +38,67 @@ class RssSyncService:
     def sync_account(
         self, user_id: int, account_id: int, *, entry_limit: int | None = None, force_full_sync: bool = False
     ) -> dict[str, Any] | None:
+        sync_lock = self._acquire_sync_lock(user_id, account_id)
+        if sync_lock is None:
+            return None
+        self._set_sync_started(account_id, force_full_sync=force_full_sync)
+        return self._sync_account_locked(
+            user_id,
+            account_id,
+            sync_lock=sync_lock,
+            entry_limit=entry_limit,
+            force_full_sync=force_full_sync,
+        )
+
+    def start_account_sync(
+        self, user_id: int, account_id: int, *, entry_limit: int | None = None, force_full_sync: bool = False
+    ) -> dict[str, Any] | None:
+        """Atomically reserve an account sync before acknowledging the request."""
+        sync_lock = self._acquire_sync_lock(user_id, account_id)
+        if sync_lock is None:
+            return None
+        self._set_sync_started(account_id, force_full_sync=force_full_sync)
+
+        thread = Thread(
+            target=self._run_background_sync,
+            kwargs={
+                'user_id': user_id,
+                'account_id': account_id,
+                'sync_lock': sync_lock,
+                'entry_limit': entry_limit,
+                'force_full_sync': force_full_sync,
+            },
+            name=f'rss-sync-{account_id}',
+            daemon=True,
+        )
+        try:
+            thread.start()
+        except Exception as exc:
+            try:
+                self._record_failure(user_id, account_id, 0, 0, str(exc))
+            except Exception:
+                logger.exception('Failed to record RSS background sync startup failure for account_id=%s', account_id)
+            finally:
+                sync_lock.release()
+            raise
+        return {'started': True, 'account_id': account_id}
+
+    def _acquire_sync_lock(self, user_id: int, account_id: int):
+        with self.session_factory() as session:
+            if not self.account_service.get_account(session, user_id, account_id):
+                return None
+
         sync_lock = self.account_service.sync_lock_for_account(account_id)
         if not sync_lock.acquire(blocking=False):
             raise RssServiceError('RSS account sync is already running')
 
+        with self.session_factory() as session:
+            if not self.account_service.get_account(session, user_id, account_id):
+                sync_lock.release()
+                return None
+        return sync_lock
+
+    def _set_sync_started(self, account_id: int, *, force_full_sync: bool) -> None:
         self.account_service.set_sync_progress(
             account_id,
             running=True,
@@ -55,6 +113,23 @@ class RssSyncService:
             started_at=datetime.now().isoformat(),
             finished_at=None,
         )
+
+    def _run_background_sync(self, **kwargs: Any) -> None:
+        account_id = kwargs['account_id']
+        try:
+            self._sync_account_locked(**kwargs)
+        except Exception:
+            logger.exception('Background RSS sync failed for account_id=%s', account_id)
+
+    def _sync_account_locked(
+        self,
+        user_id: int,
+        account_id: int,
+        *,
+        sync_lock,
+        entry_limit: int | None,
+        force_full_sync: bool,
+    ) -> dict[str, Any] | None:
         synced_feeds = 0
         synced_entries = 0
         error_message = None
@@ -63,6 +138,7 @@ class RssSyncService:
         try:
             loaded = self._load_account_and_config(user_id, account_id)
             if loaded is None:
+                self.account_service.progress_store.clear_progress(account_id)
                 return None
             _account, config, configured_entry_limit = loaded
             effective_entry_limit = entry_limit if entry_limit is not None else configured_entry_limit
@@ -248,152 +324,204 @@ class RssSyncService:
             raise RssServiceError('Feed URL must be an HTTP or HTTPS URL')
 
         with self.session_factory() as session:
-            account = self.account_service.get_account(session, user_id, account_id)
-            if not account:
+            if not self.account_service.get_account(session, user_id, account_id):
                 raise RssServiceError('RSS account not found')
 
-            config = self.account_service.config_from_account(account)
+        with self.account_service.account_mutation(
+            account_id,
+            conflict_message='Cannot subscribe while the RSS account is syncing or being modified',
+        ):
+            with self.session_factory() as session:
+                account = self.account_service.get_account(session, user_id, account_id)
+                if not account:
+                    raise RssServiceError('RSS account not found')
+                config = self.account_service.config_from_account(account)
 
             client = create_client(config)
             remote_feed = client.subscribe(feed_url)
 
-            existing = session.scalars(
-                select(RssFeed).where(
-                    RssFeed.account_id == account_id,
-                    RssFeed.external_feed_id == remote_feed.external_feed_id,
-                ),
-            ).first()
+            with self.session_factory() as session:
+                account = self.account_service.get_account(session, user_id, account_id)
+                if not account:
+                    raise RssServiceError('RSS account not found')
 
-            if existing:
-                existing.title = remote_feed.title or feed_url
-                existing.feed_url = remote_feed.feed_url or feed_url
-                existing.site_url = remote_feed.site_url
-                existing.icon_url = remote_feed.icon_url
-                if category is not None:
-                    existing.category = category
-                elif remote_feed.category is not None:
-                    existing.category = remote_feed.category
-                existing.enabled = True
-                session.flush()
-                feed = existing
-            else:
-                feed = RssFeed(
-                    user_id=user_id,
-                    account_id=account_id,
-                    external_feed_id=remote_feed.external_feed_id,
-                    title=remote_feed.title or feed_url,
-                    feed_url=remote_feed.feed_url or feed_url,
-                    site_url=remote_feed.site_url,
-                    icon_url=remote_feed.icon_url,
-                    category=category or remote_feed.category,
-                    enabled=True,
-                    raw_data=remote_feed.raw_data,
-                )
-                session.add(feed)
-                session.flush()
+                existing = session.scalars(
+                    select(RssFeed).where(
+                        RssFeed.account_id == account_id,
+                        RssFeed.external_feed_id == remote_feed.external_feed_id,
+                    ),
+                ).first()
 
-            account.last_error = None
-            session.commit()
-            session.refresh(feed)
-            return self.account_service.serialize_feed(feed)
+                if existing:
+                    existing.title = remote_feed.title or feed_url
+                    existing.feed_url = remote_feed.feed_url or feed_url
+                    existing.site_url = remote_feed.site_url
+                    existing.icon_url = remote_feed.icon_url
+                    if category is not None:
+                        existing.category = category
+                    elif remote_feed.category is not None:
+                        existing.category = remote_feed.category
+                    existing.enabled = True
+                    session.flush()
+                    feed = existing
+                else:
+                    feed = RssFeed(
+                        user_id=user_id,
+                        account_id=account_id,
+                        external_feed_id=remote_feed.external_feed_id,
+                        title=remote_feed.title or feed_url,
+                        feed_url=remote_feed.feed_url or feed_url,
+                        site_url=remote_feed.site_url,
+                        icon_url=remote_feed.icon_url,
+                        category=category or remote_feed.category,
+                        enabled=True,
+                        raw_data=remote_feed.raw_data,
+                    )
+                    session.add(feed)
+                    session.flush()
+
+                account.last_error = None
+                session.commit()
+                session.refresh(feed)
+                return self.account_service.serialize_feed(feed)
 
     def sync_feed(self, user_id: int, feed_id: int, *, entry_limit: int = 50) -> dict[str, Any]:
         with self.session_factory() as session:
-            feed = session.scalars(
-                select(RssFeed).where(
+            account_id = session.scalar(
+                select(RssFeed.account_id).where(
                     RssFeed.id == feed_id,
                     RssFeed.user_id == user_id,
-                ),
-            ).first()
-            if not feed:
-                raise RssServiceError('RSS 订阅源不存在')
+                )
+            )
+        if account_id is None:
+            raise RssServiceError('RSS 订阅源不存在')
 
-            account = self.account_service.get_account(session, user_id, feed.account_id)
-            if not account or not account.enabled:
-                raise RssServiceError('RSS 账号不可用')
+        with self.account_service.account_mutation(
+            account_id,
+            conflict_message='Cannot sync a feed while its RSS account is syncing or being modified',
+        ):
+            with self.session_factory() as session:
+                feed = session.scalars(
+                    select(RssFeed).where(
+                        RssFeed.id == feed_id,
+                        RssFeed.user_id == user_id,
+                        RssFeed.account_id == account_id,
+                    ),
+                ).first()
+                if not feed:
+                    raise RssServiceError('RSS 订阅源不存在')
 
-            config = self.account_service.config_from_account(account)
+                account = self.account_service.get_account(session, user_id, account_id)
+                if not account or not account.enabled:
+                    raise RssServiceError('RSS 账号不可用')
+
+                config = self.account_service.config_from_account(account)
+                external_feed_id = feed.external_feed_id
+
             client = create_client(config)
-            external_feed_id = feed.external_feed_id
-
             remote_entries = client.list_entries(external_feed_id, entry_limit)
             if remote_entries:
                 remote_entries = [
                     replace(re, external_feed_id=re.external_feed_id or external_feed_id) for re in remote_entries
                 ]
 
-            feeds_by_external_id = {external_feed_id: feed}
-            synced = rss_entry_store.upsert_remote_entries_batch(session, feeds_by_external_id, remote_entries)
-            feed.last_entry_sync_at = datetime.now()
-            feed.enabled = True
-            account.last_error = None
-            session.commit()
+            with self.session_factory() as session:
+                feed = session.scalars(
+                    select(RssFeed).where(
+                        RssFeed.id == feed_id,
+                        RssFeed.user_id == user_id,
+                        RssFeed.account_id == account_id,
+                    ),
+                ).first()
+                account = self.account_service.get_account(session, user_id, account_id)
+                if not feed or not account or not account.enabled:
+                    raise RssServiceError('RSS 订阅源或账号不可用')
+
+                feeds_by_external_id = {external_feed_id: feed}
+                synced = rss_entry_store.upsert_remote_entries_batch(session, feeds_by_external_id, remote_entries)
+                feed.last_entry_sync_at = datetime.now()
+                feed.enabled = True
+                account.last_error = None
+                session.commit()
 
         return {'feed_id': feed_id, 'entries': synced}
 
     def unsubscribe_feed(self, user_id: int, account_id: int, feed_id: int) -> bool:
         with self.session_factory() as session:
-            feed = session.scalars(
-                select(RssFeed).where(
+            feed_exists = session.scalar(
+                select(RssFeed.id).where(
                     RssFeed.id == feed_id,
                     RssFeed.account_id == account_id,
                     RssFeed.user_id == user_id,
-                ),
-            ).first()
-            if not feed:
+                )
+            )
+            if feed_exists is None:
                 return False
 
-            external_feed_id = feed.external_feed_id
+        with self.account_service.account_mutation(
+            account_id,
+            conflict_message='Cannot unsubscribe while the RSS account is syncing or being modified',
+        ):
+            with self.session_factory() as session:
+                feed = session.scalars(
+                    select(RssFeed).where(
+                        RssFeed.id == feed_id,
+                        RssFeed.account_id == account_id,
+                        RssFeed.user_id == user_id,
+                    ),
+                ).first()
+                if not feed:
+                    return False
 
-        with self.session_factory() as session:
-            account = self.account_service.get_account(session, user_id, account_id)
+                external_feed_id = feed.external_feed_id
+                account = self.account_service.get_account(session, user_id, account_id)
+                config = self.account_service.config_from_account(account) if account and account.enabled else None
 
-        if account and account.enabled:
-            try:
-                config = self.account_service.config_from_account(account)
-                client = create_client(config)
-                client.unsubscribe(external_feed_id)
-            except RssServiceError:
-                raise
-            except (OSError, ValueError, TypeError) as e:
-                logger.warning(
-                    'Failed to sync unsubscribe to remote RSS service: account_id=%s feed_id=%s error=%s',
-                    account_id,
-                    feed_id,
-                    e,
-                )
-                raise RssServiceError(f'Failed to unsubscribe from remote RSS service: {e}') from e
+            if config:
+                try:
+                    create_client(config).unsubscribe(external_feed_id)
+                except RssServiceError:
+                    raise
+                except (OSError, ValueError, TypeError) as e:
+                    logger.warning(
+                        'Failed to sync unsubscribe to remote RSS service: account_id=%s feed_id=%s error=%s',
+                        account_id,
+                        feed_id,
+                        e,
+                    )
+                    raise RssServiceError(f'Failed to unsubscribe from remote RSS service: {e}') from e
 
-        with self.session_factory() as session:
-            feed = session.scalars(
-                select(RssFeed).where(
-                    RssFeed.id == feed_id,
-                    RssFeed.account_id == account_id,
-                    RssFeed.user_id == user_id,
-                ),
-            ).first()
-            if not feed:
-                return True
+            with self.session_factory() as session:
+                feed = session.scalars(
+                    select(RssFeed).where(
+                        RssFeed.id == feed_id,
+                        RssFeed.account_id == account_id,
+                        RssFeed.user_id == user_id,
+                    ),
+                ).first()
+                if not feed:
+                    return True
 
-            entry_rows = session.execute(
-                select(RssEntry.id).where(RssEntry.feed_id == feed_id),
-            ).all()
-            entry_ids = [row.id for row in entry_rows]
-            if entry_ids:
+                entry_rows = session.execute(
+                    select(RssEntry.id).where(RssEntry.feed_id == feed_id),
+                ).all()
+                entry_ids = [row.id for row in entry_rows]
+                if entry_ids:
+                    session.execute(
+                        delete(RssEntryView).where(RssEntryView.entry_id.in_(entry_ids)),
+                    )
                 session.execute(
-                    delete(RssEntryView).where(RssEntryView.entry_id.in_(entry_ids)),
+                    delete(RssEntry).where(RssEntry.feed_id == feed_id),
                 )
-            session.execute(
-                delete(RssEntry).where(RssEntry.feed_id == feed_id),
-            )
-            session.delete(feed)
-            session.commit()
+                session.delete(feed)
+                session.commit()
 
         return True
 
 
 rss_sync_service = RssSyncService()
 sync_account = rss_sync_service.sync_account
+start_account_sync = rss_sync_service.start_account_sync
 subscribe_feed = rss_sync_service.subscribe_feed
 sync_feed = rss_sync_service.sync_feed
 unsubscribe_feed = rss_sync_service.unsubscribe_feed

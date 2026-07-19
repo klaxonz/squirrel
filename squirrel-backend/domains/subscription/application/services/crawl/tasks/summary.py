@@ -1,10 +1,11 @@
 from datetime import datetime
 
-from sqlalchemy import case, func, select
+from sqlalchemy import and_, case, func, or_, select
 
 from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
 from domains.subscription.application.services.crawl.tasks.task_types import subscription_sync_task_types
 from domains.subscription.domain.models.crawl_task import CrawlTask
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
 
 ACTIVE_TASK_STATUSES = [
     CrawlTaskStatus.PENDING.value,
@@ -16,6 +17,13 @@ FAILED_TASK_STATUSES = [
     CrawlTaskStatus.DEAD.value,
     CrawlTaskStatus.CANCELLED.value,
 ]
+
+
+def _current_run_filter():
+    return or_(
+        CrawlTask.run_id == SubscriptionSyncState.current_run_id,
+        and_(CrawlTask.run_id.is_(None), SubscriptionSyncState.current_run_id.is_(None)),
+    )
 
 
 def count_pending_video_tasks_for_subscription(session_factory, subscription_id: int) -> int:
@@ -34,10 +42,12 @@ def count_pending_video_tasks_by_sync_state(session_factory) -> dict[int, int]:
     with session_factory() as session:
         rows = session.execute(
             select(CrawlTask.sync_state_id, func.count(CrawlTask.id))
+            .join(SubscriptionSyncState, SubscriptionSyncState.id == CrawlTask.sync_state_id)
             .where(
                 CrawlTask.task_type == 'video_extract',
                 CrawlTask.sync_state_id.is_not(None),
                 CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
+                _current_run_filter(),
             )
             .group_by(CrawlTask.sync_state_id),
         ).all()
@@ -51,6 +61,7 @@ def summarize_video_task_states_by_sync_state(
     filters = [
         CrawlTask.task_type == 'video_extract',
         CrawlTask.sync_state_id.is_not(None),
+        _current_run_filter(),
     ]
     if sync_state_id is not None:
         filters.append(CrawlTask.sync_state_id == sync_state_id)
@@ -62,6 +73,7 @@ def summarize_video_task_states_by_sync_state(
                 func.sum(case((CrawlTask.status.in_(ACTIVE_TASK_STATUSES), 1), else_=0)),
                 func.sum(case((CrawlTask.status.in_(FAILED_TASK_STATUSES), 1), else_=0)),
             )
+            .join(SubscriptionSyncState, SubscriptionSyncState.id == CrawlTask.sync_state_id)
             .where(*filters)
             .group_by(CrawlTask.sync_state_id),
         ).all()
@@ -89,6 +101,7 @@ def summarize_video_task_states_by_sync_state(
                     )
                     .label('error_rank'),
                 )
+                .join(SubscriptionSyncState, SubscriptionSyncState.id == CrawlTask.sync_state_id)
                 .where(
                     *filters,
                     CrawlTask.status.in_(FAILED_TASK_STATUSES),
@@ -109,10 +122,12 @@ def list_active_subscription_sync_state_ids(session_factory) -> set[int]:
     with session_factory() as session:
         state_ids = session.execute(
             select(CrawlTask.sync_state_id)
+            .join(SubscriptionSyncState, SubscriptionSyncState.id == CrawlTask.sync_state_id)
             .where(
                 CrawlTask.task_type.in_(subscription_sync_task_types()),
                 CrawlTask.sync_state_id.is_not(None),
                 CrawlTask.status.in_(ACTIVE_TASK_STATUSES),
+                _current_run_filter(),
             )
             .distinct(),
         ).scalars().all()

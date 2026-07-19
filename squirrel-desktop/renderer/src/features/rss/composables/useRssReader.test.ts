@@ -1,0 +1,90 @@
+// @vitest-environment jsdom
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { getDesktopBridge } from '@/shared/composables/useDesktopBridge'
+import { useRssReader } from './useRssReader'
+
+vi.mock('@/shared/composables/useDesktopBridge', () => ({
+  getDesktopBridge: vi.fn(),
+}))
+
+vi.mock('@/shared/composables/usePointerOutside', () => ({
+  usePointerOutside: vi.fn(),
+}))
+
+describe('useRssReader', () => {
+  beforeEach(() => {
+    const values = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+      clear: () => values.clear(),
+    })
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('clamps and persists reader font size', () => {
+    const state = useRssReader({})
+
+    state.setReaderFontSize(100)
+
+    expect(state.readerFontSize.value).toBe(24)
+    expect(localStorage.getItem('rss_reader_font_size')).toBe('24')
+  })
+
+  it('opens HTTP articles in the isolated desktop content window', async () => {
+    const openWebContent = vi.fn().mockResolvedValue(true)
+    vi.mocked(getDesktopBridge).mockReturnValue({
+      isDesktop: true,
+      openWebContent,
+    })
+    const state = useRssReader({})
+    state.readingEntry.value = {
+      id: 1,
+      account_id: 1,
+      feed_id: 1,
+      external_entry_id: 'entry-1',
+      canonical_url: 'https://example.com/post',
+      title: 'Post',
+      summary: null,
+      thumbnail: null,
+      author: null,
+      published_at: null,
+      is_read: false,
+      is_starred: false,
+    }
+
+    await expect(state.openInAppBrowser()).resolves.toBe(true)
+    expect(openWebContent).toHaveBeenCalledWith('https://example.com/post')
+  })
+
+  it('rejects non-HTTP article URLs before invoking the desktop bridge', async () => {
+    const openWebContent = vi.fn().mockResolvedValue(true)
+    vi.mocked(getDesktopBridge).mockReturnValue({ isDesktop: true, openWebContent })
+    const onStatus = vi.fn()
+    const state = useRssReader({ onStatus })
+    state.readingEntry.value = {
+      id: 1,
+      account_id: 1,
+      feed_id: 1,
+      external_entry_id: 'entry-1',
+      canonical_url: 'javascript:alert(1)',
+      title: 'Post',
+      summary: null,
+      thumbnail: null,
+      author: null,
+      published_at: null,
+      is_read: false,
+      is_starred: false,
+    }
+
+    await expect(state.openInAppBrowser()).resolves.toBe(false)
+    expect(openWebContent).not.toHaveBeenCalled()
+    expect(onStatus).toHaveBeenCalledWith('文章链接无效', true)
+  })
+})

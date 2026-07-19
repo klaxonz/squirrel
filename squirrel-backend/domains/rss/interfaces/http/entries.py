@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
+from domains.rss.application.services.client._base import RssServiceError
 from domains.rss.application.services.service import RssService
 from domains.user.application.services.auth import get_current_user
 from domains.user.interfaces.dto.user_dto import CurrentUserDto
@@ -100,13 +101,18 @@ def record_rss_entry_view(
     current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
-    svc.record_entry_view(current_user.id, entry_id)
+    try:
+        if not svc.record_entry_view(current_user.id, entry_id):
+            return response.not_found('RSS 文章不存在')
+    except RssServiceError as exc:
+        return response.param_error(str(exc))
     return response.success()
 
 
 @router.get('/entries/recently-viewed')
 def list_recently_viewed(
+    account_id: int | None = Query(None, alias='accountId'),
     current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
-    return response.success({'data': svc.list_recently_viewed(current_user.id)})
+    return response.success({'data': svc.list_recently_viewed(current_user.id, account_id=account_id)})

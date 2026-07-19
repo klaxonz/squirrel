@@ -15,14 +15,14 @@ def ensure_dispatch_scope(session: Session, *, scope_type: str, scope_key: str) 
     if scope:
         return scope
 
-    with session.begin_nested():
-        scope = CrawlDispatchScope(scope_type=scope_type, scope_key=scope_key)
-        session.add(scope)
-        try:
+    try:
+        with session.begin_nested():
+            scope = CrawlDispatchScope(scope_type=scope_type, scope_key=scope_key)
+            session.add(scope)
             session.flush()
-            return scope
-        except IntegrityError:
-            pass
+        return scope
+    except IntegrityError:
+        pass
 
     return session.execute(
         select(CrawlDispatchScope).where(

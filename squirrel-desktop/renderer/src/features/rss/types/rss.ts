@@ -7,9 +7,16 @@
 // - credential_encrypted / is_deleted / raw_data / user_id are STRIPPED from
 //   responses; never re-add credential fields to these types.
 
+export type RssProvider = 'greader' | 'miniflux' | 'fever'
+export type RssFeedOpenMethod = 'app_browser' | 'external_browser' | null
+export type ReadBatchMode = 'above' | 'below' | 'all'
+
 export interface RssAccount {
   id: number
-  provider: string
+  provider: RssProvider
+  capabilities?: {
+    manage_subscriptions: boolean
+  }
   name: string
   base_url: string
   username: string | null
@@ -31,7 +38,7 @@ export interface RssFeed {
   icon_url: string | null
   category: string | null
   enabled: boolean
-  open_method: string | null
+  open_method: RssFeedOpenMethod
   last_entry_sync_at: string | null
 }
 
@@ -53,6 +60,19 @@ export interface RssEntry {
 /** GET /api/rss/entries/recently-viewed item. */
 export interface RssEntryRecentlyViewed extends RssEntry {
   viewed_at: string
+}
+
+export type RecentEntry = RssEntryRecentlyViewed
+
+export interface RssAccountForm {
+  id: number | null
+  provider: RssProvider
+  name: string
+  base_url: string
+  username: string
+  credential: string
+  enabled: boolean
+  sync_entry_limit: number | null
 }
 
 /** Wrapper for GET /api/rss/entries. */
@@ -97,8 +117,8 @@ export interface RssMutationResult {
 
 /** POST /api/rss/accounts/:id/sync/start result. */
 export interface RssSyncStartResult {
-  status?: string
-  account_id?: string | number
+  started: boolean
+  account_id: number
 }
 
 /** POST /api/rss/accounts/test result. */
@@ -108,4 +128,3 @@ export interface RssAccountTestResult {
   message?: string
   error?: string
 }
-

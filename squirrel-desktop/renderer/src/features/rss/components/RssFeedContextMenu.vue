@@ -57,11 +57,12 @@
       系统浏览器
     </AppContextMenuItem>
 
-    <AppContextMenuSeparator />
-
-    <AppContextMenuItem icon="close" danger @click="$emit('unsubscribe', feed)">
-      取消订阅
-    </AppContextMenuItem>
+    <template v-if="canManageSubscriptions">
+      <AppContextMenuSeparator />
+      <AppContextMenuItem icon="close" danger @click="$emit('unsubscribe', feed)">
+        取消订阅
+      </AppContextMenuItem>
+    </template>
   </AppContextMenu>
 </template>
 
@@ -71,12 +72,13 @@ import AppContextMenu from '@/shared/components/layout/AppContextMenu.vue'
 import AppContextMenuItem from '@/shared/components/layout/AppContextMenuItem.vue'
 import AppContextMenuLabel from '@/shared/components/layout/AppContextMenuLabel.vue'
 import AppContextMenuSeparator from '@/shared/components/layout/AppContextMenuSeparator.vue'
-import type { RssFeed } from '@/features/rss/composables/rssTypes'
+import type { RssFeed, RssFeedOpenMethod } from '@/features/rss/types/rss'
 
 defineProps<{
   visible: boolean
   feed: RssFeed | null
   position: { x: number; y: number }
+  canManageSubscriptions: boolean
 }>()
 
 defineEmits<{
@@ -85,7 +87,7 @@ defineEmits<{
   copyLink: [feed: RssFeed]
   openSite: [feed: RssFeed]
   // open_method values: null = in-app reader, 'app_browser', 'external_browser'
-  setOpenMethod: [feed: RssFeed, method: string | null]
+  setOpenMethod: [feed: RssFeed, method: RssFeedOpenMethod]
   unsubscribe: [feed: RssFeed]
   close: []
 }>()

@@ -22,6 +22,7 @@ from domains.subscription.application.services.core.sync.state._intervals import
 from domains.subscription.application.services.core.sync.state._queue import (
     claim_sync_state,
     deactivate_sync_states,
+    deactivate_sync_states_in_session,
     has_incremental_backpressure,
     prepare_sync_state_for_enqueue,
     prepare_sync_state_for_enqueue_in_session,
@@ -45,6 +46,7 @@ __all__ = [
     'claim_sync_state',
     'continue_full_sync_batch',
     'deactivate_sync_states',
+    'deactivate_sync_states_in_session',
     'decrement_pending_video_count',
     'defer_sync_state',
     'ensure_incremental_sync_state',

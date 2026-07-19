@@ -58,12 +58,12 @@
             class="rss-sync-status"
             :class="{
               'is-active': syncing,
-              'is-error': statusError,
+              'is-error': statusError || (!statusMessage && !!selectedAccount.last_error),
             }"
           >
             <span class="rss-sync-status__indicator" aria-hidden="true" />
             <span class="rss-sync-status__copy" :title="statusMessage">
-              {{ statusMessage || (selectedAccount.last_sync_at ? '上次同步 ' + formatDate(selectedAccount.last_sync_at) : '尚未同步') }}
+              {{ statusMessage || selectedAccount.last_error || (selectedAccount.last_sync_at ? '上次同步 ' + formatDate(selectedAccount.last_sync_at) : '尚未同步') }}
             </span>
             <div class="rss-sync-status__menu" role="group" aria-label="同步">
               <Button
@@ -104,13 +104,16 @@
           :selected-feed-id="selectedFeedId"
           :total-feeds="filteredFeeds.length"
           :has-account="!!selectedAccount"
+          :can-manage-subscriptions="canManageSubscriptions"
           :loading="loadingFeeds"
+          :error="accountsError || feedsError"
           @select-all="selectedFeedId = null; loadEntries(true)"
           @add-feed="showSubscribeModal = true"
           @toggle-folder="toggleFolder"
-          @select-feed="selectFeed"
+          @select-feed="selectFeedAndShowAll"
           @feed-context-menu="showFeedContextMenu"
-          @unsubscribe-feed="handleUnsubscribeFeed"
+          @unsubscribe-feed="requestUnsubscribeFeed"
+          @retry="loadAll"
         />
       </template>
 
@@ -201,6 +204,18 @@
             </div>
 
             <!-- Empty view -->
+            <div v-else-if="entriesError" class="app-page-empty app-page-empty--compact">
+              <AppEmptyState
+                variant="error"
+                title="文章加载失败"
+                :copy="entriesError"
+              >
+                <template #actions>
+                  <Button severity="secondary" outlined size="sm" @click="loadEntries(true)">重试</Button>
+                </template>
+              </AppEmptyState>
+            </div>
+
             <div v-else-if="filteredEntries.length === 0" class="app-page-empty app-page-empty--compact">
               <AppEmptyState
                 variant="plain"
@@ -222,8 +237,8 @@
                 :selected="readingEntry !== null && String(readingEntry.id) === String(entry.id)"
                 :aria-label="entry.is_read ? `已读：${entry.title}` : `未读：${entry.title}`"
                 @click="openReader(entry)"
-                @keydown.enter.prevent="openReader(entry)"
-                @keydown.space.prevent="openReader(entry)"
+                @keydown.enter.self.prevent="openReader(entry)"
+                @keydown.space.self.prevent="openReader(entry)"
                 @contextmenu.prevent.stop="showArticleContextMenu(entry, $event)"
               >
                 <div class="rss-entry-item__meta-row">
@@ -233,7 +248,7 @@
                     type="button"
                     class="rss-entry-item__source"
                     title="查看该订阅源"
-                    @click.stop="pushFeedNavStack(); selectFeed(entry.feed_id)"
+                    @click.stop="pushFeedNavStack(); selectFeedAndShowAll(entry.feed_id)"
                   >
                     <SiteIcon
                       :icon-url="getFeedIconUrl(entry.feed_id)"
@@ -299,7 +314,7 @@
                 <Button
                   text severity="secondary"
                   size="sm"
-                  @click="pushFeedNavStack(); selectFeed(readingEntry.feed_id)"
+                  @click="pushFeedNavStack(); selectFeedAndShowAll(readingEntry.feed_id)"
                   class="rss-reader-source-button"
                   title="查看该订阅源的所有文章"
                 >
@@ -327,16 +342,13 @@
 
               <!-- 在系统浏览器打开 -->
               <Button
-                as="a"
-                :href="readingEntry.canonical_url"
-                target="_blank"
-                rel="noopener noreferrer"
                 title="在系统浏览器打开"
                 aria-label="在系统浏览器打开"
                 text
                 severity="secondary"
                 size="sm"
                 icon-only
+                @click="openExternalUrl(readingEntry.canonical_url)"
               >
                 <AppIcon name="externalLink" class="h-4 w-4" />
               </Button>
@@ -356,14 +368,15 @@
 
               <!-- 取消订阅该源 -->
               <Button
+                v-if="canManageSubscriptions"
                 text severity="secondary"
                 size="sm" icon-only
                 class="hover:bg-destructive/10 hover:text-destructive"
                 title="取消订阅该源"
                 aria-label="取消订阅该源"
-                @click="unsubscribeCurrentFeedFromReader"
+                @click="requestUnsubscribeByEntry(readingEntry)"
               >
-                <AppIcon name="close" class="h-4 w-4" />
+                <AppIcon name="trash" class="h-4 w-4" />
               </Button>
 
               <!-- Reader Settings -->
@@ -385,7 +398,7 @@
                   :font-size="readerFontSize"
                   @update:visible="showReaderSettings = $event"
                   @update:font-family="readerFontFamily = $event; saveReaderPrefs()"
-                  @update:font-size="readerFontSize = $event"
+                  @update:font-size="setReaderFontSize"
                   @save="saveReaderPrefs()"
                 />
               </div>
@@ -418,96 +431,17 @@
               </header>
 
               <div
+                v-if="sanitizedArticleHtml"
                 class="reader-content prose prose-neutral dark:prose-invert"
                 :class="readerFontClass"
                 :style="{ fontSize: readerFontSize + 'px' }"
                 @click="handleContentClick"
-                v-html="cleanAndDecodeHtml(readingEntry.summary) || '<p class=text-muted-foreground>该文章暂无正文内容。</p>'"
+                v-html="sanitizedArticleHtml"
               />
+              <p v-else class="reader-content text-muted-foreground" :style="{ fontSize: readerFontSize + 'px' }">
+                该文章暂无正文内容。
+              </p>
             </article>
-          </div>
-
-          <!-- Reeder-style Slide-over In-App Browser Overlay -->
-          <div
-            v-if="showInAppBrowser"
-            class="rss-browser-overlay"
-          >
-            <!-- Browser Toolbar -->
-            <header class="rss-browser-toolbar">
-              <!-- Left Side: Back/Close button -->
-              <div class="flex items-center gap-3 min-w-0">
-                <Button
-                  text severity="secondary"
-                  size="sm" icon-only
-                  @click="showInAppBrowser = false"
-                  class="rss-browser-toolbar__button"
-                  title="返回正文"
-                >
-                  <AppIcon name="back" class="h-4 w-4" />
-                </Button>
-                <div class="flex flex-col min-w-0 leading-tight">
-                  <span class="rss-browser-toolbar__label">正在浏览原文</span>
-                  <span class="text-xs font-semibold text-foreground/80 truncate max-w-[150px] lg:max-w-[280px]">
-                    {{ readingEntry.title }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- Center: Address Bar (Globe + Domain) -->
-              <div class="rss-browser-address">
-                <AppIcon name="siteFallback" class="h-3.5 w-3.5 mr-1.5 text-muted-foreground/60 shrink-0" />
-                <span class="truncate">{{ getDisplayDomain(readingEntry.canonical_url) }}</span>
-              </div>
-
-              <!-- Right Side: Navigation & Refresh -->
-              <div class="flex items-center gap-2 shrink-0">
-                <!-- 刷新 -->
-                <Button
-                  text severity="secondary"
-                  size="sm" icon-only
-                  @click="refreshIframe"
-                  class="rss-browser-toolbar__button"
-                  title="重新加载"
-                >
-                  <AppSpinner v-if="iframeLoading" size="sm" muted />
-                  <AppIcon v-else name="refresh" class="h-4 w-4" />
-                </Button>
-
-                <!-- 在系统浏览器打开 -->
-                <Button
-                  as="a"
-                  :href="readingEntry.canonical_url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="在系统浏览器打开"
-                  text
-                  severity="secondary"
-                  size="sm"
-                  icon-only
-                  class="rss-browser-toolbar__button"
-                >
-                  <AppIcon name="externalLink" class="h-4 w-4" />
-                </Button>
-              </div>
-            </header>
-
-            <!-- Iframe Webview Body -->
-            <div class="flex min-h-0 flex-1 w-full overflow-hidden bg-background relative flex-col">
-              <iframe
-                :key="iframeLoadKey"
-                ref="iframeRef"
-                :src="readingEntry.canonical_url"
-                :data-load-key="iframeLoadKey"
-                class="w-full h-full border-0 bg-card"
-                @load="handleIframeLoad"
-              />
-
-              <!-- Fallback Browser Alert for web users -->
-              <div v-if="!isElectron && !iframeLoading" class="rss-browser-alert">
-                <span class="rss-browser-alert__title">原文加载提示</span>
-                <span class="text-muted-foreground">如果页面显示空白或拒绝连接，是由于源站安全策略限制。您可以点击右上角图标在外部浏览器中打开。</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -537,6 +471,7 @@
       :can-test-form="canTestForm"
       :saving="saving"
       :testing="testing"
+      :max-sync-entry-limit="MAX_RSS_SYNC_ENTRY_LIMIT"
       @save="saveAccount"
       @test="testForm"
     />
@@ -545,10 +480,25 @@
     <DeleteAccountDialog
       v-model:open="showDeleteConfirmModal"
       :account-name="accountToDelete?.name || ''"
+      :deleting="deleting"
       @confirm="handleDeleteAccount"
     />
 
-    <Dialog :open="showSubscribeModal" @update:open="showSubscribeModal = $event">
+    <ConfirmDialog
+      v-model:open="showUnsubscribeConfirm"
+      icon="trash"
+      icon-bg-class="bg-destructive/10"
+      icon-class="text-destructive"
+      title="确认取消订阅？"
+      :description="feedToUnsubscribe ? `将从服务端取消「${feedToUnsubscribe.title}」，并删除本地同步的文章记录。` : ''"
+      cancel-label="保留订阅"
+      confirm-label="取消订阅"
+      confirm-variant="destructive"
+      :confirming="unsubscribingFeed"
+      @confirm="confirmUnsubscribeFeed"
+    />
+
+    <Dialog :open="showSubscribeModal" @update:open="$event ? showSubscribeModal = true : closeSubscribeModal()">
       <DialogContent class="rss-subscribe-dialog app-dialog-surface !overflow-visible">
         <DialogHeader class="app-dialog-form-header">
           <DialogTitle class="app-dialog-form-title">添加订阅源</DialogTitle>
@@ -696,13 +646,14 @@
       :entry="contextMenuEntry"
       :feed="contextMenuFeedResolved"
       :position="contextMenuPosition"
+      :can-manage-subscriptions="canManageSubscriptions"
       :ref="bindArticleMenuRef"
       @toggle-read="toggleReadStatus"
       @toggle-star="toggleStarStatus"
       @go-to-feed="goToFeedFromContextMenu"
       @set-open-method="(feed, method) => setFeedOpenMethod(feed, method)"
       @batch-read="(scope, read) => batchUpdateReadStatus(scope, read)"
-      @unsubscribe="unsubscribeCurrentFeed"
+      @unsubscribe="requestUnsubscribeByEntry"
       @copy-link="copyArticleLink"
       @open-external="openInExternalBrowser"
       @close="closeContextMenu"
@@ -713,13 +664,14 @@
       :visible="showFeedContextMenuState"
       :feed="contextMenuFeed"
       :position="feedContextMenuPosition"
+      :can-manage-subscriptions="canManageSubscriptions"
       :ref="bindFeedMenuRef"
       @mark-all-read="markFeedAllAsRead"
       @sync-feed="syncFeedFromContextMenu"
       @copy-link="copyFeedLink"
       @open-site="openFeedSiteInExternalBrowser"
       @set-open-method="(feed, method) => setFeedOpenMethod(feed, method)"
-      @unsubscribe="unsubscribeFeedFromContextMenu"
+      @unsubscribe="requestUnsubscribeFeed"
       @close="closeFeedContextMenu"
     />
   </AppPageShell>
@@ -732,6 +684,7 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppBounceDots from '@/shared/components/AppBounceDots.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import ReaderSettingsPanel from '@/features/rss/components/ReaderSettingsPanel.vue'
 import AccountDropdown from '@/features/rss/components/AccountDropdown.vue'
@@ -754,7 +707,8 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
 import { formatDate } from '@/shared/lib/dateFormat'
-import { useRssAccounts } from '@/features/rss/composables/useRssAccounts'
+import { openExternalUrl } from '@/shared/lib/externalUrl'
+import { MAX_RSS_SYNC_ENTRY_LIMIT, useRssAccounts } from '@/features/rss/composables/useRssAccounts'
 import { useRssFeeds } from '@/features/rss/composables/useRssFeeds'
 import { useRssEntries } from '@/features/rss/composables/useRssEntries'
 import { useRssReader } from '@/features/rss/composables/useRssReader'
@@ -766,7 +720,7 @@ import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 import { useUIStore } from '@/shared/stores/ui'
 import RssFeedContextMenu from '@/features/rss/components/RssFeedContextMenu.vue'
 import RssArticleContextMenu from '@/features/rss/components/RssArticleContextMenu.vue'
-import type { RssEntry, RecentEntry } from '@/features/rss/composables/rssTypes'
+import type { RssEntry, RssFeed, RecentEntry } from '@/features/rss/types/rss'
 import type { AppIconName } from '@/shared/icons/app-icons'
 
 // Cross-cutting UI state
@@ -803,6 +757,7 @@ const getDisplayDomain = (urlStr?: string | null) => {
 const {
   providers,
   accounts,
+  accountsError,
   selectedAccountId,
   showAddEditModal,
   showDeleteConfirmModal,
@@ -810,6 +765,7 @@ const {
   showAccountDropdown,
   saving,
   testing,
+  deleting,
   accountForm,
   formMessage,
   formError,
@@ -831,8 +787,15 @@ const {
   onStatus,
 })
 
+const canManageSubscriptions = computed(() => {
+  const account = selectedAccount.value
+  if (!account) return false
+  return account.capabilities?.manage_subscriptions ?? account.provider !== 'fever'
+})
+
 const {
   feeds,
+  feedsError,
   selectedFeedId,
   loadingFeeds,
   showSubscribeModal,
@@ -871,9 +834,9 @@ const {
   markFeedAllAsRead,
   copyFeedLink,
   openFeedSiteInExternalBrowser,
-  unsubscribeFeedFromContextMenu,
 } = useRssFeeds({
   selectedAccountId,
+  canManageSubscriptions,
   onRefreshEntries: (isReset) => loadEntries(isReset ?? true),
   onStatus,
 })
@@ -885,39 +848,21 @@ const {
   readerFontFamily,
   showReaderSettings,
   readerSettingsRef,
-
-  showInAppBrowser,
-  iframeLoading,
-  iframeLoadKey,
-  iframeProgress,
-  isElectron,
-  iframeRef,
   activeLightboxImg,
   lightboxScale,
 
   readerFontClass,
+  sanitizedArticleHtml,
+  setReaderFontSize,
   saveReaderPrefs,
   handleContentClick,
   closeLightbox,
   handleKeyDown,
-  refreshIframe,
   openInAppBrowser,
-  handleIframeLoad,
-  cleanAndDecodeHtml,
   stripHtmlTags,
   formatRelativeTime,
-  unsubscribeCurrentFeedFromReader,
-
 } = useRssReader({
-  selectedAccountId,
-  feeds,
-  findFeedByEntry,
-  getFeedTitle,
-  getFeedCategory,
-  getFeedIconUrl,
   onStatus,
-  onRefreshFeeds: loadFeeds,
-  onRefreshEntries: (isReset) => loadEntries(isReset ?? true),
 })
 
 const {
@@ -925,6 +870,7 @@ const {
   loadingEntries,
   totalEntries,
   loadingMoreEntries,
+  entriesError,
   recentlyViewed,
   entriesContainer,
   loadMoreTrigger,
@@ -1025,17 +971,23 @@ loadAllImpl = async () => {
 
 const loadAll = loadAllImpl
 
+const selectFeedAndShowAll = async (feedId: number) => {
+  if (activeFilter.value === 'recent') {
+    await selectFeed(feedId, false)
+    activeFilter.value = 'all'
+    return
+  }
+  await selectFeed(feedId)
+}
+
 const openReader = (entry: RssEntry) => {
   readingEntry.value = entry
-  showInAppBrowser.value = false
-  iframeLoading.value = false
-  resetIframeState()
 
   const feed = findFeedByEntry(entry.feed_id)
   const method = feed?.open_method
 
   if (method === 'external_browser') {
-    window.open(entry.canonical_url, '_blank')
+    void openExternalUrl(entry.canonical_url)
     if (!entry.is_read) {
       toggleReadStatus(entry, false)
     }
@@ -1049,7 +1001,7 @@ const openReader = (entry: RssEntry) => {
   recordRecentlyViewed(entry)
 
   if (method === 'app_browser') {
-    nextTick(() => openInAppBrowser())
+    void openInAppBrowser()
   }
 }
 
@@ -1100,11 +1052,6 @@ const handleWorkspaceKeyDown = (event: KeyboardEvent) => {
       showReaderSettings.value = false
       return
     }
-    if (showInAppBrowser.value) {
-      event.preventDefault()
-      showInAppBrowser.value = false
-      return
-    }
     if (readingEntry.value) {
       event.preventDefault()
       readingEntry.value = null
@@ -1137,32 +1084,66 @@ const handleWorkspaceKeyDown = (event: KeyboardEvent) => {
   }
 }
 
-const resetIframeState = () => {
-  iframeProgress.value = 0
+const showUnsubscribeConfirm = ref(false)
+const feedToUnsubscribe = ref<RssFeed | null>(null)
+const unsubscribingFeed = ref(false)
+
+const requestUnsubscribeFeed = (feed: RssFeed) => {
+  closeContextMenu()
+  feedToUnsubscribe.value = feed
+  showUnsubscribeConfirm.value = true
 }
 
-const unsubscribeCurrentFeed = async (entry: RssEntry) => {
+const requestUnsubscribeByEntry = (entry: RssEntry) => {
   const feed = findFeedByEntry(entry.feed_id)
   if (!feed) {
     onStatus('未找到对应的订阅源', true)
     return
   }
-  entriesCloseContextMenu()
-  await handleUnsubscribeFeed(feed)
+  requestUnsubscribeFeed(feed)
+}
+
+const confirmUnsubscribeFeed = async () => {
+  const feed = feedToUnsubscribe.value
+  if (!feed || unsubscribingFeed.value) return
+  unsubscribingFeed.value = true
+  try {
+    const removed = await handleUnsubscribeFeed(feed)
+    if (!removed) return
+    if (readingEntry.value?.feed_id === feed.id) readingEntry.value = null
+    showUnsubscribeConfirm.value = false
+    feedToUnsubscribe.value = null
+  } finally {
+    unsubscribingFeed.value = false
+  }
 }
 
 const selectAccount = async (accountId: number) => {
+  if (selectedAccountId.value === accountId) return
   selectedAccountId.value = accountId
-  selectedFeedId.value = null
+  await nextTick()
   await Promise.all([
     loadFeeds(),
     loadEntries(true),
   ])
+  await resumeSyncPollingIfRunning()
 }
 
 // Watchers
-watch(selectedAccountId, () => {
+watch(selectedAccountId, (accountId, previousAccountId) => {
+  if (accountId === previousAccountId) return
+  stopSyncPolling()
+  onStatus('')
+  selectedFeedId.value = null
+  readingEntry.value = null
+  clearFeedNavStack()
+  feedSearch.value = ''
+  activeFilter.value = 'all'
   collapsedFolders.value = {}
+  showReaderSettings.value = false
+  showUnsubscribeConfirm.value = false
+  feedToUnsubscribe.value = null
+  closeContextMenu()
 })
 
 // Lifecycle
@@ -1280,8 +1261,18 @@ onUnmounted(() => {
 }
 
 .rss-entry-pane {
-  --app-pane-list-width: 30rem;
+  --app-pane-list-width: clamp(20rem, 34cqi, 30rem);
   background: transparent;
+}
+
+@container workbench (max-width: 68rem) {
+  .rss-entry-pane {
+    --app-pane-list-width: clamp(19rem, 32cqi, 23rem);
+  }
+
+  .rss-reader-toolbar__domain {
+    display: none;
+  }
 }
 
 .rss-entry-list {
@@ -1590,7 +1581,7 @@ onUnmounted(() => {
   font-family: var(--app-heading-font);
   font-size: 2rem;
   font-weight: 650;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   line-height: 1.22;
   transition: color var(--duration-fast) var(--ease-default);
   text-wrap: balance;
@@ -1609,65 +1600,6 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground) / 0.7);
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
-}
-
-.rss-browser-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  border-inline-start: 1px solid hsl(var(--border) / 0.42);
-  background: hsl(var(--background));
-}
-
-.rss-browser-toolbar {
-  position: relative;
-  z-index: 20;
-  display: flex;
-  height: 3.5rem;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid hsl(var(--border) / 0.38);
-  background: hsl(var(--background));
-  padding: 0 1.5rem;
-}
-
-.rss-browser-toolbar__button {
-  flex: 0 0 auto;
-  width: 2rem;
-  height: 2rem;
-  background: hsl(var(--accent) / 0.3);
-}
-
-.rss-browser-toolbar__label {
-  color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
-  font-weight: 700;
-}
-
-.rss-browser-alert__title {
-  color: hsl(var(--foreground));
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.rss-browser-address {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  display: none;
-  max-width: 20rem;
-  transform: translate(-50%, -50%);
-  align-items: center;
-  border: 1px solid hsl(var(--border) / 0.42);
-  border-radius: var(--radius-md);
-  background: hsl(var(--muted) / 0.28);
-  padding: 0.25rem 0.75rem;
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-badge-size);
-  font-weight: 600;
 }
 
 .rss-subscribe-dialog {
@@ -1718,43 +1650,12 @@ onUnmounted(() => {
   transform: translateY(-50%);
 }
 
-@media (min-width: 768px) {
-  .rss-browser-address {
-    display: flex;
-  }
-}
-
-.rss-browser-alert {
-  position: absolute;
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 20;
-  display: flex;
-  max-width: 20rem;
-  flex-direction: column;
-  gap: 0.375rem;
-  border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: var(--radius-md);
-  background: hsl(var(--popover));
-  padding: 0.75rem;
-  color: hsl(var(--popover-foreground));
-  font-size: 0.6875rem;
-  line-height: 1.55;
-  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.12);
-}
-
 /* Scoped stylesheet for reader content typography — WeRead-inspired */
 .font-serif {
   font-family: Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
 }
 .font-sans {
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-}
-.font-outfit {
-  font-family: Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-}
-.font-lora {
-  font-family: Lora, Georgia, Cambria, "Times New Roman", Times, "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
 }
 
 .reader-content {
@@ -1771,16 +1672,8 @@ onUnmounted(() => {
   --reader-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
-.reader-content.font-outfit {
-  --reader-font: Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-}
-
 .reader-content.font-serif {
   --reader-font: Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
-}
-
-.reader-content.font-lora {
-  --reader-font: Lora, Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
 }
 
 /* Paragraphs — generous spacing, first-line indent for Chinese (serif fonts only).
@@ -1788,19 +1681,17 @@ onUnmounted(() => {
    First/last-child reset is universal across families. */
 .reader-content :deep(p) {
   margin-bottom: 1.25rem;
-  letter-spacing: 0.03em;
+  letter-spacing: 0;
   color: hsl(var(--foreground) / 0.82);
 }
 
-.reader-content.font-serif :deep(p),
-.reader-content.font-lora :deep(p) {
+.reader-content.font-serif :deep(p) {
   line-height: 2;
   text-indent: 2em;
 }
 
 .reader-content :deep(p:first-child),
-.reader-content.font-serif :deep(p:first-child),
-.reader-content.font-lora :deep(p:first-child) {
+.reader-content.font-serif :deep(p:first-child) {
   text-indent: 0;
 }
 
@@ -1950,8 +1841,7 @@ onUnmounted(() => {
 }
 
 .reader-content :deep(pre p),
-.reader-content.font-serif :deep(pre p),
-.reader-content.font-lora :deep(pre p) {
+.reader-content.font-serif :deep(pre p) {
   text-indent: 0;
 }
 
@@ -1979,16 +1869,14 @@ onUnmounted(() => {
 }
 
 .reader-content :deep(blockquote p),
-.reader-content.font-serif :deep(blockquote p),
-.reader-content.font-lora :deep(blockquote p) {
+.reader-content.font-serif :deep(blockquote p) {
   text-indent: 0;
   margin-bottom: 0.5rem;
   line-height: 2;
 }
 
 .reader-content :deep(blockquote p:last-child),
-.reader-content.font-serif :deep(blockquote p:last-child),
-.reader-content.font-lora :deep(blockquote p:last-child) {
+.reader-content.font-serif :deep(blockquote p:last-child) {
   margin-bottom: 0;
 }
 

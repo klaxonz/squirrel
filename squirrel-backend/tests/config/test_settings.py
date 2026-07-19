@@ -141,7 +141,7 @@ def test_crawl_settings_defaults_include_task_type_limits():
         'video_extract': 8,
     }
     assert c.site_concurrency_overrides == {}
-    assert c.default_site_concurrency == 2
+    assert c.default_site_concurrency == 1
 
 
 def test_crawl_settings_overrides_loaded_from_json_env(monkeypatch):
@@ -151,11 +151,26 @@ def test_crawl_settings_overrides_loaded_from_json_env(monkeypatch):
         'CRAWL_TASK_TYPE_LIMITS',
         '{"video_extract": 16, "custom_task": 4}',
     )
-    monkeypatch.setenv('CRAWL_SITE_CONCURRENCY_OVERRIDES', '{"javdb": 6}')
+    monkeypatch.setenv('CRAWL_SITE_CONCURRENCY_OVERRIDES', '{"JavDB": 1}')
 
     c = CrawlSettings()
     assert c.task_type_limits == {'video_extract': 16, 'custom_task': 4}
-    assert c.site_concurrency_overrides == {'javdb': 6}
+    assert c.site_concurrency_overrides == {'javdb': 1}
+
+
+def test_crawl_settings_reject_site_concurrency_above_serial_plugin_capacity(monkeypatch):
+    from pydantic import ValidationError
+
+    from infrastructure.config.settings import CrawlSettings
+
+    monkeypatch.setenv('CRAWL_DEFAULT_SITE_CONCURRENCY', '2')
+    with pytest.raises(ValidationError, match='site plugin host is serial'):
+        CrawlSettings()
+
+    monkeypatch.setenv('CRAWL_DEFAULT_SITE_CONCURRENCY', '1')
+    monkeypatch.setenv('CRAWL_SITE_CONCURRENCY_OVERRIDES', '{"youtube": 2}')
+    with pytest.raises(ValidationError, match='site plugin host is serial'):
+        CrawlSettings()
 
 
 def test_cookiecloud_settings_read_env_prefix(monkeypatch):

@@ -1,27 +1,32 @@
-import { BrowserWindow, ipcMain, shell } from 'electron'
+import { BrowserWindow, ipcMain, session, shell } from 'electron'
 import { reloadRenderer, getDesktopWindowState } from './window.mjs'
+import {
+  createWebContentOpener,
+  normalizeWebContentUrl,
+} from './web-content-window.mjs'
+
+const webContentOpener = createWebContentOpener({
+  createWindow: (options) => new BrowserWindow(options),
+  openExternal: (targetUrl) => shell.openExternal(targetUrl),
+  sessionManager: session,
+})
 
 export const installWindowHandlers = () => {
   ipcMain.removeHandler('desktop:open-external')
   ipcMain.handle('desktop:open-external', async (_event, targetUrl) => {
-    const normalizedUrl = String(targetUrl || '').trim()
+    const normalizedUrl = normalizeWebContentUrl(targetUrl)
     if (!normalizedUrl) {
-      return false
-    }
-
-    let parsed
-    try {
-      parsed = new URL(normalizedUrl)
-    } catch {
-      return false
-    }
-
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
       return false
     }
 
     await shell.openExternal(normalizedUrl)
     return true
+  })
+
+  ipcMain.removeHandler('desktop:open-web-content')
+  ipcMain.handle('desktop:open-web-content', (event, targetUrl) => {
+    const parentWindow = BrowserWindow.fromWebContents(event.sender)
+    return webContentOpener.openWebContent(targetUrl, parentWindow)
   })
 
   ipcMain.removeAllListeners('desktop:reload')

@@ -12,6 +12,7 @@ from domains.subscription.application.services.crawl.executors.subscription_sync
 from domains.subscription.application.services.crawl.executors.video_extract_executor import (
     CrawlExecutorService as VideoExtractExecutor,
 )
+from domains.subscription.application.services.crawl.tasks.errors import CrawlExecutionError
 from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
@@ -79,10 +80,11 @@ def test_execute_video_extract_task_raises_when_extraction_result_is_failed():
 
     try:
         svc.execute_video_extract_task(task)
-    except ValueError as exc:
+    except CrawlExecutionError as exc:
         assert str(exc) == 'extract_failed'
+        assert exc.retryable is False
     else:
-        raise AssertionError('Expected execute_video_extract_task to raise ValueError for failed extraction result')
+        raise AssertionError('Expected execute_video_extract_task to raise CrawlExecutionError')
 
 
 def test_execute_subscription_sync_task_builds_request_from_payload():

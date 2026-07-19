@@ -235,9 +235,49 @@ def test_run_once_retries_task_on_failure(monkeypatch):
     assert ran is True
     assert calls == [
         ('start', 3, 'worker-1'),
-        ('retry', 3, 'worker-1', 'RuntimeError', 45),
+        ('retry', 3, 'worker-1', 'RuntimeError', 47),
     ]
     assert progress_calls == [(3, {'now': progress_calls[0][1]['now'], 'error_message': 'boom'})]
+
+
+def test_run_once_marks_validation_failures_non_retryable(monkeypatch):
+    captured = {}
+    task = CrawlTask(id=31, job_id=1, task_type='video_extract', site='youtube.com', payload={})
+    dead_task = CrawlTask(
+        id=31,
+        job_id=1,
+        task_type='video_extract',
+        site='youtube.com',
+        payload={},
+        status='dead',
+    )
+    runtime = _noop_runtime(
+        dispatcher=SimpleNamespace(claim_next=lambda **kwargs: task),
+        worker_id='worker-1',
+        retry_delay_seconds=45,
+    )
+
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
+        lambda now=None, retry_delay_seconds=30: [],
+    )
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
+        lambda task_id, worker_id, now=None: task,
+    )
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.execute_video_extract_task',
+        lambda current_task: (_ for _ in ()).throw(ValueError('invalid payload')),
+    )
+
+    def _retry_task(**kwargs):
+        captured.update(kwargs)
+        return dead_task
+
+    monkeypatch.setattr('workers.scheduling.executors.tasks.crawl_task_service.retry_task', _retry_task)
+
+    assert runtime.run_once() is True
+    assert captured['retryable'] is False
 
 
 def test_video_extract_retry_wait_does_not_record_terminal_progress(monkeypatch):
@@ -393,6 +433,30 @@ def test_recover_expired_tasks_records_domain_progress(monkeypatch):
     assert progress_calls == [(41, {'now': now, 'error_message': 'lease_expired'})]
 
 
+def test_recover_expired_dead_video_task_records_terminal_progress(monkeypatch):
+    terminal_calls = []
+    recovered_task = CrawlTask(
+        id=42,
+        job_id=1,
+        task_type='video_extract',
+        site='youtube.com',
+        status='dead',
+        last_error='lease_expired',
+        payload=_video_payload(),
+    )
+    runtime = _noop_runtime(worker_id='worker-1', retry_delay_seconds=45)
+    runtime.task_runner.video_extraction_progress = SimpleNamespace(
+        record_terminal=lambda params, **kwargs: terminal_calls.append((params.sync_state_id, kwargs)),
+    )
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
+        lambda **kwargs: [recovered_task],
+    )
+
+    assert runtime._recover_expired_tasks(now=datetime(2026, 4, 2, 13, 0, 0)) == 1
+    assert terminal_calls == [(2, {'succeeded': False})]
+
+
 def test_run_loop_fills_multiple_slots_with_concurrent_tasks(monkeypatch):
     started = []
     release_event = threading.Event()
@@ -455,6 +519,33 @@ def test_run_loop_fills_multiple_slots_with_concurrent_tasks(monkeypatch):
     thread.join(timeout=1)
 
     assert sorted(started) == [(11, 'worker-1'), (12, 'worker-1')]
+
+
+def test_run_loop_recovers_from_transient_dispatch_failure(monkeypatch):
+    calls = []
+    stop_event = threading.Event()
+
+    def _claim_next(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            raise RuntimeError('database unavailable')
+        stop_event.set()
+        return None
+
+    runtime = _noop_runtime(
+        dispatcher=SimpleNamespace(claim_next=_claim_next),
+        worker_id='worker-1',
+        poll_interval_seconds=0.001,
+        max_concurrency=1,
+    )
+    monkeypatch.setattr(
+        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
+        lambda **kwargs: [],
+    )
+
+    runtime.run_loop(stop_event)
+
+    assert len(calls) == 2
 
 
 def test_run_loop_renews_lease_for_running_tasks(monkeypatch):
@@ -524,6 +615,45 @@ def test_renew_active_leases_ignores_lost_task_ownership(monkeypatch):
 
     runtime._lease_tracker.renew_active_leases(now=last_renewed_at + timedelta(seconds=1))
 
+    assert future not in runtime._lease_tracker.active_leases
+
+
+def test_shutdown_drain_keeps_renewing_until_running_task_finishes(monkeypatch):
+    runtime = _noop_runtime(worker_id='worker-1', lease_seconds=1)
+    future = Future()
+    runtime._lease_tracker.track(
+        future,
+        task_id=77,
+        lease_token='lease-77',
+        now=datetime.now() - timedelta(seconds=1),
+    )
+    renew_calls = []
+
+    def _renew(*, now):
+        renew_calls.append(now)
+        future.set_result(None)
+
+    monkeypatch.setattr(runtime._lease_tracker, 'renew_active_leases', _renew)
+
+    runtime._drain_active_tasks()
+
+    assert len(renew_calls) == 1
+    assert runtime._lease_tracker.active_count == 0
+
+
+def test_reap_completed_futures_isolates_slot_failure():
+    runtime = _noop_runtime(worker_id='worker-1', lease_seconds=1)
+    future = Future()
+    future.set_exception(RuntimeError('slot failure'))
+    runtime._lease_tracker.track(
+        future,
+        task_id=100,
+        now=datetime(2026, 4, 2, 13, 0, 0),
+    )
+
+    runtime._lease_tracker.reap_completed_futures()
+
+    assert runtime._lease_tracker.active_count == 0
     assert future not in runtime._lease_tracker.active_leases
 
 

@@ -140,3 +140,4 @@ def clear_queue_lock(state: SubscriptionSyncState) -> None:
     state.queue_token = None
     state.queued_at = None
     state.locked_at = None
+    state.execution_token = None

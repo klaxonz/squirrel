@@ -3,8 +3,11 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime, timedelta
 
+from sqlalchemy import select
+
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode
 
+from ._ownership import has_live_execution_token
 from .session import get_session
 
 
@@ -34,6 +37,8 @@ def record_gap_observation(
     cursor_loop_detected: bool,
     total_available: int | None,
     local_total: int | None,
+    run_id: str | None = None,
+    execution_token: str | None = None,
     now: datetime | None = None,
 ) -> dict[str, int | bool | str | None]:
     """Update gap suspicion score and return whether a full backfill should be requested.
@@ -44,8 +49,20 @@ def record_gap_observation(
     current_time = now or datetime.now()
 
     with get_session() as session:
-        state = session.get(SubscriptionSyncState, sync_state_id)
-        if not state:
+        state = session.execute(
+            select(SubscriptionSyncState)
+            .where(SubscriptionSyncState.id == sync_state_id)
+            .with_for_update(),
+        ).scalar_one_or_none()
+        if (
+            not state
+            or (state.current_run_id is not None and state.current_run_id != run_id)
+            or (run_id is not None and state.current_run_id != run_id)
+            or (
+                (state.current_run_id is not None or state.execution_token is not None)
+                and not has_live_execution_token(session, state, execution_token)
+            )
+        ):
             return {
                 'gap_suspicion_score': 0,
                 'should_request_full': False,
@@ -120,11 +137,29 @@ def record_gap_observation(
     }
 
 
-def mark_full_sync_requested(sync_state_id: int, *, now: datetime | None = None) -> SubscriptionSyncState | None:
+def mark_full_sync_requested(
+    sync_state_id: int,
+    *,
+    now: datetime | None = None,
+    run_id: str | None = None,
+    execution_token: str | None = None,
+) -> SubscriptionSyncState | None:
     current_time = now or datetime.now()
     with get_session() as session:
-        state = session.get(SubscriptionSyncState, sync_state_id)
-        if not state:
+        state = session.execute(
+            select(SubscriptionSyncState)
+            .where(SubscriptionSyncState.id == sync_state_id)
+            .with_for_update(),
+        ).scalar_one_or_none()
+        if (
+            not state
+            or (state.current_run_id is not None and state.current_run_id != run_id)
+            or (run_id is not None and state.current_run_id != run_id)
+            or (
+                (state.current_run_id is not None or state.execution_token is not None)
+                and not has_live_execution_token(session, state, execution_token)
+            )
+        ):
             return None
         state.last_full_requested_at = current_time
         state.version += 1

@@ -18,6 +18,7 @@ class CrawlTask(Base):
         Index('ix_crawl_task_job_id', 'job_id'),
         Index('ix_crawl_task_parent_task_id', 'parent_task_id'),
         Index('ix_crawl_task_type_status', 'task_type', 'status'),
+        Index('ix_crawl_task_run_type_status', 'run_id', 'task_type', 'status'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -25,9 +26,42 @@ class CrawlTask(Base):
     parent_task_id: Mapped[int | None] = mapped_column(ForeignKey('crawl_task.id'), nullable=True)
     task_type: Mapped[str] = mapped_column(VARCHAR(32), nullable=False)
     site: Mapped[str] = mapped_column(VARCHAR(64), nullable=False)
-    subscription_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    sync_state_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    video_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    subscription_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey(
+            'subscription.id',
+            name='fk_crawl_task_subscription_id_subscription',
+            ondelete='SET NULL',
+        ),
+        nullable=True,
+    )
+    sync_state_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey(
+            'subscription_sync_state.id',
+            name='fk_crawl_task_sync_state_id_sync_state',
+            ondelete='SET NULL',
+        ),
+        nullable=True,
+    )
+    run_id: Mapped[str | None] = mapped_column(
+        VARCHAR(64),
+        ForeignKey(
+            'subscription_sync_run.id',
+            name='fk_crawl_task_run_id_sync_run',
+            ondelete='SET NULL',
+        ),
+        nullable=True,
+    )
+    video_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey(
+            'video.id',
+            name='fk_crawl_task_video_id_video',
+            ondelete='SET NULL',
+        ),
+        nullable=True,
+    )
     video_url: Mapped[str | None] = mapped_column(VARCHAR(2048), nullable=True)
     status: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default='pending')
     priority: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default='normal')
@@ -38,6 +72,8 @@ class CrawlTask(Base):
     next_run_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
     lease_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     worker_id: Mapped[str | None] = mapped_column(VARCHAR(128), nullable=True)
+    lease_token: Mapped[str | None] = mapped_column(VARCHAR(64), nullable=True)
+    lease_generation: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_error: Mapped[str | None] = mapped_column(TEXT, nullable=True)
     last_error_type: Mapped[str | None] = mapped_column(VARCHAR(128), nullable=True)
     trace_id: Mapped[str | None] = mapped_column(VARCHAR(64), nullable=True)
@@ -52,5 +88,6 @@ class CrawlTask(Base):
         kwargs.setdefault('payload', {})
         kwargs.setdefault('attempt', 0)
         kwargs.setdefault('max_attempts', 3)
+        kwargs.setdefault('lease_generation', 0)
         kwargs.setdefault('next_run_at', datetime.now())
         super().__init__(**kwargs)

@@ -1,5 +1,5 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
-import type { RssAccount, RssEntry, RssFeed } from './rssTypes'
+import type { RssAccount, RssEntry, RssFeed } from '@/features/rss/types/rss'
 
 /**
  * Header display derivation for the RSS sources view.

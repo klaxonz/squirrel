@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from domains.rss.application.services.client._base import RssServiceError
 from domains.rss.application.services.service import RssService
@@ -16,8 +16,13 @@ router = APIRouter()
 
 class RssFeedSubscribeRequest(BaseModel):
     accountId: int
-    feedUrl: str
-    category: str | None = None
+    feedUrl: str = Field(min_length=1, max_length=2048)
+    category: str | None = Field(default=None, max_length=255)
+
+
+class RssFeedUpdateRequest(BaseModel):
+    category: str | None = Field(default=None, max_length=255)
+    open_method: Literal['app_browser', 'external_browser'] | None = None
 
 
 @router.post('/feeds/subscribe')
@@ -59,12 +64,12 @@ def unsubscribe_rss_feed(
 @router.patch('/feeds/{feed_id}')
 def patch_rss_feed(
     feed_id: int,
-    req: dict[str, Any],
+    req: RssFeedUpdateRequest,
     current_user: CurrentUserDto = Depends(get_current_user),
     svc: RssService = Depends(get_rss_service),
 ):
     try:
-        feed = svc.update_feed(current_user.id, feed_id, **req)
+        feed = svc.update_feed(current_user.id, feed_id, **req.model_dump(exclude_unset=True))
     except RssServiceError as exc:
         return response.param_error(str(exc))
     except Exception as exc:

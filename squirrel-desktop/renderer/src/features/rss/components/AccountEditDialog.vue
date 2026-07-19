@@ -1,5 +1,5 @@
 <template>
-  <Dialog :open="open">
+  <Dialog :open="open" @update:open="open = $event">
     <DialogContent class="account-dialog app-dialog-surface">
       <DialogHeader class="app-dialog-form-header">
         <DialogTitle class="app-dialog-form-title">
@@ -12,8 +12,12 @@
 
       <div class="app-dialog-form-body app-dialog-form-body--scroll custom-scrollbar">
         <div class="app-dialog-form-field">
-          <label class="app-dialog-form-label">服务提供商</label>
-          <div class="account-dialog__providers">
+          <label id="rss-account-provider-label" class="app-dialog-form-label">服务提供商</label>
+          <div
+            class="account-dialog__providers"
+            role="group"
+            aria-labelledby="rss-account-provider-label"
+          >
             <Button
               v-for="prov in providers"
               :key="prov.value"
@@ -23,6 +27,7 @@
               @click="form.provider = prov.value"
               class="account-dialog__provider"
               :class="{ 'is-selected': form.provider === prov.value }"
+              :aria-pressed="form.provider === prov.value"
             >
               <AppIcon :name="prov.icon" class="h-3.5 w-3.5 shrink-0" />
               <span>{{ prov.name }}</span>
@@ -31,10 +36,11 @@
         </div>
 
         <div class="app-dialog-form-field">
-          <label class="app-dialog-form-label">账号名称</label>
+          <label class="app-dialog-form-label" for="rss-account-name">账号名称</label>
           <div class="app-icon-field">
             <AppIcon name="pencil" class="app-icon-field__icon" />
             <Input fluid
+              id="rss-account-name"
               v-model="form.name"
               class="app-form-input app-form-input--with-icon"
               placeholder="例如: 我的 Miniflux"
@@ -43,13 +49,14 @@
         </div>
 
         <div class="app-dialog-form-field">
-          <label class="app-dialog-form-label">
+          <label class="app-dialog-form-label" for="rss-account-base-url">
             服务接口地址 (URL)
             <span class="account-dialog__required-marker" aria-hidden="true">*</span>
           </label>
           <div class="app-icon-field">
             <AppIcon name="link" class="app-icon-field__icon" />
             <Input fluid
+              id="rss-account-base-url"
               v-model="form.base_url"
               class="app-form-input app-form-input--with-icon"
               :placeholder="baseUrlPlaceholder"
@@ -60,7 +67,7 @@
         </div>
 
         <div class="app-dialog-form-field">
-          <label class="app-dialog-form-label">
+          <label class="app-dialog-form-label" for="rss-account-username">
             用户名
             <span
               v-if="requiresUsername"
@@ -73,6 +80,7 @@
           <div class="app-icon-field">
             <AppIcon name="user" class="app-icon-field__icon" />
             <Input fluid
+              id="rss-account-username"
               v-model="form.username"
               class="app-form-input app-form-input--with-icon"
               placeholder="用户名"
@@ -83,7 +91,7 @@
         </div>
 
         <div class="app-dialog-form-field">
-          <label class="app-dialog-form-label">
+          <label class="app-dialog-form-label" for="rss-account-credential">
             {{ credentialPlaceholder }}
             <span
               v-if="!form.id"
@@ -96,6 +104,7 @@
           <div class="app-icon-field">
             <AppIcon name="security" class="app-icon-field__icon" />
             <Input fluid
+              id="rss-account-credential"
               v-model="form.credential"
               type="password"
               class="app-form-input app-form-input--with-icon"
@@ -106,14 +115,39 @@
           </div>
         </div>
 
+        <div v-if="form.provider !== 'greader'" class="app-dialog-form-field">
+          <label class="app-dialog-form-label" for="rss-account-sync-limit">
+            每个订阅源同步文章数
+            <span class="account-dialog__required-marker" aria-hidden="true">*</span>
+          </label>
+          <div class="app-icon-field">
+            <AppIcon name="list" class="app-icon-field__icon" />
+            <Input fluid
+              id="rss-account-sync-limit"
+              v-model.number="form.sync_entry_limit"
+              type="number"
+              min="1"
+              :max="maxSyncEntryLimit"
+              step="1"
+              class="app-form-input app-form-input--with-icon tabular-nums"
+              required
+              aria-required="true"
+            />
+          </div>
+        </div>
+
         <div class="app-dialog-separator"></div>
 
         <div class="account-dialog__sync-row">
           <div class="account-dialog__sync-copy">
-            <span class="account-dialog__sync-title">启用此账号同步</span>
-            <span class="account-dialog__sync-description">开启后系统将自动定期在后台同步此账号的订阅内容</span>
+            <span id="rss-account-enabled-label" class="account-dialog__sync-title">启用此账号同步</span>
+            <span id="rss-account-enabled-description" class="account-dialog__sync-description">开启后系统将自动定期在后台同步此账号的订阅内容</span>
           </div>
-          <Switch v-model="form.enabled" />
+          <Switch
+            v-model="form.enabled"
+            aria-labelledby="rss-account-enabled-label"
+            aria-describedby="rss-account-enabled-description"
+          />
         </div>
 
         <Transition name="fade">
@@ -176,21 +210,7 @@ import { Input } from '@/shared/ui/input'
 import { Switch } from '@/shared/ui/switch'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
 import type { AppIconName } from '@/shared/icons/app-icons'
-
-type RssProvider = 'greader' | 'miniflux' | 'fever'
-
-interface AccountForm {
-  id: number | null
-  // ponytail: widened to string to match the parent ref's inferred type (the
-  // composable's ref({...}) widens the provider literal to string); the
-  // template only reads/equalities it, never constructs a value.
-  provider: string
-  name: string
-  base_url: string
-  username: string
-  credential: string
-  enabled: boolean
-}
+import type { RssAccountForm, RssProvider } from '@/features/rss/types/rss'
 
 interface Provider {
   value: RssProvider
@@ -199,12 +219,10 @@ interface Provider {
   icon: AppIconName
 }
 
-// ponytail: open + form are defineModel refs (not props), so mutating their
-// fields (form.name = …, open = false) is lint-clean and Vue's reactivity
-// propagates back to the parent composable state — no per-field emit wiring.
-// Read-only computeds + the two handlers (save/test) come in as plain props.
+// These models intentionally share the parent's form object so field edits and
+// dialog dismissal do not need duplicated per-field events.
 const open = defineModel<boolean>('open', { required: true })
-const form = defineModel<AccountForm>('form', { required: true })
+const form = defineModel<RssAccountForm>('form', { required: true })
 
 interface Props {
   providers: Provider[]
@@ -217,6 +235,7 @@ interface Props {
   canTestForm: boolean
   saving: boolean
   testing: boolean
+  maxSyncEntryLimit: number
 }
 
 defineProps<Props>()

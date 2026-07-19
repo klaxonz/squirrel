@@ -146,8 +146,8 @@ class PipelineError(ExtractionError):
     - Pipeline interruption
     """
 
-    def __init__(self, message: str, stage_name: str | None = None, **kwargs):
-        super().__init__(message, retryable=False, **kwargs)
+    def __init__(self, message: str, stage_name: str | None = None, retryable: bool = False, **kwargs):
+        super().__init__(message, retryable=retryable, **kwargs)
         self.stage_name = stage_name
 
 

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+from hashlib import sha256
 from typing import TYPE_CHECKING
 
-from sqlalchemy import VARCHAR, Boolean, Index, Integer, Text
+from sqlalchemy import VARCHAR, Boolean, CheckConstraint, Index, Integer, Text, event
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 from sqlalchemy.types import JSON
 
@@ -13,6 +14,14 @@ if TYPE_CHECKING:
     from domains.video.domain.junctions.subscription_video import SubscriptionVideo
     from domains.video.domain.models.video import Video
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
+
+
+def build_subscription_canonical_key(url: str) -> str:
+    return sha256(str(url).strip().encode('utf-8')).hexdigest()
+
+
+def _canonical_key_for_url(url: str | None) -> str | None:
+    return None if url is None else build_subscription_canonical_key(url)
 
 
 def _video_links_join():
@@ -50,12 +59,19 @@ class Subscription(Base):
         Index('ix_subscription_is_deleted', 'is_deleted'),
         Index('ix_subscription_type', 'type'),
         Index('ix_subscription_deleted_id', 'is_deleted', 'id'),
+        Index('uix_subscription_canonical_key', 'canonical_key', unique=True),
+        CheckConstraint(
+            '(url IS NULL AND canonical_key IS NULL) OR '
+            '(url IS NOT NULL AND canonical_key IS NOT NULL)',
+            name='ck_subscription_url_canonical_key_presence',
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     type: Mapped[str] = mapped_column(VARCHAR(32), nullable=False)
     name: Mapped[str] = mapped_column(VARCHAR(128), nullable=False)
     url: Mapped[str | None] = mapped_column(VARCHAR(2048), nullable=True)
+    canonical_key: Mapped[str | None] = mapped_column(VARCHAR(64), nullable=True)
     avatar: Mapped[str | None] = mapped_column(VARCHAR(2048), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     total_videos: Mapped[int] = mapped_column(Integer, default=0)
@@ -86,3 +102,25 @@ class Subscription(Base):
         back_populates='subscription',
         viewonly=True,
     )
+
+
+@event.listens_for(Subscription.url, 'set', retval=True)
+def _sync_canonical_key_on_url_change(
+    target: Subscription,
+    value: str | None,
+    _old_value: object,
+    _initiator: object,
+) -> str | None:
+    target.canonical_key = _canonical_key_for_url(value)
+    return value
+
+
+@event.listens_for(Subscription, 'before_insert')
+@event.listens_for(Subscription, 'before_update')
+def _enforce_subscription_canonical_key(
+    _mapper: object,
+    _connection: object,
+    target: Subscription,
+) -> None:
+    # The flush guard also corrects callers that explicitly supplied a stale derived value.
+    target.canonical_key = _canonical_key_for_url(target.url)

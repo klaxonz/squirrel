@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import domains.rss.application.services.account.accounts as accounts
@@ -11,7 +14,8 @@ from domains.rss.application.services.account.library import RssLibraryService
 from domains.rss.application.services.account.progress import RssSyncProgressStore, rss_sync_progress_store
 from domains.rss.application.services.account.remote_status import RssRemoteStatusSyncer, rss_remote_status_syncer
 from domains.rss.application.services.account.serialization import serialize_feed as _serialize_feed
-from domains.rss.domain.models.rss import RssAccount
+from domains.rss.application.services.client._base import RssServiceError
+from domains.rss.domain.models.rss import RssAccount, RssEntry
 from infrastructure.database.session import get_session
 
 
@@ -33,8 +37,27 @@ class RssAccountService:
             remote_status_syncer=self.remote_status_syncer,
         )
 
+    def mutation_lock_for_account(self, account_id: int):
+        return self.progress_store.mutation_lock_for_account(account_id)
+
     def sync_lock_for_account(self, account_id: int):
-        return self.progress_store.lock_for_account(account_id)
+        """Backward-compatible name for the account mutation lock."""
+        return self.mutation_lock_for_account(account_id)
+
+    @contextmanager
+    def account_mutation(
+        self,
+        account_id: int,
+        *,
+        conflict_message: str = 'RSS account is busy with another mutation',
+    ) -> Iterator[None]:
+        mutation_lock = self.mutation_lock_for_account(account_id)
+        if not mutation_lock.acquire(blocking=False):
+            raise RssServiceError(conflict_message)
+        try:
+            yield
+        finally:
+            mutation_lock.release()
 
     def set_sync_progress(self, account_id: int, **values: Any) -> None:
         self.progress_store.set_progress(account_id, **values)
@@ -105,6 +128,16 @@ class RssAccountService:
         sync_entry_limit: Any = UNSET,
     ) -> dict[str, Any] | None:
         with self.session_factory() as session:
+            if not self.get_account(session, user_id, account_id):
+                return None
+
+        with (
+            self.account_mutation(
+                account_id,
+                conflict_message='Cannot update an RSS account while it is syncing or being modified',
+            ),
+            self.session_factory() as session,
+        ):
             account = self.get_account(session, user_id, account_id)
             if not account:
                 return None
@@ -125,7 +158,18 @@ class RssAccountService:
             account = self.get_account(session, user_id, account_id)
             if not account:
                 return False
-            return accounts.delete_account(session, account)
+
+        with self.account_mutation(
+            account_id,
+            conflict_message='Cannot delete an RSS account while it is syncing or being modified',
+        ):
+            with self.session_factory() as session:
+                account = self.get_account(session, user_id, account_id)
+                if not account:
+                    return False
+                deleted = accounts.delete_account(session, account)
+            self.progress_store.clear_progress(account_id)
+            return deleted
 
     @staticmethod
     def test_account_config(
@@ -205,16 +249,42 @@ class RssAccountService:
     def mark_feed_as_read(self, user_id: int, feed_id: int) -> dict[str, Any]:
         return self.entry_status_service.mark_feed_as_read(user_id, feed_id)
 
-    def record_entry_view(self, user_id: int, entry_id: int) -> None:
-        self.library_service.record_entry_view(user_id, entry_id)
+    def record_entry_view(self, user_id: int, entry_id: int) -> bool:
+        with self.session_factory() as session:
+            account_id = session.scalar(
+                select(RssEntry.account_id).where(
+                    RssEntry.id == entry_id,
+                    RssEntry.user_id == user_id,
+                    RssEntry.account_id.in_(
+                        select(RssAccount.id).where(
+                            RssAccount.user_id == user_id,
+                            RssAccount.is_deleted.is_(False),
+                        )
+                    ),
+                )
+            )
+        if account_id is None:
+            return False
 
-    def list_recently_viewed(self, user_id: int, limit: int = 30) -> list[dict[str, Any]]:
-        return self.library_service.list_recently_viewed(user_id, limit)
+        with self.account_mutation(
+            account_id,
+            conflict_message='Cannot record an RSS entry view while its account is syncing or being modified',
+        ):
+            return self.library_service.record_entry_view(user_id, entry_id)
+
+    def list_recently_viewed(
+        self,
+        user_id: int,
+        limit: int = 30,
+        account_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        return self.library_service.list_recently_viewed(user_id, limit, account_id)
 
 
 rss_account_service = RssAccountService()
 
 serialize_feed = _serialize_feed
+mutation_lock_for_account = rss_account_service.mutation_lock_for_account
 sync_lock_for_account = rss_account_service.sync_lock_for_account
 set_sync_progress = rss_account_service.set_sync_progress
 get_sync_progress = rss_account_service.get_sync_progress

@@ -8,6 +8,13 @@ from ._greader import GReaderClient
 from ._miniflux import MinifluxClient
 
 SUPPORTED_PROVIDERS = {'greader', 'miniflux', 'fever'}
+DEFAULT_SYNC_ENTRY_LIMIT = 100
+MAX_SYNC_ENTRY_LIMIT = 5000
+PROVIDER_CAPABILITIES = {
+    'greader': {'manage_subscriptions': True},
+    'miniflux': {'manage_subscriptions': True},
+    'fever': {'manage_subscriptions': False},
+}
 
 
 def create_client(config: RssAccountConfig) -> MinifluxClient | FeverClient | GReaderClient:
@@ -27,6 +34,10 @@ def normalize_provider(provider: str) -> str:
     return normalized
 
 
+def get_provider_capabilities(provider: str) -> dict[str, bool]:
+    return dict(PROVIDER_CAPABILITIES[normalize_provider(provider)])
+
+
 def normalize_base_url(base_url: str) -> str:
     normalized = str(base_url or '').strip().rstrip('/')
     parsed = urllib.parse.urlparse(normalized)
@@ -39,8 +50,13 @@ def normalize_sync_entry_limit(provider: str, sync_entry_limit: int | None) -> i
     if sync_entry_limit is None:
         if provider == 'greader':
             return None
-        raise RssServiceError('Sync entry limit is required for this RSS provider')
-    limit = int(sync_entry_limit)
+        return DEFAULT_SYNC_ENTRY_LIMIT
+    try:
+        limit = int(sync_entry_limit)
+    except (TypeError, ValueError) as exc:
+        raise RssServiceError('Sync entry limit must be an integer') from exc
     if limit < 1:
         raise RssServiceError('Sync entry limit must be greater than 0')
+    if limit > MAX_SYNC_ENTRY_LIMIT:
+        raise RssServiceError(f'Sync entry limit must not exceed {MAX_SYNC_ENTRY_LIMIT}')
     return limit

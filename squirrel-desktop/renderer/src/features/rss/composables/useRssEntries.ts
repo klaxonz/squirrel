@@ -1,6 +1,7 @@
 import { computed, onScopeDispose, ref, watch, type Ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { copyToClipboard } from '@/shared/lib/clipboard'
+import { openExternalUrl } from '@/shared/lib/externalUrl'
 import { useContextMenuPosition } from '@/shared/composables/useContextMenuPosition'
 import {
   getRssEntries,
@@ -9,7 +10,7 @@ import {
   updateRssEntries,
   updateRssEntry,
 } from '@/shared/api'
-import type { RssEntry, RssFeed, RecentEntry, ReadBatchMode } from './rssTypes'
+import type { RssEntry, RssFeed, RecentEntry, ReadBatchMode } from '@/features/rss/types/rss'
 
 // 单次 push 之前的状态快照。当用户从「全部/筛选列表」跳进某个 feed
 // （通过右键菜单"查看该源"、或在阅读面板点订阅源名字），需要把
@@ -28,6 +29,10 @@ export interface FeedNavSnapshot {
   readingEntry: RssEntry | null
 }
 
+type EntriesPageResult =
+  | { ok: true; fetched: RssEntry[]; total: number }
+  | { ok: false; error: string }
+
 export function useRssEntries(options: {
   selectedAccountId: Ref<number | null>
   selectedFeedId: Ref<number | null>
@@ -45,11 +50,13 @@ export function useRssEntries(options: {
   const totalEntries = ref(0)
   const loadingEntries = ref(true)
   const loadingMoreEntries = ref(false)
+  const entriesError = ref('')
   const recentlyViewed = ref<RecentEntry[]>([])
   const entriesContainer = ref<HTMLElement | null>(null)
   const loadMoreTrigger = ref<HTMLElement | null>(null)
   let entriesObserver: IntersectionObserver | null = null
   let entriesRequestToken = 0
+  let recentRequestToken = 0
 
   // Context Menu States
   const showContextMenu = ref(false)
@@ -89,19 +96,30 @@ export function useRssEntries(options: {
   }
 
   const loadRecentlyViewed = async () => {
+    const accountId = options.selectedAccountId.value
+    const requestToken = ++recentRequestToken
+    if (!accountId) {
+      recentlyViewed.value = []
+      return
+    }
     try {
-      const data = await getRssRecentlyViewed()
+      const data = await getRssRecentlyViewed(accountId)
+      if (requestToken !== recentRequestToken || options.selectedAccountId.value !== accountId) return
       recentlyViewed.value = data?.data || []
-    } catch {
-      // silent — recently-viewed is a secondary list
+    } catch (err) {
+      if (requestToken !== recentRequestToken || options.selectedAccountId.value !== accountId) return
+      recentlyViewed.value = []
+      entriesError.value = errorMessage(err, '加载最近浏览失败')
+      options?.onStatus?.(entriesError.value, true)
     }
   }
 
-  // Shared query builder + fetch for loadEntries/loadMore. Returns null on
-  // error (already reported via onStatus) so callers can early-return.
-  const buildEntriesParams = (): Record<string, unknown> => {
-    const params: Record<string, unknown> = { page: page.value, pageSize: pageSize.value }
-    if (options.selectedAccountId.value) params.accountId = options.selectedAccountId.value
+  const buildEntriesParams = (accountId: number): Record<string, unknown> => {
+    const params: Record<string, unknown> = {
+      accountId,
+      page: page.value,
+      pageSize: pageSize.value,
+    }
     if (options.selectedFeedId.value) params.feedId = options.selectedFeedId.value
     if (activeFilter.value === 'unread') {
       params.isRead = false
@@ -113,18 +131,29 @@ export function useRssEntries(options: {
     return params
   }
 
-  const fetchEntriesPage = async (): Promise<{ fetched: RssEntry[]; total: number } | null> => {
+  // Fetching is intentionally side-effect free. The caller owns request
+  // identity and may commit the result only while its account is still active.
+  const fetchEntriesPage = async (params: Record<string, unknown>): Promise<EntriesPageResult> => {
     try {
-      const data = await getRssEntries(buildEntriesParams())
-      return { fetched: data?.data || [], total: data?.total || 0 }
+      const data = await getRssEntries(params)
+      return { ok: true, fetched: data?.data || [], total: data?.total || 0 }
     } catch (err) {
-      options?.onStatus?.(errorMessage(err, '加载文章失败'), true)
-      return null
+      return { ok: false, error: errorMessage(err, '加载文章失败') }
     }
+  }
+
+  const isCurrentEntriesRequest = (requestToken: number, accountId: number) => {
+    return requestToken === entriesRequestToken && options.selectedAccountId.value === accountId
+  }
+
+  const reportEntriesError = (message: string) => {
+    if (entries.value.length === 0) entriesError.value = message
+    options.onStatus?.(message, true)
   }
 
   const loadEntries = async (isReset = false) => {
     const requestToken = ++entriesRequestToken
+    const accountId = options.selectedAccountId.value
 
     if (isReset) {
       page.value = 1
@@ -132,20 +161,31 @@ export function useRssEntries(options: {
       totalEntries.value = 0
       loadingEntries.value = true
       loadingMoreEntries.value = false
+      entriesError.value = ''
       resetScroll()
     }
 
-    if (activeFilter.value === 'recent') {
-      await loadRecentlyViewed()
-      if (requestToken !== entriesRequestToken) return
+    if (!accountId) {
+      recentRequestToken += 1
+      recentlyViewed.value = []
       loadingEntries.value = false
       return
     }
 
-    const result = await fetchEntriesPage()
-    if (requestToken !== entriesRequestToken) return
+    if (activeFilter.value === 'recent') {
+      await loadRecentlyViewed()
+      if (!isCurrentEntriesRequest(requestToken, accountId)) return
+      loadingEntries.value = false
+      return
+    }
+
+    const result = await fetchEntriesPage(buildEntriesParams(accountId))
+    if (!isCurrentEntriesRequest(requestToken, accountId)) return
     loadingEntries.value = false
-    if (!result) return
+    if (!result.ok) {
+      reportEntriesError(result.error)
+      return
+    }
 
     totalEntries.value = result.total
     entries.value = isReset ? result.fetched : [...entries.value, ...result.fetched]
@@ -154,15 +194,18 @@ export function useRssEntries(options: {
   const loadMore = async () => {
     if (loadingEntries.value || loadingMoreEntries.value || !hasMoreEntries.value) return
     const requestToken = ++entriesRequestToken
+    const accountId = options.selectedAccountId.value
+    if (!accountId) return
     const previousPage = page.value
     page.value = previousPage + 1
     loadingMoreEntries.value = true
 
-    const result = await fetchEntriesPage()
-    if (requestToken !== entriesRequestToken) return
+    const result = await fetchEntriesPage(buildEntriesParams(accountId))
+    if (!isCurrentEntriesRequest(requestToken, accountId)) return
     loadingMoreEntries.value = false
-    if (!result) {
+    if (!result.ok) {
       page.value = previousPage
+      reportEntriesError(result.error)
       return
     }
 
@@ -172,7 +215,9 @@ export function useRssEntries(options: {
   }
 
   const recordRecentlyViewed = (entry: RssEntry) => {
-    recordRssEntryView(entry.id)
+    void recordRssEntryView(entry.id).catch((err) => {
+      options?.onStatus?.(errorMessage(err, '记录浏览历史失败'), true)
+    })
     const recent: RecentEntry = {
       ...entry,
       viewed_at: new Date().toISOString(),
@@ -188,7 +233,9 @@ export function useRssEntries(options: {
     closeContextMenu()
     pushFeedNavStack()
     options.selectedFeedId.value = entry.feed_id
-    await loadEntries(true)
+    const alreadyShowingAll = activeFilter.value === 'all'
+    activeFilter.value = 'all'
+    if (alreadyShowingAll) await loadEntries(true)
   }
 
   const pushFeedNavStack = () => {
@@ -284,8 +331,7 @@ export function useRssEntries(options: {
       })
       options?.onStatus?.(`已更新 ${data?.updated ?? targets.length} 篇文章`)
       if (activeFilter.value === 'unread' && isRead) {
-        totalEntries.value = Math.max(0, totalEntries.value - targets.length)
-        page.value = 0
+        await loadEntries(true)
       }
     } catch (err) {
       previous.forEach(({ entry, isRead: previousIsRead }) => {
@@ -307,6 +353,9 @@ export function useRssEntries(options: {
     try {
       await updateRssEntry(entry.id, { isStarred: newStatus })
       options?.onStatus?.(newStatus ? '已收藏' : '已取消收藏')
+      if (shouldReloadAfterEntryUpdate(entry)) {
+        await loadEntries(true)
+      }
     } catch (err) {
       entry.is_starred = !newStatus
       if (options.readingEntry?.value && String(options.readingEntry.value.id) === String(entry.id)) {
@@ -333,7 +382,7 @@ export function useRssEntries(options: {
   }
 
   const openInExternalBrowser = (entry: RssEntry) => {
-    window.open(entry.canonical_url, '_blank')
+    void openExternalUrl(entry.canonical_url)
   }
 
   const initObserver = () => {
@@ -375,6 +424,10 @@ export function useRssEntries(options: {
 
   onScopeDispose(() => {
     clearTimeout(searchTimer)
+    entriesObserver?.disconnect()
+    entriesObserver = null
+    entriesRequestToken += 1
+    recentRequestToken += 1
   })
 
   return {
@@ -385,6 +438,7 @@ export function useRssEntries(options: {
     totalEntries,
     loadingEntries,
     loadingMoreEntries,
+    entriesError,
     recentlyViewed,
     entriesContainer,
     loadMoreTrigger,

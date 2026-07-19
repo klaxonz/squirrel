@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from domains.rss.application.services.client._factory import get_provider_capabilities
 from domains.rss.domain.models.rss import RssAccount, RssEntry, RssFeed
 
 
@@ -9,6 +10,7 @@ def serialize_account(account: RssAccount) -> dict[str, Any]:
     return {
         'id': account.id,
         'provider': account.provider,
+        'capabilities': get_provider_capabilities(account.provider),
         'name': account.name,
         'base_url': account.base_url,
         'username': account.username,

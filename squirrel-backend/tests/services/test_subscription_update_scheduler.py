@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
@@ -17,7 +18,9 @@ from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatc
 from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.domain.models.subscription_sync_run import SubscriptionSyncRun
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
+from domains.user.domain.models.user import User
 from infrastructure.database.base import Base
 
 
@@ -32,6 +35,8 @@ def engine(engine):
             Subscription.__table__,
             UserSubscription.__table__,
             SubscriptionSyncState.__table__,
+            SubscriptionSyncRun.__table__,
+            User.__table__,
         ],
     )
     return engine
@@ -78,7 +83,6 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
         patch.object(crawl_task_service_mod, 'replay_dead_task', injected_cts.replay_dead_task),
         patch.object(crawl_task_service_mod, 'retry_task', injected_cts.retry_task),
         patch.object(crawl_task_service_mod, 'renew_task_lease', injected_cts.renew_task_lease),
-        patch.object(crawl_task_service_mod, 'clear_task_dedupe_key', injected_cts.clear_task_dedupe_key),
     ):
         result = sched.schedule_one(
             subscription_id=7,
@@ -135,7 +139,6 @@ def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factor
         patch.object(crawl_task_service_mod, 'replay_dead_task', injected_cts.replay_dead_task),
         patch.object(crawl_task_service_mod, 'retry_task', injected_cts.retry_task),
         patch.object(crawl_task_service_mod, 'renew_task_lease', injected_cts.renew_task_lease),
-        patch.object(crawl_task_service_mod, 'clear_task_dedupe_key', injected_cts.clear_task_dedupe_key),
     ):
         result = sched.schedule_one(
             subscription_id=8,
@@ -162,6 +165,56 @@ def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factor
     assert result.request_id == str(tasks[0].id)
 
 
+def test_full_sync_budget_is_reserved_in_same_transaction_as_enqueue(engine, session_factory, sched):
+    from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
+    from infrastructure.config.settings import settings
+
+    sched.lifecycle._crawl_tasks = CrawlTaskService(session_factory=session_factory)
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            SubscriptionSyncState(
+                id=901,
+                subscription_id=901,
+                site='bilibili.com',
+                sync_mode='full',
+                sync_status='queued',
+                queue_token='occupied',
+                current_run_id='occupied-run',
+                next_sync_at=datetime.now(),
+            ),
+        )
+        session.commit()
+
+    with (
+        patch('infrastructure.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True),
+        patch.object(SubscriptionSyncLifecycle, '_has_active_subscribers', return_value=True),
+        patch.object(settings, 'FULL_SYNC_MAX_INFLIGHT', 1),
+        patch.object(settings, 'FULL_SYNC_SITE_MAX_INFLIGHT', 1),
+    ):
+        result = sched.schedule_one(
+            subscription_id=902,
+            url='https://space.bilibili.com/902',
+            trigger=UpdateTrigger.SCHEDULED,
+            mode=UpdateMode.FULL,
+            run_id='budget-run',
+        )
+
+    assert result.status == 'deferred'
+    assert result.run_id == 'budget-run'
+    with Session(engine, expire_on_commit=False) as session:
+        deferred_state = session.scalar(
+            select(SubscriptionSyncState).where(
+                SubscriptionSyncState.subscription_id == 902,
+                SubscriptionSyncState.sync_mode == 'full',
+            ),
+        )
+        run = session.get(SubscriptionSyncRun, 'budget-run')
+        tasks = session.scalars(select(CrawlTask)).all()
+    assert deferred_state.last_error == 'full_sync_budget_exhausted'
+    assert run.status == 'deferred'
+    assert tasks == []
+
+
 def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(engine, session_factory, sched):
     payloads = []
 
@@ -172,22 +225,29 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(en
         patch.object(SubscriptionSyncLifecycle, '_has_active_subscribers', return_value=True),
         patch.object(
             ssss,
-            'prepare_sync_state_for_enqueue',
-            return_value=(
-                SimpleNamespace(id=21, pending_video_count=0, sync_mode=UpdateMode.INCREMENTAL),
+                'prepare_sync_state_for_enqueue_in_session',
+                return_value=(
+                    SimpleNamespace(
+                        id=21,
+                        pending_video_count=0,
+                        sync_mode=UpdateMode.INCREMENTAL,
+                        cursor_payload={},
+                        current_run_id=None,
+                    ),
                 'ready',
             ),
         ),
         patch.object(ssss, 'build_queue_token', return_value='queue-token-3'),
         patch.object(
             ssss,
-            'queue_sync_state',
+                'queue_sync_state_in_session',
             return_value=SimpleNamespace(
                 id=21,
                 queue_token='queue-token-3',
                 sync_status='queued',
                 queued_at='2026-04-01 12:00:00',
-                pending_video_count=0,
+                    pending_video_count=0,
+                    current_run_id='run-3',
             ),
         ),
         patch(
@@ -229,9 +289,10 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(en
             'trigger': 'manual',
             'run_id': 'run-3',
             'trace_id': 'trace-3',
-            'request_id': 'direct:run-3',
-            'inline_video_extraction': True,
-        }
+                'request_id': 'direct:run-3',
+                'inline_video_extraction': True,
+                'execution_token': 'direct:run-3',
+            }
     ]
 
 
@@ -366,7 +427,6 @@ def test_enqueue_due_states_creates_crawl_tasks_from_sync_state_store(engine, se
         patch.object(crawl_task_service_mod, 'replay_dead_task', injected_cts.replay_dead_task),
         patch.object(crawl_task_service_mod, 'retry_task', injected_cts.retry_task),
         patch.object(crawl_task_service_mod, 'renew_task_lease', injected_cts.renew_task_lease),
-        patch.object(crawl_task_service_mod, 'clear_task_dedupe_key', injected_cts.clear_task_dedupe_key),
     ):
         with Session(engine, expire_on_commit=False) as session:
             session.add_all(

@@ -1,6 +1,7 @@
-import { computed, ref, type Ref } from 'vue'
+import { computed, onScopeDispose, ref, type Ref } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { copyToClipboard } from '@/shared/lib/clipboard'
+import { openExternalUrl } from '@/shared/lib/externalUrl'
 import { usePointerOutside } from '@/shared/composables/usePointerOutside'
 import { useContextMenuPosition } from '@/shared/composables/useContextMenuPosition'
 import {
@@ -11,17 +12,20 @@ import {
   unsubscribeRssFeed,
   updateRssFeed,
 } from '@/shared/api'
-import type { RssEntry, RssFeed } from './rssTypes'
+import type { RssEntry, RssFeed, RssFeedOpenMethod } from '@/features/rss/types/rss'
 
 export function useRssFeeds(options: {
   selectedAccountId: Ref<number | null>
+  canManageSubscriptions: Readonly<Ref<boolean>>
   onRefreshEntries?: (isReset?: boolean) => Promise<void>
   onStatus?: (message: string, isError?: boolean) => void
 }) {
   const feeds = ref<RssFeed[]>([])
+  const feedsError = ref('')
   const selectedFeedId = ref<number | null>(null)
   const loadingFeeds = ref(true)
   let feedsRequestToken = 0
+  let subscribeSuccessTimer: ReturnType<typeof setTimeout> | null = null
 
   const showSubscribeModal = ref(false)
   const subscribingFeed = ref(false)
@@ -51,7 +55,7 @@ export function useRssFeeds(options: {
   })
 
   const filteredFeeds = computed(() => {
-    if (!options.selectedAccountId.value) return feeds.value
+    if (!options.selectedAccountId.value) return []
     return feeds.value.filter((feed) => feed.account_id === options.selectedAccountId.value)
   })
 
@@ -89,16 +93,22 @@ export function useRssFeeds(options: {
     const requestToken = ++feedsRequestToken
     const accountId = options.selectedAccountId.value
     loadingFeeds.value = true
+    feedsError.value = ''
+
+    if (!accountId) {
+      feeds.value = []
+      loadingFeeds.value = false
+      return
+    }
 
     try {
-      const data = await getRssFeeds(
-        accountId ? { accountId } : {}
-      )
+      const data = await getRssFeeds({ accountId })
       if (requestToken !== feedsRequestToken) return
       feeds.value = data?.data || []
     } catch (err) {
       if (requestToken !== feedsRequestToken) return
-      options?.onStatus?.(errorMessage(err, '加载订阅源失败'), true)
+      feedsError.value = errorMessage(err, '加载订阅源失败')
+      options?.onStatus?.(feedsError.value, true)
     } finally {
       if (requestToken === feedsRequestToken) {
         loadingFeeds.value = false
@@ -116,6 +126,10 @@ export function useRssFeeds(options: {
   }
 
   const closeSubscribeModal = () => {
+    if (subscribeSuccessTimer) {
+      clearTimeout(subscribeSuccessTimer)
+      subscribeSuccessTimer = null
+    }
     showSubscribeModal.value = false
     showCategoryDropdown.value = false
     showCustomCategoryInput.value = false
@@ -125,6 +139,11 @@ export function useRssFeeds(options: {
   }
 
   const handleSubscribeFeed = async () => {
+    if (!options.canManageSubscriptions.value) {
+      subscribeError.value = true
+      subscribeMessage.value = '当前服务不支持添加订阅源'
+      return
+    }
     if (!options.selectedAccountId.value || !subscribeForm.value.feedUrl.trim()) return
     subscribingFeed.value = true
     subscribeMessage.value = ''
@@ -138,10 +157,11 @@ export function useRssFeeds(options: {
       })
 
       subscribeMessage.value = '订阅成功'
-      setTimeout(() => {
+      subscribeSuccessTimer = setTimeout(() => {
+        subscribeSuccessTimer = null
         closeSubscribeModal()
-        loadFeeds()
-        options?.onRefreshEntries?.(true)
+        void loadFeeds()
+        void options?.onRefreshEntries?.(true)
       }, 1000)
     } catch (err) {
       subscribeError.value = true
@@ -155,9 +175,9 @@ export function useRssFeeds(options: {
     collapsedFolders.value[name] = !collapsedFolders.value[name]
   }
 
-  const selectFeed = async (feedId: number) => {
+  const selectFeed = async (feedId: number, refreshEntries = true) => {
     selectedFeedId.value = selectedFeedId.value === feedId ? null : feedId
-    await options?.onRefreshEntries?.(true)
+    if (refreshEntries) await options?.onRefreshEntries?.(true)
   }
 
   const findFeedByEntry = (entryOrFeedId: RssEntry | number): RssFeed | undefined => {
@@ -181,7 +201,11 @@ export function useRssFeeds(options: {
   }
 
   const handleUnsubscribeFeed = async (feed: RssFeed) => {
-    if (!options.selectedAccountId.value) return
+    if (!options.canManageSubscriptions.value) {
+      options?.onStatus?.('当前服务不支持取消订阅', true)
+      return false
+    }
+    if (!options.selectedAccountId.value) return false
     try {
       await unsubscribeRssFeed(feed.id, options.selectedAccountId.value)
       if (selectedFeedId.value === feed.id) {
@@ -190,8 +214,10 @@ export function useRssFeeds(options: {
       options?.onStatus?.(`已取消订阅「${feed.title}」`)
       await loadFeeds()
       await options?.onRefreshEntries?.(true)
+      return true
     } catch (err) {
       options?.onStatus?.(errorMessage(err, '取消订阅失败'), true)
+      return false
     }
   }
 
@@ -206,7 +232,7 @@ export function useRssFeeds(options: {
     contextMenuFeed.value = null
   }
 
-  const setFeedOpenMethod = async (feed: RssFeed, method: string | null) => {
+  const setFeedOpenMethod = async (feed: RssFeed, method: RssFeedOpenMethod) => {
     try {
       await updateRssFeed(feed.id, { open_method: method })
       feed.open_method = method
@@ -258,18 +284,17 @@ export function useRssFeeds(options: {
 
   const openFeedSiteInExternalBrowser = (feed: RssFeed) => {
     closeFeedContextMenu()
-    if (feed.site_url) {
-      window.open(feed.site_url, '_blank')
-    }
+    if (feed.site_url) void openExternalUrl(feed.site_url)
   }
 
-  const unsubscribeFeedFromContextMenu = (feed: RssFeed) => {
-    closeFeedContextMenu()
-    handleUnsubscribeFeed(feed)
-  }
+  onScopeDispose(() => {
+    feedsRequestToken += 1
+    if (subscribeSuccessTimer) clearTimeout(subscribeSuccessTimer)
+  })
 
   return {
     feeds,
+    feedsError,
     selectedFeedId,
     loadingFeeds,
     showSubscribeModal,
@@ -308,6 +333,5 @@ export function useRssFeeds(options: {
     markFeedAllAsRead,
     copyFeedLink,
     openFeedSiteInExternalBrowser,
-    unsubscribeFeedFromContextMenu,
   }
 }

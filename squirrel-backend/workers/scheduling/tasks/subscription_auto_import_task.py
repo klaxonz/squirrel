@@ -15,15 +15,14 @@ class SubscriptionAutoImportTask(BaseTask):
 
     @classmethod
     def run(cls):
-        try:
-            result = auto_import_missing_subscriptions()
-            logger.info(
-                'Subscription auto import completed: users=%s sites=%s imported=%s skipped=%s failed=%s',
-                result.get('users'),
-                result.get('sites'),
-                result.get('imported'),
-                result.get('skipped'),
-                result.get('failed'),
-            )
-        except Exception as e:  # task boundary -- prevent single failure from crashing scheduler
-            logger.error('SubscriptionAutoImportTask.run error: %s', e, exc_info=True)
+        result = auto_import_missing_subscriptions()
+        logger.info(
+            'Subscription auto import completed: users=%s sites=%s imported=%s skipped=%s failed=%s',
+            result.get('users'),
+            result.get('sites'),
+            result.get('imported'),
+            result.get('skipped'),
+            result.get('failed'),
+        )
+        if result.get('failed'):
+            raise RuntimeError(f"Subscription auto import failed for {result['failed']} user/site pairs")

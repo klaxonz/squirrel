@@ -21,6 +21,7 @@ interface DesktopAppBridge {
   onWindowStateChange?: (listener: (state: DesktopWindowState) => void) => () => void
   reloadApp?: () => void
   openExternal?: (targetUrl: string) => Promise<boolean>
+  openWebContent?: (targetUrl: string) => Promise<boolean>
   resolveBilibiliPlayback?: DesktopPlaybackResolver
   resolveJavdbPlayback?: DesktopPlaybackResolver
   resolveJavdbMetadata?: (targetUrl: string) => Promise<DesktopVideoMetadata>

@@ -14,7 +14,7 @@ from domains.rss.application.services.client._greader import (
     GReaderClient,
 )
 from domains.rss.application.services.sync.entry_store import RssEntryStore, rss_entry_store
-from domains.rss.domain.models.rss import RssEntry, RssFeed
+from domains.rss.domain.models.rss import RssEntry, RssEntryView, RssFeed
 
 
 class GReaderSync:
@@ -184,6 +184,8 @@ class GReaderSync:
             removed_ids = local_ids - reading_ids
 
             if removed_ids:
+                removed_entry_ids = [local_by_eid[external_id][0] for external_id in removed_ids]
+                session.execute(delete(RssEntryView).where(RssEntryView.entry_id.in_(removed_entry_ids)))
                 session.execute(
                     delete(RssEntry).where(
                         RssEntry.account_id == account_id,

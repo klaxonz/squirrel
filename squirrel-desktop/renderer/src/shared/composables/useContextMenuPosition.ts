@@ -9,6 +9,8 @@ type Position = { x: number; y: number }
  *  1. Clamp the menu inside the viewport horizontally (so a click near the right
  *     edge doesn't push the 200px-wide menu off-screen).
  *  2. After it renders, flip it up if it would overflow the bottom edge.
+ *  3. Focus the trigger before the menu opens so closing it can restore focus
+ *     even in browsers that do not focus elements on right-click.
  *
  * The caller still owns its own visibility flag and target item ref — this only
  * owns the position math, which is the part that was duplicated.
@@ -26,6 +28,10 @@ export function useContextMenuPosition(menuWidth = 200) {
    *               we re-read it inside `nextTick`.
    */
   const positionMenu = (event: MouseEvent, menuEl: (() => HTMLElement | null) | { value: HTMLElement | null }) => {
+    if (event.currentTarget instanceof HTMLElement) {
+      event.currentTarget.focus({ preventScroll: true })
+    }
+
     let x = event.clientX
     const y = event.clientY
 

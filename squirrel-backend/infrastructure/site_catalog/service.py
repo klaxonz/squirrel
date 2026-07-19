@@ -1,4 +1,7 @@
 import json
+import os
+import tempfile
+from contextlib import suppress
 from pathlib import Path
 
 from infrastructure.runtime.site_config_manager import (
@@ -7,8 +10,10 @@ from infrastructure.runtime.site_config_manager import (
     get_effective_site_catalog,
 )
 from infrastructure.site_catalog.catalog import SiteCatalog
+from infrastructure.site_catalog.config_path import get_site_catalog_config_path
 from infrastructure.site_catalog.icons import build_site_icon_url, resolve_site_icon_path
 from infrastructure.site_catalog.overrides import compute_override_diff, deep_merge_dicts, normalize_override_entry
+from infrastructure.site_plugins.registry import get_site_plugin_registry
 
 
 class SiteCatalogService:
@@ -121,6 +126,7 @@ class SiteCatalogService:
         existing_overrides = SiteCatalog.load_override_catalog() or {}
         current_effective = get_effective_site_catalog(existing_overrides)
         catalog: dict[str, dict] = dict(existing_overrides)
+        changed_sites: set[str] = set()
         for raw_slug, raw in overrides.items():
             slug = str(raw_slug or '').strip().lower()
             if not slug:
@@ -137,19 +143,37 @@ class SiteCatalogService:
                 catalog[slug] = normalized_entry
             else:
                 catalog.pop(slug, None)
+            changed_sites.add(slug)
 
         config_path = SiteCatalogService._config_path()
-        config_path.parent.mkdir(parents=True, exist_ok=True)
-        config_path.write_text(
-            json.dumps(catalog, ensure_ascii=False, indent=2, sort_keys=True),
-            encoding='utf-8',
-        )
+        SiteCatalogService._write_catalog_atomically(config_path, catalog)
         SiteCatalog.set_override_catalog(catalog)
         apply_site_config_overrides(catalog)
+        get_site_plugin_registry().refresh_sites(changed_sites)
         return get_effective_site_catalog(catalog)
 
     # --- private helpers ---
 
     @staticmethod
     def _config_path() -> Path:
-        return Path(__file__).resolve().parents[2] / 'config' / 'sites.json'
+        return get_site_catalog_config_path()
+
+    @staticmethod
+    def _write_catalog_atomically(config_path: Path, catalog: dict[str, dict]) -> None:
+        """Publish a complete config snapshot for every backend process."""
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary_path = tempfile.mkstemp(
+            dir=config_path.parent,
+            prefix=f'.{config_path.name}.',
+            suffix='.tmp',
+        )
+        try:
+            with os.fdopen(descriptor, 'w', encoding='utf-8', newline='\n') as handle:
+                json.dump(catalog, handle, ensure_ascii=False, indent=2, sort_keys=True)
+                handle.write('\n')
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary_path, config_path)
+        finally:
+            with suppress(OSError):
+                Path(temporary_path).unlink(missing_ok=True)

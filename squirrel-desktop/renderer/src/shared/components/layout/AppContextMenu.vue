@@ -13,8 +13,9 @@
         :aria-label="label"
         :class="cn('app-context-menu', props.class)"
         :style="{ left: position.x + 'px', top: position.y + 'px', width }"
-        @click.stop
         @contextmenu.stop
+        @click.stop="handleMenuClick"
+        @keydown.stop="handleMenuKeydown"
       >
         <div class="app-context-menu__list">
           <slot />
@@ -26,7 +27,7 @@
 
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
-import { onUnmounted, ref, watch } from 'vue'
+import { nextTick, onUnmounted, ref, watch } from 'vue'
 import { cn } from '@/shared/lib/utils'
 
 const props = withDefaults(defineProps<{
@@ -45,6 +46,71 @@ const emit = defineEmits<{
 
 const rootRef = ref<HTMLElement | null>(null)
 let listening = false
+let previouslyFocused: HTMLElement | null = null
+let typeaheadBuffer = ''
+let typeaheadTimer: ReturnType<typeof setTimeout> | null = null
+
+const menuItems = () => Array.from(
+  rootRef.value?.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]') || [],
+).filter((item) => !item.hasAttribute('disabled') && item.getAttribute('aria-disabled') !== 'true')
+
+const focusItem = (index: number) => {
+  const items = menuItems()
+  if (!items.length) return
+  const normalizedIndex = (index + items.length) % items.length
+  items.forEach((item, itemIndex) => item.setAttribute('tabindex', itemIndex === normalizedIndex ? '0' : '-1'))
+  items[normalizedIndex]?.focus()
+}
+
+const handleMenuClick = (event: MouseEvent) => {
+  const target = event.target
+  if (target instanceof Element && target.closest('[role="menuitem"], [role="menuitemradio"]')) {
+    emit('close')
+  }
+}
+
+const handleMenuKeydown = (event: KeyboardEvent) => {
+  const items = menuItems()
+  const activeIndex = items.findIndex((item) => item === document.activeElement)
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    emit('close')
+    return
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    focusItem(activeIndex + 1)
+    return
+  }
+  if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    focusItem(activeIndex - 1)
+    return
+  }
+  if (event.key === 'Home') {
+    event.preventDefault()
+    focusItem(0)
+    return
+  }
+  if (event.key === 'End') {
+    event.preventDefault()
+    focusItem(items.length - 1)
+    return
+  }
+  if (event.key === 'Tab') {
+    emit('close')
+    return
+  }
+  if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) return
+  typeaheadBuffer += event.key.toLocaleLowerCase()
+  if (typeaheadTimer) clearTimeout(typeaheadTimer)
+  typeaheadTimer = setTimeout(() => {
+    typeaheadBuffer = ''
+    typeaheadTimer = null
+  }, 500)
+  const matchIndex = items.findIndex((item) => item.textContent?.trim().toLocaleLowerCase().startsWith(typeaheadBuffer))
+  if (matchIndex >= 0) focusItem(matchIndex)
+}
 
 const handlePointerDown = (event: PointerEvent) => {
   if (!props.visible) return
@@ -71,19 +137,32 @@ const stopListening = () => {
   listening = false
 }
 
+const restorePreviousFocus = () => {
+  const target = previouslyFocused
+  previouslyFocused = null
+  if (target?.isConnected) target.focus({ preventScroll: true })
+}
+
 watch(
   () => props.visible,
   (visible) => {
     if (visible) {
+      previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
       startListening()
+      void nextTick(() => focusItem(0))
     } else {
       stopListening()
+      restorePreviousFocus()
     }
   },
   { immediate: true },
 )
 
-onUnmounted(stopListening)
+onUnmounted(() => {
+  stopListening()
+  if (typeaheadTimer) clearTimeout(typeaheadTimer)
+  restorePreviousFocus()
+})
 
 defineExpose({ rootRef })
 </script>

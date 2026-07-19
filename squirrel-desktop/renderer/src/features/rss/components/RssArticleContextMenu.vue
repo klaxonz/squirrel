@@ -64,18 +64,19 @@
     </AppContextMenuItem>
 
     <AppContextMenuItem icon="list" @click="$emit('batchRead', 'all', true)">
-      列表全部已读
+      已加载文章全部已读
     </AppContextMenuItem>
 
     <AppContextMenuItem icon="eyeOff" @click="$emit('batchRead', 'all', false)">
-      列表全部未读
+      已加载文章全部未读
     </AppContextMenuItem>
 
-    <AppContextMenuSeparator />
-
-    <AppContextMenuItem icon="close" danger @click="$emit('unsubscribe', entry)">
-      取消订阅该源
-    </AppContextMenuItem>
+    <template v-if="canManageSubscriptions">
+      <AppContextMenuSeparator />
+      <AppContextMenuItem icon="close" danger @click="$emit('unsubscribe', entry)">
+        取消订阅该源
+      </AppContextMenuItem>
+    </template>
 
     <AppContextMenuSeparator />
 
@@ -95,7 +96,7 @@ import AppContextMenu from '@/shared/components/layout/AppContextMenu.vue'
 import AppContextMenuItem from '@/shared/components/layout/AppContextMenuItem.vue'
 import AppContextMenuLabel from '@/shared/components/layout/AppContextMenuLabel.vue'
 import AppContextMenuSeparator from '@/shared/components/layout/AppContextMenuSeparator.vue'
-import type { RssEntry, RssFeed, ReadBatchMode } from '@/features/rss/composables/rssTypes'
+import type { RssEntry, RssFeed, ReadBatchMode, RssFeedOpenMethod } from '@/features/rss/types/rss'
 
 defineProps<{
   visible: boolean
@@ -104,13 +105,14 @@ defineProps<{
   // passes it in, instead of the child re-calling the lookup 4 times.
   feed: RssFeed | null
   position: { x: number; y: number }
+  canManageSubscriptions: boolean
 }>()
 
 defineEmits<{
   toggleRead: [entry: RssEntry]
   toggleStar: [entry: RssEntry]
   goToFeed: [entry: RssEntry]
-  setOpenMethod: [feed: RssFeed, method: string | null]
+  setOpenMethod: [feed: RssFeed, method: RssFeedOpenMethod]
   // scope: 'above' | 'below' | 'all', read: true=read / false=unread
   batchRead: [scope: ReadBatchMode, read: boolean]
   unsubscribe: [entry: RssEntry]

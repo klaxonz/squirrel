@@ -29,6 +29,13 @@ class _FakeSettings:
         self.crawl = crawl
 
 
+def test_default_policy_matches_serial_site_plugin_capacity():
+    policy = CrawlDispatcherPolicy()
+
+    assert policy.default_site_concurrency == 1
+    assert policy.get_site_limit('youtube') == 1
+
+
 def test_from_settings_reads_dict_typed_limits():
     fake_settings = _FakeSettings(
         _FakeCrawlSettings(

@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from domains.rss.application.services.account.serialization import serialize_account
-from domains.rss.domain.models.rss import RssAccount
+from domains.rss.domain.models.rss import RssAccount, RssEntry, RssEntryView, RssFeed
 
 UNSET = object()
 
@@ -84,7 +85,11 @@ def create_account(
         is_deleted=False,
     )
     session.add(account)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise RssServiceError('An RSS account with the same provider, URL, and name already exists') from exc
     session.refresh(account)
     return serialize_account(account)
 
@@ -128,14 +133,34 @@ def update_account(
         account.credential_encrypted = encrypt_credential(str(credential).strip())
     if enabled is not None:
         account.enabled = bool(enabled)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise RssServiceError('An RSS account with the same provider, URL, and name already exists') from exc
     session.refresh(account)
     return serialize_account(account)
 
 
 def delete_account(session: Session, account: RssAccount) -> bool:
-    account.is_deleted = True
-    account.enabled = False
+    entry_ids = select(RssEntry.id).where(
+        RssEntry.user_id == account.user_id,
+        RssEntry.account_id == account.id,
+    )
+    session.execute(delete(RssEntryView).where(RssEntryView.entry_id.in_(entry_ids)))
+    session.execute(
+        delete(RssEntry).where(
+            RssEntry.user_id == account.user_id,
+            RssEntry.account_id == account.id,
+        )
+    )
+    session.execute(
+        delete(RssFeed).where(
+            RssFeed.user_id == account.user_id,
+            RssFeed.account_id == account.id,
+        )
+    )
+    session.delete(account)
     session.commit()
     return True
 

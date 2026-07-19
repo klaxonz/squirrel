@@ -12,10 +12,12 @@ import type {
   RssMutationResult,
   RssSyncStartResult,
   RssAccountTestResult,
+  RssFeedOpenMethod,
+  RssProvider,
 } from '@/features/rss/types/rss'
 
 export type RssAccountPayload = {
-  provider: string
+  provider: RssProvider
   name: string
   base_url: string
   username?: string
@@ -23,6 +25,8 @@ export type RssAccountPayload = {
   enabled?: boolean
   sync_entry_limit?: number | null
 }
+
+export type RssAccountTestPayload = Pick<RssAccountPayload, 'provider' | 'base_url' | 'username' | 'credential'>
 
 export const getRssAccounts = async () => get<RssListResponse<RssAccount>>('/api/rss/accounts')
 
@@ -34,7 +38,7 @@ export const updateRssAccount = async (accountId: string | number, payload: Part
 
 export const deleteRssAccount = async (accountId: string | number) => delRequest(`/api/rss/accounts/${accountId}`)
 
-export const testRssAccountConfig = async (payload: RssAccountPayload) => post<RssAccountTestResult>('/api/rss/accounts/test', payload)
+export const testRssAccountConfig = async (payload: RssAccountTestPayload) => post<RssAccountTestResult>('/api/rss/accounts/test', payload)
 
 export const testRssAccount = async (accountId: string | number) => post<RssAccountTestResult>(`/api/rss/accounts/${accountId}/test`)
 
@@ -65,8 +69,8 @@ export const recordRssEntryView = async (entryId: string | number) => {
   return post<RssMutationResult>(`/api/rss/entries/${entryId}/view`)
 }
 
-export const getRssRecentlyViewed = async () =>
-  get<{ data: RssEntryRecentlyViewed[] }>('/api/rss/entries/recently-viewed')
+export const getRssRecentlyViewed = async (accountId: number) =>
+  get<{ data: RssEntryRecentlyViewed[] }>('/api/rss/entries/recently-viewed', { accountId })
 
 export const subscribeRssFeed = async (payload: { accountId: number; feedUrl: string; category?: string }) => {
   return post<RssMutationResult>('/api/rss/feeds/subscribe', payload)
@@ -80,7 +84,7 @@ export const syncRssFeed = async (feedId: number, entryLimit = 50) => {
   return post<RssFeedSyncResult>(`/api/rss/feeds/${feedId}/sync`, null, { params: { entryLimit } })
 }
 
-export const updateRssFeed = async (feedId: number, payload: Record<string, unknown>) => {
+export const updateRssFeed = async (feedId: number, payload: { category?: string | null; open_method?: RssFeedOpenMethod }) => {
   return patch<RssMutationResult>(`/api/rss/feeds/${feedId}`, payload)
 }
 

@@ -1,3 +1,4 @@
+from domains.rss.application.services.account.accounts import UNSET
 from domains.rss.application.services.account.serialization import serialize_account, serialize_entry
 from domains.rss.application.services.account.service import (
     create_account,
@@ -17,7 +18,13 @@ from domains.rss.application.services.account.service import (
     update_entry,
     update_feed,
 )
-from domains.rss.application.services.sync.service import subscribe_feed, sync_account, sync_feed, unsubscribe_feed
+from domains.rss.application.services.sync.service import (
+    start_account_sync,
+    subscribe_feed,
+    sync_account,
+    sync_feed,
+    unsubscribe_feed,
+)
 
 
 class RssService:
@@ -82,8 +89,8 @@ class RssService:
     def list_feeds(self, user_id, account_id=None):
         return list_feeds(user_id, account_id=account_id)
 
-    def list_recently_viewed(self, user_id, limit=30):
-        return list_recently_viewed(user_id, limit=limit)
+    def list_recently_viewed(self, user_id, limit=30, account_id=None):
+        return list_recently_viewed(user_id, limit=limit, account_id=account_id)
 
     def mark_feed_as_read(self, user_id, feed_id):
         return mark_feed_as_read(user_id, feed_id)
@@ -105,6 +112,9 @@ class RssService:
 
     def sync_account(self, user_id, account_id, *, entry_limit=None, force_full_sync=False):
         return sync_account(user_id, account_id, entry_limit=entry_limit, force_full_sync=force_full_sync)
+
+    def start_account_sync(self, user_id, account_id, *, entry_limit=None, force_full_sync=False):
+        return start_account_sync(user_id, account_id, entry_limit=entry_limit, force_full_sync=force_full_sync)
 
     def sync_feed(self, user_id, feed_id, *, entry_limit=50):
         return sync_feed(user_id, feed_id, entry_limit=entry_limit)
@@ -129,7 +139,7 @@ class RssService:
         username=None,
         credential=None,
         enabled=None,
-        sync_entry_limit=None,
+        sync_entry_limit=UNSET,
     ):
         return update_account(
             user_id,

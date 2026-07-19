@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import case, func, literal, or_, select
 from sqlalchemy.orm import Session
 
 from domains.subscription.application.services.crawl.dispatcher.policy import CrawlDispatcherPolicy
+from domains.subscription.application.services.crawl.tasks.clock import database_local_now
 from domains.subscription.application.services.crawl.tasks.dispatch_scope import ensure_dispatch_scope
+from domains.subscription.application.services.crawl.tasks.lease import assign_lease
 from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
 from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatchScope
 from domains.subscription.domain.models.crawl_task import CrawlTask
@@ -24,8 +26,8 @@ class CrawlDispatcherService:
         self.session_factory = session_factory
 
     def claim_next(self, *, worker_id: str, now: datetime | None = None, lease_seconds: int = 60) -> CrawlTask | None:
-        now = now or datetime.now()
         with self._get_session() as session:
+            now = now or database_local_now(session)
             candidate_rows = session.execute(self.build_candidate_query(now)).mappings().all()
             candidate_rows = self._sort_candidates_by_runtime_pressure(session, candidate_rows)
             for candidate_row in candidate_rows:
@@ -50,8 +52,8 @@ class CrawlDispatcherService:
     def build_candidate_query(self, now: datetime) -> Any:
         priority_order = case(
             (CrawlTask.priority == 'manual', 3),
-            (CrawlTask.priority == 'normal', 2),
-            (CrawlTask.priority == 'low', 1),
+            (CrawlTask.priority.in_(['incr', 'incremental', 'normal']), 2),
+            (CrawlTask.priority.in_(['full', 'low']), 1),
             else_=0,
         )
         runnable_tasks = (
@@ -212,9 +214,7 @@ class CrawlDispatcherService:
         if not self.policy.is_task_type_available(task.task_type, task_type_running):
             return None
 
-        task.status = CrawlTaskStatus.LEASED.value
-        task.worker_id = worker_id
-        task.lease_until = now + timedelta(seconds=lease_seconds)
+        assign_lease(task, worker_id=worker_id, now=now, lease_seconds=lease_seconds)
         session.flush()
         return task
 

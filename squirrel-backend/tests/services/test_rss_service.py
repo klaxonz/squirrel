@@ -7,7 +7,7 @@ from sqlalchemy import Text, select
 from sqlalchemy.orm import Session
 
 from domains.rss.application.services.account.service import RssAccountService
-from domains.rss.application.services.client._base import RemoteEntry, RemoteFeed, RssAccountConfig
+from domains.rss.application.services.client._base import RemoteEntry, RemoteFeed, RssAccountConfig, RssServiceError
 from domains.rss.application.services.client._greader import (
     G_READER_QUICK_ENTRIES_PER_FEED,
     G_READER_READING_LIST_STATE,
@@ -17,8 +17,9 @@ from domains.rss.application.services.client._greader import (
 )
 from domains.rss.application.services.client._miniflux import MinifluxClient
 from domains.rss.application.services.credential import decrypt_credential
+from domains.rss.application.services.service import RssService
 from domains.rss.application.services.sync.service import RssSyncService
-from domains.rss.domain.models.rss import RssAccount, RssEntry, RssFeed
+from domains.rss.domain.models.rss import RssAccount, RssEntry, RssEntryView, RssFeed
 from infrastructure.database.base import Base
 
 
@@ -39,6 +40,7 @@ def _create_tables(engine):
             RssAccount.__table__,
             RssFeed.__table__,
             RssEntry.__table__,
+            RssEntryView.__table__,
         ],
     )
 
@@ -58,12 +60,32 @@ def test_create_account_encrypts_credential_and_hides_it_from_api(engine, sessio
 
     assert account['base_url'] == 'https://reader.example'
     assert account['sync_entry_limit'] == 100
+    assert account['capabilities'] == {'manage_subscriptions': True}
     assert 'credential' not in account
 
     with Session(engine) as session:
         row = session.scalars(select(RssAccount)).one()
         assert row.credential_encrypted != 'secret-token'
         assert decrypt_credential(row.credential_encrypted) == 'secret-token'
+
+
+def test_create_duplicate_account_returns_a_domain_error_instead_of_integrity_error(
+    engine, session_factory, account_svc
+):
+    _create_tables(engine)
+    payload = {
+        'provider': 'miniflux',
+        'name': 'Reader',
+        'base_url': 'https://reader.example',
+        'username': None,
+        'credential': 'secret-token',
+    }
+    account_svc.create_account(1, **payload)
+
+    with pytest.raises(RssServiceError, match='already exists'):
+        account_svc.create_account(1, **payload)
+
+    assert len(account_svc.list_accounts(1)) == 1
 
 
 def test_sync_account_upserts_feeds_and_entries(engine, session_factory, account_svc, sync_svc):
@@ -196,8 +218,375 @@ def test_bulk_update_entries_read_status_updates_user_entries_only(engine, sessi
         assert [row.is_read for row in rows] == [True, True, False]
 
 
+def test_record_entry_view_rejects_cross_user_entry_and_recent_list_filters_forged_view(
+    engine, session_factory, account_svc
+):
+    _create_tables(engine)
+    own_account = account_svc.create_account(
+        1,
+        provider='miniflux',
+        name='Own Reader',
+        base_url='https://own-reader.example',
+        username=None,
+        credential='own-token',
+    )
+    other_account = account_svc.create_account(
+        2,
+        provider='miniflux',
+        name='Other Reader',
+        base_url='https://other-reader.example',
+        username=None,
+        credential='other-token',
+    )
+
+    with Session(engine) as session:
+        own_feed = RssFeed(
+            user_id=1,
+            account_id=own_account['id'],
+            external_feed_id='own-feed',
+            title='Own Feed',
+            enabled=True,
+        )
+        other_feed = RssFeed(
+            user_id=2,
+            account_id=other_account['id'],
+            external_feed_id='other-feed',
+            title='Other Feed',
+            enabled=True,
+        )
+        session.add_all([own_feed, other_feed])
+        session.flush()
+        own_entry = RssEntry(
+            user_id=1,
+            account_id=own_account['id'],
+            feed_id=own_feed.id,
+            external_entry_id='own-entry',
+            canonical_url='https://own.example/posts/1',
+            title='Own Entry',
+            is_read=False,
+            is_starred=False,
+        )
+        other_entry = RssEntry(
+            user_id=2,
+            account_id=other_account['id'],
+            feed_id=other_feed.id,
+            external_entry_id='other-entry',
+            canonical_url='https://other.example/posts/1',
+            title='Other Entry',
+            is_read=False,
+            is_starred=False,
+        )
+        session.add_all([own_entry, other_entry])
+        session.commit()
+        own_entry_id = own_entry.id
+        other_entry_id = other_entry.id
+
+    assert account_svc.record_entry_view(1, other_entry_id) is False
+    with Session(engine) as session:
+        cross_user_view = session.scalars(
+            select(RssEntryView).where(
+                RssEntryView.user_id == 1,
+                RssEntryView.entry_id == other_entry_id,
+            )
+        ).first()
+        assert cross_user_view is None
+
+        # Simulate a legacy or externally forged row; reads must still enforce ownership.
+        session.add(RssEntryView(user_id=1, entry_id=other_entry_id, viewed_at=datetime.now()))
+        session.commit()
+
+    assert account_svc.record_entry_view(1, own_entry_id) is True
+    recently_viewed = account_svc.list_recently_viewed(1)
+
+    assert [entry['id'] for entry in recently_viewed] == [own_entry_id]
+    assert recently_viewed[0]['title'] == 'Own Entry'
+
+
+def test_delete_account_removes_owned_graph_preserves_other_user_and_allows_recreate(
+    engine, session_factory, account_svc
+):
+    _create_tables(engine)
+    account_config = {
+        'provider': 'miniflux',
+        'name': 'Reader',
+        'base_url': 'https://reader.example',
+        'username': None,
+        'credential': 'secret-token',
+    }
+    account = account_svc.create_account(1, **account_config)
+    other_account = account_svc.create_account(2, **account_config)
+
+    with Session(engine) as session:
+        feed = RssFeed(
+            user_id=1,
+            account_id=account['id'],
+            external_feed_id='feed-1',
+            title='Feed One',
+            enabled=True,
+        )
+        other_feed = RssFeed(
+            user_id=2,
+            account_id=other_account['id'],
+            external_feed_id='feed-2',
+            title='Feed Two',
+            enabled=True,
+        )
+        session.add_all([feed, other_feed])
+        session.flush()
+        entry = RssEntry(
+            user_id=1,
+            account_id=account['id'],
+            feed_id=feed.id,
+            external_entry_id='entry-1',
+            canonical_url='https://example.com/posts/1',
+            title='Entry One',
+            is_read=False,
+            is_starred=False,
+        )
+        other_entry = RssEntry(
+            user_id=2,
+            account_id=other_account['id'],
+            feed_id=other_feed.id,
+            external_entry_id='entry-2',
+            canonical_url='https://other.example.com/posts/2',
+            title='Entry Two',
+            is_read=False,
+            is_starred=False,
+        )
+        session.add_all([entry, other_entry])
+        session.flush()
+        session.add_all(
+            [
+                RssEntryView(user_id=1, entry_id=entry.id, viewed_at=datetime.now()),
+                RssEntryView(user_id=2, entry_id=other_entry.id, viewed_at=datetime.now()),
+            ]
+        )
+        session.commit()
+        feed_id = feed.id
+        entry_id = entry.id
+        other_feed_id = other_feed.id
+        other_entry_id = other_entry.id
+
+    assert account_svc.delete_account(1, account['id']) is True
+
+    with Session(engine) as session:
+        assert session.get(RssAccount, account['id']) is None
+        assert session.get(RssFeed, feed_id) is None
+        assert session.get(RssEntry, entry_id) is None
+        assert session.scalars(select(RssEntryView).where(RssEntryView.entry_id == entry_id)).first() is None
+
+        assert session.get(RssAccount, other_account['id']) is not None
+        assert session.get(RssFeed, other_feed_id) is not None
+        assert session.get(RssEntry, other_entry_id) is not None
+        assert session.scalars(select(RssEntryView).where(RssEntryView.entry_id == other_entry_id)).one().user_id == 2
+
+    recreated = account_svc.create_account(1, **account_config)
+    assert recreated['name'] == account_config['name']
+    assert recreated['base_url'] == account_config['base_url']
+
+
+def test_delete_account_is_rejected_while_sync_holds_the_account_lock(engine, session_factory, account_svc):
+    _create_tables(engine)
+    account = account_svc.create_account(
+        1,
+        provider='miniflux',
+        name='Reader',
+        base_url='https://reader.example',
+        username=None,
+        credential='secret-token',
+    )
+    sync_lock = account_svc.sync_lock_for_account(account['id'])
+    assert sync_lock.acquire(blocking=False)
+    try:
+        with pytest.raises(RssServiceError, match='while it is syncing'):
+            account_svc.delete_account(1, account['id'])
+    finally:
+        sync_lock.release()
+
+    assert account_svc.list_accounts(1)[0]['id'] == account['id']
+
+
+def test_account_mutation_fence_covers_connection_feed_and_view_writes(
+    engine,
+    session_factory,
+    account_svc,
+    sync_svc,
+):
+    _create_tables(engine)
+    account = account_svc.create_account(
+        1,
+        provider='miniflux',
+        name='Reader',
+        base_url='https://reader.example',
+        username=None,
+        credential='secret-token',
+    )
+    with Session(engine) as session:
+        feed = RssFeed(
+            user_id=1,
+            account_id=account['id'],
+            external_feed_id='feed-1',
+            title='Feed One',
+            enabled=True,
+        )
+        session.add(feed)
+        session.flush()
+        entry = RssEntry(
+            user_id=1,
+            account_id=account['id'],
+            feed_id=feed.id,
+            external_entry_id='entry-1',
+            canonical_url='https://example.com/posts/1',
+            title='Entry One',
+            is_read=False,
+            is_starred=False,
+        )
+        session.add(entry)
+        session.commit()
+        feed_id = feed.id
+        entry_id = entry.id
+
+    mutation_lock = account_svc.mutation_lock_for_account(account['id'])
+    assert mutation_lock is account_svc.sync_lock_for_account(account['id'])
+    assert mutation_lock.acquire(blocking=False)
+    try:
+        guarded_calls = (
+            lambda: account_svc.update_account(1, account['id'], base_url='https://changed.example'),
+            lambda: sync_svc.subscribe_feed(1, account['id'], 'https://example.com/new.xml'),
+            lambda: sync_svc.sync_feed(1, feed_id),
+            lambda: sync_svc.unsubscribe_feed(1, account['id'], feed_id),
+            lambda: account_svc.record_entry_view(1, entry_id),
+        )
+        for guarded_call in guarded_calls:
+            with pytest.raises(RssServiceError, match='syncing or being modified'):
+                guarded_call()
+    finally:
+        mutation_lock.release()
+
+    with Session(engine) as session:
+        stored_account = session.get(RssAccount, account['id'])
+        assert stored_account.base_url == 'https://reader.example'
+        assert session.get(RssFeed, feed_id) is not None
+        assert session.scalar(select(RssEntryView.id).where(RssEntryView.entry_id == entry_id)) is None
+
+
+@pytest.mark.parametrize('provider', ['miniflux', 'fever'])
+def test_non_greader_account_defaults_sync_limit_and_name_only_update_preserves_custom_limit(
+    provider, engine, session_factory, account_svc
+):
+    _create_tables(engine)
+    account = account_svc.create_account(
+        1,
+        provider=provider,
+        name='Reader',
+        base_url='https://reader.example',
+        username=None,
+        credential='secret-token',
+    )
+    assert account['sync_entry_limit'] == 100
+
+    customized = account_svc.update_account(1, account['id'], sync_entry_limit=321)
+    assert customized['sync_entry_limit'] == 321
+
+    with patch('domains.rss.application.services.service.update_account', account_svc.update_account):
+        renamed = RssService().update_account(1, account['id'], name='Renamed Reader')
+
+    assert renamed['name'] == 'Renamed Reader'
+    assert renamed['sync_entry_limit'] == 321
+
+
+def test_fever_account_reports_subscription_management_as_unsupported(engine, session_factory, account_svc):
+    _create_tables(engine)
+    account = account_svc.create_account(
+        1,
+        provider='fever',
+        name='Fever Reader',
+        base_url='https://reader.example',
+        username='alice',
+        credential='secret-token',
+    )
+
+    assert account['capabilities'] == {'manage_subscriptions': False}
+
+
 def test_rss_entry_title_uses_text_column():
     assert isinstance(RssEntry.__table__.c.title.type, Text)
+
+
+def test_rss_ownership_graph_declares_cascading_foreign_keys():
+    expected_targets = {
+        RssFeed.__table__.c.account_id: 'rss_account.id',
+        RssEntry.__table__.c.account_id: 'rss_account.id',
+        RssEntry.__table__.c.feed_id: 'rss_feed.id',
+        RssEntryView.__table__.c.entry_id: 'rss_entry.id',
+    }
+
+    for column, expected_target in expected_targets.items():
+        foreign_key = next(iter(column.foreign_keys))
+        assert foreign_key.target_fullname == expected_target
+        assert foreign_key.ondelete == 'CASCADE'
+
+
+def test_update_entry_submits_remote_status_only_after_local_commit(
+    engine,
+    session_factory,
+    account_svc,
+):
+    _create_tables(engine)
+    account = account_svc.create_account(
+        1,
+        provider='miniflux',
+        name='Reader',
+        base_url='https://reader.example',
+        username=None,
+        credential='secret-token',
+    )
+    with Session(engine) as session:
+        feed = RssFeed(
+            user_id=1,
+            account_id=account['id'],
+            external_feed_id='feed-1',
+            title='Feed One',
+            enabled=True,
+        )
+        session.add(feed)
+        session.flush()
+        entry = RssEntry(
+            user_id=1,
+            account_id=account['id'],
+            feed_id=feed.id,
+            external_entry_id='entry-1',
+            canonical_url='https://example.com/posts/1',
+            title='Entry One',
+            is_read=False,
+            is_starred=False,
+        )
+        session.add(entry)
+        session.commit()
+        entry_id = entry.id
+
+    class _RecordingRemoteStatusSyncer:
+        def __init__(self):
+            self.calls = []
+
+        def update_entry_async(self, *args, **kwargs):
+            self.calls.append((args, kwargs))
+
+        def update_entries_read_status_async(self, *args, **kwargs):
+            self.calls.append((args, kwargs))
+
+    remote_syncer = _RecordingRemoteStatusSyncer()
+    service = RssAccountService(session_factory=session_factory, remote_status_syncer=remote_syncer)
+
+    with (
+        patch.object(Session, 'commit', side_effect=RuntimeError('local commit failed')),
+        pytest.raises(RuntimeError, match='local commit failed'),
+    ):
+        service.update_entry(1, entry_id, is_read=True)
+
+    assert remote_syncer.calls == []
+    with Session(engine) as session:
+        assert session.get(RssEntry, entry_id).is_read is False
 
 
 def test_miniflux_client_updates_read_status_and_bookmark():
@@ -838,18 +1227,20 @@ def test_greader_full_sync_reconciles_read_and_starred_state(engine, session_fac
                 is_starred=False,
             ),
         )
-        session.add(
-            RssEntry(
-                user_id=1,
-                account_id=account['id'],
-                feed_id=feed.id,
-                external_entry_id='entry-removed',
-                canonical_url='https://example.com/posts/removed',
-                title='Removed Entry',
-                is_read=False,
-                is_starred=False,
-            ),
+        removed_entry = RssEntry(
+            user_id=1,
+            account_id=account['id'],
+            feed_id=feed.id,
+            external_entry_id='entry-removed',
+            canonical_url='https://example.com/posts/removed',
+            title='Removed Entry',
+            is_read=False,
+            is_starred=False,
         )
+        session.add(removed_entry)
+        session.flush()
+        removed_entry_view = RssEntryView(user_id=1, entry_id=removed_entry.id, viewed_at=datetime.now())
+        session.add(removed_entry_view)
         other_feed = RssFeed(
             user_id=1,
             account_id=other_account['id'],
@@ -872,6 +1263,8 @@ def test_greader_full_sync_reconciles_read_and_starred_state(engine, session_fac
             ),
         )
         session.commit()
+        removed_entry_id = removed_entry.id
+        removed_entry_view_id = removed_entry_view.id
 
     class _FakeGReaderClient(GReaderClient):
         def __init__(self):
@@ -934,6 +1327,8 @@ def test_greader_full_sync_reconciles_read_and_starred_state(engine, session_fac
         assert entry.is_read is True
         assert entry.is_starred is True
         assert other_entry.title == 'Other Removed Entry'
+        assert session.get(RssEntry, removed_entry_id) is None
+        assert session.get(RssEntryView, removed_entry_view_id) is None
     assert client.state_streams == [
         G_READER_READING_LIST_STATE,
         'user/-/state/com.google/read',

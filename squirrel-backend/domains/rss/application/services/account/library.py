@@ -9,7 +9,7 @@ from sqlalchemy import or_, select
 
 from domains.rss.application.services.account.serialization import serialize_entry, serialize_feed
 from domains.rss.application.services.client._base import RssServiceError
-from domains.rss.domain.models.rss import RssEntry, RssEntryView, RssFeed
+from domains.rss.domain.models.rss import RssAccount, RssEntry, RssEntryView, RssFeed
 
 
 class RssLibraryService:
@@ -18,7 +18,15 @@ class RssLibraryService:
 
     def list_feeds(self, user_id: int, account_id: int | None = None) -> list[dict[str, Any]]:
         with self.session_factory() as session:
-            statement = select(RssFeed).where(RssFeed.user_id == user_id)
+            statement = (
+                select(RssFeed)
+                .join(RssAccount, RssAccount.id == RssFeed.account_id)
+                .where(
+                    RssFeed.user_id == user_id,
+                    RssAccount.user_id == user_id,
+                    RssAccount.is_deleted.is_(False),
+                )
+            )
             if account_id is not None:
                 statement = statement.where(RssFeed.account_id == account_id)
             feeds = session.scalars(statement.order_by(RssFeed.title.asc())).all()
@@ -31,11 +39,25 @@ class RssLibraryService:
         if not updates:
             raise RssServiceError('No valid fields to update')
 
+        if 'category' in updates:
+            category = str(updates['category'] or '').strip() or None
+            if category and len(category) > 255:
+                raise RssServiceError('RSS category must not exceed 255 characters')
+            updates['category'] = category
+        if 'open_method' in updates and updates['open_method'] not in {None, 'app_browser', 'external_browser'}:
+            raise RssServiceError('Unsupported RSS feed open method')
+
         with self.session_factory() as session:
             feed = session.scalars(
                 select(RssFeed).where(
                     RssFeed.id == feed_id,
                     RssFeed.user_id == user_id,
+                    RssFeed.account_id.in_(
+                        select(RssAccount.id).where(
+                            RssAccount.user_id == user_id,
+                            RssAccount.is_deleted.is_(False),
+                        )
+                    ),
                 )
             ).first()
             if not feed:
@@ -60,7 +82,15 @@ class RssLibraryService:
         page_size: int = 30,
     ) -> dict[str, Any]:
         with self.session_factory() as session:
-            conditions = [RssEntry.user_id == user_id]
+            conditions = [
+                RssEntry.user_id == user_id,
+                RssEntry.account_id.in_(
+                    select(RssAccount.id).where(
+                        RssAccount.user_id == user_id,
+                        RssAccount.is_deleted.is_(False),
+                    )
+                ),
+            ]
             if account_id is not None:
                 conditions.append(RssEntry.account_id == account_id)
             if feed_id is not None:
@@ -94,8 +124,23 @@ class RssLibraryService:
                 'data': [serialize_entry(entry) for entry in entry_page.items],
             }
 
-    def record_entry_view(self, user_id: int, entry_id: int) -> None:
+    def record_entry_view(self, user_id: int, entry_id: int) -> bool:
         with self.session_factory() as session:
+            entry_exists = session.scalar(
+                select(RssEntry.id).where(
+                    RssEntry.id == entry_id,
+                    RssEntry.user_id == user_id,
+                    RssEntry.account_id.in_(
+                        select(RssAccount.id).where(
+                            RssAccount.user_id == user_id,
+                            RssAccount.is_deleted.is_(False),
+                        )
+                    ),
+                )
+            )
+            if entry_exists is None:
+                return False
+
             existing = session.scalars(
                 select(RssEntryView).where(
                     RssEntryView.user_id == user_id,
@@ -113,25 +158,34 @@ class RssLibraryService:
                     )
                 )
             session.commit()
+            return True
 
-    def list_recently_viewed(self, user_id: int, limit: int = 30) -> list[dict[str, Any]]:
+    def list_recently_viewed(
+        self,
+        user_id: int,
+        limit: int = 30,
+        account_id: int | None = None,
+    ) -> list[dict[str, Any]]:
         with self.session_factory() as session:
-            views = session.scalars(
-                select(RssEntryView)
-                .where(RssEntryView.user_id == user_id)
+            statement = (
+                select(RssEntry, RssEntryView.viewed_at)
+                .join(RssEntry, RssEntry.id == RssEntryView.entry_id)
+                .join(RssAccount, RssAccount.id == RssEntry.account_id)
+                .where(
+                    RssEntryView.user_id == user_id,
+                    RssEntry.user_id == user_id,
+                    RssAccount.user_id == user_id,
+                    RssAccount.is_deleted.is_(False),
+                )
                 .order_by(RssEntryView.viewed_at.desc())
                 .limit(limit)
-            ).all()
-            if not views:
-                return []
-            entry_ids = [view.entry_id for view in views]
-            entries = session.scalars(select(RssEntry).where(RssEntry.id.in_(entry_ids))).all()
-            entry_map = {entry.id: serialize_entry(entry) for entry in entries}
-            view_map = {view.entry_id: view.viewed_at for view in views}
-            items = []
-            for entry_id in entry_ids:
-                entry = entry_map.get(entry_id)
-                if entry:
-                    entry['viewed_at'] = view_map[entry_id].isoformat()
-                    items.append(entry)
+            )
+            if account_id is not None:
+                statement = statement.where(RssEntry.account_id == account_id)
+            rows = session.execute(statement).all()
+            items: list[dict[str, Any]] = []
+            for entry, viewed_at in rows:
+                item = serialize_entry(entry)
+                item['viewed_at'] = viewed_at.isoformat()
+                items.append(item)
             return items

@@ -29,6 +29,7 @@ class UserSubscription(Base):
         Integer, ForeignKey('subscription.id', ondelete='CASCADE'), nullable=False
     )
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    intent_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_nsfw: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_special_followed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())

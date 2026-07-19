@@ -11,16 +11,13 @@ tests and read cleanly as the update flow's phases.
 import logging
 from urllib.parse import urlparse
 
-from sqlalchemy import update
-
 from domains.subscription.application.services.core.listing.service import get_subscription_detail
 from domains.subscription.application.services.core.runtime_models import SubscriptionSyncResult
-from domains.subscription.domain.models.subscription import Subscription as SubscriptionModel
 from infrastructure.config.settings import settings
-from infrastructure.database.session import get_session
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_plugins.registry import SitePluginRegistry, get_site_plugin_registry
 
+from ..errors import SubscriptionUpdateError
 from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode
 from ..video_extraction_coordinator import enqueue_discovered_videos
 
@@ -100,25 +97,25 @@ class DefaultUpdateStrategy:
         )
         if not response.ok:
             message = response.error.message if response.error else f'Subscription sync failed for domain: {domain}'
-            raise ValueError(message)
+            details = response.error.details if response.error else {}
+            raise SubscriptionUpdateError(
+                message,
+                retryable=bool(response.error.retryable if response.error else response.retryable),
+                error_type=str(
+                    (response.error.code if response.error else None)
+                    or details.get('code')
+                    or details.get('error_category')
+                    or 'site_plugin_error'
+                ),
+                retry_after_seconds=details.get('retry_after_seconds'),
+            )
         if not isinstance(response.data, dict):
             raise ValueError(f'Subscription sync payload must be an object for domain: {domain}')
 
         sync_result = SubscriptionSyncResult.from_dict(response.data)
-
-        if sync_mode == UpdateMode.FULL and sync_result.total_available is not None:
-            self._update_total_videos(request.subscription_id, sync_result.total_available)
 
         return sync_result
 
     def enqueue_extraction(self, fetch_result: SubscriptionSyncResult, request: SubscriptionUpdateRequest) -> int:
         """Enqueue videos for extraction"""
         return enqueue_discovered_videos(fetch_result, request)
-
-    @staticmethod
-    def _update_total_videos(subscription_id: int, total: int) -> None:
-        """Update subscription total video count"""
-        with get_session() as session:
-            session.execute(
-                update(SubscriptionModel).where(SubscriptionModel.id == subscription_id).values(total_videos=total),
-            )

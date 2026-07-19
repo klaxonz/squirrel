@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, VARCHAR, Boolean, DateTime, Index, Integer, Text, UniqueConstraint
+from sqlalchemy import JSON, VARCHAR, Boolean, DateTime, ForeignKey, Index, Integer, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
@@ -41,7 +41,11 @@ class RssFeed(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    account_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    account_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey('rss_account.id', name='fk_rss_feed_account_id_rss_account', ondelete='CASCADE'),
+        nullable=False,
+    )
     external_feed_id: Mapped[str] = mapped_column(Text, nullable=False)
     title: Mapped[str] = mapped_column(VARCHAR(512), nullable=False)
     feed_url: Mapped[str | None] = mapped_column(VARCHAR(2048), nullable=True)
@@ -68,8 +72,16 @@ class RssEntry(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    account_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    feed_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    account_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey('rss_account.id', name='fk_rss_entry_account_id_rss_account', ondelete='CASCADE'),
+        nullable=False,
+    )
+    feed_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey('rss_feed.id', name='fk_rss_entry_feed_id_rss_feed', ondelete='CASCADE'),
+        nullable=False,
+    )
     external_entry_id: Mapped[str] = mapped_column(Text, nullable=False)
     canonical_url: Mapped[str] = mapped_column(VARCHAR(2048), nullable=False)
     title: Mapped[str] = mapped_column(Text, nullable=False)
@@ -94,7 +106,11 @@ class RssEntryView(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    entry_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    entry_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey('rss_entry.id', name='fk_rss_entry_view_entry_id_rss_entry', ondelete='CASCADE'),
+        nullable=False,
+    )
     viewed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now())
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
     updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(), onupdate=lambda: datetime.now())

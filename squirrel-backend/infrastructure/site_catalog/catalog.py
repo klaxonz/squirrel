@@ -1,7 +1,7 @@
 import json
 import os
-from pathlib import Path
 
+from infrastructure.site_catalog.config_path import get_site_catalog_config_path
 from infrastructure.site_catalog.icons import build_site_icon_url, normalize_site_icon_url, resolve_site_icon_path
 from infrastructure.site_plugins.registry import get_site_plugin_registry
 
@@ -25,8 +25,7 @@ class SiteCatalog:
 
     @staticmethod
     def _config_path() -> str:
-        repo_root = Path(__file__).resolve().parents[3]
-        return str(repo_root / 'config' / 'sites.json')
+        return str(get_site_catalog_config_path())
 
     @classmethod
     def _get_config_mtime(cls) -> float | None:

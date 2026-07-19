@@ -66,6 +66,7 @@ class SubscriptionUpdateRequest:
     run_id: str | None = None
     sync_state_id: int | None = None
     queue_token: str | None = None
+    execution_token: str | None = None
     cursor_payload: dict | None = None
     last_seen_video_url: str | None = None
     inline_video_extraction: bool = False
@@ -81,6 +82,9 @@ class SubscriptionUpdateResult:
     videos_enqueued: int
     has_more: bool = False
     error_message: str | None = None
+    error_type: str | None = None
+    retryable: bool = False
+    retry_after_seconds: int | None = None
     skipped_reason: str | None = None
     cursor_payload: dict | None = None
     latest_video_url: str | None = None

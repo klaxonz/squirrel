@@ -8,6 +8,9 @@ class VideoExtractDto(BaseModel):
     subscription_id: int
     sync_state_id: int | None = None
     run_id: str | None = None
+    parent_execution_token: str | None = None
+    execution_token: str | None = None
+    crawl_task_id: int | None = None
     trigger: str | None = None
     is_manual: bool = False
     is_extract_all: bool = False

@@ -16,6 +16,7 @@ class SubscriptionSyncTaskProgressService:
         *,
         now: datetime,
         error_message: str | None,
+        execution_token: str | None = None,
     ) -> None:
         if not is_subscription_sync_task_type(task.task_type):
             return
@@ -31,16 +32,21 @@ class SubscriptionSyncTaskProgressService:
             return
 
         retryable = task.status == CrawlTaskStatus.RETRY_WAIT.value
+        transition_kwargs = {
+            'now': now,
+            'retryable': retryable,
+            'error_message': error_message,
+            'run_id': payload.get('run_id'),
+            'request_id': payload.get('request_id'),
+            'trace_id': payload.get('trace_id'),
+            'trigger': payload.get('trigger'),
+        }
+        if execution_token is not None:
+            transition_kwargs['execution_token'] = execution_token
         self._lifecycle.record_task_retry_transition(
             resolved_sync_state_id,
             payload.get('queue_token'),
-            now=now,
-            retryable=retryable,
-            error_message=error_message,
-            run_id=payload.get('run_id'),
-            request_id=payload.get('request_id'),
-            trace_id=payload.get('trace_id'),
-            trigger=payload.get('trigger'),
+            **transition_kwargs,
         )
 
 

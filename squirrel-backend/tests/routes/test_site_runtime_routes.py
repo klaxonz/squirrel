@@ -8,12 +8,12 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from application.app import site_cookie_operations_router, site_operations_router
 from infrastructure.site_catalog.routes import site_cookies_bulk_import as site_cookie_bulk_import
 from infrastructure.site_catalog.routes import site_cookies_single_upload as site_cookie_single_upload
 from infrastructure.site_catalog.routes import sites_catalog as _sites_catalog
 from infrastructure.site_catalog.routes import sites_dependencies as _sites_dependencies
 from infrastructure.site_catalog.routes import sites_login as _sites_login
-from application.app import site_cookie_operations_router, site_operations_router
 
 site_routes = SimpleNamespace(
     catalog=_sites_catalog,

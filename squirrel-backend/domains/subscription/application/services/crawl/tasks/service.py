@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import select
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from domains.subscription.application.services.crawl.tasks import lease, lifecycle
 from domains.subscription.application.services.crawl.tasks import summary as task_summary
+from domains.subscription.application.services.crawl.tasks.clock import database_local_now
 from domains.subscription.application.services.crawl.tasks.dispatch_scope import ensure_dispatch_scope
 from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskNotFoundError
 from domains.subscription.application.services.crawl.tasks.job_status import refresh_job_status
@@ -15,6 +17,13 @@ from domains.subscription.application.services.crawl.tasks.models import CrawlJo
 from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from infrastructure.database.session import get_session
+
+
+@dataclass(frozen=True)
+class RecoveredTaskLease:
+    task: CrawlTask
+    execution_token: str | None
+    recovered_at: datetime
 
 
 class CrawlTaskService:
@@ -60,6 +69,7 @@ class CrawlTaskService:
         parent_task_id: int | None = None,
         subscription_id: int | None = None,
         sync_state_id: int | None = None,
+        run_id: str | None = None,
         video_id: int | None = None,
         video_url: str | None = None,
         trace_id: str | None = None,
@@ -76,6 +86,7 @@ class CrawlTaskService:
                 site=site,
                 subscription_id=subscription_id,
                 sync_state_id=sync_state_id,
+                run_id=run_id,
                 video_id=video_id,
                 video_url=video_url,
                 priority=priority,
@@ -103,6 +114,7 @@ class CrawlTaskService:
         parent_task_id: int | None = None,
         video_id: int | None = None,
         sync_state_id: int | None = None,
+        run_id: str | None = None,
         video_url: str | None = None,
         trace_id: str | None = None,
         max_attempts: int = 3,
@@ -122,6 +134,7 @@ class CrawlTaskService:
                 parent_task_id=parent_task_id,
                 video_id=video_id,
                 sync_state_id=sync_state_id,
+                run_id=run_id,
                 video_url=video_url,
                 trace_id=trace_id,
                 max_attempts=max_attempts,
@@ -143,6 +156,7 @@ class CrawlTaskService:
         parent_task_id: int | None = None,
         video_id: int | None = None,
         sync_state_id: int | None = None,
+        run_id: str | None = None,
         video_url: str | None = None,
         trace_id: str | None = None,
         max_attempts: int = 3,
@@ -170,6 +184,7 @@ class CrawlTaskService:
             site=site,
             subscription_id=subscription_id,
             sync_state_id=sync_state_id,
+            run_id=run_id,
             video_id=video_id,
             video_url=video_url,
             priority=priority,
@@ -192,9 +207,8 @@ class CrawlTaskService:
         allowed_sites: Sequence[str] | None = None,
         allowed_task_types: Sequence[str] | None = None,
     ) -> CrawlTask | None:
-        now = now or datetime.now()
-
         with self.session_factory() as session:
+            now = now or database_local_now(session)
             task = lease.claim_next_task(
                 session,
                 worker_id=worker_id,
@@ -211,13 +225,19 @@ class CrawlTaskService:
         *,
         task_id: int,
         worker_id: str,
+        lease_token: str | None = None,
         now: datetime | None = None,
         lease_seconds: int = 60,
     ) -> CrawlTask | None:
-        now = now or datetime.now()
-
         with self.session_factory() as session:
-            task = lifecycle.get_owned_task(session, task_id=task_id, worker_id=worker_id)
+            now = now or database_local_now(session)
+            task = lifecycle.get_owned_task(
+                session,
+                task_id=task_id,
+                worker_id=worker_id,
+                lease_token=lease_token,
+                now=now,
+            )
             lease.renew_lease(task, now=now, lease_seconds=lease_seconds)
             session.flush()
             return task
@@ -227,12 +247,18 @@ class CrawlTaskService:
         *,
         task_id: int,
         worker_id: str,
+        lease_token: str | None = None,
         now: datetime | None = None,
     ) -> CrawlTask:
-        now = now or datetime.now()
-
         with self.session_factory() as session:
-            task = lifecycle.get_owned_task(session, task_id=task_id, worker_id=worker_id)
+            now = now or database_local_now(session)
+            task = lifecycle.get_owned_task(
+                session,
+                task_id=task_id,
+                worker_id=worker_id,
+                lease_token=lease_token,
+                now=now,
+            )
             lifecycle.mark_running(task, now=now)
             refresh_job_status(session, job_id=task.job_id, now=now)
             session.flush()
@@ -243,12 +269,18 @@ class CrawlTaskService:
         *,
         task_id: int,
         worker_id: str,
+        lease_token: str | None = None,
         now: datetime | None = None,
     ) -> CrawlTask:
-        now = now or datetime.now()
-
         with self.session_factory() as session:
-            task = lifecycle.get_owned_task(session, task_id=task_id, worker_id=worker_id)
+            now = now or database_local_now(session)
+            task = lifecycle.get_owned_task(
+                session,
+                task_id=task_id,
+                worker_id=worker_id,
+                lease_token=lease_token,
+                now=now,
+            )
             lifecycle.mark_succeeded(task, now=now)
             refresh_job_status(session, job_id=task.job_id, now=now)
             session.flush()
@@ -261,19 +293,27 @@ class CrawlTaskService:
         worker_id: str,
         error_message: str | None,
         error_type: str | None,
+        lease_token: str | None = None,
         now: datetime | None = None,
         delay_seconds: int = 30,
+        retryable: bool = True,
     ) -> CrawlTask:
-        now = now or datetime.now()
-
         with self.session_factory() as session:
-            task = lifecycle.get_owned_task(session, task_id=task_id, worker_id=worker_id)
+            now = now or database_local_now(session)
+            task = lifecycle.get_owned_task(
+                session,
+                task_id=task_id,
+                worker_id=worker_id,
+                lease_token=lease_token,
+                now=now,
+            )
             lifecycle.move_to_retry_or_dead(
                 task,
                 now=now,
                 error_message=error_message,
                 error_type=error_type,
                 delay_seconds=delay_seconds,
+                retryable=retryable,
             )
             refresh_job_status(session, job_id=task.job_id, now=now)
             session.flush()
@@ -289,7 +329,7 @@ class CrawlTaskService:
         now = now or datetime.now()
 
         with self.session_factory() as session:
-            task = session.get(CrawlTask, task_id)
+            task = lifecycle.get_task_for_update(session, task_id)
             if not task:
                 raise CrawlTaskNotFoundError(f'Crawl task not found: {task_id}')
             lifecycle.mark_cancelled(task, now=now, reason=reason)
@@ -306,7 +346,7 @@ class CrawlTaskService:
         now = now or datetime.now()
 
         with self.session_factory() as session:
-            task = session.get(CrawlTask, task_id)
+            task = lifecycle.get_task_for_update(session, task_id)
             if not task:
                 raise CrawlTaskNotFoundError(f'Crawl task not found: {task_id}')
             lifecycle.replay_dead(task, now=now)
@@ -314,12 +354,20 @@ class CrawlTaskService:
             session.flush()
             return task
 
-    def recover_expired_tasks(self, *, now: datetime | None = None, retry_delay_seconds: int = 30) -> list[CrawlTask]:
-        now = now or datetime.now()
-
+    def recover_expired_tasks(
+        self,
+        *,
+        now: datetime | None = None,
+        retry_delay_seconds: int = 30,
+    ) -> list[RecoveredTaskLease]:
         with self.session_factory() as session:
+            now = now or database_local_now(session)
             tasks = lease.list_expired_leased_tasks(session, now=now)
 
+            recovered = [
+                RecoveredTaskLease(task=task, execution_token=task.lease_token, recovered_at=now)
+                for task in tasks
+            ]
             touched_job_ids: set[int] = set()
             for task in tasks:
                 lifecycle.move_to_retry_or_dead(
@@ -335,24 +383,16 @@ class CrawlTaskService:
                 refresh_job_status(session, job_id=job_id, now=now)
 
             session.flush()
-            return tasks
+            return recovered
 
     def count_pending_video_tasks_for_subscription(self, subscription_id: int) -> int:
         return task_summary.count_pending_video_tasks_for_subscription(self.session_factory, subscription_id)
 
-    def clear_task_dedupe_key(self, dedupe_key: str) -> int:
+    def has_task_with_dedupe_key(self, dedupe_key: str) -> bool:
         with self.session_factory() as session:
-            tasks = (
-                session.execute(
-                    select(CrawlTask).where(CrawlTask.dedupe_key == dedupe_key),
-                )
-                .scalars()
-                .all()
-            )
-            for task in tasks:
-                task.dedupe_key = None
-            session.flush()
-            return len(tasks)
+            return session.execute(
+                select(CrawlTask.id).where(CrawlTask.dedupe_key == dedupe_key).limit(1),
+            ).first() is not None
 
     def count_pending_video_tasks_by_sync_state(self) -> dict[int, int]:
         return task_summary.count_pending_video_tasks_by_sync_state(self.session_factory)
@@ -376,9 +416,9 @@ complete_task = crawl_task_service.complete_task
 retry_task = crawl_task_service.retry_task
 cancel_task = crawl_task_service.cancel_task
 replay_dead_task = crawl_task_service.replay_dead_task
+has_task_with_dedupe_key = crawl_task_service.has_task_with_dedupe_key
 recover_expired_tasks = crawl_task_service.recover_expired_tasks
 count_pending_video_tasks_for_subscription = crawl_task_service.count_pending_video_tasks_for_subscription
-clear_task_dedupe_key = crawl_task_service.clear_task_dedupe_key
 count_pending_video_tasks_by_sync_state = crawl_task_service.count_pending_video_tasks_by_sync_state
 summarize_video_task_states_by_sync_state = crawl_task_service.summarize_video_task_states_by_sync_state
 list_active_subscription_sync_state_ids = crawl_task_service.list_active_subscription_sync_state_ids

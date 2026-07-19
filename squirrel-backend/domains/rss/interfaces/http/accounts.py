@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, Field, SecretStr
 
 from domains.rss.application.services.client._base import RssServiceError
+from domains.rss.application.services.client._factory import MAX_SYNC_ENTRY_LIMIT
 from domains.rss.application.services.service import RssService
 from domains.user.application.services.auth import get_current_user
 from domains.user.interfaces.dto.user_dto import CurrentUserDto
@@ -13,30 +14,30 @@ router = APIRouter()
 
 
 class RssAccountCreateRequest(BaseModel):
-    provider: str
-    name: str
-    base_url: str
-    username: str | None = None
-    credential: SecretStr
+    provider: str = Field(min_length=1, max_length=32)
+    name: str = Field(min_length=1, max_length=120)
+    base_url: str = Field(min_length=1, max_length=2048)
+    username: str | None = Field(default=None, max_length=255)
+    credential: SecretStr = Field(min_length=1)
     enabled: bool = True
-    sync_entry_limit: int | None = None
+    sync_entry_limit: int | None = Field(default=None, ge=1, le=MAX_SYNC_ENTRY_LIMIT)
 
 
 class RssAccountUpdateRequest(BaseModel):
-    provider: str | None = None
-    name: str | None = None
-    base_url: str | None = None
-    username: str | None = None
+    provider: str | None = Field(default=None, min_length=1, max_length=32)
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    base_url: str | None = Field(default=None, min_length=1, max_length=2048)
+    username: str | None = Field(default=None, max_length=255)
     credential: SecretStr | None = None
     enabled: bool | None = None
-    sync_entry_limit: int | None = None
+    sync_entry_limit: int | None = Field(default=None, ge=1, le=MAX_SYNC_ENTRY_LIMIT)
 
 
 class RssAccountTestRequest(BaseModel):
-    provider: str
-    base_url: str
-    username: str | None = None
-    credential: SecretStr
+    provider: str = Field(min_length=1, max_length=32)
+    base_url: str = Field(min_length=1, max_length=2048)
+    username: str | None = Field(default=None, max_length=255)
+    credential: SecretStr = Field(min_length=1)
 
 
 @router.get('/accounts')
@@ -90,7 +91,11 @@ def update_rss_account(
 def delete_rss_account(
     account_id: int, current_user: CurrentUserDto = Depends(get_current_user), svc: RssService = Depends(get_rss_service)
 ):
-    if not svc.delete_account(current_user.id, account_id):
+    try:
+        deleted = svc.delete_account(current_user.id, account_id)
+    except RssServiceError as exc:
+        return response.param_error(str(exc))
+    if not deleted:
         return response.not_found('RSS 账号不存在')
     return response.success()
 

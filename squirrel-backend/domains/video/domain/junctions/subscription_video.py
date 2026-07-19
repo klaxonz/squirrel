@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Index, Integer
+from sqlalchemy import ForeignKey, Index, Integer
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from infrastructure.database.base import Base
@@ -35,8 +35,24 @@ class SubscriptionVideo(Base):
         Index('ix_subscription_video_video_id', 'video_id'),
     )
 
-    subscription_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    video_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    subscription_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey(
+            'subscription.id',
+            name='fk_subscription_video_subscription_id_subscription',
+            ondelete='CASCADE',
+        ),
+        primary_key=True,
+    )
+    video_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey(
+            'video.id',
+            name='fk_subscription_video_video_id_video',
+            ondelete='CASCADE',
+        ),
+        primary_key=True,
+    )
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now())
 
     subscription: Mapped[Subscription] = relationship(

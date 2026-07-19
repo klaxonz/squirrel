@@ -34,8 +34,8 @@
           :key="acc.id"
           :selected="selectedId === acc.id"
           @click="$emit('select', acc.id)"
-          @keydown.enter.prevent="$emit('select', acc.id)"
-          @keydown.space.prevent="$emit('select', acc.id)"
+          @keydown.enter.self.prevent="$emit('select', acc.id)"
+          @keydown.space.self.prevent="$emit('select', acc.id)"
         >
           <AppIcon name="rss" class="h-3.5 w-3.5 shrink-0 opacity-70" />
           <span class="account-dropdown__item-text">
@@ -74,7 +74,7 @@ import AppFloatingList from '@/shared/components/layout/AppFloatingList.vue'
 import AppListEmpty from '@/shared/components/layout/AppListEmpty.vue'
 import AppSelectableListItem from '@/shared/components/layout/AppSelectableListItem.vue'
 import { Button } from '@/shared/ui/button'
-import type { RssAccount } from '@/features/rss/composables/rssTypes'
+import type { RssAccount } from '@/features/rss/types/rss'
 
 defineProps<{
   accounts: RssAccount[]

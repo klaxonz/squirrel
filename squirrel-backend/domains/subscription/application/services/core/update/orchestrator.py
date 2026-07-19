@@ -13,6 +13,7 @@ from domains.subscription.application.services.core.sync.lifecycle import Subscr
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from infrastructure.database.session import get_session
 from infrastructure.site_catalog.catalog import SiteCatalog
+from shared_kernel.domain.exceptions import DomainError
 
 from .models import SubscriptionUpdateRequest, SubscriptionUpdateResult
 from .strategies.default_strategy import DefaultUpdateStrategy
@@ -82,15 +83,24 @@ class SubscriptionOrchestrator:
             if result.skipped_reason:
                 self.lifecycle.skip_sync(request, reason=result.skipped_reason)
             elif result.success:
-                self.lifecycle.complete_sync(request, result)
                 self.lifecycle.record_gap_observation(request, result)
                 self.lifecycle.request_total_video_backfill_if_needed(request, result)
+                self.lifecycle.complete_sync(request, result)
 
             return result
 
         except Exception as e:  # orchestrator boundary — always return SubscriptionUpdateResult
             logger.error('Orchestrator error for subscription %s: %s', request.subscription_id, e, exc_info=True)
-            self.lifecycle.fail_sync(request, e)
+            retryable = bool(
+                getattr(
+                    e,
+                    'retryable',
+                    not isinstance(e, (DomainError, ValueError, TypeError, AttributeError, KeyError)),
+                ),
+            )
+            error_type = str(getattr(e, 'error_type', None) or type(e).__name__)
+            if request.inline_video_extraction:
+                self.lifecycle.fail_sync(request, e)
 
             return SubscriptionUpdateResult(
                 subscription_id=request.subscription_id,
@@ -98,6 +108,9 @@ class SubscriptionOrchestrator:
                 videos_found=0,
                 videos_enqueued=0,
                 error_message=str(e),
+                error_type=error_type,
+                retryable=retryable,
+                retry_after_seconds=getattr(e, 'retry_after_seconds', None),
             )
 
     def _has_active_subscribers(self, subscription_id: int) -> bool:

@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import JSON, TEXT, VARCHAR, DateTime, Index, Integer, UniqueConstraint
+from sqlalchemy import JSON, TEXT, VARCHAR, DateTime, ForeignKey, Index, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
@@ -29,10 +29,19 @@ class SubscriptionSyncState(Base):
         Index('ix_subscription_sync_state_sync_status', 'sync_status'),
         Index('ix_subscription_sync_state_next_sync_at', 'next_sync_at'),
         Index('ix_subscription_sync_state_due_lookup', 'sync_mode', 'sync_status', 'next_sync_at'),
+        Index('ix_subscription_sync_state_current_run_id', 'current_run_id'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    subscription_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    subscription_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey(
+            'subscription.id',
+            name='fk_subscription_sync_state_subscription_id_subscription',
+            ondelete='CASCADE',
+        ),
+        nullable=False,
+    )
     site: Mapped[str | None] = mapped_column(VARCHAR(64), nullable=True)
     sync_mode: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default=SyncMode.INCREMENTAL.value)
     sync_status: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default=SyncStatus.IDLE.value)
@@ -52,6 +61,16 @@ class SubscriptionSyncState(Base):
     queued_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     locked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     queue_token: Mapped[str | None] = mapped_column(VARCHAR(64), nullable=True)
+    current_run_id: Mapped[str | None] = mapped_column(
+        VARCHAR(64),
+        ForeignKey(
+            'subscription_sync_run.id',
+            name='fk_subscription_sync_state_current_run_id_sync_run',
+            ondelete='SET NULL',
+        ),
+        nullable=True,
+    )
+    execution_token: Mapped[str | None] = mapped_column(VARCHAR(128), nullable=True)
     pending_video_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failure_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     idle_sync_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

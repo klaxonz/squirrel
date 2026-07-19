@@ -62,6 +62,10 @@ class PersistenceStage(PipelineStage):
                 description=dto.description,
                 subscription_id=task.metadata.get('subscription_id'),
                 subscription_sync_mode=task.metadata.get('sync_mode'),
+                sync_state_id=task.metadata.get('sync_state_id'),
+                run_id=task.metadata.get('run_id'),
+                execution_token=task.metadata.get('execution_token'),
+                crawl_task_id=task.metadata.get('crawl_task_id'),
                 actors=dto.actors,
             )
 

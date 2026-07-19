@@ -1,5 +1,7 @@
 <template>
   <button
+    type="button"
+    tabindex="-1"
     :role="role"
     :aria-checked="ariaChecked"
     :class="cn('app-context-menu-item', compact && 'app-context-menu-item--compact', danger && 'app-context-menu-item--danger', props.class)"

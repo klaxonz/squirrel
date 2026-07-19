@@ -19,6 +19,7 @@ def resolve_preflight_result(
     direct: bool,
     event_publisher: SubscriptionSyncCommandEventPublisher,
     has_active_subscribers: Callable[[int], bool],
+    prepare_deferred_state: Callable[[str], int | None],
 ) -> SubscriptionScheduleResult | SubscriptionDirectRunResult | None:
     if not domain or not SiteCatalog.is_site_enabled(domain=domain):
         return _deferred_result(
@@ -27,6 +28,7 @@ def resolve_preflight_result(
             reason='site_disabled',
             direct=direct,
             event_publisher=event_publisher,
+            sync_state_id=prepare_deferred_state('site_disabled'),
         )
 
     if not has_active_subscribers(command.subscription_id):
@@ -36,6 +38,7 @@ def resolve_preflight_result(
             reason='no_subscribers',
             direct=direct,
             event_publisher=event_publisher,
+            sync_state_id=prepare_deferred_state('no_subscribers'),
         )
     return None
 
@@ -47,12 +50,13 @@ def _deferred_result(
     reason: str,
     direct: bool,
     event_publisher: SubscriptionSyncCommandEventPublisher,
+    sync_state_id: int | None,
 ) -> SubscriptionScheduleResult | SubscriptionDirectRunResult:
-    run_context = event_publisher.emit_deferred_event(command, None, domain, reason)
+    run_context = event_publisher.emit_deferred_event(command, sync_state_id, domain, reason)
     if direct:
         return SubscriptionDirectRunResult(
             command.subscription_id,
-            None,
+            sync_state_id,
             reason,
             run_id=run_context.run_id,
             result=SubscriptionUpdateResult(
@@ -63,4 +67,4 @@ def _deferred_result(
                 skipped_reason=reason,
             ),
         )
-    return SubscriptionScheduleResult(command.subscription_id, None, reason, run_id=run_context.run_id)
+    return SubscriptionScheduleResult(command.subscription_id, sync_state_id, reason, run_id=run_context.run_id)

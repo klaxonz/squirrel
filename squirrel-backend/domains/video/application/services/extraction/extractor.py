@@ -55,6 +55,9 @@ class VideoExtractionService:
         metadata = {
             'subscription_id': params.subscription_id,
             'sync_state_id': params.sync_state_id,
+            'run_id': params.run_id,
+            'execution_token': params.execution_token,
+            'crawl_task_id': params.crawl_task_id,
             'only_extract': params.only_extract,
             'subscribed': params.subscribed,
             'sync_mode': 'full' if params.is_extract_all else 'incremental',

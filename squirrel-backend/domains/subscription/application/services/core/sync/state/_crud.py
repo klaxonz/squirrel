@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import exists, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
@@ -11,6 +12,7 @@ from domains.subscription.domain.models.subscription_sync_state import Subscript
 from infrastructure.site_catalog.url import resolve_site
 
 from ._intervals import SYNC_BATCH_SIZE
+from ._ownership import has_live_execution_token
 from .session import get_session
 
 
@@ -20,11 +22,16 @@ def _get_or_create_sync_state_in_session(
     mode: str,
     url: str | None,
 ) -> SubscriptionSyncState:
-    state = session.execute(
-        select(SubscriptionSyncState).where(
+    state_query = (
+        select(SubscriptionSyncState)
+        .where(
             SubscriptionSyncState.subscription_id == subscription_id,
             SubscriptionSyncState.sync_mode == mode,
-        ),
+        )
+        .with_for_update()
+    )
+    state = session.execute(
+        state_query,
     ).scalar_one_or_none()
     if state:
         if not state.site:
@@ -41,8 +48,18 @@ def _get_or_create_sync_state_in_session(
         cursor_payload={},
         next_sync_at=datetime.now(),
     )
-    session.add(state)
-    session.flush()
+    try:
+        with session.begin_nested():
+            session.add(state)
+            session.flush()
+    except IntegrityError:
+        # Concurrent first-use creation is resolved by the unique subscription/mode key.
+        # Re-read and lock the winner so queue planning remains serialized.
+        state = session.execute(state_query).scalar_one()
+        if not state.site:
+            state.site = resolve_site(url)
+        if state.next_sync_at is None:
+            state.next_sync_at = datetime.now()
     return state
 
 
@@ -125,12 +142,35 @@ def list_due_sync_states(
         return [(row[0], row[1]) for row in rows]
 
 
-def increment_pending_video_count(sync_state_id: int | None, count: int = 1) -> None:
+def increment_pending_video_count(
+    sync_state_id: int | None,
+    count: int = 1,
+    *,
+    run_id: str | None = None,
+    execution_token: str | None = None,
+) -> bool:
     if not sync_state_id or count <= 0:
-        return
+        return False
     with get_session() as session:
-        state = session.get(SubscriptionSyncState, sync_state_id)
+        state = session.execute(
+            select(SubscriptionSyncState)
+            .where(SubscriptionSyncState.id == sync_state_id)
+            .with_for_update(),
+        ).scalar_one_or_none()
         if not state:
-            return
+            return False
+        if state.current_run_id is not None and state.current_run_id != run_id:
+            return False
+        if run_id is not None and state.current_run_id != run_id:
+            return False
+        if (state.current_run_id is not None or state.execution_token is not None) and not has_live_execution_token(
+            session,
+            state,
+            execution_token,
+        ):
+            return False
+        if execution_token and execution_token.startswith('direct:'):
+            state.locked_at = datetime.now()
         state.pending_video_count += count
         state.version += 1
+        return True

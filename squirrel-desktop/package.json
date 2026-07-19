@@ -59,6 +59,7 @@
     "camoufox-js": "^0.10.2",
     "clsx": "^2.1.1",
     "dashjs": "^4.7.3",
+    "dompurify": "^3.4.12",
     "hls.js": "^1.5.20",
     "kugoumusicapi": "https://github.com/MakcRe/KuGouMusicApi/archive/566de02034493af31c5a44f124429cbc1cb11b13.tar.gz",
     "lucide-vue-next": "^0.577.0",

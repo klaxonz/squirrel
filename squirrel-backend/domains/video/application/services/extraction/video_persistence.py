@@ -5,9 +5,16 @@ from collections.abc import Callable, Generator
 from datetime import datetime
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 import infrastructure.site_catalog.url as url_helper
+from domains.subscription.application.services.core.sync.state._ownership import (
+    has_live_execution_token,
+    has_live_video_task_token,
+)
+from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskStateError
+from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.junctions.video_creator import VideoCreator
 from domains.video.domain.models.creator import Creator
@@ -60,9 +67,20 @@ class VideoPersistenceService:
         description: str | None = None,
         subscription_id: int | None = None,
         subscription_sync_mode: str | None = None,
+        sync_state_id: int | None = None,
+        run_id: str | None = None,
+        execution_token: str | None = None,
+        crawl_task_id: int | None = None,
         actors: list[ActorDTO] | None = None,
     ) -> tuple[VideoModel, bool]:
         with self._session_factory() as session:
+            self._assert_sync_write_owned(
+                session,
+                sync_state_id=sync_state_id,
+                run_id=run_id,
+                execution_token=execution_token,
+                crawl_task_id=crawl_task_id,
+            )
             video, is_new = self._create_or_update_in_session(
                 session,
                 url=url,
@@ -77,6 +95,94 @@ class VideoPersistenceService:
             self.process_actors_in_session(session, video.id, actors or [])
             session.flush()
             return video, is_new
+
+    def link_existing_videos(
+        self,
+        subscription_id: int,
+        video_ids: list[int],
+        *,
+        sync_state_id: int | None = None,
+        run_id: str | None = None,
+        execution_token: str | None = None,
+    ) -> int:
+        """Idempotently attach already-extracted videos to another subscription."""
+        unique_ids = list(dict.fromkeys(int(video_id) for video_id in video_ids if video_id))
+        if not subscription_id or not unique_ids:
+            return 0
+
+        created = 0
+        with self._session_factory() as session:
+            self._assert_sync_write_owned(
+                session,
+                sync_state_id=sync_state_id,
+                run_id=run_id,
+                execution_token=execution_token,
+                crawl_task_id=None,
+            )
+            linked_ids = set(
+                session.scalars(
+                    select(SubscriptionVideo.video_id).where(
+                        SubscriptionVideo.subscription_id == subscription_id,
+                        SubscriptionVideo.video_id.in_(unique_ids),
+                    ),
+                ).all(),
+            )
+            for video_id in unique_ids:
+                if video_id in linked_ids:
+                    continue
+                savepoint = session.begin_nested()
+                try:
+                    session.add(SubscriptionVideo(subscription_id=subscription_id, video_id=video_id))
+                    session.flush()
+                except IntegrityError:
+                    savepoint.rollback()
+                    continue
+                savepoint.commit()
+                _index_video_id_after_commit(session, video_id)
+                created += 1
+        return created
+
+    @staticmethod
+    def _assert_sync_write_owned(
+        session: Session,
+        *,
+        sync_state_id: int | None,
+        run_id: str | None,
+        execution_token: str | None,
+        crawl_task_id: int | None,
+    ) -> None:
+        if sync_state_id is None and run_id is None and execution_token is None and crawl_task_id is None:
+            return
+        if sync_state_id is None or run_id is None or execution_token is None:
+            raise CrawlTaskStateError('Run-bound video persistence is missing its fencing identity')
+
+        state = session.execute(
+            select(SubscriptionSyncState)
+            .where(SubscriptionSyncState.id == sync_state_id)
+            .with_for_update(),
+        ).scalar_one_or_none()
+        if state is None or state.current_run_id != run_id:
+            raise CrawlTaskStateError(
+                f'Stale video persistence run: sync_state_id={sync_state_id}, run_id={run_id}',
+            )
+
+        owned = (
+            has_live_video_task_token(
+                session,
+                state,
+                run_id=run_id,
+                execution_token=execution_token,
+                task_id=crawl_task_id,
+            )
+            if crawl_task_id is not None
+            else has_live_execution_token(session, state, execution_token)
+        )
+        if not owned:
+            raise CrawlTaskStateError(
+                f'Stale video persistence execution: sync_state_id={sync_state_id}, run_id={run_id}',
+            )
+        if crawl_task_id is None and execution_token.startswith('direct:'):
+            state.locked_at = datetime.now()
 
     def _create_subscription_link(
         self,

@@ -127,10 +127,14 @@ class ExtractionPipeline:
                         raise StageExecutionError(
                             f"Critical stage '{stage.stage_name}' failed",
                             stage_name=stage.stage_name,
+                            retryable=bool(getattr(e, 'retryable', False)),
                             context={
                                 'task_id': context.task.task_id,
                                 'url': context.task.url,
                                 'error': str(e),
+                                'error_category': getattr(e, 'context', {}).get('error_category')
+                                if isinstance(getattr(e, 'context', None), dict)
+                                else None,
                             },
                         ) from e
 
@@ -160,6 +164,9 @@ class ExtractionPipeline:
             return ExtractionResult(
                 success=False,
                 error=str(e),
+                error_category=(e.context.get('error_category') if isinstance(getattr(e, 'context', None), dict) else None),
+                retryable=bool(getattr(e, 'retryable', False)),
+                error_context=dict(getattr(e, 'context', {}) or {}),
             )
 
     def _should_continue_after_error(

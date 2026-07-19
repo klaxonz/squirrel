@@ -47,7 +47,9 @@ def test_crawl_worker_start_uses_configured_worker_count(monkeypatch):
 
     crawl_worker_manager.crawl_worker_start()
 
-    assert [runtime.kwargs['worker_id'] for runtime in runtimes] == ['crawl-runtime-1']
+    worker_ids = [runtime.kwargs['worker_id'] for runtime in runtimes]
+    assert len(worker_ids) == 1
+    assert worker_ids[0].count(':') == 2
     assert runtimes[0].kwargs['max_concurrency'] == 3
     assert [thread.name for thread in threads] == ['crawl-runtime-1']
     assert all(thread.started for thread in threads)

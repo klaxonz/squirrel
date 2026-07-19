@@ -22,7 +22,7 @@
         </span>
       </Button>
       <Button
-        v-if="hasAccount"
+        v-if="hasAccount && canManageSubscriptions"
         text severity="secondary"
         size="sm" icon-only
         @click="$emit('addFeed')"
@@ -36,6 +36,18 @@
     <div class="feed-folder-tree__separator"></div>
 
     <FeedFolderTreeSkeleton v-if="loading" />
+
+    <AppEmptyState
+      v-else-if="error"
+      variant="error"
+      title="订阅源加载失败"
+      :copy="error"
+      class="feed-folder-tree__error"
+    >
+      <template #actions>
+        <Button severity="secondary" outlined size="sm" @click="$emit('retry')">重试</Button>
+      </template>
+    </AppEmptyState>
 
     <template v-else>
       <div class="feed-folder-tree__folders">
@@ -64,8 +76,8 @@
               role="button"
               tabindex="0"
               @click="$emit('selectFeed', feed.id)"
-              @keydown.enter.prevent="$emit('selectFeed', feed.id)"
-              @keydown.space.prevent="$emit('selectFeed', feed.id)"
+              @keydown.enter.self.prevent="$emit('selectFeed', feed.id)"
+              @keydown.space.self.prevent="$emit('selectFeed', feed.id)"
               @contextmenu.prevent.stop="$emit('feedContextMenu', feed, $event)"
               class="feed-folder-tree__feed"
               :class="{ 'is-selected': selectedFeedId === feed.id }"
@@ -73,6 +85,7 @@
               <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
               <span class="flex-1 truncate">{{ feed.title }}</span>
               <Button
+                v-if="canManageSubscriptions"
                 text severity="secondary"
                 size="sm" icon-only
                 @click.stop="$emit('unsubscribeFeed', feed)"
@@ -97,8 +110,9 @@
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
+import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
-import type { RssFeed } from '@/features/rss/composables/rssTypes'
+import type { RssFeed } from '@/features/rss/types/rss'
 import FeedFolderTreeSkeleton from './FeedFolderTreeSkeleton.vue'
 
 interface FeedFolder {
@@ -112,7 +126,9 @@ defineProps<{
   selectedFeedId: number | null
   totalFeeds: number
   hasAccount: boolean
+  canManageSubscriptions: boolean
   loading: boolean
+  error?: string
 }>()
 
 defineEmits<{
@@ -122,6 +138,7 @@ defineEmits<{
   selectFeed: [id: number]
   feedContextMenu: [feed: RssFeed, event: MouseEvent]
   unsubscribeFeed: [feed: RssFeed]
+  retry: []
 }>()
 </script>
 
@@ -286,6 +303,11 @@ defineEmits<{
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   text-align: center;
+}
+
+.feed-folder-tree__error {
+  min-height: 12rem;
+  padding-inline: 0.5rem;
 }
 
 @media (hover: none), (prefers-reduced-motion: reduce) {

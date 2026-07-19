@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime, timedelta
+from uuid import uuid4
 
 from sqlalchemy import case, or_, select
 from sqlalchemy.orm import Session
@@ -21,8 +22,8 @@ def claim_next_task(
 ) -> CrawlTask | None:
     priority_order = case(
         (CrawlTask.priority == 'manual', 3),
-        (CrawlTask.priority == 'normal', 2),
-        (CrawlTask.priority == 'low', 1),
+        (CrawlTask.priority.in_(['incr', 'incremental', 'normal']), 2),
+        (CrawlTask.priority.in_(['full', 'low']), 1),
         else_=0,
     )
     query = (
@@ -59,9 +60,13 @@ def assign_lease(task: CrawlTask, *, worker_id: str, now: datetime, lease_second
     task.status = CrawlTaskStatus.LEASED.value
     task.worker_id = worker_id
     task.lease_until = now + timedelta(seconds=lease_seconds)
+    task.lease_token = uuid4().hex
+    task.lease_generation += 1
 
 
 def renew_lease(task: CrawlTask, *, now: datetime, lease_seconds: int) -> None:
+    if task.status not in {CrawlTaskStatus.LEASED.value, CrawlTaskStatus.RUNNING.value}:
+        raise ValueError(f'Crawl task {task.id} has no renewable lease')
     task.lease_until = now + timedelta(seconds=lease_seconds)
 
 
@@ -79,7 +84,8 @@ def list_expired_leased_tasks(session: Session, *, now: datetime) -> list[CrawlT
                 CrawlTask.lease_until.is_not(None),
                 CrawlTask.lease_until < now,
             )
-            .order_by(CrawlTask.lease_until.asc(), CrawlTask.id.asc()),
+            .order_by(CrawlTask.lease_until.asc(), CrawlTask.id.asc())
+            .with_for_update(skip_locked=True),
         )
         .scalars()
         .all(),

@@ -239,13 +239,21 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success()
             ),
         ),
         patch.object(DefaultUpdateStrategy, 'enqueue_extraction', return_value=2),
+        patch.object(
+            SubscriptionSyncLifecycle,
+            '_queue_full_continuation',
+            autospec=True,
+            side_effect=lambda self, request, result: continuation_calls.append((request, result)) or {},
+        ),
         patch(
             'domains.subscription.application.services.core.update.orchestrator.SiteCatalog.is_site_enabled',
             return_value=True,
         ),
         patch(
             'domains.subscription.application.services.core.sync.lifecycle.subscription_sync_state_service.mark_sync_success',
-            side_effect=lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs)),
+            side_effect=lambda sync_state_id, **kwargs: (
+                success_calls.append((sync_state_id, kwargs)) or SimpleNamespace(id=sync_state_id)
+            ),
         ),
         patch(
             'domains.subscription.application.services.core.sync.lifecycle.subscription_sync_state_service.continue_full_sync_batch',
@@ -269,6 +277,7 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success()
             mode=UpdateMode.FULL,
             cursor_payload={'page': 1},
             run_id='run-1',
+            queue_token='queue-1',
             request_id='req-1',
             trace_id='trace-1',
         )
@@ -278,29 +287,10 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success()
     assert result.success is True
     assert result.cursor_payload == {'page': 2}
     assert success_calls == []
-    assert continuation_calls == [
-        (
-            2,
-            {
-                'cursor_payload': {'page': 2},
-                'latest_video_url': 'https://example.com/a',
-                'videos_found': 2,
-            },
-        ),
-    ]
-    assert schedule_calls == [
-        {
-            'subscription_id': 1,
-            'url': 'https://space.bilibili.com/42',
-            'trigger': UpdateTrigger.MANUAL,
-            'mode': UpdateMode.FULL,
-            'user_id': None,
-            'force': False,
-            'trace_id': 'trace-1',
-            'run_id': 'run-1',
-            'cursor_payload': {'page': 2},
-        },
-    ]
+    assert len(continuation_calls) == 1
+    assert continuation_calls[0][0] is request
+    assert continuation_calls[0][1] is result
+    assert schedule_calls == []
 
 
 def test_execute_final_full_sync_batch_marks_success():
@@ -331,7 +321,9 @@ def test_execute_final_full_sync_batch_marks_success():
         ),
         patch(
             'domains.subscription.application.services.core.sync.lifecycle.subscription_sync_state_service.mark_sync_success',
-            side_effect=lambda sync_state_id, **kwargs: success_calls.append((sync_state_id, kwargs)),
+            side_effect=lambda sync_state_id, **kwargs: (
+                success_calls.append((sync_state_id, kwargs)) or SimpleNamespace(id=sync_state_id)
+            ),
         ),
         patch(
             'domains.subscription.application.services.core.sync.lifecycle.subscription_sync_state_service.continue_full_sync_batch',
@@ -355,6 +347,7 @@ def test_execute_final_full_sync_batch_marks_success():
             mode=UpdateMode.FULL,
             cursor_payload={'page': 2},
             run_id='run-1',
+            queue_token='queue-2',
             request_id='req-2',
             trace_id='trace-1',
         )
@@ -371,6 +364,11 @@ def test_execute_final_full_sync_batch_marks_success():
                 'cursor_payload': {},
                 'latest_video_url': 'https://example.com/c',
                 'videos_found': 1,
+                'videos_enqueued': 1,
+                'run_id': 'run-1',
+                'queue_token': 'queue-2',
+                'execution_token': None,
+                'total_available': 3,
             },
         ),
     ]

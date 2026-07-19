@@ -1,57 +1,75 @@
 from __future__ import annotations
 
-from datetime import datetime
-
-from domains.subscription.application.services.core.sync.run_service import SyncRunContext, create_run
+from domains.subscription.application.services.core.sync.run_service import (
+    SubscriptionSyncRunService,
+    SyncRunContext,
+    subscription_sync_run_service,
+)
+from domains.subscription.application.services.core.update.models import SyncCommand
+from domains.subscription.domain.models.subscription_sync_run import SyncRunStatus
 
 
 class SubscriptionSyncCommandEventPublisher:
-    """Builds ``SyncRunContext`` correlation IDs for the sync command path.
+    """Creates durable run-ledger entries for sync commands."""
 
-    The event-emission methods were removed together with the ``subscription_sync_event`` table;
-    only ``build_run_context`` (which generates the in-memory run_id) is retained because run_id
-    is persisted on CrawlTask payloads and surfaced in API responses.
-    """
+    def __init__(self, run_service: SubscriptionSyncRunService | None = None):
+        self._run_service = run_service or subscription_sync_run_service
 
-    @staticmethod
     def build_run_context(
+        self,
         *,
         subscription_id: int,
         sync_state_id: int | None,
         site: str | None,
         sync_mode: str,
         trigger: str,
-        trace_id: str,
+        trace_id: str | None,
         run_id: str | None,
+        session=None,
+        status: str = SyncRunStatus.QUEUED.value,
+        queue_token: str | None = None,
+        cursor_in: dict | None = None,
+        error_message: str | None = None,
     ) -> tuple[SyncRunContext, bool]:
-        if run_id:
-            now = datetime.now()
-            return (
-                SyncRunContext(
-                    run_id=run_id,
-                    stream_id=run_id,
-                    subscription_id=subscription_id,
-                    sync_state_id=sync_state_id,
-                    site=(site or '').strip(),
-                    sync_mode=sync_mode,
-                    trigger=trigger,
-                    request_id=None,
-                    trace_id=trace_id,
-                    created_at=now,
-                ),
-                False,
-            )
-        return (
-            create_run(
-                subscription_id=subscription_id,
-                sync_state_id=sync_state_id,
-                site=site,
-                sync_mode=sync_mode,
-                trigger=trigger,
-                trace_id=trace_id,
-            ),
-            True,
+        created = not bool(run_id)
+        kwargs = {
+            'subscription_id': subscription_id,
+            'sync_state_id': sync_state_id,
+            'site': site,
+            'sync_mode': sync_mode,
+            'trigger': trigger,
+            'trace_id': trace_id,
+            'run_id': run_id,
+            'status': status,
+            'queue_token': queue_token,
+            'cursor_in': cursor_in,
+            'error_message': error_message,
+        }
+        if session is not None:
+            context = self._run_service.create_run_in_session(session, **kwargs)
+        else:
+            context = self._run_service.create_run(**kwargs)
+        return context, created
+
+    def emit_deferred_event(
+        self,
+        command: SyncCommand,
+        sync_state_id: int | None,
+        site: str | None,
+        reason: str,
+    ) -> SyncRunContext:
+        context, _ = self.build_run_context(
+            subscription_id=command.subscription_id,
+            sync_state_id=sync_state_id,
+            site=site,
+            sync_mode=command.mode.value,
+            trigger=command.trigger.value,
+            trace_id=command.trace_id,
+            run_id=command.run_id,
+            status=SyncRunStatus.DEFERRED.value,
+            error_message=reason,
         )
+        return context
 
 
 subscription_sync_command_event_publisher = SubscriptionSyncCommandEventPublisher()

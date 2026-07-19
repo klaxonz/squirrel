@@ -17,27 +17,11 @@
         <Button
           text severity="secondary"
           size="sm"
-          @click="select('outfit')"
-          class="reader-settings-option"
-          :class="{ 'is-selected': fontFamily === 'outfit' }"
-          title="优雅圆润 (Outfit)"
-        >Outfit</Button>
-        <Button
-          text severity="secondary"
-          size="sm"
           @click="select('serif')"
           class="reader-settings-option font-serif"
           :class="{ 'is-selected': fontFamily === 'serif' }"
           title="经典衬线 (Georgia)"
         >Georgia</Button>
-        <Button
-          text severity="secondary"
-          size="sm"
-          @click="select('lora')"
-          class="reader-settings-option font-serif"
-          :class="{ 'is-selected': fontFamily === 'lora' }"
-          title="人文阅读 (Lora)"
-        >Lora</Button>
       </div>
     </div>
 
@@ -71,18 +55,18 @@ import { Button } from '@/shared/ui/button'
 
 const props = defineProps<{
   visible: boolean
-  fontFamily: string
+  fontFamily: 'sans' | 'serif'
   fontSize: number
 }>()
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  'update:fontFamily': [value: string]
+  'update:fontFamily': [value: 'sans' | 'serif']
   'update:fontSize': [value: number]
   save: []
 }>()
 
-function select(family: string) {
+function select(family: 'sans' | 'serif') {
   emit('update:fontFamily', family)
   emit('save')
 }

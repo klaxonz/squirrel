@@ -1,6 +1,9 @@
 import logging
+import os
+import socket
 import threading
 from threading import Lock
+from uuid import uuid4
 
 from infrastructure.concurrency.thread_manager import thread_manager
 from infrastructure.config.settings import settings
@@ -23,7 +26,7 @@ def crawl_worker_start() -> None:
 
         _stop_event = threading.Event()
         runtime = CrawlWorkerRuntime(
-            worker_id='crawl-runtime-1',
+            worker_id=f'{socket.gethostname()}:{os.getpid()}:{uuid4().hex[:12]}',
             max_concurrency=max(1, int(settings.crawl.slots_per_process)),
             poll_interval_seconds=settings.crawl.worker_poll_interval_ms / 1000.0,
         )

@@ -33,11 +33,18 @@ class RssEntryStatusService:
         is_read: bool | None = None,
         is_starred: bool | None = None,
     ) -> dict[str, Any] | None:
+        remote_target: tuple[int, Any, str] | None = None
         with self.session_factory() as session:
             entry = session.scalars(
                 select(RssEntry).where(
                     RssEntry.id == entry_id,
                     RssEntry.user_id == user_id,
+                    RssEntry.account_id.in_(
+                        select(RssAccount.id).where(
+                            RssAccount.user_id == user_id,
+                            RssAccount.is_deleted.is_(False),
+                        )
+                    ),
                 ),
             ).first()
             if not entry:
@@ -50,16 +57,19 @@ class RssEntryStatusService:
 
             account = self._load_enabled_account(session, user_id=user_id, account_id=entry.account_id)
             if account:
-                self.remote_status_syncer.update_entry_async(
-                    self.config_from_account(account),
-                    entry.external_entry_id,
-                    is_read=is_read,
-                    is_starred=is_starred,
-                )
+                remote_target = (account.id, self.config_from_account(account), entry.external_entry_id)
 
             session.commit()
             session.refresh(entry)
-            return serialize_entry(entry)
+            result = serialize_entry(entry)
+
+        if remote_target:
+            self.remote_status_syncer.update_entry_async(
+                *remote_target,
+                is_read=is_read,
+                is_starred=is_starred,
+            )
+        return result
 
     def update_entries_read_status(
         self,
@@ -72,13 +82,19 @@ class RssEntryStatusService:
             return {'updated': 0}
 
         unique_entry_ids = list(dict.fromkeys(entry_ids))
-        remote_targets: list[tuple[Any, str]] = []
+        remote_targets: list[tuple[int, Any, str]] = []
 
         with self.session_factory() as session:
             entries = session.scalars(
                 select(RssEntry).where(
                     RssEntry.id.in_(unique_entry_ids),
                     RssEntry.user_id == user_id,
+                    RssEntry.account_id.in_(
+                        select(RssAccount.id).where(
+                            RssAccount.user_id == user_id,
+                            RssAccount.is_deleted.is_(False),
+                        )
+                    ),
                 ),
             ).all()
             changed_entries = [entry for entry in entries if entry.is_read != is_read]
@@ -99,7 +115,7 @@ class RssEntryStatusService:
             for entry in changed_entries:
                 config = config_by_account_id.get(entry.account_id)
                 if config:
-                    remote_targets.append((config, entry.external_entry_id))
+                    remote_targets.append((entry.account_id, config, entry.external_entry_id))
 
             session.commit()
 
@@ -113,6 +129,12 @@ class RssEntryStatusService:
                 RssEntry.user_id == user_id,
                 RssEntry.feed_id == feed_id,
                 RssEntry.is_read.is_(False),
+                RssEntry.account_id.in_(
+                    select(RssAccount.id).where(
+                        RssAccount.user_id == user_id,
+                        RssAccount.is_deleted.is_(False),
+                    )
+                ),
             )
             entry_ids = list(session.scalars(statement).all())
 

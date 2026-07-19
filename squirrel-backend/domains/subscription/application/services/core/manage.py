@@ -1,22 +1,21 @@
-import json
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 
 from domains.subscription.application.services.core.crud import subscription_crud_service
 from domains.subscription.application.services.core.listing.service import resolve_subscription_nsfw
 from domains.subscription.application.services.core.runtime_models import SubscriptionMeta
 from domains.subscription.application.services.core.sync.lifecycle import subscription_sync_lifecycle
+from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
-from domains.subscription.domain.models.subscription import ContentType, Subscription
-from domains.system.domain.models import constants
+from domains.subscription.domain.models.crawl_task import CrawlTask
+from domains.subscription.domain.models.subscription import ContentType, Subscription, build_subscription_canonical_key
 from domains.user.domain.models.user import User
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session, register_after_commit
-from infrastructure.messaging.framework.producer import RedisStreamProducer
-from infrastructure.messaging.models.message import Message
-from infrastructure.messaging.payload import serialize_message
+from infrastructure.site_catalog.url import resolve_site
 
 
 class SubscriptionManageService:
@@ -38,77 +37,159 @@ class SubscriptionManageService:
 
         return ContentType.CHANNEL
 
-    def create_subscription(self, user_id: int, subscribe_info: SubscriptionMeta) -> Subscription:
+    def create_subscription(
+        self,
+        user_id: int,
+        subscribe_info: SubscriptionMeta,
+        *,
+        expected_intent_version: int | None = None,
+    ) -> Subscription:
         with self.session_factory() as session:
-            user_subscription = None
-            subscription = self.crud_service.get_subscription_by_url_and_name(
-                url=subscribe_info.url, name=subscribe_info.name
+            created_subscription = False
+            canonical_key = build_subscription_canonical_key(subscribe_info.url)
+            subscription_query = (
+                select(Subscription)
+                .where(
+                    or_(
+                        Subscription.canonical_key == canonical_key,
+                        Subscription.url == subscribe_info.url,
+                    ),
+                )
+                .order_by(Subscription.is_deleted.asc(), Subscription.id.asc())
+                .with_for_update()
             )
-            if subscription:
-                self.lifecycle.ensure_subscription_syncs(subscription.id, subscription.url)
-                return subscription
-            content_type = self._detect_subscription_type(subscribe_info.url)
+            subscription = session.scalars(subscription_query).first()
+            if subscription is None:
+                candidate = Subscription(
+                    type=self._detect_subscription_type(subscribe_info.url),
+                    name=subscribe_info.name,
+                    url=subscribe_info.url,
+                    avatar=subscribe_info.avatar,
+                    description=None,
+                    extra_data={},
+                )
+                try:
+                    with session.begin_nested():
+                        session.add(candidate)
+                        session.flush()
+                    subscription = candidate
+                    created_subscription = True
+                except IntegrityError:
+                    # Another request created the same canonical subscription while metadata
+                    # was being fetched. Attach this user to the committed winner.
+                    subscription = session.scalars(subscription_query).first()
+                    if subscription is None:
+                        raise
 
-            subscription = Subscription(
-                type=content_type,
-                name=subscribe_info.name,
-                url=subscribe_info.url,
-                avatar=subscribe_info.avatar,
-                description=None,
-                extra_data={},
-            )
-            session.add(subscription)
-            session.flush()
-            user_subscription = session.scalars(
-                select(UserSubscription).where(
+            user_subscription_query = (
+                select(UserSubscription)
+                .where(
                     UserSubscription.user_id == user_id,
                     UserSubscription.subscription_id == subscription.id,
                 )
+                .with_for_update()
+            )
+            user_subscription = session.scalars(
+                user_subscription_query,
             ).first()
-            if not user_subscription:
-                is_nsfw = resolve_subscription_nsfw(subscribe_info.url)
-
-                user_subscription = UserSubscription(
-                    user_id=user_id,
-                    subscription_id=subscription.id,
-                    is_nsfw=is_nsfw,
-                )
-                session.add(user_subscription)
+            activated = True
+            if user_subscription and user_subscription.is_deleted:
+                if (
+                    expected_intent_version is not None
+                    and user_subscription.intent_version != expected_intent_version
+                ):
+                    activated = False
+                else:
+                    user_subscription.is_deleted = False
+                    user_subscription.intent_version += 1
+            elif user_subscription:
+                activated = True
+            else:
+                if expected_intent_version not in {None, 0}:
+                    activated = False
+                else:
+                    candidate_user_subscription = UserSubscription(
+                        user_id=user_id,
+                        subscription_id=subscription.id,
+                        intent_version=1,
+                        is_nsfw=resolve_subscription_nsfw(subscribe_info.url),
+                    )
+                    try:
+                        with session.begin_nested():
+                            session.add(candidate_user_subscription)
+                            session.flush()
+                        user_subscription = candidate_user_subscription
+                    except IntegrityError:
+                        user_subscription = session.scalars(user_subscription_query).first()
+                        if user_subscription is None:
+                            raise
+                        if (
+                            user_subscription.is_deleted
+                            and expected_intent_version is not None
+                            and user_subscription.intent_version != expected_intent_version
+                        ):
+                            activated = False
+                        elif user_subscription.is_deleted:
+                            user_subscription.is_deleted = False
+                            user_subscription.intent_version += 1
+            if activated:
+                subscription.is_deleted = False
+            elif created_subscription:
+                subscription.is_deleted = True
             session.commit()
-        if user_subscription is not None:
+        if activated:
             self.lifecycle.ensure_subscription_syncs(subscription.id, subscription.url)
         return subscription
 
-    def restore_subscription(self, subscription_id: int, user_id: int) -> None:
+    def restore_subscription(
+        self,
+        subscription_id: int,
+        user_id: int,
+        *,
+        expected_intent_version: int | None = None,
+    ) -> bool:
         with self.session_factory() as session:
-            subscription = session.get(Subscription, subscription_id)
+            subscription = session.scalars(
+                select(Subscription).where(Subscription.id == subscription_id).with_for_update(),
+            ).first()
             if not subscription:
-                return
-
-            subscription.is_deleted = False
+                return False
 
             user_subscription = session.scalars(
-                select(UserSubscription).where(
+                select(UserSubscription)
+                .where(
                     UserSubscription.subscription_id == subscription_id,
                     UserSubscription.user_id == user_id,
-                ),
+                )
+                .with_for_update(),
             ).first()
 
             if user_subscription and user_subscription.is_deleted:
+                if (
+                    expected_intent_version is not None
+                    and user_subscription.intent_version != expected_intent_version
+                ):
+                    return False
                 user_subscription.is_deleted = False
+                user_subscription.intent_version += 1
             elif not user_subscription:
+                if expected_intent_version not in {None, 0}:
+                    return False
                 user_subscription = UserSubscription(
                     subscription_id=subscription_id,
                     user_id=user_id,
                     is_deleted=False,
-                    is_nsfw=False,
+                    intent_version=1,
+                    is_nsfw=resolve_subscription_nsfw(subscription.url),
                 )
                 session.add(user_subscription)
 
+            subscription.is_deleted = False
             session.commit()
         subscription = self.crud_service.get_subscription_by_id(subscription_id)
         if subscription:
             self.lifecycle.ensure_subscription_syncs(subscription.id, subscription.url)
+        return True
 
     def unsubscribe_by_id(self, user_id: int, subscription_id: int) -> bool:
         with self.session_factory() as session:
@@ -116,7 +197,7 @@ class SubscriptionManageService:
                 return False
 
             subscription = session.scalars(
-                select(Subscription).where(Subscription.id == subscription_id),
+                select(Subscription).where(Subscription.id == subscription_id).with_for_update(),
             ).first()
 
             if not subscription:
@@ -132,15 +213,31 @@ class SubscriptionManageService:
                     ),
                 ).all()
 
-            active_user_subscriptions = session.scalars(
+            user_subscription = session.execute(
                 select(UserSubscription).where(
+                    UserSubscription.user_id == user_id,
                     UserSubscription.subscription_id == subscription.id,
                     UserSubscription.is_deleted.is_(False),
                 ),
-            ).all()
+            ).scalar_one_or_none()
+            if not user_subscription:
+                return False
+            user_subscription.is_deleted = True
+            user_subscription.intent_version += 1
+            session.flush()
 
-            for user_subscription in active_user_subscriptions:
-                user_subscription.is_deleted = True
+            has_other_subscribers = session.execute(
+                select(UserSubscription.id)
+                .where(
+                    UserSubscription.subscription_id == subscription.id,
+                    UserSubscription.user_id != user_id,
+                    UserSubscription.is_deleted.is_(False),
+                )
+                .limit(1),
+            ).first() is not None
+            if has_other_subscribers:
+                session.commit()
+                return True
 
             subscription.is_deleted = True
             if affected_video_ids:
@@ -196,17 +293,43 @@ class SubscriptionManageService:
         return True
 
     def create_subscribe_message(self, url: str, user_id: int) -> dict[str, Any]:
+        canonical_key = build_subscription_canonical_key(url)
         with self.session_factory() as session:
-            task = {
-                'url': url,
-                'user_id': user_id,
-            }
-            message = Message(body=json.dumps(task))
-            session.add(message)
-            session.commit()
-            dump_json = serialize_message(message)
-            RedisStreamProducer().send(constants.QUEUE_SUBSCRIBE, dump_json)
-        return dump_json
+            intent_version = session.execute(
+                select(func.max(UserSubscription.intent_version))
+                .join(Subscription, Subscription.id == UserSubscription.subscription_id)
+                .where(
+                    UserSubscription.user_id == user_id,
+                    or_(Subscription.canonical_key == canonical_key, Subscription.url == url),
+                ),
+            ).scalar_one_or_none()
+        payload = {
+            'url': url,
+            'user_id': user_id,
+            'expected_intent_version': int(intent_version or 0),
+        }
+        site = resolve_site(url) or 'unknown'
+        dedupe_key = (
+            f'dedupe:subscription_import:{user_id}:{build_subscription_canonical_key(url)}:'
+            f'{payload["expected_intent_version"]}'
+        )
+        try:
+            _, task = crawl_task_service.create_job_with_task(
+                job_type='subscription_import',
+                source_type='manual',
+                site=site,
+                task_type='subscription_import',
+                payload=payload,
+                priority='manual',
+                dedupe_key=dedupe_key,
+                max_attempts=3,
+            )
+        except IntegrityError:
+            with self.session_factory() as session:
+                task = session.scalars(select(CrawlTask).where(CrawlTask.dedupe_key == dedupe_key)).first()
+                if task is None:
+                    raise
+        return {'task_id': task.id, **payload}
 
     def list_user_ids(self) -> list[int]:
         with self.session_factory() as session:

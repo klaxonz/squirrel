@@ -8,9 +8,13 @@ from sqlalchemy import func, select
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 from domains.subscription.application.services.core.crud import get_subscription_by_id
+from domains.subscription.application.services.core.sync.run_service import (
+    SubscriptionSyncRunService,
+    mark_run_status_in_session,
+)
+from domains.subscription.application.services.core.sync.state._ownership import has_live_execution_token
 from domains.subscription.application.services.core.update.command_events import (
     SubscriptionSyncCommandEventPublisher,
-    subscription_sync_command_event_publisher,
 )
 from domains.subscription.application.services.core.update.command_payloads import (
     build_command,
@@ -28,8 +32,11 @@ from domains.subscription.application.services.core.update.models import (
 )
 from domains.subscription.application.services.core.update.queueing import SubscriptionSyncQueuePlanner
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
+from domains.subscription.application.services.crawl.tasks.errors import CrawlExecutionError, CrawlTaskStateError
 from domains.subscription.application.services.crawl.tasks.task_types import resolve_subscription_sync_task_type
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.subscription.domain.models.subscription import Subscription
+from domains.subscription.domain.models.subscription_sync_run import SubscriptionSyncRun, SyncRunStatus
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState, SyncMode, SyncStatus
 from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session
@@ -101,7 +108,9 @@ class SubscriptionSyncLifecycle:
         self.session_factory = session_factory or get_session
         self._sync_state_service = sync_state_service or subscription_sync_state_service
         self._crawl_tasks = crawl_tasks or crawl_task_service
-        self._event_publisher = event_publisher or subscription_sync_command_event_publisher
+        self._event_publisher = event_publisher or SubscriptionSyncCommandEventPublisher(
+            SubscriptionSyncRunService(self.session_factory),
+        )
         self._queue_planner = SubscriptionSyncQueuePlanner(self._sync_state_service, self._event_publisher)
 
     def request_sync(
@@ -134,6 +143,7 @@ class SubscriptionSyncLifecycle:
             direct=False,
             event_publisher=self._event_publisher,
             has_active_subscribers=self._has_active_subscribers,
+            prepare_deferred_state=lambda reason: self._prepare_preflight_deferred_state(command, reason),
         )
         if preflight is not None:
             return preflight
@@ -171,10 +181,14 @@ class SubscriptionSyncLifecycle:
                 task_type=resolve_subscription_sync_task_type(command.mode.value),
                 payload=task_payload,
                 sync_state_id=queued.sync_state_id,
+                run_id=queued.run_context.run_id,
                 trace_id=command.trace_id,
             )
             request_id = str(task.id)
             task.payload = {**(task.payload or {}), 'request_id': request_id}
+            run = session.get(SubscriptionSyncRun, queued.run_context.run_id)
+            if run is not None:
+                run.request_id = request_id
             session.flush()
 
         logger.debug(
@@ -222,20 +236,29 @@ class SubscriptionSyncLifecycle:
             direct=True,
             event_publisher=self._event_publisher,
             has_active_subscribers=self._has_active_subscribers,
+            prepare_deferred_state=lambda reason: self._prepare_preflight_deferred_state(command, reason),
         )
         if isinstance(preflight, SubscriptionDirectRunResult):
             return preflight
 
-        queued = self._queue_planner.queue_sync_state(command, domain=domain, scheduled=False)
-        if queued.status != 'ready':
-            return SubscriptionDirectRunResult(
-                subscription_id=command.subscription_id,
-                sync_state_id=queued.sync_state_id,
-                status=queued.status,
-                run_id=queued.run_context.run_id if queued.run_context else command.run_id,
+        with self.session_factory() as session:
+            queued = self._queue_planner.queue_sync_state_in_session(
+                session,
+                command,
+                domain=domain,
+                scheduled=False,
             )
-
-        request_id = f'direct:{queued.run_context.run_id}'
+            if queued.status != 'ready':
+                return SubscriptionDirectRunResult(
+                    subscription_id=command.subscription_id,
+                    sync_state_id=queued.sync_state_id,
+                    status=queued.status,
+                    run_id=queued.run_context.run_id if queued.run_context else command.run_id,
+                )
+            request_id = f'direct:{queued.run_context.run_id}'
+            run = session.get(SubscriptionSyncRun, queued.run_context.run_id)
+            if run is not None:
+                run.request_id = request_id
 
         from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
             execute_subscription_sync_payload,
@@ -253,13 +276,17 @@ class SubscriptionSyncLifecycle:
                         cursor_payload=cursor_payload,
                     ),
                     'inline_video_extraction': True,
+                    'execution_token': request_id,
                 }
             )
-        except (ValueError, TypeError, AttributeError, KeyError) as exc:
+        except (CrawlExecutionError, ValueError, TypeError, AttributeError, KeyError) as exc:
             self._sync_state_service.mark_sync_failed(
                 queued.sync_state_id,
                 str(exc),
-                error_type=type(exc).__name__,
+                error_type=str(getattr(exc, 'error_type', None) or type(exc).__name__),
+                run_id=queued.run_context.run_id,
+                queue_token=queued.queue_token,
+                execution_token=request_id,
             )
             sync_result = SubscriptionUpdateResult(
                 subscription_id=command.subscription_id,
@@ -267,6 +294,8 @@ class SubscriptionSyncLifecycle:
                 videos_found=0,
                 videos_enqueued=0,
                 error_message=str(exc),
+                error_type=str(getattr(exc, 'error_type', None) or type(exc).__name__),
+                retryable=bool(getattr(exc, 'retryable', False)),
             )
 
         return SubscriptionDirectRunResult(
@@ -284,6 +313,7 @@ class SubscriptionSyncLifecycle:
         queue_token: str,
         *,
         run_id: str | None = None,
+        execution_token: str | None = None,
         request_id: str | None = None,
         trace_id: str | None = None,
         trigger: str | None = None,
@@ -292,6 +322,7 @@ class SubscriptionSyncLifecycle:
             sync_state_id,
             queue_token,
             run_id=run_id,
+            execution_token=execution_token,
             request_id=request_id,
             trace_id=trace_id,
             trigger=trigger,
@@ -325,7 +356,34 @@ class SubscriptionSyncLifecycle:
         self._sync_state_service.ensure_sync_states(subscription_id, url)
 
     def deactivate_subscription_syncs(self, subscription_id: int, *, reason: str) -> None:
-        self._sync_state_service.deactivate_sync_states(subscription_id, reason=reason)
+        with self.session_factory() as session:
+            states = session.execute(
+                select(SubscriptionSyncState)
+                .where(SubscriptionSyncState.subscription_id == subscription_id)
+                .order_by(SubscriptionSyncState.id.asc())
+                .with_for_update(),
+            ).scalars().all()
+            subscription = session.execute(
+                select(Subscription).where(Subscription.id == subscription_id).with_for_update(),
+            ).scalar_one_or_none()
+            if subscription is None or not subscription.is_deleted:
+                return
+            has_active_subscriber = session.execute(
+                select(UserSubscription.id)
+                .where(
+                    UserSubscription.subscription_id == subscription_id,
+                    UserSubscription.is_deleted.is_(False),
+                )
+                .limit(1),
+            ).first() is not None
+            if has_active_subscriber:
+                return
+            self._sync_state_service.deactivate_sync_states_in_session(
+                session,
+                subscription_id,
+                reason=reason,
+                states=states,
+            )
 
     def skip_sync(self, request: SubscriptionUpdateRequest, *, reason: str) -> None:
         if not request.sync_state_id:
@@ -333,6 +391,9 @@ class SubscriptionSyncLifecycle:
         self._sync_state_service.mark_sync_skipped(
             request.sync_state_id,
             reason=reason,
+            run_id=request.run_id,
+            queue_token=request.queue_token,
+            execution_token=request.execution_token,
         )
 
     def fail_sync(self, request: SubscriptionUpdateRequest, error: Exception | str) -> None:
@@ -342,6 +403,9 @@ class SubscriptionSyncLifecycle:
             request.sync_state_id,
             str(error),
             error_type=type(error).__name__ if isinstance(error, Exception) else None,
+            run_id=request.run_id,
+            queue_token=request.queue_token,
+            execution_token=request.execution_token,
         )
 
     def complete_sync(self, request: SubscriptionUpdateRequest, result: SubscriptionUpdateResult) -> None:
@@ -349,22 +413,27 @@ class SubscriptionSyncLifecycle:
             return
 
         if request.mode == UpdateMode.FULL and result.has_more:
-            self._sync_state_service.continue_full_sync_batch(
-                request.sync_state_id,
-                cursor_payload=result.cursor_payload,
-                latest_video_url=result.latest_video_url,
-                videos_found=result.videos_found,
-            )
-            self._continue_full_sync(request, cursor_payload=result.cursor_payload)
+            continuation_payload = self._queue_full_continuation(request, result)
+            if request.inline_video_extraction:
+                self._run_inline_continuation(continuation_payload)
             return
 
         completion_cursor_payload = {} if request.mode == UpdateMode.FULL else result.cursor_payload
-        self._sync_state_service.mark_sync_success(
+        completed_state = self._sync_state_service.mark_sync_success(
             request.sync_state_id,
             cursor_payload=completion_cursor_payload,
             latest_video_url=result.latest_video_url,
             videos_found=result.videos_found,
+            videos_enqueued=result.videos_enqueued,
+            run_id=request.run_id,
+            queue_token=request.queue_token,
+            execution_token=request.execution_token,
+            total_available=result.total_available,
         )
+        if completed_state is None:
+            raise CrawlTaskStateError(
+                f'Stale sync completion: sync_state_id={request.sync_state_id}, run_id={request.run_id}',
+            )
 
     def record_gap_observation(
         self,
@@ -384,6 +453,8 @@ class SubscriptionSyncLifecycle:
             cursor_loop_detected=bool(result.cursor_loop_detected),
             total_available=result.total_available,
             local_total=local_total,
+            run_id=request.run_id,
+            execution_token=request.execution_token,
         )
         if not summary['should_request_full']:
             return
@@ -402,7 +473,11 @@ class SubscriptionSyncLifecycle:
             )
             if scheduled.status != 'queued':
                 return
-            self._sync_state_service.mark_full_sync_requested(request.sync_state_id)
+            self._sync_state_service.mark_full_sync_requested(
+                request.sync_state_id,
+                run_id=request.run_id,
+                execution_token=request.execution_token,
+            )
             logger.info(
                 'Gap detection enqueued full backfill subscription_id=%s site=%s sync_state_id=%s gap_score=%s',
                 request.subscription_id,
@@ -424,6 +499,10 @@ class SubscriptionSyncLifecycle:
     ) -> None:
         if request.inline_video_extraction:
             return
+        if request.sync_state_id and not self._has_live_request_execution(request):
+            raise CrawlTaskStateError(
+                f'Stale total-video backfill request: sync_state_id={request.sync_state_id}, run_id={request.run_id}',
+            )
 
         subscription = get_subscription_by_id(request.subscription_id)
         if not subscription:
@@ -439,18 +518,24 @@ class SubscriptionSyncLifecycle:
         ):
             return
 
-        scheduled = self.request_sync(
-            subscription_id=request.subscription_id,
-            url=request.url,
-            trigger=UpdateTrigger.SCHEDULED,
-            mode=UpdateMode.FULL,
-            trace_id=request.trace_id,
-        )
-        logger.info(
-            'Scheduled full sync to backfill total videos: subscription_id=%s, status=%s',
-            request.subscription_id,
-            scheduled.status,
-        )
+        try:
+            scheduled = self.request_sync(
+                subscription_id=request.subscription_id,
+                url=request.url,
+                trigger=UpdateTrigger.SCHEDULED,
+                mode=UpdateMode.FULL,
+                trace_id=request.trace_id,
+            )
+            logger.info(
+                'Scheduled full sync to backfill total videos: subscription_id=%s, status=%s',
+                request.subscription_id,
+                scheduled.status,
+            )
+        except Exception:
+            logger.exception(
+                'Failed to schedule total-video backfill: subscription_id=%s',
+                request.subscription_id,
+            )
 
     def record_task_retry_transition(
         self,
@@ -461,6 +546,7 @@ class SubscriptionSyncLifecycle:
         retryable: bool,
         error_message: str | None,
         run_id: str | None = None,
+        execution_token: str | None = None,
         request_id: str | None = None,
         trace_id: str | None = None,
         trigger: str | None = None,
@@ -472,25 +558,66 @@ class SubscriptionSyncLifecycle:
             retryable=retryable,
             error_message=error_message,
             run_id=run_id,
+            execution_token=execution_token,
             request_id=request_id,
             trace_id=trace_id,
             trigger=trigger,
         )
 
-    def record_video_extraction_enqueued(self, sync_state_id: int | None) -> None:
-        self._sync_state_service.increment_pending_video_count(sync_state_id, 1)
+    def record_video_extraction_enqueued(
+        self,
+        sync_state_id: int | None,
+        *,
+        run_id: str | None = None,
+        execution_token: str | None = None,
+    ) -> None:
+        reserved = self._sync_state_service.increment_pending_video_count(
+            sync_state_id,
+            1,
+            run_id=run_id,
+            execution_token=execution_token,
+        )
+        if sync_state_id and run_id and execution_token and not reserved:
+            raise CrawlTaskStateError(
+                f'Stale video extraction reservation: sync_state_id={sync_state_id}, run_id={run_id}',
+            )
 
-    def record_video_extraction_dispatch_failed(self, sync_state_id: int | None) -> None:
+    def record_video_extraction_dispatch_failed(
+        self,
+        sync_state_id: int | None,
+        *,
+        run_id: str | None = None,
+        execution_token: str | None = None,
+    ) -> None:
         self._sync_state_service.decrement_pending_video_count(
             sync_state_id,
             allow_completion=False,
+            run_id=run_id,
+            execution_token=execution_token,
         )
 
-    def record_video_extraction_terminal(self, sync_state_id: int | None, *, succeeded: bool) -> None:
+    def record_video_extraction_terminal(
+        self,
+        sync_state_id: int | None,
+        *,
+        succeeded: bool,
+        run_id: str | None = None,
+        execution_token: str | None = None,
+    ) -> None:
         if succeeded:
-            self._sync_state_service.decrement_pending_video_count(sync_state_id, allow_completion=True)
+            self._sync_state_service.decrement_pending_video_count(
+                sync_state_id,
+                allow_completion=True,
+                run_id=run_id,
+                execution_token=execution_token,
+            )
             return
-        self._sync_state_service.decrement_pending_video_count(sync_state_id, allow_completion=False)
+        self._sync_state_service.decrement_pending_video_count(
+            sync_state_id,
+            allow_completion=False,
+            run_id=run_id,
+            execution_token=execution_token,
+        )
         if sync_state_id:
             self._sync_state_service.reconcile_terminal_drained_sync_states(sync_state_id)
 
@@ -511,39 +638,111 @@ class SubscriptionSyncLifecycle:
     def recover_on_startup(self) -> dict[str, int]:
         return self._sync_state_service.recover_stale_sync_states_on_startup()
 
-    def _continue_full_sync(self, request: SubscriptionUpdateRequest, *, cursor_payload: dict | None) -> None:
-        if request.inline_video_extraction:
-            continuation_result = self.run_inline_sync(
-                subscription_id=request.subscription_id,
-                url=request.url,
-                trigger=request.trigger,
-                mode=request.mode,
-                user_id=request.user_id,
-                force=request.force,
-                trace_id=request.trace_id,
-                run_id=request.run_id,
-                cursor_payload=cursor_payload,
-            )
-            expected_status = 'success'
-        else:
-            continuation_result = self.request_sync(
-                subscription_id=request.subscription_id,
-                url=request.url,
-                trigger=request.trigger,
-                mode=request.mode,
-                user_id=request.user_id,
-                force=request.force,
-                trace_id=request.trace_id,
-                run_id=request.run_id,
-                cursor_payload=cursor_payload,
-            )
-            expected_status = 'queued'
+    def _queue_full_continuation(
+        self,
+        request: SubscriptionUpdateRequest,
+        result: SubscriptionUpdateResult,
+    ) -> dict:
+        if not request.sync_state_id or not request.run_id or not request.queue_token:
+            raise CrawlTaskStateError('Full-sync continuation is missing its fencing identity')
 
-        if continuation_result.status != expected_status:
-            raise ValueError(
-                f'Failed to continue subscription sync: subscription_id={request.subscription_id}, '
-                f'status={continuation_result.status}',
+        command = build_command(
+            subscription_id=request.subscription_id,
+            url=request.url,
+            trigger=request.trigger,
+            mode=request.mode,
+            user_id=request.user_id,
+            force=request.force,
+            trace_id=request.trace_id,
+            run_id=request.run_id,
+        )
+        now = datetime.now()
+        next_queue_token = self._sync_state_service.build_queue_token()
+
+        with self.session_factory() as session:
+            state = session.execute(
+                select(SubscriptionSyncState)
+                .where(SubscriptionSyncState.id == request.sync_state_id)
+                .with_for_update(),
+            ).scalar_one_or_none()
+            if (
+                state is None
+                or state.current_run_id != request.run_id
+                or state.queue_token != request.queue_token
+                or state.execution_token != request.execution_token
+                or state.sync_status != SyncStatus.RUNNING.value
+                or not has_live_execution_token(session, state, request.execution_token)
+            ):
+                raise CrawlTaskStateError(
+                    f'Stale full-sync continuation: sync_state_id={request.sync_state_id}, run_id={request.run_id}',
+                )
+
+            state.cursor_payload = result.cursor_payload or {}
+            if result.latest_video_url and not state.last_seen_video_url:
+                state.last_seen_video_url = result.latest_video_url
+            state.sync_status = SyncStatus.QUEUED.value
+            state.queue_token = next_queue_token
+            state.execution_token = None
+            state.queued_at = now
+            state.locked_at = None
+            state.last_sync_at = now
+            state.last_error = None
+            if result.total_available is not None:
+                subscription = session.get(Subscription, request.subscription_id)
+                if subscription is not None:
+                    subscription.total_videos = max(0, int(result.total_available))
+            state.version += 1
+            mark_run_status_in_session(
+                session,
+                request.run_id,
+                SyncRunStatus.QUEUED.value,
+                queue_token=next_queue_token,
+                cursor_out=result.cursor_payload,
+                videos_found=result.videos_found,
+                videos_enqueued=result.videos_enqueued,
+                now=now,
             )
+
+            task_payload = build_task_payload(
+                command,
+                request.sync_state_id,
+                next_queue_token,
+                request_id=None,
+                run_id=request.run_id,
+                cursor_payload=result.cursor_payload,
+            )
+            if request.inline_video_extraction:
+                return {
+                    **task_payload,
+                    'request_id': f'direct:{request.run_id}',
+                    'execution_token': request.execution_token,
+                    'inline_video_extraction': True,
+                }
+
+            _, task = self._crawl_tasks.create_job_with_task_in_session(
+                session,
+                job_type='subscription_sync',
+                source_type='manual' if request.trigger == UpdateTrigger.MANUAL else 'scheduled',
+                site=resolve_site(request.url),
+                subscription_id=request.subscription_id,
+                priority=resolve_priority(request.trigger, request.mode),
+                task_type=resolve_subscription_sync_task_type(request.mode.value),
+                payload=task_payload,
+                sync_state_id=request.sync_state_id,
+                run_id=request.run_id,
+                trace_id=request.trace_id,
+            )
+            task.payload = {**task_payload, 'request_id': str(task.id)}
+            session.flush()
+            return task.payload
+
+    @staticmethod
+    def _run_inline_continuation(payload: dict) -> None:
+        from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
+            execute_subscription_sync_payload,
+        )
+
+        execute_subscription_sync_payload(payload)
 
     def _can_request_full_sync(self, site: str) -> bool:
         global_limit = max(1, int(settings.FULL_SYNC_MAX_INFLIGHT))
@@ -577,6 +776,47 @@ class SubscriptionSyncLifecycle:
                     return False
 
         return True
+
+    def _has_live_request_execution(self, request: SubscriptionUpdateRequest) -> bool:
+        if not request.sync_state_id:
+            return True
+        with self.session_factory() as session:
+            state = session.execute(
+                select(SubscriptionSyncState)
+                .where(SubscriptionSyncState.id == request.sync_state_id)
+                .with_for_update(),
+            ).scalar_one_or_none()
+            return bool(
+                state is not None
+                and state.current_run_id == request.run_id
+                and state.queue_token == request.queue_token
+                and has_live_execution_token(session, state, request.execution_token)
+            )
+
+    def _prepare_preflight_deferred_state(self, command, reason: str) -> int | None:
+        now = datetime.now()
+        with self.session_factory() as session:
+            state, status = self._sync_state_service.prepare_sync_state_for_enqueue_in_session(
+                session,
+                command.subscription_id,
+                command.url,
+                command.mode.value,
+                scheduled=False,
+                now=now,
+            )
+            if state is None:
+                return None
+            if status not in {'queued', 'in_progress'}:
+                state.sync_status = SyncStatus.SUCCESS.value
+                state.last_sync_at = now
+                state.last_error = reason
+                state.queue_token = None
+                state.current_run_id = None
+                state.queued_at = None
+                state.locked_at = None
+                state.next_sync_at = now + timedelta(hours=6)
+                state.version += 1
+            return state.id
 
     def _has_active_subscribers(self, subscription_id: int) -> bool:
         with self.session_factory() as session:

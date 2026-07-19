@@ -27,15 +27,27 @@ class FakeRssService:
         )
         return {'data': [], 'total': 0, 'page': page, 'page_size': page_size}
 
+    def record_entry_view(self, user_id, entry_id):
+        self.calls.append({'method': 'record_entry_view', 'user_id': user_id, 'entry_id': entry_id})
+        return False
 
-def test_list_rss_entries_forwards_query_model_values():
-    fake_service = FakeRssService()
+    def list_recently_viewed(self, user_id, *, account_id=None):
+        self.calls.append({'method': 'list_recently_viewed', 'user_id': user_id, 'account_id': account_id})
+        return []
 
+
+def _create_client(fake_service):
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=7)
     app.dependency_overrides[get_rss_service] = lambda: fake_service
-    client = TestClient(app)
+    return TestClient(app)
+
+
+def test_list_rss_entries_forwards_query_model_values():
+    fake_service = FakeRssService()
+
+    client = _create_client(fake_service)
 
     route_response = client.get(
         '/entries',
@@ -64,3 +76,20 @@ def test_list_rss_entries_forwards_query_model_values():
             'page_size': 40,
         }
     ]
+
+
+def test_record_rss_entry_view_returns_not_found_when_entry_is_not_owned():
+    fake_service = FakeRssService()
+    response = _create_client(fake_service).post('/entries/99/view')
+
+    assert response.status_code == 404
+    assert fake_service.calls == [{'method': 'record_entry_view', 'user_id': 7, 'entry_id': 99}]
+
+
+def test_recently_viewed_forwards_account_scope():
+    fake_service = FakeRssService()
+    response = _create_client(fake_service).get('/entries/recently-viewed', params={'accountId': 11})
+
+    assert response.status_code == 200
+    assert response.json()['data'] == {'data': []}
+    assert fake_service.calls == [{'method': 'list_recently_viewed', 'user_id': 7, 'account_id': 11}]

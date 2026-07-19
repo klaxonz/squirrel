@@ -14,8 +14,8 @@
         </DialogDescription>
       </DialogHeader>
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
-        <Button severity="secondary" outlined size="sm" @click="open = false">{{ cancelLabel }}</Button>
-        <Button size="sm" :variant="confirmVariant" @click="$emit('confirm')">{{ confirmLabel }}</Button>
+        <Button severity="secondary" outlined size="sm" :disabled="confirming" @click="open = false">{{ cancelLabel }}</Button>
+        <Button size="sm" :variant="confirmVariant" :loading="confirming" :disabled="confirming" @click="$emit('confirm')">{{ confirmLabel }}</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
@@ -46,6 +46,7 @@ defineProps<{
   cancelLabel?: string
   confirmLabel: string
   confirmVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost'
+  confirming?: boolean
 }>()
 
 const open = defineModel<boolean>('open', { required: true })

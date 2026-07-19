@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, TEXT, VARCHAR, DateTime, Index, Integer
+from sqlalchemy import JSON, TEXT, VARCHAR, DateTime, ForeignKey, Index, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.database.base import Base
@@ -20,7 +20,15 @@ class CrawlJob(Base):
     job_type: Mapped[str] = mapped_column(VARCHAR(32), nullable=False)
     source_type: Mapped[str] = mapped_column(VARCHAR(32), nullable=False)
     site: Mapped[str | None] = mapped_column(VARCHAR(64), nullable=True)
-    subscription_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    subscription_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey(
+            'subscription.id',
+            name='fk_crawl_job_subscription_id_subscription',
+            ondelete='SET NULL',
+        ),
+        nullable=True,
+    )
     status: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default='pending')
     priority: Mapped[str] = mapped_column(VARCHAR(16), nullable=False, default='normal')
     trace_id: Mapped[str | None] = mapped_column(VARCHAR(64), nullable=True)

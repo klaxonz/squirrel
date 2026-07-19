@@ -11,6 +11,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / 'squirrel-site-runtimes' / 'shared'))
 sys.path.insert(0, str(REPO_ROOT / 'squirrel-backend'))
 
+from infrastructure.database.base import Base
+from shared_kernel.infrastructure import module_discovery
+
+# Match Alembic and application startup: selective SQLite create_all calls still
+# need every referenced table registered so SQLAlchemy can resolve model FKs.
+module_discovery.import_classes_from_package(package='domains', base_class=Base, recursive=True)
+
 pytest_plugins = []
 
 

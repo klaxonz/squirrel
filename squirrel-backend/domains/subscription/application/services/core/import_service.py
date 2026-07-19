@@ -1,24 +1,23 @@
-import json
 import logging
-import threading
 from typing import Any
 
-from domains.subscription.application.services.core.crud import subscription_crud_service
-from domains.subscription.application.services.core.manage import subscription_manage_service
+from sqlalchemy.exc import IntegrityError
+
+from domains.subscription.application.services.core.crud import SubscriptionCrudService
+from domains.subscription.application.services.core.import_errors import SubscriptionImportError
+from domains.subscription.application.services.core.manage import SubscriptionManageService
 from domains.subscription.application.services.core.runtime_models import (
     SubscriptionImportBatchResult,
     SubscriptionImportItem,
     SubscriptionMeta,
 )
-from domains.subscription.domain.models.subscription import Subscription
-from domains.system.domain.models import constants
+from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
+from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
+from domains.subscription.domain.models.subscription import Subscription, build_subscription_canonical_key
 from infrastructure.database.session import get_session
-from infrastructure.messaging.framework.producer import RedisStreamProducer
-from infrastructure.messaging.models.message import Message
-from infrastructure.messaging.payload import serialize_message
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
-from infrastructure.site_plugins.registry import SitePluginRegistry, get_site_plugin_registry
+from infrastructure.site_plugins.registry import SitePluginRegistry, SitePluginResult, get_site_plugin_registry
 from shared_kernel.domain.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -32,11 +31,37 @@ class SubscriptionImportService:
         session_factory=get_session,
         crud_service=None,
         manage_service=None,
+        crawl_tasks=None,
     ):
         self._registry = registry or get_site_plugin_registry()
         self.session_factory = session_factory
-        self.crud_service = crud_service or subscription_crud_service
-        self.manage_service = manage_service or subscription_manage_service
+        self.crud_service = crud_service or SubscriptionCrudService(session_factory)
+        self.manage_service = manage_service or SubscriptionManageService(
+            session_factory=session_factory,
+            crud_service=self.crud_service,
+            lifecycle=SubscriptionSyncLifecycle(session_factory=session_factory),
+        )
+        self._crawl_tasks = crawl_tasks or crawl_task_service
+
+    @staticmethod
+    def _classified_plugin_error(
+        response: SitePluginResult,
+        *,
+        fallback_message: str,
+    ) -> SubscriptionImportError:
+        error = response.error
+        details = error.details if error else {}
+        return SubscriptionImportError(
+            error.message if error else fallback_message,
+            retryable=bool(error.retryable if error else response.retryable),
+            error_type=str(
+                (error.code if error else None)
+                or details.get('code')
+                or details.get('error_category')
+                or 'site_plugin_error'
+            ),
+            retry_after_seconds=details.get('retry_after_seconds'),
+        )
 
     @staticmethod
     def get_plugin_supported_sites(
@@ -66,10 +91,10 @@ class SubscriptionImportService:
         }
         response = self._registry.invoke('resolve_subscription', payload=payload, domain=domain or None)
         if not response.ok:
-            message = (
-                response.error.message if response.error else f'Plugin subscription resolution failed for url: {url}'
+            raise self._classified_plugin_error(
+                response,
+                fallback_message=f'Plugin subscription resolution failed for url: {url}',
             )
-            raise ValidationError(message)
 
         if not isinstance(response.data, dict):
             raise ValidationError(f'Plugin resolve_subscription payload must be an object for url: {url}')
@@ -102,8 +127,10 @@ class SubscriptionImportService:
 
         response = self._registry.invoke('import_subscriptions', payload=payload or None, site_name=site_name)
         if not response.ok:
-            message = response.error.message if response.error else f'Plugin import failed for site: {site_name}'
-            raise ValidationError(message)
+            raise self._classified_plugin_error(
+                response,
+                fallback_message=f'Plugin import failed for site: {site_name}',
+            )
 
         payload = response.data
         if not isinstance(payload, dict):
@@ -129,20 +156,34 @@ class SubscriptionImportService:
 
         return SubscriptionImportService._dedupe_import_items(items)
 
-    def handle_subscribe_request(self, url: str, user_id: int) -> Subscription:
+    def handle_subscribe_request(
+        self,
+        url: str,
+        user_id: int,
+        *,
+        expected_intent_version: int | None = None,
+    ) -> Subscription:
         existing_subscription = self.crud_service.get_active_user_subscription_by_url(user_id=user_id, url=url)
         if existing_subscription:
             return existing_subscription
 
         subscribe_info = self._load_plugin_subscription_meta(url)
 
-        subscription = self.crud_service.get_subscription_by_url_and_name(url, subscribe_info.name)
+        subscription = self.crud_service.get_subscription_by_url(url)
 
         if subscription:
-            self.manage_service.restore_subscription(subscription.id, user_id)
+            self.manage_service.restore_subscription(
+                subscription.id,
+                user_id,
+                expected_intent_version=expected_intent_version,
+            )
             return self.crud_service.get_subscription_by_id(subscription.id)
 
-        subscription = self.manage_service.create_subscription(user_id, subscribe_info)
+        subscription = self.manage_service.create_subscription(
+            user_id,
+            subscribe_info,
+            expected_intent_version=expected_intent_version,
+        )
         return subscription
 
     def preview_user_subscriptions(
@@ -194,38 +235,102 @@ class SubscriptionImportService:
             logger.error('Failed to preview subscriptions from %s: %s', site_name, e, exc_info=True)
             raise
 
-    def _enqueue_subscriptions_async(self, subscriptions: list[SubscriptionImportItem], user_id: int, site_name: str):
-        try:
-            enqueued = 0
-            producer = RedisStreamProducer()
+    def _enqueue_subscription_tasks(
+        self,
+        subscriptions: list[SubscriptionImportItem],
+        user_id: int,
+        site_name: str,
+    ) -> int:
+        enqueued = 0
+        intent_versions = self.crud_service.get_user_subscription_intent_versions(
+            user_id,
+            [sub.url for sub in subscriptions],
+        )
+        for sub in subscriptions:
+            expected_intent_version = intent_versions.get(sub.url, 0)
+            payload = {
+                **sub.to_dict(),
+                'user_id': user_id,
+                'site_name': site_name,
+                'expected_intent_version': expected_intent_version,
+            }
+            dedupe_key = self.build_import_dedupe_key(
+                user_id,
+                sub.url,
+                expected_intent_version=expected_intent_version,
+            )
+            try:
+                self._crawl_tasks.create_job_with_task(
+                    job_type='subscription_import',
+                    source_type='scheduled',
+                    site=site_name,
+                    task_type='subscription_import',
+                    payload=payload,
+                    priority='normal',
+                    dedupe_key=dedupe_key,
+                    max_attempts=3,
+                )
+                enqueued += 1
+            except IntegrityError as exc:
+                constraint_name = getattr(getattr(exc.orig, 'diag', None), 'constraint_name', None)
+                if constraint_name not in {None, 'uq_crawl_task_dedupe_key'} or not (
+                    self._crawl_tasks.has_task_with_dedupe_key(dedupe_key)
+                ):
+                    raise
+                # A unique dedupe-key collision means the same durable task is already pending.
+                logger.debug('Subscription import task already queued: user_id=%s url=%s', user_id, sub.url)
+                continue
+        logger.info('Enqueued %s/%s durable subscription tasks from %s', enqueued, len(subscriptions), site_name)
+        return enqueued
 
-            with self.session_factory() as session:
-                for sub in subscriptions:
-                    url = sub.url
-                    try:
-                        task = {
-                            'url': url,
-                            'name': sub.name,
-                            'avatar': sub.avatar,
-                            'user_id': user_id,
-                        }
-                        message = Message(body=json.dumps(task))
-                        session.add(message)
-                        session.flush()
+    @staticmethod
+    def build_import_dedupe_key(
+        user_id: int,
+        url: str,
+        *,
+        expected_intent_version: int = 0,
+    ) -> str:
+        digest = build_subscription_canonical_key(url)
+        return f'dedupe:subscription_import:{user_id}:{digest}:{expected_intent_version}'
 
-                        dump_json = serialize_message(message)
-                        producer.send(constants.QUEUE_SUBSCRIBE, dump_json)
-                        enqueued += 1
+    def process_import_payload(self, payload: dict[str, Any]) -> Subscription:
+        url = str(payload.get('url') or '').strip()
+        user_id = int(payload['user_id'])
+        if not url:
+            raise ValidationError('Subscription import URL is required')
+        expected_intent_version = int(payload.get('expected_intent_version', 0))
 
-                    except (ConnectionError, OSError, ValueError, TypeError) as e:
-                        logger.warning('Failed to enqueue subscription %s: %s', url, e)
+        existing = self.crud_service.get_active_user_subscription_by_url(user_id=user_id, url=url)
+        if existing:
+            return existing
 
-                session.commit()
+        global_subscription = self.crud_service.get_subscription_by_url(url)
+        if global_subscription:
+            self.manage_service.restore_subscription(
+                global_subscription.id,
+                user_id,
+                expected_intent_version=expected_intent_version,
+            )
+            return self.crud_service.get_subscription_by_id(global_subscription.id)
 
-            logger.info('Enqueued %s/%s subscription tasks from %s', enqueued, len(subscriptions), site_name)
-
-        except (ConnectionError, OSError, ValueError, TypeError) as e:
-            logger.error('Failed to enqueue subscriptions from %s: %s', site_name, e, exc_info=True)
+        name = str(payload.get('name') or '').strip()
+        if name:
+            subscribe_info = SubscriptionMeta(
+                id=str(payload.get('external_id') or url),
+                name=name,
+                avatar=payload.get('avatar'),
+                url=url,
+            )
+            return self.manage_service.create_subscription(
+                user_id,
+                subscribe_info,
+                expected_intent_version=expected_intent_version,
+            )
+        return self.handle_subscribe_request(
+            url,
+            user_id,
+            expected_intent_version=expected_intent_version,
+        )
 
     def import_user_subscriptions(
         self,
@@ -257,26 +362,22 @@ class SubscriptionImportService:
                 s for s in subscriptions if s.url not in imported_urls and s.url not in manually_unsubscribed_urls
             ]
 
+            enqueued = 0
             if to_import:
-                if use_background_thread:
-                    thread = threading.Thread(
-                        target=self._enqueue_subscriptions_async,
-                        args=(to_import, user_id, site_name),
-                        daemon=True,
-                    )
-                    thread.start()
-                    logger.info('Started background thread to enqueue %s subscriptions', len(to_import))
-                else:
-                    self._enqueue_subscriptions_async(to_import, user_id, site_name)
-                    logger.info('Synchronously enqueued %s subscriptions', len(to_import))
+                enqueued = self._enqueue_subscription_tasks(to_import, user_id, site_name)
+                logger.info(
+                    'Persisted %s subscription import tasks (background_hint=%s)',
+                    enqueued,
+                    use_background_thread,
+                )
             else:
                 logger.info('No new subscriptions to import')
 
             return {
-                'total': len(to_import),
+                'total': enqueued,
                 'found': found_total,
                 'selected': selected_total,
-                'skipped': selected_total - len(to_import),
+                'skipped': selected_total - enqueued,
             }
 
         except Exception as e:  # API boundary — re-raise after logging
@@ -347,3 +448,4 @@ handle_subscribe_request = subscription_import_service.handle_subscribe_request
 preview_user_subscriptions = subscription_import_service.preview_user_subscriptions
 import_user_subscriptions = subscription_import_service.import_user_subscriptions
 auto_import_missing_subscriptions = subscription_import_service.auto_import_missing_subscriptions
+process_import_payload = subscription_import_service.process_import_payload

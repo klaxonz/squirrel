@@ -16,14 +16,9 @@ def _params():
     )
 
 
-def test_record_terminal_clears_dedupe_and_completes_pending_on_success(monkeypatch):
-    clear_calls = []
+def test_record_terminal_completes_pending_on_success(monkeypatch):
     decrement_calls = []
 
-    monkeypatch.setattr(
-        'domains.video.application.services.extraction.progress_service.video_extraction_task_service.clear_video_extraction_dedupe',
-        lambda params: clear_calls.append(params.url),
-    )
     monkeypatch.setattr(
         'domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_terminal',
         lambda *args, **kwargs: decrement_calls.append((args, kwargs)),
@@ -31,25 +26,20 @@ def test_record_terminal_clears_dedupe_and_completes_pending_on_success(monkeypa
 
     VideoExtractionProgressService().record_terminal(_params(), succeeded=True)
 
-    assert clear_calls == ['https://www.youtube.com/watch?v=demo']
     assert decrement_calls == [
         (
             (2,),
             {
                 'succeeded': True,
+                'run_id': 'run-1',
             },
         ),
     ]
 
 
-def test_record_terminal_clears_dedupe_without_completing_pending_on_failure(monkeypatch):
-    clear_calls = []
+def test_record_terminal_updates_pending_on_failure(monkeypatch):
     decrement_calls = []
 
-    monkeypatch.setattr(
-        'domains.video.application.services.extraction.progress_service.video_extraction_task_service.clear_video_extraction_dedupe',
-        lambda params: clear_calls.append(params.url),
-    )
     monkeypatch.setattr(
         'domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_terminal',
         lambda *args, **kwargs: decrement_calls.append((args, kwargs)),
@@ -57,12 +47,12 @@ def test_record_terminal_clears_dedupe_without_completing_pending_on_failure(mon
 
     VideoExtractionProgressService().record_terminal(_params(), succeeded=False)
 
-    assert clear_calls == ['https://www.youtube.com/watch?v=demo']
     assert decrement_calls == [
         (
             (2,),
             {
                 'succeeded': False,
+                'run_id': 'run-1',
             },
         ),
     ]

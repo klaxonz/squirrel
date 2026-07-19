@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy.orm import Session
 
+from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskOwnershipError
 from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatchScope
 from domains.subscription.domain.models.crawl_job import CrawlJob
@@ -149,6 +150,7 @@ def test_recover_expired_tasks_moves_retriable_task_to_retry_wait(engine, svc):
             worker_id='worker-1',
             attempt=0,
             max_attempts=3,
+            dedupe_key='dedupe:video:retrying',
             lease_until=now - timedelta(seconds=1),
         )
         session.add(task)
@@ -167,6 +169,7 @@ def test_recover_expired_tasks_moves_retriable_task_to_retry_wait(engine, svc):
     assert stored_task.worker_id is None
     assert stored_task.lease_until is None
     assert stored_task.next_run_at == now + timedelta(seconds=45)
+    assert stored_task.dedupe_key == 'dedupe:video:retrying'
 
 
 def test_recover_expired_subscription_sync_task_only_updates_task_lifecycle(engine, svc):
@@ -240,6 +243,8 @@ def test_recover_expired_tasks_moves_exhausted_task_to_dead(engine, svc):
             worker_id='worker-1',
             attempt=2,
             max_attempts=3,
+            run_id='run-exhausted',
+            dedupe_key='dedupe:video:exhausted',
             lease_until=now - timedelta(seconds=1),
         )
         session.add(task)
@@ -256,6 +261,7 @@ def test_recover_expired_tasks_moves_exhausted_task_to_dead(engine, svc):
     assert stored_task.status == 'dead'
     assert stored_task.attempt == 3
     assert stored_task.finished_at == now
+    assert stored_task.dedupe_key == 'dedupe:video:exhausted'
 
 
 def test_recover_expired_subscription_sync_task_marks_sync_state_failed_when_dead(engine, session_factory):
@@ -522,3 +528,63 @@ def test_complete_and_dead_mix_marks_job_partial_failed(engine, svc):
         stored_job = session.get(CrawlJob, job_id)
 
     assert stored_job.status == 'partial_failed'
+
+
+def test_stale_lease_token_cannot_complete_reclaimed_task(engine, svc):
+    job_id = _create_job(engine)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            CrawlTask(
+                job_id=job_id,
+                task_type='video_extract',
+                site='youtube',
+                status='pending',
+                next_run_at=now,
+            ),
+        )
+        session.commit()
+
+    first = svc.claim_next_task(worker_id='worker-1', now=now, lease_seconds=1)
+    first_token = first.lease_token
+    svc.recover_expired_tasks(now=now + timedelta(seconds=2), retry_delay_seconds=0)
+    second = svc.claim_next_task(worker_id='worker-1', now=now + timedelta(seconds=2), lease_seconds=30)
+
+    assert second.lease_token != first_token
+    assert second.lease_generation == 2
+    with pytest.raises(CrawlTaskOwnershipError, match='lease token is stale'):
+        svc.complete_task(
+            task_id=second.id,
+            worker_id='worker-1',
+            lease_token=first_token,
+            now=now + timedelta(seconds=3),
+        )
+
+
+def test_expired_lease_cannot_complete_before_reaper_runs(engine, svc):
+    job_id = _create_job(engine)
+    now = datetime.now()
+    with Session(engine, expire_on_commit=False) as session:
+        task = CrawlTask(
+            job_id=job_id,
+            task_type='video_extract',
+            site='youtube',
+            status='running',
+            worker_id='worker-1',
+            lease_token='expired-token',
+            lease_until=now - timedelta(seconds=1),
+        )
+        session.add(task)
+        session.commit()
+        task_id = task.id
+
+    with pytest.raises(CrawlTaskOwnershipError, match='lease has expired'):
+        svc.complete_task(
+            task_id=task_id,
+            worker_id='worker-1',
+            lease_token='expired-token',
+            now=now,
+        )
+
+    with Session(engine, expire_on_commit=False) as session:
+        assert session.get(CrawlTask, task_id).status == 'running'

@@ -91,6 +91,8 @@ defineExpose({ scrollEl })
 */
 .app-two-column {
   width: 100%;
+  container-name: workbench;
+  container-type: inline-size;
 }
 
 .app-two-column--fill {
@@ -120,7 +122,7 @@ defineExpose({ scrollEl })
 }
 
 .app-two-column--preset-rss {
-  --app-workbench-sidebar-width: 15.5rem;
+  --app-workbench-sidebar-width: clamp(13rem, 18cqi, 15.5rem);
   --app-workbench-content-width: none;
   --app-workbench-sidebar-bg: transparent;
 }

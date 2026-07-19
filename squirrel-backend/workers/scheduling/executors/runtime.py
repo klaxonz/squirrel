@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
@@ -43,8 +44,8 @@ class CrawlWorkerRuntime:
 
     def run_once(self) -> bool:
         now = datetime.now()
-        self._recover_expired_tasks(now=now)
-        task = self.dispatcher.claim_next(worker_id=self.worker_id, now=now, lease_seconds=self.lease_seconds)
+        self._recover_expired_tasks()
+        task = self.dispatcher.claim_next(worker_id=self.worker_id, lease_seconds=self.lease_seconds)
         if not task:
             return False
 
@@ -57,26 +58,12 @@ class CrawlWorkerRuntime:
             thread_name_prefix=f'{self.worker_id}-slot',
         ) as executor:
             while not stop_event.is_set():
-                self._lease_tracker.reap_completed_futures()
-                self._lease_tracker.renew_active_leases(now=datetime.now())
-                available_slots = self.max_concurrency - self._lease_tracker.active_count
-                claimed_count = 0
-
-                if available_slots > 0:
-                    now = datetime.now()
-                    self._recover_expired_tasks(now=now)
-                    for _ in range(available_slots):
-                        task = self.dispatcher.claim_next(
-                            worker_id=self.worker_id,
-                            now=datetime.now(),
-                            lease_seconds=self.lease_seconds,
-                        )
-                        if not task:
-                            break
-                        submitted_at = datetime.now()
-                        future = executor.submit(self.task_runner.run_task, task, submitted_at)
-                        self._lease_tracker.track(future, task_id=task.id, now=submitted_at)
-                        claimed_count += 1
+                try:
+                    claimed_count = self._run_dispatch_cycle(executor)
+                except Exception:  # scheduler-loop boundary; transient storage failures must not kill the worker
+                    logger.exception('Crawl worker dispatch cycle failed; retrying')
+                    stop_event.wait(self.poll_interval_seconds)
+                    continue
 
                 if claimed_count:
                     continue
@@ -85,7 +72,43 @@ class CrawlWorkerRuntime:
                     continue
                 stop_event.wait(self.poll_interval_seconds)
 
-            self._lease_tracker.reap_completed_futures()
+            self._drain_active_tasks()
 
-    def _recover_expired_tasks(self, *, now: datetime) -> int:
+    def _run_dispatch_cycle(self, executor: ThreadPoolExecutor) -> int:
+        self._lease_tracker.reap_completed_futures()
+        self._lease_tracker.renew_active_leases(now=datetime.now())
+        available_slots = self.max_concurrency - self._lease_tracker.active_count
+        claimed_count = 0
+
+        if available_slots > 0:
+            self._recover_expired_tasks()
+            for _ in range(available_slots):
+                task = self.dispatcher.claim_next(
+                    worker_id=self.worker_id,
+                    lease_seconds=self.lease_seconds,
+                )
+                if not task:
+                    break
+                submitted_at = datetime.now()
+                future = executor.submit(self.task_runner.run_task, task, submitted_at)
+                self._lease_tracker.track(
+                    future,
+                    task_id=task.id,
+                    lease_token=task.lease_token,
+                    now=submitted_at,
+                )
+                claimed_count += 1
+        return claimed_count
+
+    def _recover_expired_tasks(self, *, now: datetime | None = None) -> int:
         return self.task_runner.recover_expired_tasks(now=now)
+
+    def _drain_active_tasks(self) -> None:
+        """Keep leases alive while ThreadPoolExecutor waits for running work on shutdown."""
+        poll_interval = min(0.25, max(0.05, self.lease_seconds / 6))
+        while self._lease_tracker.active_count:
+            self._lease_tracker.reap_completed_futures()
+            if not self._lease_tracker.active_count:
+                return
+            self._lease_tracker.renew_active_leases(now=datetime.now())
+            time.sleep(poll_interval)

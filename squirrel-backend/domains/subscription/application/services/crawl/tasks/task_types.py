@@ -1,6 +1,7 @@
 INCREMENTAL_SUBSCRIPTION_SYNC_TASK_TYPE = 'subscription_sync_incremental'
 FULL_SUBSCRIPTION_SYNC_TASK_TYPE = 'subscription_sync_full'
 LEGACY_SUBSCRIPTION_SYNC_TASK_TYPE = 'subscription_sync'
+SUBSCRIPTION_IMPORT_TASK_TYPE = 'subscription_import'
 
 
 class TaskTypes:
