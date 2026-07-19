@@ -20,6 +20,7 @@ export type IconName =
   | 'pip'
   | 'pipExit'
   | 'settings'
+  | 'playlist'
   | 'markClip'
   | 'subtitles'
   | 'subtitlesOff'

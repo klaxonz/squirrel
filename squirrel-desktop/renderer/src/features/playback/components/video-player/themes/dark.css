@@ -1,9 +1,9 @@
 .sp-player.sp-theme-dark,
 .sp-player[data-sp-theme="dark"] {
-  --sp-theme-primary: #d3d4d8;
-  --sp-theme-primary-hover: #e4e5e8;
-  --sp-theme-primary-active: #b8b9be;
-  --sp-theme-primary-rgb: 211, 212, 216;
+  --sp-theme-primary: hsl(var(--primary));
+  --sp-theme-primary-hover: hsl(var(--primary) / 0.9);
+  --sp-theme-primary-active: hsl(var(--primary) / 0.8);
+  --sp-theme-primary-rgb: 224, 90, 35;
 
   --sp-bg-elevated: rgba(18, 18, 18, 0.85);
   --sp-bg-overlay: rgba(0, 0, 0, 0.65);
@@ -31,7 +31,7 @@
   --sp-progress-bg: rgba(255, 255, 255, 0.12);
   --sp-progress-buffered: rgba(255, 255, 255, 0.2);
 
-  --sp-menu-bg: rgba(10, 10, 10, 0.88);
+  --sp-menu-bg: rgba(18, 18, 18, 0.98);
   --sp-menu-border: rgba(211, 212, 216, 0.1);
   --sp-menu-shadow: 0 12px 48px rgba(0, 0, 0, 0.8);
   --sp-btn-toggled-bg: rgba(211, 212, 216, 0.14);

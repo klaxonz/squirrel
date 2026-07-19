@@ -382,16 +382,34 @@ function onOpacityPointerDown(e: PointerEvent) {
 <style scoped>
 .sp-settings-pop {
   position: absolute;
-  bottom: 52px;
   right: 12px;
-  width: 220px;
+  bottom: 56px;
+  width: min(236px, calc(100% - 24px));
+  max-height: calc(100% - 72px);
   background: var(--sp-menu-bg);
   border: 1px solid var(--sp-menu-border);
-  border-radius: 3px;
+  border-radius: 10px;
   padding: 6px;
   z-index: 100;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
+  box-shadow: var(--sp-menu-shadow);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+  scrollbar-width: thin;
+}
+
+.sp-settings-pop::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sp-settings-pop::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sp-settings-pop::-webkit-scrollbar-thumb {
+  border-radius: var(--sp-radius-full);
+  background: rgb(255 255 255 / 0.18);
 }
 
 .sp-menu-list {
@@ -402,11 +420,12 @@ function onOpacityPointerDown(e: PointerEvent) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  min-height: 2.5rem;
+  padding: 8px 12px;
   color: var(--sp-text-secondary);
   font-size: 12px;
   font-family: var(--sp-font-family);
-  border-radius: 3px;
+  border-radius: 6px;
   cursor: pointer;
   transition:
     color var(--duration-normal) var(--ease-default),
@@ -422,6 +441,17 @@ function onOpacityPointerDown(e: PointerEvent) {
   color: var(--sp-text-strong);
 }
 
+.sp-settings-pop > .sp-menu-item:first-child {
+  justify-content: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--sp-menu-border);
+  border-radius: 6px 6px 2px 2px;
+  color: var(--sp-text-strong);
+  font-weight: 650;
+  opacity: 1 !important;
+}
+
 .sp-menu-item.is-active {
   color: var(--sp-primary);
   background: var(--sp-menu-item-active-bg);
@@ -434,11 +464,11 @@ function onOpacityPointerDown(e: PointerEvent) {
 }
 
 .sp-simple-switch {
-  width: 30px;
-  height: 16px;
+  width: 32px;
+  height: 18px;
   background: var(--sp-switch-bg);
   border: 1px solid var(--sp-border);
-  border-radius: 8px;
+  border-radius: 999px;
   position: relative;
   transition: background var(--duration-normal) var(--ease-default);
 }
@@ -453,8 +483,8 @@ function onOpacityPointerDown(e: PointerEvent) {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   background: #fff;
   border-radius: 50%;
   transition: transform var(--duration-normal) var(--ease-default);

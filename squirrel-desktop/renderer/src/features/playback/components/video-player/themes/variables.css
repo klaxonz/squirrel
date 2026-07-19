@@ -6,13 +6,13 @@
 .sp-player {
   /* ========== 颜色系统 ========== */
   
-  /* 主色调 - 使用主题感知的变量，默认 Ring Blue-Gray（与应用 --ring 色调统一） */
-  --sp-primary: var(--sp-theme-primary, #d3d4d8);
-  --sp-primary-hover: var(--sp-theme-primary-hover, #e4e5e8);
-  --sp-primary-active: var(--sp-theme-primary-active, #b8b9be);
-  --sp-primary-rgb: var(--sp-theme-primary-rgb, 211, 212, 216);
+  /* Playback state uses the same orange signal as the surrounding app. */
+  --sp-primary: var(--sp-theme-primary, hsl(var(--primary)));
+  --sp-primary-hover: var(--sp-theme-primary-hover, hsl(var(--primary) / 0.9));
+  --sp-primary-active: var(--sp-theme-primary-active, hsl(var(--primary) / 0.8));
+  --sp-primary-rgb: var(--sp-theme-primary-rgb, 224, 90, 35);
   
-  /* 背景色 - Glassmorphic */
+  /* Opaque media chrome; only the video itself should read as layered. */
   --sp-bg: #000;
   --sp-bg-elevated: rgba(18, 18, 18, 0.85);
   --sp-bg-overlay: rgba(0, 0, 0, 0.65);
@@ -81,9 +81,9 @@
   
   /* ========== 菜单 ========== */
   
-  --sp-menu-bg: rgba(10, 10, 10, 0.88);
+  --sp-menu-bg: rgba(18, 18, 18, 0.98);
   --sp-menu-border: rgba(255, 255, 255, 0.08);
-  --sp-menu-shadow: 0 12px 48px rgba(0, 0, 0, 0.8);
+  --sp-menu-shadow: 0 12px 32px rgba(0, 0, 0, 0.58);
   --sp-menu-width: 260px;
   --sp-menu-max-height: 420px;
   --sp-menu-item-height: 44px;
@@ -164,8 +164,8 @@
   
   /* ========== 字体 ========== */
   
-  --sp-font-family: 'JetBrains Mono', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --sp-font-mono: 'JetBrains Mono', monospace;
+  --sp-font-family: var(--font-sans);
+  --sp-font-mono: var(--font-mono);
   --sp-font-size-xs: 11px;
   --sp-font-size-sm: 13px;
   --sp-font-size-md: 14px;

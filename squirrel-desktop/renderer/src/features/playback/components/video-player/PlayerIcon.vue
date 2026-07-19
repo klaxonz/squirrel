@@ -37,6 +37,7 @@ const iconMap: Record<IconName, AppIconName> = {
   pip: 'pip',
   pipExit: 'pipExit',
   settings: 'settingsPanel',
+  playlist: 'playlists',
   markClip: 'markClip',
   subtitles: 'subtitles',
   subtitlesOff: 'subtitlesOff',

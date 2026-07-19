@@ -14,7 +14,7 @@
     tabindex="0"
   >
     <VideoInfoOverlay
-      :visible="showVideoInfo"
+      :visible="showVideoInfo && !showStats && !showPlaylist && !showChapterOverlay && !upNext.showUpNext.value"
       :fullscreen="isFullscreen"
       :title="props.title"
       :uploader="props.uploader"
@@ -22,7 +22,7 @@
 
     <SleepTimerBadge
       :fullscreen="isFullscreen"
-      :visible="store.sleepTimerMinutes !== null"
+      :visible="store.sleepTimerMinutes !== null && !showPlaylist && !showChapterOverlay"
       :remaining-text="formatSleepRemaining()"
     />
 
@@ -88,7 +88,7 @@
     />
 
     <!-- Stats overlay -->
-    <StatsOverlay :get-stats="getStats" :visible="showStats" />
+    <StatsOverlay :get-stats="getStats" :visible="showStats && !errorState.show" />
 
     <!-- Playlist panel -->
     <PlaylistPanel
@@ -181,13 +181,13 @@
           <!-- 控制栏主行 -->
           <div class="sp-controls-main">
             <div class="sp-controls-left">
-              <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click="emit('prev')" :title="t('prev')" :disabled="!props.hasPrev" :aria-label="t('prev')">
+              <Button v-if="props.hasPrev" text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click="emit('prev')" :title="t('prev')" :aria-label="t('prev')">
                 <PlayerIcon name="prev" />
               </Button>
               <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn sp-btn--play" @click="togglePlay" :title="isPlaying ? t('pause') : t('play')" :aria-label="isPlaying ? t('pause') : t('play')">
                 <PlayerIcon :name="isPlaying ? 'pause' : 'play'" />
               </Button>
-              <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click="emit('next')" :title="t('next')" :disabled="!props.hasNext" :aria-label="t('next')">
+              <Button v-if="props.hasNext" text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click="emit('next')" :title="t('next')" :aria-label="t('next')">
                 <PlayerIcon name="next" />
               </Button>
 
@@ -216,43 +216,43 @@
             </div>
 
             <div class="sp-controls-right">
-              <div
+              <button
                 v-if="displayedQualities.length > 0 && qualityTagLabel"
+                type="button"
                 class="sp-quality-tag"
                 :class="{ 'is-active': showQualityMenu }"
                 @click.stop="toggleQualityMenu"
-                aria-haspopup="true"
+                aria-haspopup="menu"
                 :aria-expanded="showQualityMenu"
-                role="button"
               >
                 {{ qualityTagLabel }}
-              </div>
-              <Button v-if="subtitleTracks.length > 0" text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')">
+              </button>
+              <Button v-if="subtitleTracks.length > 0" text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')" :aria-label="t('subtitles')">
                 <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
               </Button>
-              <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn" :title="hasPendingSegment ? `保存片段` : t('markClip')" :disabled="isSavingMarker" @click.stop="hasPendingSegment ? finishSegmentCapture() : markCurrentPoint()">
+              <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn sp-control--optional" :title="hasPendingSegment ? `保存片段` : t('markClip')" :aria-label="hasPendingSegment ? `保存片段` : t('markClip')" :disabled="isSavingMarker" @click.stop="hasPendingSegment ? finishSegmentCapture() : markCurrentPoint()">
                 <PlayerIcon name="markClip" />
                 <span v-if="hasPendingSegment" class="sp-marker-count sp-marker-count--capturing">●</span>
               </Button>
-              <Button v-if="hasPlaylist" text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="showPlaylist = !showPlaylist" :title="'Playlist'">
-                <PlayerIcon name="settings" />
+              <Button v-if="hasPlaylist" text severity="secondary" size="sm" icon-only class="sp-icon-btn sp-control--optional" @click.stop="showPlaylist = !showPlaylist" title="播放列表" aria-label="播放列表">
+                <PlayerIcon name="playlist" />
               </Button>
-              <Button v-if="isFullscreen" text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="captureScreenshot" :title="t('screenshot')">
+              <Button v-if="isFullscreen" text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="captureScreenshot" :title="t('screenshot')" :aria-label="t('screenshot')">
                 <PlayerIcon name="screenshot" />
               </Button>
-              <Button v-if="isFullscreen" text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="settingsView = 'sleepTimer'; showSettingsMenu = true" :title="t('sleepTimer')">
+              <Button v-if="isFullscreen" text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="settingsView = 'sleepTimer'; showSettingsMenu = true" :title="t('sleepTimer')" :aria-label="t('sleepTimer')">
                 <PlayerIcon name="sleepTimer" />
               </Button>
-              <Button v-if="isFullscreen" text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="handleLoopABToggle" :title="store.abLoopActive ? t('loopClearAB') : (store.loopAPoint !== null ? t('loopSetB') : t('loopSetA'))">
+              <Button v-if="isFullscreen" text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="handleLoopABToggle" :title="store.abLoopActive ? t('loopClearAB') : (store.loopAPoint !== null ? t('loopSetB') : t('loopSetA'))" :aria-label="store.abLoopActive ? t('loopClearAB') : (store.loopAPoint !== null ? t('loopSetB') : t('loopSetA'))">
                 <PlayerIcon name="loopAB" :style="{ opacity: store.loopAPoint !== null ? 1 : 0.5 }" />
               </Button>
               <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="toggleSettingsMenu" :title="t('settings')" aria-haspopup="true" :aria-expanded="showSettingsMenu" :aria-label="t('settings')">
                 <PlayerIcon name="settings" />
               </Button>
-              <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click="toggleWidescreen" :title="props.widescreen ? t('exitWidescreen') : t('widescreen')">
+              <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn sp-control--optional" @click="toggleWidescreen" :title="props.widescreen ? t('exitWidescreen') : t('widescreen')">
                 <PlayerIcon :name="props.widescreen ? 'widescreenExit' : 'widescreen'" />
               </Button>
-              <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click="togglePictureInPicture" :title="store.pictureInPicture ? t('exitPictureInPicture') : t('pictureInPicture')">
+              <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn sp-control--compact-hide" @click="togglePictureInPicture" :title="store.pictureInPicture ? t('exitPictureInPicture') : t('pictureInPicture')">
                 <PlayerIcon :name="store.pictureInPicture ? 'pipExit' : 'pip'" />
               </Button>
               <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click="toggleFullscreen" :title="isFullscreen ? t('exitFullscreen') : t('fullscreen')">
@@ -994,6 +994,8 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 .sp-player {
   position: absolute;
   inset: 0;
+  container-name: video-player;
+  container-type: inline-size;
   background: #000;
   border: none;
   outline: none;
@@ -1072,142 +1074,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   50% { height: 36px; }
 }
 
-/* 中央 HUD 提示 */
-.sp-central-hud {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 100;
-  pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  /* smooth repositioning when shifting out of the spinner's way */
-  transition: transform var(--duration-slow) var(--ease-default);
-}
-
-/* When the buffering spinner is showing, nudge the HUD up so they don't overlap. */
-.sp-central-hud--shifted {
-  transform: translate(-50%, -240%);
-}
-
-/* ====================== Volume capsule bar ====================== */
-.sp-vol-capsule {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 16px;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid var(--sp-border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.sp-vol-icon-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.sp-vol-icon {
-  width: 22px;
-  height: 22px;
-  color: #fff;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
-}
-
-.sp-vol-track {
-  position: relative;
-  width: 160px;
-  height: 6px;
-  border-radius: var(--sp-radius-full);
-  background: rgba(255, 255, 255, 0.15);
-  overflow: visible;
-  flex-shrink: 0;
-}
-
-.sp-vol-fill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  border-radius: var(--sp-radius-full);
-  background: var(--sp-primary);
-  transition: width var(--duration-normal) var(--ease-default);
-}
-
-.sp-vol-thumb {
-  position: absolute;
-  top: 50%;
-  width: 14px;
-  height: 14px;
-  border-radius: var(--sp-radius-full);
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-  transform: translate(-50%, -50%);
-  transition: left var(--duration-normal) var(--ease-default);
-}
-
-.sp-vol-percent {
-  color: #fff;
-  font-family: var(--sp-font-mono);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0;
-  min-width: 40px;
-  text-align: right;
-  flex-shrink: 0;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
-}
-
-/* ====================== Generic notice ====================== */
-.sp-notice-badge {
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--sp-radius-full);
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid var(--sp-border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.sp-notice-icon {
-  width: 28px;
-  height: 28px;
-  color: #fff;
-}
-
-.sp-notice-text {
-  color: #fff;
-  font-family: var(--sp-font-mono);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
-  padding: 3px 14px;
-  border-radius: var(--sp-radius-full);
-  background: rgba(0, 0, 0, 0.45);
-}
-
-/* enter/leave only drive opacity on the root — transform is reserved for
-   centering + shift, so transitions never clobber each other */
-.sp-hud-fade-enter-active,
-.sp-hud-fade-leave-active {
-  transition: opacity var(--duration-normal) var(--ease-default);
-}
-
-.sp-hud-fade-enter-from,
-.sp-hud-fade-leave-to {
-  opacity: 0;
-}
-
 /* HUD 角标覆盖层 */
 .sp-hud-overlay {
   position: absolute;
@@ -1265,12 +1131,13 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   width: 60px;
 }
 
-/* Artplayer default control readability gradient. */
+/* A single quiet readability layer keeps controls legible without turning the
+   bottom third of the video into a separate black toolbar. */
 .sp-gradient-overlay {
   position: absolute;
   inset: auto 0 0 0;
-  height: 100px;
-  background: linear-gradient(to top, #000, rgb(0 0 0 / 40%), transparent);
+  height: 9rem;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.9) 0%, rgb(0 0 0 / 0.52) 42%, transparent 100%);
   pointer-events: none;
   z-index: 15;
 }
@@ -1286,7 +1153,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-controls-content {
-  padding: 0 10px 6px;
+  padding: 0 18px 12px;
   margin: 0;
   position: relative;
   z-index: 25;
@@ -1295,15 +1162,15 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 /* 进度条容器 */
 .sp-progress-container {
-  padding: 6px 0;
-  margin: 0 -4px;
+  padding: 8px 0 7px;
+  margin: 0;
   cursor: pointer;
   position: relative;
 }
 
 .sp-progress-area {
   position: relative;
-  height: 6px;
+  height: 8px;
   display: flex;
   align-items: center;
 }
@@ -1311,30 +1178,30 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 .sp-progress-rail {
   width: 100%;
   height: 3px;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.2);
   transition:
     height var(--duration-normal) var(--ease-default);
-  border-radius: 2px;
+  border-radius: 999px;
   overflow: hidden;
   position: relative;
 }
 
 .sp-progress-container:hover .sp-progress-rail {
-  height: 6px;
+  height: 5px;
 }
 
 .sp-progress-buffered {
   position: absolute;
   height: 100%;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: inherit;
 }
 
 .sp-progress-played {
   position: absolute;
   height: 100%;
   background: var(--sp-primary, #d3d4d8);
-  border-radius: 2px;
+  border-radius: inherit;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -1542,10 +1409,11 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-progress-dot {
   top: 50%;
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--sp-primary);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.9), 0 1px 4px rgb(0 0 0 / 0.45);
   position: absolute;
   right: 0;
   transform: translate(50%, -50%) scale(0);
@@ -1559,7 +1427,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 /* 进度条悬停预览 */
 .sp-preview-hint {
   position: absolute;
-  bottom: 20px;
+  bottom: 24px;
   transform: translateX(-50%);
   pointer-events: none;
   animation: hint-fade var(--duration-normal) var(--ease-default);
@@ -1571,21 +1439,21 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-preview-hint-inner {
-  padding: 3px 8px;
-  background: rgba(10, 10, 10, 0.95);
-  border: 1px solid rgba(var(--sp-primary-rgb), 0.25);
+  padding: 4px 8px;
+  background: rgb(18 18 18 / 0.96);
+  border: 1px solid rgb(255 255 255 / 0.1);
   color: #fff;
   font-size: var(--app-text-badge-size);
   font-family: var(--sp-font-mono);
-  border-radius: 4px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.5);
 }
 
 .sp-preview-thumbnail {
   width: 120px;
   height: 68px;
   margin-bottom: 4px;
-  border-radius: 3px;
+  border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   background-color: #000;
   background-repeat: no-repeat;
@@ -1618,70 +1486,112 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 46px;
+  min-height: 38px;
   margin-top: 0;
 }
 
-.sp-controls-left, .sp-controls-right {
+.sp-controls-left,
+.sp-controls-right {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 2px;
+}
+
+.sp-controls-left {
+  min-width: 0;
+}
+
+.sp-controls-right {
+  justify-content: flex-end;
 }
 
 /* 质量标签 */
 .sp-quality-tag {
+  appearance: none;
   font-family: var(--sp-font-mono);
+  min-height: 1.75rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.13);
+  border-radius: 6px;
+  color: rgb(255 255 255 / 0.78);
   font-size: var(--app-text-badge-size);
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.7);
-  padding: 2px 6px;
-  border: 1px solid transparent;
-  border-radius: 3px;
+  font-weight: 650;
   cursor: pointer;
   transition:
     color var(--duration-normal) var(--ease-default),
     border-color var(--duration-normal) var(--ease-default),
     background-color var(--duration-normal) var(--ease-default);
-  background: transparent;
+  background: rgb(0 0 0 / 0.18);
   letter-spacing: 0;
-  margin-right: 4px;
+  margin-right: 6px;
 }
 
 .sp-quality-tag:hover,
 .sp-quality-tag.is-active {
-  color: var(--sp-primary, #d3d4d8);
-  border-color: var(--sp-border);
-  background: var(--sp-bg-hover);
+  color: #fff;
+  border-color: rgb(255 255 255 / 0.24);
+  background: rgb(255 255 255 / 0.1);
 }
 
 /* 控制按钮 */
 .sp-icon-btn {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgb(255 255 255 / 0.78);
   cursor: pointer;
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  border-radius: 3px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.75;
-  transition: opacity var(--duration-normal) var(--ease-default), transform var(--duration-normal) var(--ease-default);
+  opacity: 1;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
   position: relative;
 }
 
 .sp-icon-btn:hover {
   color: #fff;
-  opacity: 1;
+  background: rgb(255 255 255 / 0.1);
+}
+
+.sp-icon-btn:focus-visible,
+.sp-quality-tag:focus-visible {
+  color: #fff;
+  outline: 2px solid rgb(255 255 255 / 0.82);
+  outline-offset: -2px;
 }
 
 .sp-icon-btn:active {
-  transform: scale(0.85);
+  transform: scale(0.92);
 }
 
 .sp-icon-btn :deep(svg) {
+  width: 17px;
+  height: 17px;
+}
+
+.sp-btn--play {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  margin-inline: 2px;
+  border-radius: 999px;
+  background: var(--sp-primary);
+  color: #fff;
+  box-shadow: 0 4px 14px hsl(var(--primary) / 0.28);
+}
+
+.sp-btn--play:hover {
+  background: var(--sp-primary-hover);
+  color: #fff;
+}
+
+.sp-btn--play :deep(svg) {
   width: 18px;
   height: 18px;
 }
@@ -1689,55 +1599,47 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 /* 时间显示 */
 .sp-time-display {
   font-family: var(--sp-font-mono);
-  font-size: 12px;
-  color: #fff;
+  min-width: 0;
+  padding-left: 8px;
+  color: rgb(255 255 255 / 0.92);
+  font-size: 11px;
   display: flex;
   align-items: center;
-  padding-left: 6px;
   letter-spacing: 0;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .sp-time-separator {
-  margin: 0 6px;
-  opacity: 0.2;
+  margin-inline: 5px;
+  opacity: 0.34;
 }
 
 .sp-time-total {
-  opacity: 0.4;
+  opacity: 0.62;
 }
 
 /* 音量控制 */
 .sp-volume-group {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
 }
 
 .sp-volume-slider-wrap {
-  width: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition:
-    width var(--duration-slow) var(--ease-out),
-    opacity var(--duration-slow) var(--ease-out),
-    padding var(--duration-slow) var(--ease-out);
+  width: 68px;
+  padding-inline: 7px;
+  overflow: visible;
+  opacity: 1;
   height: 32px;
   display: flex;
   align-items: center;
 }
 
-.sp-volume-group:hover .sp-volume-slider-wrap,
-.sp-volume-group.is-active .sp-volume-slider-wrap {
-  width: 76px;
-  opacity: 1;
-  padding: 0 8px;
-}
-
 .sp-volume-bar {
   width: 100%;
   height: 3px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgb(255 255 255 / 0.22);
   border-radius: 1.5px;
   position: relative;
   cursor: pointer;
@@ -1751,12 +1653,22 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-volume-percent {
+  position: absolute;
+  bottom: calc(100% + 0.375rem);
+  left: 50%;
+  z-index: 2;
+  min-width: 2.75rem;
+  padding: 0.25rem 0.375rem;
+  transform: translateX(-50%);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 6px;
+  background: rgb(18 18 18 / 0.96);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.38);
   font-family: var(--sp-font-mono);
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
-  min-width: 36px;
-  text-align: right;
-  flex-shrink: 0;
+  color: rgb(255 255 255 / 0.86);
+  text-align: center;
+  pointer-events: none;
 }
 
 .sp-ui-fade-enter-active, .sp-ui-fade-leave-active {
@@ -1771,73 +1683,80 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-icon-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.28;
   cursor: not-allowed;
   filter: grayscale(1);
 }
 
+@container video-player (max-width: 760px) {
+  .sp-controls-content {
+    padding-inline: 12px;
+  }
+
+  .sp-volume-slider-wrap,
+  .sp-volume-percent {
+    display: none;
+  }
+
+  .sp-control--optional {
+    display: none;
+  }
+}
+
+@container video-player (max-width: 560px) {
+  .sp-controls-content {
+    padding: 0 8px 7px;
+  }
+
+  .sp-progress-container {
+    padding-block: 6px;
+  }
+
+  .sp-icon-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+  }
+
+  .sp-btn--play {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+  }
+
+  .sp-control--compact-hide,
+  .sp-quality-tag,
+  .sp-time-total,
+  .sp-time-separator {
+    display: none;
+  }
+
+  .sp-time-display {
+    padding-left: 4px;
+  }
+}
+
+/* Viewport fallbacks for environments without container-query support. */
+@supports not (container-type: inline-size) {
+  @media (max-width: 860px) {
+    .sp-volume-slider-wrap,
+    .sp-volume-percent,
+    .sp-control--optional {
+      display: none;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .sp-control--compact-hide,
+    .sp-quality-tag,
+    .sp-time-total,
+    .sp-time-separator {
+      display: none;
+    }
+  }
+}
+
 /* ===== Fullscreen Features CSS ===== */
-
-/* Video info overlay */
-.sp-video-info-overlay {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 30;
-  max-width: 50%;
-  pointer-events: none;
-}
-
-.sp-video-info-title {
-  color: #fff;
-  font-size: 18px;
-  font-weight: 700;
-  font-family: var(--sp-font-family);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
-  line-height: 1.3;
-  margin-bottom: 4px;
-}
-
-.sp-video-info-meta {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
-  font-family: var(--sp-font-mono);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-}
-
-.sp-info-fade-enter-active,
-.sp-info-fade-leave-active {
-  transition: opacity 0.4s ease;
-}
-
-.sp-info-fade-enter-from,
-.sp-info-fade-leave-to {
-  opacity: 0;
-}
-
-/* Sleep timer badge */
-.sp-sleep-badge {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid rgba(var(--sp-primary-rgb), 0.25);
-  border-radius: 3px;
-  color: var(--sp-primary);
-  font-family: var(--sp-font-mono);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.sp-sleep-badge :deep(svg) {
-  width: 14px;
-  height: 14px;
-}
 
 /* AB loop indicator */
 .sp-abloop-indicator {
@@ -1849,9 +1768,10 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid rgba(var(--sp-primary-rgb), 0.4);
-  border-radius: 3px;
+  background: var(--sp-menu-bg);
+  border: 1px solid var(--sp-menu-border);
+  border-radius: var(--sp-radius-md);
+  box-shadow: var(--sp-menu-shadow);
   color: var(--sp-primary);
   font-family: var(--sp-font-mono);
   font-size: 11px;
@@ -1866,119 +1786,6 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 .sp-abloop-times {
   opacity: 0.6;
   font-weight: 400;
-}
-
-/* Up next overlay */
-.sp-upnext-overlay {
-  position: absolute;
-  bottom: 64px;
-  right: 16px;
-  z-index: 30;
-  padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.85);
-  border: 1px solid var(--sp-border);
-  border-radius: 3px;
-  min-width: 200px;
-  cursor: default;
-}
-
-.sp-upnext-label {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 11px;
-  font-weight: 600;
-  font-family: var(--sp-font-mono);
-  margin-bottom: 4px;
-}
-
-.sp-upnext-title {
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  line-height: 1.3;
-}
-
-.sp-upnext-countdown {
-  color: var(--sp-primary);
-  font-size: 11px;
-  font-family: var(--sp-font-mono);
-  margin-bottom: 8px;
-}
-
-.sp-upnext-btn {
-  width: 100%;
-  padding: 6px 0;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  color: #fff;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background var(--duration-fast);
-}
-
-.sp-upnext-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* Chapter overlay */
-.sp-chapter-overlay {
-  position: absolute;
-  top: 0;
-  right: 16px;
-  z-index: 35;
-  max-height: 60vh;
-  width: 240px;
-  overflow-y: auto;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.85);
-  border: 1px solid var(--sp-border);
-  border-radius: 0 0 3px 3px;
-}
-
-.sp-chapter-overlay-title {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 11px;
-  font-weight: 600;
-  font-family: var(--sp-font-mono);
-  padding: 4px 8px 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 4px;
-}
-
-.sp-chapter-overlay-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background var(--duration-fast);
-}
-
-.sp-chapter-overlay-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.sp-chapter-overlay-item.is-active {
-  background: rgba(var(--sp-primary-rgb), 0.15);
-}
-
-.sp-chapter-overlay-time {
-  color: var(--sp-primary);
-  font-family: var(--sp-font-mono);
-  font-size: 11px;
-  min-width: 50px;
-  flex-shrink: 0;
-}
-
-.sp-chapter-overlay-name {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 12px;
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 </style>

@@ -3,17 +3,19 @@
     <div v-if="visible" class="sp-playlist-panel" data-player-interactive @click.stop>
       <div class="sp-playlist-header">
         <span class="sp-playlist-title">{{ title }}</span>
-        <span class="sp-playlist-count">{{ entries.length }} videos</span>
-        <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click="$emit('close')" :title="'Close'">
-          <span style="font-size: 14px; line-height: 1">&times;</span>
+        <span class="sp-playlist-count">{{ entries.length }} 项</span>
+        <Button text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click="$emit('close')" title="关闭" aria-label="关闭播放列表">
+          <AppIcon name="close" />
         </Button>
       </div>
       <div class="sp-playlist-items">
-        <div
+        <button
           v-for="(entry, index) in entries"
           :key="entry.id"
+          type="button"
           class="sp-playlist-item"
           :class="{ 'is-active': index === activeIndex, 'is-playing': index === activeIndex && isPlaying }"
+          :aria-current="index === activeIndex ? 'true' : undefined"
           @click.stop="$emit('select', index)"
         >
           <div class="sp-playlist-item-index">{{ index + 1 }}</div>
@@ -24,9 +26,9 @@
           <div v-if="index === activeIndex" class="sp-playlist-item-status">
             <span class="sp-playlist-playing-indicator" :class="{ 'is-paused': !isPlaying }"></span>
           </div>
-        </div>
+        </button>
         <div v-if="entries.length === 0" class="sp-playlist-empty">
-          No items in playlist
+          播放列表为空
         </div>
       </div>
     </div>
@@ -37,14 +39,17 @@
 import { formatTime } from '@/shared/lib/dateFormat'
 import type { PlaylistEntry } from '@/features/playback/types/playerSession'
 import { Button } from '@/shared/ui/button'
+import AppIcon from '@/shared/icons/AppIcon.vue'
 
-defineProps<{
+withDefaults(defineProps<{
   visible: boolean
   entries: PlaylistEntry[]
   activeIndex: number
   isPlaying: boolean
   title?: string
-}>()
+}>(), {
+  title: '播放列表',
+})
 
 defineEmits(['close', 'select'])
 </script>
@@ -55,9 +60,9 @@ defineEmits(['close', 'select'])
   top: 0;
   right: 0;
   bottom: 0;
-  width: 280px;
-  max-width: 45%;
-  background: rgba(10, 10, 10, 0.98);
+  width: 20rem;
+  max-width: 48%;
+  background: rgb(14 14 14 / 0.98);
   border-inline-start: 1px solid var(--sp-border, rgba(255, 255, 255, 0.08));
   z-index: 90;
   display: flex;
@@ -69,7 +74,8 @@ defineEmits(['close', 'select'])
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 14px;
+  min-height: 3.25rem;
+  padding: 8px 10px 8px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -93,10 +99,16 @@ defineEmits(['close', 'select'])
 }
 
 .sp-playlist-item {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
+  border: 0;
   padding: 10px 14px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   transition: background var(--duration-fast);
   box-shadow: inset 0 0 0 1px transparent;
@@ -104,6 +116,12 @@ defineEmits(['close', 'select'])
 
 .sp-playlist-item:hover {
   background: rgba(255, 255, 255, 0.04);
+}
+
+.sp-playlist-item:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  outline: 2px solid rgb(255 255 255 / 0.72);
+  outline-offset: -2px;
 }
 
 .sp-playlist-item.is-active {
@@ -170,5 +188,12 @@ defineEmits(['close', 'select'])
   font-size: 12px;
   color: rgba(255, 255, 255, 0.3);
   text-align: center;
+}
+
+@container video-player (max-width: 620px) {
+  .sp-playlist-panel {
+    width: 100%;
+    max-width: none;
+  }
 }
 </style>

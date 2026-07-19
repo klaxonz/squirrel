@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import type { AppIconName } from '@/shared/icons/app-icons'
 import type { VideoId, VideoPageVideo } from '@/features/playback/types/videoPlayback'
@@ -25,6 +25,8 @@ export default function useVideoActionBar({
   toggleLike,
   deleteInteraction,
   ensureLocalVideo,
+  commitInteractionType,
+  onInteractionError,
   handleAddToPlaylist,
   handlePlayRandom,
 }: {
@@ -35,36 +37,47 @@ export default function useVideoActionBar({
   toggleLike: (videoId: VideoId, interactionType: string | number) => Promise<unknown>
   deleteInteraction: (videoId: VideoId) => Promise<unknown>
   ensureLocalVideo?: (video: VideoPageVideo) => Promise<VideoPageVideo | null>
+  commitInteractionType: (video: VideoPageVideo, interactionType: InteractionType) => void
+  onInteractionError?: (error: unknown) => void
   handleAddToPlaylist: () => Promise<void>
   handlePlayRandom: () => Promise<void>
 }) {
   const currentInteractionType = computed(() => video.value?.interaction_type ?? undefined)
   const isLaterActionActive = computed(() => currentInteractionType.value === interactionTypeLater)
+  const isInteractionUpdating = ref(false)
 
   const updateVideoInteraction = async (targetVideo: VideoPageVideo, nextInteractionType: InteractionType) => {
-    const localVideo = ensureLocalVideo && targetVideo.source === 'remote'
-      ? await ensureLocalVideo(targetVideo)
-      : targetVideo
-    if (!localVideo?.id) return
+    if (isInteractionUpdating.value) return
+    isInteractionUpdating.value = true
 
-    // Optimistic interaction toggle — the API now throws on failure; we catch
-    // so a failed toggle just leaves the prior interaction_type in place
-    // (no rollback needed since we never mutated on the throwing path).
-    if (nextInteractionType != null && localVideo.interaction_type !== nextInteractionType) {
-      try {
-        await toggleLike(localVideo.id, nextInteractionType)
-        localVideo.interaction_type = nextInteractionType
-      } catch {
-        // leave interaction_type unchanged
-      }
-      return
-    }
-
+    let localVideo: VideoPageVideo | null = null
+    let previousInteractionType: InteractionType = currentInteractionType.value
     try {
-      await deleteInteraction(localVideo.id)
-      localVideo.interaction_type = undefined
-    } catch {
-      // leave interaction_type unchanged
+      localVideo = ensureLocalVideo && targetVideo.source === 'remote'
+        ? await ensureLocalVideo(targetVideo)
+        : targetVideo
+      if (!localVideo?.id) throw new Error('无法保存当前视频')
+
+      previousInteractionType = currentInteractionType.value
+      const nextCommittedType = nextInteractionType != null && previousInteractionType !== nextInteractionType
+        ? nextInteractionType
+        : undefined
+
+      // PlaybackSession exposes a deep readonly projection. Route every
+      // optimistic state change through its owner instead of mutating the
+      // projected video object (which Vue correctly rejects at runtime).
+      commitInteractionType(localVideo, nextCommittedType)
+
+      if (nextCommittedType != null) {
+        await toggleLike(localVideo.id, nextCommittedType)
+      } else {
+        await deleteInteraction(localVideo.id)
+      }
+    } catch (error) {
+      if (localVideo) commitInteractionType(localVideo, previousInteractionType)
+      onInteractionError?.(error)
+    } finally {
+      isInteractionUpdating.value = false
     }
   }
 
@@ -154,6 +167,7 @@ export default function useVideoActionBar({
   return {
     videoActions,
     videoOverflowActions,
+    isInteractionUpdating,
     handleVideoAction,
   }
 }

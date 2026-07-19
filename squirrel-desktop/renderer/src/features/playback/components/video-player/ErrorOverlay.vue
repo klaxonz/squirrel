@@ -1,6 +1,6 @@
 <template>
   <Transition name="sp-loading-fade">
-    <div v-if="visible" class="sp-error-overlay" @click.stop>
+    <div v-if="visible" class="sp-error-overlay" role="alert" aria-live="assertive" @click.stop>
       <div class="sp-error-content">
         <div class="sp-error-icon">
           <PlayerIcon name="error" class="sp-error-icon-svg" />
@@ -8,7 +8,7 @@
         <div class="sp-error-title">{{ title || fallbackTitle }}</div>
         <div class="sp-error-message">{{ message }}</div>
         <div class="sp-error-actions">
-          <Button v-if="canRetry" outlined rounded size="sm" class="sp-error-retry-btn" @click.stop="$emit('retry')">
+          <Button v-if="canRetry" size="sm" class="sp-error-retry-btn" @click.stop="$emit('retry')">
             {{ retryLabel }}
           </Button>
         </div>
@@ -53,57 +53,59 @@ defineEmits<{ retry: [] }>()
   align-items: center;
   justify-content: center;
   z-index: 60;
-  background: rgba(0, 0, 0, 0.75);
+  padding: 20px;
+  background: var(--sp-error-bg, rgba(10, 10, 10, 0.9));
 }
 
 .sp-error-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 32px 24px;
-  max-width: 320px;
+  gap: 10px;
+  width: min(320px, 100%);
+  padding: 24px;
+  border: 1px solid var(--sp-menu-border);
+  border-radius: var(--sp-radius-lg);
+  background: var(--sp-menu-bg);
+  box-shadow: var(--sp-menu-shadow);
   text-align: center;
 }
 
 .sp-error-icon-svg {
-  width: 36px;
-  height: 36px;
-  color: var(--sp-primary, #d3d4d8);
-  opacity: 0.7;
+  width: 32px;
+  height: 32px;
+  color: var(--sp-error);
 }
 
 .sp-error-title {
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
+  color: var(--sp-text-strong);
+  font-family: var(--sp-font-family);
+  font-size: 15px;
+  font-weight: 650;
   letter-spacing: 0;
 }
 
 .sp-error-message {
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--sp-text-muted);
+  font-family: var(--sp-font-family);
   font-size: 12px;
   line-height: 1.5;
 }
 
 .sp-error-actions {
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .sp-error-retry-btn {
-  padding: 6px 18px;
-  background: var(--sp-primary, #d3d4d8);
-  color: #000;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity var(--duration-fast) var(--ease-default);
-  letter-spacing: 0;
+  min-width: 92px;
+  background: var(--sp-primary);
+  color: #fff;
+  border-color: transparent;
+  border-radius: var(--sp-radius-md);
+  box-shadow: none;
 }
 
 .sp-error-retry-btn:hover {
-  opacity: 0.85;
+  background: var(--sp-primary-hover);
 }
 </style>

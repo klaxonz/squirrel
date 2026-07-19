@@ -1,6 +1,6 @@
 <template>
   <Transition name="sp-loading-fade">
-    <div v-if="visible" class="sp-loading">
+    <div v-if="visible" class="sp-loading" role="status" aria-live="polite">
       <div class="sp-loader">
         <div class="sp-loader-ring"></div>
       </div>
@@ -26,7 +26,7 @@ defineProps<Props>()
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   z-index: 50;
   /* Loading overlay is purely presentational; let pointer events (click/dblclick)
      pass through to the video/container underneath so fullscreen toggling still
@@ -35,25 +35,24 @@ defineProps<Props>()
 }
 
 .sp-loader {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   position: relative;
 }
 
 .sp-loader-ring {
   position: absolute;
   inset: 0;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-top-color: rgba(255, 255, 255, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-top-color: rgba(255, 255, 255, 0.82);
   border-radius: 50%;
   animation: sp-loader-spin 0.8s linear infinite;
 }
 
 .sp-loading-text {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--sp-text-secondary);
   font-size: 12px;
   font-family: var(--sp-font-family);
-  margin-top: 8px;
 }
 
 @keyframes sp-loader-spin {
