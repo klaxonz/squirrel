@@ -34,6 +34,9 @@ export interface UseSiteRuntimeStatusReturn {
   getLoginVariant: (plugin: RuntimeRow) => SiteRuntimeTone
   getCapabilityLabel: (name: string) => string
   formatTime: (value: string | null | undefined) => string
+  supportsLogin: (plugin: RuntimeRow) => boolean
+  isConnected: (plugin: RuntimeRow) => boolean
+  needsAttention: (plugin: RuntimeRow) => boolean
 }
 
 export function useSiteRuntimeStatus(): UseSiteRuntimeStatusReturn {
@@ -102,6 +105,33 @@ export function useSiteRuntimeStatus(): UseSiteRuntimeStatusReturn {
     })
   }
 
+  const supportsLogin = (plugin: RuntimeRow): boolean => Boolean(
+    plugin.siteSupportsLogin
+    || plugin.siteDesktopLoginSupported
+    || plugin.siteName === 'youtube',
+  )
+
+  const isConnected = (plugin: RuntimeRow): boolean => (
+    plugin.siteOAuthStatus === 'authenticated'
+    || Boolean((plugin.siteLoginStatus as Record<string, unknown> | undefined)?.logged_in)
+  )
+
+  /** Enabled sources only need attention once a real failure is known. */
+  const needsAttention = (plugin: RuntimeRow): boolean => {
+    if (!plugin.enabled) return false
+    if (plugin.siteAccessible === false) return true
+
+    const health = plugin.health as { healthy?: boolean } | undefined
+    const state = (plugin.active_runtime as Record<string, unknown> | undefined)?.state
+    if (health?.healthy === false || state === 'failed') return true
+
+    const loginStatus = plugin.siteLoginStatus as Record<string, unknown> | undefined
+    if (!supportsLogin(plugin) || !loginStatus) return false
+    return plugin.siteOAuthStatus !== 'authenticated'
+      && plugin.siteOAuthStatus !== 'pending'
+      && !loginStatus.logged_in
+  }
+
   return {
     getSiteRuntimeStatusText,
     getSiteRuntimeStatusVariant,
@@ -111,5 +141,8 @@ export function useSiteRuntimeStatus(): UseSiteRuntimeStatusReturn {
     getLoginVariant,
     getCapabilityLabel,
     formatTime,
+    supportsLogin,
+    isConnected,
+    needsAttention,
   }
 }

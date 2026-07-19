@@ -1,26 +1,40 @@
 <template>
   <AppPageShell class="site-runtime-page" variant="compact" surface="operate" width="table">
-    <AppToolbarFrame bordered compact sticky>
-      <div class="site-runtime-toolbar">
-        <div class="site-runtime-toolbar__identity">
-          <h1>站点</h1>
-          <span>{{ displaySiteRuntimes.length }} 个来源</span>
+    <main class="app-page-content site-runtime-page__content">
+      <header class="site-runtime-header">
+        <div class="site-runtime-header__copy">
+          <div class="site-runtime-header__title">
+            <h1>站点</h1>
+            <span>{{ runtimeSummary }}</span>
+          </div>
+          <p>管理内容来源的启用状态、网络连接与账户授权。</p>
         </div>
-        <div class="site-runtime-toolbar__actions">
+
+        <div class="site-runtime-header__actions">
+          <input
+            ref="cookiesFileInput"
+            type="file"
+            accept=".txt,.json"
+            class="hidden"
+            @change="handleCookiesFileChange"
+          />
+
           <Button
-            as="label"
-            text severity="secondary"
+            type="button"
+            severity="secondary" outlined
             size="sm"
             class="site-runtime-file-button"
             :class="{ 'is-active': selectedCookiesFile }"
+            :title="cookiesFileName || '导入 Netscape TXT 或 JSON 格式的登录凭据'"
+            @click="openCookiesFilePicker"
           >
-            <input type="file" accept=".txt,.json" class="hidden" @change="handleCookiesFileChange" />
             <AppIcon name="cookie" class="h-4 w-4" />
-            <span>{{ cookiesFileName || '选择凭据' }}</span>
+            <span>{{ cookiesFileName || '导入凭据' }}</span>
           </Button>
 
           <Button
             v-if="selectedCookiesFile"
+            severity="secondary" outlined
             size="sm"
             :disabled="importingCookies"
             @click="handleImportAllCookies"
@@ -31,22 +45,21 @@
           </Button>
 
           <Button
-            text severity="secondary"
             size="sm"
-            class="site-runtime-toolbar__action"
+            class="site-runtime-primary-action"
             :disabled="testingAll"
             :title="hasCachedProbe ? '重新检测全部站点连通与登录' : '一键检测全部站点（首屏也会自动连通探测）'"
             @click="handleTestAll"
           >
             <AppSpinner v-if="testingAll" size="sm" />
             <AppIcon v-else name="diagnostics" class="h-4 w-4" />
-            {{ testingAll ? '检测中…' : (hasCachedProbe ? '重新全量检测' : '全量检测') }}
+            {{ testingAll ? '检测中…' : (hasCachedProbe ? '重新检测全部' : '检测全部') }}
           </Button>
 
           <Button
             text severity="secondary"
             size="sm" icon-only
-            class="app-toolbar-control app-toolbar-icon-button"
+            class="site-runtime-refresh"
             :disabled="reloading || loading"
             title="重新加载站点"
             aria-label="重新加载站点"
@@ -56,15 +69,25 @@
             <AppIcon v-else name="refresh" class="h-4 w-4" />
           </Button>
         </div>
-      </div>
-    </AppToolbarFrame>
+      </header>
 
-    <div class="app-page-content app-page-content--media site-runtime-page__content">
+      <div class="site-runtime-filterbar">
+        <AppSectionNav
+          :model-value="statusFilter"
+          :options="statusFilterOptions"
+          aria-label="站点状态"
+          @change="statusFilter = $event"
+        />
+        <span>状态来自最近一次检测与当前桌面会话</span>
+      </div>
+
       <SiteRuntimeGrid
         :runtimes="displaySiteRuntimes"
+        :all-runtimes="enrichedSiteRuntimes"
         :loading="isInitialLoading"
         :actioning="actioning"
-        :search-query="searchQuery"
+        :filtered="Boolean(searchQuery.trim()) || statusFilter !== 'all'"
+        :last-tested-at="lastTestedAt"
         :discovery-errors="discoveryErrors"
         :load-error="loadError"
         @enable="handleEnable"
@@ -77,9 +100,9 @@
         @revoke-oauth="handleRevokeYouTubeOAuth"
         @edit-site="openSiteEditorByRuntime"
         @retry="fetchSiteRuntimes"
-        @clear-search="clearRuntimeSearch"
+        @clear-filters="clearRuntimeFilters"
       />
-    </div>
+    </main>
 
     <SiteConfigEditorDialog
       :visible="siteEditorVisible"
@@ -106,7 +129,7 @@ import { errorMessage } from '@/shared/lib/errorMessage'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
-import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
+import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import SiteConfigEditorDialog from '@/features/settings/components/SiteConfigEditorDialog.vue'
 import SiteRuntimeGrid from '@/features/settings/components/SiteRuntimeGrid.vue'
 import YouTubeOAuthPrompt from '@/features/settings/components/YouTubeOAuthPrompt.vue'
@@ -118,6 +141,7 @@ import { useSiteCatalog } from '@/features/video/composables/useSites'
 import { useYouTubeOAuth } from '@/features/settings/composables/useYouTubeOAuth'
 import { useSiteConnectivityCache } from '@/features/settings/composables/useSiteConnectivityCache'
 import { useSiteDesktopLogin } from '@/features/settings/composables/useSiteDesktopLogin'
+import { useSiteRuntimeStatus } from '@/features/settings/composables/useSiteRuntimeStatus'
 import { useUIStore } from '@/shared/stores/ui'
 import {
   disableSiteRuntime,
@@ -142,6 +166,7 @@ const isInitialLoading = computed(() => loading.value && !siteRuntimes.value.len
 const testingAll = ref(false)
 const supportedSites = ref([])
 const uiStore = useUIStore()
+const statusFilter = ref('all')
 
 const { catalog: siteCatalog, loadCatalog, saveCatalog } = useSiteCatalog()
 
@@ -188,6 +213,7 @@ const siteEditorError = ref('')
 
 const siteCatalogMap = computed(() => siteCatalog.value || {})
 const searchQuery = computed(() => uiStore.getSearchQuery('site-runtimes'))
+const { needsAttention: runtimeNeedsAttention } = useSiteRuntimeStatus()
 
 const enrichedSiteRuntimes = computed(() => {
   const resultsMap = new Map()
@@ -236,13 +262,39 @@ const displaySiteRuntimes = computed(() => {
     )
   }
 
+  if (statusFilter.value === 'enabled') {
+    list = list.filter(runtime => runtime.enabled)
+  } else if (statusFilter.value === 'attention') {
+    list = list.filter(runtimeNeedsAttention)
+  }
+
   return list
 })
 
+const enabledRuntimeCount = computed(
+  () => enrichedSiteRuntimes.value.filter(runtime => runtime.enabled).length,
+)
+const attentionRuntimeCount = computed(
+  () => enrichedSiteRuntimes.value.filter(runtimeNeedsAttention).length,
+)
+const runtimeSummary = computed(
+  () => `${enrichedSiteRuntimes.value.length} 个来源`,
+)
+const statusFilterOptions = computed(() => [
+  { value: 'all', label: '全部', badge: enrichedSiteRuntimes.value.length },
+  { value: 'enabled', label: '已启用', badge: enabledRuntimeCount.value },
+  { value: 'attention', label: '需处理', badge: attentionRuntimeCount.value },
+])
+
+const cookiesFileInput = ref(null)
 const handleCookiesFileChange = (event) => {
   const file = event.target.files?.[0]
   selectedCookiesFile.value = file || null
   cookiesFileName.value = file ? file.name : ''
+}
+
+const openCookiesFilePicker = () => {
+  cookiesFileInput.value?.click()
 }
 
 const handleImportAllCookies = async () => {
@@ -256,6 +308,9 @@ const handleImportAllCookies = async () => {
       await testLoginForAllSupportedSites()
       saveResultsToCache()
     }
+    selectedCookiesFile.value = null
+    cookiesFileName.value = ''
+    if (cookiesFileInput.value) cookiesFileInput.value.value = ''
   } catch (err) {
     Logger.error('Failed to import cookies', err)
   } finally {
@@ -422,7 +477,8 @@ const saveSiteEditor = async ({ slug, sitePayload }) => {
   }
 }
 
-const clearRuntimeSearch = () => {
+const clearRuntimeFilters = () => {
+  statusFilter.value = 'all'
   uiStore.triggerSearch('site-runtimes', '')
 }
 
@@ -526,37 +582,59 @@ onMounted(() => {
   --app-page-max-width: var(--app-content-table-max);
 }
 
-.site-runtime-toolbar {
+.site-runtime-page__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding-top: var(--space-7);
+  padding-bottom: var(--space-8);
+}
+
+.site-runtime-header {
   display: flex;
   width: 100%;
   min-width: 0;
-  min-height: 2.5rem;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-5);
+  gap: var(--space-7);
 }
 
-.site-runtime-toolbar__identity {
+.site-runtime-header__copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.site-runtime-header__title {
   display: flex;
   min-width: 0;
   align-items: baseline;
   gap: var(--space-2);
 }
 
-.site-runtime-toolbar__identity h1 {
+.site-runtime-header__title h1 {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: 1rem;
-  font-weight: 650;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
-.site-runtime-toolbar__identity span {
+.site-runtime-header__title span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
+  font-weight: 550;
 }
 
-.site-runtime-toolbar__actions {
+.site-runtime-header__copy p {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.site-runtime-header__actions {
   display: flex;
   min-width: 0;
   flex: none;
@@ -565,9 +643,22 @@ onMounted(() => {
   gap: var(--space-2);
 }
 
+.site-runtime-filterbar {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  border-bottom: 1px solid var(--app-hairline);
+}
+
+.site-runtime-filterbar > span {
+  color: hsl(var(--muted-foreground) / 0.72);
+  font-size: 0.6875rem;
+}
+
 .site-runtime-file-button {
-  max-width: 10rem;
-  cursor: pointer;
+  max-width: 11rem;
   color: hsl(var(--muted-foreground) / 0.84);
 }
 
@@ -583,16 +674,29 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.site-runtime-toolbar__action {
-  color: hsl(var(--muted-foreground) / 0.84);
+.site-runtime-primary-action {
+  min-width: 6.5rem;
 }
 
-.site-runtime-page__content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding-top: var(--space-5);
-  padding-bottom: var(--space-8);
+.site-runtime-refresh {
+  width: 2rem;
+  height: 2rem;
+  color: hsl(var(--muted-foreground));
+}
+
+@media (max-width: 900px) {
+  .site-runtime-header {
+    flex-direction: column;
+  }
+
+  .site-runtime-header__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .site-runtime-filterbar > span {
+    display: none;
+  }
 }
 
 </style>

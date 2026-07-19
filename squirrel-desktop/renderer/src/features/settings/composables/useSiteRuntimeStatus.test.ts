@@ -7,6 +7,9 @@ describe('site runtime status tones', () => {
     getNetworkVariant,
     getLoginText,
     getLoginVariant,
+    supportsLogin,
+    isConnected,
+    needsAttention,
   } = useSiteRuntimeStatus()
 
   it('uses the success tone for healthy states', () => {
@@ -40,5 +43,31 @@ describe('site runtime status tones', () => {
     expect(getLoginText({
       siteLoginStatus: { source: 'desktop', logged_in: false },
     })).toBe('未登录')
+  })
+
+  it('derives connection support and connected accounts from real state', () => {
+    expect(supportsLogin({ siteName: 'youtube' })).toBe(true)
+    expect(supportsLogin({ siteDesktopLoginSupported: true })).toBe(true)
+    expect(supportsLogin({})).toBe(false)
+    expect(isConnected({ siteOAuthStatus: 'authenticated' })).toBe(true)
+    expect(isConnected({ siteLoginStatus: { logged_in: true } })).toBe(true)
+    expect(isConnected({ siteLoginStatus: { logged_in: false } })).toBe(false)
+  })
+
+  it('only marks enabled sources with known failures as needing attention', () => {
+    expect(needsAttention({ enabled: true, siteAccessible: false })).toBe(true)
+    expect(needsAttention({
+      enabled: true,
+      siteSupportsLogin: true,
+      siteLoginStatus: { logged_in: false },
+    })).toBe(true)
+    expect(needsAttention({
+      enabled: true,
+      siteName: 'youtube',
+      siteOAuthStatus: 'pending',
+      siteLoginStatus: { logged_in: false },
+    })).toBe(false)
+    expect(needsAttention({ enabled: true })).toBe(false)
+    expect(needsAttention({ enabled: false, siteAccessible: false })).toBe(false)
   })
 })
