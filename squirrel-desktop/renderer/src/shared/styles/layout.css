@@ -92,7 +92,7 @@
   --sidebar-item-height: 2.25rem;
   --sidebar-item-gap: 0.1875rem;
   --sidebar-footer-height: calc(var(--sidebar-item-height) + 1.5rem + 1px);
-  --sidebar-player-height: 6.25rem;
+  --sidebar-player-height: 4.5rem;
 
   --app-control-bg: hsl(var(--secondary));
   --app-control-radius: var(--radius-md);

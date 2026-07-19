@@ -74,52 +74,107 @@
         </div>
       </template>
 
-      <div v-else class="music-mini">
-        <Button text severity="secondary" class="music-mini-track" title="打开沉浸播放" @click="openImmersive">
-          <div class="music-mini-cover">
-            <img v-if="store.currentTrack.cover" :src="store.currentTrack.cover" :alt="store.currentTrack.title || '封面'" />
-            <AppIcon v-else name="playlistMusic" class="h-4 w-4" />
-          </div>
-          <div v-if="!isCompactSidebarPlayer" class="music-mini-text">
-            <span class="music-mini-title">{{ store.currentTrack.title || '未知歌曲' }}</span>
-            <span
-              v-if="store.error"
-              class="music-mini-error"
-              :class="{ 'music-mini-error--action': needsRelogin }"
-              :title="store.error"
-              :role="needsRelogin ? 'link' : undefined"
-              @click.stop="onMiniErrorAction"
-            >{{ shortMiniError }}</span>
-            <span v-else class="music-mini-artist">{{ store.currentTrack.artist || '未知歌手' }}</span>
-          </div>
-        </Button>
+      <template v-else>
+        <MusicProgressBar
+          :current="store.currentTime"
+          :total="store.duration"
+          @seek="handleSeek"
+        />
 
-        <div class="music-mini-controls">
-          <Button v-if="!isCompactSidebarPlayer" text severity="secondary" size="sm" icon-only :disabled="!canStep" title="上一首" aria-label="上一首" @click="store.playPrevious()">
-            <AppIcon name="previous" class="h-4 w-4" />
-          </Button>
+        <div v-if="isCompactSidebarPlayer" class="music-mini music-mini--compact">
           <Button
-
+            text severity="secondary"
             size="sm" icon-only
-            class="rounded-full"
+            class="music-mini-compact-toggle"
             :disabled="store.resolvingUrl || isBuffering"
             :title="store.playing ? '暂停' : '播放'"
             :aria-label="store.playing ? '暂停' : '播放'"
             :aria-pressed="store.playing"
             @click="store.togglePlayback()"
           >
-            <AppSpinner v-if="store.resolvingUrl || isBuffering" size="sm" />
-            <AppIcon v-else-if="store.playing" name="pause" class="h-4 w-4" />
-            <AppIcon v-else name="play" class="h-4 w-4" />
-          </Button>
-          <Button v-if="!isCompactSidebarPlayer" text severity="secondary" size="sm" icon-only :disabled="!canStep" title="下一首" aria-label="下一首" @click="store.playNext()">
-            <AppIcon name="next" class="h-4 w-4" />
-          </Button>
-          <Button v-if="!isCompactSidebarPlayer" text severity="secondary" size="sm" icon-only title="播放队列" aria-label="播放队列" @click="showQueue = !showQueue">
-            <AppIcon name="playlistMusic" class="h-4 w-4" />
+            <span class="music-mini-cover music-mini-cover--compact">
+              <img v-if="store.currentTrack.cover" :src="store.currentTrack.cover" :alt="store.currentTrack.title || '封面'" />
+              <AppIcon v-else name="playlistMusic" class="h-4 w-4" />
+              <span class="music-mini-compact-icon" aria-hidden="true">
+                <AppSpinner v-if="store.resolvingUrl || isBuffering" size="sm" />
+                <AppIcon v-else-if="store.playing" name="pause" class="h-4 w-4" />
+                <AppIcon v-else name="play" class="h-4 w-4" />
+              </span>
+            </span>
           </Button>
         </div>
-      </div>
+
+        <div v-else class="music-mini">
+          <Button
+            text severity="secondary"
+            class="music-mini-track"
+            :title="needsRelogin ? '重新登录音乐账号' : '打开沉浸播放'"
+            @click="handleMiniTrackClick"
+          >
+            <span class="music-mini-cover">
+              <img v-if="store.currentTrack.cover" :src="store.currentTrack.cover" :alt="store.currentTrack.title || '封面'" />
+              <AppIcon v-else name="playlistMusic" class="h-4 w-4" />
+            </span>
+            <span class="music-mini-text">
+              <span class="music-mini-title-row">
+                <span class="music-mini-title">{{ store.currentTrack.title || '未知歌曲' }}</span>
+                <AppIcon
+                  v-if="store.error"
+                  name="error"
+                  class="music-mini-error-indicator h-3 w-3"
+                  :title="store.error"
+                />
+              </span>
+              <span class="music-mini-artist">{{ store.currentTrack.artist || '未知歌手' }}</span>
+            </span>
+          </Button>
+
+          <div class="music-mini-controls">
+            <Button
+              text severity="secondary" size="sm" icon-only
+              class="music-mini-control"
+              :disabled="!canStep"
+              title="上一首"
+              aria-label="上一首"
+              @click="store.playPrevious()"
+            >
+              <AppIcon name="previous" class="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="sm" icon-only rounded
+              class="music-mini-play"
+              :disabled="store.resolvingUrl || isBuffering"
+              :title="store.playing ? '暂停' : '播放'"
+              :aria-label="store.playing ? '暂停' : '播放'"
+              :aria-pressed="store.playing"
+              @click="store.togglePlayback()"
+            >
+              <AppSpinner v-if="store.resolvingUrl || isBuffering" size="sm" />
+              <AppIcon v-else-if="store.playing" name="pause" class="h-3.5 w-3.5" />
+              <AppIcon v-else name="play" class="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              text severity="secondary" size="sm" icon-only
+              class="music-mini-control"
+              :disabled="!canStep"
+              title="下一首"
+              aria-label="下一首"
+              @click="store.playNext()"
+            >
+              <AppIcon name="next" class="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              text severity="secondary" size="sm" icon-only
+              class="music-mini-control"
+              title="播放队列"
+              aria-label="播放队列"
+              @click="showQueue = !showQueue"
+            >
+              <AppIcon name="playlistMusic" class="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      </template>
 
       <MusicQueuePanel
         :visible="showQueue"
@@ -207,19 +262,17 @@ const showQueue = ref(false)
 
 const needsRelogin = computed(() => /登录|会话|鉴权|auth|login|token/i.test(String(store.error || '')))
 
-const shortMiniError = computed(() => {
-  const raw = String(store.error || '').trim()
-  if (!raw) return ''
-  // Recoverable path — short label + click-through login.
-  if (needsRelogin.value) return '需重新登录'
-  if (/网络|timeout|fetch|连接/i.test(raw)) return '网络异常'
-  if (raw.length <= 16) return raw
-  return '播放失败'
-})
-
 const onMiniErrorAction = () => {
   if (!needsRelogin.value) return
   void router.push({ name: 'Music', query: { view: 'profile' } })
+}
+
+const handleMiniTrackClick = () => {
+  if (needsRelogin.value) {
+    onMiniErrorAction()
+    return
+  }
+  openImmersive()
 }
 
 // ponytail: HTML5 drag-and-drop queue reorder (drag source index + drop guard)
@@ -448,39 +501,42 @@ function removeQueueItem(index: number) {
 }
 
 .music-mini {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.375rem;
+  display: grid;
+  grid-template-rows: 2.125rem 1.75rem;
+  align-items: center;
+  align-content: center;
+  gap: 0.125rem;
   height: 100%;
-  padding: 0.5rem 0.75rem 0.625rem;
+  padding: 0.3125rem 0.625rem 0.1875rem;
 }
 
-.music-bar--collapsed .music-mini {
-  align-items: center;
+.music-mini--compact {
+  display: flex;
   justify-content: center;
-  gap: 0.375rem;
-  padding: 0.5rem 0.375rem;
+  padding: 0.375rem;
 }
 
 .music-mini-track {
-  width: 100%;
   min-width: 0;
-  padding: 0.125rem;
+  width: 100%;
+  height: 2.125rem;
+  gap: 0.4375rem;
+  padding: 0;
   justify-content: flex-start;
 }
 
-.music-bar--collapsed .music-mini-track {
-  justify-content: center;
-  padding: 0;
+.music-mini-track :deep(.sq-button__content) {
+  width: 100%;
+  justify-content: flex-start;
 }
 
 .music-mini-cover {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.875rem;
-  height: 1.875rem;
+  width: 2rem;
+  height: 2rem;
   flex-shrink: 0;
   border-radius: 0.375rem;
   overflow: hidden;
@@ -495,57 +551,94 @@ function removeQueueItem(index: number) {
 }
 
 .music-mini-text {
+  display: block;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 auto;
+  text-align: left;
 }
 
+.music-mini-title-row,
 .music-mini-title,
 .music-mini-artist {
-  display: block;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.music-mini-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .music-mini-title {
+  display: block;
   font-size: 0.75rem;
   font-weight: 650;
   color: hsl(var(--foreground));
 }
 
 .music-mini-artist {
+  display: block;
   margin-top: 0.0625rem;
   font-size: var(--app-text-badge-size);
   color: hsl(var(--muted-foreground));
 }
 
-.music-mini-error {
-  display: block;
-  margin-top: 0.0625rem;
-  overflow: hidden;
+.music-mini-error-indicator {
+  flex: 0 0 auto;
   color: hsl(var(--destructive));
-  font-size: var(--app-text-badge-size);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.music-mini-error--action {
-  text-decoration: underline;
-  text-underline-offset: 0.1rem;
-  cursor: pointer;
 }
 
 .music-mini-controls {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  width: 100%;
-  flex-shrink: 0;
+  justify-content: space-between;
+  min-width: 0;
+  padding-inline: 1.125rem;
 }
 
-.music-bar--collapsed .music-mini-controls {
-  width: auto;
+.music-mini-control {
+  --sq-button-height: 1.625rem;
+}
+
+.music-mini-play {
+  --sq-button-height: 1.875rem;
+}
+
+.music-mini-compact-toggle {
+  --sq-button-height: 2.5rem;
+  padding: 0;
+}
+
+.music-mini-cover--compact {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.music-mini-cover--compact img {
+  opacity: 0.72;
+}
+
+.music-mini-compact-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background: hsl(var(--background) / 0.2);
+  color: hsl(var(--foreground));
+  filter: drop-shadow(0 1px 1px hsl(var(--background) / 0.72));
+}
+
+.music-bar--mini :deep(.music-progress-fill) {
+  background: hsl(var(--primary));
+}
+
+.music-bar--mini :deep(.music-progress-tooltip) {
+  display: none;
 }
 
 </style>
