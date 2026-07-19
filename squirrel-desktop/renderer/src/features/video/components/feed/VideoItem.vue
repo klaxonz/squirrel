@@ -31,9 +31,6 @@
         class="video-item__flags"
         aria-hidden="true"
       >
-        <span v-if="isRead" class="video-item__flag" title="已读">
-          <AppIcon name="check" class="size-3" />
-        </span>
         <span v-if="isLater === 1" class="video-item__flag" title="稍后看">
           <AppIcon name="watchLaterActive" class="size-3" />
         </span>
@@ -81,7 +78,7 @@
           <SubscriptionAvatar
             :src="displayAvatars[0].avatar"
             :name="displayAvatars[0].name"
-            size="lg"
+            :size="layout === 'list' ? 'lg' : 'md'"
             @click.stop="goToProfile(displayAvatars[0])"
           />
         </div>
@@ -255,10 +252,10 @@ watch(
   () => hydrateFromVideo(props.video),
 )
 
-const hasActiveFlags = computed(
-  () => isRead.value || isLater.value === 1 || isLiked.value === 1,
+const hasActiveThumbnailFlags = computed(
+  () => isLater.value === 1 || isLiked.value === 1,
 )
-const showThumbnailFlags = computed(() => props.thumbnailStatus === 'full' && hasActiveFlags.value)
+const showThumbnailFlags = computed(() => props.thumbnailStatus === 'full' && hasActiveThumbnailFlags.value)
 
 const thumbnailSrc = computed(() => String(props.video?.thumbnail || '').trim())
 const isNsfwVideo = computed(() => props.video.subscriptions?.some((s) => s.is_nsfw))
@@ -394,7 +391,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 
 .video-item--grid {
   flex-direction: column;
-  gap: 0.625rem;
+  gap: 0.5rem;
 }
 
 .video-item--list {
@@ -530,6 +527,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 
 .video-item__title {
   display: -webkit-box;
+  margin: 0;
   overflow: hidden;
   color: hsl(var(--foreground));
   font-weight: 600;
@@ -540,6 +538,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item__title--grid {
+  min-height: calc(2 * 0.875rem * 1.35);
   font-size: 0.875rem;
   line-height: 1.35;
 }
@@ -555,15 +554,15 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item__meta {
+  position: relative;
   display: flex;
   min-width: 0;
-  align-items: flex-start;
-  gap: 0.625rem;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .video-item__avatar {
   flex: 0 0 auto;
-  margin-top: 0.125rem;
 }
 
 .video-item__meta-main {
@@ -633,14 +632,22 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   background: hsl(var(--muted));
 }
 
-/* Quick ops: meta-row ghost icons — media stays clean */
+/* Quick ops overlay secondary metadata on demand instead of permanently
+   shrinking the source/date line. Active state is already visible on-image. */
 .video-item__quick {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  z-index: var(--z-content);
   display: inline-flex;
-  flex: 0 0 auto;
   align-items: center;
   gap: 0.125rem;
-  margin-top: 0.0625rem;
-  margin-inline-start: auto;
+  padding-left: 0.75rem;
+  background: linear-gradient(to right, hsl(var(--background) / 0), hsl(var(--background)) 32%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity var(--duration-fast) var(--ease-default);
 }
 
 .video-item__quick-btn {
@@ -655,17 +662,13 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   background: transparent;
   color: hsl(var(--muted-foreground) / 0.55);
   cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
   transition:
-    opacity var(--duration-fast) var(--ease-default),
     color var(--duration-fast) var(--ease-default),
     background-color var(--duration-fast) var(--ease-default);
 }
 
-.video-item:hover .video-item__quick-btn,
-.video-item:focus-within .video-item__quick-btn,
-.video-item__quick-btn.is-on {
+.video-item:hover .video-item__quick,
+.video-item:focus-within .video-item__quick {
   opacity: 1;
   pointer-events: auto;
 }
@@ -678,8 +681,6 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 .video-item__quick-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px hsl(var(--ring) / 0.45);
-  opacity: 1;
-  pointer-events: auto;
 }
 
 .video-item__quick-btn.is-on {
@@ -703,12 +704,11 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item--appearance-workbench {
-  border-radius: var(--radius-md);
-  padding: 0.25rem;
+  padding: 0;
 }
 
 .video-item--appearance-workbench:hover {
-  background: hsl(var(--accent) / 0.34);
+  background: transparent;
 }
 
 .video-item--appearance-workbench .video-item__thumb {
@@ -726,7 +726,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item--appearance-workbench .video-item__body {
-  padding: 0.625rem 0.25rem 0.35rem;
+  padding: 0 0.125rem 0.25rem;
 }
 
 .video-item--appearance-workbench .video-item__title {
@@ -740,10 +740,14 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   }
 }
 
-@media (hover: none), (prefers-reduced-motion: reduce) {
-  .video-item__quick-btn {
+@media (hover: none) {
+  .video-item__quick {
+    position: static;
+    padding-left: 0;
+    background: transparent;
     opacity: 1;
     pointer-events: auto;
+    transform: none;
   }
 }
 
@@ -751,6 +755,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   .video-item,
   .video-item__thumb,
   .video-item__progress-fill,
+  .video-item__quick,
   .video-item__quick-btn,
   .video-item__source-name,
   .video-item__title {

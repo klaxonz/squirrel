@@ -31,7 +31,7 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-function mountVideoItem(onOpen: (video: VideoListItem) => void) {
+function mountVideoItem(onOpen: (video: VideoListItem) => void, overrides: Partial<VideoListItem> = {}) {
   const video: VideoListItem = {
     id: 42,
     title: '直接播放测试',
@@ -45,6 +45,7 @@ function mountVideoItem(onOpen: (video: VideoListItem) => void) {
     actors: [],
     is_read: false,
     interaction_type: null,
+    ...overrides,
   }
   const host = document.createElement('div')
   document.body.append(host)
@@ -74,5 +75,16 @@ describe('VideoItem playback activation', () => {
     host.querySelector<HTMLButtonElement>('.video-item__quick-btn')?.click()
     await nextTick()
     expect(onOpen).toHaveBeenCalledTimes(2)
+  })
+
+  it('uses progress for read state instead of adding a thumbnail flag', () => {
+    const { host } = mountVideoItem(vi.fn(), {
+      duration: 120,
+      last_position: 30,
+      is_read: true,
+    })
+
+    expect(host.querySelector('.video-item__progress')).not.toBeNull()
+    expect(host.querySelector('.video-item__flags')).toBeNull()
   })
 })
