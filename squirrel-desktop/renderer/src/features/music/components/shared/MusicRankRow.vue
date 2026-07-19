@@ -45,10 +45,10 @@ defineEmits<{
   display: grid;
   width: 100%;
   min-width: 0;
-  grid-template-columns: 1.5rem 2.5rem minmax(0, 1fr) auto;
+  grid-template-columns: 1.25rem 2.75rem minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
-  padding: 0.625rem var(--space-3);
+  padding: 0.625rem 0;
   color: hsl(var(--foreground));
   text-align: left;
   cursor: pointer;
@@ -79,8 +79,8 @@ defineEmits<{
 
 .music-rank-cover {
   display: flex;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -121,13 +121,17 @@ defineEmits<{
 
 .music-rank-arrow {
   color: hsl(var(--muted-foreground) / 0.5);
+  opacity: 0;
   transition:
     color var(--duration-fast) var(--ease-default),
+    opacity var(--duration-fast) var(--ease-default),
     transform var(--duration-fast) var(--ease-default);
 }
 
-.music-rank-item:hover .music-rank-arrow {
+.music-rank-item:hover .music-rank-arrow,
+.music-rank-item:focus-visible .music-rank-arrow {
   color: hsl(var(--foreground));
+  opacity: 1;
   transform: translateX(0.125rem);
 }
 

@@ -243,7 +243,7 @@ onUnmounted(() => {
 
 .music-progress-fill {
   height: 100%;
-  background: hsl(var(--foreground) / 0.62);
+  background: hsl(var(--primary));
   border-radius: 9999px;
   transition: width 0.1s linear;
 }
@@ -259,10 +259,10 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
   width: 8px;
   height: 8px;
-  background: hsl(var(--foreground));
+  background: hsl(var(--primary));
   border: 2px solid hsl(var(--background));
   border-radius: 9999px;
-  box-shadow: 0 1px 4px hsl(var(--foreground) / 0.18);
+  box-shadow: 0 1px 4px hsl(var(--primary) / 0.25);
   pointer-events: none;
 }
 

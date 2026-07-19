@@ -5,7 +5,7 @@
     :class="{ 'music-bar-track-info--clickable': clickable }"
     @click="clickable && $emit('click')"
   >
-    <div class="music-bar-cover">
+    <span class="music-bar-cover">
       <img
         v-if="track?.cover"
         :src="track.cover"
@@ -13,20 +13,24 @@
         class="h-full w-full object-cover"
       />
       <AppIcon v-else name="playlistMusic" class="h-4 w-4" />
-    </div>
-    <div class="music-bar-text">
+    </span>
+    <span class="music-bar-text">
       <span class="music-bar-title">{{ track?.title || '未在播放' }}</span>
-      <!-- Short recoverable label — full detail on title; auth opens login. -->
-      <span
-        v-if="error"
-        class="music-bar-error"
-        :class="{ 'music-bar-error--action': needsRelogin }"
-        :title="error"
-        :role="needsRelogin ? 'link' : undefined"
-        @click.stop="onErrorAction"
-      >{{ shortError }}</span>
-      <span v-else class="music-bar-artist">{{ track?.artist || '酷狗音乐' }}</span>
-    </div>
+      <span class="music-bar-meta">
+        <span class="music-bar-artist">{{ track?.artist || '酷狗音乐' }}</span>
+        <span
+          v-if="error"
+          class="music-bar-error"
+          :class="{ 'music-bar-error--action': needsRelogin }"
+          :title="error"
+          :role="needsRelogin ? 'link' : undefined"
+          @click.stop="onErrorAction"
+        >
+          <AppIcon name="error" class="music-bar-error-icon" />
+          <span class="music-bar-error-label">{{ shortError }}</span>
+        </span>
+      </span>
+    </span>
   </Button>
 </template>
 
@@ -54,14 +58,12 @@ const router = useRouter()
 
 const needsRelogin = computed(() => /登录|会话|鉴权|auth|login|token/i.test(String(props.error || '')))
 
-/** Keep the track-info third of the player bar readable. */
 const shortError = computed(() => {
   const raw = String(props.error || '').trim()
   if (!raw) return ''
-  if (needsRelogin.value) return '需重新登录 · 点此登录'
-  if (/网络|timeout|fetch|连接/i.test(raw)) return '网络异常，请重试'
-  if (raw.length <= 18) return raw
-  return '播放失败，请重试'
+  if (needsRelogin.value) return '需重新登录'
+  if (/网络|timeout|fetch|连接/i.test(raw)) return '网络异常'
+  return '暂不可播'
 })
 
 const onErrorAction = () => {
@@ -76,12 +78,19 @@ const onErrorAction = () => {
   width: 100%;
   max-width: 100%;
   justify-content: flex-start;
-  gap: 0.625rem;
+  height: 3.25rem;
+  gap: var(--space-3);
   border-radius: var(--radius-md);
-  padding: 0.25rem 0.375rem 0.25rem 0.25rem;
+  padding: 0.25rem;
   color: inherit;
   text-align: left;
   cursor: default;
+}
+
+.music-bar-track-info :deep(.sq-button__content) {
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
 }
 
 .music-bar-track-info--clickable {
@@ -90,8 +99,8 @@ const onErrorAction = () => {
 
 .music-bar-cover {
   display: flex;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
@@ -102,6 +111,7 @@ const onErrorAction = () => {
 }
 
 .music-bar-text {
+  display: block;
   flex: 1;
   min-width: 0;
 }
@@ -109,36 +119,63 @@ const onErrorAction = () => {
 .music-bar-title {
   display: block;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 650;
   color: hsl(var(--foreground));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.music-bar-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 0.15rem;
+}
+
 .music-bar-artist {
-  display: block;
+  min-width: 0;
+  overflow: hidden;
   font-size: 0.6875rem;
   color: hsl(var(--muted-foreground));
-  margin-top: 0.125rem;
-  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .music-bar-error {
-  display: block;
-  margin-top: 0.125rem;
-  overflow: hidden;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.2rem;
   color: hsl(var(--destructive));
   font-size: 0.6875rem;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.music-bar-error::before {
+  width: 1px;
+  height: 0.625rem;
+  margin-right: 0.15rem;
+  background: hsl(var(--border));
+  content: '';
+}
+
+.music-bar-error-icon {
+  width: 0.6875rem;
+  height: 0.6875rem;
 }
 
 .music-bar-error--action {
   text-decoration: underline;
   text-underline-offset: 0.125rem;
   cursor: pointer;
+}
+
+@media (max-width: 800px) {
+  .music-bar-error-label,
+  .music-bar-error::before {
+    display: none;
+  }
 }
 </style>

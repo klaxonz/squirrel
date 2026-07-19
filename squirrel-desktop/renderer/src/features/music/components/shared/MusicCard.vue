@@ -1,7 +1,7 @@
 <template>
   <article
     class="music-card"
-    :class="[sizeClass, variantClass, { 'music-card--playing': isPlaying }]"
+    :class="[cardClass, { 'music-card--playing': isPlaying }]"
   >
     <div class="music-card-cover">
       <button type="button"
@@ -51,7 +51,12 @@
 import { computed, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import type { AppIconName } from '@/shared/icons/app-icons'
-import { musicCardVariants, type MusicCardSize, type MusicCardVariant } from './music-card.variants'
+import {
+  musicCardVariants,
+  type MusicCardLayout,
+  type MusicCardSize,
+  type MusicCardVariant,
+} from './music-card.variants'
 
 const props = withDefaults(defineProps<{
   cover?: string
@@ -61,11 +66,13 @@ const props = withDefaults(defineProps<{
   badge?: string
   size?: MusicCardSize
   variant?: MusicCardVariant
+  layout?: MusicCardLayout
   isPlaying?: boolean
   playable?: boolean
 }>(), {
   size: 'md',
   variant: 'playlist',
+  layout: 'tile',
   isPlaying: false,
   playable: false,
 })
@@ -77,8 +84,11 @@ defineEmits<{
 
 const coverError = ref(false)
 
-const sizeClass = computed(() => musicCardVariants({ size: props.size }))
-const variantClass = computed(() => musicCardVariants({ variant: props.variant }))
+const cardClass = computed(() => musicCardVariants({
+  size: props.size,
+  variant: props.variant,
+  layout: props.layout,
+}))
 
 const placeholderIcon = computed(() => {
   const icons: Record<MusicCardVariant, AppIconName> = {
@@ -104,6 +114,16 @@ function handleCoverError() {
   min-width: 0;
 }
 
+.music-card--row {
+  display: grid;
+  min-height: 4.75rem;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--app-surface-border-subtle);
+  padding-block: 0.375rem;
+}
+
 .music-card--xs { --music-card-radius: var(--radius-sm); }
 .music-card--sm { --music-card-radius: var(--radius-md); }
 .music-card--md,
@@ -118,6 +138,17 @@ function handleCoverError() {
   border-radius: var(--music-card-radius, var(--radius-lg));
   background: hsl(var(--muted) / 0.3);
   transition: border-color var(--duration-fast) var(--ease-default);
+}
+
+.music-card--row .music-card-cover {
+  width: 4rem;
+  height: 4rem;
+  aspect-ratio: auto;
+  border-radius: var(--radius-md);
+}
+
+.music-card--feature .music-card-cover {
+  border-radius: var(--radius-lg);
 }
 
 .music-card-cover::after {
@@ -191,6 +222,16 @@ function handleCoverError() {
     opacity var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-default);
+}
+
+.music-card--row .music-card-play {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.music-card--row .music-card-play-icon {
+  width: 1.125rem;
+  height: 1.125rem;
 }
 
 .music-card-play-icon {
@@ -270,6 +311,15 @@ function handleCoverError() {
   cursor: pointer;
 }
 
+.music-card--row .music-card-info {
+  align-self: center;
+  padding: 0;
+}
+
+.music-card--feature .music-card-info {
+  padding-top: var(--space-3);
+}
+
 .music-card-title,
 .music-card-subtitle,
 .music-card-meta {
@@ -283,6 +333,16 @@ function handleCoverError() {
   font-size: 0.8125rem;
   font-weight: 650;
   line-height: 1.3;
+}
+
+.music-card--feature .music-card-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .music-card--xs .music-card-title { font-size: 0.75rem; }

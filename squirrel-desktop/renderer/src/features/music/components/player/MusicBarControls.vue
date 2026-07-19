@@ -4,6 +4,7 @@
       <Button
         text severity="secondary"
         size="sm" icon-only
+        class="music-bar-mode-button"
         :class="{ 'text-primary': shuffle }"
         title="随机播放"
         aria-label="随机播放"
@@ -16,6 +17,7 @@
       <Button
         text severity="secondary"
         size="sm" icon-only
+        class="music-bar-step-button"
         :disabled="!canStep"
         title="上一首"
         aria-label="上一首"
@@ -25,8 +27,9 @@
       </Button>
 
       <Button
-        outlined rounded
+        rounded
         size="sm" icon-only
+        class="music-bar-primary-button"
         :disabled="loading"
         :title="playing ? '暂停' : '播放'"
         :aria-label="playing ? '暂停' : '播放'"
@@ -41,6 +44,7 @@
       <Button
         text severity="secondary"
         size="sm" icon-only
+        class="music-bar-step-button"
         :disabled="!canStep"
         title="下一首"
         aria-label="下一首"
@@ -52,6 +56,7 @@
       <Button
         text severity="secondary"
         size="sm" icon-only
+        class="music-bar-mode-button"
         :class="{ 'text-primary': repeat !== 'none' }"
         :title="repeatTitle"
         :aria-label="repeatTitle"
@@ -117,6 +122,25 @@ const repeatTitle = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.1875rem;
+  gap: 0.25rem;
+}
+
+.music-bar-mode-button {
+  --sq-button-height: 1.75rem;
+}
+
+.music-bar-step-button {
+  --sq-button-height: 2rem;
+}
+
+.music-bar-primary-button {
+  --sq-button-height: 2.5rem;
+  margin-inline: 0.125rem;
+}
+
+@media (max-width: 680px) {
+  .music-bar-mode-button {
+    display: none;
+  }
 }
 </style>

@@ -90,10 +90,7 @@ function isPlaying(track: MusicTrack): boolean {
 .music-recent-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  overflow: hidden;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--radius-lg);
-  background: hsl(var(--card) / 0.38);
+  column-gap: clamp(var(--space-4), 2vw, var(--space-7));
 }
 
 .music-recent-item {
@@ -101,19 +98,12 @@ function isPlaying(track: MusicTrack): boolean {
   min-width: 0;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3);
+  border-bottom: 1px solid var(--app-surface-border-subtle);
+  padding: 0.625rem 0;
   color: hsl(var(--foreground));
   text-align: left;
   cursor: pointer;
   transition: background-color var(--duration-fast) var(--ease-default);
-}
-
-.music-recent-item:nth-child(odd) {
-  border-right: 1px solid var(--app-surface-border-subtle);
-}
-
-.music-recent-item:nth-child(n + 3) {
-  border-top: 1px solid var(--app-surface-border-subtle);
 }
 
 .music-recent-item:hover {
@@ -129,8 +119,8 @@ function isPlaying(track: MusicTrack): boolean {
 
 .music-recent-cover {
   display: flex;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 3rem;
+  height: 3rem;
   flex: none;
   align-items: center;
   justify-content: center;
@@ -185,14 +175,6 @@ function isPlaying(track: MusicTrack): boolean {
 @media (max-width: 1180px) {
   .music-recent-list {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .music-recent-item:nth-child(odd) {
-    border-right: 0;
-  }
-
-  .music-recent-item:nth-child(n + 2) {
-    border-top: 1px solid var(--app-surface-border-subtle);
   }
 }
 

@@ -17,11 +17,11 @@
       />
     </div>
 
-    <Button class="relative" text severity="secondary" size="sm" icon-only title="播放队列" aria-label="播放队列" @click="$emit('queue')">
+    <Button class="music-bar-queue" text severity="secondary" size="sm" title="播放队列" aria-label="播放队列" @click="$emit('queue')">
       <AppIcon name="playlistMusic" class="h-4 w-4" />
-      <Badge v-if="queueCount" class="music-bar-badge">
+      <span v-if="queueCount" class="music-bar-queue-count" aria-hidden="true">
         {{ queueCount > 99 ? '99+' : queueCount }}
-      </Badge>
+      </span>
     </Button>
   </div>
 </template>
@@ -29,7 +29,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 
 const props = withDefaults(defineProps<{
@@ -60,13 +59,13 @@ const volumeIcon = computed(() => {
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.25rem;
+  gap: var(--space-2);
 }
 
 .music-bar-volume {
   display: flex;
   align-items: center;
-  gap: 0.125rem;
+  gap: 0.25rem;
   min-width: 0;
 }
 
@@ -74,12 +73,12 @@ const volumeIcon = computed(() => {
   -webkit-appearance: none;
   appearance: none;
   height: 3px;
-  width: 5rem;
+  width: 5.5rem;
   max-width: 30vw;
   border-radius: 9999px;
   background: linear-gradient(
     to right,
-    hsl(var(--foreground) / 0.8) var(--slider-progress, 0%),
+    hsl(var(--primary)) var(--slider-progress, 0%),
     hsl(var(--border) / 0.4) var(--slider-progress, 0%)
   );
   outline: none;
@@ -98,7 +97,7 @@ const volumeIcon = computed(() => {
   width: 10px;
   height: 10px;
   border-radius: 9999px;
-  background: hsl(var(--foreground));
+  background: hsl(var(--primary));
   border: 2px solid hsl(var(--background));
   opacity: 0;
   transition: opacity 0.15s ease;
@@ -109,12 +108,29 @@ const volumeIcon = computed(() => {
   opacity: 1;
 }
 
-.music-bar-badge {
-  position: absolute;
-  top: -0.125rem;
-  right: -0.25rem;
+.music-bar-queue {
+  --sq-button-height: 2rem;
+  border-left: 1px solid var(--app-hairline);
+  border-radius: 0;
+  padding-left: var(--space-3);
+}
+
+.music-bar-queue-count {
+  min-width: 1rem;
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-badge-size);
-  line-height: 1;
-  padding: 0.0625rem 0.25rem;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+@media (max-width: 680px) {
+  .music-bar-queue {
+    border-left: 0;
+    padding-left: 0.5rem;
+  }
+
+  .music-bar-queue-count {
+    display: none;
+  }
 }
 </style>

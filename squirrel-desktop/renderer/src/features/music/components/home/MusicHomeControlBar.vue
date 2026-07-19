@@ -2,11 +2,11 @@
   <section class="music-home-controls" aria-label="音乐快捷控制">
     <div class="music-home-controls__fm">
       <span class="music-home-controls__icon" aria-hidden="true">
-        <AppIcon :name="fmPlaying ? 'playlistMusic' : 'play'" />
+        <AppIcon :name="fmPlaying ? 'volumeHigh' : 'playlistMusic'" />
       </span>
       <div class="music-home-controls__copy">
         <strong>私人 FM</strong>
-        <span>{{ fmStateText }}</span>
+        <span aria-live="polite">{{ fmStateText }}</span>
       </div>
       <Button
         size="sm"
@@ -16,43 +16,45 @@
         @click="$emit('fm-play')"
       >
         <AppIcon v-if="!fmLoading" :name="fmPlaying ? 'pause' : 'play'" class="size-3.5" />
-        {{ fmPlaying ? '暂停' : fmActive ? '继续' : '播放' }}
+        {{ fmPlaying ? '暂停' : fmActive ? '继续' : '开始' }}
       </Button>
     </div>
 
-    <div class="music-home-controls__preferences">
-      <label class="music-home-controls__preference">
-        <span>模式</span>
-        <AppSegmentedControl
-          :model-value="fmMode"
-          :options="fmModes"
-          size="sm"
-          aria-label="私人 FM 模式"
-          @update:model-value="$emit('switch-fm-mode', $event as FmMode)"
-        />
-      </label>
-      <label class="music-home-controls__preference">
-        <span>曲库</span>
-        <AppSegmentedControl
-          :model-value="fmPoolId"
-          :options="fmPools"
-          size="sm"
-          aria-label="私人 FM 曲库"
-          @update:model-value="$emit('switch-fm-pool', String($event))"
-        />
-      </label>
-    </div>
+    <div class="music-home-controls__tools">
+      <div class="music-home-controls__preferences">
+        <label class="music-home-controls__preference">
+          <span>模式</span>
+          <AppSegmentedControl
+            :model-value="fmMode"
+            :options="fmModes"
+            size="sm"
+            aria-label="私人 FM 模式"
+            @update:model-value="$emit('switch-fm-mode', $event as FmMode)"
+          />
+        </label>
+        <label class="music-home-controls__preference">
+          <span>曲库</span>
+          <AppSegmentedControl
+            :model-value="fmPoolId"
+            :options="fmPools"
+            size="sm"
+            aria-label="私人 FM 曲库"
+            @update:model-value="$emit('switch-fm-pool', String($event))"
+          />
+        </label>
+      </div>
 
-    <nav class="music-home-controls__shortcuts" aria-label="音乐快捷入口">
-      <Button text severity="secondary" size="sm" @click="$emit('everyday')">
-        <AppIcon name="time" class="size-3.5" />
-        每日推荐
-      </Button>
-      <Button text severity="secondary" size="sm" @click="$emit('new-songs')">
-        <AppIcon name="playlistMusic" class="size-3.5" />
-        新歌速递
-      </Button>
-    </nav>
+      <nav class="music-home-controls__shortcuts" aria-label="音乐快捷入口">
+        <Button text severity="secondary" size="sm" @click="$emit('everyday')">
+          <AppIcon name="time" class="size-3.5" />
+          每日推荐
+        </Button>
+        <Button text severity="secondary" size="sm" @click="$emit('new-songs')">
+          <AppIcon name="playlistMusic" class="size-3.5" />
+          新歌速递
+        </Button>
+      </nav>
+    </div>
   </section>
 </template>
 
@@ -113,26 +115,27 @@ const fmButtonTitle = computed(() => {
 
 <style scoped>
 .music-home-controls {
-  display: flex;
+  display: grid;
   min-width: 0;
+  grid-template-columns: minmax(16rem, 0.8fr) minmax(0, 1.2fr);
   align-items: center;
-  gap: var(--space-4);
-  margin-bottom: var(--space-5);
-  border-block: 1px solid var(--app-hairline);
-  padding-block: 0.75rem;
+  gap: clamp(var(--space-5), 2.5vw, var(--space-8));
+  margin-bottom: var(--space-7);
+  border-bottom: 1px solid var(--app-hairline);
+  padding: var(--space-3) 0 var(--space-4);
 }
 
 .music-home-controls__fm {
   display: flex;
-  min-width: 14rem;
+  min-width: 0;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 .music-home-controls__icon {
   display: inline-flex;
-  width: 2rem;
-  height: 2rem;
+  width: 2.25rem;
+  height: 2.25rem;
   flex: none;
   align-items: center;
   justify-content: center;
@@ -154,14 +157,23 @@ const fmButtonTitle = computed(() => {
 }
 
 .music-home-controls__copy strong {
-  font-size: 0.8125rem;
+  font-family: var(--app-heading-font);
+  font-size: 0.875rem;
   font-weight: 650;
 }
 
 .music-home-controls__copy span,
 .music-home-controls__preference > span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
+}
+
+.music-home-controls__tools {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
 }
 
 .music-home-controls__preferences {
@@ -182,17 +194,31 @@ const fmButtonTitle = computed(() => {
   flex: none;
   align-items: center;
   gap: var(--space-1);
-  margin-left: auto;
+  border-left: 1px solid var(--app-hairline);
+  padding-left: var(--space-3);
 }
 
-@media (max-width: 1160px) {
+@media (max-width: 1120px) {
   .music-home-controls {
-    flex-wrap: wrap;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .music-home-controls__tools {
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 720px) {
+  .music-home-controls__tools,
+  .music-home-controls__preferences {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .music-home-controls__shortcuts {
-    width: 100%;
-    justify-content: flex-end;
+    border-left: 0;
+    padding-left: 0;
   }
 }
 </style>

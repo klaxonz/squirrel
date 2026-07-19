@@ -29,11 +29,13 @@
       />
 
       <template v-if="isMusicPage">
-        <MusicProgressBar
-          :current="store.currentTime"
-          :total="store.duration"
-          @seek="handleSeek"
-        />
+        <div class="music-bar-progress-frame">
+          <MusicProgressBar
+            :current="store.currentTime"
+            :total="store.duration"
+            @seek="handleSeek"
+          />
+        </div>
 
         <div class="music-bar-inner">
           <MusicBarTrackInfo
@@ -375,7 +377,7 @@ function removeQueueItem(index: number) {
   position: fixed;
   right: 0;
   bottom: 0;
-  left: 0;
+  left: var(--workspace-offset, 0px);
   z-index: var(--z-sidebar);
   display: flex;
   width: auto;
@@ -383,8 +385,9 @@ function removeQueueItem(index: number) {
   flex-direction: column;
   overflow: hidden;
   border-top: 1px solid var(--app-hairline);
-  background: hsl(var(--background) / 0.96);
+  background: hsl(var(--background) / 0.98);
   transition:
+    left var(--duration-base) var(--ease-out),
     border-color var(--duration-fast) var(--ease-default);
 }
 
@@ -422,24 +425,44 @@ function removeQueueItem(index: number) {
 
 .music-bar-inner {
   display: grid;
+  width: 100%;
+  max-width: var(--app-content-media-max);
   height: 100%;
   min-height: 0;
   align-items: center;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
-  padding: 2px 10vw 0;
+  grid-template-columns: minmax(13rem, 1fr) auto minmax(13rem, 1fr);
+  gap: clamp(var(--space-4), 2vw, var(--space-7));
+  margin-inline: auto;
+  padding: 0.25rem var(--app-content-media-gutter) 0.125rem;
 }
 
-/* Progress stays glued to the top edge of the full-width bar with a larger
-   invisible hit target; the visual hairline is centered inside that target. */
-.music-bar :deep(.music-progress-bar) {
+/* Keep the full player and its scrubber on the same centered media boundary as
+   the music page. The mini player still owns the full width of the sidebar. */
+.music-bar-progress-frame {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  width: 100%;
+  max-width: var(--app-content-media-max);
+  margin: 0;
+  margin-inline: auto;
+  padding-inline: var(--app-content-media-gutter);
+}
+
+.music-bar-progress-frame :deep(.music-progress-bar),
+.music-bar--mini :deep(.music-progress-bar) {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.music-bar--mini :deep(.music-progress-bar) {
   position: absolute;
   top: 0;
   left: 0;
   z-index: 1;
-  width: 100%;
-  margin: 0;
-  padding: 0;
 }
 
 .music-bar-inner :deep(.music-bar-track-info),
@@ -449,16 +472,20 @@ function removeQueueItem(index: number) {
   min-width: 0;
 }
 
-@media (max-width: 1336px) {
-  .music-bar-inner {
-    padding-inline: 5vw;
-  }
+.music-bar-inner :deep(.music-bar-track-info) {
+  max-width: 24rem;
+}
+
+.music-bar-inner :deep(.music-bar-actions) {
+  max-width: 18rem;
+  margin-left: auto;
 }
 
 @media (max-width: 900px) {
   .music-bar-inner {
-    gap: var(--space-1);
-    padding-inline: var(--space-2);
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: var(--space-2);
+    padding-inline: var(--space-3);
   }
 
   .music-bar .music-bar-time-wrap,

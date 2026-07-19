@@ -35,20 +35,38 @@
           icon="playlistMusic"
           title="暂无推荐歌单"
         />
-        <MusicCardGrid v-else>
+        <div v-else class="music-home-recommendation-layout">
           <MusicCard
-            v-for="item in recommendedPlaylists"
-            :key="item.specialid"
-            :cover="item.imgurl"
-            :title="item.specialname || item.name || '未命名歌单'"
-            :meta="item.play_count ? formatCount(item.play_count) + ' 次播放' : item.nickname"
-            size="sm"
+            v-if="featuredPlaylist"
+            :cover="playlistCover(featuredPlaylist)"
+            :title="playlistTitle(featuredPlaylist)"
+            :subtitle="playlistOwner(featuredPlaylist)"
+            :meta="playlistMeta(featuredPlaylist)"
+            size="lg"
             variant="playlist"
+            layout="feature"
             playable
-            @select="$emit('select-playlist', item)"
-            @play="$emit('play-playlist', item)"
+            @select="$emit('select-playlist', featuredPlaylist)"
+            @play="$emit('play-playlist', featuredPlaylist)"
           />
-        </MusicCardGrid>
+
+          <div class="music-home-playlist-list">
+            <MusicCard
+              v-for="(item, index) in supportingPlaylists"
+              :key="playlistKey(item, index)"
+              :cover="playlistCover(item)"
+              :title="playlistTitle(item)"
+              :subtitle="playlistOwner(item)"
+              :meta="playlistMeta(item)"
+              size="sm"
+              variant="playlist"
+              layout="row"
+              playable
+              @select="$emit('select-playlist', item)"
+              @play="$emit('play-playlist', item)"
+            />
+          </div>
+        </div>
       </MusicSection>
 
       <MusicSection
@@ -82,20 +100,22 @@
         icon="disc"
         title="暂无新专辑"
       />
-      <MusicCardGrid v-else>
+      <div v-else class="music-home-album-list">
         <MusicCard
-          v-for="album in albums"
+          v-for="album in visibleAlbums"
           :key="album.id"
           :cover="album.cover"
           :title="album.name"
           :subtitle="album.artist"
-          size="md"
+          :meta="album.publish_date || album.type"
+          size="sm"
           variant="album"
+          layout="row"
           playable
           @select="$emit('select-album', album)"
           @play="$emit('play-album', album)"
         />
-      </MusicCardGrid>
+      </div>
     </MusicSection>
   </div>
 </template>
@@ -106,7 +126,6 @@ import MusicHomeControlBar from './MusicHomeControlBar.vue'
 import MusicRecentSection from './MusicRecentSection.vue'
 import MusicSection from '../shared/MusicSection.vue'
 import MusicCard from '../shared/MusicCard.vue'
-import MusicCardGrid from '../shared/MusicCardGrid.vue'
 import MusicRankRow from '../shared/MusicRankRow.vue'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
@@ -147,6 +166,32 @@ const player = useMusicPlayerStore()
 
 const recentTracks = computed(() => props.historyTracks?.slice(0, 5) || [])
 const recommendedPlaylists = computed(() => props.playlists.slice(0, 8))
+const featuredPlaylist = computed(() => recommendedPlaylists.value[0] || null)
+const supportingPlaylists = computed(() => recommendedPlaylists.value.slice(1))
+const visibleAlbums = computed(() => props.albums.slice(0, 8))
+
+function playlistKey(playlist: MusicPlaylist, index: number): string {
+  return playlist.specialid
+    || playlist.global_collection_id
+    || playlist.id
+    || `${playlistTitle(playlist)}-${index}`
+}
+
+function playlistCover(playlist: MusicPlaylist): string {
+  return playlist.imgurl || playlist.cover || ''
+}
+
+function playlistTitle(playlist: MusicPlaylist): string {
+  return playlist.specialname || playlist.name || '未命名歌单'
+}
+
+function playlistOwner(playlist: MusicPlaylist): string {
+  return playlist.nickname || playlist.creator || '精选歌单'
+}
+
+function playlistMeta(playlist: MusicPlaylist): string {
+  return playlist.play_count ? `${formatCount(playlist.play_count)} 次播放` : ''
+}
 
 function handlePlayTrack(track: MusicTrack) {
   player.playTrack(track)
@@ -163,19 +208,57 @@ function handlePlayTrack(track: MusicTrack) {
 
 .music-home-board {
   display: grid;
-  grid-template-columns: minmax(0, 2.25fr) minmax(17rem, 0.75fr);
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 20rem);
   align-items: start;
-  gap: var(--space-5);
-  margin-bottom: var(--space-6);
+  gap: clamp(var(--space-5), 2.25vw, var(--space-7));
+  margin-bottom: var(--space-7);
 }
 
 .music-home-board > .music-section {
   margin-bottom: 0;
 }
 
+.music-home-recommendation-layout {
+  display: grid;
+  grid-template-columns: minmax(13rem, 16rem) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(var(--space-4), 1.6vw, var(--space-6));
+}
+
+.music-home-playlist-list,
+.music-home-album-list {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(var(--space-4), 2vw, var(--space-7));
+}
+
+.music-home-ranks :deep(.music-rank-list) {
+  border-top: 0;
+}
+
 @media (max-width: 1180px) {
   .music-home-board {
     grid-template-columns: 1fr;
+  }
+
+  .music-home-ranks {
+    max-width: none;
+  }
+}
+
+@media (max-width: 780px) {
+  .music-home-recommendation-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .music-home-recommendation-layout > :deep(.music-card--feature) {
+    width: min(100%, 18rem);
+  }
+
+  .music-home-playlist-list,
+  .music-home-album-list {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>
