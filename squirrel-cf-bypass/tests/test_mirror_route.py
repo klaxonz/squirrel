@@ -86,7 +86,7 @@ def test_mirror_route_uses_configured_default_proxy(monkeypatch):
             class Response:
                 status_code = 200
                 text = '<html>seed</html>'
-                url = 'https://javdb.com/'
+                url = 'https://example.com/'
                 cookies = {'cf_clearance': 'seeded'}
 
             return Response()
@@ -113,7 +113,7 @@ def test_mirror_route_uses_configured_default_proxy(monkeypatch):
     response = client.get(
         '/videos/demo.m3u8',
         headers={
-            'X-Hostname': 'javdb.com',
+            'X-Hostname': 'example.com',
             'Cookie': 'cf_clearance=provided; _jdb_session=session',
             'User-Agent': 'Mirror UA',
         },
@@ -142,7 +142,7 @@ def test_mirror_route_seeds_clearance_from_request_cookies(monkeypatch):
             class Response:
                 status_code = 200
                 text = '<html>seed</html>'
-                url = 'https://javdb.com/'
+                url = 'https://example.com/'
                 cookies = {'cf_clearance': 'seeded'}
 
             return Response()
@@ -175,7 +175,7 @@ def test_mirror_route_seeds_clearance_from_request_cookies(monkeypatch):
     response = client.get(
         '/videos/demo.m3u8',
         headers={
-            'X-Hostname': 'javdb.com',
+            'X-Hostname': 'example.com',
             'Cookie': 'cf_clearance=provided; _jdb_session=session',
             'User-Agent': 'Mirror UA',
         },
@@ -184,7 +184,7 @@ def test_mirror_route_seeds_clearance_from_request_cookies(monkeypatch):
     assert response.status_code == 200
     assert response.content == b'ok'
     assert session_calls[0]['kind'] == 'seed'
-    assert session_calls[0]['url'] == 'https://javdb.com/'
+    assert session_calls[0]['url'] == 'https://example.com/'
     assert session_calls[0]['headers']['cookie'] == 'cf_clearance=provided; _jdb_session=session'
     assert session_calls[1]['kind'] == 'mirror'
     assert session_calls[1]['headers']['user-agent'] == 'Mirror UA'

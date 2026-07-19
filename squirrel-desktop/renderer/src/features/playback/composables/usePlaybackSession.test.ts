@@ -92,28 +92,6 @@ describe('usePlaybackSession', () => {
 
       expect(session.isReusableFor('vid-1')).toBe(false)
     })
-
-    it('forces a refresh (returns false) for a javdb video whose actors are not resolved yet', () => {
-      const session = usePlaybackSession()
-      session.update({
-        videoId: 'vid-1',
-        source: makeSource(),
-        video: makeVideo({ url: 'https://javdb.com/v/abc', actors: [] }),
-      })
-
-      expect(session.isReusableFor('vid-1')).toBe(false)
-    })
-
-    it('does not force a refresh once the javdb video has actors', () => {
-      const session = usePlaybackSession()
-      session.update({
-        videoId: 'vid-1',
-        source: makeSource(),
-        video: makeVideo({ url: 'https://javdb.com/v/abc', actors: [{ name: 'Someone' }] as VideoPageVideo['actors'] }),
-      })
-
-      expect(session.isReusableFor('vid-1')).toBe(true)
-    })
   })
 
   describe('release', () => {

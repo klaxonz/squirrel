@@ -43,10 +43,7 @@ class _PluginDefinition:
 
 _PLUGIN_DEFINITIONS = {
     'bilibili': _PluginDefinition('bilibili', 'squirrel_bilibili.runtime'),
-    'javdb': _PluginDefinition('javdb', 'squirrel_javdb.runtime'),
-    'pornhub': _PluginDefinition('pornhub', 'squirrel_pornhub.runtime'),
     'youtube': _PluginDefinition('youtube', 'squirrel_youtube.runtime'),
-    'youporn': _PluginDefinition('youporn', 'squirrel_youporn.runtime'),
 }
 
 _PLUGIN_CATEGORY_ERROR_CODES = {

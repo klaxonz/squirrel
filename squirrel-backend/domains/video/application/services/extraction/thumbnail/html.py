@@ -15,12 +15,11 @@ META_THUMBNAIL_PATTERNS = (
 
 
 def looks_like_expiring_preview_thumbnail(url: str | None) -> bool:
+    """Detect CDN thumbnails that embed short-lived signed query tokens."""
     normalized = str(url or '').strip().lower()
     if not normalized:
         return False
-    if 'phncdn.com/videos/' in normalized:
-        return True
-    return '/plain/' in normalized and ('validto=' in normalized or 'hdnea=' in normalized)
+    return any(token in normalized for token in ('validto=', 'hdnea=', 'hmac='))
 
 
 def thumbnail_expiry_score(url: str) -> float:

@@ -175,10 +175,7 @@ const emit = defineEmits(['loading-change', 'error', 'loaded'])
 const REMOTE_SEARCH_TIMEOUT_MS = 95000
 const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
   bilibili: /(?:bilibili\.com\/video\/|b23\.tv\/)/i,
-  javdb: /javdb\.com\/(?:v|video)\//i,
-  pornhub: /pornhub\.com\/(?:view_video\.php|video\/|embed\/)/i,
   youtube: /(?:youtube\.com\/|youtu\.be\/)/i,
-  youporn: /youporn\.com\/watch\//i,
 }
 const router = useRouter()
 const isDesktop = useDesktopBridge().isDesktop()
@@ -203,15 +200,11 @@ const { count: skeletonCount, attachRef: root } = useSkeletonCount({
 
 let requestToken = 0
 let loadedSearchKey = ''
-const pendingYouPornAvatarUrls = new Set<string>()
 
 const siteLabel = (site: string) => {
   const labels: Record<string, string> = {
     bilibili: 'Bilibili',
-    javdb: 'JavDB',
-    pornhub: 'Pornhub',
     youtube: 'YouTube',
-    youporn: 'YouPorn',
   }
   return labels[site] || site
 }
@@ -242,40 +235,6 @@ const primarySubscription = (item: RemoteSearchItem) => {
     name: item.uploader,
     url: item.uploader_url,
     avatar: item.uploader_avatar || '',
-  }
-}
-
-const applyYouPornAvatar = (profileUrl: string, avatar: string) => {
-  if (!avatar) return
-  items.value = items.value.map((item) => {
-    if (item.site !== 'youporn' || item.uploader_url !== profileUrl) return item
-    const subscriptions = normalizeProfiles(item.subscriptions).map((profile, index) => (
-      index === 0 ? { ...profile, avatar } : profile
-    ))
-    return {
-      ...item,
-      uploader_avatar: avatar,
-      subscriptions: subscriptions.length ? subscriptions : item.subscriptions,
-    }
-  })
-}
-
-const loadYouPornAvatars = (nextItems: RemoteSearchItem[], token: number) => {
-  const bridge = window.desktopApp
-  if (typeof bridge?.getYouPornProfileAvatar !== 'function') return
-  const profileUrls = Array.from(new Set(nextItems
-    .filter((item) => item.site === 'youporn' && item.uploader_url && !item.uploader_avatar)
-    .map((item) => String(item.uploader_url))))
-
-  for (const profileUrl of profileUrls) {
-    if (pendingYouPornAvatarUrls.has(profileUrl)) continue
-    pendingYouPornAvatarUrls.add(profileUrl)
-    bridge.getYouPornProfileAvatar(profileUrl)
-      .then((avatar) => {
-        if (token !== requestToken) return
-        applyYouPornAvatar(profileUrl, avatar)
-      })
-      .finally(() => pendingYouPornAvatarUrls.delete(profileUrl))
   }
 }
 
@@ -354,7 +313,6 @@ const loadPage = async (page: number) => {
     } else {
       appendUniqueItems(nextItems)
     }
-    loadYouPornAvatars(nextItems, currentToken)
     currentPage.value = page
     allLoaded.value = result?.has_more === false || (page > 1 && items.value.length === previousCount)
     if (Array.isArray(result?.errors) && result.errors.length > 0 && items.value.length === 0) {

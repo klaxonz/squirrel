@@ -17,20 +17,6 @@ export const CONFIG = {
         },
         video: /youtube\.com\/watch\?v=/
       }
-    },
-    PORNHUB: {
-      domain: 'pornhub.com',
-      patterns: {
-        channel: /\/(users|model|channels|pornstar)\/([^\/\?]+)/i,
-        video: /pornhub\.com\/view_video\.php/
-      }
-    },
-    JAVDB: {
-      domain: 'javdb.com',
-      patterns: {
-        channel: /\/actors\/([^\/\?]+)/,
-        video: /javdb\.\w+\/v\//
-      }
     }
   },
 

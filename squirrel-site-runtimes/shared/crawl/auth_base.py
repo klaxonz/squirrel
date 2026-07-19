@@ -28,10 +28,10 @@ def check_login_status(
     Steps 1-4: Get config, get cookies, build headers, make request.
     Step 5: Delegated to parse_response callback.
 
-    For sites with custom fetch logic (e.g. Pornhub age bypass),
+    For sites with custom fetch logic (e.g. browser-only HTML),
     pass a fetch_page callable.
 
-    For sites with custom cookie lookup (e.g. JavDB via html_client),
+    For sites with custom cookie lookup (e.g. site-specific html clients),
     pass a get_cookies callable returning header dict or None.
     """
     login_config = get_login_config(site_name)

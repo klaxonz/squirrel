@@ -13,7 +13,7 @@ def _build_context(url: str) -> PipelineContext:
     return PipelineContext(
         task=ExtractionTask(
             url=url,
-            site_name='pornhub',
+            site_name='youtube',
             metadata={},
         ),
     )
@@ -27,7 +27,7 @@ def test_extraction_stage_records_blocked_video_for_short_redirect(monkeypatch):
     )
 
     stage = ExtractionStage(extractor_factory=None)
-    context = _build_context('https://www.pornhub.com/view_video.php?viewkey=698e147975244')
+    context = _build_context('https://www.youtube.com/view_video.php?viewkey=698e147975244')
     error = ExtractionError(
         'unsupported short video',
         context={'blocked_reason_code': 'unsupported_short_redirect'},
@@ -37,7 +37,7 @@ def test_extraction_stage_records_blocked_video_for_short_redirect(monkeypatch):
 
     assert calls == [
         {
-            'url': 'https://www.pornhub.com/view_video.php?viewkey=698e147975244',
+            'url': 'https://www.youtube.com/view_video.php?viewkey=698e147975244',
             'reason_code': 'unsupported_short_redirect',
             'error_message': str(error),
             'error_type': 'ExtractionError',
@@ -53,14 +53,14 @@ def test_extraction_stage_records_blocked_video_for_vip(monkeypatch):
     )
 
     stage = ExtractionStage(extractor_factory=None)
-    context = _build_context('https://www.pornhub.com/view_video.php?viewkey=vip-demo')
+    context = _build_context('https://www.youtube.com/view_video.php?viewkey=vip-demo')
     error = VipError('vip required')
 
     stage.on_error(context, error)
 
     assert calls == [
         {
-            'url': 'https://www.pornhub.com/view_video.php?viewkey=vip-demo',
+            'url': 'https://www.youtube.com/view_video.php?viewkey=vip-demo',
             'reason_code': 'vip_required',
             'error_message': str(error),
             'error_type': 'VipError',

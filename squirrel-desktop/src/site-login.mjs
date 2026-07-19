@@ -3,44 +3,12 @@ import { clearBilibiliPlaybackCache } from './playback/providers/bilibili/index.
 import { resolveYouTubeOAuthRevoke, resolveYouTubeOAuthSetup, resolveYouTubeOAuthStatus } from './playback/providers/youtube/index.mjs'
 import {
   normalizeTargetUrl,
-  mergeCookieHeaders,
-  readPornhubCookieFileHeader,
-  readYouPornCookieFileHeader,
-  isJavdbCookieTarget,
   isBilibiliCookieTarget,
-  isPornhubCookieTarget,
-  isYouPornCookieTarget,
 } from './cookie-header.mjs'
 import {
   APP_ICON_PATH,
   APP_NAME,
-  desktopChromeUserAgent,
-  desktopChromeUserAgentMetadata,
-  desktopChromeAcceptLanguage,
   SITE_SESSION_STORAGE_TYPES,
-  javdbOrigin,
-  javdbReferer,
-  javdbLoginCheckUrl,
-  javdbLoginRedirectPattern,
-  javdbLoginPagePattern,
-  javdbErrorPagePattern,
-  pornhubOrigin,
-  pornhubReferer,
-  youpornOrigin,
-  youpornReferer,
-  pornhubAgeGateCookieHeader,
-  youpornAgeGateCookieHeader,
-  pornhubLoggedInPattern,
-  pornhubLoggedOutPattern,
-  pornhubUsernamePattern,
-  pornhubDataUsernamePattern,
-  pornhubProfileLinkPattern,
-  pornhubProfileBlockPattern,
-  pornhubProfileStatusPattern,
-  youpornLoggedInPattern,
-  youpornLoggedOutPattern,
-  youpornUsernamePattern,
-  youpornProfileLinkPattern,
 } from './constants.mjs'
 
 const SITE_LOGIN_PROFILES = {
@@ -60,44 +28,13 @@ const SITE_LOGIN_PROFILES = {
     storageOrigins: ['https://www.bilibili.com', 'https://passport.bilibili.com', 'https://bilibili.com'],
     signedInCookieNames: ['SESSDATA'],
   },
-  javdb: {
-    label: 'JavDB',
-    loginUrl: 'https://javdb.com/users/sign_in',
-    userAgent: desktopChromeUserAgent,
-    userAgentMetadata: desktopChromeUserAgentMetadata,
-    acceptLanguage: desktopChromeAcceptLanguage,
-    platform: 'Windows',
-    cookieHosts: ['javdb.com'],
-    allowedHosts: ['javdb.com'],
-    storageOrigins: ['https://javdb.com'],
-    signedInCookieNames: [],
-  },
-  pornhub: {
-    label: 'Pornhub',
-    loginUrl: 'https://www.pornhub.com/login',
-    cookieHosts: ['pornhub.com'],
-    allowedHosts: ['pornhub.com'],
-    storageOrigins: ['https://www.pornhub.com', 'https://pornhub.com'],
-    signedInCookieNames: [],
-  },
-  youporn: {
-    label: 'YouPorn',
-    loginUrl: 'https://www.youporn.com/login',
-    cookieHosts: ['youporn.com'],
-    allowedHosts: ['youporn.com'],
-    storageOrigins: ['https://www.youporn.com', 'https://youporn.com'],
-    signedInCookieNames: [],
-  },
 }
 
 const SITE_LOGIN_ALIASES = {
   'b23.tv': 'bilibili',
   'bilibili.com': 'bilibili',
-  'javdb.com': 'javdb',
-  'pornhub.com': 'pornhub',
   'youtu.be': 'youtube',
   'youtube.com': 'youtube',
-  'youporn.com': 'youporn',
 }
 
 const normalizeSiteName = (siteName) => {
@@ -126,10 +63,7 @@ export const getSiteLoginProfile = (siteName) => {
 }
 
 export const getCookieProfileForUrl = (targetUrl) => {
-  if (isJavdbCookieTarget(targetUrl)) return getSiteLoginProfile('javdb')
   if (isBilibiliCookieTarget(targetUrl)) return getSiteLoginProfile('bilibili')
-  if (isPornhubCookieTarget(targetUrl)) return getSiteLoginProfile('pornhub')
-  if (isYouPornCookieTarget(targetUrl)) return getSiteLoginProfile('youporn')
   return null
 }
 
@@ -141,10 +75,6 @@ const hostMatchesLoginProfile = (hostname, hosts) => {
 const getDesktopSiteCookies = async (profile, hosts = profile.cookieHosts) => {
   const cookies = await session.defaultSession.cookies.get({})
   return cookies.filter((cookie) => hostMatchesLoginProfile(cookie.domain, hosts))
-}
-
-const buildCookieHeaderFromCookies = (cookies) => {
-  return cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join('; ')
 }
 
 const buildSessionCookieHeaderForUrl = async (targetUrl) => {
@@ -168,315 +98,7 @@ export const buildCookieHeaderForUrl = async (targetUrl) => {
     return ''
   }
 
-  const sessionCookieHeader = await buildSessionCookieHeaderForUrl(normalizedUrl)
-
-  if (isJavdbCookieTarget(normalizedUrl)) {
-    return sessionCookieHeader
-  }
-
-  if (isBilibiliCookieTarget(normalizedUrl)) {
-    return sessionCookieHeader
-  }
-
-  if (isPornhubCookieTarget(normalizedUrl)) {
-    return mergeCookieHeaders(pornhubAgeGateCookieHeader, readPornhubCookieFileHeader(), sessionCookieHeader)
-  }
-
-  if (isYouPornCookieTarget(normalizedUrl)) {
-    return mergeCookieHeaders(youpornAgeGateCookieHeader, readYouPornCookieFileHeader(), sessionCookieHeader)
-  }
-
-  return sessionCookieHeader
-}
-
-const checkJavdbDesktopPageLogin = async (cookieHeader) => {
-  const response = await session.defaultSession.fetch(javdbLoginCheckUrl, {
-    headers: {
-      'Accept-Language': desktopChromeAcceptLanguage,
-      Origin: javdbOrigin,
-      Referer: javdbReferer,
-      'User-Agent': desktopChromeUserAgent,
-      Cookie: cookieHeader,
-    },
-    redirect: 'manual',
-  })
-  const body = await response.text()
-  const location = response.headers.get('Location') || response.headers.get('location') || ''
-  const finalUrl = response.url || javdbLoginCheckUrl
-
-  if (response.status === 401) {
-    return { logged_in: false, message: `认证失败 (status=${response.status})` }
-  }
-  if ([403, 404, 429, 500, 502, 503, 504].includes(response.status)) {
-    return { logged_in: false, message: `检测失败: 被拒绝访问 (status=${response.status})` }
-  }
-  if ([301, 302, 303, 307, 308].includes(response.status) && javdbLoginRedirectPattern.test(location)) {
-    return { logged_in: false, message: '被重定向到登录页' }
-  }
-  if (javdbLoginRedirectPattern.test(finalUrl) || javdbLoginPagePattern.test(body)) {
-    return { logged_in: false, message: '返回内容显示为登录页' }
-  }
-  if (javdbErrorPagePattern.test(body)) {
-    return { logged_in: false, message: '检测失败: 返回内容显示为站点错误页' }
-  }
-
-  return { logged_in: true, message: '桌面会话有效' }
-}
-
-const buildJavdbDesktopLoginStatus = async (profile, cookies) => {
-  const cookieHeader = buildCookieHeaderFromCookies(cookies)
-  if (!cookieHeader) {
-    return {
-      site_name: profile.siteName,
-      supported: true,
-      logged_in: false,
-      message: '未发现桌面登录会话',
-      checked_at: new Date().toISOString(),
-      source: 'desktop',
-      cookie_count: cookies.length,
-    }
-  }
-
-  try {
-    const status = await checkJavdbDesktopPageLogin(cookieHeader)
-    return {
-      site_name: profile.siteName,
-      supported: true,
-      ...status,
-      checked_at: new Date().toISOString(),
-      source: 'desktop',
-      cookie_count: cookies.length,
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error || 'Unknown error')
-    return {
-      site_name: profile.siteName,
-      supported: true,
-      logged_in: false,
-      message: `检测失败: ${message}`,
-      checked_at: new Date().toISOString(),
-      source: 'desktop',
-      cookie_count: cookies.length,
-    }
-  }
-}
-
-const extractPornhubDesktopUsername = (body) => {
-  const match = pornhubProfileLinkPattern.exec(body)
-    || pornhubUsernamePattern.exec(body)
-    || pornhubDataUsernamePattern.exec(body)
-  const username = String(match?.[1] || '').trim()
-  return username || null
-}
-
-const checkPornhubDesktopPageLogin = async (cookieHeader) => {
-  const response = await session.defaultSession.fetch(pornhubReferer, {
-    headers: {
-      'Accept-Language': 'en-US,en;q=0.9',
-      Origin: pornhubOrigin,
-      Referer: pornhubReferer,
-      'User-Agent': desktopChromeUserAgent,
-      Cookie: cookieHeader,
-    },
-    redirect: 'follow',
-  })
-  const body = await response.text()
-  const finalUrl = response.url || pornhubReferer
-
-  if (response.status === 401) {
-    return { logged_in: false, message: `被拒绝访问 (status=${response.status})` }
-  }
-  if ([403, 429, 500, 502, 503, 504].includes(response.status)) {
-    return { logged_in: false, message: `检测失败: 被拒绝访问 (status=${response.status})` }
-  }
-  if (finalUrl.includes('/login') || finalUrl.includes('/users/login')) {
-    return { logged_in: false, message: '被重定向到登录页' }
-  }
-
-  const profileMatch = pornhubProfileBlockPattern.exec(body)
-  const username = String(profileMatch?.[1] || '').trim() || extractPornhubDesktopUsername(body)
-  if (profileMatch || pornhubProfileStatusPattern.test(body)) {
-    return { logged_in: true, username, message: '桌面会话有效' }
-  }
-  if (pornhubLoggedInPattern.test(body) || (pornhubProfileLinkPattern.test(body) && username)) {
-    return { logged_in: true, username, message: '桌面会话有效' }
-  }
-
-  return {
-    logged_in: false,
-    message: pornhubLoggedOutPattern.test(body) ? '未登录' : '未检测到登录标记',
-  }
-}
-
-const buildPornhubDesktopLoginStatus = async (profile, cookies) => {
-  const cookieHeader = cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join('; ')
-  if (!cookieHeader) {
-    return {
-      site_name: profile.siteName,
-      supported: true,
-      logged_in: false,
-      message: '未发现桌面登录会话',
-      checked_at: new Date().toISOString(),
-      source: 'desktop',
-      cookie_count: cookies.length,
-    }
-  }
-
-  try {
-    const status = await checkPornhubDesktopPageLogin(mergeCookieHeaders(pornhubAgeGateCookieHeader, cookieHeader))
-    return {
-      site_name: profile.siteName,
-      supported: true,
-      ...status,
-      checked_at: new Date().toISOString(),
-      source: 'desktop',
-      cookie_count: cookies.length,
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error || 'Unknown error')
-    return {
-      site_name: profile.siteName,
-      supported: true,
-      logged_in: false,
-      message: `检测失败: ${message}`,
-      checked_at: new Date().toISOString(),
-      source: 'desktop',
-      cookie_count: cookies.length,
-    }
-  }
-}
-
-const extractYouPornDesktopUsername = (body) => {
-  const match = youpornUsernamePattern.exec(body) || youpornProfileLinkPattern.exec(body)
-  const username = String(match?.[1] || '').trim()
-  return username || null
-}
-
-const checkYouPornDesktopPageLogin = async (cookieHeader) => {
-  const response = await session.defaultSession.fetch(youpornReferer, {
-    headers: {
-      'Accept-Language': 'en-US,en;q=0.9',
-      Origin: youpornOrigin,
-      Referer: youpornReferer,
-      'User-Agent': desktopChromeUserAgent,
-      Cookie: cookieHeader,
-    },
-    redirect: 'follow',
-  })
-  const body = await response.text()
-  const finalUrl = response.url || youpornReferer
-
-  if (response.status === 401) {
-    return { logged_in: false, message: `被拒绝访问 (status=${response.status})` }
-  }
-  if ([403, 429, 500, 502, 503, 504].includes(response.status)) {
-    return { logged_in: false, message: `检测失败: 被拒绝访问 (status=${response.status})` }
-  }
-  if (finalUrl.includes('/login')) {
-    return { logged_in: false, message: '被重定向到登录页' }
-  }
-
-  const username = extractYouPornDesktopUsername(body)
-  if (youpornLoggedInPattern.test(body)) {
-    return { logged_in: true, username, message: '桌面会话有效' }
-  }
-  if (youpornLoggedOutPattern.test(body)) {
-    return { logged_in: false, message: '未登录' }
-  }
-
-  return {
-    logged_in: false,
-    message: '未检测到登录标记',
-  }
-}
-
-const buildYouPornDesktopLoginStatus = async (profile, cookies) => {
-  const cookieHeader = buildCookieHeaderFromCookies(cookies)
-  if (!cookieHeader) {
-    return {
-      site_name: profile.siteName,
-      supported: true,
-      logged_in: false,
-      message: '未发现桌面登录会话',
-      checked_at: new Date().toISOString(),
-      source: 'desktop',
-      cookie_count: cookies.length,
-    }
-  }
-
-  try {
-    const status = await checkYouPornDesktopPageLogin(mergeCookieHeaders(youpornAgeGateCookieHeader, cookieHeader))
-    return {
-      site_name: profile.siteName,
-      supported: true,
-      ...status,
-      checked_at: new Date().toISOString(),
-      source: 'desktop',
-      cookie_count: cookies.length,
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error || 'Unknown error')
-    return {
-      site_name: profile.siteName,
-      supported: true,
-      logged_in: false,
-      message: `检测失败: ${message}`,
-      checked_at: new Date().toISOString(),
-      source: 'desktop',
-      cookie_count: cookies.length,
-    }
-  }
-}
-
-const buildYouPornLoginWindowStatus = async (profile, loginWindow) => {
-  if (!loginWindow || loginWindow.isDestroyed() || loginWindow.webContents.isLoading()) {
-    return null
-  }
-
-  const normalizedUrl = normalizeTargetUrl(loginWindow.webContents.getURL())
-  if (!normalizedUrl || !hostMatchesLoginProfile(new URL(normalizedUrl).hostname, profile.allowedHosts)) {
-    return null
-  }
-
-  let status = null
-  try {
-    status = await loginWindow.webContents.executeJavaScript(`(() => {
-      const pageParams = window.page_params || {}
-      const pageUsername = typeof pageParams.liu_username === 'string' ? pageParams.liu_username.trim() : ''
-      const profileLink = document.querySelector('#js_mainMenu .user-item a[href^="/users/"]')
-      const logoutLink = document.querySelector('#js_mainMenu a[href^="/logout"]')
-      const signedOutLink = document.querySelector('#js_signupLink, #upgrade-menujs_loginLink')
-      const profileHref = profileLink ? profileLink.getAttribute('href') || '' : ''
-      const linkUsername = profileHref.match(/^\\/users\\/([^/?#]+)/)?.[1] || ''
-      const loggedIn = pageParams.isLoggedInUser === true
-        || Boolean(pageParams.liu)
-        || Boolean((profileLink || logoutLink) && !signedOutLink)
-
-      return {
-        logged_in: loggedIn,
-        username: pageUsername || linkUsername || null,
-      }
-    })()`, true)
-  } catch {
-    console.debug('[squirrel-desktop] site-login: buildYouPornLoginWindowStatus JS eval failed')
-    return null
-  }
-
-  if (!status?.logged_in) {
-    return null
-  }
-
-  const cookies = await getDesktopSiteCookies(profile)
-  return {
-    site_name: profile.siteName,
-    supported: true,
-    logged_in: true,
-    username: status.username || null,
-    message: '桌面会话有效',
-    checked_at: new Date().toISOString(),
-    source: 'desktop',
-    cookie_count: cookies.length,
-  }
+  return buildSessionCookieHeaderForUrl(normalizedUrl)
 }
 
 const buildYouTubeDesktopLoginStatusFromOAuth = (profile, oauthState) => {
@@ -545,16 +167,6 @@ export const buildDesktopSiteLoginStatus = async (siteName) => {
   }
 
   const cookies = await getDesktopSiteCookies(profile)
-  if (profile.siteName === 'javdb') {
-    return buildJavdbDesktopLoginStatus(profile, cookies)
-  }
-  if (profile.siteName === 'pornhub') {
-    return buildPornhubDesktopLoginStatus(profile, cookies)
-  }
-  if (profile.siteName === 'youporn') {
-    return buildYouPornDesktopLoginStatus(profile, cookies)
-  }
-
   const cookieNames = new Set(cookies.map((cookie) => cookie.name))
   const canConfirmLogin = profile.signedInCookieNames.length > 0
   const hasSignedInCookie = canConfirmLogin
@@ -686,9 +298,6 @@ export const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
 
   return new Promise((resolve, reject) => {
     const canAutoConfirmLogin = profile.signedInCookieNames.length > 0
-      || profile.siteName === 'javdb'
-      || profile.siteName === 'pornhub'
-      || profile.siteName === 'youporn'
     let settled = false
     let loginCheckTimer = null
 
@@ -711,23 +320,6 @@ export const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
     }
 
     const checkLoginStatus = () => {
-      if (profile.siteName === 'youporn') {
-        buildYouPornLoginWindowStatus(profile, loginWindow)
-          .then((status) => {
-            if (!status?.logged_in) return buildDesktopSiteLoginStatus(profile.siteName)
-            return status
-          })
-          .then((status) => {
-            if (!status.logged_in) return
-            if (!loginWindow.isDestroyed()) {
-              loginWindow.close()
-            }
-            resolveWithStatus(status)
-          })
-          .catch(reject)
-        return
-      }
-
       buildDesktopSiteLoginStatus(profile.siteName)
         .then((status) => {
           if (!status.logged_in) return

@@ -19,18 +19,6 @@ PLUGIN_SPECS = {
         'package': 'squirrel_bilibili',
         'expected_dependencies': {'yt-dlp'},
     },
-    'javdb': {
-        'package': 'squirrel_javdb',
-        'expected_dependencies': {'beautifulsoup4', 'httpx', 'fastapi', 'starlette'},
-    },
-    'pornhub': {
-        'package': 'squirrel_pornhub',
-        'expected_dependencies': {'beautifulsoup4', 'curl-cffi', 'yt-dlp', 'phub', 'httpx', 'fastapi', 'starlette'},
-    },
-    'youporn': {
-        'package': 'squirrel_youporn',
-        'expected_dependencies': {'beautifulsoup4', 'yt-dlp', 'httpx', 'fastapi', 'starlette'},
-    },
     'youtube': {
         'package': 'squirrel_youtube',
         'expected_dependencies': {'beautifulsoup4', 'pytubefix', 'yt-dlp', 'httpx', 'fastapi', 'starlette'},
@@ -39,9 +27,6 @@ PLUGIN_SPECS = {
 
 EXPECTED_SITE_LABELS = {
     'bilibili': 'Bilibili',
-    'javdb': 'JavDB',
-    'pornhub': 'Pornhub',
-    'youporn': 'YouPorn',
     'youtube': 'YouTube',
 }
 
@@ -217,13 +202,6 @@ class RuntimeV2PackageTests(unittest.TestCase):
                     f'{plugin_name} dependencies missing: {sorted(spec["expected_dependencies"] - dependency_names)}',
                 )
 
-    def test_pornhub_curl_cffi_stays_in_ytdlp_supported_range(self):
-        dependencies = tomllib.loads(
-            (PLUGINS_ROOT / 'pornhub' / 'pyproject.toml').read_text(encoding='utf-8')
-        )['project']['dependencies']
-
-        self.assertIn('curl-cffi<0.15', dependencies)
-
     def test_runtime_manifest_matches_site_runtime_json(self):
         for plugin_name, spec in PLUGIN_SPECS.items():
             with self.subTest(plugin=plugin_name):
@@ -267,40 +245,6 @@ class RuntimeV2PackageTests(unittest.TestCase):
                 for key in ('http', 'proxy', 'login', 'rate_limit', 'metadata'):
                     self.assertIn(key, actual_metadata, f'{plugin_name} site metadata missing {key}')
 
-    def test_javdb_login_status_timeout_budget_is_large_enough_for_cloudflare_bypass(self):
-        plugin_dir = PLUGINS_ROOT / 'javdb'
-        runtime_json = json.loads((plugin_dir / 'site-runtime.json').read_text(encoding='utf-8'))
-        metadata_capability = next(
-            item for item in runtime_json['manifest']['capabilities'] if item['name'] == 'check_login_status'
-        )
-
-        with _stub_crawl_module(), _import_paths(plugin_dir / 'src'):
-            module = importlib.import_module('squirrel_javdb.runtime')
-            runtime = module.get_site_runtime()
-            runtime_capability = next(
-                item.to_dict() for item in runtime.manifest().capabilities if item.name == 'check_login_status'
-            )
-
-        self.assertGreaterEqual(runtime_capability['timeout_ms'], 30000)
-        self.assertGreaterEqual(metadata_capability['timeout_ms'], 30000)
-
-    def test_javdb_import_subscriptions_timeout_budget_is_large_enough_for_multi_page_fetches(self):
-        plugin_dir = PLUGINS_ROOT / 'javdb'
-        runtime_json = json.loads((plugin_dir / 'site-runtime.json').read_text(encoding='utf-8'))
-        metadata_capability = next(
-            item for item in runtime_json['manifest']['capabilities'] if item['name'] == 'import_subscriptions'
-        )
-
-        with _stub_crawl_module(), _import_paths(plugin_dir / 'src'):
-            module = importlib.import_module('squirrel_javdb.runtime')
-            runtime = module.get_site_runtime()
-            runtime_capability = next(
-                item.to_dict() for item in runtime.manifest().capabilities if item.name == 'import_subscriptions'
-            )
-
-        self.assertGreaterEqual(runtime_capability['timeout_ms'], 120000)
-        self.assertGreaterEqual(metadata_capability['timeout_ms'], 120000)
-
     def test_bilibili_sync_subscription_timeout_budget_is_large_enough_for_slow_feed_fetches(self):
         plugin_dir = PLUGINS_ROOT / 'bilibili'
         runtime_json = json.loads((plugin_dir / 'site-runtime.json').read_text(encoding='utf-8'))
@@ -317,40 +261,6 @@ class RuntimeV2PackageTests(unittest.TestCase):
 
         self.assertGreaterEqual(runtime_capability['timeout_ms'], 120000)
         self.assertGreaterEqual(metadata_capability['timeout_ms'], 120000)
-
-    def test_javdb_sync_subscription_timeout_budget_is_large_enough_for_slow_feed_fetches(self):
-        plugin_dir = PLUGINS_ROOT / 'javdb'
-        runtime_json = json.loads((plugin_dir / 'site-runtime.json').read_text(encoding='utf-8'))
-        metadata_capability = next(
-            item for item in runtime_json['manifest']['capabilities'] if item['name'] == 'sync_subscription'
-        )
-
-        with _stub_crawl_module(), _import_paths(plugin_dir / 'src'):
-            module = importlib.import_module('squirrel_javdb.runtime')
-            runtime = module.get_site_runtime()
-            runtime_capability = next(
-                item.to_dict() for item in runtime.manifest().capabilities if item.name == 'sync_subscription'
-            )
-
-        self.assertGreaterEqual(runtime_capability['timeout_ms'], 120000)
-        self.assertGreaterEqual(metadata_capability['timeout_ms'], 120000)
-
-    def test_youporn_import_subscriptions_timeout_budget_is_large_enough_for_multi_page_fetches(self):
-        plugin_dir = PLUGINS_ROOT / 'youporn'
-        runtime_json = json.loads((plugin_dir / 'site-runtime.json').read_text(encoding='utf-8'))
-        metadata_capability = next(
-            item for item in runtime_json['manifest']['capabilities'] if item['name'] == 'import_subscriptions'
-        )
-
-        with _stub_crawl_module(), _import_paths(plugin_dir / 'src'):
-            module = importlib.import_module('squirrel_youporn.runtime')
-            runtime = module.get_site_runtime()
-            runtime_capability = next(
-                item.to_dict() for item in runtime.manifest().capabilities if item.name == 'import_subscriptions'
-            )
-
-        self.assertGreaterEqual(runtime_capability['timeout_ms'], 30000)
-        self.assertGreaterEqual(metadata_capability['timeout_ms'], 30000)
 
 
 if __name__ == '__main__':

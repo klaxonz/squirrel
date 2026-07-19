@@ -272,7 +272,7 @@ import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppFloatingList from '@/shared/components/layout/AppFloatingList.vue'
 import AppListOption from '@/shared/components/layout/AppListOption.vue'
-import usePlaybackOrchestrator, { mergeVideoMetadata } from '../composables/usePlaybackOrchestrator'
+import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator'
 import usePlaybackReporting from '../composables/usePlaybackReporting'
 import useVideoActionBar from '@/features/video/composables/useVideoActionBar'
 import useVideoClipMarkers from '@/features/video/composables/useVideoClipMarkers'
@@ -292,17 +292,13 @@ import { Button } from '@/shared/ui/button'
 import { LocalStorageAdapter } from '@/features/playback/components/video-player/core'
 import { useVideoHistory } from '@/features/video/composables/useVideoHistory'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
-import { Logger } from '@/shared/lib/logger'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { useToast } from '@/shared/components/toast/useToast'
 import useVideoInteraction from '@/features/video/composables/useVideoInteraction'
 import { usePlaylist } from '@/features/video/composables/usePlaylist'
 import { saveRemoteVideo } from '@/shared/api'
-import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import type { VideoPageVideo } from '@/features/playback/types/videoPlayback'
 import type { PlaylistEntry } from '@/features/playback/types/playerSession'
-
-const { isDesktop: isDesktopEnv } = useDesktopBridge()
 
 const route = useRoute()
 const router = useRouter()
@@ -397,7 +393,6 @@ const handlePlaylistSelect = async (index: number) => {
 }
 
 const remoteSaveByUrl = new Map<string, Promise<VideoPageVideo | null>>()
-let javdbMetadataRequestSeq = 0
 
 const ensureLocalVideo = async (targetVideo: VideoPageVideo | null): Promise<VideoPageVideo | null> => {
   if (!targetVideo || targetVideo.source !== 'remote') return targetVideo
@@ -534,11 +529,6 @@ const videoActors = computed(() => {
       avatar: String(actor.avatar || '').trim(),
     }))
 })
-const shouldResolveJavdbMetadata = computed(() => {
-  const v = video.value
-  const url = String(v?.url || '').trim()
-  return !!v && url.includes('javdb.com/') && videoActors.value.length === 0 && isDesktopEnv()
-})
 const primaryVisibleActions = computed(() => {
   const keys = isRemoteVideo.value ? ['later', 'like', 'dislike'] : ['like', 'dislike']
   return videoActions.value.filter((action) => keys.includes(action.key))
@@ -555,30 +545,6 @@ const {
   videoId: computed(() => video.value?.id),
   description: videoDescription,
 })
-
-watch(shouldResolveJavdbMetadata, async (shouldResolve) => {
-  if (!shouldResolve || typeof window.desktopApp?.resolveJavdbMetadata !== 'function') return
-
-  const snapshot = video.value
-  const url = String(snapshot?.url || '').trim()
-  if (!url) return
-
-  const requestSeq = ++javdbMetadataRequestSeq
-  try {
-    const metadata = await window.desktopApp.resolveJavdbMetadata(url)
-    if (requestSeq !== javdbMetadataRequestSeq) return
-    const current = video.value
-    if (!current || String(current.url || '') !== url) return
-    const mergedVideo = mergeVideoMetadata(current, metadata as Record<string, unknown>, url)
-    if (mergedVideo) {
-      // ADR-0002 PR2 — `video` is a read-only projection; enrichment
-      // routes through session.update.
-      session.update({ video: mergedVideo })
-    }
-  } catch (err) {
-    Logger.warn('[VideoPlay] Metadata enrichment failed', err)
-  }
-}, { immediate: true })
 
 // ponytail: subscription status + toggle live in useVideoSubscription.
 // primarySubscription / primarySubscriptionUrl are returned because the view

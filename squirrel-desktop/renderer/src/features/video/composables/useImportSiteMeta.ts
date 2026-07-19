@@ -19,9 +19,6 @@ import { resolveServerAssetUrl } from '@/shared/lib/serverConfig'
 const SITE_FALLBACK: Record<string, { name: string }> = {
   bilibili: { name: '哔哩哔哩' },
   youtube: { name: '油管' },
-  pornhub: { name: '成人站点一' },
-  youporn: { name: '成人站点二' },
-  javdb: { name: '影片数据库' },
 }
 
 export interface UseImportSiteMetaOptions {

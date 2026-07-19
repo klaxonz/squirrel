@@ -15,13 +15,6 @@ export function resolveRemoteChannelSite(url: string): string {
   if (hostname === 'youtube.com' && /^\/(?:@[^/]+|channel\/[^/]+|c\/[^/]+|user\/[^/]+)/i.test(pathname)) {
     return 'youtube'
   }
-  if (hostname === 'javdb.com' && /^\/actors?\//i.test(pathname)) return 'javdb'
-  if (hostname === 'pornhub.com' && /^\/(?:users?|channels?|model|pornstar)\//i.test(pathname)) {
-    return 'pornhub'
-  }
-  if (hostname === 'youporn.com' && /^\/(?:channel|amateur|pornstar|model)\//i.test(pathname)) {
-    return 'youporn'
-  }
 
   return ''
 }

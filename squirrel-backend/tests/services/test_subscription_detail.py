@@ -98,7 +98,7 @@ def test_list_subscriptions_hides_nsfw_channels_when_user_setting_is_disabled():
                     id=10,
                     type='CHANNEL',
                     name='PH model',
-                    url='https://www.pornhub.com/model/demo',
+                    url='https://www.youtube.com/model/demo',
                     total_videos=8,
                 ),
                 UserSubscription(
@@ -118,7 +118,7 @@ def test_list_subscriptions_hides_nsfw_channels_when_user_setting_is_disabled():
         nsfw='all',
         page=1,
         page_size=20,
-        domains=['pornhub.com'],
+        domains=['youtube.com'],
     )
 
     assert total == 0
@@ -137,7 +137,7 @@ def test_list_subscriptions_includes_nsfw_channels_when_user_setting_is_enabled(
                     id=13,
                     type='CHANNEL',
                     name='PH model',
-                    url='https://www.pornhub.com/model/demo',
+                    url='https://www.youtube.com/model/demo',
                     total_videos=8,
                 ),
                 UserSubscription(
@@ -157,7 +157,7 @@ def test_list_subscriptions_includes_nsfw_channels_when_user_setting_is_enabled(
         nsfw='all',
         page=1,
         page_size=20,
-        domains=['pornhub.com'],
+        domains=['youtube.com'],
     )
 
     assert total == 1
@@ -184,7 +184,7 @@ def test_list_subscriptions_respects_explicit_nsfw_no_filter():
                     id=12,
                     type='CHANNEL',
                     name='PH model',
-                    url='https://www.pornhub.com/model/demo',
+                    url='https://www.youtube.com/model/demo',
                     total_videos=8,
                 ),
                 UserSubscription(

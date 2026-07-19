@@ -59,8 +59,8 @@ def test_apply_site_config_overrides_updates_shared_rate_limiter(monkeypatch):
         site_config_manager,
         'get_effective_site_catalog',
         lambda catalog=None: {
-            'javdb': {
-                'domains': ['javdb.com'],
+            'youtube': {
+                'domains': ['youtube.com'],
                 'rate_limit': {
                     'enabled': True,
                     'min_interval': 5.0,
@@ -99,12 +99,12 @@ def test_apply_site_config_overrides_updates_shared_rate_limiter(monkeypatch):
     site_config_manager.apply_site_config_overrides()
 
     assert backend_calls == [
-        ('enabled', 'javdb.com', True),
-        ('limit', 'javdb.com', (5.0, 8.0)),
+        ('enabled', 'youtube.com', True),
+        ('limit', 'youtube.com', (5.0, 8.0)),
     ]
     assert runtime_calls == [
-        ('enabled', 'javdb.com', True),
-        ('limit', 'javdb.com', (5.0, 8.0)),
+        ('enabled', 'youtube.com', True),
+        ('limit', 'youtube.com', (5.0, 8.0)),
     ]
 
 
@@ -113,9 +113,9 @@ def test_get_effective_site_catalog_merges_plugin_defaults_with_overrides(monkey
         site_config_manager,
         'build_plugin_site_catalog',
         lambda: {
-            'youporn': {
-                'label': 'YouPorn',
-                'domains': ['youporn.com'],
+            'bilibili': {
+                'label': 'Bilibili',
+                'domains': ['bilibili.com'],
                 'enabled': True,
                 'proxy': {'read_timeout': 180.0},
             },
@@ -125,13 +125,13 @@ def test_get_effective_site_catalog_merges_plugin_defaults_with_overrides(monkey
 
     catalog = site_config_manager.get_effective_site_catalog(
         {
-            'youporn': {
+            'bilibili': {
                 'enabled': False,
                 'proxy': {'read_timeout': 240.0},
             },
         }
     )
 
-    assert catalog['youporn']['enabled'] is False
-    assert catalog['youporn']['proxy']['read_timeout'] == 240.0
-    assert catalog['youporn']['domains'] == ['youporn.com']
+    assert catalog['bilibili']['enabled'] is False
+    assert catalog['bilibili']['proxy']['read_timeout'] == 240.0
+    assert catalog['bilibili']['domains'] == ['bilibili.com']

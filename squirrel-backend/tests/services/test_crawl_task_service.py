@@ -365,7 +365,7 @@ def test_complete_task_clears_stale_error_fields_after_retry_success(engine, svc
         task = CrawlTask(
             job_id=job_id,
             task_type='video_extract',
-            site='pornhub',
+            site='youtube',
             priority='full',
             payload={},
             status='running',

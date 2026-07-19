@@ -17,27 +17,6 @@ ID_EXTRACTOR_MODULES = {
         'url': 'https://www.bilibili.com/video/BV1xx411c7mD',
         'expected': 'BV1xx411c7mD',
     },
-    'javdb': {
-        'package_root': REPO_ROOT / 'squirrel-site-runtimes' / 'javdb' / 'src',
-        'module': 'squirrel_javdb.id_extractor',
-        'class_name': 'JavdbIdExtractor',
-        'url': 'https://javdb.com/v/abp-123/',
-        'expected': 'abp-123',
-    },
-    'pornhub': {
-        'package_root': REPO_ROOT / 'squirrel-site-runtimes' / 'pornhub' / 'src',
-        'module': 'squirrel_pornhub.id_extractor',
-        'class_name': 'PornhubIdExtractor',
-        'url': 'https://www.pornhub.com/view_video.php?viewkey=ph123456789',
-        'expected': 'ph123456789',
-    },
-    'youporn': {
-        'package_root': REPO_ROOT / 'squirrel-site-runtimes' / 'youporn' / 'src',
-        'module': 'squirrel_youporn.id_extractor',
-        'class_name': 'YouPornIdExtractor',
-        'url': 'https://www.youporn.com/watch/123456/demo-video/',
-        'expected': '123456',
-    },
     'youtube': {
         'package_root': REPO_ROOT / 'squirrel-site-runtimes' / 'youtube' / 'src',
         'module': 'squirrel_youtube.id_extractor',

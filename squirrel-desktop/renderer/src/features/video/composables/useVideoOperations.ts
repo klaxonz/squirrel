@@ -49,9 +49,6 @@ export const DESKTOP_PLAYBACK_TIMEOUT_MS = 120000
 export type DesktopResolverKey =
   | 'resolveYouTubePlayback'
   | 'resolveBilibiliPlayback'
-  | 'resolveJavdbPlayback'
-  | 'resolvePornhubPlayback'
-  | 'resolveYouPornPlayback'
 
 export type DesktopPlaybackProvider = {
   site: string
@@ -74,24 +71,6 @@ export const DESKTOP_PLAYBACK_PROVIDERS: DesktopPlaybackProvider[] = [
     key: 'resolveBilibiliPlayback',
     debugLabel: 'Bilibili',
     matches: (url) => includesAny(url, ['bilibili.com/video/', 'b23.tv/']),
-  },
-  {
-    site: 'javdb',
-    key: 'resolveJavdbPlayback',
-    debugLabel: 'JavDB',
-    matches: (url) => includesAny(url, ['javdb.com/v/', 'javdb.com/video/']),
-  },
-  {
-    site: 'pornhub',
-    key: 'resolvePornhubPlayback',
-    debugLabel: 'Pornhub',
-    matches: (url) => includesAny(url, ['pornhub.com/view_video.php', 'pornhub.com/video/', 'pornhub.com/embed/']),
-  },
-  {
-    site: 'youporn',
-    key: 'resolveYouPornPlayback',
-    debugLabel: 'YouPorn',
-    matches: (url) => includesAny(url, ['youporn.com/watch/', 'you-porn.com/watch/']),
   },
 ]
 

@@ -136,7 +136,7 @@ def test_resolve_cookie_match_domain_for_url_uses_site_catalog_cookie_config(mon
 
 
 def test_resolve_cookie_file_for_url_uses_effective_site_catalog_defaults(tmp_path, monkeypatch):
-    cookie_file = tmp_path / 'youporn.txt'
+    cookie_file = tmp_path / 'youtube.txt'
     cookie_file.write_text('', encoding='utf-8')
 
     monkeypatch.setattr(
@@ -146,8 +146,8 @@ def test_resolve_cookie_file_for_url_uses_effective_site_catalog_defaults(tmp_pa
             'youtube': {
                 'domains': ['youtube.com'],
             },
-            'youporn': {
-                'domains': ['youporn.com'],
+            'youtube': {
+                'domains': ['youtube.com'],
             },
         },
         raising=False,
@@ -155,7 +155,7 @@ def test_resolve_cookie_file_for_url_uses_effective_site_catalog_defaults(tmp_pa
     monkeypatch.setattr(
         cookie,
         'get_site_cookies_file_path',
-        lambda slug: cookie_file if slug == 'youporn' else tmp_path / f'{slug}.txt',
+        lambda slug: cookie_file if slug == 'youtube' else tmp_path / f'{slug}.txt',
     )
 
-    assert cookie.resolve_cookie_file_for_url('https://www.youporn.com/') == str(cookie_file)
+    assert cookie.resolve_cookie_file_for_url('https://www.youtube.com/') == str(cookie_file)

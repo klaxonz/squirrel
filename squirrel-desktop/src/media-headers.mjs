@@ -3,29 +3,10 @@ import { buildCookieHeaderForUrl } from './site-login.mjs'
 import { mergeCookieHeaders } from './cookie-header.mjs'
 import {
   desktopChromeUserAgent,
-  desktopMacChromeUserAgent,
   androidMobileChromeUserAgent,
-  desktopChromeClientHints,
-  desktopChromeAcceptLanguage,
 } from './constants.mjs'
 
 const MEDIA_HEADER_RULES = [
-  {
-    hosts: ['javdb.com'],
-    headers: {
-      'Accept-Language': desktopChromeAcceptLanguage,
-      'User-Agent': desktopChromeUserAgent,
-      ...desktopChromeClientHints,
-    },
-  },
-  {
-    hosts: ['missav.ai'],
-    headers: {
-      'Accept-Language': desktopChromeAcceptLanguage,
-      'User-Agent': desktopChromeUserAgent,
-      ...desktopChromeClientHints,
-    },
-  },
   {
     hosts: ['bilivideo.com', 'bilivideo.cn', 'hdslb.com', 'acgvideo.com'],
     headers: {
@@ -51,45 +32,9 @@ const MEDIA_HEADER_RULES = [
       'User-Agent': desktopChromeUserAgent,
     },
   },
-  {
-    hosts: ['pornhub.com', 'phncdn.com'],
-    headers: {
-      Referer: 'https://www.pornhub.com/',
-      Origin: 'https://www.pornhub.com',
-      'User-Agent': desktopMacChromeUserAgent,
-    },
-  },
-  {
-    hosts: ['youporn.com', 'ypncdn.com'],
-    headers: {
-      Referer: 'https://www.youporn.com/',
-      Origin: 'https://www.youporn.com',
-      'User-Agent': desktopMacChromeUserAgent,
-    },
-  },
-  {
-    hosts: ['surrit.com'],
-    headers: {
-      Referer: 'https://missav.ai/',
-      Origin: 'https://missav.ai',
-      'User-Agent': desktopMacChromeUserAgent,
-    },
-  },
-  {
-    hosts: ['jdbstatic.com'],
-    headers: {
-      Referer: 'https://javdb.com/',
-      Origin: 'https://javdb.com',
-      'User-Agent': desktopChromeUserAgent,
-      ...desktopChromeClientHints,
-    },
-  },
 ]
 
 const RELAXED_CROSS_ORIGIN_HOSTS = [
-  'javdb.com',
-  'surrit.com',
-  'jdbstatic.com',
   'youtube.com',
   'googlevideo.com',
   'gvt1.com',
@@ -100,10 +45,6 @@ const RELAXED_CROSS_ORIGIN_HOSTS = [
   'bilivideo.cn',
   'hdslb.com',
   'acgvideo.com',
-  'pornhub.com',
-  'phncdn.com',
-  'youporn.com',
-  'ypncdn.com',
 ]
 
 const RELAXED_RESPONSE_HEADER_NAMES = new Set([

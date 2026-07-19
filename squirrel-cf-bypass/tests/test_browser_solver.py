@@ -27,11 +27,11 @@ def test_restore_cached_cookies_uses_target_url():
         expires_at=1.0,
     )
 
-    asyncio.run(solver._restore_cached_cookies(context, 'https://javdb.com/video', record))
+    asyncio.run(solver._restore_cached_cookies(context, 'https://example.com/video', record))
 
     assert context.calls == [[
-        {'name': 'cf_clearance', 'value': 'demo', 'url': 'https://javdb.com/video'},
-        {'name': '__cf_bm', 'value': 'bm', 'url': 'https://javdb.com/video'},
+        {'name': 'cf_clearance', 'value': 'demo', 'url': 'https://example.com/video'},
+        {'name': '__cf_bm', 'value': 'bm', 'url': 'https://example.com/video'},
     ]]
 
 
@@ -135,14 +135,14 @@ def test_fetch_html_prefers_interstitial_solver_for_managed_challenge(monkeypatc
 
     class FakePage:
         def __init__(self):
-            self.url = 'https://missav.ai/search/DMOW-227'
+            self.url = 'https://example.com/search/DMOW-227'
             self.solved = False
 
         async def goto(self, url, wait_until, timeout):
             calls['goto'] = {'url': url, 'wait_until': wait_until, 'timeout': timeout}
 
         async def title(self):
-            return 'MissAV Search' if self.solved else 'Just a moment...'
+            return 'Example Search' if self.solved else 'Just a moment...'
 
         async def content(self):
             if self.solved:
@@ -227,7 +227,7 @@ def test_fetch_html_prefers_interstitial_solver_for_managed_challenge(monkeypatc
     monkeypatch.setattr(playwright_captcha, 'FrameworkType', FakeFrameworkType)
     monkeypatch.setattr(browser_solver_module.asyncio, 'sleep', fake_sleep)
 
-    result = asyncio.run(BrowserSolver().fetch_html('https://missav.ai/search/DMOW-227'))
+    result = asyncio.run(BrowserSolver().fetch_html('https://example.com/search/DMOW-227'))
 
     assert result is not None
     assert result.html == '<html>resolved</html>'
@@ -245,7 +245,7 @@ def test_fetch_html_waits_for_auto_bypass_before_solver(monkeypatch):
 
     class FakePage:
         def __init__(self):
-            self.url = 'https://missav.ai/search/DMOW-227'
+            self.url = 'https://example.com/search/DMOW-227'
             self._checks = 0
 
         async def goto(self, url, wait_until, timeout):
@@ -253,7 +253,7 @@ def test_fetch_html_waits_for_auto_bypass_before_solver(monkeypatch):
 
         async def title(self):
             self._checks += 1
-            return 'MissAV Search' if self._checks >= 3 else 'Just a moment...'
+            return 'Example Search' if self._checks >= 3 else 'Just a moment...'
 
         async def content(self):
             return '<html>resolved</html>' if self._checks >= 3 else '<html><script src="/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1"></script></html>'
@@ -323,7 +323,7 @@ def test_fetch_html_waits_for_auto_bypass_before_solver(monkeypatch):
     monkeypatch.setattr(playwright_captcha, 'FrameworkType', FakeFrameworkType)
     monkeypatch.setattr(browser_solver_module.asyncio, 'sleep', fake_sleep)
 
-    result = asyncio.run(BrowserSolver().fetch_html('https://missav.ai/search/DMOW-227'))
+    result = asyncio.run(BrowserSolver().fetch_html('https://example.com/search/DMOW-227'))
 
     assert result is not None
     assert result.html == '<html>resolved</html>'
@@ -392,13 +392,13 @@ def test_fetch_html_reuses_cached_browser_context(monkeypatch):
     monkeypatch.setattr(camoufox.async_api, 'AsyncCamoufox', FakeAsyncCamoufox)
 
     solver = BrowserSolver()
-    first = asyncio.run(solver.fetch_html('https://missav.ai/search/ABP-123'))
-    second = asyncio.run(solver.fetch_html('https://missav.ai/abp-123'))
+    first = asyncio.run(solver.fetch_html('https://example.com/search/ABP-123'))
+    second = asyncio.run(solver.fetch_html('https://example.com/abp-123'))
 
     assert first.source == 'solver'
     assert second.source == 'browser-cache'
     assert calls['camoufox'] == 1
-    assert calls['goto'] == ['https://missav.ai/search/ABP-123', 'https://missav.ai/abp-123']
+    assert calls['goto'] == ['https://example.com/search/ABP-123', 'https://example.com/abp-123']
 
 
 def test_fetch_html_uses_manual_turnstile_click_fallback(monkeypatch):
@@ -425,7 +425,7 @@ def test_fetch_html_uses_manual_turnstile_click_fallback(monkeypatch):
 
     class FakePage:
         def __init__(self):
-            self.url = 'https://missav.ai/search/DMOW-227'
+            self.url = 'https://example.com/search/DMOW-227'
             self.solved = False
             self.mouse = FakeMouse(self)
 
@@ -433,7 +433,7 @@ def test_fetch_html_uses_manual_turnstile_click_fallback(monkeypatch):
             calls['goto'] = {'url': url, 'wait_until': wait_until, 'timeout': timeout}
 
         async def title(self):
-            return 'MissAV Search' if self.solved else 'Just a moment...'
+            return 'Example Search' if self.solved else 'Just a moment...'
 
         async def content(self):
             if self.solved:
@@ -511,7 +511,7 @@ def test_fetch_html_uses_manual_turnstile_click_fallback(monkeypatch):
     monkeypatch.setattr(playwright_captcha, 'FrameworkType', FakeFrameworkType)
     monkeypatch.setattr(browser_solver_module.asyncio, 'sleep', fake_sleep)
 
-    result = asyncio.run(BrowserSolver().fetch_html('https://missav.ai/search/DMOW-227'))
+    result = asyncio.run(BrowserSolver().fetch_html('https://example.com/search/DMOW-227'))
 
     assert result is not None
     assert result.html == '<html>resolved</html>'
@@ -523,7 +523,7 @@ def test_fetch_html_uses_manual_turnstile_click_fallback(monkeypatch):
 def test_fetch_html_returns_none_when_challenge_page_persists(monkeypatch):
     class FakePage:
         def __init__(self):
-            self.url = 'https://missav.ai/search/DMOW-227'
+            self.url = 'https://example.com/search/DMOW-227'
 
         async def goto(self, url, wait_until, timeout):
             return None
@@ -589,7 +589,7 @@ def test_fetch_html_returns_none_when_challenge_page_persists(monkeypatch):
     monkeypatch.setattr(playwright_captcha, 'FrameworkType', FakeFrameworkType)
     monkeypatch.setattr(browser_solver_module.asyncio, 'sleep', fake_sleep)
 
-    result = asyncio.run(BrowserSolver().fetch_html('https://missav.ai/search/DMOW-227'))
+    result = asyncio.run(BrowserSolver().fetch_html('https://example.com/search/DMOW-227'))
 
     assert result is None
 
@@ -597,7 +597,7 @@ def test_fetch_html_returns_none_when_challenge_page_persists(monkeypatch):
 def test_fetch_html_returns_none_when_solver_raises(monkeypatch):
     class FakePage:
         def __init__(self):
-            self.url = 'https://missav.ai/search/DMOW-227'
+            self.url = 'https://example.com/search/DMOW-227'
 
         async def goto(self, url, wait_until, timeout):
             return None
@@ -659,6 +659,6 @@ def test_fetch_html_returns_none_when_solver_raises(monkeypatch):
     monkeypatch.setattr(playwright_captcha, 'ClickSolver', FakeClickSolver)
     monkeypatch.setattr(playwright_captcha, 'FrameworkType', FakeFrameworkType)
 
-    result = asyncio.run(BrowserSolver().fetch_html('https://missav.ai/search/DMOW-227'))
+    result = asyncio.run(BrowserSolver().fetch_html('https://example.com/search/DMOW-227'))
 
     assert result is None

@@ -87,7 +87,7 @@ def test_cloudflare_mirror_client_preserves_query_string_for_mirror_requests():
     response = asyncio.run(
         client.mirror(
             'https://surrit.com/example/video.m3u8?token=abc123&expires=999',
-            headers={'Referer': 'https://missav.ai/adn-757'},
+            headers={'Referer': 'https://example.com/adn-757'},
             stream=False,
         ),
     )
@@ -98,7 +98,7 @@ def test_cloudflare_mirror_client_preserves_query_string_for_mirror_requests():
         'params': None,
         'headers': {
             'x-hostname': 'surrit.com',
-            'Referer': 'https://missav.ai/adn-757',
+            'Referer': 'https://example.com/adn-757',
         },
         'stream': False,
         'follow_redirects': True,

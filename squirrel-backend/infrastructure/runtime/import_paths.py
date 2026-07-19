@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-_RUNTIME_PACKAGES = ('bilibili', 'javdb', 'pornhub', 'youtube', 'youporn')
+_RUNTIME_PACKAGES = ('bilibili', 'youtube')
 
 
 def install_runtime_import_paths() -> None:

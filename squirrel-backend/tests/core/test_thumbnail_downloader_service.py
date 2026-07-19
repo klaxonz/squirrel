@@ -56,12 +56,12 @@ def test_bulk_thumbnail_lookup_uses_direct_local_file_check(monkeypatch):
         storage=storage,
         local_index=SimpleNamespace(get_local_thumbnail_path_map=lambda indexed_items: {}),
     )
-    monkeypatch.setattr(thumbnail_downloader, 'get_site_from_url', lambda video_url: 'pornhub')
+    monkeypatch.setattr(thumbnail_downloader, 'get_site_from_url', lambda video_url: 'youtube')
 
     results = service.get_thumbnail_url_map(
         [
-            (11, 'https://img.example.com/11.jpg', 'https://www.pornhub.com/view_video.php?viewkey=11'),
-            (12, 'https://img.example.com/12.jpg', 'https://www.pornhub.com/view_video.php?viewkey=12'),
+            (11, 'https://img.example.com/11.jpg', 'https://www.youtube.com/view_video.php?viewkey=11'),
+            (12, 'https://img.example.com/12.jpg', 'https://www.youtube.com/view_video.php?viewkey=12'),
         ]
     )
 
@@ -89,12 +89,12 @@ def test_bulk_thumbnail_lookup_prefers_local_index(monkeypatch):
             },
         ),
     )
-    monkeypatch.setattr(thumbnail_downloader, 'get_site_from_url', lambda video_url: 'pornhub')
+    monkeypatch.setattr(thumbnail_downloader, 'get_site_from_url', lambda video_url: 'youtube')
 
     results = service.get_thumbnail_url_map(
         [
-            (21, 'https://img.example.com/21.webp', 'https://www.pornhub.com/view_video.php?viewkey=21'),
-            (22, 'https://img.example.com/22.webp', 'https://www.pornhub.com/view_video.php?viewkey=22'),
+            (21, 'https://img.example.com/21.webp', 'https://www.youtube.com/view_video.php?viewkey=21'),
+            (22, 'https://img.example.com/22.webp', 'https://www.youtube.com/view_video.php?viewkey=22'),
         ]
     )
 
@@ -223,8 +223,8 @@ def test_download_thumbnail_retries_transport_error(monkeypatch, tmp_path):
     file_path = service.download_thumbnail(
         video_id=77,
         thumbnail_url='https://img.example.com/77.png',
-        site_name='pornhub',
-        source_url='https://www.pornhub.com/view_video.php?viewkey=demo',
+        site_name='youtube',
+        source_url='https://www.youtube.com/watch?v=demo',
     )
 
     assert file_path == str(tmp_path / 'batch_001' / '77.png')
@@ -233,11 +233,11 @@ def test_download_thumbnail_retries_transport_error(monkeypatch, tmp_path):
 
 def test_extract_thumbnail_url_prefers_long_lived_preview():
     short_url = (
-        'https://pix-fl.phncdn.com/c6251/videos/demo/original.jpg/plain/'
+        'https://pix.cdn.example.com/c6251/videos/demo/original.jpg/plain/'
         'rs:fit:640:360?hdnea=st=1777096861~exp=1777183261~hdl=-1~hmac=short'
     )
     long_url = (
-        'https://pix-egi.phncdn.com/c6251/videos/demo/original.jpg/plain/'
+        'https://pix.cdn.example.com/c6251/videos/demo/original.jpg/plain/'
         'rs:fit:350:196?validfrom=1751342400&validto=4891363200&hash=long'
     )
     html = f'<meta property="og:image" content="{short_url}"><meta name="twitter:image" content="{long_url}">'
@@ -247,12 +247,12 @@ def test_extract_thumbnail_url_prefers_long_lived_preview():
 
 def test_download_thumbnail_refreshes_expiring_preview_after_410(monkeypatch, tmp_path):
     stale_thumbnail_url = (
-        'https://pix-cdn77.ypncdn.com/c6251/videos/demo/video.mp4/plain/rs:fit:1280:720/vts:354?hash=stale&validto=1'
+        'https://pix.cdn.example.com/c6251/videos/demo/video.mp4/plain/rs:fit:1280:720/vts:354?hash=stale&validto=1'
     )
     fresh_thumbnail_url = (
-        'https://pix-cdn77.ypncdn.com/c6251/videos/demo/video.mp4/plain/rs:fit:1280:720/vts:354?hash=fresh&validto=2'
+        'https://pix.cdn.example.com/c6251/videos/demo/video.mp4/plain/rs:fit:1280:720/vts:354?hash=fresh&validto=2'
     )
-    source_url = 'https://www.youporn.com/watch/42/demo-video/'
+    source_url = 'https://www.youtube.com/watch?v=demo42'
     requests = []
 
     def fake_get(url, headers=None):
@@ -280,7 +280,7 @@ def test_download_thumbnail_refreshes_expiring_preview_after_410(monkeypatch, tm
     file_path = service.download_thumbnail(
         video_id=42,
         thumbnail_url=stale_thumbnail_url,
-        site_name='youporn',
+        site_name='youtube',
         source_url=source_url,
     )
 
@@ -292,12 +292,12 @@ def test_download_thumbnail_refreshes_expiring_preview_after_410(monkeypatch, tm
     ]
 
 
-def test_download_thumbnail_refreshes_expiring_preview_after_410_for_pornhub(monkeypatch, tmp_path):
+def test_download_thumbnail_refreshes_expiring_preview_after_410_for_youtube(monkeypatch, tmp_path):
     stale_thumbnail_url = (
-        'https://pix-cdn77.ypncdn.com/c6251/videos/demo/video.mp4/plain/rs:fit:1280:720/vts:354?hash=stale&validto=1'
+        'https://pix.cdn.example.com/c6251/videos/demo/video.mp4/plain/rs:fit:1280:720/vts:354?hash=stale&validto=1'
     )
-    fresh_thumbnail_url = 'https://ei.phncdn.com/videos/demo/fresh-thumb.jpg?validto=2'
-    source_url = 'https://www.pornhub.com/view_video.php?viewkey=demo'
+    fresh_thumbnail_url = 'https://img.cdn.example.com/videos/demo/fresh-thumb.jpg?validto=2'
+    source_url = 'https://www.youtube.com/view_video.php?viewkey=demo'
     requests = []
 
     def fake_get(url, headers=None):
@@ -325,7 +325,7 @@ def test_download_thumbnail_refreshes_expiring_preview_after_410_for_pornhub(mon
     file_path = service.download_thumbnail(
         video_id=88,
         thumbnail_url=stale_thumbnail_url,
-        site_name='pornhub',
+        site_name='youtube',
         source_url=source_url,
     )
 
@@ -337,15 +337,15 @@ def test_download_thumbnail_refreshes_expiring_preview_after_410_for_pornhub(mon
     ]
 
 
-def test_download_thumbnail_refreshes_pornhub_ei_video_thumb_after_410(monkeypatch, tmp_path):
+def test_download_thumbnail_refreshes_youtube_ei_video_thumb_after_410(monkeypatch, tmp_path):
     stale_thumbnail_url = (
-        'https://ei.phncdn.com/videos/202506/07/469932995/original/(m=qO7TGL0beaAaGwObaaaa)(mh=demo)0.jpg'
+        'https://img.cdn.example.com/videos/202506/07/469932995/original/(m=qO7TGL0beaAaGwObaaaa)(mh=demo)0.jpg'
     )
     fresh_thumbnail_url = (
-        'https://pix-egi.phncdn.com/c6251/videos/demo/original.jpg/plain/'
+        'https://pix.cdn.example.com/c6251/videos/demo/original.jpg/plain/'
         'rs:fit:350:196?validfrom=1751342400&validto=4891363200&hash=fresh'
     )
-    source_url = 'https://www.pornhub.com/view_video.php?viewkey=demo'
+    source_url = 'https://www.youtube.com/view_video.php?viewkey=demo'
     requests = []
 
     def fake_get(url, headers=None):
@@ -373,7 +373,7 @@ def test_download_thumbnail_refreshes_pornhub_ei_video_thumb_after_410(monkeypat
     file_path = service.download_thumbnail(
         video_id=90,
         thumbnail_url=stale_thumbnail_url,
-        site_name='pornhub',
+        site_name='youtube',
         source_url=source_url,
     )
 
@@ -385,10 +385,10 @@ def test_download_thumbnail_refreshes_pornhub_ei_video_thumb_after_410(monkeypat
     ]
 
 
-def test_download_thumbnail_refreshes_pornhub_hdnea_preview_after_472(monkeypatch, tmp_path):
-    stale_thumbnail_url = 'https://pix-fl.phncdn.com/videos/demo/plain/rs:fit:640:360?hdnea=expired'
-    fresh_thumbnail_url = 'https://ei.phncdn.com/videos/demo/fresh-thumb.jpg'
-    source_url = 'https://www.pornhub.com/view_video.php?viewkey=demo'
+def test_download_thumbnail_refreshes_youtube_hdnea_preview_after_472(monkeypatch, tmp_path):
+    stale_thumbnail_url = 'https://pix.cdn.example.com/videos/demo/plain/rs:fit:640:360?hdnea=expired'
+    fresh_thumbnail_url = 'https://img.cdn.example.com/videos/demo/fresh-thumb.jpg'
+    source_url = 'https://www.youtube.com/view_video.php?viewkey=demo'
     requests = []
 
     def fake_get(url, headers=None):
@@ -416,7 +416,7 @@ def test_download_thumbnail_refreshes_pornhub_hdnea_preview_after_472(monkeypatc
     file_path = service.download_thumbnail(
         video_id=89,
         thumbnail_url=stale_thumbnail_url,
-        site_name='pornhub',
+        site_name='youtube',
         source_url=source_url,
     )
 
@@ -428,7 +428,7 @@ def test_download_thumbnail_refreshes_pornhub_hdnea_preview_after_472(monkeypatc
     ]
 
 
-def test_build_request_headers_uses_source_url_cookies_and_age_gate_defaults(monkeypatch):
+def test_build_request_headers_uses_source_url_cookies(monkeypatch):
     site_config = ThumbnailSiteConfig()
     service = ThumbnailDownloaderService(site_config=site_config)
 
@@ -436,11 +436,11 @@ def test_build_request_headers_uses_source_url_cookies_and_age_gate_defaults(mon
         site_config,
         'get_effective_catalog',
         lambda: {
-            'pornhub': {
+            'youtube': {
                 'http': {
                     'headers': {
                         'User-Agent': 'UA',
-                        'Referer': 'https://www.pornhub.com',
+                        'Referer': 'https://www.youtube.com',
                     },
                 },
                 'metadata': {
@@ -457,14 +457,13 @@ def test_build_request_headers_uses_source_url_cookies_and_age_gate_defaults(mon
     )
 
     headers = service.build_request_headers(
-        'pornhub',
-        source_url='https://www.pornhub.com/view_video.php?viewkey=demo',
-        target_url='https://ei.phncdn.com/videos/demo.jpg',
+        'youtube',
+        source_url='https://www.youtube.com/watch?v=demo',
+        target_url='https://i.ytimg.com/vi/demo/hqdefault.jpg',
     )
 
-    assert headers['Referer'] == 'https://www.pornhub.com/view_video.php?viewkey=demo'
-    assert headers['Origin'] == 'https://www.pornhub.com'
+    assert headers['Referer'] == 'https://www.youtube.com/watch?v=demo'
+    assert headers['Origin'] == 'https://www.youtube.com'
     assert headers['User-Agent'] == 'UA'
-    assert headers['Cookie'] == (
-        'sessid=abc123; age_verified=1; accessAgeDisclaimerPH=1; accessAgeDisclaimerUK=1; accessPH=1'
-    )
+    assert headers['Cookie'] == 'sessid=abc123'
+

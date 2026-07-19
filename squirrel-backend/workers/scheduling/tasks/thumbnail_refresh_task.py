@@ -11,10 +11,7 @@ from infrastructure.scheduling.base import BaseTask, TaskRegistry
 
 logger = logging.getLogger(__name__)
 
-_SUPPORTED_SITE_PATTERNS = {
-    'pornhub': '%pornhub.com%',
-    'youporn': '%youporn.com%',
-}
+_DEFAULT_MAX_WORKERS = 8
 
 
 @TaskRegistry.register(interval=60 * 24, unit='minutes', start_immediately=True)
@@ -47,25 +44,39 @@ class ThumbnailRefreshTask(BaseTask):
 
     @classmethod
     def _get_refresh_targets(cls) -> list[tuple[str, str]]:
+        """Build (site_name, url_like_pattern) targets from the effective catalog.
+
+        A site is eligible when it is enabled and opts into offline thumbnail
+        download. URL patterns come from the site's configured domains so the
+        task stays free of hard-coded site lists.
+        """
         catalog = get_effective_site_catalog()
         targets: list[tuple[str, str]] = []
 
-        for site_name, url_pattern in _SUPPORTED_SITE_PATTERNS.items():
-            site_info = catalog.get(site_name, {})
+        for site_name, site_info in catalog.items():
+            if not isinstance(site_info, dict):
+                continue
             metadata = site_info.get('metadata') or {}
             if not site_info.get('enabled', True):
                 continue
             if not metadata.get('offline_thumbnails_download', False):
                 continue
-            targets.append((site_name, url_pattern))
+
+            domains = site_info.get('domains') or []
+            primary_domain = next(
+                (str(domain).strip().lower() for domain in domains if str(domain or '').strip()),
+                None,
+            )
+            if not primary_domain:
+                continue
+            targets.append((str(site_name).strip().lower(), f'%{primary_domain}%'))
 
         return targets
 
     @staticmethod
     def _get_site_max_workers(site_name: str) -> int:
-        if str(site_name).lower() == 'pornhub':
-            return 4
-        return 8
+        del site_name  # reserved for future per-site tuning
+        return _DEFAULT_MAX_WORKERS
 
     @classmethod
     def _get_stored_thumbnail_url(cls, video: Video) -> str | None:

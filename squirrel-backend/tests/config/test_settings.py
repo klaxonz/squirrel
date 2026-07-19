@@ -151,11 +151,11 @@ def test_crawl_settings_overrides_loaded_from_json_env(monkeypatch):
         'CRAWL_TASK_TYPE_LIMITS',
         '{"video_extract": 16, "custom_task": 4}',
     )
-    monkeypatch.setenv('CRAWL_SITE_CONCURRENCY_OVERRIDES', '{"JavDB": 1}')
+    monkeypatch.setenv('CRAWL_SITE_CONCURRENCY_OVERRIDES', '{"YouTube": 1}')
 
     c = CrawlSettings()
     assert c.task_type_limits == {'video_extract': 16, 'custom_task': 4}
-    assert c.site_concurrency_overrides == {'javdb': 1}
+    assert c.site_concurrency_overrides == {'youtube': 1}
 
 
 def test_crawl_settings_reject_site_concurrency_above_serial_plugin_capacity(monkeypatch):

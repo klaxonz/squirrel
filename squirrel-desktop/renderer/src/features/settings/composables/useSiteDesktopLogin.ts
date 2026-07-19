@@ -18,13 +18,10 @@ import type { SiteLoginStatus } from '@/shared/lib/site-runtime-login-status'
  * `getDesktopBridge` (the shared one in useDesktopBridge is the source of
  * truth); this composable uses the shared helper, killing the duplication.
  */
-const DESKTOP_LOGIN_SITES = new Set(['bilibili', 'javdb', 'pornhub', 'youporn'])
+const DESKTOP_LOGIN_SITES = new Set(['bilibili'])
 const DESKTOP_LOGIN_SITE_ALIASES: Record<string, string> = {
   'b23.tv': 'bilibili',
   'bilibili.com': 'bilibili',
-  'javdb.com': 'javdb',
-  'pornhub.com': 'pornhub',
-  'youporn.com': 'youporn',
 }
 
 /** Login-status payload shape the desktop handlers emit. Broader than the

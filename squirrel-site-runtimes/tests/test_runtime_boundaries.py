@@ -6,9 +6,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 FILES_WITH_RUNTIME_BOUNDARY = [
-    REPO_ROOT / 'squirrel-site-runtimes' / 'javdb' / 'src' / 'squirrel_javdb' / 'html_client.py',
     REPO_ROOT / 'squirrel-site-runtimes' / 'youtube' / 'src' / 'squirrel_youtube' / 'proxy.py',
-    REPO_ROOT / 'squirrel-site-runtimes' / 'pornhub' / 'src' / 'squirrel_pornhub' / 'proxy.py',
 ]
 
 

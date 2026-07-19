@@ -1,7 +1,6 @@
 import { ipcMain } from 'electron'
 import { getRemoteChannel } from './search/providers/remote-channel.mjs'
 import { searchRemoteVideos } from './search/providers/index.mjs'
-import { loadYouPornProfileAvatar } from './search/providers/youporn.mjs'
 import { createSessionFetch, loadDocumentHtmlWithBrowserWindow } from './document-loader.mjs'
 import { buildCookieHeaderForUrl } from './site-login.mjs'
 
@@ -31,15 +30,6 @@ export const installSearchHandlers = () => {
       fetchImpl: createSessionFetch(),
       buildCookieHeader: buildCookieHeaderForUrl,
       loadDocumentHtml: loadDocumentHtmlWithBrowserWindow,
-    })
-  })
-
-  ipcMain.removeHandler('desktop:get-youporn-profile-avatar')
-  ipcMain.handle('desktop:get-youporn-profile-avatar', async (_event, profileUrl) => {
-    return loadYouPornProfileAvatar({
-      profileUrl,
-      fetchImpl: createSessionFetch(),
-      buildCookieHeader: buildCookieHeaderForUrl,
     })
   })
 }

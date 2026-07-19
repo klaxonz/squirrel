@@ -122,17 +122,7 @@ const createSession = (): PlaybackSession => {
 
   const isReusableFor = (videoId: string): boolean => {
     if (String(facts.videoId || '') !== String(videoId || '')) return false
-    if (needsJavdbRefresh()) return false
     return !!(facts.source || facts.externalError || facts.externalLoading)
-  }
-
-  // Mirrors the old shouldRefreshJavdbSession() shell helper: a javdb video
-  // whose actors are unresolved is treated as incomplete and forces a refresh.
-  const needsJavdbRefresh = (): boolean => {
-    const url = String(facts.video?.url || '')
-    if (!url.includes('javdb.com/')) return false
-    const actors = facts.video?.actors
-    return !Array.isArray(actors) || !actors.some((actor) => String(actor?.name || '').trim())
   }
 
   const release = (): void => {

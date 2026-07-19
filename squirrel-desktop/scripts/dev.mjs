@@ -250,9 +250,8 @@ const scheduleElectronRestart = () => {
 
   // Ignore fs.watch events during the startup grace period — on Windows, the
   // filesystem watcher may fire false positives while Electron initializes,
-  // and prewarming operations (YouTube InnerTube cache, JavDB Cloudflare
-  // document loading) or background OS activity can trigger spurious events
-  // that would otherwise cause a restart loop.
+  // and prewarming operations (YouTube InnerTube cache) or background OS
+  // activity can trigger spurious events that would otherwise cause a restart loop.
   if (electronStartupAt && Date.now() - electronStartupAt < RESTART_GRACE_PERIOD_MS) {
     return
   }

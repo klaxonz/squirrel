@@ -1,7 +1,6 @@
 import {
   clampLimit,
   clampPage,
-  extractAttribute,
   fetchText,
   findBalancedJson,
   normalizeUrl,
@@ -31,9 +30,6 @@ import { desktopChromeUserAgent } from '../../constants.mjs'
 
 const BILIBILI_ORIGIN = 'https://www.bilibili.com'
 const BILIBILI_SPACE_ORIGIN = 'https://space.bilibili.com'
-const JAVDB_ORIGIN = 'https://javdb.com'
-const PORNHUB_ORIGIN = 'https://www.pornhub.com'
-const YOUPORN_ORIGIN = 'https://www.youporn.com'
 const DESKTOP_USER_AGENT = desktopChromeUserAgent
 const BILIBILI_WEB_LOCATION_SPACE = '1550101'
 
@@ -42,9 +38,6 @@ const SITE_ALIASES = {
   'b23.tv': 'bilibili',
   'youtube.com': 'youtube',
   'youtu.be': 'youtube',
-  'javdb.com': 'javdb',
-  'pornhub.com': 'pornhub',
-  'youporn.com': 'youporn',
 }
 
 const normalizeSite = (site, targetUrl) => {
@@ -53,29 +46,6 @@ const normalizeSite = (site, targetUrl) => {
 
   const hostname = new URL(targetUrl).hostname.toLowerCase().replace(/^www\./, '')
   return SITE_ALIASES[hostname] || hostname
-}
-
-const extractPornhubVideoLink = (block) => {
-  const tag = String(block || '').match(/<a\b[^>]*href=["']([^"']*view_video\.php\?viewkey=[^"']+)["'][^>]*>/i)?.[0] || ''
-  return {
-    tag,
-    href: extractAttribute(tag, 'href'),
-  }
-}
-
-const buildPornhubVideosUrl = (channelUrl) => {
-  const targetUrl = new URL(channelUrl)
-  const path = targetUrl.pathname.replace(/\/$/, '')
-  if (!/\/videos$/i.test(path)) targetUrl.pathname = `${path}/videos`
-  return targetUrl.toString()
-}
-
-const normalizePornhubProfileUrl = (value) => normalizeUrl(value, PORNHUB_ORIGIN)
-  .replace(/\/videos(?:\?.*)?$/i, '')
-  .replace(/\/$/i, '')
-
-const looksLikeJavdbBlockedPage = (html) => {
-  return /has banned your access|管理員禁止了你的訪問|管理员禁止了你的访问/i.test(String(html || ''))
 }
 
 const buildBilibiliHeaders = (cookie) => ({
@@ -492,271 +462,9 @@ const getBilibiliChannel = async ({ url, limit, page, fetchImpl, buildCookieHead
   }
 }
 
-const extractJavdbActorProfile = (html, channelUrl) => {
-  const name = stripHtml(
-    html.match(/class=["'][^"']*\bactor-section-name\b[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i)?.[1]
-    || ''
-  ).split(',')[0].trim()
-  const avatarBlock = html.match(/<[^>]+class=["'][^"']*\bavatar\b[^"']*["'][^>]*>/i)?.[0] || ''
-  const avatarStyle = avatarBlock.match(/\sstyle=(["'])([\s\S]*?)\1/i)?.[2] || ''
-  const styleAvatar = avatarStyle.match(/url\((.*?)\)/i)?.[1]?.replace(/^["']|["']$/g, '') || ''
-  const avatarImage = html.match(/class=["'][^"']*\bavatar\b[^"']*["'][\s\S]*?<img\b[^>]*src=["']([^"']+)["']/i)?.[1] || ''
-  const actorId = new URL(channelUrl).pathname.split('/').filter(Boolean).pop() || null
-
-  return {
-    id: actorId,
-    type: 'ACTOR',
-    name,
-    url: channelUrl,
-    avatar: normalizeUrl(styleAvatar || avatarImage, JAVDB_ORIGIN),
-    description: '',
-    site: 'javdb',
-    is_nsfw: true,
-  }
-}
-
-const collectJavdbVideos = (html, profile) => {
-  const items = []
-  const linkPattern = /<a\b(?=[^>]*class=["'][^"']*\bbox\b)(?=[^>]*href=["']([^"']*\/v\/[^"']+)["'])[^>]*>([\s\S]*?)<\/a>/gi
-  let match
-  while ((match = linkPattern.exec(html))) {
-    const href = match[1] || ''
-    const block = match[2] || ''
-    const title = stripHtml(
-      block.match(/class=["'][^"']*\bvideo-title\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1]
-      || extractAttribute(match[0], 'title')
-      || ''
-    )
-    const image = block.match(/<img\b[^>]*>/i)?.[0] || ''
-    const thumbnail = extractAttribute(image, 'data-src') || extractAttribute(image, 'src')
-    const metaText = stripHtml(block.match(/class=["'][^"']*\bmeta\b[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i)?.[1] || '')
-    const publishDate = metaText.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0] || metaText || null
-
-    items.push({
-      source: 'remote',
-      site: 'javdb',
-      id: href,
-      title,
-      url: normalizeUrl(href, JAVDB_ORIGIN),
-      thumbnail: normalizeUrl(thumbnail, JAVDB_ORIGIN),
-      duration: null,
-      publish_date: publishDate,
-      uploader: profile.name,
-      uploader_url: profile.url,
-      uploader_avatar: profile.avatar,
-      subscriptions: [],
-      actors: [profile],
-      description: '',
-    })
-  }
-  return uniqueByUrl(items).filter((item) => item.title && item.url)
-}
-
-const getJavdbChannel = async ({ url, limit, page, loadDocumentHtml }) => {
-  if (typeof loadDocumentHtml !== 'function') {
-    throw new Error('JavDB remote channel requires browser document loading')
-  }
-
-  const resultLimit = clampLimit(limit)
-  const resultPage = clampPage(page)
-  const channelUrl = normalizeChannelUrl(url)
-  const targetUrl = new URL(channelUrl)
-  if (resultPage > 1) {
-    targetUrl.searchParams.set('page', String(resultPage))
-    targetUrl.searchParams.set('sort_type', '0')
-  }
-
-  const html = await loadDocumentHtml(targetUrl.toString(), {
-    timeoutMs: 30000,
-    challengeTimeoutMs: 60000,
-  })
-  if (looksLikeJavdbBlockedPage(html)) {
-    throw new Error('JavDB access is temporarily blocked by upstream')
-  }
-
-  const channelProfile = extractJavdbActorProfile(html, channelUrl)
-  const items = collectJavdbVideos(html, channelProfile)
-  const hasNext = /<a\b(?=[^>]*class=["'][^"']*\bpagination-link\b)(?=[^>]*rel=["']next["'])/i.test(html)
-
-  return {
-    profile: channelProfile,
-    items: items.slice(0, resultLimit),
-    page: resultPage,
-    has_more: hasNext || items.length > resultLimit,
-  }
-}
-
-const extractPornhubVideoListHtml = (html) => {
-  return String(html || '').match(/<ul\b(?=[^>]*id=["'](?:mostRecentVideosSection|uploadedVideosSection|trailerVideosSection)["'])[^>]*>[\s\S]*?<\/ul>/i)?.[0] || ''
-}
-
-const collectPornhubVideos = (html, profile) => {
-  const listHtml = extractPornhubVideoListHtml(html)
-  const blocks = listHtml.match(/<li[^>]+class=["'][^"']*(?:pcVideoListItem|videoblock)[^"']*["'][\s\S]*?<\/li>/gi) || []
-  return uniqueByUrl(blocks.map((block) => {
-    const videoLink = extractPornhubVideoLink(block)
-    const uploaderLink = block.match(/class=["'][^"']*usernameWrap[^"']*["'][\s\S]*?<a\b[^>]*href=["']([^"']+)["']/i)
-    const uploaderUrl = normalizePornhubProfileUrl(uploaderLink?.[1] || '')
-    if (uploaderUrl && uploaderUrl !== normalizePornhubProfileUrl(profile.url)) return null
-    const title = extractAttribute(videoLink.tag, 'title')
-    const thumbnail = extractAttribute(block, 'data-mediumthumb') || extractAttribute(block, 'data-src') || extractAttribute(block, 'src')
-    const durationMatch = block.match(/class=["'][^"']*duration[^"']*["'][^>]*>\s*([^<]+)/i)
-    return {
-      source: 'remote',
-      site: 'pornhub',
-      id: extractAttribute(block, 'data-video-vkey') || videoLink.href,
-      title: stripHtml(title),
-      url: normalizeUrl(videoLink.href, PORNHUB_ORIGIN),
-      thumbnail: normalizeUrl(thumbnail, PORNHUB_ORIGIN),
-      duration: parseDuration(durationMatch?.[1]),
-      publish_date: null,
-      uploader: profile.name,
-      uploader_url: profile.url,
-      uploader_avatar: profile.avatar,
-      subscriptions: [profile],
-      description: '',
-    }
-  })).filter((item) => item?.title && item.url)
-}
-
-const extractPornhubNextPageUrl = (html) => {
-  const source = String(html || '')
-  const headNextTag = source.match(/<link\b(?=[^>]*rel=["']next["'])[^>]*>/i)?.[0] || ''
-  if (headNextTag) return normalizeUrl(extractAttribute(headNextTag, 'href'), PORNHUB_ORIGIN)
-
-  const nextBlock = source.match(/<li\b(?=[^>]*class=["'][^"']*\bpage_next\b)[^>]*>[\s\S]*?<\/li>/i)?.[0] || ''
-  const nextTag = nextBlock.match(/<a\b[^>]*href=["'][^"']+["'][^>]*>/i)?.[0]
-    || source.match(/<a\b(?=[^>]*(?:rel=["']next["']|class=["'][^"']*\b(?:page_next|next)\b))[^>]*>/i)?.[0]
-    || ''
-  return normalizeUrl(extractAttribute(nextTag, 'href'), PORNHUB_ORIGIN)
-}
-
-const getPornhubChannel = async ({ url, limit, page, cursor, fetchImpl, buildCookieHeader, profile }) => {
-  const resultLimit = clampLimit(limit)
-  const resultPage = clampPage(page)
-  const channelUrl = buildPornhubVideosUrl(normalizeChannelUrl(url))
-  const targetUrl = resultPage > 1 && cursor?.url ? String(cursor.url) : channelUrl
-  const cookie = await buildCookieHeader(targetUrl)
-  const html = await fetchText(fetchImpl, targetUrl, {
-    headers: {
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      Referer: `${PORNHUB_ORIGIN}/`,
-      ...(cookie ? { Cookie: cookie } : {}),
-    },
-  })
-  const title = stripHtml(
-    html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1]
-    || profile?.name
-    || ''
-  )
-  const avatar = normalizeUrl(
-    extractAttribute(html.match(/<img[^>]+class=["'][^"']*(?:avatar|profilePic)[^"']*["'][^>]*>/i)?.[0] || '', 'src')
-    || profile?.avatar
-    || '',
-    PORNHUB_ORIGIN
-  )
-  const channelProfile = {
-    id: profile?.id || null,
-    type: 'CHANNEL',
-    name: title,
-    url: channelUrl,
-    avatar,
-    description: '',
-    site: 'pornhub',
-    is_nsfw: true,
-  }
-  const items = collectPornhubVideos(html, channelProfile)
-  const nextPageUrl = extractPornhubNextPageUrl(html)
-
-  return {
-    profile: channelProfile,
-    items: items.slice(0, resultLimit),
-    page: resultPage,
-    has_more: !!nextPageUrl,
-    next_cursor: nextPageUrl ? { url: nextPageUrl } : null,
-  }
-}
-
-const collectYouPornVideos = (html, profile) => {
-  const cardPattern = /<article\b[^>]*class=["'][^"']*\bvideo-box\b[^"']*["'][^>]*>[\s\S]*?<\/article>/gi
-  const items = []
-  let match
-  while ((match = cardPattern.exec(html))) {
-    const block = match[0]
-    const href = extractAttribute(block, 'href')
-    const titleLink = block.match(/<a[^>]+class=["'][^"']*video-title-text[^"']*["'][^>]*>([\s\S]*?)<\/a>/i)
-    const image = block.match(/<img\b[^>]*>/i)?.[0] || ''
-    const thumbnail = extractAttribute(image, 'data-src') || extractAttribute(image, 'data-poster') || extractAttribute(image, 'src')
-    const durationMatch = block.match(/class=["'][^"']*duration[^"']*["'][^>]*>\s*([^<]+)/i)
-    items.push({
-      source: 'remote',
-      site: 'youporn',
-      id: href,
-      title: stripHtml(extractAttribute(block, 'aria-label') || titleLink?.[1] || ''),
-      url: normalizeUrl(href, YOUPORN_ORIGIN),
-      thumbnail: normalizeUrl(thumbnail, YOUPORN_ORIGIN),
-      duration: parseDuration(durationMatch?.[1]),
-      publish_date: null,
-      uploader: profile.name,
-      uploader_url: profile.url,
-      uploader_avatar: profile.avatar,
-      subscriptions: [profile],
-      description: '',
-    })
-  }
-  return uniqueByUrl(items).filter((item) => item.title && item.url)
-}
-
-const getYouPornChannel = async ({ url, limit, page, fetchImpl, buildCookieHeader, profile }) => {
-  const resultLimit = clampLimit(limit)
-  const resultPage = clampPage(page)
-  const channelUrl = normalizeChannelUrl(url)
-  const targetUrl = new URL(channelUrl)
-  targetUrl.searchParams.set('page', String(resultPage))
-  const cookie = await buildCookieHeader(channelUrl)
-  const html = await fetchText(fetchImpl, targetUrl.toString(), {
-    headers: {
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      Referer: `${YOUPORN_ORIGIN}/`,
-      ...(cookie ? { Cookie: cookie } : {}),
-    },
-  })
-  const title = stripHtml(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || profile?.name || '')
-  const logoImage = html.match(
-    /<div[^>]+class=["'][^"']*\bheader-banner-wrapper\b[^"']*["'][^>]*>[\s\S]*?<div[^>]+class=["'][^"']*\b(?:logo|avatar)-wrapper\b[^"']*["'][^>]*>[\s\S]*?(<img\b[^>]*>)/i
-  )?.[1] || ''
-  const avatar = normalizeUrl(
-    extractAttribute(logoImage, 'data-src')
-    || extractAttribute(logoImage, 'src')
-    || '',
-    YOUPORN_ORIGIN
-  )
-  const channelProfile = {
-    id: profile?.id || null,
-    type: 'CHANNEL',
-    name: title,
-    url: channelUrl,
-    avatar,
-    description: '',
-    site: 'youporn',
-    is_nsfw: true,
-  }
-  const items = collectYouPornVideos(html, channelProfile)
-
-  return {
-    profile: channelProfile,
-    items: items.slice(0, resultLimit),
-    page: resultPage,
-    has_more: items.length >= resultLimit,
-  }
-}
-
 const CHANNEL_PROVIDERS = {
   bilibili: getBilibiliChannel,
   youtube: getYouTubeChannel,
-  javdb: getJavdbChannel,
-  pornhub: getPornhubChannel,
-  youporn: getYouPornChannel,
 }
 
 export const getRemoteChannel = async ({

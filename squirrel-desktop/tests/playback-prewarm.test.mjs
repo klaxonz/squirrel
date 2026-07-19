@@ -4,10 +4,10 @@ import { readFile } from 'node:fs/promises'
 
 const playbackProvidersPath = new URL('../src/playback/providers/index.mjs', import.meta.url)
 
-test('desktop playback prewarm registry includes javdb cloudflare prewarm', async () => {
+test('desktop playback prewarm registry only includes youtube', async () => {
   const source = await readFile(playbackProvidersPath, 'utf8')
 
-  assert.match(source, /import \{ loadDocumentHtmlWithBrowserWindow \}/)
-  assert.match(source, /import \{ prewarmJavdbCloudflare \}/)
-  assert.match(source, /\{ name: 'javdb', prewarm: \(\) => prewarmJavdbCloudflare\(loadDocumentHtmlWithBrowserWindow\) \}/)
+  assert.match(source, /import \{ prewarmYouTubePlayback \}/)
+  assert.match(source, /\{ name: 'youtube', prewarm: prewarmYouTubePlayback \}/)
+  assert.doesNotMatch(source, /javdb|prewarmJavdbCloudflare|pornhub|youporn/)
 })

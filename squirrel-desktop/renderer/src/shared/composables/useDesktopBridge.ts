@@ -45,11 +45,6 @@ export const useDesktopBridge = () => {
     return b?.resolveBilibiliSubtitles?.(url, opts)
   }
 
-  const resolveJavdbMetadata = (url: string) => {
-    const b = getDesktopBridge()
-    return b?.resolveJavdbMetadata?.(url)
-  }
-
   const openExternal = (url: string) => {
     const b = getDesktopBridge()
     return b?.openExternal?.(url)
@@ -65,7 +60,6 @@ export const useDesktopBridge = () => {
     getRemoteChannel,
     resolveYouTubeSubtitles,
     resolveBilibiliSubtitles,
-    resolveJavdbMetadata,
     openExternal,
     getDesktopBridge,
   }

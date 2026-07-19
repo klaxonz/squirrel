@@ -7,7 +7,6 @@ import { installDesktopBridgeHandlers } from './ipc-handlers.mjs'
 import { installDesktopMediaHeaders } from './media-headers.mjs'
 import { createMainWindow, ensureRendererLoaded, setRendererOrigin } from './window.mjs'
 import { setRendererUrl } from './shell-pages.mjs'
-import { closeCamoufoxDocumentLoader } from './document-loader.mjs'
 import { APP_ICON_PATH, APP_ID, __dirname } from './constants.mjs'
 
 const DEFAULT_DEV_RENDERER_URL = 'http://127.0.0.1:5174/'
@@ -110,7 +109,6 @@ if (!hasSingleInstanceLock) {
 }
 
 app.on('window-all-closed', () => {
-  void closeCamoufoxDocumentLoader()
   if (process.platform !== 'darwin') {
     app.quit()
   }

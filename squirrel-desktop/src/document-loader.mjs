@@ -1,8 +1,6 @@
-import path from 'node:path'
-import { app, BrowserWindow, session } from 'electron'
-import { CamoufoxDocumentLoader } from './cloudflare/camoufox-document-loader.mjs'
+import { BrowserWindow, session } from 'electron'
 import { getCookieProfileForUrl } from './site-login.mjs'
-import { normalizeTargetUrl, isJavdbCookieTarget, isMissavDocumentTarget } from './cookie-header.mjs'
+import { normalizeTargetUrl } from './cookie-header.mjs'
 import { desktopChromeUserAgent, DOCUMENT_READ_TIMEOUT_MS } from './constants.mjs'
 
 export const createSessionFetch = () => {
@@ -22,26 +20,6 @@ export const createSessionFetch = () => {
     } finally {
       clearTimeout(timer)
     }
-  }
-}
-
-let camoufoxDocumentLoader = null
-
-const getCamoufoxDocumentLoader = () => {
-  if (!camoufoxDocumentLoader) {
-    camoufoxDocumentLoader = new CamoufoxDocumentLoader({
-      electronSession: session.defaultSession,
-      userDataDir: path.join(app.getPath('userData'), 'camoufox-documents'),
-    })
-  }
-  return camoufoxDocumentLoader
-}
-
-export const closeCamoufoxDocumentLoader = async () => {
-  const loader = camoufoxDocumentLoader
-  camoufoxDocumentLoader = null
-  if (loader) {
-    await loader.close()
   }
 }
 
@@ -163,13 +141,6 @@ export const loadDocumentHtmlWithBrowserWindow = async (targetUrl, options = {})
   const normalizedUrl = normalizeTargetUrl(targetUrl)
   if (!normalizedUrl) {
     throw new Error('Invalid document URL')
-  }
-
-  if (isJavdbCookieTarget(normalizedUrl) || isMissavDocumentTarget(normalizedUrl)) {
-    return getCamoufoxDocumentLoader().loadHtml(normalizedUrl, {
-      timeoutMs: options?.timeoutMs,
-      challengeTimeoutMs: options?.challengeTimeoutMs,
-    })
   }
 
   return loadDocumentHtmlWithBrowserWindowOnce(normalizedUrl, options)

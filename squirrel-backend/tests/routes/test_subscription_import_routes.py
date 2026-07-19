@@ -21,13 +21,13 @@ def _build_client(monkeypatch, import_service=None):
         app.dependency_overrides[get_subscription_import_service] = lambda: type(
             'ImportService',
             (),
-            {'get_plugin_supported_sites': staticmethod(lambda _cap: ['javdb'])},
+            {'get_plugin_supported_sites': staticmethod(lambda _cap: ['youtube'])},
         )()
     # All supported sites are enabled — avoids depending on the runtime provider
     # snapshot being populated by the autouse fixture.
     monkeypatch.setattr(
         'domains.subscription.interfaces.http.site_imports.SiteCatalog.get_enabled_site_names',
-        classmethod(lambda cls: {'javdb'}),
+        classmethod(lambda cls: {'youtube'}),
     )
     return TestClient(app)
 
@@ -38,7 +38,7 @@ def test_preview_import_route_forwards_cursor_and_limit(monkeypatch):
     class FakeImportService:
         @staticmethod
         def get_plugin_supported_sites(_cap):
-            return ['javdb']
+            return ['youtube']
 
         @staticmethod
         def preview_user_subscriptions(site_name, user_id, *, cursor_payload=None, limit=None):
@@ -65,7 +65,7 @@ def test_preview_import_route_forwards_cursor_and_limit(monkeypatch):
     client = _build_client(monkeypatch, FakeImportService())
 
     response = client.get(
-        '/api/subscription/import/javdb/preview',
+        '/api/subscription/import/youtube/preview',
         params={'cursor': '{"page":2}', 'limit': 50},
     )
 
@@ -75,7 +75,7 @@ def test_preview_import_route_forwards_cursor_and_limit(monkeypatch):
     assert body['data']['has_more'] is True
     assert body['data']['cursor_payload'] == {'page': 3}
     assert captured == {
-        'site_name': 'javdb',
+        'site_name': 'youtube',
         'user_id': 7,
         'cursor_payload': {'page': 2},
         'limit': 50,
@@ -86,7 +86,7 @@ def test_preview_import_route_rejects_invalid_cursor_json(monkeypatch):
     client = _build_client(monkeypatch)
 
     response = client.get(
-        '/api/subscription/import/javdb/preview',
+        '/api/subscription/import/youtube/preview',
         params={'cursor': '{not-json}', 'limit': 50},
     )
 
@@ -100,7 +100,7 @@ def test_preview_import_route_rejects_non_object_cursor(monkeypatch):
     client = _build_client(monkeypatch)
 
     response = client.get(
-        '/api/subscription/import/javdb/preview',
+        '/api/subscription/import/youtube/preview',
         params={'cursor': '[]', 'limit': 50},
     )
 
@@ -115,12 +115,12 @@ def test_get_import_sites_filters_disabled_sites_in_original_order(monkeypatch):
 
     def _get_enabled_site_names():
         calls['count'] += 1
-        return {'javdb', 'bilibili'}
+        return {'youtube', 'bilibili'}
 
     class FakeImportService:
         @staticmethod
         def get_plugin_supported_sites(_cap):
-            return [' JAVDB ', 'youtube', 'javdb', 'bilibili']
+            return [' YOUTUBE ', 'bilibili', 'youtube']
 
     client = _build_client(monkeypatch, FakeImportService())
     monkeypatch.setattr(
@@ -133,5 +133,5 @@ def test_get_import_sites_filters_disabled_sites_in_original_order(monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body['code'] == 0
-    assert body['data']['sites'] == ['javdb', 'bilibili']
+    assert body['data']['sites'] == ['youtube', 'bilibili']
     assert calls['count'] == 1

@@ -85,7 +85,7 @@ def test_filter_user_state_ids_honors_sensitive_toggle_without_feed_visibility(s
                     id=7,
                     title='nsfw domain without subscription',
                     url='https://v/7',
-                    domain='pornhub.com',
+                    domain='youtube.com',
                     publish_date=now,
                 ),
             ]
@@ -144,7 +144,7 @@ def test_filter_user_state_ids_keeps_sensitive_likes_when_toggle_enabled(session
                     id=7,
                     title='nsfw domain without subscription',
                     url='https://v/7',
-                    domain='pornhub.com',
+                    domain='youtube.com',
                     publish_date=now,
                 ),
             ]
@@ -199,7 +199,7 @@ def test_filter_user_state_ids_applies_explicit_nsfw_filter_without_feed_visibil
                     id=3,
                     title='nsfw domain without subscription',
                     url='https://v/3',
-                    domain='pornhub.com',
+                    domain='youtube.com',
                     publish_date=now,
                 ),
             ]

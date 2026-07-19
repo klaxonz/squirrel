@@ -1,27 +1,18 @@
 import { searchBilibiliVideos } from './bilibili.mjs'
-import { searchJavdbVideos } from './javdb.mjs'
-import { searchPornhubVideos } from './pornhub.mjs'
 import { clampLimit, clampPage, normalizeQuery, uniqueByUrl } from './shared.mjs'
-import { searchYouPornVideos } from './youporn.mjs'
 import { searchYouTubeVideos } from './youtube.mjs'
 
 const PROVIDERS = {
   bilibili: searchBilibiliVideos,
-  javdb: searchJavdbVideos,
-  pornhub: searchPornhubVideos,
-  youporn: searchYouPornVideos,
   youtube: searchYouTubeVideos,
 }
 
 const ALL_SITE_NAMES = [
   'bilibili',
   'youtube',
-  'pornhub',
-  'youporn',
 ]
 
 const SEARCH_TIMEOUT_MS = 30000
-const JAVDB_SEARCH_TIMEOUT_MS = 90000
 const ALL_SEARCH_WAIT_MS = 1800
 const ALL_SEARCH_READY_GRACE_MS = 250
 const ALL_SEARCH_MIN_READY_ITEMS = 12
@@ -32,12 +23,8 @@ const SITE_ALIASES = {
   b23: 'bilibili',
   'b23.tv': 'bilibili',
   'bilibili.com': 'bilibili',
-  'javdb.com': 'javdb',
-  ph: 'pornhub',
-  'pornhub.com': 'pornhub',
   'youtube.com': 'youtube',
   'youtu.be': 'youtube',
-  'youporn.com': 'youporn',
 }
 
 const normalizeSite = (site) => {
@@ -49,14 +36,13 @@ const normalizeSite = (site) => {
 
 export const listRemoteSearchSites = () => Object.keys(PROVIDERS)
 
-const searchProviderWithTimeout = async (siteName, options, timeoutMs, timeoutOverridden) => {
+const searchProviderWithTimeout = async (siteName, options, timeoutMs) => {
   let timer
-  const siteTimeoutMs = siteName === 'javdb' && !timeoutOverridden ? JAVDB_SEARCH_TIMEOUT_MS : timeoutMs
   try {
     return await Promise.race([
       PROVIDERS[siteName](options),
       new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`${siteName} search timed out`)), siteTimeoutMs)
+        timer = setTimeout(() => reject(new Error(`${siteName} search timed out`)), timeoutMs)
       }),
     ])
   } finally {
@@ -171,7 +157,7 @@ export const searchRemoteVideos = async ({
       fetchImpl,
       buildCookieHeader,
       loadDocumentHtml,
-    }, searchTimeoutMs, hasProviderTimeoutMs)
+    }, searchTimeoutMs)
       .then((providerResult) => ({
         task,
         status: 'fulfilled',

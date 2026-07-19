@@ -19,7 +19,7 @@ class FakeSolver:
         })
         return HtmlResult(
             html='<html>ok</html>',
-            final_url='https://javdb.com/?via=solver',
+            final_url='https://example.com/?via=solver',
             status_code=200,
             cookies={'cf_clearance': 'demo'},
             user_agent='UA',
@@ -30,14 +30,14 @@ def test_html_route_returns_solver_result_headers():
     solver = FakeSolver()
     client = TestClient(create_app(solver=solver))
 
-    response = client.get('/html', params={'url': 'https://javdb.com'})
+    response = client.get('/html', params={'url': 'https://example.com'})
 
     assert response.status_code == 200
     assert response.text == '<html>ok</html>'
-    assert response.headers['x-cf-bypasser-final-url'] == 'https://javdb.com/?via=solver'
+    assert response.headers['x-cf-bypasser-final-url'] == 'https://example.com/?via=solver'
     assert response.headers['x-cf-bypasser-user-agent'] == 'UA'
     assert response.headers['x-cf-bypasser-source'] == 'solver'
-    assert solver.calls[0]['url'] == 'https://javdb.com'
+    assert solver.calls[0]['url'] == 'https://example.com'
 
 
 def test_html_route_uses_configured_default_proxy():
@@ -46,7 +46,7 @@ def test_html_route_uses_configured_default_proxy():
     app.state.bypass_service._default_proxy = 'http://127.0.0.1:7897'
     client = TestClient(app)
 
-    response = client.get('/html', params={'url': 'https://javdb.com'})
+    response = client.get('/html', params={'url': 'https://example.com'})
 
     assert response.status_code == 200
     assert solver.calls[0]['proxy'] == 'http://127.0.0.1:7897'
@@ -58,11 +58,11 @@ def test_html_route_forwards_request_headers_to_solver():
 
     response = client.get(
         '/html',
-        params={'url': 'https://javdb.com/users/collection_actors?page=1'},
+        params={'url': 'https://example.com/users/collection_actors?page=1'},
         headers={
             'Cookie': 'cf_clearance=demo; _jdb_session=session',
-            'Referer': 'https://javdb.com/',
-            'Origin': 'https://javdb.com',
+            'Referer': 'https://example.com/',
+            'Origin': 'https://example.com',
             'X-Proxy': 'http://127.0.0.1:7890',
             'X-Bypass-Cache': 'true',
         },
@@ -71,8 +71,8 @@ def test_html_route_forwards_request_headers_to_solver():
     assert response.status_code == 200
     assert solver.calls[0]['proxy'] == 'http://127.0.0.1:7890'
     assert solver.calls[0]['custom_headers']['cookie'] == 'cf_clearance=demo; _jdb_session=session'
-    assert solver.calls[0]['custom_headers']['referer'] == 'https://javdb.com/'
-    assert solver.calls[0]['custom_headers']['origin'] == 'https://javdb.com'
+    assert solver.calls[0]['custom_headers']['referer'] == 'https://example.com/'
+    assert solver.calls[0]['custom_headers']['origin'] == 'https://example.com'
     assert 'host' not in solver.calls[0]['custom_headers']
     assert 'x-bypass-cache' not in solver.calls[0]['custom_headers']
     assert 'user-agent' not in solver.calls[0]['custom_headers']
@@ -92,7 +92,7 @@ def test_html_route_keeps_user_agent_for_provided_cookie_seed_but_not_browser_so
             class Response:
                 status_code = 403
                 text = '<html><title>Just a moment...</title></html>'
-                url = 'https://javdb.com/page'
+                url = 'https://example.com/page'
 
             return Response()
 
@@ -107,18 +107,18 @@ def test_html_route_keeps_user_agent_for_provided_cookie_seed_but_not_browser_so
 
     response = client.get(
         '/html',
-        params={'url': 'https://javdb.com/page'},
+        params={'url': 'https://example.com/page'},
         headers={
             'Cookie': 'cf_clearance=provided; _jdb_session=session',
             'User-Agent': 'Provided UA',
-            'Referer': 'https://javdb.com/',
+            'Referer': 'https://example.com/',
         },
     )
 
     assert response.status_code == 200
     assert session_calls[0]['headers']['user-agent'] == 'Provided UA'
     assert solver.calls[0]['custom_headers']['cookie'] == 'cf_clearance=provided; _jdb_session=session'
-    assert solver.calls[0]['custom_headers']['referer'] == 'https://javdb.com/'
+    assert solver.calls[0]['custom_headers']['referer'] == 'https://example.com/'
     assert 'user-agent' not in solver.calls[0]['custom_headers']
 
 
@@ -130,7 +130,7 @@ def test_html_route_request_proxy_overrides_configured_default_proxy():
 
     response = client.get(
         '/html',
-        params={'url': 'https://javdb.com/users/collection_actors?page=1'},
+        params={'url': 'https://example.com/users/collection_actors?page=1'},
         headers={'X-Proxy': 'http://127.0.0.1:7890'},
     )
 
@@ -152,7 +152,7 @@ def test_html_route_uses_cached_clearance_without_solver(monkeypatch):
             class Response:
                 status_code = 200
                 text = '<html>cached</html>'
-                url = 'https://javdb.com/page'
+                url = 'https://example.com/page'
 
             return Response()
 
@@ -164,7 +164,7 @@ def test_html_route_uses_cached_clearance_without_solver(monkeypatch):
     solver = FakeSolver()
     app = create_app(solver=solver)
     app.state.bypass_service._cache.set(
-        'javdb.com',
+        'example.com',
         None,
         ClearanceRecord(
             cookies={'cf_clearance': 'cached'},
@@ -177,8 +177,8 @@ def test_html_route_uses_cached_clearance_without_solver(monkeypatch):
 
     response = client.get(
         '/html',
-        params={'url': 'https://javdb.com/page'},
-        headers={'Referer': 'https://javdb.com/'},
+        params={'url': 'https://example.com/page'},
+        headers={'Referer': 'https://example.com/'},
     )
 
     assert response.status_code == 200
@@ -189,7 +189,7 @@ def test_html_route_uses_cached_clearance_without_solver(monkeypatch):
     assert session_calls[0]['allow_redirects'] is True
     assert session_calls[0]['headers']['user-agent'] == 'Cached UA'
     assert session_calls[0]['headers']['cookie'] == 'cf_clearance=cached'
-    assert session_calls[0]['headers']['referer'] == 'https://javdb.com/'
+    assert session_calls[0]['headers']['referer'] == 'https://example.com/'
 
 
 def test_html_route_seeds_cache_from_provided_cookies(monkeypatch):
@@ -206,7 +206,7 @@ def test_html_route_seeds_cache_from_provided_cookies(monkeypatch):
             class Response:
                 status_code = 200
                 text = '<html>provided</html>'
-                url = 'https://javdb.com/page'
+                url = 'https://example.com/page'
                 cookies = {'cf_clearance': 'refreshed'}
 
             return Response()
@@ -222,7 +222,7 @@ def test_html_route_seeds_cache_from_provided_cookies(monkeypatch):
 
     response = client.get(
         '/html',
-        params={'url': 'https://javdb.com/page'},
+        params={'url': 'https://example.com/page'},
         headers={
             'Cookie': 'cf_clearance=provided; _jdb_session=session',
             'User-Agent': 'Provided UA',
@@ -235,7 +235,7 @@ def test_html_route_seeds_cache_from_provided_cookies(monkeypatch):
     assert solver.calls == []
     assert session_calls[0]['allow_redirects'] is True
     assert session_calls[0]['headers']['cookie'] == 'cf_clearance=provided; _jdb_session=session'
-    cached = app.state.bypass_service._cache.get('javdb.com', None)
+    cached = app.state.bypass_service._cache.get('example.com', None)
     assert cached.cookies == {'cf_clearance': 'refreshed', '_jdb_session': 'session'}
     assert cached.user_agent == 'Provided UA'
 
@@ -254,7 +254,7 @@ def test_html_route_invalidates_challenge_cache_and_falls_back_to_solver(monkeyp
             class Response:
                 status_code = 403
                 text = '<html><title>Just a moment...</title></html>'
-                url = 'https://javdb.com/page'
+                url = 'https://example.com/page'
 
             return Response()
 
@@ -266,7 +266,7 @@ def test_html_route_invalidates_challenge_cache_and_falls_back_to_solver(monkeyp
     solver = FakeSolver()
     app = create_app(solver=solver)
     app.state.bypass_service._cache.set(
-        'javdb.com',
+        'example.com',
         None,
         ClearanceRecord(
             cookies={'cf_clearance': 'stale'},
@@ -279,7 +279,7 @@ def test_html_route_invalidates_challenge_cache_and_falls_back_to_solver(monkeyp
     )
     client = TestClient(app)
 
-    response = client.get('/html', params={'url': 'https://javdb.com/page'})
+    response = client.get('/html', params={'url': 'https://example.com/page'})
 
     assert response.status_code == 200
     assert response.text == '<html>ok</html>'
@@ -287,11 +287,11 @@ def test_html_route_invalidates_challenge_cache_and_falls_back_to_solver(monkeyp
     assert solver.calls[0]['cached_record'] is not None
     assert solver.calls[0]['cached_record'].browser_config == {'navigator.userAgent': 'Stale UA'}
     assert solver.calls[0]['cached_record'].browser_os == 'windows'
-    assert app.state.bypass_service._cache.get('javdb.com', None).cookies == {'cf_clearance': 'demo'}
-    assert app.state.bypass_service._cache.get('javdb.com', None).http_usable is False
+    assert app.state.bypass_service._cache.get('example.com', None).cookies == {'cf_clearance': 'demo'}
+    assert app.state.bypass_service._cache.get('example.com', None).http_usable is False
     assert len(session_calls) == 1
 
-    response = client.get('/html', params={'url': 'https://javdb.com/page'})
+    response = client.get('/html', params={'url': 'https://example.com/page'})
 
     assert response.status_code == 200
     assert len(solver.calls) == 2
@@ -303,7 +303,7 @@ def test_html_route_can_force_cache_bypass():
     solver = FakeSolver()
     app = create_app(solver=solver)
     app.state.bypass_service._cache.set(
-        'javdb.com',
+        'example.com',
         None,
         ClearanceRecord(
             cookies={'cf_clearance': 'cached'},
@@ -316,7 +316,7 @@ def test_html_route_can_force_cache_bypass():
 
     response = client.get(
         '/html',
-        params={'url': 'https://javdb.com/page'},
+        params={'url': 'https://example.com/page'},
         headers={'X-Bypass-Cache': 'true'},
     )
 
@@ -340,7 +340,7 @@ def test_html_route_returns_502_when_solver_cannot_bypass():
     solver = NullSolver()
     client = TestClient(create_app(solver=solver))
 
-    response = client.get('/html', params={'url': 'https://missav.ai/search/DMOW-227'})
+    response = client.get('/html', params={'url': 'https://example.com/search/DMOW-227'})
 
     assert response.status_code == 502
     assert response.json() == {'detail': 'Failed to bypass Cloudflare protection'}

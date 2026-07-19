@@ -13,9 +13,6 @@ export type SiteBrand = {
 const SITE_BRANDS: Record<string, Omit<SiteBrand, 'slug'>> = {
   bilibili: { mono: 'Bili', bg: '#FB7299', fg: '#FFFFFF' },
   youtube: { mono: 'YT', bg: '#FF0033', fg: '#FFFFFF' },
-  javdb: { mono: 'JD', bg: '#2F6FED', fg: '#FFFFFF' },
-  pornhub: { mono: 'PH', bg: '#FFA31A', fg: '#111111' },
-  youporn: { mono: 'YP', bg: '#E53935', fg: '#FFFFFF' },
 }
 
 export function normalizeSiteSlug(site: string | null | undefined): string {

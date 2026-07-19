@@ -31,7 +31,7 @@ export class UrlParser {
         const match = url.match(config.patterns.channel)
         if (match) {
           return {
-            id: platform === 'PORNHUB' ? match[2] : match[1],
+            id: match[1],
             url,
             platform: platform.toLowerCase()
           }

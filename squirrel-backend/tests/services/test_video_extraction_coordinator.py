@@ -49,21 +49,21 @@ def test_enqueue_discovered_videos_skips_blocked_video_urls():
         request = SubscriptionUpdateRequest(
             subscription_id=1,
             sync_state_id=2,
-            url='https://www.pornhub.com/model/demo',
+            url='https://www.youtube.com/model/demo',
             trigger=UpdateTrigger.MANUAL,
             mode=UpdateMode.INCREMENTAL,
         )
         fetch_result = SimpleNamespace(
             video_urls=[
-                'https://www.pornhub.com/view_video.php?viewkey=blocked',
-                'https://www.pornhub.com/view_video.php?viewkey=normal',
+                'https://www.youtube.com/view_video.php?viewkey=blocked',
+                'https://www.youtube.com/view_video.php?viewkey=normal',
             ]
         )
 
         enqueued = VideoExtractionCoordinator().enqueue_discovered_videos(fetch_result, request)
 
     assert enqueued == 1
-    assert enqueue_calls == ['https://www.pornhub.com/view_video.php?viewkey=normal']
+    assert enqueue_calls == ['https://www.youtube.com/view_video.php?viewkey=normal']
 
 
 def test_existing_blocked_video_is_not_linked_to_subscription():

@@ -16,19 +16,21 @@ def test_thumbnail_refresh_task_is_registered_for_scheduler():
     assert ThumbnailRefreshTask.start_immediately is True
 
 
-def test_thumbnail_refresh_task_includes_youporn_when_offline_download_enabled(monkeypatch):
+def test_thumbnail_refresh_task_includes_sites_with_offline_download_enabled(monkeypatch):
     monkeypatch.setattr(
         thumbnail_refresh_task,
         'get_effective_site_catalog',
         lambda: {
-            'pornhub': {
+            'youtube': {
                 'enabled': True,
+                'domains': ['youtube.com', 'youtu.be'],
                 'metadata': {
                     'offline_thumbnails_download': False,
                 },
             },
-            'youporn': {
+            'bilibili': {
                 'enabled': True,
+                'domains': ['bilibili.com'],
                 'metadata': {
                     'offline_thumbnails_download': True,
                 },
@@ -37,11 +39,11 @@ def test_thumbnail_refresh_task_includes_youporn_when_offline_download_enabled(m
     )
 
     assert ThumbnailRefreshTask._get_refresh_targets() == [
-        ('youporn', '%youporn.com%'),
+        ('bilibili', '%bilibili.com%'),
     ]
 
 
-def test_thumbnail_refresh_task_uses_stored_youporn_thumbnail_without_page_fetch(monkeypatch):
+def test_thumbnail_refresh_task_uses_stored_thumbnail_without_page_fetch(monkeypatch):
     download_calls = []
 
     monkeypatch.setattr(
@@ -59,18 +61,18 @@ def test_thumbnail_refresh_task_uses_stored_youporn_thumbnail_without_page_fetch
 
     video = SimpleNamespace(
         id=42,
-        url='https://www.youporn.com/watch/42/demo-video/',
-        thumbnail='https://fi1-ph.ypncdn.com/videos/demo/42.jpg',
+        url='https://www.youtube.com/watch?v=demo42',
+        thumbnail='https://i.ytimg.com/vi/demo42/hqdefault.jpg',
     )
 
-    ThumbnailRefreshTask._process_single_video(video, 'youporn')
+    ThumbnailRefreshTask._process_single_video(video, 'youtube')
 
     assert download_calls == [
         (
             42,
-            'https://fi1-ph.ypncdn.com/videos/demo/42.jpg',
-            'youporn',
-            'https://www.youporn.com/watch/42/demo-video/',
+            'https://i.ytimg.com/vi/demo42/hqdefault.jpg',
+            'youtube',
+            'https://www.youtube.com/watch?v=demo42',
         ),
     ]
 
@@ -81,7 +83,7 @@ def test_thumbnail_refresh_task_falls_back_to_page_thumbnail_when_stored_url_fai
     monkeypatch.setattr(
         ThumbnailRefreshTask,
         '_fetch_thumbnail_url_from_page',
-        lambda video, site_name: 'https://fi1-ph.ypncdn.com/videos/demo/fresh-42.jpg',
+        lambda video, site_name: 'https://i.ytimg.com/vi/demo42/maxresdefault.jpg',
     )
     monkeypatch.setattr(
         thumbnail_refresh_task.thumbnail_downloader_service,
@@ -94,24 +96,24 @@ def test_thumbnail_refresh_task_falls_back_to_page_thumbnail_when_stored_url_fai
 
     video = SimpleNamespace(
         id=42,
-        url='https://www.youporn.com/watch/42/demo-video/',
-        thumbnail='https://fi1-ph.ypncdn.com/videos/demo/stale-42.jpg',
+        url='https://www.youtube.com/watch?v=demo42',
+        thumbnail='https://i.ytimg.com/vi/demo42/hqdefault.jpg',
     )
 
-    ThumbnailRefreshTask._process_single_video(video, 'youporn')
+    ThumbnailRefreshTask._process_single_video(video, 'youtube')
 
     assert download_calls == [
         (
             42,
-            'https://fi1-ph.ypncdn.com/videos/demo/stale-42.jpg',
-            'youporn',
-            'https://www.youporn.com/watch/42/demo-video/',
+            'https://i.ytimg.com/vi/demo42/hqdefault.jpg',
+            'youtube',
+            'https://www.youtube.com/watch?v=demo42',
         ),
         (
             42,
-            'https://fi1-ph.ypncdn.com/videos/demo/fresh-42.jpg',
-            'youporn',
-            'https://www.youporn.com/watch/42/demo-video/',
+            'https://i.ytimg.com/vi/demo42/maxresdefault.jpg',
+            'youtube',
+            'https://www.youtube.com/watch?v=demo42',
         ),
     ]
 

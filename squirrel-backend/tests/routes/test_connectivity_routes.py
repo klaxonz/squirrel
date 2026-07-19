@@ -23,7 +23,7 @@ class _FakeAsyncClient:
         return self._responses.pop(0)
 
 
-def _response(status_code, url='https://javdb.com', headers=None):
+def _response(status_code, url='https://example.com', headers=None):
     return SimpleNamespace(
         status_code=status_code,
         url=url,
@@ -43,7 +43,7 @@ def test_connectivity_reports_restricted_status(monkeypatch):
         ),
     )
 
-    result = asyncio.run(connectivity_service.test_site_connectivity('https://javdb.com'))
+    result = asyncio.run(connectivity_service.test_site_connectivity('https://example.com'))
 
     assert result.status == 'restricted'
     assert result.accessible is True

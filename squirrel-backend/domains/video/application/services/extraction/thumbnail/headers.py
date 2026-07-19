@@ -18,14 +18,9 @@ DEFAULT_HEADERS = {
 
 EFFECTIVE_CATALOG_CACHE_TTL = 10.0
 
-SITE_COOKIE_DEFAULTS: dict[str, dict[str, str]] = {
-    'pornhub': {
-        'age_verified': '1',
-        'accessAgeDisclaimerPH': '1',
-        'accessAgeDisclaimerUK': '1',
-        'accessPH': '1',
-    },
-}
+# Optional per-site cookie defaults merged into thumbnail request Cookie headers.
+# Kept empty: remaining supported sites (youtube / bilibili) do not need age-gate defaults.
+SITE_COOKIE_DEFAULTS: dict[str, dict[str, str]] = {}
 
 
 class ThumbnailSiteConfig:

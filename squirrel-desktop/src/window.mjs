@@ -6,7 +6,6 @@ import {
   bindWindowStatePersistence,
   loadWindowState,
 } from './window-state.mjs'
-import { closeCamoufoxDocumentLoader } from './document-loader.mjs'
 import { showErrorShell, formatWindowTitle } from './shell-pages.mjs'
 import { APP_ICON_PATH, APP_NAME, __dirname } from './constants.mjs'
 
@@ -358,10 +357,6 @@ export const createMainWindow = () => {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
   })
-  mainWindow.on('closed', () => {
-    void closeCamoufoxDocumentLoader()
-  })
-
   if (windowState.isMaximized) {
     mainWindow.maximize()
   }

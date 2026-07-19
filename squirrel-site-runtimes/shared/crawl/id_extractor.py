@@ -24,9 +24,9 @@ class RegexIdExtractor:
 
     Subclasses only need to define `domains` (or `domain`) and `pattern`:
 
-        class PornhubIdExtractor(RegexIdExtractor):
-            domains = ['pornhub.com']
-            pattern = r"viewkey=([^&]+)"
+        class YoutubeIdExtractor(RegexIdExtractor):
+            domains = ['youtube.com', 'youtu.be']
+            pattern = r"(?:v=|youtu\.be/)([A-Za-z0-9_-]{6,})"
 
     For more complex patterns, override `group_index` (default 1) or
     implement `extract_id()` directly.

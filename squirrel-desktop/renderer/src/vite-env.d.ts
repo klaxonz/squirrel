@@ -23,17 +23,12 @@ interface DesktopAppBridge {
   openExternal?: (targetUrl: string) => Promise<boolean>
   openWebContent?: (targetUrl: string) => Promise<boolean>
   resolveBilibiliPlayback?: DesktopPlaybackResolver
-  resolveJavdbPlayback?: DesktopPlaybackResolver
-  resolveJavdbMetadata?: (targetUrl: string) => Promise<DesktopVideoMetadata>
-  resolvePornhubPlayback?: DesktopPlaybackResolver
-  resolveYouPornPlayback?: DesktopPlaybackResolver
   resolveYouTubePlayback?: DesktopPlaybackResolver
   resolveYouTubeSubtitles?: DesktopSubtitleResolver
   resolveBilibiliSubtitles?: DesktopSubtitleResolver
   searchRemoteVideos?: DesktopRemoteSearchResolver
   getRemoteChannel?: DesktopRemoteChannelResolver
   callMusic?: <T = unknown>(operation: string, payload?: unknown) => Promise<T>
-  getYouPornProfileAvatar?: (profileUrl: string) => Promise<string>
   getSiteLoginStatus?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   openSiteLogin?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   clearSiteSession?: (siteName: string) => Promise<DesktopSiteLoginStatus>
@@ -82,21 +77,6 @@ type DesktopSubtitleResolver = (
   translated?: boolean
   kind?: string | null
 }>
-
-type DesktopVideoMetadata = {
-  title?: string | null
-  thumbnail?: string | null
-  duration?: number | null
-  publish_date?: string | null
-  actors?: Array<{
-    id?: string | number | null
-    type?: string | null
-    name: string
-    url?: string | null
-    avatar?: string | null
-    is_nsfw?: boolean | null
-  }>
-}
 
 type DesktopRemoteSearchResolver = (
   options: {

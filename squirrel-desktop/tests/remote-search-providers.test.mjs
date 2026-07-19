@@ -4,9 +4,6 @@ import test from 'node:test'
 import { getRemoteChannel } from '../src/search/providers/remote-channel.mjs'
 import { searchBilibiliVideos } from '../src/search/providers/bilibili.mjs'
 import { searchRemoteVideos } from '../src/search/providers/index.mjs'
-import { searchJavdbVideos } from '../src/search/providers/javdb.mjs'
-import { searchPornhubVideos } from '../src/search/providers/pornhub.mjs'
-import { loadYouPornProfileAvatar, searchYouPornVideos } from '../src/search/providers/youporn.mjs'
 import { searchYouTubeVideos } from '../src/search/providers/youtube.mjs'
 
 const jsonResponse = (payload) => new Response(JSON.stringify(payload), {
@@ -20,17 +17,6 @@ const htmlResponse = (html) => new Response(html, {
 })
 
 const buildCookieHeader = async () => 'SESSDATA=test'
-const loadJavdbDocumentHtml = async () => `
-  <div class="item">
-    <a href="/v/demo">
-      <img src="https://javdb.com/demo.jpg">
-      <div class="video-title"><strong>DEMO-001</strong> Demo JAVDB</div>
-      <div class="score"><span class="value">7.5</span></div>
-      <div class="meta">2026-01-02</div>
-      <a href="/actors/demo-actor">Demo Actor</a>
-    </a>
-  </div>
-`
 
 test('desktop bilibili remote search maps api results', async () => {
   let requestedUrl = ''
@@ -346,211 +332,6 @@ test('desktop youtube remote search loads continuation pages', async () => {
   assert.equal(searchResult.has_more, true)
 })
 
-test('desktop pornhub remote search parses video list items', async () => {
-  const items = await searchPornhubVideos({
-    query: 'demo',
-    limit: 5,
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(`
-      <li class="pcVideoListItem videoblock" data-video-vkey="ph-demo">
-        <a href="/view_video.php?viewkey=ph-demo" title="Demo PH">
-          <img data-mediumthumb="https://ei.phncdn.com/demo.jpg">
-        </a>
-        <button type="button" data-title="Add to playlist"></button>
-        <div class="usernameWrap"><a href="/users/demo-channel">Demo Channel</a></div>
-        <a href="/pornstar/demo-actor">Demo Actor</a>
-        <var class="duration">04:05</var>
-      </li>
-    `),
-  })
-
-  assert.equal(items.length, 1)
-  assert.equal(items[0].site, 'pornhub')
-  assert.equal(items[0].title, 'Demo PH')
-  assert.equal(items[0].duration, 245)
-  assert.deepEqual(items[0].subscriptions, [{
-    type: 'CHANNEL',
-    name: 'Demo Channel',
-    url: 'https://www.pornhub.com/users/demo-channel',
-    avatar: '',
-    is_nsfw: true,
-  }])
-  assert.deepEqual(items[0].actors, [{
-    type: 'ACTOR',
-    name: 'Demo Actor',
-    url: 'https://www.pornhub.com/pornstar/demo-actor',
-    avatar: '',
-  }])
-})
-
-test('desktop youporn remote search parses watch links', async () => {
-  const items = await searchYouPornVideos({
-    query: 'demo',
-    limit: 5,
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(`
-        <article class="video-box pc js_video-box" data-uploader-name="Demo Channel" aria-label="Demo YP">
-          <a href="/watch/123/demo/" data-testid="plw_video_thumbnail_link">
-            <img
-              data-src="https://fi.ypncdn.com/demo.jpg"
-              src="data:image/png;base64,placeholder"
-              alt="Demo YP"
-              data-mediabook="https://ev.ypncdn.com/demo.mp4?hash=abc&amp;validto=123"
-            >
-          </a>
-          <span class="duration">05:06</span>
-          <a href="/watch/123/demo/" class="video-title-text"><span>Demo YP</span></a>
-          <a href="/channel/demo-channel/">Demo Channel</a>
-          <a href="/pornstar/demo-actor/">Demo Actor</a>
-        </article>
-      `),
-  })
-
-  assert.equal(items.length, 1)
-  assert.equal(items[0].site, 'youporn')
-  assert.equal(items[0].url, 'https://www.youporn.com/watch/123/demo/')
-  assert.equal(items[0].thumbnail, 'https://fi.ypncdn.com/demo.jpg')
-  assert.equal(items[0].duration, 306)
-  assert.equal(items[0].uploader, 'Demo Channel')
-  assert.equal(items[0].uploader_url, 'https://www.youporn.com/channel/demo-channel/')
-  assert.deepEqual(items[0].subscriptions, [{
-    type: 'CHANNEL',
-    name: 'Demo Channel',
-    url: 'https://www.youporn.com/channel/demo-channel/',
-    avatar: '',
-    is_nsfw: true,
-  }])
-  assert.equal(items[0].uploader_avatar, '')
-  assert.deepEqual(items[0].actors, [{
-    type: 'ACTOR',
-    name: 'Demo Actor',
-    url: 'https://www.youporn.com/pornstar/demo-actor/',
-    avatar: '',
-  }])
-})
-
-test('desktop youporn remote search parses non-channel uploaders', async () => {
-  const items = await searchYouPornVideos({
-    query: 'demo',
-    limit: 5,
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(`
-        <article
-          class="video-box pc js_video-box"
-          data-uploader-type="amateur"
-          data-uploader-name="Demo Uploader"
-          aria-label="Demo Amateur YP"
-        >
-          <a href="/watch/321/demo-amateur/" data-testid="plw_video_thumbnail_link">
-            <img data-src="https://fi.ypncdn.com/demo-amateur.jpg" alt="Demo Amateur YP">
-          </a>
-          <span class="duration">02:03</span>
-          <a href="/watch/321/demo-amateur/" class="video-title-text"><span>Demo Amateur YP</span></a>
-          <a href="/amateur/demo-uploader/">Demo Uploader</a>
-        </article>
-      `),
-  })
-
-  assert.equal(items.length, 1)
-  assert.equal(items[0].uploader, 'Demo Uploader')
-  assert.equal(items[0].uploader_url, 'https://www.youporn.com/amateur/demo-uploader/')
-  assert.equal(items[0].uploader_avatar, '')
-  assert.deepEqual(items[0].subscriptions, [])
-})
-
-test('desktop youporn profile avatar parser handles channel and amateur wrappers', async () => {
-  const channelAvatar = await loadYouPornProfileAvatar({
-    profileUrl: 'https://www.youporn.com/channel/demo-channel/',
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(`
-      <div class="header-banner-wrapper">
-        <div class="logo-wrapper">
-          <img alt="Demo Channel" src="https://fi1-ph.ypncdn.com/pics/sites/000/056/162/avatar1595606809/200x200.jpg">
-        </div>
-      </div>
-    `),
-  })
-  const amateurAvatar = await loadYouPornProfileAvatar({
-    profileUrl: 'https://www.youporn.com/amateur/demo-uploader/',
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(`
-      <div class="header-banner-wrapper">
-        <div class="avatar-wrapper">
-          <img alt="Demo Uploader" data-src="https://fi1-ph.ypncdn.com/pics/users/000/056/162/avatar1595606809/200x200.jpg">
-        </div>
-      </div>
-    `),
-  })
-
-  assert.equal(
-    channelAvatar,
-    'https://fi1-ph.ypncdn.com/pics/sites/000/056/162/avatar1595606809/200x200.jpg'
-  )
-  assert.equal(
-    amateurAvatar,
-    'https://fi1-ph.ypncdn.com/pics/users/000/056/162/avatar1595606809/200x200.jpg'
-  )
-})
-
-test('desktop youporn remote search keeps dynamic cdn thumbnails', async () => {
-  const items = await searchYouPornVideos({
-    query: 'demo',
-    limit: 5,
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(`
-      <article class="video-box pc js_video-box" aria-label="Dynamic YP">
-        <a href="/watch/456/dynamic/" data-testid="plw_video_thumbnail_link">
-          <img
-            data-src="https://pix-cdn77.ypncdn.com/c6251/videos/202601/26/37456675/240P_1000K_37456675.mp4/plain/rs:fit:320:180/vts:167?hash=abc&amp;validto=123"
-            src="data:image/png;base64,placeholder"
-            alt="Dynamic YP"
-          >
-        </a>
-        <span class="duration">03:43</span>
-        <a href="/watch/456/dynamic/" class="video-title-text"><span>Dynamic YP</span></a>
-      </article>
-    `),
-  })
-
-  assert.equal(items.length, 1)
-  assert.equal(
-    items[0].thumbnail,
-    'https://pix-cdn77.ypncdn.com/c6251/videos/202601/26/37456675/240P_1000K_37456675.mp4/plain/rs:fit:320:180/vts:167?hash=abc&validto=123'
-  )
-})
-
-test('desktop javdb remote search parses movie items', async () => {
-  const items = await searchJavdbVideos({
-    query: 'demo',
-    limit: 5,
-    loadDocumentHtml: loadJavdbDocumentHtml,
-  })
-
-  assert.equal(items.length, 1)
-  assert.equal(items[0].site, 'javdb')
-  assert.equal(items[0].title, 'DEMO-001 Demo JAVDB')
-  assert.equal(items[0].url, 'https://javdb.com/v/demo')
-  assert.equal(items[0].publish_date, '2026-01-02')
-  assert.deepEqual(items[0].actors, [{
-    type: 'ACTOR',
-    name: 'Demo Actor',
-    url: 'https://javdb.com/actors/demo-actor',
-    avatar: '',
-  }])
-})
-
-test('desktop javdb remote search reports upstream block pages', async () => {
-  await assert.rejects(
-    searchJavdbVideos({
-      query: 'demo',
-      limit: 5,
-      page: 1,
-      loadDocumentHtml: async () => '<pre>The owner of this website has banned your access based on your browser behavior.</pre>',
-    }),
-    /temporarily blocked/,
-  )
-})
-
 test('desktop remote search response carries pagination metadata', async () => {
   const searchResult = await searchRemoteVideos({
     query: 'demo',
@@ -558,7 +339,7 @@ test('desktop remote search response carries pagination metadata', async () => {
     limit: 1,
     page: 3,
     buildCookieHeader,
-    loadDocumentHtml: loadJavdbDocumentHtml,
+    loadDocumentHtml: async () => '',
     fetchImpl: async () => jsonResponse({
       data: {
         result: [
@@ -578,24 +359,13 @@ test('desktop remote search response carries pagination metadata', async () => {
 })
 
 test('desktop all-site remote search interleaves lightweight site results before limiting', async () => {
-  const javdbDocumentOptions = []
   const searchResult = await searchRemoteVideos({
     query: 'demo',
     site: 'all',
     limit: 3,
     page: 1,
     buildCookieHeader,
-    loadDocumentHtml: async (_url, options) => {
-      javdbDocumentOptions.push(options)
-      return `
-        <div class="item">
-          <a href="/v/javdb-demo">
-            <img src="https://javdb.com/demo.jpg">
-            <div class="video-title">JavDB 1</div>
-          </a>
-        </div>
-      `
-    },
+    loadDocumentHtml: async () => '',
     fetchImpl: async (url) => {
       const targetUrl = new URL(url)
       if (targetUrl.hostname.includes('bilibili')) {
@@ -609,22 +379,15 @@ test('desktop all-site remote search interleaves lightweight site results before
           },
         })
       }
-      if (targetUrl.hostname.includes('pornhub')) {
-        return htmlResponse(`
-          <li class="pcVideoListItem videoblock" data-video-vkey="ph-demo">
-            <a href="/view_video.php?viewkey=ph-demo" title="Pornhub 1" data-title="Pornhub 1"></a>
-          </li>
-        `)
-      }
       return htmlResponse('')
     },
   })
 
   assert.equal(searchResult.items.length, 3)
-  assert.deepEqual(searchResult.items.map((item) => item.site), ['bilibili', 'pornhub', 'bilibili'])
-  assert.equal(javdbDocumentOptions.length, 0)
-  assert.deepEqual(searchResult.sites, ['bilibili', 'youtube', 'pornhub', 'youporn'])
+  assert.deepEqual(searchResult.items.map((item) => item.site), ['bilibili', 'bilibili', 'bilibili'])
+  assert.deepEqual(searchResult.sites, ['bilibili', 'youtube'])
 })
+
 
 test('desktop remote search does not wait forever for a stalled site', async () => {
   const searchResult = await searchRemoteVideos({
@@ -685,27 +448,24 @@ test('desktop all-site remote search returns initial ready sites without waiting
   assert.deepEqual(searchResult.items.map((item) => item.site), ['bilibili'])
   assert.equal(searchResult.has_more, false)
   assert.equal(searchResult.partial, true)
-  assert.deepEqual(searchResult.pending_sites, ['youtube', 'pornhub', 'youporn'])
+  assert.deepEqual(searchResult.pending_sites, ['youtube'])
 })
 
 test('desktop all-site remote search keeps later pages on lightweight sites', async () => {
-  const javdbDocumentOptions = []
-  await searchRemoteVideos({
+  const searchResult = await searchRemoteVideos({
     query: 'demo',
     site: 'all',
     limit: 3,
     page: 2,
     providerTimeoutMs: 20,
     buildCookieHeader,
-    loadDocumentHtml: async (_url, options) => {
-      javdbDocumentOptions.push(options)
-      return loadJavdbDocumentHtml()
-    },
+    loadDocumentHtml: async () => '',
     fetchImpl: async () => htmlResponse(''),
   })
 
-  assert.equal(javdbDocumentOptions.length, 0)
+  assert.deepEqual(searchResult.sites, ['bilibili', 'youtube'])
 })
+
 
 test('desktop all-site remote search returns later ready pages without waiting for slow sites', async () => {
   const startedAt = Date.now()
@@ -736,74 +496,7 @@ test('desktop all-site remote search returns later ready pages without waiting f
   assert.ok(Date.now() - startedAt < 5000)
   assert.deepEqual(searchResult.items.map((item) => item.site), ['bilibili'])
   assert.equal(searchResult.partial, true)
-  assert.deepEqual(searchResult.pending_sites, ['youtube', 'pornhub', 'youporn'])
-})
-
-test('desktop javdb site search requests automatic challenge solving window time', async () => {
-  const documentOptions = []
-  const searchResult = await searchRemoteVideos({
-    query: 'demo',
-    site: 'javdb',
-    limit: 5,
-    page: 1,
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(''),
-    loadDocumentHtml: async (_url, options) => {
-      documentOptions.push(options)
-      return loadJavdbDocumentHtml()
-    },
-  })
-
-  assert.equal(searchResult.items.length, 1)
-  assert.equal(searchResult.items[0].site, 'javdb')
-  assert.equal(documentOptions[0].timeoutMs, 30000)
-  assert.equal(documentOptions[0].challengeTimeoutMs, 60000)
-})
-
-test('desktop javdb remote channel parses actor videos', async () => {
-  const documentRequests = []
-  const channelResult = await getRemoteChannel({
-    site: 'javdb',
-    url: 'https://javdb.com/actors/demo-actor',
-    limit: 5,
-    page: 2,
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(''),
-    loadDocumentHtml: async (url, options = {}) => {
-      documentRequests.push({ url, options })
-      return `
-        <div class="actor-section-name">Demo Actor, Alias</div>
-        <div class="avatar" style="background-image: url('https://javdb.com/actor.jpg')"></div>
-        <div class="movie-list">
-          <div class="item">
-            <a class="box" href="/v/channel-demo">
-              <img src="/cover.jpg">
-              <div class="video-title"><strong>DEMO-002</strong> Actor Video</div>
-              <div class="meta">2026-02-03</div>
-            </a>
-          </div>
-        </div>
-        <a class="pagination-link" rel="next">3</a>
-      `
-    },
-  })
-
-  assert.equal(channelResult.site, 'javdb')
-  assert.equal(channelResult.profile.id, 'demo-actor')
-  assert.equal(channelResult.profile.type, 'ACTOR')
-  assert.equal(channelResult.profile.name, 'Demo Actor')
-  assert.equal(channelResult.profile.avatar, 'https://javdb.com/actor.jpg')
-  assert.equal(channelResult.items.length, 1)
-  assert.equal(channelResult.items[0].site, 'javdb')
-  assert.equal(channelResult.items[0].title, 'DEMO-002 Actor Video')
-  assert.equal(channelResult.items[0].url, 'https://javdb.com/v/channel-demo')
-  assert.equal(channelResult.items[0].thumbnail, 'https://javdb.com/cover.jpg')
-  assert.equal(channelResult.items[0].publish_date, '2026-02-03')
-  assert.deepEqual(channelResult.items[0].actors, [channelResult.profile])
-  assert.equal(channelResult.has_more, true)
-  assert.equal(documentRequests[0].url, 'https://javdb.com/actors/demo-actor?page=2&sort_type=0')
-  assert.equal(documentRequests[0].options.timeoutMs, 30000)
-  assert.equal(documentRequests[0].options.challengeTimeoutMs, 60000)
+  assert.deepEqual(searchResult.pending_sites, ['youtube'])
 })
 
 test('desktop bilibili remote channel returns profile and videos', async () => {
@@ -1161,185 +854,3 @@ test('desktop youtube remote channel loads continuation videos', async () => {
   assert.equal(channelResult.next_cursor.continuation, 'CONTINUATION_2')
 })
 
-test('desktop pornhub remote channel uses the video link title', async () => {
-  const channelResult = await getRemoteChannel({
-    site: 'pornhub',
-    url: 'https://www.pornhub.com/users/demo-channel',
-    limit: 5,
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(`
-      <h1>Demo Channel</h1>
-      <ul id="mostRecentVideosSection">
-        <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel">
-          <a href="/view_video.php?viewkey=ph-channel" title="Demo Channel Video">
-            <img data-mediumthumb="https://ei.phncdn.com/demo-channel-video.jpg">
-          </a>
-          <button type="button" data-title="Add to playlist"></button>
-          <var class="duration">01:23</var>
-        </li>
-      </ul>
-    `),
-  })
-
-  assert.equal(channelResult.items[0].title, 'Demo Channel Video')
-  assert.equal(channelResult.items[0].url, 'https://www.pornhub.com/view_video.php?viewkey=ph-channel')
-  assert.equal(channelResult.items[0].duration, 83)
-})
-
-test('desktop pornhub remote channel requests profile videos tab', async () => {
-  let requestedUrl = ''
-  const channelResult = await getRemoteChannel({
-    site: 'pornhub',
-    url: 'https://www.pornhub.com/model/demo-channel',
-    limit: 5,
-    buildCookieHeader,
-    fetchImpl: async (url) => {
-      requestedUrl = url
-      return htmlResponse(`
-        <h1>Demo Channel</h1>
-        <ul id="mostRecentVideosSection">
-          <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel">
-            <a href="/view_video.php?viewkey=ph-channel" title="Demo Channel Video"></a>
-          </li>
-        </ul>
-      `)
-    },
-  })
-
-  assert.equal(requestedUrl, 'https://www.pornhub.com/model/demo-channel/videos')
-  assert.equal(channelResult.profile.url, 'https://www.pornhub.com/model/demo-channel/videos')
-  assert.equal(channelResult.items.length, 1)
-})
-
-test('desktop pornhub remote channel ignores videos from other uploaders', async () => {
-  const channelResult = await getRemoteChannel({
-    site: 'pornhub',
-    url: 'https://www.pornhub.com/users/demo-channel',
-    limit: 5,
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(`
-      <h1>Demo Channel</h1>
-      <ul class="dropdownHottestVideos">
-        <li class="pcVideoListItem videoblock" data-video-vkey="ph-menu">
-          <a href="/view_video.php?viewkey=ph-menu" title="Menu Video"></a>
-        </li>
-      </ul>
-      <ul id="mostRecentVideosSection">
-        <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel">
-          <a href="/view_video.php?viewkey=ph-channel" title="Demo Channel Video"></a>
-          <div class="usernameWrap"><a href="/users/demo-channel/videos">Demo Channel</a></div>
-        </li>
-        <li class="pcVideoListItem videoblock" data-video-vkey="ph-other">
-          <a href="/view_video.php?viewkey=ph-other" title="Other Channel Video"></a>
-          <div class="usernameWrap"><a href="/users/other-channel/videos">Other Channel</a></div>
-        </li>
-      </ul>
-    `),
-  })
-
-  assert.deepEqual(
-    channelResult.items.map((item) => item.url),
-    ['https://www.pornhub.com/view_video.php?viewkey=ph-channel']
-  )
-})
-
-test('desktop pornhub remote channel follows upstream next page links', async () => {
-  const requests = []
-  const firstPage = await getRemoteChannel({
-    site: 'pornhub',
-    url: 'https://www.pornhub.com/users/demo-channel',
-    limit: 5,
-    buildCookieHeader,
-    fetchImpl: async (url) => {
-      requests.push(url)
-      return htmlResponse(`
-        <h1>Demo Channel</h1>
-        <ul id="mostRecentVideosSection">
-          <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel-1">
-            <a href="/view_video.php?viewkey=ph-channel-1" title="Demo Channel Video 1"></a>
-          </li>
-        </ul>
-        <a class="page_next" href="/users/demo-channel/videos?page=2">Next</a>
-      `)
-    },
-  })
-  const secondPage = await getRemoteChannel({
-    site: 'pornhub',
-    url: 'https://www.pornhub.com/users/demo-channel',
-    limit: 5,
-    page: 2,
-    cursor: firstPage.next_cursor,
-    profile: firstPage.profile,
-    buildCookieHeader,
-    fetchImpl: async (url) => {
-      requests.push(url)
-      return htmlResponse(`
-        <h1>Demo Channel</h1>
-        <ul id="mostRecentVideosSection">
-          <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel-2">
-            <a href="/view_video.php?viewkey=ph-channel-2" title="Demo Channel Video 2"></a>
-          </li>
-        </ul>
-      `)
-    },
-  })
-
-  assert.equal(requests[0], 'https://www.pornhub.com/users/demo-channel/videos')
-  assert.equal(requests[1], 'https://www.pornhub.com/users/demo-channel/videos?page=2')
-  assert.equal(firstPage.has_more, true)
-  assert.equal(secondPage.has_more, false)
-  assert.equal(secondPage.items[0].url, 'https://www.pornhub.com/view_video.php?viewkey=ph-channel-2')
-})
-
-test('desktop pornhub remote channel reads canonical next link tags', async () => {
-  const channelResult = await getRemoteChannel({
-    site: 'pornhub',
-    url: 'https://www.pornhub.com/model/demo-channel',
-    limit: 5,
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(`
-      <link rel="next" href="https://www.pornhub.com/model/demo-channel/videos?page=2" />
-      <h1>Demo Channel</h1>
-      <ul id="mostRecentVideosSection">
-        <li class="pcVideoListItem videoblock" data-video-vkey="ph-channel">
-          <a href="/view_video.php?viewkey=ph-channel" title="Demo Channel Video"></a>
-        </li>
-      </ul>
-    `),
-  })
-
-  assert.equal(channelResult.has_more, true)
-  assert.deepEqual(channelResult.next_cursor, {
-    url: 'https://www.pornhub.com/model/demo-channel/videos?page=2',
-  })
-})
-
-test('desktop youporn remote channel parses profile avatar', async () => {
-  const channelResult = await getRemoteChannel({
-    site: 'youporn',
-    url: 'https://www.youporn.com/channel/demo-channel/',
-    limit: 5,
-    buildCookieHeader,
-    fetchImpl: async () => htmlResponse(`
-      <div class="header-banner-wrapper">
-        <div class="logo-wrapper">
-          <img alt="Demo Channel" title="Demo Channel" src="https://fi1-ph.ypncdn.com/pics/sites/000/056/162/avatar1595606809/200x200.jpg">
-        </div>
-      </div>
-      <h1 class="name-title">Demo Channel</h1>
-      <article class="video-box pc js_video-box" aria-label="Demo Channel Video">
-        <a href="/watch/789/demo-channel-video/" data-testid="plw_video_thumbnail_link">
-          <img data-src="https://fi.ypncdn.com/demo-channel-video.jpg">
-        </a>
-        <span class="duration">01:23</span>
-        <a href="/watch/789/demo-channel-video/" class="video-title-text"><span>Demo Channel Video</span></a>
-      </article>
-    `),
-  })
-
-  assert.equal(
-    channelResult.profile.avatar,
-    'https://fi1-ph.ypncdn.com/pics/sites/000/056/162/avatar1595606809/200x200.jpg'
-  )
-  assert.equal(channelResult.items[0].uploader_avatar, channelResult.profile.avatar)
-})

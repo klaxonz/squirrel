@@ -1,11 +1,3 @@
-import fs from 'node:fs'
-import {
-  pornhubCookieFilePath,
-  youpornCookieFilePath,
-  pornhubAgeGateCookieHeader,
-  youpornAgeGateCookieHeader,
-} from './constants.mjs'
-
 export const normalizeTargetUrl = (targetUrl) => {
   const value = String(targetUrl || '').trim()
   if (!value) {
@@ -17,36 +9,6 @@ export const normalizeTargetUrl = (targetUrl) => {
   } catch {
     console.debug('[squirrel-desktop] cookie-header: normalizeTargetUrl failed to parse', value)
     return ''
-  }
-}
-
-export const isJavdbCookieTarget = (targetUrl) => {
-  const normalizedUrl = normalizeTargetUrl(targetUrl)
-  if (!normalizedUrl) {
-    return false
-  }
-
-  try {
-    const hostname = new URL(normalizedUrl).hostname.toLowerCase()
-    return hostname === 'javdb.com' || hostname.endsWith('.javdb.com')
-  } catch {
-    console.debug('[squirrel-desktop] cookie-header: isJavdbCookieTarget URL parse failed', normalizedUrl)
-    return false
-  }
-}
-
-export const isMissavDocumentTarget = (targetUrl) => {
-  const normalizedUrl = normalizeTargetUrl(targetUrl)
-  if (!normalizedUrl) {
-    return false
-  }
-
-  try {
-    const hostname = new URL(normalizedUrl).hostname.toLowerCase()
-    return hostname === 'missav.ai' || hostname.endsWith('.missav.ai')
-  } catch {
-    console.debug('[squirrel-desktop] cookie-header: isMissavDocumentTarget URL parse failed', normalizedUrl)
-    return false
   }
 }
 
@@ -69,100 +31,6 @@ export const isBilibiliCookieTarget = (targetUrl) => {
     console.debug('[squirrel-desktop] cookie-header: isBilibiliCookieTarget URL parse failed', normalizedUrl)
     return false
   }
-}
-
-export const isPornhubCookieTarget = (targetUrl) => {
-  const normalizedUrl = normalizeTargetUrl(targetUrl)
-  if (!normalizedUrl) {
-    return false
-  }
-
-  try {
-    const hostname = new URL(normalizedUrl).hostname.toLowerCase()
-    return hostname === 'pornhub.com'
-      || hostname.endsWith('.pornhub.com')
-      || hostname.endsWith('.phncdn.com')
-  } catch {
-    console.debug('[squirrel-desktop] cookie-header: isPornhubCookieTarget URL parse failed', normalizedUrl)
-    return false
-  }
-}
-
-export const isYouPornCookieTarget = (targetUrl) => {
-  const normalizedUrl = normalizeTargetUrl(targetUrl)
-  if (!normalizedUrl) {
-    return false
-  }
-
-  try {
-    const hostname = new URL(normalizedUrl).hostname.toLowerCase()
-    return hostname === 'youporn.com'
-      || hostname.endsWith('.youporn.com')
-      || hostname.endsWith('.ypncdn.com')
-  } catch {
-    console.debug('[squirrel-desktop] cookie-header: isYouPornCookieTarget URL parse failed', normalizedUrl)
-    return false
-  }
-}
-
-export const readNetscapeCookieFileHeader = (cookieFilePath, domainSuffixes) => {
-  if (!fs.existsSync(cookieFilePath)) {
-    return ''
-  }
-
-  try {
-    const raw = fs.readFileSync(cookieFilePath, 'utf8')
-    const pairs = []
-
-    for (const rawLine of raw.split(/\r?\n/)) {
-      const line = rawLine.trim()
-      if (!line) {
-        continue
-      }
-
-      const normalizedLine = line.startsWith('#HttpOnly_')
-        ? line.slice('#HttpOnly_'.length)
-        : line
-
-      if (normalizedLine.startsWith('#')) {
-        continue
-      }
-
-      const parts = normalizedLine.split('\t')
-      if (parts.length < 7) {
-        continue
-      }
-
-      const domain = String(parts[0] || '').replace(/^\./, '').toLowerCase()
-      const name = String(parts[5] || '').trim()
-      const value = String(parts[6] || '').trim()
-
-      if (!name || !domainSuffixes.some((suffix) => domain.endsWith(suffix))) {
-        continue
-      }
-
-      pairs.push(`${name}=${value}`)
-    }
-
-    return pairs.join('; ')
-  } catch {
-    console.debug('[squirrel-desktop] cookie-header: readNetscapeCookieFileHeader failed', cookieFilePath)
-    return ''
-  }
-}
-
-export const readPornhubCookieFileHeader = () => {
-  return readNetscapeCookieFileHeader(pornhubCookieFilePath, [
-    'pornhub.com',
-    'phncdn.com',
-  ])
-}
-
-export const readYouPornCookieFileHeader = () => {
-  return readNetscapeCookieFileHeader(youpornCookieFilePath, [
-    'youporn.com',
-    'ypncdn.com',
-  ])
 }
 
 export const mergeCookieHeaders = (...cookieHeaders) => {

@@ -12,21 +12,6 @@ from urllib.parse import parse_qs, unquote, urlencode, urljoin, urlparse
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 PROXY_MODULES = {
-    'javdb': {
-        'package_root': REPO_ROOT / 'squirrel-site-runtimes' / 'javdb' / 'src',
-        'module': 'squirrel_javdb.proxy',
-        'domain': 'javdb.com',
-    },
-    'pornhub': {
-        'package_root': REPO_ROOT / 'squirrel-site-runtimes' / 'pornhub' / 'src',
-        'module': 'squirrel_pornhub.proxy',
-        'domain': 'pornhub.com',
-    },
-    'youporn': {
-        'package_root': REPO_ROOT / 'squirrel-site-runtimes' / 'youporn' / 'src',
-        'module': 'squirrel_youporn.proxy',
-        'domain': 'youporn.com',
-    },
     'youtube': {
         'package_root': REPO_ROOT / 'squirrel-site-runtimes' / 'youtube' / 'src',
         'module': 'squirrel_youtube.proxy',

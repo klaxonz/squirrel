@@ -9,7 +9,7 @@ import type { SubscriptionListItem } from '@/features/video/types/subscription'
  *
  * Three concerns that all key off a remote video item and the active channel:
  *   1. `canPlayRemoteResult` — is this site/url one of the remotely-playable
- *      patterns (bilibili / pornhub / youtube / youporn)?
+ *      patterns (bilibili / youtube)?
  *   2. `buildRemoteVideoSeed` — synthesise a stable playback seed (id hashed
  *      from the url so re-opening the same remote video resumes) carrying the
  *      channel as its subscription.
@@ -21,9 +21,7 @@ import type { SubscriptionListItem } from '@/features/video/types/subscription'
  */
 const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
   bilibili: /(?:bilibili\.com\/video\/|b23\.tv\/)/i,
-  pornhub: /pornhub\.com\/(?:view_video\.php|video\/|embed\/)/i,
   youtube: /(?:youtube\.com\/|youtu\.be\/)/i,
-  youporn: /youporn\.com\/watch\//i,
 }
 
 /** Deterministic short id for a remote url so re-opening it resumes playback. */

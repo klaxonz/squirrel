@@ -21,19 +21,19 @@ def test_clearance_cache_expires_entries():
         created_at=time.time(),
         expires_at=time.time() + 0.01,
     )
-    cache.set('javdb.com', None, record)
+    cache.set('example.com', None, record)
 
-    assert cache.get('javdb.com', None) is not None
+    assert cache.get('example.com', None) is not None
     time.sleep(0.02)
-    assert cache.get('javdb.com', None) is None
+    assert cache.get('example.com', None) is None
 
 
 def test_session_pool_reuses_and_clears_sessions():
     pool = SessionPool(ttl_seconds=60, max_sessions=8)
     session = DummySession()
 
-    pool.store('javdb.com', None, session)
+    pool.store('example.com', None, session)
 
-    assert pool.get('javdb.com', None) is session
+    assert pool.get('example.com', None) is session
     pool.clear_sync()
     assert session.closed is True

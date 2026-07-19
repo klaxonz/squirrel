@@ -189,10 +189,7 @@ type RemoteSearchItem = {
 
 const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
   bilibili: /(?:bilibili\.com\/video\/|b23\.tv\/)/i,
-  javdb: /javdb\.com\/(?:v|video)\//i,
-  pornhub: /pornhub\.com\/(?:view_video\.php|video\/|embed\/)/i,
   youtube: /(?:youtube\.com\/|youtu\.be\/)/i,
-  youporn: /youporn\.com\/watch\//i,
 }
 
 const route = useRoute()
@@ -242,10 +239,7 @@ const channelUrl = computed(() => queryValue('url'))
 const siteLabel = computed(() => {
   const labels: Record<string, string> = {
     bilibili: 'Bilibili',
-    javdb: 'JavDB',
-    pornhub: 'Pornhub',
     youtube: 'YouTube',
-    youporn: 'YouPorn',
   }
   return labels[site.value] || site.value
 })

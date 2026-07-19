@@ -192,14 +192,14 @@ def test_update_sites_catalog_accepts_override_payload(monkeypatch):
 
 def test_upload_site_cookies_accepts_runtime_only_site(monkeypatch, tmp_path):
     effective_catalog = {
-        'youporn': {
-            'label': 'YouPorn',
-            'domains': ['youporn.com'],
+        'youtube': {
+            'label': 'YouTube',
+            'domains': ['youtube.com'],
             'enabled': True,
-            'test_url': 'https://www.youporn.com',
+            'test_url': 'https://www.youtube.com',
         },
     }
-    cookies_path = tmp_path / 'youporn.txt'
+    cookies_path = tmp_path / 'youtube.txt'
 
     monkeypatch.setattr(site_cookie_single_upload, 'get_site_cookies_file_path', lambda site_name: cookies_path)
 
@@ -207,11 +207,11 @@ def test_upload_site_cookies_accepts_runtime_only_site(monkeypatch, tmp_path):
         filename = 'cookies.txt'
 
         async def read(self):
-            return b'# Netscape HTTP Cookie File\n.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n'
+            return b'# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n'
 
     response = asyncio.run(
         site_cookie_single_upload.upload_site_cookies(
-            'youporn',
+            'youtube',
             DummyUploadFile(),
             catalog_svc=FakeCatalogService(effective_catalog),
             login_svc=FakeLoginService(),
@@ -219,20 +219,20 @@ def test_upload_site_cookies_accepts_runtime_only_site(monkeypatch, tmp_path):
     )
 
     assert response['code'] == 0
-    assert response['data']['site_name'] == 'youporn'
-    assert '.youporn.com' in cookies_path.read_text(encoding='utf-8')
+    assert response['data']['site_name'] == 'youtube'
+    assert '.youtube.com' in cookies_path.read_text(encoding='utf-8')
 
 
 def test_upload_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_path):
     effective_catalog = {
-        'youporn': {
-            'label': 'YouPorn',
-            'domains': ['youporn.com'],
+        'youtube': {
+            'label': 'YouTube',
+            'domains': ['youtube.com'],
             'enabled': True,
-            'test_url': 'https://www.youporn.com',
+            'test_url': 'https://www.youtube.com',
         },
     }
-    cookies_path = tmp_path / 'youporn.txt'
+    cookies_path = tmp_path / 'youtube.txt'
     writes = []
 
     monkeypatch.setattr(site_cookie_single_upload, 'get_site_cookies_file_path', lambda site_name: cookies_path)
@@ -252,11 +252,11 @@ def test_upload_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_path)
         filename = 'cookies.txt'
 
         async def read(self):
-            return b'# Netscape HTTP Cookie File\n.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n'
+            return b'# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n'
 
     response = asyncio.run(
         site_cookie_single_upload.upload_site_cookies(
-            'youporn',
+            'youtube',
             DummyUploadFile(),
             catalog_svc=FakeCatalogService(effective_catalog),
             login_svc=FakeLoginService(),
@@ -267,21 +267,21 @@ def test_upload_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_path)
     assert writes == [
         (
             cookies_path,
-            '# Netscape HTTP Cookie File\n.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n',
+            '# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n',
         ),
     ]
 
 
 def test_import_all_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_path):
     effective_catalog = {
-        'youporn': {
-            'label': 'YouPorn',
-            'domains': ['youporn.com'],
+        'youtube': {
+            'label': 'YouTube',
+            'domains': ['youtube.com'],
             'enabled': True,
-            'test_url': 'https://www.youporn.com',
+            'test_url': 'https://www.youtube.com',
         },
     }
-    cookies_path = tmp_path / 'youporn.txt'
+    cookies_path = tmp_path / 'youtube.txt'
     writes = []
 
     monkeypatch.setattr(site_cookie_bulk_import, 'get_site_cookies_file_path', lambda site_name: cookies_path)
@@ -296,7 +296,7 @@ def test_import_all_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_p
         filename = 'cookies.txt'
 
         async def read(self):
-            return b'# Netscape HTTP Cookie File\n.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n'
+            return b'# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n'
 
     response = asyncio.run(
         site_cookie_bulk_import.import_cookies_for_all_sites(
@@ -309,7 +309,7 @@ def test_import_all_site_cookies_uses_safe_cookie_file_writer(monkeypatch, tmp_p
     assert writes == [
         (
             cookies_path,
-            '# Netscape HTTP Cookie File\n.youporn.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n',
+            '# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tFALSE\t0\tsession\tabc123\n',
         ),
     ]
 

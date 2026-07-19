@@ -12,7 +12,7 @@
 
 ## 能力概览
 
-- **多站订阅与同步** — 频道订阅、导入、定时/手动同步。站点插件见 `squirrel-site-runtimes/`，开关与参数在 `config/sites.json`（含 YouTube、Bilibili、JavDB、Pornhub、YouPorn 等）。
+- **多站订阅与同步** — 频道订阅、导入、定时/手动同步。站点插件见 `squirrel-site-runtimes/`，开关与参数在 `config/sites.json`（含 YouTube、Bilibili 等）。
 - **内容库** — 首页推荐、视频库（全部 / 未读 / 已读 / 稍后看 / 喜欢）、历史、播放列表。
 - **播放** — 应用内播放；桌面端可按站点会话解析地址与字幕。
 - **桌面增强** — 站点登录与 cookie、远端搜索、远端频道浏览。
