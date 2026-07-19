@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell variant="compact" surface="consume" width="table" fill>
+  <AppPageShell variant="compact" surface="consume" width="media" fill>
     <AppTwoColumnLayout preset="music">
       <template #header>
         <div class="music-nav-header">
@@ -699,7 +699,6 @@ async function handleLogout() {
 }
 
 .music-content {
-  --app-workbench-content-width: var(--app-content-table-max);
   min-height: 100%;
   padding-block: var(--space-4) var(--space-7);
 }

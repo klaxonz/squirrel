@@ -25,20 +25,6 @@
         :blur="shouldBlurThumbnail"
       />
 
-      <!-- Active flags only — quiet, non-toolbar chrome. Full toggles live in meta. -->
-      <div
-        v-if="showThumbnailFlags"
-        class="video-item__flags"
-        aria-hidden="true"
-      >
-        <span v-if="isLater === 1" class="video-item__flag" title="稍后看">
-          <AppIcon name="watchLaterActive" class="size-3" />
-        </span>
-        <span v-if="isLiked === 1" class="video-item__flag" title="喜欢">
-          <AppIcon name="heart" class="size-3 fill-current" />
-        </span>
-      </div>
-
       <span
         v-if="video.duration && showDuration"
         class="video-item__duration app-mono"
@@ -203,12 +189,12 @@ const props = withDefaults(defineProps<{
   sortBy?: string
   layout?: 'grid' | 'list'
   showDuration?: boolean
-  thumbnailStatus?: 'full' | 'progress-only' | 'none'
+  thumbnailProgress?: boolean
   appearance?: 'default' | 'workbench'
 }>(), {
   layout: 'grid',
   showDuration: true,
-  thumbnailStatus: 'full',
+  thumbnailProgress: true,
   appearance: 'default',
 })
 
@@ -252,11 +238,6 @@ watch(
   () => hydrateFromVideo(props.video),
 )
 
-const hasActiveThumbnailFlags = computed(
-  () => isLater.value === 1 || isLiked.value === 1,
-)
-const showThumbnailFlags = computed(() => props.thumbnailStatus === 'full' && hasActiveThumbnailFlags.value)
-
 const thumbnailSrc = computed(() => String(props.video?.thumbnail || '').trim())
 const isNsfwVideo = computed(() => props.video.subscriptions?.some((s) => s.is_nsfw))
 const shouldBlurThumbnail = computed(() => Boolean(systemConfig.value?.blur_nsfw_thumbnails && isNsfwVideo.value))
@@ -265,7 +246,7 @@ const progressRatio = computed(() => {
   const d = Number(props.video?.duration || 0)
   return d > 0 ? Math.min(1, Number(props.video?.last_position || 0) / d) : 0
 })
-const showThumbnailProgress = computed(() => props.thumbnailStatus !== 'none' && progressRatio.value > 0)
+const showThumbnailProgress = computed(() => props.thumbnailProgress && progressRatio.value > 0)
 
 const displayDateText = computed(() => {
   const t = props.sortBy === 'created_at'
@@ -436,28 +417,6 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 .video-item__thumb--grid {
   aspect-ratio: 16 / 9;
   width: 100%;
-}
-
-/* Quiet status chips — only when a flag is on; never three equal toolbar buttons */
-.video-item__flags {
-  position: absolute;
-  top: 0.375rem;
-  left: 0.375rem;
-  z-index: var(--z-content);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0.15rem 0.3rem;
-  border-radius: 999px;
-  background: var(--app-media-flag-bg);
-  color: hsl(var(--app-media-on-image) / 0.94);
-  pointer-events: none;
-}
-
-.video-item__flag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .video-item__duration {

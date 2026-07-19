@@ -1,7 +1,7 @@
 <template>
   <AppPageShell class="videos-workbench" variant="compact" surface="consume" width="fluid">
     <header class="videos-workbench__toolbar">
-      <div class="app-media-content-frame videos-workbench__toolbar-inner">
+      <div class="app-media-content-frame app-media-content-frame--divider videos-workbench__toolbar-inner">
         <FeedToolbar
           v-if="searchMode !== 'remote'"
           variant="workbench"
@@ -52,7 +52,10 @@
     </header>
 
     <div v-if="activeFilterTokens.length" class="videos-workbench__filters-band">
-      <div class="app-media-content-frame videos-workbench__filters" aria-label="已启用筛选">
+      <div
+        class="app-media-content-frame app-media-content-frame--divider videos-workbench__filters"
+        aria-label="已启用筛选"
+      >
         <span>已筛选</span>
         <button v-for="token in activeFilterTokens" :key="token.key" type="button" @click="clearFilter(token.key)">
           {{ token.label }}
@@ -285,7 +288,6 @@ watch(() => route.query.special, (value) => {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  border-bottom: 1px solid var(--app-hairline);
   background: hsl(var(--background));
 }
 
@@ -310,7 +312,6 @@ watch(() => route.query.special, (value) => {
 }
 
 .videos-workbench__filters-band {
-  border-bottom: 1px solid var(--app-hairline);
   background: hsl(var(--muted) / 0.14);
 }
 

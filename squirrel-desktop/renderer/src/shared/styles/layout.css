@@ -162,7 +162,6 @@
   --app-media-on-image: 28 12% 97%;
   --app-media-on-image-muted: 28 8% 86%;
   --app-media-thumb-placeholder: hsl(var(--overlay) / 0.45);
-  --app-media-flag-bg: hsl(var(--overlay) / 0.55);
   --app-media-badge-bg: hsl(var(--overlay) / 0.72);
   --app-media-scrim-soft: hsl(var(--overlay) / 0.42);
   --app-media-scrim-mid: hsl(var(--overlay) / 0.55);
@@ -251,6 +250,23 @@
   max-width: var(--app-content-media-max);
   margin-inline: auto;
   padding-inline: var(--app-content-media-gutter);
+}
+
+.app-content-aligned-divider,
+.app-media-content-frame--divider {
+  position: relative;
+}
+
+.app-content-aligned-divider::after,
+.app-media-content-frame--divider::after {
+  position: absolute;
+  right: var(--app-divider-inline-gutter, var(--app-content-media-gutter));
+  bottom: 0;
+  left: var(--app-divider-inline-gutter, var(--app-content-media-gutter));
+  height: 1px;
+  background: var(--app-hairline);
+  content: '';
+  pointer-events: none;
 }
 
 /* Responsive card grids — desktop-first auto-fill layout. Replaces the 13
@@ -480,7 +496,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding-inline: var(--space-5);
+  padding-inline: var(--app-workbench-content-gutter, var(--space-5));
 }
 
 .app-workbench__scroll {
@@ -495,7 +511,7 @@
   width: 100%;
   max-width: var(--app-workbench-content-width, var(--app-page-max-width));
   margin-inline: auto;
-  padding: var(--space-5);
+  padding: var(--space-5) var(--app-workbench-content-gutter, var(--space-5));
 }
 
 /* Sidebar list scroll region — shared by playlist / settings / tasks navs. */

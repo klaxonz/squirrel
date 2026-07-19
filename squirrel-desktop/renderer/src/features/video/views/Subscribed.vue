@@ -1,7 +1,7 @@
 <template>
-  <AppPageShell variant="compact" surface="organize" width="table" fill>
+  <AppPageShell variant="compact" surface="organize" width="media" fill>
     <div class="subscription-page">
-      <AppToolbarFrame bordered compact>
+      <AppToolbarFrame bordered compact boundary="media" divider="content">
         <div class="subscription-toolbar">
           <div class="subscription-toolbar__navigation">
             <AppSectionNav
@@ -146,7 +146,10 @@
               </AppEmptyState>
             </div>
 
-            <div v-else-if="loadingFeed && !feedItems.length" class="subscription-feed-skeletons">
+            <div
+              v-else-if="loadingFeed && !feedItems.length"
+              class="app-media-content-frame subscription-feed-skeletons"
+            >
               <AppSkeleton
                 v-for="index in 7"
                 :key="index"
@@ -170,7 +173,7 @@
               </AppEmptyState>
             </div>
 
-            <div v-else class="subscription-feed">
+            <div v-else class="app-media-content-frame subscription-feed">
               <section
                 v-for="day in feedDayGroups"
                 :key="day.key"
@@ -203,7 +206,7 @@
           </template>
 
           <template v-else>
-            <div class="subscription-list-view">
+            <div class="app-media-content-frame subscription-list-view">
               <div v-if="channelsError && !channels.length" class="subscription-content__empty">
                 <AppEmptyState variant="error" title="频道加载失败" :copy="channelsError">
                   <template #actions>
@@ -1005,17 +1008,12 @@ onUnmounted(() => {
 
 <style scoped>
 .subscription-page {
-  --subscription-content-width: var(--app-content-media-max);
   display: flex;
   width: 100%;
   height: 100%;
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-}
-
-.subscription-page :deep(.app-toolbar-frame__inner) {
-  max-width: var(--subscription-content-width);
 }
 
 .subscription-toolbar {
@@ -1111,15 +1109,11 @@ onUnmounted(() => {
 
 .subscription-feed,
 .subscription-feed-skeletons {
-  width: min(100%, var(--subscription-content-width));
-  margin: 0 auto;
-  padding: var(--space-5) var(--space-6) var(--app-content-padding-bottom);
+  padding-block: var(--space-5) var(--app-content-padding-bottom);
 }
 
 .subscription-list-view {
-  width: min(100%, var(--subscription-content-width));
-  margin: 0 auto;
-  padding: var(--space-5) var(--space-6) var(--app-content-padding-bottom);
+  padding-block: var(--space-5) var(--app-content-padding-bottom);
 }
 
 .subscription-feed-skeletons {
@@ -1222,12 +1216,6 @@ onUnmounted(() => {
 @media (max-width: 1200px) {
   .subscription-toolbar {
     gap: var(--space-3);
-  }
-
-  .subscription-feed,
-  .subscription-feed-skeletons,
-  .subscription-list-view {
-    padding-inline: var(--space-4);
   }
 
   .subscription-feed-day {

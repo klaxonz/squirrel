@@ -77,11 +77,12 @@ describe('VideoItem playback activation', () => {
     expect(onOpen).toHaveBeenCalledTimes(2)
   })
 
-  it('uses progress for read state instead of adding a thumbnail flag', () => {
+  it('keeps playback progress on the thumbnail without interaction badges', () => {
     const { host } = mountVideoItem(vi.fn(), {
       duration: 120,
       last_position: 30,
       is_read: true,
+      interaction_type: 1,
     })
 
     expect(host.querySelector('.video-item__progress')).not.toBeNull()

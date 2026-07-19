@@ -18,7 +18,10 @@
 
     <main class="app-workbench__main">
       <header v-if="$slots.header" class="app-workbench__header">
-        <div class="app-workbench__header-content">
+        <div
+          class="app-workbench__header-content"
+          :class="{ 'app-content-aligned-divider': preset === 'music' }"
+        >
           <slot name="header" />
         </div>
       </header>
@@ -102,7 +105,13 @@ defineExpose({ scrollEl })
 
 .app-two-column--preset-music {
   --app-workbench-sidebar-width: 12rem;
-  --app-workbench-content-width: var(--app-content-table-max);
+  --app-workbench-content-width: var(--app-content-media-max);
+  --app-workbench-content-gutter: var(--app-content-media-gutter);
+  --app-divider-inline-gutter: var(--app-workbench-content-gutter);
+}
+
+.app-two-column--preset-music .app-workbench__header {
+  border-bottom: 0;
 }
 
 .app-two-column--preset-rss {

@@ -29,7 +29,7 @@
         :key="video.id"
         :video="video"
         show-duration
-        thumbnail-status="none"
+        :thumbnail-progress="false"
         class="app-video-rail-card"
         @openModal="$emit('openModal', video)"
         @goToProfile="(profile) => $emit('goToProfile', profile)"

@@ -1,6 +1,6 @@
 <template>
-  <AppPageShell class="history-page" variant="compact" surface="organize" width="table">
-    <AppToolbarFrame bordered sticky>
+  <AppPageShell class="history-page" variant="compact" surface="organize" width="media">
+    <AppToolbarFrame bordered sticky boundary="media" divider="content">
       <div class="history-toolbar">
         <AppSectionNav
           class="app-section-nav--optical"
@@ -36,7 +36,7 @@
       </div>
     </AppToolbarFrame>
 
-    <main class="app-page-content history-content">
+    <main class="app-media-content-frame history-content">
       <div v-if="loading && videos.length === 0" class="history-groups" aria-label="正在加载历史记录">
         <section class="history-day">
           <div class="history-day__header">
@@ -334,12 +334,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.history-page {
-  --app-page-max-width: var(--app-content-table-max);
-}
-
 .history-content {
-  padding-top: var(--space-5);
+  padding-block: var(--space-5) var(--app-content-padding-bottom);
 }
 
 .history-toolbar {
