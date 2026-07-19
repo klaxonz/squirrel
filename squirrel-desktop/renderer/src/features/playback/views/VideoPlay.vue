@@ -265,7 +265,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
@@ -300,6 +300,7 @@ import { usePlaylist } from '@/features/video/composables/usePlaylist'
 import { saveRemoteVideo } from '@/shared/api'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import type { VideoPageVideo } from '@/features/playback/types/videoPlayback'
+import type { PlaylistEntry } from '@/features/playback/types/playerSession'
 
 const { isDesktop: isDesktopEnv } = useDesktopBridge()
 
@@ -338,16 +339,62 @@ const {
 
 const { sendReport } = useVideoHistory()
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction()
-const { goToPrev, goToNext } = usePlaylist()
+const {
+  activePlaylistItems,
+  currentIndex,
+  hasPrev,
+  hasNext,
+  goToPrev,
+  goToNext,
+  setCurrentVideo,
+  playItem,
+} = usePlaylist()
 
 const { onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate, flushPendingReport } = usePlaybackReporting(video, sendReport)
 
-const { goToVideo, handleAutoplayNext, handlePrevVideoFromPlaylist, handleNextVideoFromPlaylist } = useVideoPageNavigation({
+const {
+  goToVideo,
+  hasPrevVideo,
+  hasNextVideo,
+  handleAutoplayNext,
+  handlePrevVideoFromPlaylist,
+  handleNextVideoFromPlaylist,
+  handlePlayRandom: playRandomVideo,
+} = useVideoPageNavigation({
   route, router, video, relatedVideos,
   goToPrev,
   goToNext,
   onVideoEnded,
 })
+
+// A queue remains active only while the routed video belongs to it. This
+// prevents a playlist opened earlier in the app session from leaking into an
+// unrelated direct/related/random playback route.
+watch(() => route.params.videoId, (videoId) => {
+  setCurrentVideo(videoId == null ? null : String(videoId))
+}, { immediate: true })
+
+const playbackPlaylistEntries = computed<PlaylistEntry[]>(() => {
+  if (currentIndex.value < 0) return []
+  return activePlaylistItems.value.map((item) => ({
+    id: String(item.id),
+    title: item.video?.title || `视频 ${item.video_id}`,
+    thumbnail: item.video?.thumbnail,
+    source: null,
+    videoId: item.video?.id ?? item.video_id,
+    duration: item.video?.duration,
+  }))
+})
+const hasPrevPlayback = computed(() => hasPrev.value || hasPrevVideo.value)
+const hasNextPlayback = computed(() => hasNext.value || hasNextVideo.value)
+
+const handlePlaylistSelect = async (index: number) => {
+  const item = activePlaylistItems.value[index]
+  const selectedVideo = item ? playItem(item) : null
+  if (selectedVideo?.id != null) {
+    await goToVideo(selectedVideo.id, selectedVideo)
+  }
+}
 
 const remoteSaveByUrl = new Map<string, Promise<VideoPageVideo | null>>()
 let javdbMetadataRequestSeq = 0
@@ -448,8 +495,10 @@ const { videoActions, videoOverflowActions, isInteractionUpdating, handleVideoAc
   onInteractionError: (error) => {
     toast.error(errorMessage(error, '更新互动状态失败'))
   },
-  handleAddToPlaylist: async () => {},
-  handlePlayRandom: async () => {},
+  handlePlayRandom: async () => {
+    const navigated = await playRandomVideo()
+    if (!navigated) toast.error('随机播放失败，请稍后重试')
+  },
 })
 
 const { handlePlaybackTimeUpdate, handleClipMarkerSeek, handleClipMarkersUpdated } = useVideoClipMarkers({
@@ -583,12 +632,16 @@ const {
   handlePrevVideoFromPlaylist,
   handleNextVideoFromPlaylist,
   handlePlayerRetry: () => {
-    if (video.value?.id) void loadAndPlayById(video.value.id, video.value, { forceRefresh: true })
+    const videoId = video.value?.id ?? String(route.params.videoId || '')
+    if (videoId) void loadAndPlayById(videoId, video.value, { forceRefresh: true })
   },
   handleClipMarkerSeek,
   handleClipMarkersUpdated,
-  hasPrev: ref(false),
-  hasNext: ref(false),
+  handlePlaylistSelect,
+  hasPrev: hasPrevPlayback,
+  hasNext: hasNextPlayback,
+  playlistEntries: playbackPlaylistEntries,
+  playlistIndex: currentIndex,
 })
 
 </script>

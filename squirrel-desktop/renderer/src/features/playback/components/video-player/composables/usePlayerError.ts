@@ -1,4 +1,5 @@
-import { ref, type Ref } from 'vue'
+import { ref, watch, type Ref } from 'vue'
+import type { ExternalErrorState } from '@/features/playback/types/playerSession'
 
 /**
  * Player error-overlay state + i18n message resolution.
@@ -25,6 +26,7 @@ export interface PlayerErrorState {
 export interface UsePlayerErrorOptions {
   t: (key: string, params?: Record<string, string | number>) => string
   onRetry?: () => void
+  externalError?: Ref<ExternalErrorState | null | undefined>
 }
 
 export interface UsePlayerErrorReturn {
@@ -33,14 +35,19 @@ export interface UsePlayerErrorReturn {
   resolveErrorMessage: (code: string, fallback: string) => string
   /** Surface an engine-reported error on the overlay. */
   reportError: (code: string, rawMessage: string) => void
+  /** Surface a playback-resolution error supplied by the session owner. */
+  reportExternalError: (error: ExternalErrorState) => void
   /** Hide the overlay (source swap, recovery, etc.). */
   clear: () => void
+  /** Clear only an engine error; an external resolution error remains visible. */
+  clearEngineError: () => void
   /** Hide the overlay and bubble a retry request to the parent. */
   handleRetry: () => void
 }
 
 export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorReturn {
-  const { t, onRetry } = options
+  const { t, onRetry, externalError } = options
+  let activeErrorSource: 'engine' | 'external' | null = null
 
   const errorState = ref<PlayerErrorState>({
     show: false,
@@ -64,6 +71,7 @@ export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorRe
   }
 
   const reportError = (code: string, rawMessage: string) => {
+    activeErrorSource = 'engine'
     errorState.value = {
       show: true,
       title: t('errorTitle'),
@@ -73,20 +81,48 @@ export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorRe
     }
   }
 
+  const reportExternalError = (error: ExternalErrorState) => {
+    activeErrorSource = 'external'
+    errorState.value = {
+      show: true,
+      title: error.title || t('errorTitle'),
+      message: error.message || t('errorUnknown'),
+      code: error.code,
+      canRetry: error.canRetry,
+    }
+  }
+
   const clear = () => {
+    activeErrorSource = null
     errorState.value.show = false
   }
 
+  const clearEngineError = () => {
+    if (activeErrorSource === 'engine') clear()
+  }
+
   const handleRetry = () => {
-    errorState.value.show = false
+    clear()
     onRetry?.()
+  }
+
+  if (externalError) {
+    watch(externalError, (error) => {
+      if (error) {
+        reportExternalError(error)
+      } else if (activeErrorSource === 'external') {
+        clear()
+      }
+    }, { immediate: true })
   }
 
   return {
     errorState,
     resolveErrorMessage,
     reportError,
+    reportExternalError,
     clear,
+    clearEngineError,
     handleRetry,
   }
 }

@@ -3,7 +3,7 @@ import type { Ref } from 'vue'
 
 import { Logger } from '@/shared/lib/logger'
 import type { ClipMarker, VideoId, VideoPageVideo } from '@/features/playback/types/videoPlayback'
-import type { PlayerHandlers } from '@/features/playback/types/playerSession'
+import type { PlayerHandlers, PlaylistEntry } from '@/features/playback/types/playerSession'
 import { usePlaybackSession } from '@/features/playback/composables/usePlaybackSession'
 
 import { useUIStore } from '@/shared/stores/ui'
@@ -47,8 +47,11 @@ export default function useVideoPlaybackShell({
   handlePlayerRetry,
   handleClipMarkerSeek,
   handleClipMarkersUpdated,
+  handlePlaylistSelect,
   hasPrev,
   hasNext,
+  playlistEntries,
+  playlistIndex,
 }: {
   route: RouteLike
   effectiveTheme: Ref<string>
@@ -68,8 +71,11 @@ export default function useVideoPlaybackShell({
   handlePlayerRetry: () => void | Promise<void>
   handleClipMarkerSeek: (time: number) => void | Promise<void>
   handleClipMarkersUpdated: (markers: ClipMarker[]) => void
+  handlePlaylistSelect: (index: number) => void | Promise<void>
   hasPrev: Ref<boolean>
   hasNext: Ref<boolean>
+  playlistEntries: Ref<PlaylistEntry[]>
+  playlistIndex: Ref<number>
 }) {
   const uiStore = useUIStore()
   const session = usePlaybackSession()
@@ -120,6 +126,7 @@ export default function useVideoPlaybackShell({
     onWidescreenChange: toggleWidescreen,
     onClipMarkerSelect: handleClipMarkerSeek,
     onClipMarkersUpdated: handleClipMarkersUpdated,
+    onPlaylistSelect: handlePlaylistSelect,
   })
 
   const syncWiring = () => {
@@ -151,6 +158,16 @@ export default function useVideoPlaybackShell({
     session.update({ hasPrev: !!prev, hasNext: !!next })
     syncWiring()
   }, { immediate: true })
+
+  // The playlist store owns queue membership and selection. Project that
+  // context into PlaybackSession so the global host and player panel render
+  // the same queue that prev/next navigation consumes.
+  watch([playlistEntries, playlistIndex], ([entries, index]) => {
+    session.update({
+      playlist: entries.map((entry) => ({ ...entry })),
+      playlistIndex: index,
+    })
+  }, { immediate: true, deep: true })
 
   onMounted(async () => {
     const videoId = String(route.params.videoId || '')

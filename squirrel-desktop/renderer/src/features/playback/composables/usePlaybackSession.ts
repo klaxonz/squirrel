@@ -2,7 +2,7 @@ import { reactive, readonly } from 'vue'
 
 import type { MediaSource, SubtitleTrack } from '@/features/playback/components/video-player/core'
 import type { ExternalErrorState, PlaylistEntry } from '@/features/playback/types/playerSession'
-import type { ClipMarker, VideoPageVideo } from '@/features/playback/types/videoPlayback'
+import type { VideoPageVideo } from '@/features/playback/types/videoPlayback'
 
 /**
  * The facts-layer state for "what is playing right now".
@@ -20,7 +20,6 @@ export interface PlaybackSessionFacts {
   source: MediaSource | null
   video: VideoPageVideo | null
   subtitles: SubtitleTrack[]
-  clipMarkers: ClipMarker[]
   initialTime: number
   externalError: ExternalErrorState | null
   externalLoading: boolean
@@ -67,7 +66,6 @@ const createInitialFacts = (): PlaybackSessionFacts => ({
   source: null,
   video: null,
   subtitles: [],
-  clipMarkers: [],
   initialTime: 0,
   externalError: null,
   externalLoading: false,

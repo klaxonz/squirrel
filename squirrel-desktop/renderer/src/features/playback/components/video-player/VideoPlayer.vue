@@ -344,7 +344,7 @@ import { usePlayer, type PlayerOptions } from './runtime/usePlayer'
 import type { MediaSource, SubtitleTrack } from './core'
 import type { ThemeName } from './themes'
 import type { VideoClipMarker } from '@/features/video/types/videoClipMarker'
-import { usePlaybackSession } from '@/features/playback/composables/usePlaybackSession'
+import type { ExternalErrorState, PlaylistEntry } from '@/features/playback/types/playerSession'
 import PlayerIcon from './PlayerIcon.vue'
 import StatsOverlay from './StatsOverlay.vue'
 import LoadingOverlay from './LoadingOverlay.vue'
@@ -390,9 +390,10 @@ interface Props {
   initialTime?: number
   widescreen?: boolean
   externalLoading?: boolean
+  externalError?: ExternalErrorState | null
   hasPrev?: boolean
   hasNext?: boolean
-  playlistEntries?: Array<{ title: string; source: MediaSource | null }>
+  playlistEntries?: PlaylistEntry[]
   playlistIndex?: number
 }
 
@@ -409,6 +410,7 @@ const props = withDefaults(defineProps<Props>(), {
   theme: 'dark',
   widescreen: false,
   externalLoading: false,
+  externalError: null,
   hasPrev: false,
   hasNext: false,
   playlistEntries: () => [],
@@ -467,12 +469,12 @@ const {
 const playerError = usePlayerError({
   t: t as (key: string, params?: Record<string, string | number>) => string,
   onRetry: () => emit('retry'),
+  externalError: computed(() => props.externalError),
 })
 const { errorState, handleRetry } = playerError
 
-const playbackSession = usePlaybackSession()
-const playlistEntries = computed(() => playbackSession.facts.playlist || [])
-const playlistIndex = computed(() => playbackSession.facts.playlistIndex ?? -1)
+const playlistEntries = computed(() => props.playlistEntries || [])
+const playlistIndex = computed(() => props.playlistIndex ?? -1)
 const hasPlaylist = computed(() => playlistEntries.value.length > 1)
 
 const handlePlaylistSelect = (index: number) => {
@@ -705,7 +707,7 @@ const { cleanup: cleanupSourceSync } = useSourceSync({
   play,
   pause,
   seek,
-  onSourceChange: () => { playerError.clear() },
+  onSourceChange: () => { playerError.clearEngineError() },
 })
 
 watch(videoRef, (el) => { videoElement.value = el }, { immediate: true })

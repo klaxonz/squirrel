@@ -27,7 +27,6 @@ export default function useVideoActionBar({
   ensureLocalVideo,
   commitInteractionType,
   onInteractionError,
-  handleAddToPlaylist,
   handlePlayRandom,
 }: {
   video: Ref<VideoPageVideo | null>
@@ -39,7 +38,6 @@ export default function useVideoActionBar({
   ensureLocalVideo?: (video: VideoPageVideo) => Promise<VideoPageVideo | null>
   commitInteractionType: (video: VideoPageVideo, interactionType: InteractionType) => void
   onInteractionError?: (error: unknown) => void
-  handleAddToPlaylist: () => Promise<void>
   handlePlayRandom: () => Promise<void>
 }) {
   const currentInteractionType = computed(() => video.value?.interaction_type ?? undefined)
@@ -118,15 +116,6 @@ export default function useVideoActionBar({
           if (!video.value) return
           return updateVideoInteraction(video.value, interactionTypeLater)
         },
-      },
-      {
-        key: 'add-playlist',
-        label: '播放列表',
-        icon: 'addToPlaylist',
-        active: false,
-        tone: 'neutral',
-        variant: 'secondary',
-        onClick: handleAddToPlaylist,
       },
     ]
 

@@ -35,7 +35,6 @@ const setupActionBar = ({
     deleteInteraction,
     commitInteractionType,
     onInteractionError,
-    handleAddToPlaylist: vi.fn().mockResolvedValue(undefined),
     handlePlayRandom: vi.fn().mockResolvedValue(undefined),
   })
 

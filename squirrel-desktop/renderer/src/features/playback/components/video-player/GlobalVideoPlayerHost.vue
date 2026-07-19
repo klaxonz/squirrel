@@ -20,6 +20,7 @@
       @retry="handleRetry"
       @clipmarkerselect="handleClipMarkerSelect"
       @clipmarkersupdated="handleClipMarkersUpdated"
+      @playlistSelect="handlePlaylistSelect"
       @enterpictureinpicture="session.setPictureInPicture(true)"
       @leavepictureinpicture="handleLeavePiP"
     />
@@ -33,7 +34,7 @@ import { usePlayerStore } from '@/features/playback/stores/player'
 import { usePlaybackSession } from '@/features/playback/composables/usePlaybackSession'
 import VideoPlayer from './VideoPlayer.vue'
 import { BackendPlayerAdapter } from './core/BackendPlayerAdapter'
-import type { ThemeName } from './themes'
+import { buildGlobalVideoPlayerProps } from './globalPlayerProps'
 import type { VideoClipMarker } from '@/features/video/types/videoClipMarker'
 import type { VideoPlayerHandle, VideoEndedEvent } from '@/features/playback/types/playerSession'
 
@@ -54,24 +55,10 @@ const backendAdapter = shallowRef<BackendPlayerAdapter | null>(null)
 const teleportTarget = computed(() => playerStore.target || detachedHostRef.value)
 const isSessionActive = computed(() => !!session.facts.videoId)
 
-const playerProps = computed(() => ({
-  source: session.facts.source,
-  subtitles: session.facts.subtitles,
-  clipMarkers: session.facts.clipMarkers as unknown as VideoClipMarker[],
-  videoId: session.facts.videoId || null,
-  title: session.facts.title,
-  uploader: session.facts.uploader,
-  initialTime: session.facts.initialTime,
-  hasPrev: session.facts.hasPrev,
-  hasNext: session.facts.hasNext,
-  externalError: session.facts.externalError,
-  widescreen: session.facts.widescreen,
-  externalLoading: session.facts.externalLoading,
-  adapter: playerStore.adapter || backendAdapter.value,
-  theme: (session.facts.theme || 'dark') as ThemeName,
-  playlistEntries: session.facts.playlist || [],
-  playlistIndex: session.facts.playlistIndex ?? -1,
-}))
+const playerProps = computed(() => buildGlobalVideoPlayerProps(
+  session.facts,
+  playerStore.adapter || backendAdapter.value,
+))
 
 watch(() => session.facts.videoId, (videoId) => {
   if (videoId && !playerStore.adapter && !backendAdapter.value) {
@@ -94,6 +81,7 @@ const handleWidescreenChange = (v: boolean) => playerStore.handlers.onWidescreen
 const handleRetry = () => playerStore.handlers.onRetry?.()
 const handleClipMarkerSelect = (t: number) => playerStore.handlers.onClipMarkerSelect?.(t)
 const handleClipMarkersUpdated = (m: VideoClipMarker[]) => playerStore.handlers.onClipMarkersUpdated?.(m)
+const handlePlaylistSelect = (index: number) => playerStore.handlers.onPlaylistSelect?.(index)
 
 watch(playerRef, (instance) => {
   playerStore.playerRef = instance

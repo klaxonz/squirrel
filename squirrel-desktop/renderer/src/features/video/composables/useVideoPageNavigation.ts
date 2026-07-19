@@ -32,9 +32,15 @@ export default function useVideoPageNavigation({
   onVideoEnded: OnVideoEnded
 }) {
   const recentlyPlayed = ref<VideoId[]>([])
+  const isSameVideoId = (left: VideoId | null | undefined, right: VideoId | null | undefined) => (
+    left != null && right != null && String(left) === String(right)
+  )
+  const wasRecentlyPlayed = (videoId: VideoId) => (
+    recentlyPlayed.value.some((item) => isSameVideoId(item, videoId))
+  )
 
   const pushRecentlyPlayed = (videoId: VideoId | null | undefined) => {
-    if (videoId == null || recentlyPlayed.value.includes(videoId)) {
+    if (videoId == null || wasRecentlyPlayed(videoId)) {
       return
     }
 
@@ -82,7 +88,7 @@ export default function useVideoPageNavigation({
     const preferred = candidates.find((item) => (
       item?.id != null
       && String(item.id) !== currentId
-      && !recentlyPlayed.value.includes(item.id)
+      && !wasRecentlyPlayed(item.id)
     ))
     if (preferred) {
       return preferred
@@ -151,29 +157,23 @@ export default function useVideoPageNavigation({
     }
   }
 
-  const handlePlayRandom = async () => {
-    const maxAttempts = 3
+  const handlePlayRandom = async (): Promise<boolean> => {
+    const maxAttempts = 4
+    const currentVideoId = video.value?.id ?? String(route.params.videoId ?? '')
 
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       try {
         const data = await getRandomVideo({})
-        if (data?.id != null && !recentlyPlayed.value.includes(data.id)) {
-          await goToVideo(data.id as VideoId, data as VideoPageVideo | null)
-          return
-        }
+        if (data?.id == null || isSameVideoId(data.id, currentVideoId)) continue
+        if (attempt < maxAttempts - 1 && wasRecentlyPlayed(data.id)) continue
+
+        await goToVideo(data.id as VideoId, data as VideoPageVideo | null)
+        return true
       } catch {
         // retry — random endpoint may occasionally fail
       }
     }
-
-    try {
-      const data = await getRandomVideo({})
-      if (data?.id != null) {
-        await goToVideo(data.id as VideoId, data as VideoPageVideo | null)
-      }
-    } catch {
-      // all attempts failed — stay on current view
-    }
+    return false
   }
 
   return {

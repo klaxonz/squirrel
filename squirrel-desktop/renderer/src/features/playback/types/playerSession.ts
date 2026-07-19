@@ -35,6 +35,7 @@ export type PlayerHandlers = {
   onWidescreenChange?: ((enabled: boolean) => void) | null
   onClipMarkerSelect?: ((time: number) => void | Promise<void>) | null
   onClipMarkersUpdated?: ((markers: ClipMarker[]) => void) | null
+  onPlaylistSelect?: ((index: number) => void | Promise<void>) | null
 }
 
 export interface PlaylistEntry {
@@ -55,4 +56,3 @@ export interface PlaylistEntry {
 // `target` / `adapter` / `handlers` were never facts — they are wiring state
 // now on the slimmed Pinia store (`stores/player.ts`), passed alongside facts
 // via the facade's PlayerSessionPayload.
-
