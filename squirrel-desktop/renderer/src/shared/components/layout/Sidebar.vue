@@ -131,6 +131,7 @@ const showSidebarMusicPlayer = computed(() =>
   font-size: 0.6875rem;
   font-weight: 620;
   line-height: 1.6;
+  white-space: nowrap;
 }
 
 .sidebar-group__items {
@@ -143,20 +144,11 @@ const showSidebarMusicPlayer = computed(() =>
   padding-inline: 0.375rem;
 }
 
-.sidebar-rail.is-collapsed .sidebar-group + .sidebar-group {
-  margin-top: 0.625rem;
-  padding-top: 0.625rem;
-  border-top: 1px solid var(--app-hairline);
-}
-
+/* Keep first-level landmarks visible in the narrow rail. Only horizontal
+   padding changes, so category and item geometry stay vertically stable. */
 .sidebar-rail.is-collapsed .sidebar-group__label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+  padding-inline: 0;
+  text-align: center;
 }
 
 @media (prefers-reduced-motion: reduce) {

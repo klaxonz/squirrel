@@ -248,9 +248,8 @@ export const SIDEBAR_TOP_ITEMS = NAV_ITEMS.filter((item) => item.key === 'home')
 export const SIDEBAR_FOOTER_ITEMS = NAV_ITEMS.filter((item) => item.key === 'settings')
 
 /**
- * Home sits above grouped content navigation; Settings remains footed.
- * Labels stay product-Chinese. Group order: media subscriptions → library → tools.
- * Single app rail; visual redesign may change density/chrome without a second nav system.
+ * Navigation keeps lightweight category landmarks in both rail widths. The
+ * collapsed rail preserves group geometry while menu items become icon-only.
  */
 export const NAV_GROUPS: NavigationGroup[] = [
   {
