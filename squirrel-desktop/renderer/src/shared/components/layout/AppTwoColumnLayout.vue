@@ -4,6 +4,7 @@
     :class="{
       [`app-two-column--preset-${preset}`]: true,
       'app-two-column--sidebar-always': sidebarAlways,
+      'app-two-column--sidebar-collapsed': sidebarCollapsed,
       'app-two-column--fill': fill,
       'app-two-column--no-main-scroll': !mainScroll,
     }"
@@ -57,6 +58,8 @@ withDefaults(defineProps<{
   preset?: 'settings' | 'playlist' | 'music' | 'rss'
   /** Always show sidebar (desktop + smaller widths). Default false = lg+ only. */
   sidebarAlways?: boolean
+  /** Collapse the secondary workbench sidebar while preserving the main pane. */
+  sidebarCollapsed?: boolean
   /** Stretch to parent height (default true for workbench pages). */
   fill?: boolean
   /**
@@ -67,6 +70,7 @@ withDefaults(defineProps<{
 }>(), {
   preset: 'playlist',
   sidebarAlways: false,
+  sidebarCollapsed: false,
   fill: true,
   mainScroll: true,
 })
@@ -117,6 +121,7 @@ defineExpose({ scrollEl })
 .app-two-column--preset-rss {
   --app-workbench-sidebar-width: 15.5rem;
   --app-workbench-content-width: none;
+  --app-workbench-sidebar-bg: transparent;
 }
 
 /* Default: hide sidebar below lg; --always keeps it visible. */
@@ -126,6 +131,10 @@ defineExpose({ scrollEl })
 
 .app-workbench__sidebar--always {
   display: flex;
+}
+
+.app-two-column--sidebar-collapsed .app-workbench__sidebar {
+  display: none;
 }
 
 .app-workbench__body {
@@ -139,6 +148,10 @@ defineExpose({ scrollEl })
 @media (min-width: 1024px) {
   .app-workbench__sidebar {
     display: flex;
+  }
+
+  .app-two-column--sidebar-collapsed .app-workbench__sidebar {
+    display: none;
   }
 }
 </style>

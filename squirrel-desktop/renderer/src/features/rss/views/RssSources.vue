@@ -7,6 +7,7 @@
     <AppTwoColumnLayout
       sidebar-always
       preset="rss"
+      :sidebar-collapsed="sourcePaneCollapsed"
       :main-scroll="false"
       class="rss-workspace"
     >
@@ -15,6 +16,16 @@
           title="订阅库"
         >
           <template #actions>
+            <Button
+              text severity="secondary"
+              size="sm" icon-only
+              class="rss-source-pane-toggle"
+              title="收起订阅库"
+              aria-label="收起订阅库"
+              @click="sourcePaneCollapsed = true"
+            >
+              <AppIcon name="panelClose" class="h-4 w-4" />
+            </Button>
             <Button
               severity="secondary" outlined
               size="sm" icon-only
@@ -107,28 +118,42 @@
       <section class="app-pane app-pane--list rss-entry-pane">
         <header class="app-pane__header rss-entry-header">
           <div class="app-pane__header-row">
-            <div class="app-pane__header-copy">
-              <div
-                v-if="hasFeedNavStack || selectedFeedTitle"
-                class="app-pane__header-title-row"
+            <div class="rss-entry-header__identity">
+              <Button
+                v-if="sourcePaneCollapsed"
+                text severity="secondary"
+                size="sm" icon-only
+                class="rss-source-pane-toggle"
+                title="展开订阅库"
+                aria-label="展开订阅库"
+                @click="sourcePaneCollapsed = false"
               >
-                <Button
-                  v-if="hasFeedNavStack"
-                  text severity="secondary"
-                  size="sm" icon-only
-                  class="rss-back-button"
-                  title="返回之前的列表"
-                  aria-label="返回之前的列表"
-                  @click="handleFeedBack"
+                <AppIcon name="panelOpen" class="h-4 w-4" />
+              </Button>
+
+              <div class="app-pane__header-copy">
+                <div
+                  v-if="hasFeedNavStack || selectedFeedTitle"
+                  class="app-pane__header-title-row"
                 >
-                  <AppIcon name="back" class="h-3 w-3" />
-                </Button>
-                <h2 v-if="selectedFeedTitle" class="app-h4 truncate">
-                  {{ selectedFeedTitle }}
-                </h2>
-              </div>
-              <div class="app-pane__header-subtitle">
-                <span>{{ selectedFeedSubtitle }}</span>
+                  <Button
+                    v-if="hasFeedNavStack"
+                    text severity="secondary"
+                    size="sm" icon-only
+                    class="rss-back-button"
+                    title="返回之前的列表"
+                    aria-label="返回之前的列表"
+                    @click="handleFeedBack"
+                  >
+                    <AppIcon name="back" class="h-3 w-3" />
+                  </Button>
+                  <h2 v-if="selectedFeedTitle" class="app-h4 truncate">
+                    {{ selectedFeedTitle }}
+                  </h2>
+                </div>
+                <div class="app-pane__header-subtitle">
+                  <span>{{ selectedFeedSubtitle }}</span>
+                </div>
               </div>
             </div>
 
@@ -269,7 +294,7 @@
         <div v-if="readingEntry" class="rss-reader-active">
           <!-- Reader Header (Clean compact toolbar) -->
           <header class="app-pane__header rss-reader-toolbar">
-            <div class="app-pane__header-row">
+            <div class="app-pane__header-row rss-reader-toolbar__row">
               <div class="rss-reader-toolbar__identity">
                 <Button
                   text severity="secondary"
@@ -746,6 +771,7 @@ import type { AppIconName } from '@/shared/icons/app-icons'
 
 // Cross-cutting UI state
 const loading = ref(false)
+const sourcePaneCollapsed = ref(false)
 const uiStore = useUIStore()
 const rssArticleSearch = computed(() => uiStore.getSearchQuery('rss'))
 const rssArticleSearchTrigger = computed(() => uiStore.getSearchTrigger('rss'))
@@ -1169,7 +1195,16 @@ onUnmounted(() => {
 }
 
 .rss-source-controls {
-  background: hsl(var(--muted) / 0.08);
+  background: transparent;
+}
+
+.rss-source-pane-toggle {
+  flex: 0 0 auto;
+  color: hsl(var(--muted-foreground) / 0.82);
+}
+
+.rss-source-pane-toggle:hover {
+  color: hsl(var(--foreground));
 }
 
 .rss-add-account-button {
@@ -1246,7 +1281,7 @@ onUnmounted(() => {
 
 .rss-entry-pane {
   --app-pane-list-width: 30rem;
-  background: hsl(var(--muted) / 0.045);
+  background: transparent;
 }
 
 .rss-entry-list {
@@ -1264,7 +1299,15 @@ onUnmounted(() => {
 .rss-entry-header {
   gap: var(--space-2);
   padding: var(--space-3);
-  background: hsl(var(--background) / 0.48);
+  background: transparent;
+}
+
+.rss-entry-header__identity {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .rss-back-button {
@@ -1294,11 +1337,17 @@ onUnmounted(() => {
   justify-content: center;
   min-height: var(--app-workbench-header-height);
   padding: 0 var(--space-4);
-  background: hsl(var(--background) / 0.48);
+  background: transparent;
+}
+
+.rss-reader-toolbar__row {
+  width: 100%;
+  max-width: var(--app-content-reading-max);
+  margin-inline: auto;
 }
 
 .rss-reader-body {
-  padding: clamp(2.5rem, 5vh, 4.5rem) clamp(2rem, 5vw, 5rem) 6rem;
+  padding: clamp(1.5rem, 3vh, 2.5rem) clamp(2rem, 5vw, 5rem) 6rem;
   background: hsl(var(--background));
 }
 
@@ -1335,9 +1384,19 @@ onUnmounted(() => {
   gap: 0;
   width: 100%;
   min-height: 0;
-  padding: 1rem 1.125rem;
+  padding: 0.875rem 1rem;
   text-align: left;
   outline: none;
+}
+
+.rss-entry-stack :deep(.app-selectable-list-item--flush.is-selected) {
+  background: hsl(var(--foreground) / 0.035);
+  box-shadow: none;
+}
+
+.rss-entry-stack :deep(.app-selectable-list-item--flush:not(.is-selected):hover),
+.rss-entry-stack :deep(.app-selectable-list-item--flush:not(.is-selected):focus-visible) {
+  background: hsl(var(--foreground) / 0.025);
 }
 
 .rss-entry-item__meta-row {
@@ -1511,14 +1570,14 @@ onUnmounted(() => {
 }
 
 .rss-reader-article__header {
-  margin-bottom: 2.5rem;
-  padding-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.25rem;
   border-bottom: 1px solid hsl(var(--border) / 0.22);
 }
 
 .rss-reader-article__category {
   display: block;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.625rem;
   color: hsl(var(--muted-foreground) / 0.82);
   font-size: 0.6875rem;
   font-weight: 650;
@@ -1546,7 +1605,7 @@ onUnmounted(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.375rem;
-  margin-top: 1rem;
+  margin-top: 0.75rem;
   color: hsl(var(--muted-foreground) / 0.7);
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;

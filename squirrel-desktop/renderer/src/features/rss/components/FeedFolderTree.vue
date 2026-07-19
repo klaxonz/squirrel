@@ -154,7 +154,7 @@ defineEmits<{
 .feed-folder-tree__feed.is-selected {
   color: hsl(var(--foreground));
   font-weight: 650;
-  background: hsl(var(--accent) / 0.62);
+  background: hsl(var(--foreground) / 0.045);
 }
 
 .feed-folder-tree__all-button,
@@ -264,7 +264,7 @@ defineEmits<{
 
 .feed-folder-tree__feed:not(.is-selected):hover {
   color: hsl(var(--foreground));
-  background: hsl(var(--accent) / 0.58);
+  background: hsl(var(--foreground) / 0.035);
 }
 
 .feed-folder-tree__remove {

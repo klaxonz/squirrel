@@ -447,7 +447,7 @@
   width: var(--app-workbench-sidebar-width, 17.5rem);
   /* Structure only — no tinted island that stacks a third "card" beside the rail. */
   border-right: 1px solid var(--app-hairline);
-  background: hsl(var(--sidebar) / 0.62);
+  background: var(--app-workbench-sidebar-bg, hsl(var(--sidebar) / 0.62));
 }
 
 .app-workbench__sidebar--always {
