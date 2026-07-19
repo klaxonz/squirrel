@@ -1,64 +1,68 @@
 <template>
   <AppPageShell class="videos-workbench" variant="compact" surface="consume" width="fluid">
     <header class="videos-workbench__toolbar">
-      <FeedToolbar
-        v-if="searchMode !== 'remote'"
-        variant="workbench"
-        :active-tab="activeTab"
-        :nsfw="nsfw"
-        :sort-by="sortBy"
-        :site="site"
-        :special="special"
-        :time-range="timeRange"
-        :duration="duration"
-        :content-type="contentType"
-        :tabs="tabs"
-        :is-refreshing="isRefreshing"
-        :preference-key="viewPreferenceKey"
-        :show-tabs="true"
-        :show-sort="true"
-        :show-filter="true"
-        @update:activeTab="activeTab = $event"
-        @update:nsfw="nsfw = $event"
-        @update:sortBy="sortBy = $event"
-        @update:site="site = $event"
-        @update:timeRange="timeRange = $event"
-        @update:duration="duration = $event"
-        @update:contentType="contentType = $event"
-        @update:special="setSpecialFilter"
-        @refresh="refreshCurrentList"
-      />
-
-      <div v-else class="videos-workbench__remote-tools">
-        <span>远端结果</span>
-        <Select
-          :model-value="remoteSite || 'all'"
-          :options="remoteSiteSelectOptions"
-          option-label="label"
-          option-value="value"
-          placeholder="全部站点"
-          size="small"
-          class="app-toolbar-control app-toolbar-select-trigger min-w-32"
-          aria-label="远端搜索站点"
-          @update:model-value="updateRemoteSite"
+      <div class="app-media-content-frame videos-workbench__toolbar-inner">
+        <FeedToolbar
+          v-if="searchMode !== 'remote'"
+          variant="workbench"
+          :active-tab="activeTab"
+          :nsfw="nsfw"
+          :sort-by="sortBy"
+          :site="site"
+          :special="special"
+          :time-range="timeRange"
+          :duration="duration"
+          :content-type="contentType"
+          :tabs="tabs"
+          :is-refreshing="isRefreshing"
+          :preference-key="viewPreferenceKey"
+          :show-tabs="true"
+          :show-sort="true"
+          :show-filter="true"
+          @update:activeTab="activeTab = $event"
+          @update:nsfw="nsfw = $event"
+          @update:sortBy="sortBy = $event"
+          @update:site="site = $event"
+          @update:timeRange="timeRange = $event"
+          @update:duration="duration = $event"
+          @update:contentType="contentType = $event"
+          @update:special="setSpecialFilter"
+          @refresh="refreshCurrentList"
         />
-        <Button text severity="secondary" size="sm" icon-only title="刷新远端结果" aria-label="刷新远端结果" @click="refreshCurrentList">
-          <AppSpinner v-if="isRefreshing" size="sm" />
-          <AppIcon v-else name="refresh" class="size-4" />
-        </Button>
+
+        <div v-else class="videos-workbench__remote-tools">
+          <span>远端结果</span>
+          <Select
+            :model-value="remoteSite || 'all'"
+            :options="remoteSiteSelectOptions"
+            option-label="label"
+            option-value="value"
+            placeholder="全部站点"
+            size="small"
+            class="app-toolbar-control app-toolbar-select-trigger min-w-32"
+            aria-label="远端搜索站点"
+            @update:model-value="updateRemoteSite"
+          />
+          <Button text severity="secondary" size="sm" icon-only title="刷新远端结果" aria-label="刷新远端结果" @click="refreshCurrentList">
+            <AppSpinner v-if="isRefreshing" size="sm" />
+            <AppIcon v-else name="refresh" class="size-4" />
+          </Button>
+        </div>
       </div>
     </header>
 
-    <div v-if="activeFilterTokens.length" class="videos-workbench__filters" aria-label="已启用筛选">
-      <span>已筛选</span>
-      <button v-for="token in activeFilterTokens" :key="token.key" type="button" @click="clearFilter(token.key)">
-        {{ token.label }}
-        <AppIcon name="close" class="size-3" />
-      </button>
-      <button type="button" class="videos-workbench__clear" @click="clearAllPageFilters">清除全部</button>
+    <div v-if="activeFilterTokens.length" class="videos-workbench__filters-band">
+      <div class="app-media-content-frame videos-workbench__filters" aria-label="已启用筛选">
+        <span>已筛选</span>
+        <button v-for="token in activeFilterTokens" :key="token.key" type="button" @click="clearFilter(token.key)">
+          {{ token.label }}
+          <AppIcon name="close" class="size-3" />
+        </button>
+        <button type="button" class="videos-workbench__clear" @click="clearAllPageFilters">清除全部</button>
+      </div>
     </div>
 
-    <div class="videos-workbench__body">
+    <div class="app-media-content-frame videos-workbench__body">
       <main class="videos-workbench__canvas" aria-label="视频内容">
         <div v-if="loadError" class="videos-workbench__error">
           <AppEmptyState variant="error" title="加载失败" :copy="loadError">
@@ -281,12 +285,14 @@ watch(() => route.query.special, (value) => {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
+  border-bottom: 1px solid var(--app-hairline);
+  background: hsl(var(--background));
+}
+
+.videos-workbench__toolbar-inner {
   display: flex;
   min-height: 4.25rem;
   align-items: center;
-  border-bottom: 1px solid var(--app-hairline);
-  padding: 0 clamp(1.25rem, 2.5vw, 2.5rem);
-  background: hsl(var(--background));
 }
 
 .videos-workbench__remote-tools > span {
@@ -303,14 +309,16 @@ watch(() => route.query.special, (value) => {
   gap: 0.5rem;
 }
 
+.videos-workbench__filters-band {
+  border-bottom: 1px solid var(--app-hairline);
+  background: hsl(var(--muted) / 0.14);
+}
+
 .videos-workbench__filters {
   display: flex;
   min-height: 2.75rem;
   align-items: center;
   gap: 0.375rem;
-  padding: 0 clamp(1.25rem, 2.5vw, 2.5rem);
-  border-bottom: 1px solid var(--app-hairline);
-  background: hsl(var(--muted) / 0.14);
 }
 
 .videos-workbench__filters > span {
@@ -352,7 +360,7 @@ watch(() => route.query.special, (value) => {
 
 .videos-workbench__canvas {
   min-width: 0;
-  padding: 1.25rem clamp(1.25rem, 2.5vw, 2.5rem) 3rem;
+  padding-block: 1.25rem 3rem;
 }
 
 .videos-workbench__error {
@@ -364,7 +372,7 @@ watch(() => route.query.special, (value) => {
 }
 
 @media (max-width: 1180px) {
-  .videos-workbench__toolbar {
+  .videos-workbench__toolbar-inner {
     padding-block: 0.5rem;
   }
 }

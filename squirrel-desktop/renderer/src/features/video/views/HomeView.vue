@@ -1,6 +1,6 @@
 <template>
   <AppPageShell class="home-workbench" variant="compact" surface="consume" width="fluid">
-    <div class="home-workbench__page">
+    <div class="app-media-content-frame home-workbench__page">
       <main class="home-workbench__content" aria-label="首页内容">
         <ContinueWatching
           ref="continueWatchingRef"
@@ -68,9 +68,7 @@ onMounted(() => {
 }
 
 .home-workbench__page {
-  width: min(100%, 106rem);
-  margin-inline: auto;
-  padding: 1.5rem clamp(1.25rem, 2.5vw, 2.5rem) 4rem;
+  padding-block: 1.5rem 4rem;
 }
 
 .home-workbench__content {

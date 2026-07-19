@@ -46,7 +46,8 @@
   --app-page-gutter: 1.25rem;
   --app-page-gutter-sm: 1.5rem;
   --app-page-gutter-lg: 2rem;
-  --app-content-media-max: 110rem;
+  --app-content-media-max: 106rem;
+  --app-content-media-gutter: clamp(1.25rem, 2.5vw, 2.5rem);
   --app-content-table-max: 96rem;
   --app-content-form-max: 64rem;
   --app-content-reading-max: 48rem;
@@ -240,6 +241,16 @@
   max-width: var(--app-page-max-width);
   margin: 0 auto;
   padding: 1.5rem var(--app-page-gutter) var(--app-content-padding-bottom);
+}
+
+/* Shared centered boundary for media workbenches whose toolbar bands remain
+   full-bleed. Apply this to each band's inner content and to the media canvas
+   so controls, filters, and cards keep one horizontal reading edge. */
+.app-media-content-frame {
+  width: 100%;
+  max-width: var(--app-content-media-max);
+  margin-inline: auto;
+  padding-inline: var(--app-content-media-gutter);
 }
 
 /* Responsive card grids — desktop-first auto-fill layout. Replaces the 13
