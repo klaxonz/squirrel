@@ -1,27 +1,51 @@
 <template>
   <AppPageShell class="log-viewer" variant="compact" surface="operate" width="table" fill>
     <div class="log-page">
-      <AppToolbarFrame bordered compact sticky>
-        <div class="log-toolbar">
-          <div class="log-toolbar__identity">
-            <h1>日志</h1>
-            <span>{{ logs.length }} 条</span>
-          </div>
+      <main class="app-page-content log-content">
+        <AppOperatePageHeader
+          title="日志"
+          :summary="logSummary"
+          description="检查服务运行记录、请求追踪与异常上下文。"
+        >
+          <template #actions>
+            <Button
+              type="button"
+              severity="secondary" outlined
+              size="sm"
+              :class="{ 'is-active': allCopied }"
+              :disabled="logs.length === 0"
+              :title="allCopied ? '已复制当前结果' : `复制当前显示的 ${logs.length} 条日志`"
+              aria-label="复制当前日志结果"
+              @click="copyAllLogs"
+            >
+              <AppIcon name="clipboard" class="h-4 w-4" />
+              {{ allCopied ? '已复制' : '复制结果' }}
+            </Button>
 
-          <div class="log-toolbar__actions">
-            <Select
-              :model-value="filters.level"
-              :options="levelOptions"
-              option-label="label"
-              option-value="value"
-              placeholder="全部级别"
-              size="small"
-              class="app-toolbar-control app-toolbar-select-trigger log-toolbar__level"
-              :class="{ 'is-active': filters.level !== LEVEL_FILTER_ALL }"
-              aria-label="按日志级别筛选"
-              @update:model-value="setLevelFilter"
-            />
+            <Button
+              type="button"
+              size="sm"
+              :disabled="loading"
+              title="立即刷新"
+              aria-label="立即刷新日志"
+              @click="loadLogs"
+            >
+              <AppSpinner v-if="loading" size="sm" />
+              <AppIcon v-else name="refresh" class="h-4 w-4" />
+              {{ loading ? '刷新中…' : '刷新日志' }}
+            </Button>
+          </template>
+        </AppOperatePageHeader>
 
+        <div class="log-filterbar">
+          <AppSectionNav
+            :model-value="filters.level"
+            :options="levelFilterOptions"
+            aria-label="日志级别"
+            @change="setLevelFilter(String($event))"
+          />
+
+          <div class="log-filterbar__controls">
             <Select
               :model-value="filters.filename"
               :options="fileOptions"
@@ -29,25 +53,10 @@
               option-value="value"
               placeholder="选择日志文件"
               size="small"
-              class="app-toolbar-control app-toolbar-select-trigger log-toolbar__file"
+              class="log-filterbar__file"
               aria-label="选择日志文件"
               @update:model-value="setFileFilter"
             />
-
-            <Button
-              v-if="hasActiveFilters"
-              type="button"
-              size="sm" icon-only
-              text severity="secondary"
-              class="app-toolbar-control app-toolbar-icon-button"
-              title="清空筛选"
-              aria-label="清空筛选"
-              @click="clearFilters"
-            >
-              <AppIcon name="close" class="h-4 w-4" />
-            </Button>
-
-            <div class="log-toolbar__divider" aria-hidden="true" />
 
             <label class="log-auto-refresh">
               <span>自动刷新</span>
@@ -59,38 +68,36 @@
             </label>
 
             <Button
+              v-if="hasActiveFilters"
               type="button"
+              size="sm"
               text severity="secondary"
-              size="sm" icon-only
-              class="app-toolbar-control app-toolbar-icon-button"
-              :class="{ 'is-active': allCopied }"
-              :disabled="logs.length === 0"
-              :title="allCopied ? '已复制当前结果' : `复制当前显示的 ${logs.length} 条日志`"
-              aria-label="复制当前日志结果"
-              @click="copyAllLogs"
+              class="log-filterbar__clear"
+              title="清空筛选"
+              @click="clearFilters"
             >
-              <AppIcon name="clipboard" class="h-4 w-4" />
-            </Button>
-
-            <Button
-              type="button"
-              text severity="secondary"
-              size="sm" icon-only
-              class="app-toolbar-control app-toolbar-icon-button"
-              :disabled="loading"
-              title="立即刷新"
-              aria-label="立即刷新日志"
-              @click="loadLogs"
-            >
-              <AppSpinner v-if="loading" size="sm" />
-              <AppIcon v-else name="refresh" class="h-4 w-4" />
+              <AppIcon name="close" class="h-4 w-4" />
+              清除筛选
             </Button>
           </div>
         </div>
-      </AppToolbarFrame>
 
-      <div class="app-page-content app-page-content--media log-content">
-        <section class="log-feed" aria-label="系统日志工作区">
+        <section class="log-feed app-settings-panel" aria-label="系统日志工作区">
+          <header class="log-feed__head">
+            <div class="log-feed__heading">
+              <h2>{{ filters.filename || '日志记录' }}</h2>
+              <p aria-label="日志结果概览">
+                <span>{{ resultSummary }}</span>
+                <span>{{ activeLevelLabel }}</span>
+                <span v-if="filters.keyword">搜索“{{ filters.keyword }}”</span>
+                <span v-if="selectedFile">{{ formatFileSize(selectedFile.size) }}</span>
+              </p>
+            </div>
+            <span v-if="lastLoadedAt" class="log-feed__updated">
+              更新于 {{ formatLoadedTime(lastLoadedAt) }}
+            </span>
+          </header>
+
           <div class="log-columns" aria-hidden="true">
             <span>时间</span>
             <span>级别</span>
@@ -195,7 +202,7 @@
             </DynamicScroller>
           </div>
         </section>
-      </div>
+      </main>
     </div>
   </AppPageShell>
 </template>
@@ -206,8 +213,9 @@ import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
-import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
+import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import { Button } from '@/shared/ui/button'
 import { Select } from '@/shared/ui/select'
 import { Switch } from '@/shared/ui/switch'
@@ -218,12 +226,15 @@ import { Logger } from '@/shared/lib/logger'
 import { useUIStore } from '@/shared/stores/ui'
 import { useLogClipboard } from '@/features/settings/composables/useLogClipboard'
 import { useLogAutoRefresh } from '@/features/settings/composables/useLogAutoRefresh'
-import { formatLogTimestamp } from '@/features/settings/lib/logPresenters'
+import { formatFileSize, formatLogTimestamp } from '@/features/settings/lib/logPresenters'
 
 const SEARCH_SCOPE = 'logs'
+const LEVEL_FILTER_ALL = 'all'
 const uiStore = useUIStore()
 const logs = ref([])
 const logFiles = ref([])
+const totalLogs = ref(0)
+const lastLoadedAt = ref(null)
 const loading = ref(false)
 const loadError = ref('')
 let latestRequestId = 0
@@ -237,11 +248,8 @@ const filters = ref({
 const searchQuery = computed(() => uiStore.getSearchQuery(SEARCH_SCOPE))
 const searchTrigger = computed(() => uiStore.getSearchTrigger(SEARCH_SCOPE))
 
-// Keep the UI's "all" option explicit and map it to an empty API filter.
-const LEVEL_FILTER_ALL = 'all'
-
-const levelOptions = [
-  { value: LEVEL_FILTER_ALL, label: '全部级别' },
+const levelFilterOptions = [
+  { value: LEVEL_FILTER_ALL, label: '全部' },
   { value: 'DEBUG', label: '调试' },
   { value: 'INFO', label: '信息' },
   { value: 'WARNING', label: '警告' },
@@ -252,10 +260,32 @@ const levelOptions = [
 const fileOptions = computed(() => {
   return logFiles.value.map((file) => ({
     value: file.name,
-    // The active file size changes while the desktop app writes logs, making
-    // the toolbar label jitter and stealing attention from the chosen source.
+    // The active file size changes while the desktop app writes logs, so keep
+    // the selector stable and surface size in the result summary instead.
     label: file.name,
   }))
+})
+
+const selectedFile = computed(() => (
+  logFiles.value.find(file => file.name === filters.value.filename) || null
+))
+
+const logSummary = computed(() => (
+  loading.value && logs.value.length === 0
+    ? '读取中'
+    : `${totalLogs.value.toLocaleString()} 条记录`
+))
+
+const activeLevelLabel = computed(() => (
+  levelFilterOptions.find(option => option.value === filters.value.level)?.label || '全部'
+))
+
+const resultSummary = computed(() => {
+  const visible = logs.value.length.toLocaleString()
+  const total = totalLogs.value.toLocaleString()
+  return logs.value.length < totalLogs.value
+    ? `显示 ${visible} / ${total} 条`
+    : `${total} 条结果`
 })
 
 const hasActiveFilters = computed(() => Boolean(
@@ -302,12 +332,15 @@ async function loadLogs() {
         ...log,
         id: `${Date.now()}-${index}-${log.line_num}`,
       }))
+      totalLogs.value = Number.isFinite(data.total) ? data.total : logs.value.length
+      lastLoadedAt.value = new Date()
       loadError.value = ''
     }
   } catch (error) {
     Logger.error('Failed to load logs', error)
     if (requestId === latestRequestId) {
       logs.value = []
+      totalLogs.value = 0
       loadError.value = errorMessage(error, '无法读取日志，请检查后端连接后重试。')
     }
   } finally {
@@ -341,6 +374,14 @@ function setAutoRefresh(enabled) {
   if (enabled !== autoRefresh.value) toggleAutoRefresh()
 }
 
+function formatLoadedTime(date) {
+  return date.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
+
 const { allCopied, copyLog, copyAllLogs } = useLogClipboard({ logs, filters })
 const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs })
 </script>
@@ -364,65 +405,32 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   min-height: 0;
   flex: 1 1 auto;
   flex-direction: column;
-  padding-top: var(--space-4);
-  padding-bottom: var(--space-4);
+  gap: var(--space-5);
+  padding-top: var(--space-7);
+  padding-bottom: var(--space-7);
 }
 
-.log-toolbar {
+.log-filterbar {
   display: flex;
   width: 100%;
   min-width: 0;
-  min-height: 2.5rem;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
+  border-bottom: 1px solid var(--app-hairline);
 }
 
-.log-toolbar__identity {
+.log-filterbar__controls {
   display: flex;
   min-width: 0;
-  flex: 0 1 auto;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.log-toolbar__identity h1 {
-  margin: 0;
-  color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: 1rem;
-  font-weight: 650;
-  line-height: 1.3;
-}
-
-.log-toolbar__identity span {
-  color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.6875rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.log-toolbar__actions {
-  display: flex;
-  min-width: 0;
-  flex: 0 1 auto;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
 }
 
-.log-toolbar__level {
-  width: 7.5rem;
-}
-
-.log-toolbar__file {
+.log-filterbar__file {
   width: 13.5rem;
-}
-
-.log-toolbar__divider {
-  flex: 0 0 auto;
-  width: 1px;
-  height: 1rem;
-  background: var(--app-hairline);
 }
 
 .log-auto-refresh {
@@ -436,12 +444,65 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   cursor: pointer;
 }
 
+.log-filterbar__clear {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
 .log-feed {
   --log-grid-columns: 7.5rem 4.75rem minmax(9rem, 13rem) minmax(18rem, 1fr) 2rem;
   display: flex;
   min-height: 0;
   flex: 1 1 auto;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.log-feed__head {
+  display: flex;
+  min-height: 4.25rem;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  border-bottom: 1px solid var(--app-hairline);
+  padding: 0.75rem var(--space-4);
+}
+
+.log-feed__heading {
+  display: grid;
+  min-width: 0;
+  gap: 0.3rem;
+}
+
+.log-feed__heading h2 {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.log-feed__heading p {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+  color: hsl(var(--muted-foreground) / 0.82);
+  font-size: 0.6875rem;
+}
+
+.log-feed__heading p span + span::before {
+  margin-right: 0.5rem;
+  color: hsl(var(--muted-foreground) / 0.34);
+  content: '·';
+}
+
+.log-feed__updated {
+  flex: none;
+  color: hsl(var(--muted-foreground) / 0.72);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .log-columns,
@@ -454,7 +515,6 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 .log-columns {
   flex: none;
   align-items: center;
-  border-top: 1px solid var(--app-hairline);
   border-bottom: 1px solid var(--app-hairline);
   background: hsl(var(--muted) / 0.14);
   padding: 0.4375rem 0.75rem;
@@ -469,7 +529,6 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   flex: 1 1 auto;
   flex-direction: column;
   overflow: hidden;
-  border-bottom: 1px solid var(--app-hairline);
   font-family: var(--font-mono);
 }
 
@@ -639,20 +698,45 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   font-family: var(--font-sans);
 }
 
-@media (max-width: 1320px) {
-  .log-toolbar__actions {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-}
-
 @media (max-width: 1100px) {
+  .log-filterbar {
+    align-items: flex-end;
+  }
+
   .log-feed {
     --log-grid-columns: 7rem 4.5rem minmax(8rem, 10rem) minmax(16rem, 1fr) 2rem;
   }
 
-  .log-toolbar__file {
+  .log-filterbar__file {
     width: 11.5rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .log-filterbar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding-bottom: var(--space-2);
+  }
+
+  .log-filterbar__controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  .log-feed {
+    --log-grid-columns: 7rem 4.5rem minmax(16rem, 1fr) 2rem;
+  }
+
+  .log-columns > span:nth-child(3),
+  .log-source {
+    display: none;
+  }
+
+  .log-feed__updated {
+    display: none;
   }
 }
 
