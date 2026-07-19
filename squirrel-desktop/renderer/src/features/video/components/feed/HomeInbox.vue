@@ -3,7 +3,6 @@
     <header class="home-inbox__header">
       <div>
         <h2 id="home-inbox-title">最新入库</h2>
-        <p>{{ loading ? '正在同步内容…' : `当前显示 ${items.length} 条内容` }}</p>
       </div>
 
       <div class="home-inbox__tools">
@@ -14,6 +13,18 @@
           aria-label="首页内容范围"
           @update:model-value="setFilter"
         />
+        <Button
+          text
+          severity="secondary"
+          size="sm"
+          icon-only
+          title="刷新首页"
+          aria-label="刷新首页"
+          :disabled="loading"
+          @click="emit('refresh')"
+        >
+          <AppIcon name="refresh" class="size-4" />
+        </Button>
         <Button text severity="secondary" size="sm" @click="emit('viewMore')">
           查看全部
           <AppIcon name="chevronRight" class="size-3.5" />
@@ -82,6 +93,7 @@ const emit = defineEmits<{
   goToProfile: [profile: VideoProfile]
   goToSubscription: [id: number | string | null | undefined]
   viewMore: []
+  refresh: []
 }>()
 
 const filterOptions = [
@@ -146,14 +158,13 @@ defineExpose({ refresh: load })
 }
 
 .home-inbox__header {
-  min-height: 4rem;
+  min-height: 3.25rem;
   justify-content: space-between;
   gap: 1.5rem;
   border-bottom: 1px solid var(--app-hairline);
 }
 
 .home-inbox__header h2,
-.home-inbox__header p,
 .home-inbox__group-header h3 {
   margin: 0;
 }
@@ -163,12 +174,6 @@ defineExpose({ refresh: load })
   font-size: 1.125rem;
   font-weight: 680;
   letter-spacing: -0.02em;
-}
-
-.home-inbox__header p {
-  margin-top: 0.15rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
 }
 
 .home-inbox__tools {
