@@ -1,16 +1,12 @@
 <template>
   <AppPageShell class="site-runtime-page" variant="compact" surface="operate" width="table">
     <main class="app-page-content site-runtime-page__content">
-      <header class="site-runtime-header">
-        <div class="site-runtime-header__copy">
-          <div class="site-runtime-header__title">
-            <h1>站点</h1>
-            <span>{{ runtimeSummary }}</span>
-          </div>
-          <p>管理内容来源的启用状态、网络连接与账户授权。</p>
-        </div>
-
-        <div class="site-runtime-header__actions">
+      <AppOperatePageHeader
+        title="站点"
+        :summary="runtimeSummary"
+        description="管理内容来源的启用状态、网络连接与账户授权。"
+      >
+        <template #actions>
           <input
             ref="cookiesFileInput"
             type="file"
@@ -68,8 +64,8 @@
             <AppSpinner v-if="reloading" size="sm" />
             <AppIcon v-else name="refresh" class="h-4 w-4" />
           </Button>
-        </div>
-      </header>
+        </template>
+      </AppOperatePageHeader>
 
       <div class="site-runtime-filterbar">
         <AppSectionNav
@@ -127,6 +123,7 @@
 import { onMounted, ref, computed } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
@@ -590,59 +587,6 @@ onMounted(() => {
   padding-bottom: var(--space-8);
 }
 
-.site-runtime-header {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-7);
-}
-
-.site-runtime-header__copy {
-  display: grid;
-  min-width: 0;
-  gap: var(--space-2);
-}
-
-.site-runtime-header__title {
-  display: flex;
-  min-width: 0;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.site-runtime-header__title h1 {
-  margin: 0;
-  color: hsl(var(--foreground));
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.site-runtime-header__title span {
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 550;
-}
-
-.site-runtime-header__copy p {
-  margin: 0;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
-
-.site-runtime-header__actions {
-  display: flex;
-  min-width: 0;
-  flex: none;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-
 .site-runtime-filterbar {
   display: flex;
   min-height: 2.75rem;
@@ -685,15 +629,6 @@ onMounted(() => {
 }
 
 @media (max-width: 900px) {
-  .site-runtime-header {
-    flex-direction: column;
-  }
-
-  .site-runtime-header__actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
   .site-runtime-filterbar > span {
     display: none;
   }

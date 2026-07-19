@@ -1,4 +1,4 @@
-import type { SchedulerStatistics } from '@/features/settings/types/scheduler'
+import type { ScheduledTask, SchedulerStatistics } from '@/features/settings/types/scheduler'
 
 /**
  * Pure presentation helpers for the scheduled-tasks view.
@@ -18,6 +18,24 @@ const UNIT_LABELS: Record<string, string> = {
   days: '天',
 }
 
+const UNIT_SECONDS: Record<string, number> = {
+  seconds: 1,
+  minutes: 60,
+  hours: 60 * 60,
+  days: 24 * 60 * 60,
+}
+
+const TASK_DISPLAY_NAMES: Record<string, string> = {
+  MeiliReindexTask: '搜索索引重建',
+  SubscriptionAutoImportTask: '订阅自动导入',
+  CookieCloudSyncTask: 'CookieCloud 凭据同步',
+  SubscriptionPendingReconcileTask: '待处理订阅校准',
+  ThumbnailRefreshTask: '视频封面刷新',
+  SubscriptionIncrementalUpdateTask: '订阅增量更新',
+  SubscriptionFullUpdateTask: '订阅全量更新',
+  CloudflareHeartbeatTask: 'Cloudflare 心跳检测',
+}
+
 const STATUS_LABELS: Record<string, string> = {
   enabled: '就绪',
   disabled: '暂停',
@@ -35,6 +53,58 @@ const STATUS_BADGE_VARIANTS: Record<string, 'outline' | 'muted' | 'active' | 'er
 
 /** Full label for an interval unit (seconds/minutes/hours/days). */
 export const getUnitFull = (unit: string): string => UNIT_LABELS[unit] || unit
+
+/**
+ * Human-facing name for a task. Built-in scheduler class names are translated;
+ * custom names are preserved, while unknown `*Task` identifiers are split into
+ * readable words instead of leaking an implementation-style token into the UI.
+ */
+export const getTaskDisplayName = (
+  task: Pick<ScheduledTask, 'name' | 'task_class'>,
+): string => {
+  const candidates = [task.name, task.task_class].filter(Boolean)
+  for (const candidate of candidates) {
+    if (TASK_DISPLAY_NAMES[candidate]) return TASK_DISPLAY_NAMES[candidate]
+  }
+
+  const name = task.name.trim()
+  if (!/^[A-Z][A-Za-z0-9]+Task$/.test(name)) return name || '未命名任务'
+
+  return name
+    .replace(/Task$/, '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+}
+
+/** Normalizes an interval to the largest exact unit and returns natural copy. */
+export const formatTaskInterval = (interval: number, unit: string): string => {
+  const multiplier = UNIT_SECONDS[unit]
+  if (!multiplier || !Number.isFinite(interval) || interval <= 0) {
+    return `${interval} ${getUnitFull(unit)}`
+  }
+
+  const totalSeconds = interval * multiplier
+  const units = [
+    { unit: 'days', seconds: UNIT_SECONDS.days },
+    { unit: 'hours', seconds: UNIT_SECONDS.hours },
+    { unit: 'minutes', seconds: UNIT_SECONDS.minutes },
+    { unit: 'seconds', seconds: UNIT_SECONDS.seconds },
+  ]
+  const normalized = units.find(candidate => totalSeconds % candidate.seconds === 0)
+  if (!normalized) return `${interval} ${getUnitFull(unit)}`
+
+  const value = totalSeconds / normalized.seconds
+  if (value === 1) {
+    const singularLabels: Record<string, string> = {
+      seconds: '每秒',
+      minutes: '每分钟',
+      hours: '每小时',
+      days: '每天',
+    }
+    return singularLabels[normalized.unit]
+  }
+  return `每 ${value} ${getUnitFull(normalized.unit)}`
+}
 
 /** Chinese label for a task status (enabled/disabled/running/error). */
 export const getStatusText = (status: string): string => STATUS_LABELS[status] || status
@@ -61,6 +131,7 @@ export const getStatusCount = (status: string, stats: SchedulerStatistics): numb
 export const formatDateTime = (val: string | null | undefined): string | null => {
   if (!val) return null
   const date = new Date(val)
+  if (Number.isNaN(date.getTime())) return null
   return date.toLocaleString('zh-CN', {
     month: '2-digit',
     day: '2-digit',

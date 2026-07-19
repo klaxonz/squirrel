@@ -1,27 +1,25 @@
 <template>
   <AppPageShell class="scheduled-tasks-page" variant="compact" surface="operate" width="table">
-    <AppToolbarFrame bordered sticky>
-      <section class="scheduled-toolbar" aria-label="定时任务工具栏">
-        <div class="scheduled-toolbar__leading">
-          <div class="scheduled-toolbar__identity">
-            <h1>定时任务</h1>
-            <span>{{ taskSummary }}</span>
-          </div>
-          <AppSectionNav
-            class="app-section-nav--optical"
-            :model-value="statusFilter"
-            :options="statusNavOptions"
-            aria-label="任务状态"
-            @change="handleStatusChange"
-          />
-        </div>
-
-        <div class="scheduled-toolbar__actions">
+    <main class="app-page-content scheduled-tasks-content">
+      <AppOperatePageHeader
+        title="定时任务"
+        :summary="taskSummary"
+        description="安排订阅同步、索引维护与后台作业。"
+      >
+        <template #actions>
+          <Button
+            type="button" size="sm"
+            @click="showCreateDialog = true"
+          >
+            <AppIcon name="plus" class="h-4 w-4" />
+            新建任务
+          </Button>
           <Button
             type="button"
             text severity="secondary"
             size="sm" icon-only
-            class="app-toolbar-control app-toolbar-icon-button"
+            class="scheduled-tasks-refresh"
+            :disabled="loading"
             title="刷新任务"
             aria-label="刷新任务"
             @click="refreshData"
@@ -29,177 +27,153 @@
             <AppSpinner v-if="loading" size="sm" />
             <AppIcon v-else name="refresh" class="h-4 w-4" />
           </Button>
-          <Button type="button" severity="secondary" outlined size="sm" @click="showCreateDialog = true">
-            <AppIcon name="plus" class="h-4 w-4" />
-            新建任务
-          </Button>
-        </div>
-      </section>
-    </AppToolbarFrame>
+        </template>
+      </AppOperatePageHeader>
 
-    <main class="app-page-content scheduled-tasks-content">
-      <dl class="scheduled-status-strip" aria-label="任务概览">
-        <div class="scheduled-status-item">
-          <dt>活跃</dt>
-          <dd>{{ statistics.active_tasks }}</dd>
-        </div>
-        <div class="scheduled-status-item">
-          <dt>运行中</dt>
-          <dd>{{ statistics.running_tasks }}</dd>
-        </div>
-        <div class="scheduled-status-item" :class="{ 'is-alert': statistics.error_tasks > 0 }">
-          <dt>异常</dt>
-          <dd>{{ statistics.error_tasks }}</dd>
-        </div>
-        <div class="scheduled-status-item">
-          <dt>今日执行</dt>
-          <dd>{{ statistics.today_executions }}</dd>
-        </div>
-      </dl>
+      <div class="scheduled-tasks-filterbar">
+        <AppSectionNav
+          :model-value="statusFilter"
+          :options="statusNavOptions"
+          aria-label="任务状态"
+          @change="handleStatusChange"
+        />
+        <span>任务状态来自当前调度器，列表会随搜索与筛选更新</span>
+      </div>
 
-      <section class="scheduled-table-region" :aria-label="`${activeStatusLabel}任务`">
-        <div class="app-table-shell">
-          <div class="app-table-frame">
-            <div class="app-table-head task-grid">
-              <div>任务</div>
-              <div>状态</div>
-              <div>频率</div>
-              <div>下次运行</div>
-              <div class="text-right">操作</div>
+      <section class="scheduled-task-list app-settings-panel" :aria-label="`${activeStatusLabel}任务`">
+        <header class="scheduled-task-list__head">
+          <div class="scheduled-task-list__heading">
+            <h2>{{ taskPanelTitle }}</h2>
+            <p aria-label="任务运行概览">
+              <span>{{ statistics.active_tasks }} / {{ statistics.total_tasks }} 参与调度</span>
+              <span>{{ statistics.running_tasks }} 个正在运行</span>
+              <span>{{ statistics.today_executions }} 次今日执行</span>
+              <span v-if="statistics.error_tasks" class="is-alert">
+                {{ statistics.error_tasks }} 个异常
+              </span>
+            </p>
+          </div>
+        </header>
+
+        <div v-if="loading && tasks.length === 0" class="scheduled-task-list__loading">
+          <AppSkeleton
+            v-for="i in 5"
+            :key="i"
+            height="5.25rem"
+            rounded="var(--radius-md)"
+            shimmer
+          />
+        </div>
+
+        <div v-else-if="isError" class="app-page-empty app-page-empty--compact">
+          <AppEmptyState variant="error" title="任务加载失败" :copy="errorMessage">
+            <template #actions>
+              <Button size="sm" @click="refreshData">重试</Button>
+            </template>
+          </AppEmptyState>
+        </div>
+
+        <div v-else-if="tasks.length === 0" class="app-page-empty app-page-empty--compact">
+          <AppEmptyState
+            variant="plain"
+            icon="time"
+            :title="hasTaskFilters ? '未找到相关任务' : '暂无定时任务'"
+            :copy="hasTaskFilters ? '调整筛选条件后再试。' : '创建任务后会显示在这里。'"
+          >
+            <template #actions>
+              <Button
+                v-if="hasTaskFilters"
+                size="sm"
+                severity="secondary"
+                @click="clearTaskFilters"
+              >
+                清空筛选
+              </Button>
+              <Button v-else size="sm" @click="showCreateDialog = true">
+                新建任务
+              </Button>
+            </template>
+          </AppEmptyState>
+        </div>
+
+        <template v-else>
+          <article
+            v-for="task in tasks"
+            :key="task.id"
+            class="scheduled-task-row scheduled-task-columns"
+          >
+            <div class="scheduled-task-row__identity">
+              <div class="scheduled-task-row__glyph" aria-hidden="true">
+                <AppIcon name="time" class="size-4" />
+              </div>
+              <div class="scheduled-task-row__copy">
+                <h3>{{ getTaskDisplayName(task) }}</h3>
+                <p>{{ task.description || '未添加任务说明' }}</p>
+              </div>
             </div>
 
-            <div
-              v-if="loading && tasks.length === 0"
-              class="app-table-loading app-content-stack app-content-stack--dense"
-            >
-              <AppSkeleton
-                v-for="i in 5"
-                :key="i"
-                height="3.5rem"
-                rounded="var(--radius-lg)"
-                shimmer
+            <div class="scheduled-task-row__status" :data-status="task.status">
+              <span class="scheduled-task-row__status-dot" aria-hidden="true" />
+              <div>
+                <span>状态</span>
+                <strong>{{ getStatusText(task.status) }}</strong>
+              </div>
+            </div>
+
+            <div class="scheduled-task-row__schedule">
+              <span class="scheduled-task-row__cell-label">执行计划</span>
+              <strong>{{ formatTaskInterval(task.interval, task.unit) }}</strong>
+              <span>下次 {{ formatDateTime(task.next_run_at) || '尚未安排' }}</span>
+            </div>
+
+            <div class="scheduled-task-row__actions">
+              <Button
+                text severity="secondary"
+                size="sm"
+                class="scheduled-task-row__action"
+                title="立即执行"
+                @click="executeTask(task)"
+              >
+                <AppIcon name="play" class="h-4 w-4 fill-current" />
+                执行
+              </Button>
+              <Button
+                text severity="secondary"
+                size="sm"
+                class="scheduled-task-row__action"
+                title="编辑任务"
+                @click="editTask(task)"
+              >
+                <AppIcon name="pencil" class="h-4 w-4" />
+                编辑
+              </Button>
+              <AppActionMenu
+                :items="taskActionItems(task)"
+                :trigger-label="`${getTaskDisplayName(task)} 管理操作`"
               />
             </div>
+          </article>
+        </template>
 
-            <div v-else-if="isError" class="app-page-empty app-page-empty--compact">
-              <AppEmptyState
-                variant="error"
-                title="任务加载失败"
-                :copy="errorMessage"
-              >
-                <template #actions>
-                  <Button size="sm" @click="refreshData">重试</Button>
-                </template>
-              </AppEmptyState>
-            </div>
-
-            <div v-else-if="tasks.length === 0" class="app-page-empty app-page-empty--compact">
-              <AppEmptyState
-                variant="plain"
-                icon="time"
-                :title="hasTaskFilters ? '未找到相关任务' : '暂无定时任务'"
-                :copy="hasTaskFilters ? '调整筛选条件后再试。' : '创建任务后会显示在这里。'"
-              >
-                <template #actions>
-                  <Button
-                    v-if="hasTaskFilters"
-                    size="sm"
-                    severity="secondary"
-                    @click="clearTaskFilters"
-                  >
-                    清空筛选
-                  </Button>
-                  <Button
-                    v-else
-                    size="sm"
-                    @click="showCreateDialog = true"
-                  >
-                    新建任务
-                  </Button>
-                </template>
-              </AppEmptyState>
-            </div>
-
-            <div v-else class="app-table-body">
-              <div
-                v-for="task in tasks"
-                :key="task.id"
-                class="app-table-row task-grid group"
-              >
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2">
-                    <span class="truncate text-sm font-semibold text-foreground">{{ task.name }}</span>
-                  </div>
-                  <p v-if="task.description" class="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                    {{ task.description }}
-                  </p>
-                </div>
-
-                <div>
-                  <Badge :variant="getStatusBadgeVariant(task.status)" class="h-7 px-2.5">
-                    {{ getStatusText(task.status) }}
-                  </Badge>
-                </div>
-
-                <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                  <AppIcon name="time" class="h-3.5 w-3.5" />
-                  <span>{{ task.interval }} {{ getUnitFull(task.unit) }}</span>
-                </div>
-
-                <div class="text-sm tabular-nums text-muted-foreground">
-                  {{ formatDateTime(task.next_run_at) || '—' }}
-                </div>
-
-                <div class="flex items-center justify-end gap-1">
-                  <Button
-                    text severity="secondary"
-                    size="sm" icon-only
-                    class="text-muted-foreground"
-                    title="立即执行"
-                    @click="executeTask(task)"
-                  >
-                    <AppIcon name="play" class="h-4 w-4 fill-current" />
-                  </Button>
-                  <Button
-                    text severity="secondary"
-                    size="sm" icon-only
-                    class="text-muted-foreground"
-                    title="编辑"
-                    @click="editTask(task)"
-                  >
-                    <AppIcon name="pencil" class="h-4 w-4" />
-                  </Button>
-                  <AppActionMenu
-                    :items="taskActionItems(task)"
-                    :trigger-label="`${task.name} 管理操作`"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div v-if="totalPages > 1" class="app-table-pager">
-              <span class="text-xs text-muted-foreground">
-                第 {{ currentPage }} / {{ totalPages }} 页
-              </span>
-              <div class="flex items-center gap-2">
-                <Button
-                  severity="secondary" outlined
-                  size="sm"
-                  :disabled="currentPage <= 1"
-                  @click="goToPage(currentPage - 1)"
-                >
-                  上一页
-                </Button>
-                <Button
-                  severity="secondary" outlined
-                  size="sm"
-                  :disabled="currentPage >= totalPages"
-                  @click="goToPage(currentPage + 1)"
-                >
-                  下一页
-                </Button>
-              </div>
-            </div>
+        <div v-if="totalPages > 1" class="scheduled-task-list__pager">
+          <span>第 {{ currentPage }} / {{ totalPages }} 页</span>
+          <div>
+            <Button
+              severity="secondary" outlined
+              size="sm"
+              :disabled="currentPage <= 1"
+              @click="goToPage(currentPage - 1)"
+            >
+              上一页
+            </Button>
+            <Button
+              severity="secondary" outlined
+              size="sm"
+              :disabled="currentPage >= totalPages"
+              @click="goToPage(currentPage + 1)"
+            >
+              下一页
+            </Button>
           </div>
         </div>
       </section>
@@ -258,20 +232,19 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
+import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
-import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppActionMenu from '@/shared/components/AppActionMenu.vue'
 import TaskDialog from '@/features/settings/components/TaskDialog.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import { Button } from '@/shared/ui/button'
-import { Badge } from '@/shared/ui/badge'
 import type { ScheduledTask } from '@/features/settings/types/scheduler'
 import {
-  getUnitFull,
+  formatTaskInterval,
+  getTaskDisplayName,
   getStatusText,
   getStatusCount as getStatusCountFor,
-  getStatusBadgeVariant,
   formatDateTime,
 } from '@/features/settings/lib/scheduledTaskPresenters'
 import { useScheduledTaskQueries } from '@/features/settings/composables/useScheduledTaskQueries'
@@ -321,13 +294,16 @@ const clearTaskFilters = () => {
 }
 
 const taskSummary = computed(() => {
-  const stats = statistics.value
-  return `${stats.total_tasks} 个任务，${stats.active_tasks} 个正在参与调度`
+  return `${statistics.value.total_tasks} 个任务`
 })
 
 const activeStatusLabel = computed(() => {
   return statusOptions.find(option => option.value === statusFilter.value)?.label || '全部'
 })
+
+const taskPanelTitle = computed(() => (
+  statusFilter.value === 'all' ? '任务列表' : `${activeStatusLabel.value}任务`
+))
 
 const statusOptions = [
   { value: 'all', label: '全部' },
@@ -456,120 +432,295 @@ watch(searchQueryDebounced, () => {
   --app-page-max-width: var(--app-content-table-max);
 }
 
-.scheduled-toolbar {
+.scheduled-tasks-content {
   display: flex;
-  width: 100%;
-  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding-top: var(--space-7);
+  padding-bottom: var(--space-8);
+}
+
+.scheduled-tasks-refresh {
+  width: 2rem;
+  height: 2rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.scheduled-tasks-filterbar {
+  display: flex;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-}
-
-.scheduled-toolbar__leading {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: var(--space-5);
-}
-
-.scheduled-toolbar__identity {
-  display: flex;
-  min-width: 0;
-  flex: none;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.scheduled-toolbar__identity h1 {
-  margin: 0;
-  color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: 1rem;
-  font-weight: 650;
-}
-
-.scheduled-toolbar__identity span {
-  color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
-}
-
-.scheduled-toolbar__actions {
-  display: flex;
-  min-width: 0;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.scheduled-tasks-content {
-  --app-table-min-width: 860px;
-  --app-table-columns: minmax(24rem, 1fr) 7rem 9rem 11rem 7rem;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding-top: var(--space-4);
-}
-
-.scheduled-status-strip {
-  display: flex;
-  min-height: 2.5rem;
-  align-items: center;
-  margin: 0;
   border-bottom: 1px solid var(--app-hairline);
 }
 
-.scheduled-status-item {
+.scheduled-tasks-filterbar > span {
+  color: hsl(var(--muted-foreground) / 0.72);
+  font-size: 0.6875rem;
+}
+
+.scheduled-task-list {
+  width: 100%;
+}
+
+.scheduled-task-list__head {
+  display: flex;
+  min-height: 4.25rem;
+  align-items: center;
+  border-bottom: 1px solid var(--app-hairline);
+  padding: 0.75rem var(--space-4);
+}
+
+.scheduled-task-list__heading {
+  display: grid;
+  min-width: 0;
+  gap: 0.3rem;
+}
+
+.scheduled-task-list__heading h2 {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.scheduled-task-list__heading p {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+  color: hsl(var(--muted-foreground) / 0.82);
+  font-size: 0.6875rem;
+}
+
+.scheduled-task-list__heading p span + span::before {
+  margin-right: 0.5rem;
+  color: hsl(var(--muted-foreground) / 0.34);
+  content: '·';
+}
+
+.scheduled-task-list__heading .is-alert {
+  color: hsl(var(--destructive) / 0.88);
+}
+
+.scheduled-task-list__loading {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.scheduled-task-columns {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1.25fr) minmax(8rem, 0.55fr) minmax(12rem, 0.7fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.scheduled-task-row {
+  min-height: 5.25rem;
+  border-bottom: 1px solid var(--app-hairline);
+  padding: 0.75rem var(--space-4);
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.scheduled-task-row:last-of-type {
+  border-bottom: 0;
+}
+
+.scheduled-task-row:hover,
+.scheduled-task-row:focus-within {
+  background: var(--app-row-hover-bg);
+}
+
+.scheduled-task-row__identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.scheduled-task-row__glyph {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: var(--radius-md);
+  background: hsl(var(--muted) / 0.45);
+  color: hsl(var(--muted-foreground));
+}
+
+.scheduled-task-row__copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.125rem;
+}
+
+.scheduled-task-row__copy h3,
+.scheduled-task-row__copy p {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scheduled-task-row__copy h3 {
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 620;
+}
+
+.scheduled-task-row__copy p {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  line-height: 1.35;
+}
+
+.scheduled-task-row__status {
+  display: grid;
+  min-width: 7rem;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.scheduled-task-row__status-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: hsl(var(--muted-foreground) / 0.42);
+}
+
+.scheduled-task-row__status > div {
   display: flex;
   align-items: baseline;
   gap: 0.375rem;
-  margin: 0;
 }
 
-.scheduled-status-item + .scheduled-status-item {
-  margin-left: var(--space-5);
-  border-left: 1px solid var(--app-hairline);
-  padding-left: var(--space-5);
-}
-
-.scheduled-status-item dt {
-  color: hsl(var(--muted-foreground) / 0.82);
+.scheduled-task-row__status span:not(.scheduled-task-row__status-dot) {
+  color: hsl(var(--muted-foreground) / 0.76);
   font-size: 0.6875rem;
-  font-weight: 550;
-  line-height: 1.25;
 }
 
-.scheduled-status-item dd {
-  margin: 0;
-  color: hsl(var(--foreground));
+.scheduled-task-row__status strong {
+  color: hsl(var(--foreground) / 0.78);
   font-size: 0.75rem;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.25;
+  font-weight: 600;
 }
 
-.scheduled-status-item.is-alert dd {
-  color: hsl(var(--destructive));
+.scheduled-task-row__status[data-status='enabled'] .scheduled-task-row__status-dot {
+  background: hsl(var(--success));
 }
 
-.scheduled-table-region {
+.scheduled-task-row__status[data-status='running'] .scheduled-task-row__status-dot {
+  background: hsl(var(--primary));
+}
+
+.scheduled-task-row__status[data-status='error'] .scheduled-task-row__status-dot {
+  background: hsl(var(--destructive) / 0.82);
+}
+
+.scheduled-task-row__status[data-status='error'] strong {
+  color: hsl(var(--destructive) / 0.86);
+}
+
+.scheduled-task-row__schedule {
+  display: grid;
   min-width: 0;
+  gap: 0.15rem;
 }
 
-.scheduled-table-region .app-table-row {
-  min-height: 4.25rem;
+.scheduled-task-row__cell-label {
+  color: hsl(var(--muted-foreground) / 0.68);
+  font-size: 0.625rem;
+  font-weight: 550;
 }
 
-.task-grid {
-  grid-template-columns: var(--app-table-columns);
+.scheduled-task-row__schedule strong {
+  color: hsl(var(--foreground) / 0.78);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
-.tabular-nums {
+.scheduled-task-row__schedule > span:last-child {
+  overflow: hidden;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scheduled-task-row__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.scheduled-task-row__action {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+.scheduled-task-list__pager {
+  display: flex;
+  min-height: 3.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-top: 1px solid var(--app-hairline);
+  padding: 0.625rem var(--space-4);
+}
+
+.scheduled-task-list__pager > span {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 1180px) {
-  .scheduled-toolbar__identity span {
+.scheduled-task-list__pager > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@media (max-width: 1000px) {
+  .scheduled-task-columns {
+    grid-template-columns: minmax(16rem, 1fr) minmax(11rem, 0.65fr) auto;
+  }
+
+  .scheduled-task-row__status {
     display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .scheduled-tasks-filterbar > span {
+    display: none;
+  }
+
+  .scheduled-task-columns {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .scheduled-task-row__schedule {
+    display: none;
+  }
+
+  .scheduled-task-row__action {
+    width: 2rem;
+    padding-inline: 0;
+    font-size: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scheduled-task-row {
+    transition: none;
   }
 }
 </style>
