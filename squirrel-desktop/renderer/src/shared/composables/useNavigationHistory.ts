@@ -10,6 +10,7 @@ import {
   listForwardCandidates,
   pushEntryReactive,
   replaceEntryReactive,
+  patchEntryReactive,
   patchCurrentEntryReactive,
   resetReactive,
   stepBackReactive,
@@ -77,6 +78,11 @@ export function useNavigationHistory() {
     return currentEntry()
   })
 
+  function findBackEntry(predicate: (entry: HistoryEntry) => boolean): HistoryEntry | null {
+    void tick.value
+    return listBackCandidates(Number.MAX_SAFE_INTEGER).find(predicate) ?? null
+  }
+
   const direction = ref<'forward' | 'back' | 'replace'>('replace')
 
   async function goBack(): Promise<boolean> {
@@ -125,9 +131,10 @@ export function useNavigationHistory() {
   }
 
   function jumpTo(entryId: string): boolean {
+    const previousEntryId = currentEntry()?.id
     const entry = jumpToEntryReactive(entryId)
     if (!entry) return false
-    direction.value = entry && currentEntry()?.id === entry.id ? 'replace' : 'back'
+    direction.value = previousEntryId === entry.id ? 'replace' : 'back'
     suppressNextStackUpdate()
     void router.replace(entry.fullPath)
     return true
@@ -141,8 +148,25 @@ export function useNavigationHistory() {
     return replaceEntryReactive(input)
   }
 
-  function saveScrollPosition(scrollY: number) {
+  function saveScrollPosition(scrollY: number, entryId?: string | null) {
+    if (entryId) {
+      patchEntryReactive(entryId, { scrollY })
+      return
+    }
     patchCurrentEntryReactive({ scrollY })
+  }
+
+  function saveScrollPositions(scrollPositions: Record<string, number>, entryId?: string | null) {
+    const scrollY = scrollPositions.main
+    const patch = {
+      scrollPositions,
+      ...(typeof scrollY === 'number' ? { scrollY } : {}),
+    }
+    if (entryId) {
+      patchEntryReactive(entryId, patch)
+      return
+    }
+    patchCurrentEntryReactive(patch)
   }
 
   // ── legacy internal-back bridge (music detail / artist detail etc.) ──
@@ -178,6 +202,7 @@ export function useNavigationHistory() {
     canGoForward,
     goForward,
     jumpTo,
+    findBackEntry,
     backCandidates,
     forwardCandidates,
     current,
@@ -185,6 +210,7 @@ export function useNavigationHistory() {
     recordEntry,
     replaceCurrentEntry,
     saveScrollPosition,
+    saveScrollPositions,
     reset: resetReactive,
 
     // 兼容 VideoPlay 的旧字段（继续从历史栈的第一个非 video entry 推导）

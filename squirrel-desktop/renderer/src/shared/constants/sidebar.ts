@@ -31,6 +31,12 @@ export interface NavigationItem {
   activePrefixes?: string[]
   activeRouteNames?: string[]
   /**
+   * Sidebar history targets may be narrower than active highlighting. For
+   * example, the video player highlights “视频” but clicking that item must
+   * return to a list route rather than an older player entry.
+   */
+  historyPathPrefixes?: string[]
+  /**
    * 解析点击时实际跳转的路径。返回 `null` 时回退到 `path`。
    * 当前仅 settings 用：已在 settings 内时保持当前 tab；否则进入默认 tab。
    */
@@ -136,6 +142,7 @@ export const NAV_ITEMS: NavigationItem[] = [
     icon: 'film',
     group: 'media',
     activePrefixes: ['/videos', '/video/'],
+    historyPathPrefixes: ['/videos/'],
     activeRouteNames: [
       'VideosView',
       'AllVideos',
@@ -309,6 +316,22 @@ export function isNavigationItemActive(
 
   const routeName = normalizeRouteName(currentRouteOrPath.name)
   return item.activeRouteNames?.includes(routeName) ?? false
+}
+
+export function isNavigationHistoryEntryForItem(
+  item: NavigationItem,
+  entry: { fullPath: string; name?: string | symbol | null },
+): boolean {
+  const path = entry.fullPath.split(/[?#]/, 1)[0] || ''
+  if (item.historyPathPrefixes) {
+    return path === item.path
+      || item.historyPathPrefixes.some((prefix) => path.startsWith(prefix))
+  }
+  if (isNavigationItemActive(item, path)) return true
+  return Boolean(
+    entry.name
+    && item.activeRouteNames?.includes(String(entry.name)),
+  )
 }
 
 export function findNavigationItemByKey(key: AppNavKey | '' | null | undefined): NavigationItem | undefined {

@@ -26,6 +26,10 @@ export const useDesktopBridge = () => {
     return b?.onServerUrlChange?.(listener)
   }
 
+  const onNavigate = (listener: (direction: 'back' | 'forward') => void): (() => void) | undefined => {
+    return getDesktopBridge()?.onNavigate?.(listener)
+  }
+
   const getRemoteChannel = (params: Parameters<NonNullable<DesktopAppBridge['getRemoteChannel']>>[0]) => {
     const b = getDesktopBridge()
     return b?.getRemoteChannel?.(params)
@@ -57,6 +61,7 @@ export const useDesktopBridge = () => {
     setServerUrl,
     clearServerUrl,
     onServerUrlChange,
+    onNavigate,
     getRemoteChannel,
     resolveYouTubeSubtitles,
     resolveBilibiliSubtitles,

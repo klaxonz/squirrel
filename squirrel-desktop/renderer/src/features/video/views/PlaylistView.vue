@@ -265,6 +265,8 @@ import { usePlaylistThumbnails } from '@/features/video/composables/usePlaylistT
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
 import type { PlaylistItem } from '@/features/video/types/playlist'
 
+defineOptions({ name: 'PlaylistView' })
+
 const router = useRouter()
 
 const {

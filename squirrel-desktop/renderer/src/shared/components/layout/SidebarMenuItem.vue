@@ -2,17 +2,24 @@
   <RouterLink
     :to="targetPath"
     :replace="!item.resolvePath"
-    class="sidebar-item"
-    :class="{ 'is-active': isActive, 'is-collapsed': collapsed }"
-    :aria-current="isActive ? 'page' : undefined"
-    :title="collapsed ? item.name : undefined"
+    custom
+    v-slot="{ href, navigate }"
   >
-    <AppIcon
-      :name="item.icon"
-      class="sidebar-item__icon"
-      :stroke-width="isActive ? 2 : 1.75"
-    />
-    <span class="sidebar-item__label">{{ item.name }}</span>
+    <a
+      :href="href"
+      class="sidebar-item"
+      :class="{ 'is-active': isActive, 'is-collapsed': collapsed }"
+      :aria-current="isActive ? 'page' : undefined"
+      :title="collapsed ? item.name : undefined"
+      @click="handleClick($event, navigate)"
+    >
+      <AppIcon
+        :name="item.icon"
+        class="sidebar-item__icon"
+        :stroke-width="isActive ? 2 : 1.75"
+      />
+      <span class="sidebar-item__label">{{ item.name }}</span>
+    </a>
   </RouterLink>
 </template>
 
@@ -20,7 +27,11 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import type { NavigationItem } from '@/shared/constants/sidebar'
+import {
+  isNavigationHistoryEntryForItem,
+  type NavigationItem,
+} from '@/shared/constants/sidebar'
+import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 
 const props = defineProps<{
   item: NavigationItem
@@ -29,7 +40,37 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
+const nav = useNavigationHistory()
 const targetPath = computed(() => props.item.resolvePath?.(route.path) ?? props.item.path)
+const previousEntry = computed(() => nav.findBackEntry((entry) => (
+  isNavigationHistoryEntryForItem(props.item, entry)
+)) ?? null)
+
+type RouterNavigate = (event?: MouseEvent) => unknown
+
+const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
+  if (
+    event.defaultPrevented
+    || event.button !== 0
+    || event.metaKey
+    || event.ctrlKey
+    || event.shiftKey
+    || event.altKey
+  ) return
+
+  // Sidebar sections behave like persistent workspaces. When the requested
+  // section already exists in app history (most notably list → playback),
+  // return to that exact entry so its filters, loaded pages and scroll roots
+  // survive. A genuinely new section still follows the RouterLink target.
+  const entry = previousEntry.value
+  if (entry && route.fullPath !== entry.fullPath) {
+    event.preventDefault()
+    nav.jumpTo(entry.id)
+    return
+  }
+
+  void navigate(event)
+}
 </script>
 
 <style scoped>

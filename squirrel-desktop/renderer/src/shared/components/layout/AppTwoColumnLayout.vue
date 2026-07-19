@@ -36,6 +36,7 @@
         v-if="mainScroll"
         ref="scrollEl"
         class="app-workbench__scroll custom-scrollbar"
+        data-route-scroll="workbench-main"
       >
         <slot />
       </div>

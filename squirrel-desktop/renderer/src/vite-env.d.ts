@@ -40,6 +40,7 @@ interface DesktopAppBridge {
   setServerUrl?: (url: string) => Promise<string | false>
   clearServerUrl?: () => Promise<boolean>
   onServerUrlChange?: (listener: (url: string) => void) => () => void
+  onNavigate?: (listener: (direction: 'back' | 'forward') => void) => () => void
 }
 
 type DesktopPlaybackResolver = (

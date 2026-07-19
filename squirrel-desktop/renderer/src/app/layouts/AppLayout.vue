@@ -1,11 +1,16 @@
 <template>
   <div
+    ref="layoutRef"
     class="app-layout"
     :class="{
       'app-layout--desktop': isDesktop,
       'app-layout--immersive': isImmersiveSurface,
     }"
     :style="{ '--workspace-offset': sidebarWidth }"
+    @scroll.capture.passive="handleRouteScroll"
+    @wheel.capture="cancelScrollRestoration"
+    @touchstart.capture="cancelScrollRestoration"
+    @pointerdown.capture="cancelScrollRestoration"
   >
     <DesktopTitleBar
       v-if="isDesktop"
@@ -31,7 +36,7 @@
           class="app-layout__scroll custom-scrollbar overflow-anchor-none"
           :class="musicBarPadding"
           :id="MAIN_SCROLL_ID"
-          @scroll.passive="handleScroll"
+          :data-route-scroll="MAIN_ROUTE_SCROLL_KEY"
         >
           <GlobalVideoPlayerHost />
           <section class="app-layout__stage">
@@ -62,8 +67,23 @@ import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 import { useUIStore } from '@/shared/stores/ui'
 import { MAIN_SCROLL_ID } from '@/shared/composables/useMainScrollRoot'
 import { useModalEscapeApi } from '@/shared/composables/useModalEscape'
+import {
+  MAIN_ROUTE_SCROLL_KEY,
+  applyRouteScrollPositions,
+  collectRouteScrollPositions,
+  type RouteScrollPositions,
+} from '@/shared/lib/routeScrollRestoration'
+import {
+  createNativeNavigationDeduper,
+  navigationDirectionForMouseButton,
+  type NativeNavigationDirection,
+  type NativeNavigationSource,
+} from '@/shared/lib/nativeNavigation'
 
-const { isDesktop: isDesktopClient } = useDesktopBridge()
+const {
+  isDesktop: isDesktopClient,
+  onNavigate: onDesktopNavigate,
+} = useDesktopBridge()
 const isDesktop = isDesktopClient()
 const themeStore = useThemeStore()
 const musicPlayerStore = useMusicPlayerStore()
@@ -125,27 +145,90 @@ watch(
   { immediate: true },
 )
 
+const layoutRef = ref<HTMLElement | null>(null)
 const mainScrollRef = ref<HTMLElement | null>(null)
 let scrollSaveTimer: ReturnType<typeof setTimeout> | null = null
+// The outer scroll element survives route changes. Keep an explicit owner so a
+// delayed save can never write the previous page's offset into the new entry.
+let scrollOwnerEntryId: string | null = nav.current.value?.id ?? null
+let scrollRestoreTimer: ReturnType<typeof setTimeout> | null = null
+let scrollRestoreToken = 0
+let isRestoringScroll = false
 let detachDesktopNavListener: (() => void) | null = null
+const shouldHandleNativeNavigation = createNativeNavigationDeduper()
 
-function handleScroll() {
-  const scrollEl = mainScrollRef.value
-  if (!scrollEl) return
+function flushScrollPosition() {
+  if (scrollSaveTimer) {
+    clearTimeout(scrollSaveTimer)
+    scrollSaveTimer = null
+  }
+  const layoutEl = layoutRef.value
+  if (!layoutEl || !scrollOwnerEntryId) return
+  nav.saveScrollPositions(collectRouteScrollPositions(layoutEl), scrollOwnerEntryId)
+}
+
+function handleRouteScroll(event: Event) {
+  if (isRestoringScroll) return
+  const target = event.target
+  if (!(target instanceof HTMLElement) || !target.dataset.routeScroll) return
   if (scrollSaveTimer) clearTimeout(scrollSaveTimer)
   scrollSaveTimer = setTimeout(() => {
-    nav.saveScrollPosition(scrollEl.scrollTop)
+    scrollSaveTimer = null
+    flushScrollPosition()
   }, 120)
 }
 
+function cancelScrollRestoration() {
+  scrollRestoreToken += 1
+  isRestoringScroll = false
+  if (scrollRestoreTimer) {
+    clearTimeout(scrollRestoreTimer)
+    scrollRestoreTimer = null
+  }
+}
+
+function restoreScrollPositions(positions: RouteScrollPositions) {
+  cancelScrollRestoration()
+  const layoutEl = layoutRef.value
+  if (!layoutEl) return
+
+  const token = scrollRestoreToken
+  const deadline = Date.now() + 5_000
+  // Keep applying through the page crossfade. During the first frame the
+  // leaving page can temporarily provide enough scroll height and make a
+  // premature restore look successful; that height disappears ~180ms later.
+  const settleUntil = Date.now() + 300
+  isRestoringScroll = true
+
+  const apply = () => {
+    if (token !== scrollRestoreToken) return
+    const complete = applyRouteScrollPositions(layoutEl, positions)
+    if ((complete && Date.now() >= settleUntil) || Date.now() >= deadline) {
+      isRestoringScroll = false
+      scrollRestoreTimer = null
+      return
+    }
+    scrollRestoreTimer = setTimeout(apply, 50)
+  }
+  apply()
+}
+
 watch(() => route.fullPath, async () => {
+  // afterEach has already selected the destination history entry when this
+  // watcher runs. Flush against the captured owner before restoring the new
+  // page, otherwise a quick card click loses the list position.
+  flushScrollPosition()
   await nextTick()
   const scrollEl = mainScrollRef.value
   if (!scrollEl) return
   // 用 entry 里记录的 scrollY 恢复滚动位置 —— 取代旧的 "按 history.position
   // 比较前后大小估算" 的脆弱方案。
-  const saved = nav.current.value?.scrollY ?? 0
-  scrollEl.scrollTop = saved
+  const entry = nav.current.value
+  scrollOwnerEntryId = entry?.id ?? null
+  restoreScrollPositions({
+    [MAIN_ROUTE_SCROLL_KEY]: entry?.scrollY ?? 0,
+    ...entry?.scrollPositions,
+  })
 })
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -158,6 +241,13 @@ function isEditableTarget(target: EventTarget | null): boolean {
 function handleKeydown(e: KeyboardEvent) {
   if (isEditableTarget(e.target)) return
   const mod = e.metaKey || e.ctrlKey
+  // Some mouse utilities map side buttons to the standard BrowserBack /
+  // BrowserForward media keys instead of exposing XButton mouse events.
+  if (e.key === 'BrowserBack' || e.key === 'BrowserForward') {
+    e.preventDefault()
+    handleNativeNavigation(e.key === 'BrowserBack' ? 'back' : 'forward', 'keyboard')
+    return
+  }
   if (mod && (e.key === 'b' || e.key === 'B')) {
     e.preventDefault()
     uiStore.toggleSidebar({ persist: persistSidebarToggle.value })
@@ -189,29 +279,49 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
+function handleNativeNavigation(
+  direction: NativeNavigationDirection,
+  source: NativeNavigationSource,
+) {
+  if (!shouldHandleNativeNavigation(direction, source)) return
+  if (direction === 'back' && nav.canGoBack.value) {
+    void nav.goBack()
+  } else if (direction === 'forward' && nav.canGoForward.value) {
+    void nav.goForward()
+  }
+}
+
+function handleNativeMouseNavigation(event: MouseEvent) {
+  const direction = navigationDirectionForMouseButton(event.button)
+  if (!direction) return
+
+  // Chromium's default action for XButton1/XButton2 uses its own web history,
+  // which is intentionally not the source of truth in this app.
+  event.preventDefault()
+  event.stopPropagation()
+  handleNativeNavigation(direction, event.type === 'auxclick' ? 'auxclick' : 'mouseup')
+}
+
 onMounted(() => {
   themeStore.init()
+  scrollOwnerEntryId = nav.current.value?.id ?? null
   window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('mouseup', handleNativeMouseNavigation, true)
+  window.addEventListener('auxclick', handleNativeMouseNavigation, true)
 
   // Electron 鼠标侧键 / `app-command: browser-backward|forward` 在
   // window.mjs 里 forward 给渲染进程的 `desktop:navigate` 事件。
-  const bridge = (window as unknown as { desktopApp?: {
-    onNavigate?: (cb: (direction: 'back' | 'forward') => void) => () => void
-  } }).desktopApp
-  if (bridge?.onNavigate) {
-    detachDesktopNavListener = bridge.onNavigate((direction) => {
-      if (direction === 'back' && nav.canGoBack.value) {
-        void nav.goBack()
-      } else if (direction === 'forward' && nav.canGoForward.value) {
-        void nav.goForward()
-      }
-    })
-  }
+  detachDesktopNavListener = onDesktopNavigate((direction) => {
+    handleNativeNavigation(direction, 'electron')
+  }) ?? null
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
-  if (scrollSaveTimer) clearTimeout(scrollSaveTimer)
+  window.removeEventListener('mouseup', handleNativeMouseNavigation, true)
+  window.removeEventListener('auxclick', handleNativeMouseNavigation, true)
+  flushScrollPosition()
+  cancelScrollRestoration()
   detachDesktopNavListener?.()
   detachDesktopNavListener = null
 })

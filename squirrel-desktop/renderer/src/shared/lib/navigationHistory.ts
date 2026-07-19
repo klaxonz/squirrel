@@ -33,11 +33,15 @@ export interface HistoryEntry {
   sectionLabel: string
   /** 进入该页时的滚动位置 */
   scrollY: number
+  /** 页面内所有具名滚动区的位置；scrollY 保留为 main 的兼容字段 */
+  scrollPositions?: Record<string, number>
   /** 进入该页时携带的过滤状态（路由 query 之外的自定义快照） */
   filters?: Record<string, unknown>
   /** 时间戳 */
   timestamp: number
 }
+
+type HistoryEntryPatch = Partial<Pick<HistoryEntry, 'scrollY' | 'scrollPositions' | 'filters' | 'title'>>
 
 const STORAGE_KEY = 'app:navigation-history:v1'
 const MAX_ENTRIES = 50
@@ -48,7 +52,11 @@ let currentIndex = -1
 let entrySeq = 0
 
 function cloneEntries(): HistoryEntry[] {
-  return entries.map((e) => ({ ...e, breadcrumbs: [...e.breadcrumbs] }))
+  return entries.map((e) => ({
+    ...e,
+    breadcrumbs: [...e.breadcrumbs],
+    scrollPositions: e.scrollPositions ? { ...e.scrollPositions } : undefined,
+  }))
 }
 
 function persist() {
@@ -136,16 +144,37 @@ export function replaceEntry(input: Omit<HistoryEntry, 'id' | 'timestamp'>): His
   return entry
 }
 
+function applyEntryPatch(entry: HistoryEntry, patch: HistoryEntryPatch) {
+  if (typeof patch.scrollY === 'number') entry.scrollY = patch.scrollY
+  if (patch.scrollPositions) {
+    entry.scrollPositions = { ...patch.scrollPositions }
+  }
+  if (patch.filters) entry.filters = { ...entry.filters, ...patch.filters }
+  if (typeof patch.title === 'string' && patch.title) entry.title = patch.title
+}
+
+/**
+ * 按 id 更新指定 entry（不改变指针）。
+ *
+ * 滚动保存是异步防抖的；路由可能在定时器触发前已经切到下一页，因此不能
+ * 在回调执行时再假定 current entry 仍是产生滚动事件的页面。
+ */
+export function patchEntry(id: string, patch: HistoryEntryPatch): boolean {
+  const entry = entries.find((candidate) => candidate.id === id)
+  if (!entry) return false
+  applyEntryPatch(entry, patch)
+  persist()
+  return true
+}
+
 /**
  * 更新当前 entry 的滚动位置 / 过滤状态（不改变指针）。
  */
-export function patchCurrentEntry(patch: Partial<Pick<HistoryEntry, 'scrollY' | 'filters' | 'title'>>) {
+export function patchCurrentEntry(patch: HistoryEntryPatch) {
   if (currentIndex < 0) return
   const current = entries[currentIndex]
   if (!current) return
-  if (typeof patch.scrollY === 'number') current.scrollY = patch.scrollY
-  if (patch.filters) current.filters = { ...current.filters, ...patch.filters }
-  if (typeof patch.title === 'string' && patch.title) current.title = patch.title
+  applyEntryPatch(current, patch)
   persist()
 }
 
@@ -282,6 +311,7 @@ function notify() {
 
 const wrappedPush = pushEntry
 const wrappedReplace = replaceEntry
+const wrappedPatchEntry = patchEntry
 const wrappedPatch = patchCurrentEntry
 const wrappedBack = stepBack
 const wrappedForward = stepForward
@@ -302,6 +332,11 @@ export function replaceEntryReactive(input: Parameters<typeof wrappedReplace>[0]
 export function patchCurrentEntryReactive(patch: Parameters<typeof wrappedPatch>[0]) {
   wrappedPatch(patch)
   notify()
+}
+export function patchEntryReactive(...args: Parameters<typeof wrappedPatchEntry>) {
+  const patched = wrappedPatchEntry(...args)
+  if (patched) notify()
+  return patched
 }
 export function stepBackReactive() {
   const r = wrappedBack()

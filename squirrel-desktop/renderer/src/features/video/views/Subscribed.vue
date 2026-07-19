@@ -136,7 +136,11 @@
       </AppToolbarFrame>
 
       <div class="subscription-workspace">
-        <main ref="contentScroll" class="subscription-content custom-scrollbar">
+        <main
+          ref="contentScroll"
+          class="subscription-content custom-scrollbar"
+          data-route-scroll="subscribed-content"
+        >
           <template v-if="isFeedView">
             <div v-if="feedError && !feedItems.length" class="subscription-content__empty">
               <AppEmptyState variant="error" title="内容加载失败" :copy="feedError">

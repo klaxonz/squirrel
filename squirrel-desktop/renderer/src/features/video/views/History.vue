@@ -139,6 +139,8 @@ import { useUIStore } from '@/shared/stores/ui'
 import { Button } from '@/shared/ui/button'
 import { useVideoHistory } from '../composables/useVideoHistory'
 
+defineOptions({ name: 'History' })
+
 const PAGE_SIZE = 100
 const DAY_MS = 86_400_000
 
