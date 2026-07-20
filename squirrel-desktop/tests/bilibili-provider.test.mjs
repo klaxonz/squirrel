@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { clearBilibiliPlaybackCache, resolveBilibiliPlayback } from '../src/playback/providers/bilibili/index.mjs'
+import {
+  clearBilibiliPlaybackCache,
+  orderBilibiliMediaUrls,
+  rankBilibiliMediaUrl,
+  resolveBilibiliPlayback,
+} from '../src/playback/providers/bilibili/index.mjs'
 import { resolveBilibiliApiPayload } from '../src/playback/providers/bilibili/request-runtime.mjs'
 
 test('desktop bilibili provider builds codec-separated video adaptation sets with unique representation ids', async () => {
@@ -481,4 +486,137 @@ test('desktop bilibili provider does not reuse anonymous cache after login cooki
   assert.equal(playurlCalls[1].cookie.includes('SESSDATA=demo'), true)
 
   clearBilibiliPlaybackCache()
+})
+
+test('desktop bilibili media URLs prefer stable bilivideo.com mirrors over mCDN', () => {
+  assert.ok(rankBilibiliMediaUrl('https://upos-sz-mirrorcos.bilivideo.com/a.m4s') < rankBilibiliMediaUrl('https://xy1x2x3x4xy.mcdn.bilivideo.cn/a.m4s'))
+  assert.ok(rankBilibiliMediaUrl('https://edge.example.test/upgcxcode/a.m4s') < rankBilibiliMediaUrl('https://xy1x2x3x4xy.mcdn.bilivideo.cn/a.m4s'))
+
+  const ordered = orderBilibiliMediaUrls([
+    'https://xy58x144x119x18xy.mcdn.bilivideo.cn/v1/resource/upgcxcode/a.m4s',
+    'https://b-demo.edge.mountaintoys.cn:4483/upgcxcode/a.m4s',
+    'https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/a.m4s',
+    'https://xy58x144x119x18xy.mcdn.bilivideo.cn/v1/resource/upgcxcode/a.m4s',
+  ])
+
+  assert.deepEqual(ordered, [
+    'https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/a.m4s',
+    'https://b-demo.edge.mountaintoys.cn:4483/upgcxcode/a.m4s',
+    'https://xy58x144x119x18xy.mcdn.bilivideo.cn/v1/resource/upgcxcode/a.m4s',
+  ])
+})
+
+test('desktop bilibili MPD puts non-mCDN BaseURL first when playurl returns mCDN primary', async () => {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input))
+    if (url.pathname === '/x/web-interface/view') {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            code: 0,
+            data: {
+              bvid: 'BV1McdnOrder01',
+              aid: 90001,
+              pages: [{ cid: 90002 }],
+            },
+          }
+        },
+      }
+    }
+    if (url.pathname === '/x/web-interface/nav') {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            code: 0,
+            data: {
+              wbi_img: {
+                img_url: 'https://i0.hdslb.com/bfs/wbi/abcdefghijklmnopqrstuvwxyz123456.png',
+                sub_url: 'https://i0.hdslb.com/bfs/wbi/123456abcdefghijklmnopqrstuvwxyz7890.png',
+              },
+            },
+          }
+        },
+      }
+    }
+    if (url.pathname === '/x/player/wbi/playurl') {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            code: 0,
+            data: {
+              dash: {
+                duration: 30,
+                minBufferTime: 1.5,
+                video: [
+                  {
+                    id: 80,
+                    codecid: 7,
+                    codecs: 'avc1.640033',
+                    width: 1920,
+                    height: 1080,
+                    bandwidth: 500000,
+                    baseUrl: 'https://xy1x2x3x4xy.mcdn.bilivideo.cn/v1/resource/upgcxcode/video.m4s',
+                    backupUrl: [
+                      'https://b-demo.edge.mountaintoys.cn:4483/upgcxcode/video.m4s',
+                      'https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/video.m4s',
+                    ],
+                    SegmentBase: {
+                      indexRange: '100-200',
+                      Initialization: '0-99',
+                    },
+                  },
+                ],
+                audio: [
+                  {
+                    id: 30280,
+                    codecs: 'mp4a.40.2',
+                    bandwidth: 80000,
+                    baseUrl: 'https://xy5x6x7x8xy.mcdn.bilivideo.cn/v1/resource/upgcxcode/audio.m4s',
+                    backupUrl: [
+                      'https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/audio.m4s',
+                    ],
+                    SegmentBase: {
+                      indexRange: '100-200',
+                      Initialization: '0-99',
+                    },
+                  },
+                ],
+              },
+            },
+          }
+        },
+      }
+    }
+    throw new Error(`Unexpected fetch: ${url.toString()}`)
+  }
+
+  try {
+    clearBilibiliPlaybackCache()
+    const payload = await resolveBilibiliPlayback('https://www.bilibili.com/video/BV1McdnOrder01', {
+      cookie: '',
+      forceRefresh: true,
+    })
+
+    const firstVideoBase = payload.mpd_content.match(
+      /contentType="video"[\s\S]*?<BaseURL>([^<]+)<\/BaseURL>/,
+    )?.[1]
+    const firstAudioBase = payload.mpd_content.match(
+      /contentType="audio"[\s\S]*?<BaseURL>([^<]+)<\/BaseURL>/,
+    )?.[1]
+
+    assert.equal(firstVideoBase, 'https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/video.m4s')
+    assert.equal(firstAudioBase, 'https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/audio.m4s')
+    assert.doesNotMatch(firstVideoBase || '', /mcdn\.bilivideo/)
+    assert.doesNotMatch(firstAudioBase || '', /mcdn\.bilivideo/)
+  } finally {
+    globalThis.fetch = originalFetch
+    clearBilibiliPlaybackCache()
+  }
 })

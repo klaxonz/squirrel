@@ -26,6 +26,9 @@ test('desktop bilibili/youtube login profiles remain wired', async () => {
   assert.doesNotMatch(cookieHeader, /isJavdbCookieTarget|isPornhubCookieTarget|isYouPornCookieTarget|isMissavDocumentTarget/)
   assert.doesNotMatch(siteLogin, /javdb:|pornhub:|youporn:/)
   assert.doesNotMatch(mediaHeaders, /javdb\.com|pornhub\.com|youporn\.com|missav\.ai/)
+  assert.match(mediaHeaders, /mountaintoys\.cn/)
+  assert.match(mediaHeaders, /isBilibiliEdgeMediaUrl/)
+  assert.match(mediaHeaders, /upgcxcode/)
   assert.doesNotMatch(documentLoader, /Camoufox|isJavdbCookieTarget|isMissavDocumentTarget/)
 })
 

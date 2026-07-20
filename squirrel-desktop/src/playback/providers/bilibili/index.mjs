@@ -83,6 +83,44 @@ const backupUrlsOf = (stream) => {
   return Array.isArray(urls) ? urls.filter(Boolean).map(String) : []
 }
 
+/**
+ * Rank Bilibili media BaseURLs for desktop playback.
+ *
+ * Official playurl often puts P2P/mCDN (`*.mcdn.bilivideo.cn`) first. Those
+ * nodes frequently fail TLS or hang outside the official client, which leaves
+ * dash.js buffering forever (especially on audio tracks). Prefer stable
+ * `*.bilivideo.com` mirrors, then other edges, and demote mCDN last.
+ */
+export const rankBilibiliMediaUrl = (url) => {
+  try {
+    const hostname = new URL(String(url || '')).hostname.toLowerCase()
+    if (!hostname) return 50
+    if (hostname.includes('mcdn.bilivideo')) return 40
+    if (hostname === 'bilivideo.com' || hostname.endsWith('.bilivideo.com')) return 0
+    if (hostname === 'bilivideo.cn' || hostname.endsWith('.bilivideo.cn')) return 10
+    if (hostname.endsWith('.acgvideo.com') || hostname === 'acgvideo.com') return 10
+    return 20
+  } catch {
+    return 50
+  }
+}
+
+export const orderBilibiliMediaUrls = (urls) => {
+  const seen = new Set()
+  const unique = []
+  for (const raw of urls) {
+    const value = String(raw || '').trim()
+    if (!value || seen.has(value)) continue
+    seen.add(value)
+    unique.push(value)
+  }
+  return unique.sort((left, right) => {
+    const rankDelta = rankBilibiliMediaUrl(left) - rankBilibiliMediaUrl(right)
+    if (rankDelta !== 0) return rankDelta
+    return 0
+  })
+}
+
 const safeInt = (value) => {
   const numeric = Number.parseInt(String(value ?? ''), 10)
   return Number.isFinite(numeric) ? numeric : 0
@@ -201,7 +239,7 @@ const appendSegmentBase = (stream) => {
 }
 
 const buildRepresentation = (stream, kind) => {
-  const urls = [baseUrlOf(stream), ...backupUrlsOf(stream)].filter(Boolean)
+  const urls = orderBilibiliMediaUrls([baseUrlOf(stream), ...backupUrlsOf(stream)])
   if (urls.length === 0) {
     return ''
   }
