@@ -87,6 +87,7 @@ const zhCN: LocaleConfig = {
     errorMedia: '媒体加载失败',
     errorDecode: '视频解码失败',
     errorNotSupported: '不支持的视频格式',
+    errorStreamUnavailable: '无法加载视频流，请重试',
     errorUnknown: '未知错误',
     retry: '重试',
     dismiss: '关闭',

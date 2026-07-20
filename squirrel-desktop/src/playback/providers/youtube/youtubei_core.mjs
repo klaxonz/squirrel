@@ -5,12 +5,18 @@ import { resolve } from 'node:path';
 
 import { Innertube, Platform, UniversalCache } from 'youtubei.js/web';
 
+import { youtubeOAuthStateFilePath } from '../../../constants.mjs';
 import { SessionManager } from './build/session_manager.js';
 
-const AUTHENTICATED_PLAYBACK_CLIENTS = ['ANDROID', 'WEB', 'TV', 'MWEB'];
-const AUTHENTICATED_FULL_CLIENTS = ['ANDROID', 'WEB', 'TV', 'MWEB'];
-const ANONYMOUS_CLIENTS = ['ANDROID', 'WEB'];
-const CAPTIONS_ANONYMOUS_CLIENTS = ['ANDROID', 'WEB'];
+// Client order is deliberate:
+// - MWEB / IOS return decipherable adaptive streams more reliably.
+// - ANDROID often only yields progressive (itag 18); WEB/TV are frequently
+//   bot-gated with LOGIN_REQUIRED ("Sign in to confirm you're not a bot").
+// - Authenticated sessions prefer TV (oauth-native) then MWEB adaptive.
+const AUTHENTICATED_PLAYBACK_CLIENTS = ['TV', 'MWEB', 'IOS', 'WEB', 'ANDROID'];
+const AUTHENTICATED_FULL_CLIENTS = ['TV', 'MWEB', 'IOS', 'WEB', 'ANDROID'];
+const ANONYMOUS_CLIENTS = ['MWEB', 'IOS', 'ANDROID', 'WEB'];
+const CAPTIONS_ANONYMOUS_CLIENTS = ['ANDROID', 'WEB', 'MWEB'];
 const CAPTIONS_AUTHENTICATED_CLIENTS = ['WEB', 'TV', 'MWEB'];
 const YOUTUBE_WEB_ORIGIN = 'https://www.youtube.com';
 const YOUTUBE_TV_ACTIVATION_URL = 'https://www.youtube.com/activate';
@@ -54,7 +60,11 @@ const SESSION_CACHE = new LRUMap(3);
 // ── OAuth state helpers ─────────────────────────────────────────────────────
 
 function getOAuthStateFilePath() {
-  return process.env.YOUTUBE_OAUTH_STATE_FILE || null;
+  const fromEnv = String(process.env.YOUTUBE_OAUTH_STATE_FILE || '').trim();
+  if (fromEnv) return fromEnv;
+  // Default to the monorepo config path so desktop OAuth works without requiring
+  // the launcher to inject YOUTUBE_OAUTH_STATE_FILE.
+  return youtubeOAuthStateFilePath || null;
 }
 
 function loadOAuthState() {
@@ -117,8 +127,9 @@ async function resolveFormatUrl(format, player) {
     try {
       return await format.decipher(player);
     } catch {
-      console.warn('[squirrel-desktop] youtubei_core: resolveFormatUrl decipher failed');
-      return format.url ?? null;
+      // Adaptive formats from ANDROID/WEB/TV often have neither url nor cipher
+      // ("No valid URL to decipher"). Prefer any pre-populated url, else skip.
+      return format?.url ?? null;
     }
   }
   return format?.url ?? null;
@@ -308,11 +319,48 @@ async function collectFormats(streamInfo, player, resolutionMode = 'playback') {
 }
 
 function isPlayableFormatSet(formats) {
-  const playable = formats.filter((item) => Boolean(item.url));
+  return scoreFormatSet(formats) > 0;
+}
+
+/**
+ * Score a resolved format set so client selection can prefer adaptive DASH over
+ * progressive-only fallbacks. ANDROID/WEB frequently return only itag 18 while
+ * MWEB still yields full adaptive streams — returning the first "playable"
+ * progressive set would skip the better client.
+ *
+ * 0 = unusable, 1 = progressive/muxed only, 2 = adaptive video+audio.
+ */
+function scoreFormatSet(formats) {
+  const playable = (formats || []).filter((item) => Boolean(item?.url));
+  if (playable.length === 0) return 0;
   const hasMuxed = playable.some((item) => item.has_audio && item.has_video);
   const hasVideoOnly = playable.some((item) => item.has_video && !item.has_audio);
   const hasAudioOnly = playable.some((item) => item.has_audio && !item.has_video);
-  return playable.length > 0 && (hasMuxed || (hasVideoOnly && hasAudioOnly));
+  if (hasVideoOnly && hasAudioOnly) return 2;
+  if (hasMuxed) return 1;
+  return 0;
+}
+
+function pickBasicInfo(basicInfo = {}) {
+  const thumbnails = Array.isArray(basicInfo.thumbnail)
+    ? basicInfo.thumbnail
+    : (Array.isArray(basicInfo.thumbnails) ? basicInfo.thumbnails : null);
+
+  return {
+    title: basicInfo.title || null,
+    duration: basicInfo.duration ?? null,
+    channel_id: basicInfo.channel_id || null,
+    author: basicInfo.author || basicInfo.channel?.name || null,
+    channel: basicInfo.channel?.name || basicInfo.author || null,
+    channel_url: basicInfo.channel?.url || basicInfo.channel_url || null,
+    uploader: basicInfo.author || basicInfo.channel?.name || null,
+    uploader_url: basicInfo.channel?.url || basicInfo.channel_url || null,
+    thumbnails,
+    is_live: Boolean(basicInfo.is_live),
+    is_live_content: Boolean(basicInfo.is_live_content),
+    is_post_live_dvr: Boolean(basicInfo.is_post_live_dvr),
+    is_upcoming: Boolean(basicInfo.is_upcoming),
+  };
 }
 
 function normalizeLanguageCode(value) {
@@ -559,11 +607,29 @@ function oauthSessionCacheKey(oauthState) {
   return `oauth:${createHash('sha1').update(JSON.stringify(oauthState.credentials)).digest('hex')}`;
 }
 
+function persistOAuthCredentials(credentials) {
+  if (!credentials || typeof credentials !== 'object') return;
+  saveOAuthState({ pending: false, credentials });
+}
+
+function attachOAuthCredentialPersistence(yt) {
+  if (!yt?.session?.on) return;
+  try {
+    yt.session.on('update-credentials', (credentials) => {
+      persistOAuthCredentials(credentials || yt.session.credentials);
+    });
+  } catch (err) {
+    console.debug('[squirrel-desktop] youtubei_core: attachOAuthCredentialPersistence failed', err);
+  }
+}
+
 async function createRuntime(cookie, oauthCredentials = null) {
   const yt = await Innertube.create({
     cache: new UniversalCache(true),
     generate_session_locally: !cookie && !oauthCredentials,
     retrieve_player: true,
+    // Session bootstrap client. Per-request clients (TV/MWEB/IOS/...) are chosen
+    // later in resolveYoutubeiPayload; oauth still signs in against WEB/TV APIs.
     client_type: oauthCredentials ? 'WEB' : cookie ? 'MWEB' : 'ANDROID',
     fetch: buildYoutubeFetch(),
     ...((cookie && !oauthCredentials) ? { cookie } : {}),
@@ -571,10 +637,13 @@ async function createRuntime(cookie, oauthCredentials = null) {
 
   if (oauthCredentials) {
     try {
+      attachOAuthCredentialPersistence(yt);
+      // signIn refreshes access_token when refresh_token is still valid.
       await yt.session.signIn(oauthCredentials);
+      persistOAuthCredentials(yt.session.credentials || oauthCredentials);
       return { yt, sessionManager: null, authMode: 'oauth' };
     } catch (err) {
-      console.error(`[DEBUG] OAuth signIn failed (credentials will be skipped): ${err?.message || err}`);
+      console.error(`[squirrel-desktop] youtubei_core: OAuth signIn failed, falling back to anonymous: ${err?.message || err}`);
       return createRuntime(cookie, null);
     }
   }
@@ -588,26 +657,7 @@ async function createRuntime(cookie, oauthCredentials = null) {
 
 async function getRuntime(cookie) {
   const oauthState = loadOAuthState();
-  let oauthCredentials = oauthState?.credentials || null;
-
-  // If OAuth credentials are present but stale, attempt to validate by creating a session
-  if (oauthCredentials) {
-    try {
-      const testYt = await Innertube.create({
-        cache: new UniversalCache(false),
-        generate_session_locally: true,
-        retrieve_player: false,
-        client_type: 'WEB',
-        fetch: buildYoutubeFetch(),
-      });
-      await testYt.session.signIn(oauthCredentials);
-      // Sign-in succeeded, proceed with OAuth
-    } catch {
-      console.debug('[squirrel-desktop] youtubei_core: getRuntime OAuth credentials invalid/expired');
-      oauthCredentials = null;
-    }
-  }
-
+  const oauthCredentials = oauthState?.credentials || null;
   const key = `${sessionCacheKey(cookie)}|${oauthSessionCacheKey(oauthState)}`;
   let runtime = SESSION_CACHE.get(key);
   if (runtime) {
@@ -615,7 +665,13 @@ async function getRuntime(cookie) {
   }
 
   runtime = await createRuntime(cookie, oauthCredentials);
-  SESSION_CACHE.set(key, runtime);
+  // Cache under the post-auth identity so a successful refresh does not keep
+  // serving a stale anonymous runtime if credentials were rewritten mid-flight.
+  const resolvedKey = `${sessionCacheKey(cookie)}|${oauthSessionCacheKey(loadOAuthState())}`;
+  SESSION_CACHE.set(resolvedKey, runtime);
+  if (resolvedKey !== key) {
+    SESSION_CACHE.set(key, runtime);
+  }
   return runtime;
 }
 
@@ -886,9 +942,93 @@ export async function resolveYoutubeiPayload(payload) {
     : (hasAuth
       ? (resolutionMode === 'all' ? AUTHENTICATED_FULL_CLIENTS : AUTHENTICATED_PLAYBACK_CLIENTS)
       : ANONYMOUS_CLIENTS);
+
+  let bestCandidate = await resolveFormatsWithRuntime({
+    runtime,
+    videoId,
+    clients,
+    resolutionMode,
+    attempts,
+    timings,
+    includeDebugTimings,
+    attemptLabelPrefix: hasAuth ? 'auth' : 'anon',
+  });
+
+  // OAuth/cookie sessions frequently only yield progressive (itag 18) while
+  // anonymous MWEB/IOS still return decipherable adaptive DASH that actually
+  // plays in Electron. When the authenticated path cannot produce adaptive
+  // streams, try a one-shot anonymous runtime and keep the better score.
+  if (
+    (!bestCandidate || bestCandidate.score < 2)
+    && hasAuth
+    && requestedClients.length === 0
+  ) {
+    const fallbackStart = performance.now();
+    try {
+      const anonymousRuntime = await createRuntime('', null);
+      const anonymousBest = await resolveFormatsWithRuntime({
+        runtime: anonymousRuntime,
+        videoId,
+        clients: ANONYMOUS_CLIENTS,
+        resolutionMode,
+        attempts,
+        timings,
+        includeDebugTimings,
+        attemptLabelPrefix: 'anon-fallback',
+      });
+      timings.anonymous_fallback_ms = Number((performance.now() - fallbackStart).toFixed(1));
+      if (anonymousBest && (!bestCandidate || anonymousBest.score > bestCandidate.score)) {
+        bestCandidate = {
+          score: anonymousBest.score,
+          response: {
+            ...anonymousBest.response,
+            auth_fallback: 'anonymous',
+          },
+        };
+      }
+    } catch (error) {
+      timings.anonymous_fallback_ms = Number((performance.now() - fallbackStart).toFixed(1));
+      attempts.push({
+        client: 'ANON_FALLBACK',
+        error: error?.message || String(error),
+      });
+    }
+  }
+
+  if (bestCandidate) {
+    return bestCandidate.response;
+  }
+
+  const errorResponse = {
+    status: 'error',
+    error: buildPlaybackFailureError(attempts, hasAuth),
+    attempts,
+  };
+  if (includeDebugTimings) {
+    errorResponse.timings = timings;
+  }
+  return errorResponse;
+}
+
+/**
+ * Try a list of Innertube clients against one runtime and return the best
+ * scored format set (adaptive preferred over progressive-only).
+ */
+async function resolveFormatsWithRuntime({
+  runtime,
+  videoId,
+  clients,
+  resolutionMode,
+  attempts,
+  timings,
+  includeDebugTimings,
+  attemptLabelPrefix = '',
+}) {
   let contentPoToken;
+  let bestCandidate = null;
 
   for (const client of clients) {
+    const attemptClient = attemptLabelPrefix ? `${attemptLabelPrefix}:${client}` : client;
     try {
       let requestOptions = { client };
       if (client === 'MWEB') {
@@ -919,19 +1059,25 @@ export async function resolveYoutubeiPayload(payload) {
       const localDashManifest = await buildLocalDashManifest(videoInfo);
       const localDashMs = Number((performance.now() - localDashStart).toFixed(1));
       const playabilityStatus = videoInfo.playability_status?.status || null;
+      const playabilityReason = videoInfo.playability_status?.reason
+        || videoInfo.playability_status?.error_screen?.reason?.text
+        || null;
       const basicInfo = videoInfo.basic_info || {};
+      const score = scoreFormatSet(formats);
       attempts.push({
-        client,
+        client: attemptClient,
         playability_status: playabilityStatus,
+        playability_reason: playabilityReason,
         format_count: formats.length,
-        playable: isPlayableFormatSet(formats),
+        playable: score > 0,
+        format_score: score,
         get_info_ms: infoMs,
         collect_formats_ms: formatsMs,
         normalize_streaming_data_ms: streamingDataMs,
         build_local_dash_ms: localDashMs,
       });
 
-      if (!isPlayableFormatSet(formats)) {
+      if (score === 0) {
         continue;
       }
 
@@ -942,12 +1088,7 @@ export async function resolveYoutubeiPayload(payload) {
         formats,
         streaming_data: normalizedStreamingData,
         local_dash_manifest: localDashManifest,
-        basic_info: {
-          is_live: Boolean(basicInfo.is_live),
-          is_live_content: Boolean(basicInfo.is_live_content),
-          is_post_live_dvr: Boolean(basicInfo.is_post_live_dvr),
-          is_upcoming: Boolean(basicInfo.is_upcoming),
-        },
+        basic_info: pickBasicInfo(basicInfo),
       };
       if (includeDebugTimings) {
         response.timings = {
@@ -958,25 +1099,53 @@ export async function resolveYoutubeiPayload(payload) {
           build_local_dash_ms: localDashMs,
         };
       }
-      return response;
+
+      if (!bestCandidate || score > bestCandidate.score) {
+        bestCandidate = { score, response };
+      }
+      // Adaptive video+audio is the best outcome we can get; stop early.
+      if (score >= 2) {
+        return bestCandidate;
+      }
     } catch (error) {
       attempts.push({
-        client,
+        client: attemptClient,
         error: error?.message || String(error),
       });
     }
   }
 
-  const errorResponse = {
-    status: 'error',
-    error: {
-      type: 'PlaybackResolverError',
-      message: 'youtubei worker did not return a complete format set',
-    },
-    attempts,
-  };
-  if (includeDebugTimings) {
-    errorResponse.timings = timings;
+  return bestCandidate;
+}
+
+function attemptLooksLikeAuthGate(attempt) {
+  const status = String(attempt?.playability_status || '').toUpperCase();
+  const reason = String(attempt?.playability_reason || attempt?.error || '');
+  if (status === 'LOGIN_REQUIRED' || (status === 'UNPLAYABLE' && /sign in|login/i.test(reason))) {
+    return true;
   }
-  return errorResponse;
+  return /sign in to confirm|not a bot|login required|auth.?required|please sign in/i.test(reason);
+}
+
+function buildPlaybackFailureError(attempts, hasAuth) {
+  const authGated = (attempts || []).some((attempt) => attemptLooksLikeAuthGate(attempt));
+  if (authGated && !hasAuth) {
+    return {
+      type: 'PlaybackAuthRequired',
+      code: 'YOUTUBE_LOGIN_REQUIRED',
+      message: 'YouTube 要求登录后才能播放（机器人验证/登录门禁）。请在设置中完成 YouTube TV 授权后重试。',
+    };
+  }
+  if (authGated && hasAuth) {
+    return {
+      type: 'PlaybackAuthRequired',
+      code: 'YOUTUBE_AUTH_EXPIRED',
+      message: 'YouTube 授权可能已失效，请在设置中重新完成 YouTube TV 授权后重试。',
+    };
+  }
+  return {
+    type: 'PlaybackResolverError',
+    code: 'YOUTUBE_NO_FORMAT_SET',
+    message: '无法获取可播放的 YouTube 流（所有客户端均未返回完整格式）。',
+  };
 }

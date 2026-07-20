@@ -65,18 +65,39 @@ test('desktop youtube login status uses tv oauth instead of cookie checks', asyn
   assert.match(source, /const buildYouTubeDesktopLoginStatus = async \(profile\) => \{[\s\S]*?resolveYouTubeOAuthStatus\(\)/)
 })
 
-test('desktop youtube client order defers expensive mweb po token generation', async () => {
+test('desktop youtube client order prefers adaptive-capable clients before bot-gated WEB', async () => {
   const source = await readFile(corePath, 'utf8')
 
-  assert.match(source, /const AUTHENTICATED_PLAYBACK_CLIENTS = \['ANDROID', 'WEB', 'TV', 'MWEB'\]/)
-  assert.match(source, /const AUTHENTICATED_FULL_CLIENTS = \['ANDROID', 'WEB', 'TV', 'MWEB'\]/)
+  assert.match(source, /const AUTHENTICATED_PLAYBACK_CLIENTS = \['TV', 'MWEB', 'IOS', 'WEB', 'ANDROID'\]/)
+  assert.match(source, /const AUTHENTICATED_FULL_CLIENTS = \['TV', 'MWEB', 'IOS', 'WEB', 'ANDROID'\]/)
+  assert.match(source, /const ANONYMOUS_CLIENTS = \['MWEB', 'IOS', 'ANDROID', 'WEB'\]/)
+  assert.match(source, /function scoreFormatSet\(/)
+  assert.match(source, /bestCandidate/)
+  assert.match(source, /buildPlaybackFailureError/)
+  assert.match(source, /auth_fallback: 'anonymous'/)
+  assert.match(source, /resolveFormatsWithRuntime/)
 })
 
-test('desktop youtube oauth state path is read at runtime', async () => {
-  const source = await readFile(corePath, 'utf8')
+test('desktop youtube playback resolve does not reference undeclared cache binding', async () => {
+  const source = await readFile(providerPath, 'utf8')
+  const fnStart = source.indexOf('export async function resolveYouTubePlayback')
+  assert.notEqual(fnStart, -1)
+  const fnBody = source.slice(fnStart, fnStart + 1800)
 
-  assert.match(source, /return process\.env\.YOUTUBE_OAUTH_STATE_FILE \|\| null/)
-  assert.doesNotMatch(source, /const OAUTH_STATE_FILE = process\.env\.YOUTUBE_OAUTH_STATE_FILE/)
+  // `cached` must be declared in function scope before any read (previously a
+  // block-scoped const caused ReferenceError and broke all YouTube playback).
+  assert.match(fnBody, /let cached = null/)
+  assert.doesNotMatch(fnBody, /const maxAttempts = cached \? 1 : 2/)
+})
+
+test('desktop youtube oauth state path falls back to monorepo config file', async () => {
+  const source = await readFile(corePath, 'utf8')
+  const mainSource = await readFile(mainPath, 'utf8')
+
+  assert.match(source, /import \{ youtubeOAuthStateFilePath \} from '\.\.\/\.\.\/\.\.\/constants\.mjs'/)
+  assert.match(source, /function getOAuthStateFilePath\(\) \{[\s\S]*?youtubeOAuthStateFilePath/)
+  assert.doesNotMatch(source, /return process\.env\.YOUTUBE_OAUTH_STATE_FILE \|\| null/)
+  assert.match(mainSource, /process\.env\.YOUTUBE_OAUTH_STATE_FILE = youtubeOAuthStateFilePath/)
 })
 
 test('youtube tv oauth opens the youtube activation page', async () => {

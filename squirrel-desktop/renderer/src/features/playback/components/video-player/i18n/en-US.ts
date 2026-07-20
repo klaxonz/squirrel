@@ -73,6 +73,7 @@ const enUS: LocaleConfig = {
     errorMedia: 'Media Load Failed',
     errorDecode: 'Decode Error',
     errorNotSupported: 'Unsupported Format',
+    errorStreamUnavailable: 'Unable to load video stream. Please retry.',
     errorUnknown: 'Unknown Error',
     retry: 'Retry',
     dismiss: 'Dismiss',

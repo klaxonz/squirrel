@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
+import { youtubeOAuthStateFilePath } from '../../../constants.mjs'
 import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.mjs'
 import { escapeXml } from '../shared/escape-xml.mjs'
 import { createPlaybackCache } from '../shared/playback-cache.mjs'
@@ -39,8 +40,13 @@ const cacheScopeForCookie = (cookie) => {
   return `cookie:${createHash('sha1').update(normalizedCookie).digest('hex').slice(0, 16)}`
 }
 
+const resolveOAuthStateFilePath = () => {
+  const fromEnv = String(process.env.YOUTUBE_OAUTH_STATE_FILE || '').trim()
+  return fromEnv || youtubeOAuthStateFilePath || ''
+}
+
 const cacheScopeForOAuth = () => {
-  const stateFile = String(process.env.YOUTUBE_OAUTH_STATE_FILE || '').trim()
+  const stateFile = resolveOAuthStateFilePath()
   if (!stateFile) {
     return 'oauth:none'
   }
@@ -270,7 +276,10 @@ const pickFormats = (formats, predicate) => {
 
 const buildQualities = (formats) => {
   const seen = new Set()
-  const candidates = sortFormats((formats || []).filter((format) => format?.has_video))
+  // Only expose qualities that have a real stream URL. Adaptive itags without
+  // a deciphered url used to pollute progressive payloads (e.g. 1440p entries
+  // that cannot be selected), which broke quality menus and confused recovery.
+  const candidates = sortFormats((formats || []).filter((format) => format?.has_video && format?.url))
 
   return candidates.reduce((qualities, format, index) => {
     const bucketKey = qualityBucketKey(format, index)
@@ -287,6 +296,7 @@ const buildQualities = (formats) => {
       height: typeof format.height === 'number' ? format.height : null,
       bandwidth: typeof format.bitrate === 'number' ? format.bitrate : null,
       codec: normalizeCodecFamily(codecs) || undefined,
+      src: format.url || undefined,
     })
     return qualities
   }, [])
@@ -354,6 +364,9 @@ const mapPlaybackPayload = (response) => {
   }
 
   if (bestProgressive?.url) {
+    // Progressive is a single muxed URL — do not advertise adaptive-only
+    // quality tiers that have no playable progressive source.
+    const progressiveQualities = buildQualities([bestProgressive])
     return {
       ...basePayload,
       stream_type: 'progressive',
@@ -361,9 +374,9 @@ const mapPlaybackPayload = (response) => {
       audio_url: null,
       mpd_url: null,
       mpd_content: null,
-      qualities: qualities.length > 0 ? qualities : null,
-      default_quality_id: qualities[0]?.id || null,
-      supports_manual_quality: qualities.length > 1,
+      qualities: progressiveQualities.length > 0 ? progressiveQualities : null,
+      default_quality_id: progressiveQualities[0]?.id || null,
+      supports_manual_quality: progressiveQualities.length > 1,
     }
   }
 
@@ -439,16 +452,16 @@ export async function resolveYouTubePlayback(targetUrl, { cookie = '', forceRefr
   }
 
   const cacheKey = `${videoId}|${cacheScopeForCookie(cookie)}|${cacheScopeForOAuth()}`
+  // Keep a fallback copy for resolve failures. Do not early-return on cache hits:
+  // googlevideo URLs expire quickly; always prefer a fresh resolve when possible.
+  let cached = null
   if (!forceRefresh) {
-    const cached = await cache.getCachedPayload(cacheKey)
-    if (cached) {
-      return cached
-    }
+    cached = await cache.getCachedPayload(cacheKey)
   }
 
-  let response
+  let response = null
   let lastError = null
-  const maxAttempts = cached ? 1 : 2
+  const maxAttempts = 2
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       response = await resolveYoutubeiPayload({
@@ -457,11 +470,14 @@ export async function resolveYouTubePlayback(targetUrl, { cookie = '', forceRefr
         ...(cookie ? { cookie } : {}),
       })
       if (response?.status === 'ok') {
+        lastError = null
         break
       }
-      lastError = null
+      lastError = new Error(String(response?.error?.message || 'Desktop YouTube provider failed'))
+      response = null
     } catch (error) {
       lastError = error
+      response = null
     }
 
     if (attempt + 1 < maxAttempts) {
@@ -470,14 +486,14 @@ export async function resolveYouTubePlayback(targetUrl, { cookie = '', forceRefr
   }
 
   if (lastError && !response) {
-    if (!forceRefresh && cached) {
+    if (cached) {
       return cached
     }
     throw lastError
   }
 
   if (!response || response.status !== 'ok') {
-    if (!forceRefresh && cached) {
+    if (cached) {
       return cached
     }
     const errorMessage = response?.error?.message || 'Desktop YouTube provider failed'

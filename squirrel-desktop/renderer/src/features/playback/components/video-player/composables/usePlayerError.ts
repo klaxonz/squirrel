@@ -63,6 +63,12 @@ export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorRe
   const resolveErrorMessage = (code: string, fallback: string): string => {
     const upper = String(code || '').toUpperCase()
     if (upper.includes('NETWORK') || upper.includes('TIMEOUT')) return t('errorNetwork')
+    // Chromium reports MEDIA_ERR_SRC_NOT_SUPPORTED for many non-format failures
+    // (403 empty body, expired CDN URL, blocked googlevideo). Prefer a retryable
+    // stream-unavailable message over "unsupported format".
+    if (upper.includes('MEDIA_NOT_SUPPORTED') || upper.includes('SRC_NOT_SUPPORTED')) {
+      return t('errorStreamUnavailable')
+    }
     if (upper.includes('NOT_SUPPORTED') || upper.includes('CAPABILITY')) return t('errorNotSupported')
     if (upper.includes('DECODE')) return t('errorDecode')
     if (upper.includes('MEDIA') || upper.includes('HLS_') || upper.includes('DASH_')) return t('errorMedia')

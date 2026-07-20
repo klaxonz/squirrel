@@ -7,7 +7,13 @@ import { installDesktopBridgeHandlers } from './ipc-handlers.mjs'
 import { installDesktopMediaHeaders } from './media-headers.mjs'
 import { createMainWindow, ensureRendererLoaded, setRendererOrigin } from './window.mjs'
 import { setRendererUrl } from './shell-pages.mjs'
-import { APP_ICON_PATH, APP_ID, __dirname } from './constants.mjs'
+import { APP_ICON_PATH, APP_ID, __dirname, youtubeOAuthStateFilePath } from './constants.mjs'
+
+// Ensure YouTube TV OAuth state resolves even when the process launcher does
+// not inject YOUTUBE_OAUTH_STATE_FILE (common for `npm run dev:desktop`).
+if (!String(process.env.YOUTUBE_OAUTH_STATE_FILE || '').trim()) {
+  process.env.YOUTUBE_OAUTH_STATE_FILE = youtubeOAuthStateFilePath
+}
 
 const DEFAULT_DEV_RENDERER_URL = 'http://127.0.0.1:5174/'
 

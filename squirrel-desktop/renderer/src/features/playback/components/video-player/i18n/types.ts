@@ -88,6 +88,7 @@ export interface LocaleMessages {
   errorMedia: string
   errorDecode: string
   errorNotSupported: string
+  errorStreamUnavailable: string
   errorUnknown: string
   retry: string
   dismiss: string
