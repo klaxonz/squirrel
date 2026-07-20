@@ -31,6 +31,7 @@ const enUS: LocaleConfig = {
 
     settings: 'Settings',
     quality: 'Quality',
+    auto: 'Auto',
     codec: 'Codec',
     playbackSpeed: 'Playback Speed',
     speedNormal: 'Normal',
@@ -74,6 +75,7 @@ const enUS: LocaleConfig = {
     errorDecode: 'Decode Error',
     errorNotSupported: 'Unsupported Format',
     errorStreamUnavailable: 'Unable to load video stream. Please retry.',
+    errorPlaybackStalled: 'Playback stalled. Retry or lower quality.',
     errorUnknown: 'Unknown Error',
     retry: 'Retry',
     dismiss: 'Dismiss',

@@ -62,3 +62,21 @@ test('main.mjs is slim composition root', async () => {
   assert.doesNotMatch(source, /const installDesktopMediaHeaders\s*=\s*\(\)\s*=>/)
   assert.doesNotMatch(source, /const SITE_LOGIN_PROFILES\s*=\s*\{/)
 })
+
+test('youtube media headers stay FreeTube-aligned (official toDash path)', async () => {
+  const source = await readFile(mediaHeadersPath, 'utf8')
+
+  // FreeTube: Referer + Origin + strip Content-Type on videoplayback; no cookies.
+  assert.match(source, /YOUTUBE_MEDIA_HEADERS/)
+  assert.match(source, /Referer: 'https:\/\/www\.youtube\.com\/'/)
+  assert.match(source, /Origin: 'https:\/\/www\.youtube\.com'/)
+  assert.match(source, /stripCookies:\s*true/)
+  assert.match(source, /stripContentTypeOnVideoplayback:\s*true/)
+  assert.doesNotMatch(source, /com\.google\.ios\.youtube/)
+  assert.doesNotMatch(source, /onBeforeRedirect/)
+  assert.doesNotMatch(source, /restoreRange/)
+  assert.doesNotMatch(source, /youtubeStreamKey/)
+  assert.doesNotMatch(source, /resolveYouTubeMediaHeaders/)
+  assert.doesNotMatch(source, /createServer/)
+  assert.doesNotMatch(source, /127\.0\.0\.1/)
+})

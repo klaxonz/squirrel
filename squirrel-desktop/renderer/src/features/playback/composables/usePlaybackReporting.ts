@@ -136,11 +136,10 @@ export default function usePlaybackReporting(videoRef: Ref<PlaybackReportVideo |
 
   const onVideoPlay = () => {
     maybeResetForNewVideo()
-    if (videoRef.value) videoRef.value.isPlaying = true
+    // videoRef may be a readonly store proxy — do not assign isPlaying here.
   }
 
   const onVideoPause = () => {
-    if (videoRef.value) videoRef.value.isPlaying = false
     void flushPendingReport()
   }
 

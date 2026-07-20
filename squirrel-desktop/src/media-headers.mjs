@@ -3,7 +3,6 @@ import { buildCookieHeaderForUrl } from './site-login.mjs'
 import { mergeCookieHeaders } from './cookie-header.mjs'
 import {
   desktopChromeUserAgent,
-  androidMobileChromeUserAgent,
 } from './constants.mjs'
 
 const BILIBILI_MEDIA_HEADERS = {
@@ -13,26 +12,39 @@ const BILIBILI_MEDIA_HEADERS = {
   'User-Agent': desktopChromeUserAgent,
 }
 
+/**
+ * YouTube media — FreeTube-aligned (src/main/index.js onBeforeSendHeaders):
+ *  - googlevideo /videoplayback: Referer + Origin youtube.com
+ *  - strip Content-Type (YouTube itself does not send it on media)
+ *  - never attach site cookies to signature-bound googlevideo URLs
+ * Do NOT rewrite UA per client, re-map Range across redirects, or proxy.
+ */
+const YOUTUBE_MEDIA_HEADERS = {
+  Referer: 'https://www.youtube.com/',
+  Origin: 'https://www.youtube.com',
+}
+
 const MEDIA_HEADER_RULES = [
   {
     hosts: ['bilivideo.com', 'bilivideo.cn', 'hdslb.com', 'acgvideo.com', 'mountaintoys.cn'],
     headers: BILIBILI_MEDIA_HEADERS,
+    attachCookies: true,
   },
   {
     hosts: ['googlevideo.com', 'gvt1.com', 'ytimg.com'],
-    headers: {
-      Referer: 'https://m.youtube.com/',
-      Origin: 'https://m.youtube.com',
-      'User-Agent': androidMobileChromeUserAgent,
-    },
+    headers: YOUTUBE_MEDIA_HEADERS,
+    attachCookies: false,
+    stripCookies: true,
+    // FreeTube only strips Content-Type on googlevideo videoplayback.
+    stripContentTypeOnVideoplayback: true,
   },
   {
     hosts: ['youtube.com'],
     headers: {
       Referer: 'https://www.youtube.com/',
       Origin: 'https://www.youtube.com',
-      'User-Agent': desktopChromeUserAgent,
     },
+    attachCookies: true,
   },
 ]
 
@@ -79,7 +91,7 @@ const hostMatchesAnyRule = (hostname, hosts) => {
   return hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`))
 }
 
-const matchMediaHeaderRule = (targetUrl) => {
+export const matchMediaHeaderRule = (targetUrl) => {
   try {
     const hostname = new URL(targetUrl).hostname.toLowerCase()
     const hostRule = MEDIA_HEADER_RULES.find((rule) => {
@@ -87,7 +99,7 @@ const matchMediaHeaderRule = (targetUrl) => {
     })
     if (hostRule) return hostRule
     if (isBilibiliEdgeMediaUrl(targetUrl)) {
-      return { hosts: [], headers: BILIBILI_MEDIA_HEADERS }
+      return { hosts: [], headers: BILIBILI_MEDIA_HEADERS, attachCookies: true }
     }
     return null
   } catch (err) {
@@ -118,6 +130,38 @@ const stripRelaxedResponseHeaders = (responseHeaders) => {
   return filteredHeaders
 }
 
+const isYouTubeVideoplaybackUrl = (targetUrl) => {
+  try {
+    const url = new URL(targetUrl)
+    return (
+      (url.hostname.endsWith('.googlevideo.com') || url.hostname === 'googlevideo.com')
+      && url.pathname === '/videoplayback'
+    )
+  } catch {
+    return false
+  }
+}
+
+const applyRequestHeaders = (details, rule) => {
+  const requestHeaders = {
+    ...details.requestHeaders,
+    ...rule.headers,
+  }
+
+  if (rule.stripCookies) {
+    delete requestHeaders.Cookie
+    delete requestHeaders.cookie
+  }
+
+  // FreeTube: YouTube does not send Content-Type on media segment requests.
+  if (rule.stripContentTypeOnVideoplayback && isYouTubeVideoplaybackUrl(details.url)) {
+    delete requestHeaders['Content-Type']
+    delete requestHeaders['content-type']
+  }
+
+  return requestHeaders
+}
+
 export const installDesktopMediaHeaders = () => {
   const ses = session.defaultSession
 
@@ -130,9 +174,11 @@ export const installDesktopMediaHeaders = () => {
       return
     }
 
-    const requestHeaders = {
-      ...details.requestHeaders,
-      ...rule.headers,
+    const requestHeaders = applyRequestHeaders(details, rule)
+
+    if (rule.attachCookies === false || rule.stripCookies) {
+      callback({ requestHeaders })
+      return
     }
 
     void buildCookieHeaderForUrl(details.url).then((desktopCookieHeader) => {

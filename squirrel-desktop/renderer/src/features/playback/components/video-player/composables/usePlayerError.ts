@@ -71,8 +71,9 @@ export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorRe
     }
     if (upper.includes('NOT_SUPPORTED') || upper.includes('CAPABILITY')) return t('errorNotSupported')
     if (upper.includes('DECODE')) return t('errorDecode')
+    // Stall that exhausted recovery — not a soft "buffering" spinner message.
+    if (upper.includes('STALL') || upper.includes('BUFFER')) return t('errorPlaybackStalled')
     if (upper.includes('MEDIA') || upper.includes('HLS_') || upper.includes('DASH_')) return t('errorMedia')
-    if (upper.includes('STALL')) return t('buffering')
     return fallback || t('errorUnknown')
   }
 

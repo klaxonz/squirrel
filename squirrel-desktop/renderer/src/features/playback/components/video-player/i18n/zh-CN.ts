@@ -38,6 +38,7 @@ const zhCN: LocaleConfig = {
     // 设置
     settings: '设置',
     quality: '画质',
+    auto: '自动',
     codec: '编码',
     playbackSpeed: '播放速度',
     speedNormal: '正常',
@@ -88,6 +89,7 @@ const zhCN: LocaleConfig = {
     errorDecode: '视频解码失败',
     errorNotSupported: '不支持的视频格式',
     errorStreamUnavailable: '无法加载视频流，请重试',
+    errorPlaybackStalled: '播放卡顿，请重试或降低清晰度',
     errorUnknown: '未知错误',
     retry: '重试',
     dismiss: '关闭',

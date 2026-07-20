@@ -66,7 +66,8 @@ export class DashAdapter implements StreamAdapter {
     this.options = {
       maxRetries: 3,
       retryInterval: 3000,
-      enableAutoQuality: false,
+      // Match official players: ABR on, start moderate, ramp up (not lock top rung).
+      enableAutoQuality: true,
       ...options
     }
   }
@@ -134,6 +135,9 @@ export class DashAdapter implements StreamAdapter {
       return
     }
 
+    // Provider ladder first (Bilibili / remote MPD) so the quality chip is
+    // populated before dash.js finishes stream-initialized.
+    this.updateQualities()
     this.loadSource(source.src)
   }
 
@@ -172,30 +176,37 @@ export class DashAdapter implements StreamAdapter {
       ...otherCustomSettings
     } = customSettings as any
 
-    // 配置播放器
+    // Official-style fast start: modest initial bitrate + short buffer so first
+    // frame appears quickly; ABR climbs once throughput is known (YouTube-like).
+    // Previous 20Mbps + ratio=1 forced 1440p/2160p before play → multi-second spin.
     const settings: Partial<MediaPlayerSettingClass> = {
       streaming: {
         abr: {
           autoSwitchBitrate: { video: this.options.enableAutoQuality !== false },
-          initialBitrate: { video: 20000 },
-          initialRepresentationRatio: 1,
+          // ~1.5–2.5 Mbps ≈ 720p class; dash.js probes up from here.
+          initialBitrate: { video: 2000 },
           maxBitrate: { video: -1 },
-          bandwidthSafetyFactor: 0.95,
-          usePixelRatioInLimitBitrateByPortal: false
+          bandwidthSafetyFactor: 0.9,
+          usePixelRatioInLimitBitrateByPortal: false,
+          // Allow ABR to leave the start rung promptly once bandwidth is known.
+          abrThroughputSafetyFactor: 1.0,
         } as any,
         buffer: {
-          stableBufferTime: 12,
-          bufferTimeAtTopQuality: 20,
-          bufferTimeAtTopQualityLongForm: 30,
+          // Short stable buffer = earlier canplay / fewer "缓冲中" on open.
+          stableBufferTime: 4,
+          bufferTimeAtTopQuality: 10,
+          bufferTimeAtTopQualityLongForm: 15,
           longFormContentDurationThreshold: 600,
-          bufferToKeep: 12,
+          bufferToKeep: 8,
           bufferPruningInterval: 10,
+          // Prefer low-latency startup over deep pre-roll.
+          initialBufferLevel: 2,
           fastSwitchEnabled: true,
           flushBufferAtTrackSwitch: true
-        },
-        fragmentRequestTimeout: 20000,
-        fragmentRequestProgressTimeout: 5000,
-        manifestRequestTimeout: 60000,
+        } as any,
+        fragmentRequestTimeout: 15000,
+        fragmentRequestProgressTimeout: 8000,
+        manifestRequestTimeout: 30000,
         retryIntervals: {
           MediaSegment: 1000,
           InitializationSegment: 1000,
@@ -337,6 +348,34 @@ export class DashAdapter implements StreamAdapter {
       return 'unrecoverable'
     }
 
+    // Seek/buffer stalls: never re-attach or reload the whole MPD. That resets
+    // currentTime to 0 and is what users see as "scrub spins then progress jumps
+    // back". Soft-kick dash.js at the preserved playhead instead.
+    if (signature.includes('STALL') || signature.includes('BUFFER')) {
+      const video = this.context.videoElement()
+      const resumeTime = Number.isFinite(context.currentTime)
+        ? context.currentTime
+        : (video?.currentTime ?? 0)
+      try {
+        const player = this.player as any
+        if (player && typeof player.seek === 'function' && Number.isFinite(resumeTime)) {
+          // Prefer dash.js seek so the stream controller rebuffers at the same time
+          // without tearing down the MediaSource (which would rewind to 0).
+          player.seek(Math.max(0, resumeTime))
+        } else if (video && Number.isFinite(resumeTime)) {
+          video.currentTime = Math.max(0, resumeTime)
+        }
+      } catch (recoverError) {
+        this.context.logger.warn('[DashAdapter] Soft re-seek after stall failed', recoverError)
+      }
+      this.context.logger.debug('[DashAdapter] Stall recovery soft-handled without source reload', {
+        code: error.code,
+        retryCount: context.retryCount,
+        resumeTime,
+      })
+      return 'handled'
+    }
+
     if (this.isTransientDashError(signature)) {
       if (context.retryCount <= 2) {
         this.context.logger.debug('[DashAdapter] Transient recovery handled without source reload', {
@@ -348,10 +387,24 @@ export class DashAdapter implements StreamAdapter {
 
       if (this.player && this.currentSource) {
         try {
+          const resumeTime = this.context.videoElement()?.currentTime ?? context.currentTime ?? 0
           this.player.attachSource(this.currentSource)
+          const video = this.context.videoElement()
+          if (video && Number.isFinite(resumeTime) && resumeTime > 0) {
+            const restore = () => {
+              try {
+                video.currentTime = Math.max(0, resumeTime)
+              } catch (e) {
+                this.context.logger.warn('[DashAdapter] Failed to restore time after attachSource', e)
+              }
+            }
+            if (video.readyState >= HTMLMediaElement.HAVE_METADATA) restore()
+            else video.addEventListener('loadedmetadata', restore, { once: true })
+          }
           this.context.logger.debug('[DashAdapter] Escalated transient recovery via attachSource', {
             code: error.code,
             retryCount: context.retryCount,
+            resumeTime,
           })
           return 'handled'
         } catch (recoverError) {
@@ -372,62 +425,125 @@ export class DashAdapter implements StreamAdapter {
   /**
    * 获取可用质量列表
    */
+  private decorateDuplicateHeightLabels(qualities: QualityLevel[]): QualityLevel[] {
+    const heightCounts = new Map<number, number>()
+    qualities.forEach((q) => {
+      const height = q.height || 0
+      heightCounts.set(height, (heightCounts.get(height) || 0) + 1)
+    })
+
+    qualities.forEach((q) => {
+      if (!q.height) return
+      const count = heightCounts.get(q.height) || 0
+      if (count > 1 && q.bitrate) {
+        const kbps = Math.round(q.bitrate / 1000)
+        q.label = `${q.height}p ${kbps}kbps`
+      }
+    })
+
+    return qualities
+  }
+
+  private buildQualitiesFromBitrateList(player: any, bitrateList: any[]): QualityLevel[] {
+    const trackIndex = this.currentTrackIndex
+    const qualities: QualityLevel[] = bitrateList.map((info: any, index: number) => ({
+      id: typeof info?.qualityIndex === 'number' ? info.qualityIndex : index,
+      label: info.height ? `${info.height}p` : `${Math.round((info.bitrate || 0) / 1000)}kbps`,
+      width: info.width,
+      height: info.height,
+      bitrate: info.bitrate,
+      codec: player.getCurrentTrackFor?.('video')?.codec || undefined,
+      runtimeSelection: trackIndex !== null
+        ? this.toRuntimeSelection({
+            trackIndex,
+            qualityIndex: typeof info?.qualityIndex === 'number' ? info.qualityIndex : index,
+          })
+        : undefined,
+    }))
+
+    return this.decorateDuplicateHeightLabels(qualities)
+  }
+
+  /**
+   * Collect every video AdaptationSet rung. getBitrateInfoListFor('video') only
+   * reflects the *current* track, so YouTube multi-codec MPDs otherwise collapse
+   * to a sparse ladder (e.g. only the active VP9 heights).
+   */
+  private buildQualitiesFromAllTracks(): QualityLevel[] {
+    const tracks = this.getVideoTracks()
+    const qualities: QualityLevel[] = []
+
+    for (const [trackIndex, track] of tracks.entries()) {
+      const bitrateList = Array.isArray(track?.bitrateList) ? track.bitrateList : []
+      for (const [index, info] of bitrateList.entries()) {
+        const qualityIndex = typeof info?.qualityIndex === 'number' ? info.qualityIndex : index
+        const repId = info?.id ?? info?.representationId
+        qualities.push({
+          id: repId != null && String(repId).length > 0 ? repId : `${trackIndex}:${qualityIndex}`,
+          label: info?.height
+            ? `${info.height}p`
+            : `${Math.round((Number(info?.bitrate) || 0) / 1000)}kbps`,
+          width: info?.width,
+          height: info?.height,
+          bitrate: info?.bitrate,
+          codec: track?.codec || undefined,
+          runtimeSelection: this.toRuntimeSelection({ trackIndex, qualityIndex }),
+        })
+      }
+    }
+
+    return this.decorateDuplicateHeightLabels(qualities)
+  }
+
+  private mapRawProviderHints(): QualityLevel[] {
+    return this.sourceQualityHints
+      .filter((hint) => hint && hint.id !== undefined && hint.id !== null)
+      .map((hint) => ({
+        id: hint.id,
+        label: hint.label || (hint.height ? `${hint.height}p` : String(hint.id)),
+        width: hint.width,
+        height: hint.height,
+        bitrate: hint.bitrate,
+        codec: hint.codec,
+        src: hint.src,
+      }))
+  }
+
   private getAvailableQualities(): QualityLevel[] {
-    if (!this.player) return []
+    // Before dash.js exists, still publish the provider ladder so the 画质 menu
+    // is never blank during attach/parse (and never overwrites a seed with []).
+    if (!this.player) {
+      return this.mapRawProviderHints()
+    }
 
     try {
       const player = this.player as any
-      const bitrateList = player.getBitrateInfoListFor?.('video') || []
       this.currentTrackIndex = this.getCurrentPlaybackTrackIndex(player)
       this.updateHintSelections()
 
+      // Provider hints (itag ladder) are the full menu source of truth. Always
+      // surface every hint — including those still waiting for a dash.js match —
+      // so the UI is never stuck on a partial current-track subset.
       const hintedQualities = this.getHintedQualities()
       if (hintedQualities.length > 0) {
-        const visibleCodecFamily = this.resolveVisibleCodecFamily()
-        if (visibleCodecFamily) {
-          const activeCodecQualities = hintedQualities.filter(
-              (hint) => getCodecFamily(hint.codec) === visibleCodecFamily
-          )
-          if (activeCodecQualities.length > 0) {
-            return activeCodecQualities
-          }
-        }
         return hintedQualities
       }
 
-      const qualities: QualityLevel[] = bitrateList.map((info: any, index: number) => ({
-        id: typeof info?.qualityIndex === 'number' ? info.qualityIndex : index,
-        label: info.height ? `${info.height}p` : `${Math.round(info.bitrate / 1000)}kbps`,
-        width: info.width,
-        height: info.height,
-        bitrate: info.bitrate,
-        codec: player.getCurrentTrackFor?.('video')?.codec || undefined,
-        runtimeSelection: this.currentTrackIndex !== null
-          ? this.toRuntimeSelection({
-              trackIndex: this.currentTrackIndex,
-              qualityIndex: typeof info?.qualityIndex === 'number' ? info.qualityIndex : index
-            })
-          : undefined
-      }))
+      const fromAllTracks = this.buildQualitiesFromAllTracks()
+      if (fromAllTracks.length > 0) {
+        return fromAllTracks
+      }
 
-      const heightCounts = new Map<number, number>()
-      qualities.forEach((q) => {
-        const height = q.height || 0
-        heightCounts.set(height, (heightCounts.get(height) || 0) + 1)
-      })
+      const bitrateList = player.getBitrateInfoListFor?.('video') || []
+      const fromBitrate = this.buildQualitiesFromBitrateList(player, bitrateList)
+      if (fromBitrate.length > 0) {
+        return fromBitrate
+      }
 
-      qualities.forEach((q) => {
-        if (!q.height) return
-        const count = heightCounts.get(q.height) || 0
-        if (count > 1 && q.bitrate) {
-          const kbps = Math.round(q.bitrate / 1000)
-          q.label = `${q.height}p ${kbps}kbps`
-        }
-      })
-
-      return qualities
+      // Last resort: raw provider hints before dash.js has tracks.
+      return this.mapRawProviderHints()
     } catch {
-      return []
+      return this.mapRawProviderHints()
     }
   }
 
@@ -436,6 +552,12 @@ export class DashAdapter implements StreamAdapter {
    */
   private updateQualities(): void {
     const qualities = this.getAvailableQualities()
+    // Never wipe a provider-seeded menu with [] while attach/parse is still
+    // running (player null or no tracks yet).
+    if (qualities.length === 0 && this.sourceQualityHints.length > 0) {
+      return
+    }
+
     this.currentVisibleCodecFamily = this.resolveVisibleCodecFamily()
     const currentPlaybackQuality = this.getCurrentPlaybackQuality(qualities)
 
@@ -511,6 +633,33 @@ export class DashAdapter implements StreamAdapter {
   }
 
   /**
+   * Seek via dash.js so the stream controller rebuffers at `time` without
+   * reloading the MPD / resetting the playhead to 0.
+   */
+  seek(time: number): void {
+    const target = Number(time)
+    if (!Number.isFinite(target)) return
+    const clamped = Math.max(0, target)
+    try {
+      const player = this.player as any
+      if (player && typeof player.seek === 'function') {
+        player.seek(clamped)
+        return
+      }
+    } catch (e) {
+      this.context.logger.warn('[DashAdapter] player.seek failed, falling back to video.currentTime', e)
+    }
+    const video = this.context.videoElement()
+    if (video) {
+      try {
+        video.currentTime = clamped
+      } catch (e) {
+        this.context.logger.warn('[DashAdapter] video.currentTime seek failed', e)
+      }
+    }
+  }
+
+  /**
    * 设置质量
    */
   setQuality(quality: QualitySelectionRequest): void {
@@ -554,37 +703,56 @@ export class DashAdapter implements StreamAdapter {
       }
     }
 
-    if (typeof quality === 'string') {
+    if (typeof quality === 'string' || typeof quality === 'number') {
       const hintedSelection = this.getHintedSelection(quality)
       if (hintedSelection && this.applyHintedSelection(player, hintedSelection)) {
         return
       }
 
-      try {
-        const numericQuality = Number.parseInt(String(quality), 10)
-        if (Number.isFinite(numericQuality)) {
-          targetIndex = numericQuality
+      // Prefer a quality entry that carries a runtimeSelection (hint-backed).
+      const available = this.getAvailableQualities()
+      const byId = available.find((item) => String(item.id) === String(quality))
+      if (byId?.runtimeSelection?.kind === 'dash-selection') {
+        if (this.applyHintedSelection(player, {
+          trackIndex: byId.runtimeSelection.trackIndex,
+          qualityIndex: byId.runtimeSelection.qualityIndex,
+        })) {
+          return
         }
-      } catch (e) {
-        this.context.logger.warn('[DashAdapter] Failed to parse quality index', e)
       }
-    }
 
-    if (typeof quality === 'number' && quality >= 0) {
-      targetIndex = quality
-    } else {
-      // 按高度匹配，优先选择同分辨率中最高码率
+      // Height labels like "1080p" / numeric height.
       const height = parseInt(String(quality).replace(/[^0-9]/g, ''), 10)
-      const qualities = this.getAvailableQualities()
-      const matches = qualities.filter(q => q.height === height)
-      if (matches.length) {
-        const best = matches.reduce((prev, next) => {
-          const prevBitrate = prev.bitrate ?? 0
-          const nextBitrate = next.bitrate ?? 0
-          return nextBitrate >= prevBitrate ? next : prev
-        })
-        if (typeof best.id === 'number') {
-          targetIndex = best.id
+      if (Number.isFinite(height) && height > 0 && height < 10000) {
+        const matches = available.filter((q) => q.height === height)
+        if (matches.length) {
+          const best = matches.reduce((prev, next) => {
+            const prevBitrate = prev.bitrate ?? 0
+            const nextBitrate = next.bitrate ?? 0
+            return nextBitrate >= prevBitrate ? next : prev
+          })
+          if (best.runtimeSelection?.kind === 'dash-selection') {
+            if (this.applyHintedSelection(player, {
+              trackIndex: best.runtimeSelection.trackIndex,
+              qualityIndex: best.runtimeSelection.qualityIndex,
+            })) {
+              return
+            }
+          }
+          if (typeof best.id === 'number') {
+            targetIndex = best.id
+          }
+        }
+      }
+
+      // Only treat small integers as dash.js qualityIndex — YouTube itags
+      // (e.g. 313) must not be passed to setQualityFor as level indices.
+      if (typeof quality === 'number' && quality >= 0 && quality < 64) {
+        targetIndex = quality
+      } else if (typeof quality === 'string') {
+        const numericQuality = Number.parseInt(String(quality), 10)
+        if (Number.isFinite(numericQuality) && numericQuality >= 0 && numericQuality < 64) {
+          targetIndex = numericQuality
         }
       }
     }
@@ -687,20 +855,24 @@ export class DashAdapter implements StreamAdapter {
 
   private getHintedQualities(): QualityLevel[] {
     if (this.sourceQualityHints.length === 0) return []
-    return this.sourceQualityHints.reduce<QualityLevel[]>((qualities, hint) => {
+    // Include every provider hint even when dash.js has not matched a track yet.
+    // Dropping unmatched rows was collapsing menus to a few heights (e.g.
+    // 2160/1440/144) while mid ladder entries waited on selection mapping.
+    return this.sourceQualityHints
+      .filter((hint) => hint && hint.id !== undefined && hint.id !== null)
+      .map((hint) => {
         const selection = this.getHintedSelection(hint.id)
-        if (!selection) return qualities
-        qualities.push({
+        return {
           id: hint.id,
-          label: hint.label,
+          label: hint.label || (hint.height ? `${hint.height}p` : String(hint.id)),
           width: hint.width,
           height: hint.height,
           bitrate: hint.bitrate,
           codec: hint.codec,
-          runtimeSelection: this.toRuntimeSelection(selection)
-        })
-        return qualities
-      }, [])
+          src: hint.src,
+          runtimeSelection: selection ? this.toRuntimeSelection(selection) : undefined,
+        }
+      })
   }
 
   private updateHintSelections(): void {
@@ -711,6 +883,7 @@ export class DashAdapter implements StreamAdapter {
     for (const hint of this.sourceQualityHints) {
       let bestMatch: { trackIndex: number; qualityIndex: number; score: number } | null = null
       const hintCodecFamily = getCodecFamily(hint.codec)
+      const hintId = String(hint.id ?? '').trim()
 
       for (const [trackIndex, track] of tracks.entries()) {
         const bitrateList = Array.isArray(track?.bitrateList) ? track.bitrateList : []
@@ -721,12 +894,22 @@ export class DashAdapter implements StreamAdapter {
           const hintHeight = Number(hint.height || 0)
           const hintBitrate = Number(hint.bitrate || 0)
           const qualityIndex = typeof bitrateInfo?.qualityIndex === 'number' ? bitrateInfo.qualityIndex : index
+          // YouTube local MPD uses itag as Representation@id; prefer exact id match.
+          const repId = String(
+            bitrateInfo?.id
+            ?? bitrateInfo?.representationId
+            ?? track?.bitrateList?.[index]?.id
+            ?? '',
+          ).trim()
+          const exactIdMatch = Boolean(hintId && repId && hintId === repId)
           const codecPenalty = (
-            hintCodecFamily &&
-            trackCodecFamily &&
-            hintCodecFamily !== trackCodecFamily
+            hintCodecFamily
+            && trackCodecFamily
+            && hintCodecFamily !== trackCodecFamily
           ) ? 1_000_000_000 : 0
-          const score = codecPenalty + Math.abs(height - hintHeight) * 1_000_000 + Math.abs(bitrate - hintBitrate)
+          const score = exactIdMatch
+            ? -1
+            : (codecPenalty + Math.abs(height - hintHeight) * 1_000_000 + Math.abs(bitrate - hintBitrate))
 
           if (!bestMatch || score < bestMatch.score) {
             bestMatch = { trackIndex, qualityIndex, score }
@@ -737,7 +920,7 @@ export class DashAdapter implements StreamAdapter {
       if (bestMatch) {
         this.hintedSelectionsById.set(String(hint.id), {
           trackIndex: bestMatch.trackIndex,
-          qualityIndex: bestMatch.qualityIndex
+          qualityIndex: bestMatch.qualityIndex,
         })
       }
     }

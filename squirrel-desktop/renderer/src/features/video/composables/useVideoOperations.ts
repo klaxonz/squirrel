@@ -150,18 +150,37 @@ export default function useVideoOperations() {
       const videoUrl = data?.video_url
       const audioUrl = data?.audio_url
       const streamType = data?.stream_type
-      const qualities = (data?.qualities || []).map((item) => ({
-        id: item.id ?? item.value,
-        label: item.label,
-        height: item.height ?? undefined,
-        bitrate: item.bandwidth ?? undefined,
-        codec: item.codec,
-        src: item.src ?? undefined
-      }))
+      const qualities = (data?.qualities || []).map((item, index) => {
+        const id = item.id ?? item.value ?? index
+        const height = item.height ?? undefined
+        const label = String(
+          item.label
+          || (typeof height === 'number' && height > 0 ? `${height}p` : '')
+          || id
+        ).trim()
+        return {
+          id,
+          label,
+          height,
+          bitrate: item.bandwidth ?? undefined,
+          codec: item.codec,
+          src: item.src ?? undefined,
+        }
+      }).filter((item) => item.id !== undefined && item.id !== null && item.label)
       const key = `${videoId}:${Date.now()}`
       const progressKey = String(videoId)
-      const localMpdUrl = typeof mpdContent === 'string' && mpdContent.trim()
-        ? URL.createObjectURL(new Blob([mpdContent], { type: 'application/dash+xml' }))
+      // FreeTube Watch.createLocalDashManifest uses a data: URL so the MPD body
+      // never needs a separate fetch. Official youtubei.js toDash + shaka is the
+      // YouTube path; Bilibili keeps a blob + dash.js.
+      const trimmedMpd = typeof mpdContent === 'string' ? mpdContent.trim() : ''
+      const isYouTubeOfficialDash =
+        matchedDesktopProvider.site === 'youtube'
+        && streamType === 'dash'
+        && Boolean(trimmedMpd)
+      const localMpdUrl = trimmedMpd
+        ? (isYouTubeOfficialDash
+          ? `data:application/dash+xml;charset=UTF-8,${encodeURIComponent(trimmedMpd)}`
+          : URL.createObjectURL(new Blob([trimmedMpd], { type: 'application/dash+xml' })))
         : undefined
       const resolvedMpdUrl = localMpdUrl || mpdUrl
 
@@ -188,6 +207,9 @@ export default function useVideoOperations() {
       if (resolvedMpdUrl) return {
         src: resolvedMpdUrl,
         type: toPlayerSourceType(streamType),
+        // FreeTube plays youtubei.js toDash with shaka-player + googlevideo
+        // POST/alr filters. dash.js alone lacks that request rewrite path.
+        ...(isYouTubeOfficialDash ? { playbackEngine: 'shaka' as const } : {}),
         key,
         progressKey,
         qualities,

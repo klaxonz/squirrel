@@ -25,14 +25,34 @@ export interface UseQualityDisplayReturn {
   isQualityActive: (quality: { id: string | number }) => boolean
 }
 
-// ponytail: pure scoring/dedup helpers for the quality menu. Lifted verbatim
-// from VideoPlayer.vue so the displayed list, active check, and labels stay
-// byte-identical to the pre-extraction behavior. NOTE: the '??' literals below
-// are mojibake carried over from the original source (not real CJK); kept as-is
-// to preserve behavior — fixing them is a separate task.
+// Quality-menu helpers. Empty / whitespace labels must NOT count as displayable
+// — otherwise the chip falls through to t('quality') ("画质") even when the
+// ladder is present, and empty rows appear in the popup.
 const isInternalQualityLabel = (label: string | null | undefined) => /^level[_\s-]?\d+$/i.test(String(label || '').trim().toLowerCase())
-const isAutoQualityLabel = (label: string | null | undefined) => ['auto', '??', '??'].includes(String(label || '').trim().toLowerCase())
-const isDisplayableQualityLabel = (label: string | null | undefined) => !isInternalQualityLabel(label) && !isAutoQualityLabel(label)
+const isAutoQualityLabel = (label: string | null | undefined) => {
+  const normalized = String(label || '').trim().toLowerCase()
+  // '自动' is the zh-CN auto token; '??' is legacy mojibake for the same.
+  return ['auto', '自动', '??'].includes(normalized)
+}
+const isDisplayableQualityLabel = (label: string | null | undefined) => {
+  const text = String(label || '').trim()
+  if (!text) return false
+  return !isInternalQualityLabel(text) && !isAutoQualityLabel(text)
+}
+
+const formatHeightLabel = (height?: number | null) => {
+  const value = Number(height || 0)
+  return Number.isFinite(value) && value > 0 ? `${value}p` : ''
+}
+
+/** Prefer a human rung label; never return blank for a known height/id. */
+const resolveQualityLabel = (quality: { label?: string | null; height?: number | null; id?: string | number | null }) => {
+  if (isDisplayableQualityLabel(quality.label)) return String(quality.label).trim()
+  const fromHeight = formatHeightLabel(quality.height)
+  if (fromHeight) return fromHeight
+  const idText = quality.id === undefined || quality.id === null ? '' : String(quality.id).trim()
+  return idText
+}
 
 export function useQualityDisplay(options: UseQualityDisplayOptions): UseQualityDisplayReturn {
   const {
@@ -83,17 +103,24 @@ export function useQualityDisplay(options: UseQualityDisplayOptions): UseQuality
   }
 
   const displayedQualities = computed(() => {
-    const codecMatchedQualities = visibleCodecFamily.value
-      ? qualities.value.filter((quality) => getCodecFamily(quality.codec) === visibleCodecFamily.value)
-      : qualities.value
-    const sourceQualities = codecMatchedQualities.length > 0 ? codecMatchedQualities : qualities.value
+    // Always consider every codec family. Filtering to the active codec only
+    // hid entire ladders (e.g. AVC 1080/720/480 when playing VP9 2160p left
+    // just 2160/1440/144). Per-height scoring still prefers the active codec.
+    const sourceQualities = qualities.value
     const dedupedQualities = new Map<string, QualityLevel>()
 
     sourceQualities.forEach((quality) => {
-      const bucketKey = getQualityBucketKey(quality)
+      // Normalize missing labels so the menu never renders blank rows.
+      const normalized: QualityLevel = {
+        ...quality,
+        label: resolveQualityLabel(quality) || String(quality.id ?? ''),
+      }
+      if (!normalized.label) return
+
+      const bucketKey = getQualityBucketKey(normalized)
       const existing = dedupedQualities.get(bucketKey)
-      if (!existing || scoreQualityForDisplay(quality) > scoreQualityForDisplay(existing)) {
-        dedupedQualities.set(bucketKey, quality)
+      if (!existing || scoreQualityForDisplay(normalized) > scoreQualityForDisplay(existing)) {
+        dedupedQualities.set(bucketKey, normalized)
       }
     })
 
@@ -104,12 +131,43 @@ export function useQualityDisplay(options: UseQualityDisplayOptions): UseQuality
     })
   })
 
-  const currentQualityText = computed(() => (
-    resolvedCurrentQuality.value?.label
-      || (isDisplayableQualityLabel(currentQualityLabel.value) ? (currentQualityLabel.value || '') : '')
-  ))
+  const currentQualityText = computed(() => {
+    // Always show an explicit rung (1080p / 720p…). Never "自动" / "Auto" —
+    // users pick a concrete height; ABR may still run under the hood until a
+    // manual selection locks the ladder.
+    const resolved = resolvedCurrentQuality.value
+    if (resolved) {
+      const label = resolveQualityLabel(resolved)
+      if (label) return label
+    }
+
+    if (isDisplayableQualityLabel(currentQualityLabel.value)) {
+      return String(currentQualityLabel.value || '').trim()
+    }
+
+    // Engine sometimes reports height-only tokens ("720") without a trailing p.
+    const rawLabel = String(currentQualityLabel.value || '').trim()
+    if (rawLabel && !isAutoQualityLabel(rawLabel) && !isInternalQualityLabel(rawLabel)) {
+      const asHeight = Number.parseInt(rawLabel.replace(/[^0-9]/g, ''), 10)
+      if (Number.isFinite(asHeight) && asHeight > 0) return `${asHeight}p`
+      return rawLabel
+    }
+
+    // Provisional: prefer a mid-ladder ~720p-class rung (matches Shaka's default
+    // bandwidth seed) so the chip is concrete before adaptation settles; then
+    // fall back to the highest available height.
+    const ladder = displayedQualities.value
+    if (ladder.length === 0) return ''
+    const preferred = ladder.find((quality) => Number(quality.height || 0) <= 720)
+      || ladder[ladder.length - 1]
+      || ladder[0]
+    return resolveQualityLabel(preferred)
+  })
   const qualityTagLabel = computed(() => currentQualityText.value)
-  const qualityMenuLabel = computed(() => currentQualityText.value || t('quality'))
+  // Popup header mirrors the chip: concrete height only, never bare "画质".
+  const qualityMenuLabel = computed(() => (
+    currentQualityText.value || t('quality')
+  ))
 
   const isQualityActive = (quality: { id: string | number }) => (
     resolvedCurrentQuality.value !== null

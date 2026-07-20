@@ -1,25 +1,67 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 
-import { Innertube, Platform, UniversalCache } from 'youtubei.js/web';
+// Electron main is Node — use the node platform entry so UniversalCache is
+// file-backed (FreeTube's PlayerCache equivalent). youtubei.js/web uses
+// IndexedDB, which is unavailable in the main process and silently disables
+// player script caching; that forces flaky decipher / "No valid URL" paths.
+import { Innertube, Platform, UniversalCache } from 'youtubei.js';
 
 import { youtubeOAuthStateFilePath } from '../../../constants.mjs';
 import { SessionManager } from './build/session_manager.js';
 
-// Client order is deliberate:
-// - MWEB / IOS return decipherable adaptive streams more reliably.
-// - ANDROID often only yields progressive (itag 18); WEB/TV are frequently
-//   bot-gated with LOGIN_REQUIRED ("Sign in to confirm you're not a bot").
-// - Authenticated sessions prefer TV (oauth-native) then MWEB adaptive.
-const AUTHENTICATED_PLAYBACK_CLIENTS = ['TV', 'MWEB', 'IOS', 'WEB', 'ANDROID'];
-const AUTHENTICATED_FULL_CLIENTS = ['TV', 'MWEB', 'IOS', 'WEB', 'ANDROID'];
-const ANONYMOUS_CLIENTS = ['MWEB', 'IOS', 'ANDROID', 'WEB'];
+// Official youtubei.js playback path (FreeTube getLocalVideoInfo + VideoInfo.toDash):
+//   remote WEB session (generate_session_locally: false) → IOS/MWEB player → toDash
+//   → data:application/dash+xml + shaka (POST/alr googlevideo filters)
+//
+// Measured (youtubei.js 17.x, Electron main / node entry):
+//   - FreeTube watch path boots WEB with *remote* session + retrieve_innertube_config.
+//     Locally generated sessions (especially ANDROID bootstrap) make IOS/MWEB return
+//     LOGIN_REQUIRED / empty streaming_data intermittently → progressive 360p collapse.
+//   - IOS: clear adaptive URLs, reliable toDash once the visitor session is remote-WEB
+//   - MWEB: full ladder on a healthy remote session
+//   - ANDROID/WEB player clients: often SABR / "No valid URL to decipher" without pot
+// OAuth WEB/TV is auth-gate only — not the primary streaming session.
+//
+// Order is success-rate order for toDash, not "feature completeness".
+const OFFICIAL_PLAYBACK_CLIENTS = ['IOS', 'MWEB'];
+// Last-resort clients (often progressive-only or SABR without cipher URLs).
+const OFFICIAL_FALLBACK_CLIENTS = ['ANDROID', 'WEB'];
+// OAuth-only clients used when anonymous hits LOGIN_REQUIRED / bot gate.
+const AUTH_GATE_PLAYBACK_CLIENTS = ['TV', 'WEB'];
 const CAPTIONS_ANONYMOUS_CLIENTS = ['ANDROID', 'WEB', 'MWEB'];
 const CAPTIONS_AUTHENTICATED_CLIENTS = ['WEB', 'TV', 'MWEB'];
 const YOUTUBE_WEB_ORIGIN = 'https://www.youtube.com';
 const YOUTUBE_TV_ACTIVATION_URL = 'https://www.youtube.com/activate';
+// Cap how many times we drop a poisoned SESSION_CACHE entry and rebuild.
+const MAX_PLAYBACK_SESSION_REBUILDS = 1;
+
+/** File-backed player / session cache (survives restarts; avoids IndexedDB). */
+function resolvePlayerCacheDirectory() {
+  const fromEnv = String(process.env.YOUTUBE_PLAYER_CACHE_DIR || '').trim();
+  if (fromEnv) return fromEnv;
+  const oauthFile = youtubeOAuthStateFilePath;
+  if (oauthFile) {
+    return join(dirname(oauthFile), 'youtubei-player-cache');
+  }
+  return join(tmpdir(), 'squirrel-desktop-youtubei-cache');
+}
+
+function createPlayerCache(persistent = true) {
+  if (!persistent) {
+    return new UniversalCache(false);
+  }
+  const cacheDir = resolvePlayerCacheDirectory();
+  try {
+    mkdirSync(cacheDir, { recursive: true });
+  } catch (err) {
+    console.debug('[squirrel-desktop] youtubei_core: player cache mkdir failed', err?.message || err);
+  }
+  return new UniversalCache(true, cacheDir);
+}
 class LRUMap {
   #max;
   #map;
@@ -204,19 +246,44 @@ async function normalizeStreamingData(info, player, poToken) {
   };
 }
 
-async function buildLocalDashManifest(manifestInfo) {
+/**
+ * Official youtubei.js path: VideoInfo.toDash().
+ * Do not hand-build MPD XML — SegmentBase / AdaptationSet grouping from
+ * youtubei.js is what dash.js needs for smooth ABR.
+ */
+async function buildLocalDashManifest(manifestInfo, { poToken } = {}) {
   if (!manifestInfo || typeof manifestInfo.toDash !== 'function') {
     return null;
   }
 
   try {
-    return await manifestInfo.toDash({
+    const options = {
       manifest_options: {
         include_thumbnails: false,
       },
-    });
-  } catch {
-    console.debug('[squirrel-desktop] youtubei_core: buildLocalDashManifest toDash failed');
+    };
+    if (poToken) {
+      options.url_transformer = (url) => {
+        try {
+          const next = new URL(String(url));
+          if (!next.searchParams.has('pot')) {
+            next.searchParams.set('pot', poToken);
+          }
+          return next;
+        } catch {
+          return url;
+        }
+      };
+    }
+    const manifest = await manifestInfo.toDash(options);
+    return typeof manifest === 'string' && manifest.trim() ? manifest : null;
+  } catch (error) {
+    // Non-fatal: index.mjs falls back to streaming_data.dash_manifest_url or
+    // progressive. Log the real reason for diagnostics.
+    console.debug(
+      '[squirrel-desktop] youtubei_core: official VideoInfo.toDash failed',
+      error?.message || String(error),
+    );
     return null;
   }
 }
@@ -323,14 +390,19 @@ function isPlayableFormatSet(formats) {
 }
 
 /**
- * Score a resolved format set so client selection can prefer adaptive DASH over
- * progressive-only fallbacks. ANDROID/WEB frequently return only itag 18 while
- * MWEB still yields full adaptive streams — returning the first "playable"
- * progressive set would skip the better client.
+ * Score a resolved client so we prefer official youtubei.js toDash over bare
+ * adaptive URLs / progressive. ANDROID/WEB frequently return only itag 18 or
+ * adaptive metadata without decipherable URLs.
  *
- * 0 = unusable, 1 = progressive/muxed only, 2 = adaptive video+audio.
+ * 0 = unusable
+ * 1 = progressive/muxed only
+ * 2 = adaptive video+audio URLs (no official MPD yet)
+ * 3 = official YouTube-hosted dash_manifest_url
+ * 4 = official VideoInfo.toDash() body (best for Electron + FreeTube shaka path)
  */
-function scoreFormatSet(formats) {
+function scoreFormatSet(formats, { localDashManifest = null, dashManifestUrl = null } = {}) {
+  if (localDashManifest) return 4;
+  if (dashManifestUrl) return 3;
   const playable = (formats || []).filter((item) => Boolean(item?.url));
   if (playable.length === 0) return 0;
   const hasMuxed = playable.some((item) => item.has_audio && item.has_video);
@@ -623,51 +695,105 @@ function attachOAuthCredentialPersistence(yt) {
   }
 }
 
-async function createRuntime(cookie, oauthCredentials = null) {
+/**
+ * Anonymous (or cookie) Innertube runtime used for official toDash playback.
+ *
+ * Matches FreeTube getLocalVideoInfo session shape:
+ *   withPlayer + generateSessionLocally:false + default WEB client_type
+ * so IOS/MWEB player calls inherit a real YouTube visitorData / config.
+ * Locally generated sessions routinely gate IOS with LOGIN_REQUIRED.
+ */
+async function createPlaybackRuntime(cookie = '') {
+  const normalizedCookie = typeof cookie === 'string' ? cookie.trim() : '';
   const yt = await Innertube.create({
-    cache: new UniversalCache(true),
-    generate_session_locally: !cookie && !oauthCredentials,
+    // FreeTube: file PlayerCache when withPlayer; we use node UniversalCache.
+    cache: createPlayerCache(true),
+    // FreeTube disables cross-instance session reuse to limit tracking.
+    enable_session_cache: false,
+    // FreeTube watch path: remote session (sw.js_data / innertube config), not
+    // a locally synthesised ANDROID visitor — required for stable IOS toDash.
+    generate_session_locally: false,
+    retrieve_innertube_config: true,
     retrieve_player: true,
-    // Session bootstrap client. Per-request clients (TV/MWEB/IOS/...) are chosen
-    // later in resolveYoutubeiPayload; oauth still signs in against WEB/TV APIs.
-    client_type: oauthCredentials ? 'WEB' : cookie ? 'MWEB' : 'ANDROID',
+    client_type: 'WEB',
     fetch: buildYoutubeFetch(),
-    ...((cookie && !oauthCredentials) ? { cookie } : {}),
+    ...(normalizedCookie ? { cookie: normalizedCookie } : {}),
   });
-
-  if (oauthCredentials) {
-    try {
-      attachOAuthCredentialPersistence(yt);
-      // signIn refreshes access_token when refresh_token is still valid.
-      await yt.session.signIn(oauthCredentials);
-      persistOAuthCredentials(yt.session.credentials || oauthCredentials);
-      return { yt, sessionManager: null, authMode: 'oauth' };
-    } catch (err) {
-      console.error(`[squirrel-desktop] youtubei_core: OAuth signIn failed, falling back to anonymous: ${err?.message || err}`);
-      return createRuntime(cookie, null);
-    }
-  }
 
   return {
     yt,
-    sessionManager: cookie ? new SessionManager(false, {}) : null,
-    authMode: cookie ? 'cookie' : 'anonymous',
+    // poToken minting is required for official WEB paths (FreeTube).
+    // Keep it for anonymous too — generation is best-effort / auth-gate.
+    sessionManager: new SessionManager(false, {}),
+    authMode: normalizedCookie ? 'cookie' : 'anonymous',
   };
 }
 
-async function getRuntime(cookie) {
-  const oauthState = loadOAuthState();
-  const oauthCredentials = oauthState?.credentials || null;
-  const key = `${sessionCacheKey(cookie)}|${oauthSessionCacheKey(oauthState)}`;
+function playbackSessionKey(cookie = '') {
+  return `playback|${sessionCacheKey(cookie)}`;
+}
+
+/** Drop a cached playback runtime so the next get rebuilds a fresh session. */
+function invalidatePlaybackRuntime(cookie = '') {
+  SESSION_CACHE.delete(playbackSessionKey(cookie));
+}
+
+/**
+ * OAuth-signed runtime for TV-code account actions and LOGIN_REQUIRED gates.
+ * Not used as the primary streaming session — OAuth WEB sessions do not yield
+ * decipherable adaptive URLs for toDash in current youtubei.js.
+ */
+async function createOAuthRuntime(oauthCredentials) {
+  const yt = await Innertube.create({
+    cache: createPlayerCache(true),
+    enable_session_cache: false,
+    generate_session_locally: true,
+    retrieve_player: true,
+    client_type: 'WEB',
+    fetch: buildYoutubeFetch(),
+  });
+
+  attachOAuthCredentialPersistence(yt);
+  await yt.session.signIn(oauthCredentials);
+  persistOAuthCredentials(yt.session.credentials || oauthCredentials);
+  return {
+    yt,
+    sessionManager: new SessionManager(false, {}),
+    authMode: 'oauth',
+  };
+}
+
+async function getPlaybackRuntime(cookie = '') {
+  const key = playbackSessionKey(cookie);
   let runtime = SESSION_CACHE.get(key);
   if (runtime) {
     return runtime;
   }
+  runtime = await createPlaybackRuntime(cookie);
+  SESSION_CACHE.set(key, runtime);
+  return runtime;
+}
 
-  runtime = await createRuntime(cookie, oauthCredentials);
-  // Cache under the post-auth identity so a successful refresh does not keep
-  // serving a stale anonymous runtime if credentials were rewritten mid-flight.
-  const resolvedKey = `${sessionCacheKey(cookie)}|${oauthSessionCacheKey(loadOAuthState())}`;
+async function getOAuthRuntime() {
+  const oauthState = loadOAuthState();
+  const oauthCredentials = oauthState?.credentials || null;
+  if (!oauthCredentials) {
+    return null;
+  }
+  const key = `oauth|${oauthSessionCacheKey(oauthState)}`;
+  let runtime = SESSION_CACHE.get(key);
+  if (runtime) {
+    return runtime;
+  }
+  try {
+    runtime = await createOAuthRuntime(oauthCredentials);
+  } catch (err) {
+    console.error(
+      `[squirrel-desktop] youtubei_core: OAuth signIn failed: ${err?.message || err}`,
+    );
+    return null;
+  }
+  const resolvedKey = `oauth|${oauthSessionCacheKey(loadOAuthState())}`;
   SESSION_CACHE.set(resolvedKey, runtime);
   if (resolvedKey !== key) {
     SESSION_CACHE.set(key, runtime);
@@ -675,8 +801,19 @@ async function getRuntime(cookie) {
   return runtime;
 }
 
+/**
+ * Captions / account helpers may want OAuth when available; playback does not.
+ */
+async function getRuntime(cookie = '') {
+  const oauthRuntime = await getOAuthRuntime();
+  if (oauthRuntime) {
+    return oauthRuntime;
+  }
+  return getPlaybackRuntime(cookie);
+}
+
 async function buildPoToken(videoId, runtime, attempts) {
-  if (!runtime.sessionManager) {
+  if (!runtime?.sessionManager) {
     return null;
   }
 
@@ -684,19 +821,19 @@ async function buildPoToken(videoId, runtime, attempts) {
     const tokenData = await runtime.sessionManager.generatePoToken(
       videoId,
       '',
-      true,
+      false,
       undefined,
       false,
       undefined,
       runtime.yt.session.context,
     );
-    if (runtime.yt.session.player) {
+    if (runtime.yt.session.player && tokenData?.poToken) {
       runtime.yt.session.player.po_token = tokenData.poToken;
     }
-    return tokenData.poToken;
+    return tokenData?.poToken || null;
   } catch (error) {
     attempts.push({
-      client: 'MWEB',
+      client: 'POTOKEN',
       po_token_error: error?.message || String(error),
     });
     return null;
@@ -708,7 +845,9 @@ async function buildPoToken(videoId, runtime, attempts) {
 let _oauthFlowInFlight = null; // { yt, resolve, reject, settled }
 
 export async function prewarmYoutubeiRuntime(cookie = '') {
-  await getRuntime(cookie);
+  // Warm the official playback session (anonymous ANDROID bootstrap + player).
+  // OAuth is optional and only needed for auth gates / account UI.
+  await getPlaybackRuntime(cookie);
   return {
     status: 'ok',
     prewarmed: true,
@@ -726,7 +865,7 @@ async function resolveOAuthSetup() {
   if (existing?.credentials) {
     try {
       const validatorYt = await Innertube.create({
-        cache: new UniversalCache(false),
+        cache: createPlayerCache(false),
         generate_session_locally: true,
         retrieve_player: false,
         client_type: 'WEB',
@@ -762,7 +901,7 @@ async function resolveOAuthSetup() {
   }
 
   const yt = await Innertube.create({
-    cache: new UniversalCache(false),
+    cache: createPlayerCache(false),
     fetch: buildYoutubeFetch(),
   });
 
@@ -847,7 +986,7 @@ async function resolveOAuthStatus() {
   // library can refresh access tokens when a refresh token is available.
   try {
     const yt = await Innertube.create({
-      cache: new UniversalCache(false),
+      cache: createPlayerCache(false),
       fetch: buildYoutubeFetch(),
     });
     await yt.session.signIn(state.credentials);
@@ -878,7 +1017,7 @@ async function resolveOAuthRevoke() {
   if (state?.credentials) {
     try {
       const yt = await Innertube.create({
-        cache: new UniversalCache(false),
+        cache: createPlayerCache(false),
         fetch: buildYoutubeFetch(),
       });
       await yt.session.signIn(state.credentials);
@@ -934,62 +1073,132 @@ export async function resolveYoutubeiPayload(payload) {
     : [];
   const attempts = [];
   const runtimeStart = performance.now();
-  const runtime = await getRuntime(cookie);
+
+  // Official path always uses the anonymous/cookie playback runtime.
+  // OAuth sessions are not used for streaming (SABR / no cipher URLs).
+  let playbackRuntime = await getPlaybackRuntime(cookie);
   timings.get_runtime_ms = Number((performance.now() - runtimeStart).toFixed(1));
-  const hasAuth = runtime.authMode === 'oauth' || runtime.authMode === 'cookie';
-  const clients = requestedClients.length
+
+  const oauthRuntime = await getOAuthRuntime();
+  const hasAuth = Boolean(oauthRuntime) || playbackRuntime.authMode === 'cookie';
+
+  // Primary: FreeTube-style official clients that produce VideoInfo.toDash().
+  const primaryClients = requestedClients.length
     ? requestedClients
-    : (hasAuth
-      ? (resolutionMode === 'all' ? AUTHENTICATED_FULL_CLIENTS : AUTHENTICATED_PLAYBACK_CLIENTS)
-      : ANONYMOUS_CLIENTS);
+    : OFFICIAL_PLAYBACK_CLIENTS;
 
-  let bestCandidate = await resolveFormatsWithRuntime({
-    runtime,
-    videoId,
-    clients,
-    resolutionMode,
-    attempts,
-    timings,
-    includeDebugTimings,
-    attemptLabelPrefix: hasAuth ? 'auth' : 'anon',
-  });
+  let bestCandidate = null;
+  let sessionRebuilds = 0;
 
-  // OAuth/cookie sessions frequently only yield progressive (itag 18) while
-  // anonymous MWEB/IOS still return decipherable adaptive DASH that actually
-  // plays in Electron. When the authenticated path cannot produce adaptive
-  // streams, try a one-shot anonymous runtime and keep the better score.
+  while (sessionRebuilds <= MAX_PLAYBACK_SESSION_REBUILDS) {
+    const attemptLabelPrefix = sessionRebuilds === 0 ? 'official' : `official-retry${sessionRebuilds}`;
+    bestCandidate = await resolveFormatsWithRuntime({
+      runtime: playbackRuntime,
+      videoId,
+      clients: primaryClients,
+      resolutionMode,
+      attempts,
+      timings,
+      includeDebugTimings,
+      attemptLabelPrefix,
+      // Primary clients are IOS/MWEB — no pot required for official toDash.
+      preferPoToken: false,
+    });
+
+    if (bestCandidate && bestCandidate.score >= 4) {
+      break;
+    }
+
+    // A poisoned / bot-gated visitor session makes every official client return
+    // LOGIN_REQUIRED or empty streaming_data. Rebuild the remote WEB session once
+    // before accepting progressive / SABR fallbacks.
+    const recentOfficialAttempts = attempts.filter((item) =>
+      String(item?.client || '').startsWith(attemptLabelPrefix),
+    );
+    const looksPoisoned = recentOfficialAttempts.length > 0
+      && recentOfficialAttempts.every((item) =>
+        attemptLooksLikeAuthGate(item)
+        || Number(item?.format_score || 0) === 0
+        || /Streaming data not available|No valid URL to decipher/i.test(String(item?.error || '')),
+      );
+
+    if (!looksPoisoned || sessionRebuilds >= MAX_PLAYBACK_SESSION_REBUILDS) {
+      break;
+    }
+
+    sessionRebuilds += 1;
+    invalidatePlaybackRuntime(cookie);
+    const rebuildStart = performance.now();
+    playbackRuntime = await getPlaybackRuntime(cookie);
+    timings[`session_rebuild_${sessionRebuilds}_ms`] = Number(
+      (performance.now() - rebuildStart).toFixed(1),
+    );
+    attempts.push({
+      client: `SESSION_REBUILD_${sessionRebuilds}`,
+      reason: 'official_clients_gated_or_empty',
+    });
+  }
+
+  // Secondary: ANDROID/WEB on the same anonymous runtime (progressive / partial).
+  // Only after official IOS/MWEB failed — never prefer these over a valid toDash.
   if (
-    (!bestCandidate || bestCandidate.score < 2)
-    && hasAuth
+    (!bestCandidate || bestCandidate.score < 4)
     && requestedClients.length === 0
   ) {
     const fallbackStart = performance.now();
+    const fallbackBest = await resolveFormatsWithRuntime({
+      runtime: playbackRuntime,
+      videoId,
+      clients: OFFICIAL_FALLBACK_CLIENTS,
+      resolutionMode,
+      attempts,
+      timings,
+      includeDebugTimings,
+      attemptLabelPrefix: 'fallback',
+      preferPoToken: false,
+    });
+    timings.official_fallback_ms = Number((performance.now() - fallbackStart).toFixed(1));
+    if (fallbackBest && (!bestCandidate || fallbackBest.score > bestCandidate.score)) {
+      bestCandidate = fallbackBest;
+    }
+  }
+
+  // Auth gate only: when anonymous is LOGIN_REQUIRED / bot-blocked, try TV/WEB
+  // with OAuth so age/members/bot gates can pass. Still prefer any toDash body.
+  const authGated = (attempts || []).some((attempt) => attemptLooksLikeAuthGate(attempt));
+  if (
+    (!bestCandidate || bestCandidate.score < 4)
+    && authGated
+    && oauthRuntime
+    && requestedClients.length === 0
+  ) {
+    const authStart = performance.now();
     try {
-      const anonymousRuntime = await createRuntime('', null);
-      const anonymousBest = await resolveFormatsWithRuntime({
-        runtime: anonymousRuntime,
+      const authBest = await resolveFormatsWithRuntime({
+        runtime: oauthRuntime,
         videoId,
-        clients: ANONYMOUS_CLIENTS,
+        clients: AUTH_GATE_PLAYBACK_CLIENTS,
         resolutionMode,
         attempts,
         timings,
         includeDebugTimings,
-        attemptLabelPrefix: 'anon-fallback',
+        attemptLabelPrefix: 'auth-gate',
+        preferPoToken: true,
       });
-      timings.anonymous_fallback_ms = Number((performance.now() - fallbackStart).toFixed(1));
-      if (anonymousBest && (!bestCandidate || anonymousBest.score > bestCandidate.score)) {
+      timings.auth_gate_ms = Number((performance.now() - authStart).toFixed(1));
+      if (authBest && (!bestCandidate || authBest.score > bestCandidate.score)) {
         bestCandidate = {
-          score: anonymousBest.score,
+          score: authBest.score,
           response: {
-            ...anonymousBest.response,
-            auth_fallback: 'anonymous',
+            ...authBest.response,
+            auth_fallback: 'oauth-gate',
           },
         };
       }
     } catch (error) {
-      timings.anonymous_fallback_ms = Number((performance.now() - fallbackStart).toFixed(1));
+      timings.auth_gate_ms = Number((performance.now() - authStart).toFixed(1));
       attempts.push({
-        client: 'ANON_FALLBACK',
+        client: 'AUTH_GATE',
         error: error?.message || String(error),
       });
     }
@@ -1012,7 +1221,7 @@ export async function resolveYoutubeiPayload(payload) {
 
 /**
  * Try a list of Innertube clients against one runtime and return the best
- * scored format set (adaptive preferred over progressive-only).
+ * scored format set. Official success is VideoInfo.toDash() (score 4).
  */
 async function resolveFormatsWithRuntime({
   runtime,
@@ -1023,6 +1232,7 @@ async function resolveFormatsWithRuntime({
   timings,
   includeDebugTimings,
   attemptLabelPrefix = '',
+  preferPoToken = false,
 }) {
   let contentPoToken;
   let bestCandidate = null;
@@ -1031,7 +1241,11 @@ async function resolveFormatsWithRuntime({
     const attemptClient = attemptLabelPrefix ? `${attemptLabelPrefix}:${client}` : client;
     try {
       let requestOptions = { client };
-      if (client === 'MWEB') {
+      // FreeTube attaches a content-bound poToken for WEB player calls.
+      // IOS returns clear adaptive URLs without pot. MWEB often works without
+      // pot when not LOGIN_REQUIRED; forcing pot on MWEB can yield
+      // "Streaming data not available" and adds seconds.
+      if (preferPoToken && client === 'WEB') {
         if (contentPoToken === undefined) {
           const poTokenStart = performance.now();
           contentPoToken = await buildPoToken(videoId, runtime, attempts);
@@ -1043,11 +1257,18 @@ async function resolveFormatsWithRuntime({
       }
 
       const infoStart = performance.now();
+      // getBasicInfo is the official youtubei.js player entry used by FreeTube
+      // for streaming_data (getInfo is only needed for watch-page extras).
       const videoInfo = await runtime.yt.getBasicInfo(videoId, requestOptions);
       const infoMs = Number((performance.now() - infoStart).toFixed(1));
-      const formatsStart = performance.now();
-      const formats = await collectFormats(videoInfo, runtime.yt.session.player, resolutionMode);
-      const formatsMs = Number((performance.now() - formatsStart).toFixed(1));
+
+      // Official path first: VideoInfo.toDash() — never hand-build MPD XML.
+      const localDashStart = performance.now();
+      const localDashManifest = await buildLocalDashManifest(videoInfo, {
+        poToken: contentPoToken || undefined,
+      });
+      const localDashMs = Number((performance.now() - localDashStart).toFixed(1));
+
       const streamingDataStart = performance.now();
       const normalizedStreamingData = await normalizeStreamingData(
         videoInfo,
@@ -1055,15 +1276,32 @@ async function resolveFormatsWithRuntime({
         contentPoToken,
       );
       const streamingDataMs = Number((performance.now() - streamingDataStart).toFixed(1));
-      const localDashStart = performance.now();
-      const localDashManifest = await buildLocalDashManifest(videoInfo);
-      const localDashMs = Number((performance.now() - localDashStart).toFixed(1));
+
+      const formatsStart = performance.now();
+      let formats;
+      if (localDashManifest) {
+        // Metadata-only ladder for the quality menu (heights/itags). No per-itag
+        // decipher — MPD already carries playable BaseURLs from toDash.
+        const streamingData = videoInfo.streaming_data || {};
+        const rawFormats = [
+          ...(streamingData.formats || []),
+          ...(streamingData.adaptive_formats || []),
+        ];
+        formats = rawFormats.map((format) => buildFormatMetadata(format));
+      } else {
+        formats = await collectFormats(videoInfo, runtime.yt.session.player, resolutionMode);
+      }
+      const formatsMs = Number((performance.now() - formatsStart).toFixed(1));
+
       const playabilityStatus = videoInfo.playability_status?.status || null;
       const playabilityReason = videoInfo.playability_status?.reason
         || videoInfo.playability_status?.error_screen?.reason?.text
         || null;
       const basicInfo = videoInfo.basic_info || {};
-      const score = scoreFormatSet(formats);
+      const score = scoreFormatSet(formats, {
+        localDashManifest,
+        dashManifestUrl: normalizedStreamingData?.dash_manifest_url || null,
+      });
       attempts.push({
         client: attemptClient,
         playability_status: playabilityStatus,
@@ -1071,6 +1309,8 @@ async function resolveFormatsWithRuntime({
         format_count: formats.length,
         playable: score > 0,
         format_score: score,
+        official_todash: Boolean(localDashManifest),
+        po_token: Boolean(contentPoToken && requestOptions.po_token),
         get_info_ms: infoMs,
         collect_formats_ms: formatsMs,
         normalize_streaming_data_ms: streamingDataMs,
@@ -1103,8 +1343,8 @@ async function resolveFormatsWithRuntime({
       if (!bestCandidate || score > bestCandidate.score) {
         bestCandidate = { score, response };
       }
-      // Adaptive video+audio is the best outcome we can get; stop early.
-      if (score >= 2) {
+      // Official toDash is the best outcome — stop early.
+      if (score >= 4) {
         return bestCandidate;
       }
     } catch (error) {

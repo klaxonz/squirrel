@@ -26,11 +26,13 @@ export interface UseProgressScrubReturn {
 }
 
 /**
- * Owns the progress-rail pointer scrub: preview thumbnail/time + actual seek on
- * drag, plus optional clip-marker segment-end sync. The caller keeps the
- * `isScrubbing` watch that suppresses control auto-hide during a drag; this
- * composable only owns pointer capture + window listeners, released via
- * `cleanup()`.
+ * Owns the progress-rail pointer scrub: preview thumbnail/time during drag,
+ * commit seek once on pointer-up, plus optional clip-marker segment-end sync.
+ *
+ * Live-seeking on every pointermove is intentionally avoided — DASH/HLS
+ * cancel in-flight segments on each currentTime write, which leaves the
+ * player spinning then rewinding after a drag. Preview is visual-only until
+ * release (or a simple click: down+up without move still seeks once).
  */
 export function useProgressScrub(options: UseProgressScrubOptions): UseProgressScrubReturn {
   const { duration, pendingSegmentEndTime, hasPendingSegment, seek } = options
@@ -52,12 +54,16 @@ export function useProgressScrub(options: UseProgressScrubOptions): UseProgressS
     previewPercent.value = p * 100
     previewTime.value = p * duration.value
 
-    if (isScrubbing.value && !hasPendingSegment.value) {
-      seek(previewTime.value)
-    }
+    // Visual + marker preview only while dragging — never touch media time here.
     if (isScrubbing.value) {
       pendingSegmentEndTime.value = previewTime.value
     }
+  }
+
+  const commitScrubSeek = () => {
+    if (previewTime.value === null || !Number.isFinite(previewTime.value)) return
+    if (hasPendingSegment.value) return
+    seek(previewTime.value)
   }
 
   const releaseProgressPointerCapture = () => {
@@ -102,6 +108,11 @@ export function useProgressScrub(options: UseProgressScrubOptions): UseProgressS
   }
 
   const onWindowProgressPointerUp = (e: PointerEvent) => {
+    if (activeProgressPointerId !== null && e.pointerId !== activeProgressPointerId) return
+    // Commit once when the drag/click ends so DASH only rebuffers at the final time.
+    if (isScrubbing.value) {
+      commitScrubSeek()
+    }
     stopProgressScrub(e.pointerId)
   }
 
@@ -125,7 +136,13 @@ export function useProgressScrub(options: UseProgressScrubOptions): UseProgressS
     updateProgressPreview(e)
   }
 
-  const onProgressPointerUp = (e?: PointerEvent) => { stopProgressScrub(e?.pointerId) }
+  const onProgressPointerUp = (e?: PointerEvent) => {
+    if (e && activeProgressPointerId !== null && e.pointerId !== activeProgressPointerId) return
+    if (isScrubbing.value) {
+      commitScrubSeek()
+    }
+    stopProgressScrub(e?.pointerId)
+  }
   const onProgressPointerLeave = () => { if (!isScrubbing.value) previewTime.value = null }
 
   const clearPreview = () => { previewTime.value = null }

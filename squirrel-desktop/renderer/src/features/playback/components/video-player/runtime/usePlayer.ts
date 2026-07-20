@@ -426,6 +426,30 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
 
   engine.on('qualitiesloaded', (qs) => {
     qualities.value = qs
+    // Mirror engine getters so the chip stays on an explicit height even when
+    // qualitychange was coalesced with this list update (or missed on HMR).
+    const label = engine.getCurrentQualityLabel?.() ?? null
+    const id = engine.getCurrentQualityId?.() ?? null
+    if (label || id !== null) {
+      currentQualityLabel.value = label
+      currentQualityId.value = id
+      store.setCurrentQuality(label, id)
+    } else if (qs.length > 0 && !currentQualityLabel.value) {
+      // Concrete provisional rung only — never the word "auto".
+      const sorted = [...qs].sort(
+        (a, b) => Number(b.height || 0) - Number(a.height || 0)
+          || Number(b.bitrate || 0) - Number(a.bitrate || 0),
+      )
+      const provisional = sorted.find((item) => Number(item.height || 0) > 0 && Number(item.height || 0) <= 720)
+        || sorted.find((item) => Number(item.height || 0) > 0)
+        || sorted[0]
+      const provisionalLabel = provisional?.label
+        || (provisional?.height ? `${provisional.height}p` : null)
+      if (provisionalLabel) {
+        currentQualityLabel.value = provisionalLabel
+        store.setCurrentQuality(provisionalLabel, null)
+      }
+    }
     syncCodecFamilies()
   })
 

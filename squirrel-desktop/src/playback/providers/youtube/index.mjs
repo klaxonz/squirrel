@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs'
 
 import { youtubeOAuthStateFilePath } from '../../../constants.mjs'
 import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.mjs'
-import { escapeXml } from '../shared/escape-xml.mjs'
 import { createPlaybackCache } from '../shared/playback-cache.mjs'
+
 const RESOLVE_RETRY_DELAY_MS = 500
 const cache = createPlaybackCache('youtube')
 
@@ -100,186 +100,21 @@ const qualityBucketKey = (format, fallbackIndex) => {
   return `label:${label}`
 }
 
-const representationGroupKey = (format, kind) => {
-  const { mime, codecs } = parseMimeParts(format?.mime_type)
-  return [kind, mime || '', codecs || ''].join('|')
-}
-
-const buildSegmentBaseXml = (format) => {
-  const serializeRange = (range) => {
-    if (!range) return ''
-    if (typeof range === 'string') return range.trim()
-    const start = range.start ?? range.begin ?? range.startMs
-    const end = range.end ?? range.finish ?? range.endMs
-    if (start === undefined || end === undefined) return ''
-    return `${start}-${end}`
-  }
-
-  const indexRange = serializeRange(format.index_range)
-  const initRange = serializeRange(format.init_range)
-  const attributes = []
-  if (indexRange) {
-    attributes.push(`indexRange="${escapeXml(indexRange)}"`)
-  }
-  if (attributes.length === 0 && !initRange) {
-    return ''
-  }
-
-  const initialization = initRange
-    ? `<Initialization range="${escapeXml(initRange)}" />`
-    : ''
-
-  return `<SegmentBase${attributes.length > 0 ? ` ${attributes.join(' ')}` : ''}>${initialization}</SegmentBase>`
-}
-
-const buildRepresentationXml = (format, kind) => {
-  const { mime, codecs } = parseMimeParts(format.mime_type)
-  if (!mime || !format.url) {
-    return ''
-  }
-
-  const attributes = [
-    `id="${escapeXml(format.itag ?? format.quality_label ?? format.url)}"`,
-    format.bitrate ? `bandwidth="${escapeXml(format.bitrate)}"` : '',
-    `mimeType="${escapeXml(mime)}"`,
-    codecs ? `codecs="${escapeXml(codecs)}"` : '',
-    kind === 'video' && format.width ? `width="${escapeXml(format.width)}"` : '',
-    kind === 'video' && format.height ? `height="${escapeXml(format.height)}"` : '',
-    kind === 'audio' && format.audio_sample_rate ? `audioSamplingRate="${escapeXml(format.audio_sample_rate)}"` : '',
-  ].filter(Boolean)
-
-  const audioChannelNode = kind === 'audio' && format.audio_channels
-    ? `<AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="${escapeXml(format.audio_channels)}" />`
-    : ''
-  const labelNode = kind === 'audio' && format.language
-    ? `<Label>${escapeXml(format.language)}</Label>`
-    : ''
-
-  return `<Representation ${attributes.join(' ')}><BaseURL>${escapeXml(format.url)}</BaseURL>${buildSegmentBaseXml(format)}${audioChannelNode}${labelNode}</Representation>`
-}
-
-const getFormatDurationSeconds = (format) => {
-  try {
-    const duration = Number(new URL(format?.url || '').searchParams.get('dur'))
-    return Number.isFinite(duration) && duration > 0 ? duration : null
-  } catch {
-    console.debug('[squirrel-desktop] youtube/index: getFormatDurationSeconds URL parse failed')
-    return null
-  }
-}
-
-const formatIsoDuration = (seconds) => {
-  const duration = Number(seconds)
-  if (!Number.isFinite(duration) || duration <= 0) {
-    return ''
-  }
-
-  return `PT${Number(duration.toFixed(3))}S`
-}
-
-const buildFallbackLocalDashManifest = (formats) => {
-  const videoFormats = sortFormats(
-    (formats || []).filter((format) => format?.has_video && !format?.has_audio && format?.url)
-  )
-  const audioFormats = sortFormats(
-    (formats || []).filter((format) => format?.has_audio && !format?.has_video && format?.url)
-  )
-
-  if (videoFormats.length === 0 || audioFormats.length === 0) {
-    return null
-  }
-
-  const groupFormats = (items, kind) => {
-    const grouped = new Map()
-    for (const item of items) {
-      const key = representationGroupKey(item, kind)
-      if (!grouped.has(key)) {
-        grouped.set(key, [])
-      }
-      grouped.get(key).push(item)
-    }
-    return Array.from(grouped.values())
-  }
-
-  const videoAdaptationSets = groupFormats(videoFormats, 'video')
-    .map((group) => {
-      const first = group[0]
-      const { mime, codecs } = parseMimeParts(first?.mime_type)
-      const videoRepresentations = group
-        .map((format) => buildRepresentationXml(format, 'video'))
-        .filter(Boolean)
-        .join('')
-      if (!videoRepresentations) {
-        return ''
-      }
-      const attributes = [
-        'contentType="video"',
-        'segmentAlignment="true"',
-        mime ? `mimeType="${escapeXml(mime)}"` : '',
-        codecs ? `codecs="${escapeXml(codecs)}"` : '',
-      ].filter(Boolean)
-      return `<AdaptationSet ${attributes.join(' ')}>${videoRepresentations}</AdaptationSet>`
-    })
-    .filter(Boolean)
-    .join('')
-  const audioAdaptationSets = groupFormats(audioFormats, 'audio')
-    .map((group) => {
-      const first = group[0]
-      const { mime, codecs } = parseMimeParts(first?.mime_type)
-      const audioRepresentations = group
-        .map((format) => buildRepresentationXml(format, 'audio'))
-        .filter(Boolean)
-        .join('')
-      if (!audioRepresentations) {
-        return ''
-      }
-      const attributes = [
-        'contentType="audio"',
-        'segmentAlignment="true"',
-        mime ? `mimeType="${escapeXml(mime)}"` : '',
-        codecs ? `codecs="${escapeXml(codecs)}"` : '',
-      ].filter(Boolean)
-      return `<AdaptationSet ${attributes.join(' ')}>${audioRepresentations}</AdaptationSet>`
-    })
-    .filter(Boolean)
-    .join('')
-
-  if (!videoAdaptationSets || !audioAdaptationSets) {
-    return null
-  }
-
-  const mediaPresentationDuration = formatIsoDuration(
-    Math.max(
-      ...[...videoFormats, ...audioFormats]
-        .map(getFormatDurationSeconds)
-        .filter((duration) => typeof duration === 'number')
-    )
-  )
-  const durationAttribute = mediaPresentationDuration
-    ? ` mediaPresentationDuration="${escapeXml(mediaPresentationDuration)}"`
-    : ''
-
-  return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    `<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" minBufferTime="PT4S"${durationAttribute}>`,
-    '<Period start="PT0S">',
-    videoAdaptationSets,
-    audioAdaptationSets,
-    '</Period>',
-    '</MPD>',
-  ].join('')
-}
-
 const pickFormats = (formats, predicate) => {
   return sortFormats((formats || []).filter((format) => predicate(format) && format?.url))
 }
 
-const buildQualities = (formats) => {
+/**
+ * Quality ladder for the player menu. Built from Innertube adaptive_formats
+ * (official metadata) — not from homemade MPD parsing.
+ */
+const buildQualities = (formats, { requireUrl = true } = {}) => {
   const seen = new Set()
-  // Only expose qualities that have a real stream URL. Adaptive itags without
-  // a deciphered url used to pollute progressive payloads (e.g. 1440p entries
-  // that cannot be selected), which broke quality menus and confused recovery.
-  const candidates = sortFormats((formats || []).filter((format) => format?.has_video && format?.url))
+  const candidates = sortFormats((formats || []).filter((format) => {
+    if (!format?.has_video) return false
+    if (requireUrl && !format?.url) return false
+    return true
+  }))
 
   return candidates.reduce((qualities, format, index) => {
     const bucketKey = qualityBucketKey(format, index)
@@ -302,14 +137,48 @@ const buildQualities = (formats) => {
   }, [])
 }
 
+const pickQualitySourceFormats = (formats) => {
+  const adaptiveVideo = (formats || []).filter((format) => format?.has_video && !format?.has_audio)
+  if (adaptiveVideo.length > 0) {
+    return adaptiveVideo
+  }
+  return (formats || []).filter((format) => format?.has_video)
+}
+
+/** Higher is better. Official youtubei.js toDash > YouTube-hosted MPD > progressive. */
+const scoreMappedPayload = (payload) => {
+  if (!payload) return 0
+  const qualityCount = Array.isArray(payload.qualities) ? payload.qualities.length : 0
+  if (payload.stream_type === 'dash' && payload.mpd_content) {
+    // Official VideoInfo.toDash() body — preferred playback path (FreeTube data URL + shaka).
+    return 2000 + qualityCount * 10
+  }
+  if (payload.stream_type === 'dash' && payload.mpd_url) {
+    // Official streaming_data.dash_manifest_url from YouTube.
+    return 1500 + qualityCount * 10
+  }
+  if (payload.stream_type === 'hls' && payload.video_url) {
+    return 500 + qualityCount
+  }
+  if (payload.stream_type === 'progressive' && payload.video_url) {
+    return 100 + qualityCount
+  }
+  return 0
+}
+
+/**
+ * Official youtubei.js playback mapping (FreeTube-compatible, no homemade MPD):
+ * 1. VideoInfo.toDash() → mpd_content  (primary — FreeTube data: URL + shaka)
+ * 2. streaming_data.dash_manifest_url → mpd_url
+ * 3. live HLS
+ * 4. progressive muxed (last resort only)
+ */
 const mapPlaybackPayload = (response) => {
   const formats = Array.isArray(response?.formats) ? response.formats : []
-  const qualities = buildQualities(formats)
   const bestProgressive = pickFormats(formats, (format) => format.has_audio && format.has_video)[0] || null
-  const hasAdaptiveSet =
-    formats.some((format) => format?.has_video && !format?.has_audio && format?.url) &&
-    formats.some((format) => format?.has_audio && !format?.has_video && format?.url)
-
+  const officialLocalDash = typeof response?.local_dash_manifest === 'string'
+    ? response.local_dash_manifest.trim()
+    : ''
   const dashManifestUrl = String(response?.streaming_data?.dash_manifest_url || '').trim()
   const hlsManifestUrl = String(response?.streaming_data?.hls_manifest_url || '').trim()
   const isLive = response?.basic_info?.is_live === true || response?.basic_info?.is_post_live_dvr === true
@@ -327,46 +196,52 @@ const mapPlaybackPayload = (response) => {
       video_url: hlsManifestUrl,
       audio_url: null,
       mpd_url: null,
+      mpd_content: null,
       qualities: null,
       default_quality_id: null,
       supports_manual_quality: false,
     }
   }
 
-  if (hasAdaptiveSet) {
-    const localDashManifest = response?.local_dash_manifest || buildFallbackLocalDashManifest(formats)
-    if (localDashManifest) {
-      return {
-        ...basePayload,
-        stream_type: 'dash',
-        video_url: null,
-        audio_url: null,
-        mpd_url: null,
-        mpd_content: localDashManifest,
-        qualities: qualities.length > 0 ? qualities : null,
-        default_quality_id: qualities[0]?.id || null,
-        supports_manual_quality: qualities.length > 1,
-      }
-    }
-  }
-
-  if (hasAdaptiveSet && dashManifestUrl) {
+  // 1) Official youtubei.js DASH (VideoInfo.toDash) — FreeTube data: + shaka.
+  if (officialLocalDash) {
+    const qualities = buildQualities(pickQualitySourceFormats(formats), {
+      // toDash already deciphered segment URLs inside the MPD; menu can list
+      // adaptive rungs even when our parallel collectFormats missed a URL.
+      requireUrl: false,
+    })
     return {
       ...basePayload,
       stream_type: 'dash',
       video_url: null,
       audio_url: null,
-      mpd_url: dashManifestUrl,
+      mpd_url: null,
+      mpd_content: officialLocalDash,
       qualities: qualities.length > 0 ? qualities : null,
       default_quality_id: qualities[0]?.id || null,
       supports_manual_quality: qualities.length > 1,
     }
   }
 
+  // 2) Official YouTube-hosted DASH manifest URL.
+  if (dashManifestUrl) {
+    const qualities = buildQualities(pickQualitySourceFormats(formats), { requireUrl: false })
+    return {
+      ...basePayload,
+      stream_type: 'dash',
+      video_url: null,
+      audio_url: null,
+      mpd_url: dashManifestUrl,
+      mpd_content: null,
+      qualities: qualities.length > 0 ? qualities : null,
+      default_quality_id: qualities[0]?.id || null,
+      supports_manual_quality: qualities.length > 1,
+    }
+  }
+
+  // 3) Progressive muxed — last resort (typically itag 18 / 360p only).
   if (bestProgressive?.url) {
-    // Progressive is a single muxed URL — do not advertise adaptive-only
-    // quality tiers that have no playable progressive source.
-    const progressiveQualities = buildQualities([bestProgressive])
+    const progressiveQualities = buildQualities([bestProgressive], { requireUrl: true })
     return {
       ...basePayload,
       stream_type: 'progressive',
@@ -459,48 +334,55 @@ export async function resolveYouTubePlayback(targetUrl, { cookie = '', forceRefr
     cached = await cache.getCachedPayload(cacheKey)
   }
 
-  let response = null
+  let bestPayload = null
   let lastError = null
   const maxAttempts = 2
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
-      response = await resolveYoutubeiPayload({
+      const response = await resolveYoutubeiPayload({
         video_id: videoId,
         resolution_mode: 'all',
         ...(cookie ? { cookie } : {}),
       })
       if (response?.status === 'ok') {
+        const mapped = mapPlaybackPayload(response)
+        if (!bestPayload || scoreMappedPayload(mapped) > scoreMappedPayload(bestPayload)) {
+          bestPayload = mapped
+        }
+        // Official toDash body is ideal — stop early.
+        if (scoreMappedPayload(mapped) >= 2000) {
+          lastError = null
+          break
+        }
         lastError = null
-        break
+      } else {
+        lastError = new Error(String(response?.error?.message || 'Desktop YouTube provider failed'))
       }
-      lastError = new Error(String(response?.error?.message || 'Desktop YouTube provider failed'))
-      response = null
     } catch (error) {
       lastError = error
-      response = null
     }
 
-    if (attempt + 1 < maxAttempts) {
+    if (attempt + 1 < maxAttempts && scoreMappedPayload(bestPayload) < 2000) {
       await wait(RESOLVE_RETRY_DELAY_MS)
     }
   }
 
-  if (lastError && !response) {
-    if (cached) {
-      return cached
-    }
+  // Prefer a still-cached official DASH payload over a fresh progressive collapse.
+  if (cached && scoreMappedPayload(cached) > scoreMappedPayload(bestPayload)) {
+    return cached
+  }
+
+  if (bestPayload) {
+    await cache.setCachedPayload(cacheKey, bestPayload)
+    return bestPayload
+  }
+
+  if (cached) {
+    return cached
+  }
+
+  if (lastError) {
     throw lastError
   }
-
-  if (!response || response.status !== 'ok') {
-    if (cached) {
-      return cached
-    }
-    const errorMessage = response?.error?.message || 'Desktop YouTube provider failed'
-    throw new Error(String(errorMessage))
-  }
-
-  const payload = mapPlaybackPayload(response)
-  await cache.setCachedPayload(cacheKey, payload)
-  return payload
+  throw new Error('Desktop YouTube provider failed')
 }

@@ -164,7 +164,7 @@
                   <span class="sp-clip-marker-track"></span>
                   <span class="sp-clip-marker-dot" style="right: 0; transform: translateY(-50%)"></span>
                 </div>
-                <div class="sp-progress-played" :style="{ width: `${progress}%` }">
+                <div class="sp-progress-played" :style="{ width: `${scrubDisplayProgress}%` }">
                   <div class="sp-progress-dot"></div>
                 </div>
               </div>
@@ -217,7 +217,7 @@
 
             <div class="sp-controls-right">
               <button
-                v-if="displayedQualities.length > 0 && qualityTagLabel"
+                v-if="displayedQualities.length > 0"
                 type="button"
                 class="sp-quality-tag"
                 :class="{ 'is-active': showQualityMenu }"
@@ -225,7 +225,7 @@
                 aria-haspopup="menu"
                 :aria-expanded="showQualityMenu"
               >
-                {{ qualityTagLabel }}
+                {{ qualityTagLabel || qualityMenuLabel }}
               </button>
               <Button v-if="subtitleTracks.length > 0" text severity="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')" :aria-label="t('subtitles')">
                 <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
@@ -291,7 +291,7 @@
       :bg-options="settings.subtitleBgOptions"
       :font-size-options="settings.fontSizeOptions"
       :font-size-value="settings.subtitleStyleLabel('fontSize', subtitleStyle.fontSize || 'medium', settings.fontSizeOptions)"
-      :quality-menu-label="qualityTagLabel"
+      :quality-menu-label="qualityTagLabel || qualityMenuLabel"
       :subtitle-value="subtitleMenuLabel"
       :speeds="settings.playbackRates"
       :rotations="settings.rotationOptions"
@@ -631,6 +631,14 @@ const {
   seek,
 })
 
+// While scrubbing, paint the played rail from the pointer preview so the
+// thumb follows the finger without thrashing the media element mid-drag.
+const scrubDisplayProgress = computed(() => (
+  isScrubbing.value && previewTime.value !== null
+    ? previewPercent.value
+    : progress.value
+))
+
 // ponytail: chapter normalisation + thumbnail-sprite frame math live in
 // useChapterThumbnails. Declared after useProgressScrub because the sprite
 // frame depends on the scrub `previewTime`.
@@ -675,7 +683,7 @@ const {
 const {
   displayedQualities,
   qualityTagLabel,
-  qualityMenuLabel: _qualityMenuLabel,
+  qualityMenuLabel,
   isQualityActive,
 } = useQualityDisplay({
   qualities,

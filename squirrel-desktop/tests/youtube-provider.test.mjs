@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict'
+import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFile } from 'node:fs/promises'
 
@@ -18,29 +18,65 @@ test('desktop youtube provider keeps complete dash payload for direct playback',
   assert.doesNotMatch(source, /include_local_dash_manifest:\s*false/)
 })
 
-test('desktop youtube provider prefers local dash manifests before remote manifests', async () => {
+test('desktop youtube playback uses official youtubei.js toDash only', async () => {
   const source = await readFile(providerPath, 'utf8')
-  const localManifestIndex = source.indexOf('const localDashManifest = response?.local_dash_manifest || buildFallbackLocalDashManifest(formats)')
-  const dashManifestIndex = source.indexOf('if (hasAdaptiveSet && dashManifestUrl)')
+  const coreSource = await readFile(corePath, 'utf8')
 
-  assert.notEqual(localManifestIndex, -1)
-  assert.notEqual(dashManifestIndex, -1)
-  assert.ok(localManifestIndex < dashManifestIndex)
+  // No homemade MPD builders / media proxy.
+  assert.doesNotMatch(source, /buildFallbackLocalDashManifest/)
+  assert.doesNotMatch(source, /buildRepresentationXml/)
+  assert.doesNotMatch(source, /buildSegmentBaseXml/)
+  assert.doesNotMatch(source, /representationGroupKey/)
+  assert.doesNotMatch(source, /rewriteYouTubeMpdThroughProxy/)
+  assert.doesNotMatch(source, /youtube-media-proxy/)
+
+  // Official path: VideoInfo.toDash, then YouTube-hosted dash_manifest_url.
+  assert.match(source, /VideoInfo\.toDash\(\)/)
+  assert.match(source, /streaming_data\.dash_manifest_url/)
+  assert.match(coreSource, /manifestInfo\.toDash\(/)
 })
 
-test('desktop youtube provider serializes segment ranges for local dash manifests', async () => {
-  const source = await readFile(providerPath, 'utf8')
+test('renderer youtube official dash uses FreeTube data URL + shaka', async () => {
+  const opsPath = new URL(
+    '../renderer/src/features/video/composables/useVideoOperations.ts',
+    import.meta.url,
+  )
+  const shakaPath = new URL(
+    '../renderer/src/features/playback/components/video-player/adapters/ShakaDashAdapter.ts',
+    import.meta.url,
+  )
+  const opsSource = await readFile(opsPath, 'utf8')
+  const shakaSource = await readFile(shakaPath, 'utf8')
 
-  assert.match(source, /const serializeRange = \(range\) => \{[\s\S]*?return `\$\{start\}-\$\{end\}`/)
-  assert.doesNotMatch(source, /indexRange="\$\{escapeXml\(format\.index_range\)\}"/)
-  assert.doesNotMatch(source, /Initialization range="\$\{escapeXml\(format\.init_range\)\}"/)
+  // FreeTube Watch.createLocalDashManifest style data: URL for official toDash body.
+  assert.match(opsSource, /data:application\/dash\+xml;charset=UTF-8/)
+  assert.match(opsSource, /playbackEngine:\s*'shaka'/)
+  assert.match(opsSource, /isYouTubeOfficialDash/)
+
+  // FreeTube googlevideo videoplayback filters (POST + alr + http-body redirect).
+  assert.match(shakaSource, /installYouTubeNetworkingFilters/)
+  assert.match(shakaSource, /alr=yes/)
+  assert.match(shakaSource, /request\.method = 'POST'/)
+  assert.match(shakaSource, /HTTP_IN_HEX/)
+  // FreeTube getPlayerConfig buffer goals (not the old 10s/2s spinner-prone defaults).
+  assert.match(shakaSource, /bufferingGoal:\s*180/)
+  assert.match(shakaSource, /rebufferingGoal:\s*0\.02/)
+  assert.match(shakaSource, /restrictToElementSize:\s*true/)
 })
 
-test('desktop youtube provider includes duration in generated dash manifests', async () => {
+test('desktop youtube prefers official toDash over remote and progressive', async () => {
   const source = await readFile(providerPath, 'utf8')
 
-  assert.match(source, /mediaPresentationDuration="\$\{escapeXml\(mediaPresentationDuration\)\}"/)
-  assert.match(source, /new URL\(format\?\.url \|\| ''\)\.searchParams\.get\('dur'\)/)
+  const officialLocal = source.indexOf('Official youtubei.js DASH (VideoInfo.toDash)')
+  const officialRemote = source.indexOf('Official YouTube-hosted DASH manifest URL')
+  const progressive = source.indexOf('Progressive muxed')
+
+  assert.notEqual(officialLocal, -1)
+  assert.notEqual(officialRemote, -1)
+  assert.notEqual(progressive, -1)
+  assert.ok(officialLocal < officialRemote)
+  assert.ok(officialRemote < progressive)
+  assert.match(source, /scoreMappedPayload/)
 })
 
 test('desktop youtube provider exposes runtime prewarm', async () => {
@@ -65,17 +101,43 @@ test('desktop youtube login status uses tv oauth instead of cookie checks', asyn
   assert.match(source, /const buildYouTubeDesktopLoginStatus = async \(profile\) => \{[\s\S]*?resolveYouTubeOAuthStatus\(\)/)
 })
 
-test('desktop youtube client order prefers adaptive-capable clients before bot-gated WEB', async () => {
+test('desktop youtube client order prefers official IOS/MWEB toDash', async () => {
   const source = await readFile(corePath, 'utf8')
 
-  assert.match(source, /const AUTHENTICATED_PLAYBACK_CLIENTS = \['TV', 'MWEB', 'IOS', 'WEB', 'ANDROID'\]/)
-  assert.match(source, /const AUTHENTICATED_FULL_CLIENTS = \['TV', 'MWEB', 'IOS', 'WEB', 'ANDROID'\]/)
-  assert.match(source, /const ANONYMOUS_CLIENTS = \['MWEB', 'IOS', 'ANDROID', 'WEB'\]/)
+  // Official FreeTube-style path: remote WEB session + IOS/MWEB toDash.
+  // FreeTube getLocalVideoInfo uses generateSessionLocally:false + WEB bootstrap;
+  // local ANDROID sessions intermittently LOGIN_REQUIRED every official client.
+  // OAuth is never the primary streaming session.
+  assert.match(source, /const OFFICIAL_PLAYBACK_CLIENTS = \['IOS', 'MWEB'\]/)
+  assert.match(source, /const OFFICIAL_FALLBACK_CLIENTS = \['ANDROID', 'WEB'\]/)
+  assert.match(source, /const AUTH_GATE_PLAYBACK_CLIENTS = \['TV', 'WEB'\]/)
+  // Electron main uses node youtubei.js + file UniversalCache (not /web IndexedDB).
+  assert.match(source, /from 'youtubei\.js'/)
+  assert.doesNotMatch(source, /from 'youtubei\.js\/web'/)
+  assert.match(source, /createPlayerCache/)
+  assert.match(source, /createPlaybackRuntime/)
+  assert.match(source, /getPlaybackRuntime/)
+  assert.match(source, /generate_session_locally:\s*false/)
+  assert.match(source, /retrieve_innertube_config:\s*true/)
+  assert.match(source, /client_type: 'WEB'/)
+  assert.match(source, /invalidatePlaybackRuntime/)
+  assert.match(source, /MAX_PLAYBACK_SESSION_REBUILDS/)
   assert.match(source, /function scoreFormatSet\(/)
   assert.match(source, /bestCandidate/)
   assert.match(source, /buildPlaybackFailureError/)
-  assert.match(source, /auth_fallback: 'anonymous'/)
+  assert.match(source, /auth_fallback: 'oauth-gate'/)
   assert.match(source, /resolveFormatsWithRuntime/)
+  assert.match(source, /preferPoToken: false/)
+  assert.match(source, /preferPoToken: true/)
+  assert.match(source, /client === 'WEB'/)
+  // Official toDash scores highest and stops the client loop.
+  assert.match(source, /if \(score >= 4\)/)
+  assert.match(source, /localDashManifest/)
+  // Must not route playback through OAuth session first.
+  assert.doesNotMatch(source, /const AUTHENTICATED_PLAYBACK_CLIENTS/)
+  assert.doesNotMatch(source, /const ANONYMOUS_CLIENTS = \['IOS'/)
+  // Must not boot the playback session as ANDROID local (poisoned visitor).
+  assert.doesNotMatch(source, /createPlaybackRuntime[\s\S]*?client_type: 'ANDROID'/)
 })
 
 test('desktop youtube playback resolve does not reference undeclared cache binding', async () => {

@@ -119,7 +119,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   const maxRetries = options.errorRecovery?.maxRetries ?? 3
   const retryDelay = options.errorRecovery?.retryDelay ?? 2000
-  const enableQualityFallback = options.errorRecovery?.enableQualityFallback ?? false
+  // Default ON: high-bitrate YouTube/Bilibili DASH often stalls on the top
+  // rung; stepping down is the primary mid-playback recovery path.
+  const enableQualityFallback = options.errorRecovery?.enableQualityFallback ?? true
 
   let pluginHandlingError = false
   let retryCount = 0
@@ -334,15 +336,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     setQuality(q) { setQuality(q) },
     getQualities() { return qualities },
     registerQualities(qs) {
-      qualities = qs
-      errorRecovery.setRecoveryQualities(qs)
-      if (registeredQualityId !== null) {
-        const match = qs.find((item) => item.id === registeredQualityId)
-        if (match?.label) {
-          currentQualityLabel = match.label
-          currentQualityId = registeredQualityId
-        }
-      }
+      // Same guard as StreamSink: never replace a non-empty ladder with [].
+      publishQualities(Array.isArray(qs) ? qs : [], registeredQualityId)
     },
     registerCurrentQualityId(id?: string | number) {
       registeredQualityId = typeof id === 'string' || typeof id === 'number' ? id : null
@@ -405,30 +400,124 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
    * the engine state machine that the old PluginContext emit/register helpers
    * used to mutate; the adapter no longer touches those directly.
    */
-  const createStreamSink = (): StreamSink => ({
-    qualitiesResolved: (qs, currentId) => {
-      qualities = qs
-      errorRecovery.setRecoveryQualities(qs)
-      events.emit('qualitiesloaded', qs)
+  const mapProviderQualities = (raw: MediaSource['qualities']): QualityLevel[] => {
+    if (!Array.isArray(raw) || raw.length === 0) return []
+    return raw
+      .filter((item) => item && (item.id !== undefined && item.id !== null))
+      .map((item) => {
+        const id = item.id
+        const height = typeof item.height === 'number' ? item.height : undefined
+        const label = String(item.label || (height ? `${height}p` : id)).trim()
+        return {
+          id,
+          label: label || String(id),
+          width: item.width,
+          height,
+          bitrate: item.bitrate,
+          codec: item.codec,
+          src: item.src,
+        }
+      })
+      .filter((item) => item.label.length > 0)
+  }
 
-      // Record the adapter's currently-playing quality (a fact), then apply the
-      // engine's default-quality strategy on top (option 3, ADR-0001). The
-      // strategy only fires when the engine has no recorded quality yet —
-      // mirroring the old `!state.quality` guard. auto-quality is an engine
-      // concern now, so there is no enableAutoQuality branch here.
+  /** Keep usePlayer chip/menu in sync — label-only writes without this event leave "画质". */
+  const emitQualityChange = (label: string | null, id: string | number | null, auto: boolean): void => {
+    const emitted = label || (auto ? 'auto' : '')
+    if (!emitted) return
+    events.emit('qualitychange', {
+      quality: emitted,
+      auto,
+      id: id ?? undefined,
+    })
+  }
+
+  const publishQualities = (qs: QualityLevel[], currentId: string | number | null = null): void => {
+    // Adapters can emit [] while the library is still attaching. Never wipe a
+    // provider-seeded ladder with an empty list — that leaves only "画质".
+    if (qs.length === 0 && qualities.length > 0) {
       if (currentId !== null) {
         registeredQualityId = currentId
-        const match = qs.find((item) => item.id === currentId)
+        const match = qualities.find((item) => String(item.id) === String(currentId))
         if (match?.label) {
           currentQualityLabel = match.label
           currentQualityId = currentId
+          emitQualityChange(match.label, currentId, false)
         }
       }
+      return
+    }
 
-      if (currentQualityId === null && qs.length > 0) {
-        const defaultQuality = qs[0]
-        setQuality(defaultQuality.id ?? defaultQuality.label)
+    qualities = qs
+    errorRecovery.setRecoveryQualities(qs)
+    events.emit('qualitiesloaded', qs)
+
+    // Record the adapter's currently-playing quality (a fact), then apply the
+    // engine's default-quality strategy on top (option 3, ADR-0001). The
+    // strategy only fires when the engine has no recorded quality yet —
+    // mirroring the old `!state.quality` guard. auto-quality is an engine
+    // concern now, so there is no enableAutoQuality branch here.
+    if (currentId !== null && currentId !== undefined) {
+      registeredQualityId = currentId
+      const match = qs.find((item) => String(item.id) === String(currentId))
+      if (match) {
+        const label = match.label || (match.height ? `${match.height}p` : String(match.id))
+        currentQualityLabel = label
+        currentQualityId = match.id
+        emitQualityChange(label, match.id, false)
+        return
       }
+      // Adapter may report a runtime track id not present in provider hints.
+      // Still surface a concrete height when the id looks like one (e.g. "1080").
+      const idText = String(currentId)
+      const heightFromId = Number.parseInt(idText.replace(/[^0-9]/g, ''), 10)
+      if (Number.isFinite(heightFromId) && heightFromId >= 144) {
+        const byHeight = qs.find((item) => Number(item.height || 0) === heightFromId)
+        if (byHeight) {
+          const label = byHeight.label || `${heightFromId}p`
+          currentQualityLabel = label
+          currentQualityId = byHeight.id
+          registeredQualityId = byHeight.id
+          emitQualityChange(label, byHeight.id, false)
+          return
+        }
+        currentQualityLabel = `${heightFromId}p`
+        currentQualityId = currentId
+        emitQualityChange(currentQualityLabel, currentId, false)
+        return
+      }
+    }
+
+    // Keep ABR enabled for fast start, but never publish "auto" as the chip
+    // label — users expect an explicit height. Prefer ~720p-class provisional
+    // rung (matches Shaka defaultBandwidthEstimate) until adaptation reports.
+    if (currentQualityId === null && qs.length > 0) {
+      try {
+        currentStreamAdapter?.setQuality('auto')
+      } catch {
+        // native / adapters without auto — leave selection to the library
+      }
+      const sorted = [...qs].sort(
+        (a, b) => Number(b.height || 0) - Number(a.height || 0)
+          || Number(b.bitrate || 0) - Number(a.bitrate || 0),
+      )
+      const provisional = sorted.find((item) => Number(item.height || 0) > 0 && Number(item.height || 0) <= 720)
+        || sorted.find((item) => Number(item.height || 0) > 0)
+        || sorted[0]
+      if (provisional) {
+        const label = provisional.label
+          || (provisional.height ? `${provisional.height}p` : String(provisional.id))
+        // Display-only: do not set currentQualityId so ABR stays unlocked and
+        // the next adapter report can replace this with the real active track.
+        currentQualityLabel = label
+        emitQualityChange(label, null, true)
+      }
+    }
+  }
+
+  const createStreamSink = (): StreamSink => ({
+    qualitiesResolved: (qs, currentId) => {
+      publishQualities(Array.isArray(qs) ? qs : [], currentId)
     },
 
     qualityChanged: (quality) => {
@@ -577,7 +666,33 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     // instance inside onSourceChange. Native sources have no adapter. The sink
     // (PR2) is the only channel the adapter uses to drive the engine back.
     if (!streamSink) streamSink = createStreamSink()
-    resolveStreamAdapter(source)?.onSourceChange(source, streamSink)
+
+    // Seed the quality menu from provider metadata BEFORE the stream adapter
+    // attaches. loadSource() clears the ladder; dash/shaka may emit [] while
+    // their library is still null/attaching. Official YouTube toDash can take
+    // seconds — without an early seed the 画质 popup only shows the chrome.
+    const providerQualities = mapProviderQualities(source.qualities)
+    if (providerQualities.length > 0) {
+      // Progressive/native: single rung is the active quality.
+      // Adaptive DASH: leave currentId null so ABR stays auto until the
+      // adapter reports a real variant (adapter may overwrite this list).
+      const seedCurrentId = type === 'native'
+        ? (providerQualities[0]?.id ?? null)
+        : null
+      streamSink.qualitiesResolved(providerQualities, seedCurrentId)
+    }
+
+    const streamAdapter = resolveStreamAdapter(source)
+    streamAdapter?.onSourceChange(source, streamSink)
+
+    // Re-assert provider ladder after adapter onSourceChange. Some adapters
+    // (dash.js before player exists) used to publish [] and wipe the seed.
+    if (providerQualities.length > 0 && qualities.length === 0) {
+      const seedCurrentId = type === 'native'
+        ? (providerQualities[0]?.id ?? null)
+        : null
+      streamSink.qualitiesResolved(providerQualities, seedCurrentId)
+    }
 
     if (type === 'native') {
       videoElement.src = src
@@ -611,12 +726,48 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     bufferedProgress = 0
     markSourceLoadingStarted()
     errorRecovery.clearWaitingRecovery()
-    qualities = []
     currentQualityLabel = null
     currentQualityId = null
     registeredQualityId = null
     retryCount = 0
-    events.emit('qualitiesloaded', [])
+
+    // Prefer immediate provider seed over a blank menu flash. Pending loads
+    // (engine not inited / no <video> yet) must still show the ladder so the
+    // 画质 chip is usable the moment the user opens the popup.
+    const earlyProviderQualities = mapProviderQualities(resolvedSource.qualities)
+    if (earlyProviderQualities.length > 0) {
+      qualities = earlyProviderQualities
+      errorRecovery.setRecoveryQualities(earlyProviderQualities)
+      events.emit('qualitiesloaded', earlyProviderQualities)
+      if (resolvedSource.type === 'native') {
+        currentQualityId = earlyProviderQualities[0]?.id ?? null
+        currentQualityLabel = earlyProviderQualities[0]?.label ?? null
+        registeredQualityId = currentQualityId
+        if (currentQualityLabel) {
+          emitQualityChange(currentQualityLabel, currentQualityId, false)
+        }
+      } else {
+        // Adaptive: leave id null so ABR is free; chip shows a concrete height
+        // (provisional ~720p-class) until the adapter reports the active track.
+        currentQualityId = null
+        registeredQualityId = null
+        const sorted = [...earlyProviderQualities].sort(
+          (a, b) => Number(b.height || 0) - Number(a.height || 0)
+            || Number(b.bitrate || 0) - Number(a.bitrate || 0),
+        )
+        const provisional = sorted.find((item) => Number(item.height || 0) > 0 && Number(item.height || 0) <= 720)
+          || sorted.find((item) => Number(item.height || 0) > 0)
+          || sorted[0]
+        currentQualityLabel = provisional?.label
+          || (provisional?.height ? `${provisional.height}p` : null)
+        if (currentQualityLabel) {
+          emitQualityChange(currentQualityLabel, null, true)
+        }
+      }
+    } else {
+      qualities = []
+      events.emit('qualitiesloaded', [])
+    }
 
     currentSource = resolvedSource
     currentSourceType = (resolvedSource.type === 'hls' || resolvedSource.type === 'dash' || resolvedSource.type === 'native')
@@ -709,6 +860,30 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     const onStalled = () => {
       events.emit('waiting', undefined)
     }
+    const onSeeked = () => {
+      // After scrub settles, drop the spinner as soon as we have media ahead.
+      // Waiting for a late canplay after DASH index seeks left users spinning
+      // even when the playhead was already buffered.
+      try {
+        if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+          loading = false
+          errorRecovery.clearWaitingRecovery()
+        } else {
+          const t = video.currentTime
+          const { buffered } = video
+          for (let i = 0; i < buffered.length; i += 1) {
+            if (buffered.start(i) <= t + 0.35 && buffered.end(i) >= t + 0.5) {
+              loading = false
+              errorRecovery.clearWaitingRecovery()
+              break
+            }
+          }
+        }
+      } catch {
+        // ignore buffer probe failures
+      }
+      events.emit('seeked', video.currentTime)
+    }
     const onCanPlay = () => {
       if (!canAcceptNativeCanPlay()) return
       loading = false
@@ -773,6 +948,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     video.addEventListener('volumechange', onVolumeChange)
     video.addEventListener('waiting', onWaiting)
     video.addEventListener('stalled', onStalled)
+    video.addEventListener('seeked', onSeeked)
     video.addEventListener('canplay', onCanPlay)
     video.addEventListener('error', onError)
     video.addEventListener('enterpictureinpicture', onEnterPiP)
@@ -792,6 +968,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       video.removeEventListener('volumechange', onVolumeChange)
       video.removeEventListener('waiting', onWaiting)
       video.removeEventListener('stalled', onStalled)
+      video.removeEventListener('seeked', onSeeked)
       video.removeEventListener('canplay', onCanPlay)
       video.removeEventListener('error', onError)
       video.removeEventListener('enterpictureinpicture', onEnterPiP)
@@ -900,9 +1077,28 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   const seek = (time: number): void => {
     if (!videoElement) return
     errorRecovery.clearWaitingRecovery()
-    errorRecovery.suppressWaitingRecovery(Math.max(retryDelay * 2, 4000))
-    videoElement.currentTime = time
-    events.emit('seeking', time)
+    // Keep stall recovery suppressed long enough for DASH index + googlevideo
+    // segment fetch after a seek lands. Live scrub no longer multi-fires seek.
+    errorRecovery.suppressWaitingRecovery(Math.max(retryDelay * 4, 12000))
+    const target = Number(time)
+    if (!Number.isFinite(target)) return
+    const clamped = Math.max(0, target)
+    loading = true
+    try {
+      // Prefer the stream adapter's seek when available so dash.js rebuffers
+      // at the target without resetting the MediaSource attachment.
+      if (currentStreamAdapter?.seek) {
+        currentStreamAdapter.seek(clamped)
+      } else {
+        videoElement.currentTime = clamped
+      }
+    } catch (e) {
+      logger.warn('[PlayerEngine] Seek failed', e)
+      loading = false
+      return
+    }
+    errorRecovery.scheduleWaitingRecovery()
+    events.emit('seeking', clamped)
   }
 
   const setVolume = (vol: number): void => {

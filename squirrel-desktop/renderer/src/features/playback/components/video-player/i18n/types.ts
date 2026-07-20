@@ -39,6 +39,8 @@ export interface LocaleMessages {
   // 设置
   settings: string
   quality: string
+  /** ABR / automatic quality selection (chip + menu header) */
+  auto: string
   codec: string
   playbackSpeed: string
   speedNormal: string
@@ -89,6 +91,7 @@ export interface LocaleMessages {
   errorDecode: string
   errorNotSupported: string
   errorStreamUnavailable: string
+  errorPlaybackStalled: string
   errorUnknown: string
   retry: string
   dismiss: string

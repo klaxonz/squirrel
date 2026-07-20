@@ -16,7 +16,17 @@ export const MAX_VOLUME = 200
 export const detectSourceType = (src: string): 'hls' | 'dash' | 'native' => {
   const url = src.toLowerCase()
   if (url.includes('.m3u8') || url.includes('format=m3u8')) return 'hls'
-  if (url.includes('.mpd') || url.includes('/mpd') || url.includes('format=mpd')) return 'dash'
+  // FreeTube YouTube MPD is a data:application/dash+xml URL (no .mpd suffix).
+  // Blob object URLs from createObjectURL are opaque — callers must set
+  // type:'dash' explicitly (Bilibili does). YouTube uses data: and is covered.
+  if (
+    url.includes('.mpd')
+    || url.includes('/mpd')
+    || url.includes('format=mpd')
+    || url.startsWith('data:application/dash+xml')
+  ) {
+    return 'dash'
+  }
   return 'native'
 }
 
@@ -62,15 +72,37 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     waitingRecoveryTimer = null
   }
 
+  const hasBufferAhead = (video: HTMLVideoElement, minAheadSec = 0.75): boolean => {
+    try {
+      const t = video.currentTime
+      const { buffered } = video
+      for (let i = 0; i < buffered.length; i += 1) {
+        if (buffered.start(i) <= t + 0.35 && buffered.end(i) >= t + minAheadSec) {
+          return true
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return false
+  }
+
   const scheduleWaitingRecovery = (): void => {
     clearWaitingRecovery()
     const videoElement = deps.getVideoElement()
     const stalledAtTime = videoElement?.currentTime ?? 0
     const suppressionDelay = Math.max(0, waitingRecoverySuppressedUntil - Date.now())
+    // Seek/buffer recovery needs a longer fuse than ordinary mid-play stalls —
+    // DASH index seeks against googlevideo often take >5s without being dead.
     waitingRecoveryTimer = setTimeout(() => {
       waitingRecoveryTimer = null
       if (!videoElement || !deps.getLoading() || videoElement.ended) return
       if (Math.abs((videoElement.currentTime ?? 0) - stalledAtTime) > 1) return
+      // Already have media queued ahead — drop the spinner, no recovery.
+      if (hasBufferAhead(videoElement)) {
+        deps.setLoading(false)
+        return
+      }
 
       const err: PlayerError = {
         code: 'STALL_DETECTED',
@@ -85,7 +117,7 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
           deps.logger.warn('[ErrorRecovery] Recovery chain failed', e)
           reportFatalError(err)
         })
-    }, Math.max(deps.getRetryDelay() * 2, 5000) + suppressionDelay)
+    }, Math.max(deps.getRetryDelay() * 3, 8000) + suppressionDelay)
   }
 
   const reportFatalError = (error: PlayerError): void => {
@@ -127,18 +159,33 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     const retryCount = deps.getRetryCount()
     const maxRetries = deps.getMaxRetries()
     const enableQualityFallback = deps.getEnableQualityFallback()
+    const canFallbackQuality = enableQualityFallback && !!getNextLowerQuality()
 
     if (code.includes('NOT_SUPPORTED') || code.includes('CAPABILITY')) {
+      // MEDIA_NOT_SUPPORTED is often a 403/expired CDN body, not a real codec
+      // capability miss — allow retry/fallback below for those codes only.
+      if (!code.includes('MEDIA_NOT_SUPPORTED') && !code.includes('SRC_NOT_SUPPORTED')) {
+        return 'none'
+      }
+    }
+
+    // Mid-playback / post-seek buffer stalls: soft retry first (adapter must
+    // NOT reload the whole source — that resets the playhead). Only step down
+    // quality after soft retries are exhausted.
+    if (code.includes('STALL') || code.includes('BUFFER')) {
+      if (retryCount < maxRetries) return 'retry'
+      if (canFallbackQuality) return 'quality-fallback'
       return 'none'
     }
 
-    if (code.includes('NETWORK') || code.includes('TIMEOUT')) {
+    if (code.includes('NETWORK') || code.includes('TIMEOUT') || code.includes('MEDIA_NOT_SUPPORTED') || code.includes('SRC_NOT_SUPPORTED')) {
       if (retryCount < maxRetries) return 'retry'
-      if (enableQualityFallback && getNextLowerQuality()) return 'quality-fallback'
+      if (canFallbackQuality) return 'quality-fallback'
     }
 
-    if (code.includes('MEDIA') || code.includes('DECODE') || code.includes('BUFFER') || code.includes('STALL')) {
-      if (enableQualityFallback && getNextLowerQuality()) return 'quality-fallback'
+    if (code.includes('MEDIA') || code.includes('DECODE')) {
+      if (canFallbackQuality) return 'quality-fallback'
+      if (retryCount < maxRetries) return 'retry'
     }
 
     if (!error.fatal && retryCount < maxRetries) return 'retry'
@@ -152,7 +199,13 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
 
     deps.logger.debug(`[ErrorRecovery] Falling back to quality: ${nextQuality.label}`)
     deps.setRetryCount(0)
+    deps.setLoading(true)
+    // Give the new representation time to buffer before the next stall timer fires.
+    suppressWaitingRecovery(Math.max(deps.getRetryDelay() * 2, 4000))
     deps.setQuality(nextQuality.id ?? nextQuality.label)
+    // Re-arm stall detection after the suppression window so a still-broken
+    // stream can step down again instead of hanging forever on the spinner.
+    scheduleWaitingRecovery()
     return true
   }
 
@@ -230,20 +283,38 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     deps.logger.debug(`[ErrorRecovery] Retry attempt ${deps.getRetryCount()}/${deps.getMaxRetries()}`)
     await new Promise((resolve) => setTimeout(resolve, deps.getRetryDelay()))
 
+    const code = String(error.code || '')
+    const isStall = code.includes('STALL') || code.includes('BUFFER')
     const controller = getStreamController()
     const recoveryAction: PlaybackRecoveryAction = controller
       ? await controller.recoverPlayback(error, {
           ...buildRecoveryContext(),
-          retryCount: deps.getRetryCount()
+          retryCount: deps.getRetryCount(),
         })
-      : 'reload-source'
+      : (isStall ? 'handled' : 'reload-source')
 
     if (recoveryAction === 'handled') {
+      // Soft recovery does not clear loading by itself; re-arm the stall timer
+      // so we can step down quality later if the buffer never refills.
+      if (isStall && deps.getLoading()) {
+        suppressWaitingRecovery(Math.max(deps.getRetryDelay(), 2000))
+        scheduleWaitingRecovery()
+      }
       return true
     }
 
-    if (recoveryAction === 'reload-source') {
+    // Never full-reload on pure stalls — that rewinds the playhead to 0.
+    if (recoveryAction === 'reload-source' && !isStall) {
       return reloadCurrentSource()
+    }
+
+    if (recoveryAction === 'reload-source' && isStall) {
+      deps.logger.debug('[ErrorRecovery] Ignoring reload-source for stall to preserve seek position')
+      if (deps.getLoading()) {
+        suppressWaitingRecovery(Math.max(deps.getRetryDelay(), 2000))
+        scheduleWaitingRecovery()
+      }
+      return true
     }
 
     return false
@@ -251,23 +322,29 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
 
   const handleRecoveryError = async (error: PlayerError): Promise<boolean> => {
     if (isRecovering) {
-      deps.logger.debug('[ErrorRecovery] Already recovering, skipping')
-      return false
+      // Another recovery is in flight — do NOT report fatal for the duplicate.
+      deps.logger.debug('[ErrorRecovery] Already recovering, suppressing duplicate')
+      return true
     }
 
     const code = String(error.code || '')
     if (code.includes('STALL')) {
       const videoElement = deps.getVideoElement()
+      // Paused mid-buffer (autoplay policy / accidental pause): just resume.
       if (videoElement && !videoElement.ended && videoElement.paused) {
         try {
-          await videoElement.play()
-          deps.logger.debug('[ErrorRecovery] Recovered stall via play()')
-          return true
+          const played = await deps.play()
+          if (played !== false) {
+            deps.logger.debug('[ErrorRecovery] Recovered stall via play()')
+            return true
+          }
         } catch (e) {
           deps.logger.warn('[ErrorRecovery] Stall play() failed', e)
         }
       }
-      return false
+      // Mid-playback stall while not paused: fall through to quality/retry.
+      // The previous early `return false` turned every 5s buffer stall into a
+      // fatal "播放出错 / 缓冲中" overlay even when lower qualities remained.
     }
 
     isRecovering = true

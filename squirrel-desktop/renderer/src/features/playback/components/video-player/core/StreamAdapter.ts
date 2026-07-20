@@ -53,6 +53,13 @@ export interface StreamAdapter {
   /** Release the underlying library instance (hls.js / dashjs / shaka). */
   destroy(): void
 
+  /**
+   * Optional precise seek through the streaming library. When present, the
+   * engine prefers this over writing video.currentTime so DASH/HLS can rebuffer
+   * at the target without re-attaching the source (which rewinds to 0).
+   */
+  seek?(time: number): void
+
   // --- optional codec-family control (DASH adapters only) ---
   getAvailableCodecFamilies?(): string[]
   getSelectedCodecFamily?(): string
