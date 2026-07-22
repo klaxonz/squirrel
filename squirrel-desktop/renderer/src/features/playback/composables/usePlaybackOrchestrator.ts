@@ -8,9 +8,6 @@ import { Logger } from '@/shared/lib/logger'
 import type { MediaSource } from '@/features/playback/components/video-player/core'
 import type { SubtitleTrack } from '@/features/playback/components/video-player/plugins/subtitles'
 import type { VideoId, VideoPageVideo, VideoProfile } from '@/features/playback/types/videoPlayback'
-import type { ExternalErrorState } from '@/features/playback/types/playerSession'
-
-export type { ExternalErrorState }
 
 type PlayOptions = Record<string, unknown>
 
@@ -100,7 +97,7 @@ const mergePlaybackMetadata = (currentVideo: VideoPageVideo | null, playbackMeta
 
 // ADR-0002 PR2 — the data-flow inversion. The 7 local refs that used
 // to duplicate session facts (video / playbackSource / subtitleTracks /
-// externalError / isResolvingPlayback / relatedVideos / loadingRelated) are now
+// relatedVideos / loadingRelated) are now
 // read-only `computed` projections of PlaybackSession.facts. There is no second
 // copy of the facts for the shell's watcher to reconcile — that watcher is
 // deleted in PR2. Mutation happens once, at the fetch/mutation sites, through
@@ -154,8 +151,6 @@ export default function usePlaybackOrchestrator() {
   // for these facts anymore.
   const playbackSource = computed(() => session.facts.source)
   const subtitleTracks = computed(() => session.facts.subtitles)
-  const externalError = computed(() => session.facts.externalError)
-  const isResolvingPlayback = computed(() => session.facts.externalLoading)
   // Stale-closure guard for superseded fetches. Plain counter (not a ref): it
   // is never read reactively — only compared inside loadAndPlayById's async
   // branches. Matches the idiom in useRelatedVideos.
@@ -173,11 +168,11 @@ export default function usePlaybackOrchestrator() {
 
     Logger.debug('[usePlaybackOrchestrator] loadAndPlayById start', { videoId, seq })
 
-    // Begin a fresh session for this video. This clears stale source / video /
-    // externalError and marks externalLoading. `initialVideoData` seeds the
-    // video fact so subsequent reads (uploader / title / detail dedupe) resolve
-    // synchronously.
+    // Begin a fresh session for this video. This clears stale source/video
+    // facts. `initialVideoData` seeds metadata so playback resolution can start
+    // without waiting for the detail request.
     session.beginNewVideo(String(videoId), initialVideoData)
+    const resolveOperation = session.playback.beginResolving(String(videoId), 'play')
 
     const currentVideoId = session.facts.video?.id != null ? String(session.facts.video.id) : ''
     const targetVideoId = String(videoId)
@@ -190,15 +185,10 @@ export default function usePlaybackOrchestrator() {
     }
 
     const hasInitialData = !!session.facts.video && session.facts.video.id === videoId
-    const detailPromise = !hasInitialData
-      ? fetchVideoDetails(videoId).catch((e) => {
-          Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e)
-          return null
-        })
-      : fetchVideoDetails(videoId).catch((e) => {
-          Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e)
-          return null
-        })
+    const detailPromise = fetchVideoDetails(videoId).catch((e) => {
+      Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e)
+      return null
+    })
     const playbackPromise = (async () => {
       const initialPlaybackVideo = (() => {
         if (initialVideoData && typeof initialVideoData.url === 'string') {
@@ -240,8 +230,7 @@ export default function usePlaybackOrchestrator() {
 
     try {
       const source = await playbackPromise
-      await detailPromise
-      if (seq !== requestSeq) return
+      if (seq !== requestSeq || !session.playback.isCurrent(resolveOperation)) return
 
       const v = session.facts.video || initialVideoData || null
       const sourceMetadata = 'metadata' in source ? source.metadata : undefined
@@ -254,9 +243,8 @@ export default function usePlaybackOrchestrator() {
         title: source.title || mergedVideo?.title || v?.title || '',
       }
 
-      // Forward the resolved source + presentation projection in a single
-      // update. externalLoading is flipped false by the `finally` below (single
-      // point), matching the old orchestrator's success path.
+      // Publish the playable source immediately. Details, subtitles and
+      // related content continue independently and must never delay first frame.
       session.update({
         source: resolvedSource,
         ...derivePresentation(session.facts.video),
@@ -267,23 +255,16 @@ export default function usePlaybackOrchestrator() {
         src: session.facts.source?.src,
       })
     } catch (err) {
-      if (seq !== requestSeq) return
+      if (seq !== requestSeq || !session.playback.isCurrent(resolveOperation)) return
 
       const e = toRecord(err)
       const code = String(e.code || 'FAILED')
       const message = String(e.message || '播放链接获取失败')
-      session.update({
-        externalError: {
-          code,
-          title: '播放失败',
-          message,
-          canRetry: true,
-        },
+      session.playback.fail({
+        code,
+        message,
+        fatal: true,
       })
-    } finally {
-      if (seq === requestSeq) {
-        session.update({ externalLoading: false })
-      }
     }
   }
 
@@ -345,9 +326,6 @@ export default function usePlaybackOrchestrator() {
     loadingRelated,
     playbackSource,
     subtitleTracks,
-    externalError,
-    isResolvingPlayback,
-
     // actions
     loadAndPlayById,
   }

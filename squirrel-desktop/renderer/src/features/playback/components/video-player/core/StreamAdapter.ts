@@ -38,6 +38,11 @@ export interface StreamContext {
   readonly logger: PlayerLogger
 }
 
+export interface StreamSeekResult {
+  /** True only when the adapter observed a frame from the seek destination. */
+  visuallyReady: boolean
+}
+
 /**
  * Engine → adapter control. The four optional codec-family methods are present
  * only on the DASH adapters; the runtime probes with `adapter.getAvailableCodecFamilies?.()`
@@ -58,7 +63,8 @@ export interface StreamAdapter {
    * engine prefers this over writing video.currentTime so DASH/HLS can rebuffer
    * at the target without re-attaching the source (which rewinds to 0).
    */
-  seek?(time: number): void
+  /** Resolves after the destination is visually usable when the adapter can verify it. */
+  seek?(time: number): void | Promise<StreamSeekResult | void>
 
   // --- optional codec-family control (DASH adapters only) ---
   getAvailableCodecFamilies?(): string[]

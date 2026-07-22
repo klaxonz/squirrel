@@ -4,6 +4,7 @@
 
 import type { EventEmitter } from './EventEmitter'
 import type { PlayerLogger } from './logger'
+import type { PlaybackIntent, PlaybackLoadingStage, PlaybackPhase } from './PlaybackCoordinator'
 
 /**
  * Subtitle style bag persisted to localStorage and read dynamically across the
@@ -151,6 +152,12 @@ export interface PlaybackRecoveryContext {
 
 // 播放器状态
 export interface PlayerState {
+  phase: PlaybackPhase
+  intent: PlaybackIntent
+  loadingStage: PlaybackLoadingStage
+  generation: number
+  operationId: number
+  error: PlayerError | null
   playing: boolean
   paused: boolean
   ended: boolean

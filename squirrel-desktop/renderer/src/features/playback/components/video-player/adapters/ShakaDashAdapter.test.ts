@@ -89,6 +89,7 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
 
   it('rebuilds the active variant, then reloads at the live audio playhead when video frames stay frozen', async () => {
     let frameCallbackId = 0
+    const frameCallbacks: { latest: VideoFrameRequestCallback | null } = { latest: null }
     const video = {
       currentTime: 0,
       paused: false,
@@ -96,8 +97,9 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
       playbackRate: 1,
       defaultPlaybackRate: 1,
       getVideoPlaybackQuality: vi.fn(() => ({ totalVideoFrames: 10 })),
-      requestVideoFrameCallback: vi.fn(() => {
+      requestVideoFrameCallback: vi.fn((callback: VideoFrameRequestCallback) => {
         frameCallbackId += 1
+        frameCallbacks.latest = callback
         return frameCallbackId
       }),
       cancelVideoFrameCallback: vi.fn(),
@@ -127,7 +129,8 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     const player = shakaMockState.latestPlayer as MockShakaPlayer
     expect(player.load).toHaveBeenCalledWith(source, null, 'application/dash+xml')
 
-    adapter.seek(100)
+    let seekCompleted = false
+    const seekCompletion = adapter.seek(100).then(() => { seekCompleted = true })
     video.currentTime = 102
     await vi.advanceTimersByTimeAsync(3000)
 
@@ -137,6 +140,7 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
       0,
     )
     expect(player.retryStreaming).toHaveBeenCalledWith(0.1)
+    expect(seekCompleted).toBe(false)
 
     video.currentTime = 104
     await vi.advanceTimersByTimeAsync(3000)
@@ -144,6 +148,14 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
 
     expect(player.load).toHaveBeenLastCalledWith(source, 104, 'application/dash+xml')
     expect(video.play).toHaveBeenCalled()
+    expect(seekCompleted).toBe(false)
+
+    video.currentTime = 104.5
+    frameCallbacks.latest?.(performance.now(), { mediaTime: 104.5 } as VideoFrameCallbackMetadata)
+    await flushPromises()
+    await seekCompletion
+    expect(seekCompleted).toBe(true)
+    expect(sink.error).not.toHaveBeenCalled()
     adapter.destroy()
   })
 })

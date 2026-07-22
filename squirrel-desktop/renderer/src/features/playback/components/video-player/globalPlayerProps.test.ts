@@ -8,7 +8,7 @@ describe('buildGlobalVideoPlayerProps', () => {
     __resetPlaybackSessionForTests()
   })
 
-  it('hydrates persisted clip markers and external errors from the session video', () => {
+  it('hydrates persisted clip markers from the session video', () => {
     const session = usePlaybackSession()
     const marker = {
       id: 7,
@@ -16,22 +16,14 @@ describe('buildGlobalVideoPlayerProps', () => {
       start_time: 12,
       end_time: 24,
     }
-    const externalError = {
-      code: 'FAILED',
-      title: '播放失败',
-      message: '解析失败',
-      canRetry: true,
-    }
     session.update({
       videoId: '42',
       video: { id: 42, title: '测试视频', clip_markers: [marker] },
-      externalError,
     })
 
     const props = buildGlobalVideoPlayerProps(session.facts, null)
 
     expect(props.videoId).toBe('42')
     expect(props.clipMarkers).toEqual([marker])
-    expect(props.externalError).toEqual(externalError)
   })
 })

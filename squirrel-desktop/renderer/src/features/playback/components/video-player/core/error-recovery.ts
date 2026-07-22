@@ -10,6 +10,7 @@ import type {
   QualityLevel,
 } from './types'
 import { type PlayerLogger } from './logger'
+import { classifyPlaybackError } from './playback-error-classifier'
 
 export const MAX_VOLUME = 200
 
@@ -45,8 +46,8 @@ export interface ErrorRecoveryDeps {
   setCurrentSourceKey: (k: string) => void
   getPendingSourceKey: () => string
   setPendingSourceKey: (k: string) => void
-  getAutoPlayOnReady: () => boolean
-  setAutoPlayOnReady: (v: boolean) => void
+  getPlaybackIntent: () => 'play' | 'pause'
+  setPlaybackIntent: (intent: 'play' | 'pause') => void
   getProgressKey: () => string | null
   getMaxRetries: () => number
   getRetryDelay: () => number
@@ -157,35 +158,29 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
   }
 
   const determineRecoveryStrategy = (error: PlayerError): 'retry' | 'quality-fallback' | 'none' => {
-    const code = String(error.code || '')
+    const kind = classifyPlaybackError(error)
     const retryCount = deps.getRetryCount()
     const maxRetries = deps.getMaxRetries()
     const enableQualityFallback = deps.getEnableQualityFallback()
     const canFallbackQuality = enableQualityFallback && !!getNextLowerQuality()
 
-    if (code.includes('NOT_SUPPORTED') || code.includes('CAPABILITY')) {
-      // MEDIA_NOT_SUPPORTED is often a 403/expired CDN body, not a real codec
-      // capability miss — allow retry/fallback below for those codes only.
-      if (!code.includes('MEDIA_NOT_SUPPORTED') && !code.includes('SRC_NOT_SUPPORTED')) {
-        return 'none'
-      }
-    }
+    if (kind === 'capability') return 'none'
 
     // Mid-playback / post-seek buffer stalls: soft retry first (adapter must
     // NOT reload the whole source — that resets the playhead). Only step down
     // quality after soft retries are exhausted.
-    if (code.includes('STALL') || code.includes('BUFFER')) {
+    if (kind === 'buffer') {
       if (retryCount < maxRetries) return 'retry'
       if (canFallbackQuality) return 'quality-fallback'
       return 'none'
     }
 
-    if (code.includes('NETWORK') || code.includes('TIMEOUT') || code.includes('MEDIA_NOT_SUPPORTED') || code.includes('SRC_NOT_SUPPORTED')) {
+    if (kind === 'network' || kind === 'authorization' || kind === 'source') {
       if (retryCount < maxRetries) return 'retry'
       if (canFallbackQuality) return 'quality-fallback'
     }
 
-    if (code.includes('MEDIA') || code.includes('DECODE')) {
+    if (kind === 'media' || kind === 'decode') {
       if (canFallbackQuality) return 'quality-fallback'
       if (retryCount < maxRetries) return 'retry'
     }
@@ -221,7 +216,7 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     retryDelay: deps.getRetryDelay(),
     source: deps.getCurrentSource() ? { ...deps.getCurrentSource()! } : null,
     currentTime: deps.getVideoElement()?.currentTime ?? 0,
-    wasPlaying: !!deps.getVideoElement() && !deps.getVideoElement()!.paused && !deps.getVideoElement()!.ended
+    wasPlaying: deps.getPlaybackIntent() === 'play'
   })
 
   const reloadCurrentSource = (): boolean => {
@@ -252,7 +247,7 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
 
     const sourceToReload = { ...currentSource }
     const resumeTime = videoElement?.currentTime ?? 0
-    const shouldResumePlayback = !!videoElement && !videoElement.paused && !videoElement.ended
+    const shouldResumePlayback = deps.getPlaybackIntent() === 'play'
 
     if (videoElement && Number.isFinite(resumeTime) && resumeTime > 0) {
       videoElement.addEventListener('loadedmetadata', () => {
@@ -273,7 +268,7 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     deps.doLoadSource(sourceToReload)
 
     if (shouldResumePlayback) {
-      deps.setAutoPlayOnReady(true)
+      deps.setPlaybackIntent('play')
     }
 
     deps.logger.debug('[ErrorRecovery] Reloaded current source')
@@ -285,8 +280,7 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     deps.logger.debug(`[ErrorRecovery] Retry attempt ${deps.getRetryCount()}/${deps.getMaxRetries()}`)
     await new Promise((resolve) => setTimeout(resolve, deps.getRetryDelay()))
 
-    const code = String(error.code || '')
-    const isStall = code.includes('STALL') || code.includes('BUFFER')
+    const isStall = classifyPlaybackError(error) === 'buffer'
     const controller = getStreamController()
     const recoveryAction: PlaybackRecoveryAction = controller
       ? await controller.recoverPlayback(error, {
@@ -329,9 +323,15 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
       return true
     }
 
-    const code = String(error.code || '')
-    if (code.includes('STALL')) {
+    if (classifyPlaybackError(error) === 'buffer') {
       const videoElement = deps.getVideoElement()
+      // A media element may be paused because the user paused while it was
+      // buffering. Intent, not HTMLMediaElement.paused, decides whether a
+      // recovery is allowed to resume playback.
+      if (deps.getPlaybackIntent() === 'pause') {
+        deps.setLoading(false)
+        return true
+      }
       // Paused mid-buffer, or Shaka left rate=0 after rebuffer: restore rate + play.
       // play() alone while playbackRate is 0 freezes A/V (silent "playing").
       if (videoElement && !videoElement.ended) {

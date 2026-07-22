@@ -1,19 +1,10 @@
 /**
  * Player engine factory.
  *
- * ponytail: this file is intentionally a single cohesive module (~900 lines of
- * logic) rather than split into per-feature sub-modules. The engine is a state
- * machine: ~30 closure variables (video element, audio graph, source/quality/
- * subtitle/progress state) are read and written by overlapping subsets of the
- * play/pause/seek/volume/quality/subtitle/source/progress operations. Splitting
- * would force a state-object + getter/setter seam (the cost is visible in
- * error-recovery.ts, which already needs ~28 deps for its narrower concern) for
- * every cross-cutting read — a net readability loss.
- *
- * The genuinely isolatable concerns ARE split out: error recovery lives in
- * error-recovery.ts, public types in engine-types.ts, plugin management in
- * PluginManager.ts, events in EventEmitter.ts. What remains here is the core
- * playback state machine, which is most readable as one file.
+ * PlaybackCoordinator owns lifecycle and intent. This module composes the DOM
+ * media element, stream drivers, recovery, plugins, persistence, and events
+ * around that authority; none of those layers owns a parallel loading/error
+ * state. See renderer/docs/adr/0003-coordinated-playback-lifecycle.md.
  */
 
 import { EventEmitter } from './EventEmitter'
@@ -21,11 +12,13 @@ import { PluginManager } from './PluginManager'
 import { LocalStorageAdapter, type UserConfig, type PlaybackProgress } from './PlayerAdapter'
 import { playerLogger } from './logger'
 import { createErrorRecovery, MAX_VOLUME, detectSourceType } from './error-recovery'
-import type { StreamAdapter, StreamAdapterType, StreamContext } from './StreamAdapter'
+import { PlaybackCoordinator } from './PlaybackCoordinator'
+import type { StreamAdapter, StreamAdapterType, StreamContext, StreamSeekResult } from './StreamAdapter'
 import type { StreamSink } from './StreamSink'
 import { HlsAdapter } from '../adapters/HlsAdapter'
 import { DashAdapter } from '../adapters/DashAdapter'
 import { ShakaDashAdapter } from '../adapters/ShakaDashAdapter'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import type {
   MediaSource,
   PlayerError,
@@ -57,6 +50,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   const events = new EventEmitter<PlayerEvents>()
   const pluginManager = new PluginManager(events)
+  const coordinator = options.coordinator ?? new PlaybackCoordinator()
+  const ownsCoordinator = !options.coordinator
 
   let videoElement: HTMLVideoElement | null = null
   let containerElement: HTMLElement | null = null
@@ -78,9 +73,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   let loop = !!options.loop
   let playbackRate = typeof options.playbackRate === 'number' ? options.playbackRate : 1
 
-  let loading = false
-  let bufferedProgress = 0
-
   let qualities: QualityLevel[] = []
   let currentQualityLabel: string | null = null
   let currentQualityId: string | number | null = null
@@ -97,23 +89,19 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   let currentSourceKey = ''
   let pendingSource: MediaSource | null = null
   let pendingSourceKey = ''
-  let autoPlayOnReady = false
-  /** After scrub, resume play once rebuffer finishes (even if element stayed "playing" at rate 0). */
-  let resumeAfterSeek = false
   /** Last observed playhead used to distinguish real playback from a seek timeupdate. */
   let lastTimeUpdateMediaTime = Number.NaN
   let mediaLoadStartedForCurrentSource = false
   let mediaMetadataLoadedForCurrentSource = false
+  let suppressMediaPauseIntent = false
+  let suppressMediaLifecycle = false
+  let pendingSeekOperationId: number | null = null
 
   // Stream adapter seam (see docs/adr/0001). The engine owns one adapter at a
   // time, keyed by currentAdapterType; loadSource reuses it when the source
   // type is unchanged and destroys + rebuilding it otherwise (A2 strategy).
   let currentStreamAdapter: StreamAdapter | null = null
   let currentAdapterType: StreamAdapterType | null = null
-  // The engine's StreamSink (PR2): the only channel adapters use to drive the
-  // engine. Lazily created; stable for the engine's lifetime.
-  let streamSink: StreamSink | null = null
-
   let lastSavedTime = 0
   let lastSavedAt = 0
   let pendingProgress: PlaybackProgress | null = null
@@ -174,15 +162,22 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   const getState = (): PlayerState => {
     const video = videoElement
+    const lifecycle = coordinator.getSnapshot()
     return {
-      playing: video ? !video.paused : false,
-      paused: video?.paused ?? true,
-      ended: video?.ended ?? false,
-      waiting: loading,
-      seeking: video?.seeking ?? false,
-      currentTime: video?.currentTime ?? 0,
-      duration: video?.duration ?? 0,
-      buffered: bufferedProgress,
+      phase: lifecycle.phase,
+      intent: lifecycle.intent,
+      loadingStage: lifecycle.loadingStage,
+      generation: lifecycle.generation,
+      operationId: lifecycle.operationId,
+      error: lifecycle.error,
+      playing: lifecycle.phase === 'playing',
+      paused: lifecycle.intent === 'pause',
+      ended: lifecycle.phase === 'ended',
+      waiting: lifecycle.loading,
+      seeking: lifecycle.phase === 'seeking',
+      currentTime: lifecycle.currentTime,
+      duration: lifecycle.duration,
+      buffered: lifecycle.bufferedPercent,
       volume: volume / 100,
       muted: video?.muted ?? muted,
       playbackRate: video?.playbackRate ?? playbackRate,
@@ -192,6 +187,23 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       autoQuality: currentQualityLabel === 'auto'
     }
   }
+
+  let lastNotifiedErrorKey = ''
+  const removeCoordinatorListener = coordinator.subscribe((state) => {
+    events.emit('statechange', getState())
+    if (!state.error) return
+    const errorKey = `${state.generation}:${state.operationId}:${state.error.code}`
+    if (errorKey === lastNotifiedErrorKey) return
+    lastNotifiedErrorKey = errorKey
+    const error = state.error
+    queueMicrotask(() => {
+      const current = coordinator.getSnapshot()
+      const currentKey = current.error
+        ? `${current.generation}:${current.operationId}:${current.error.code}`
+        : ''
+      if (currentKey === errorKey) options.onError?.(error)
+    })
+  }, true)
 
   const applyAudioGain = (el: HTMLVideoElement): void => {
     if (!audioContext) {
@@ -267,7 +279,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   }
 
   const markSourceLoadingStarted = (): void => {
-    loading = true
     mediaLoadStartedForCurrentSource = false
     mediaMetadataLoadedForCurrentSource = false
     events.emit('loadsstart', undefined)
@@ -285,7 +296,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     // Stream adapters drive canplay through loadingStateChanged.
     if (streamAdapterOwnsBuffering()) return false
     if (!isNativeMediaSourceCurrent()) return false
-    if (!loading) return true
+    if (!coordinator.getSnapshot().loading) return true
     return mediaLoadStartedForCurrentSource && mediaMetadataLoadedForCurrentSource
   }
 
@@ -320,12 +331,10 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   const errorRecovery = createErrorRecovery({
     getVideoElement: () => videoElement,
-    getLoading: () => loading,
-    // Always clear spinner through canplay so usePlayer store.loading stays
-    // in sync — setLoading(false) alone left the UI spinning forever.
+    getLoading: () => coordinator.getSnapshot().loading,
     setLoading: (v) => {
       if (v) {
-        loading = true
+        coordinator.markBuffering()
         return
       }
       clearLoadingState('error-recovery')
@@ -341,8 +350,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     setCurrentSourceKey: (k) => { currentSourceKey = k },
     getPendingSourceKey: () => pendingSourceKey,
     setPendingSourceKey: (k) => { pendingSourceKey = k },
-    getAutoPlayOnReady: () => autoPlayOnReady,
-    setAutoPlayOnReady: (v) => { autoPlayOnReady = v },
+    getPlaybackIntent: () => coordinator.getSnapshot().intent,
+    setPlaybackIntent: (intent) => { coordinator.setIntent(intent) },
     getProgressKey: () => progressKey,
     getMaxRetries: () => maxRetries,
     getRetryDelay: () => retryDelay,
@@ -351,7 +360,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     getStreamAdapter: () => currentStreamAdapter,
     logger,
     adapter,
-    onError: options.onError,
+    onError: (error) => { coordinator.fail(error) },
     play: () => play(),
     setQuality: (q) => setQuality(q),
     doLoadSource: (s) => doLoadSource(s),
@@ -359,12 +368,45 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   /** Clear engine + UI spinner together (store.loading only flips on canplay). */
   const clearLoadingState = (reason: string): void => {
-    if (!loading) return
-    loading = false
+    if (!coordinator.getSnapshot().loading) return
+    const isActuallyPlaying = Boolean(videoElement && !videoElement.paused && !videoElement.ended)
+    coordinator.markReady(isActuallyPlaying)
     retryCount = 0
     errorRecovery.clearWaitingRecovery()
     logger.debug(`[PlayerEngine] clearLoadingState (${reason})`)
     events.emit('canplay', undefined)
+  }
+
+  /** Run every plugin/native/adapter failure through one recovery transition. */
+  const recoverFromError = async (error: PlayerError, origin: string): Promise<void> => {
+    if (coordinator.getSnapshot().phase !== 'recovering') coordinator.beginRecovery()
+    try {
+      const recovered = await errorRecovery.handleRecoveryError(error)
+      if (!recovered) {
+        errorRecovery.reportFatalError(error)
+        return
+      }
+
+      // Some soft recoveries complete synchronously without a buffering edge.
+      // Do not leave the lifecycle in recovering when the landing already has
+      // playable media; asynchronous recoveries settle via adapter/media events.
+      const video = videoElement
+      if (coordinator.getSnapshot().phase === 'recovering') {
+        if (video && hasMediaAhead(video)) {
+          coordinator.markReady(!video.paused && !video.ended)
+        } else if (video) {
+          coordinator.markBuffering()
+          errorRecovery.scheduleWaitingRecovery()
+        } else {
+          errorRecovery.reportFatalError(error)
+        }
+      }
+    } catch (recoveryError) {
+      logger.warn(`[PlayerEngine] ${origin} recovery chain failed`, recoveryError)
+      errorRecovery.reportFatalError(error)
+    } finally {
+      pluginHandlingError = false
+    }
   }
 
   const createPluginContext = (): PluginContext => ({
@@ -376,17 +418,16 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     off: events.off.bind(events),
     emit(event, payload) {
       if (event === 'waiting') {
-        loading = true
+        coordinator.markBuffering()
         errorRecovery.scheduleWaitingRecovery()
       }
 
       if (event === 'canplay') {
-        loading = false
+        coordinator.markReady(Boolean(videoElement && !videoElement.paused && !videoElement.ended))
         retryCount = 0
         errorRecovery.clearWaitingRecovery()
 
-        if (autoPlayOnReady) {
-          autoPlayOnReady = false
+        if (coordinator.getSnapshot().intent === 'play') {
           void play().catch((e) => {
             logger.warn('[PlayerEngine] Auto-play failed after canplay', e)
           })
@@ -440,16 +481,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     reportError(error) {
       pluginHandlingError = true
-      void errorRecovery.handleRecoveryError(error)
-        .then((recovered) => {
-          if (!recovered) errorRecovery.reportFatalError(error)
-          pluginHandlingError = false
-        })
-        .catch((e) => {
-          logger.warn('[PlayerEngine] Plugin recovery chain failed', e)
-          errorRecovery.reportFatalError(error)
-          pluginHandlingError = false
-        })
+      void recoverFromError(error, 'Plugin')
     },
     getPlugin<T>(name: string) { return pluginManager.get(name) as T }
   })
@@ -586,67 +618,63 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
   }
 
-  const createStreamSink = (): StreamSink => ({
-    qualitiesResolved: (qs, currentId) => {
-      publishQualities(Array.isArray(qs) ? qs : [], currentId)
-    },
+  const createStreamSink = (generation: number): StreamSink => {
+    const isActive = () => coordinator.getSnapshot().generation === generation
+    return {
+      qualitiesResolved: (qs, currentId) => {
+        if (!isActive()) return
+        publishQualities(Array.isArray(qs) ? qs : [], currentId)
+      },
 
-    qualityChanged: (quality) => {
-      registeredQualityId = quality.id
-      currentQualityId = quality.id
-      currentQualityLabel = quality.label
-      events.emit('qualitychange', {
-        quality: quality.label,
-        auto: quality.auto,
-        id: quality.id,
-      })
-      options.onQualityChange?.(quality.label)
-    },
+      qualityChanged: (quality) => {
+        if (!isActive()) return
+        registeredQualityId = quality.id
+        currentQualityId = quality.id
+        currentQualityLabel = quality.label
+        events.emit('qualitychange', {
+          quality: quality.label,
+          auto: quality.auto,
+          id: quality.id,
+        })
+        options.onQualityChange?.(quality.label)
+      },
 
-    loadingStateChanged: (isLoading) => {
-      // Must emit waiting/canplay so usePlayer's store.loading stays in sync.
-      // Pre-StreamSink plugins did this via emit intercept; mutating the local
-      // `loading` flag alone left the UI spinner spinning after Shaka/DASH
-      // rebuffer completed (seek → waiting → buffering=false with no canplay).
-      if (isLoading) {
-        if (!loading) {
-          loading = true
-          errorRecovery.scheduleWaitingRecovery()
-          events.emit('waiting', undefined)
-        } else {
-          errorRecovery.scheduleWaitingRecovery()
+      loadingStateChanged: (isLoading) => {
+        if (!isActive()) return
+        if (isLoading) {
+          if (!coordinator.getSnapshot().loading) {
+            coordinator.markBuffering()
+            errorRecovery.scheduleWaitingRecovery()
+            events.emit('waiting', undefined)
+          } else {
+            errorRecovery.scheduleWaitingRecovery()
+          }
+          return
         }
-        return
-      }
-      clearLoadingState('stream-adapter')
-      // Always undo rate=0 starve flag when the adapter reports not buffering,
-      // even if the user had paused (pause should keep paused, not rate 0).
-      if (videoElement) ensurePlaybackRate(videoElement)
-      // After scrub: re-arm play so A/V actually move (not just clear spinner).
-      // Do not un-pause intentional pauses (resumeAfterSeek is false for those).
-      if (autoPlayOnReady || resumeAfterSeek) {
-        autoPlayOnReady = false
-        resumeAfterSeek = false
-        void play().catch((e) => {
-          logger.warn('[PlayerEngine] Auto-play failed after canplay', e)
-        })
-      }
-    },
+        // Shaka can report SATISFIED while only audio is advancing. A seek
+        // adapter with visual-completion support owns the final ready edge.
+        if (pendingSeekOperationId !== null) {
+          if (videoElement) ensurePlaybackRate(videoElement)
+          return
+        }
+        clearLoadingState('stream-adapter')
+        // Always undo rate=0 starve flag when the adapter reports not buffering,
+        // even if the user had paused (pause should keep paused, not rate 0).
+        if (videoElement) ensurePlaybackRate(videoElement)
+        if (coordinator.getSnapshot().intent === 'play') {
+          void play().catch((e) => {
+            logger.warn('[PlayerEngine] Auto-play failed after canplay', e)
+          })
+        }
+      },
 
-    error: (error) => {
-      pluginHandlingError = true
-      void errorRecovery.handleRecoveryError(error)
-        .then((recovered) => {
-          if (!recovered) errorRecovery.reportFatalError(error)
-          pluginHandlingError = false
-        })
-        .catch((e) => {
-          logger.warn('[PlayerEngine] Stream adapter recovery chain failed', e)
-          errorRecovery.reportFatalError(error)
-          pluginHandlingError = false
-        })
-    },
-  })
+      error: (error) => {
+        if (!isActive()) return
+        pluginHandlingError = true
+        void recoverFromError(error, 'Stream adapter')
+      },
+    }
+  }
 
   /**
    * Resolve which StreamAdapter a source needs, reusing the cached adapter when
@@ -729,12 +757,12 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     const nextKey = source.key || src
     if (nextKey === currentSourceKey) return
 
-    // Source changes invalidate any pending resume intent from the old stream.
-    resumeAfterSeek = false
     lastTimeUpdateMediaTime = Number.NaN
     markSourceLoadingStarted()
     pluginHandlingError = false
 
+    suppressMediaPauseIntent = true
+    suppressMediaLifecycle = true
     releaseVideoElementMedia(videoElement)
 
     currentSourceKey = nextKey
@@ -751,7 +779,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     // adapter is resolved/reused by source type (A2) and rebuilds its library
     // instance inside onSourceChange. Native sources have no adapter. The sink
     // (PR2) is the only channel the adapter uses to drive the engine back.
-    if (!streamSink) streamSink = createStreamSink()
+    const sourceSink = createStreamSink(coordinator.getSnapshot().generation)
 
     // Seed the quality menu from provider metadata BEFORE the stream adapter
     // attaches. loadSource() clears the ladder; dash/shaka may emit [] while
@@ -765,11 +793,11 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       const seedCurrentId = type === 'native'
         ? (providerQualities[0]?.id ?? null)
         : null
-      streamSink.qualitiesResolved(providerQualities, seedCurrentId)
+      sourceSink.qualitiesResolved(providerQualities, seedCurrentId)
     }
 
     const streamAdapter = resolveStreamAdapter(source)
-    streamAdapter?.onSourceChange(source, streamSink)
+    streamAdapter?.onSourceChange(source, sourceSink)
 
     // Re-assert provider ladder after adapter onSourceChange. Some adapters
     // (dash.js before player exists) used to publish [] and wipe the seed.
@@ -777,7 +805,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       const seedCurrentId = type === 'native'
         ? (providerQualities[0]?.id ?? null)
         : null
-      streamSink.qualitiesResolved(providerQualities, seedCurrentId)
+      sourceSink.qualitiesResolved(providerQualities, seedCurrentId)
     }
 
     if (type === 'native') {
@@ -785,15 +813,12 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       videoElement.load()
     }
 
-    if (autoplay) {
-      autoPlayOnReady = true
-    }
   }
 
-  const loadSource = (source: MediaSource): void => {
+  const loadSource = async (source: MediaSource) => {
     if (!source.src) {
       logger.warn('[PlayerEngine] No source URL provided')
-      return
+      return null
     }
 
     const resolvedSource: MediaSource = {
@@ -807,9 +832,15 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     setProgressKey(nextProgressKey ? String(nextProgressKey) : null)
 
     const nextKey = resolvedSource.key || resolvedSource.src
-    if (nextKey === currentSourceKey || nextKey === pendingSourceKey) return
+    if (nextKey === currentSourceKey || nextKey === pendingSourceKey) return null
 
-    bufferedProgress = 0
+    const lifecycle = coordinator.getSnapshot()
+    const loadIntent = lifecycle.phase === 'resolving'
+      ? lifecycle.intent
+      : (autoplay ? 'play' : 'pause')
+    const operation = coordinator.beginLoading(nextKey, loadIntent)
+
+    coordinator.updateMedia({ bufferedPercent: 0 })
     markSourceLoadingStarted()
     errorRecovery.clearWaitingRecovery()
     currentQualityLabel = null
@@ -865,10 +896,31 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     if (!inited || !videoElement) {
       pendingSource = resolvedSource
       pendingSourceKey = nextKey
-      return
+    } else {
+      doLoadSource(resolvedSource)
     }
 
-    doLoadSource(resolvedSource)
+    try {
+      return await coordinator.waitFor(
+        operation,
+        state => (
+          state.phase === 'ready'
+          || state.phase === 'playing'
+          || state.phase === 'paused'
+          || state.phase === 'error'
+        ),
+        60_000,
+      )
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return null
+      const playerError: PlayerError = {
+        code: 'LOAD_TIMEOUT',
+        message: errorMessage(error, 'Playback source load timed out'),
+        fatal: true,
+      }
+      coordinator.fail(playerError)
+      return null
+    }
   }
 
   let removeVideoListeners: (() => void) | null = null
@@ -879,34 +931,39 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     const video = videoElement
 
     const onPlay = () => {
+      suppressMediaLifecycle = false
+      suppressMediaPauseIntent = false
+      coordinator.setIntent('play')
       errorRecovery.clearWaitingRecovery()
       events.emit('play', undefined)
       options.onPlay?.()
     }
     const onPause = () => {
-      // A pause after scrub is explicit user intent; never let a later Shaka
-      // buffering=false edge auto-resume it.
-      resumeAfterSeek = false
+      if (suppressMediaPauseIntent || suppressMediaLifecycle) return
+      coordinator.markPaused()
       errorRecovery.clearWaitingRecovery()
       flushProgress()
       events.emit('pause', undefined)
       options.onPause?.()
     }
     const onEnded = () => {
-      resumeAfterSeek = false
+      if (suppressMediaLifecycle) return
+      coordinator.markEnded()
       errorRecovery.clearWaitingRecovery()
       flushProgress()
       events.emit('ended', undefined)
       options.onEnded?.()
     }
     const onTimeUpdate = () => {
+      if (suppressMediaLifecycle) return
       const currentMediaTime = video.currentTime
       const playheadMoved = Number.isFinite(lastTimeUpdateMediaTime)
         && Math.abs(currentMediaTime - lastTimeUpdateMediaTime) >= 0.01
       lastTimeUpdateMediaTime = currentMediaTime
+      coordinator.updateMedia({ currentTime: video.currentTime, duration: video.duration })
       // Post-seek safety net: if the playhead has media (or is actually moving),
       // never leave the UI spinner up even when buffering/canplay events miss.
-      if (loading) {
+      if (coordinator.getSnapshot().loading && pendingSeekOperationId === null) {
         if (
           hasMediaAhead(video)
           || (playheadMoved && !video.paused && video.playbackRate > 0 && video.readyState >= 2)
@@ -920,27 +977,35 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       options.onTimeUpdate?.(video.currentTime)
     }
     const onDurationChange = () => {
+      if (suppressMediaLifecycle) return
+      coordinator.updateMedia({ duration: video.duration })
       events.emit('durationchange', video.duration)
     }
     const onLoadStart = () => {
+      suppressMediaLifecycle = false
+      suppressMediaPauseIntent = false
       mediaLoadStartedForCurrentSource = true
       mediaMetadataLoadedForCurrentSource = false
-      loading = true
       events.emit('loadsstart', undefined)
     }
     const onLoadedMetadata = () => {
       if (!isNativeMediaSourceCurrent()) return
+      suppressMediaLifecycle = false
+      suppressMediaPauseIntent = false
       mediaMetadataLoadedForCurrentSource = true
+      coordinator.updateMedia({ duration: video.duration })
       events.emit('loadedmetadata', { duration: video.duration, videoWidth: video.videoWidth, videoHeight: video.videoHeight })
     }
     const onLoadedData = () => {
+      if (suppressMediaLifecycle) return
       if (!isNativeMediaSourceCurrent()) return
       events.emit('loadeddata', undefined)
     }
     const onProgress = () => {
+      if (suppressMediaLifecycle) return
       if (video.buffered.length > 0 && video.duration > 0) {
         const bufferedEnd = video.buffered.end(video.buffered.length - 1)
-        bufferedProgress = (bufferedEnd / video.duration) * 100
+        coordinator.updateMedia({ bufferedPercent: (bufferedEnd / video.duration) * 100 })
         events.emit('progress', { buffered: video.buffered, duration: video.duration })
       }
     }
@@ -952,30 +1017,37 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       events.emit('volumechange', { volume: v / 100, muted: video.muted })
     }
     const onWaiting = () => {
+      if (suppressMediaLifecycle) return
       // DASH buffering is owned by the stream adapter. Native waiting still
       // fires on MSE gap seeks and would fight Shaka's buffering=false by
       // re-arming the stall timer while rate is still 0 — leave it to the adapter.
       if (streamAdapterOwnsBuffering()) return
-      loading = true
+      coordinator.markBuffering()
       errorRecovery.scheduleWaitingRecovery()
       events.emit('waiting', undefined)
     }
     const onStalled = () => {
+      if (suppressMediaLifecycle) return
       if (streamAdapterOwnsBuffering()) return
+      coordinator.markBuffering()
       events.emit('waiting', undefined)
     }
     const onSeeked = () => {
+      if (pendingSeekOperationId !== null) {
+        events.emit('seeked', video.currentTime)
+        return
+      }
+      if (suppressMediaLifecycle) return
       // After scrub settles: FreeTube drops the loading symbol when Shaka is no
       // longer buffering. We approximate with range coverage OR a playable
       // readyState at the new playhead (range is authoritative when present).
-      if (loading && (hasMediaAhead(video) || video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA)) {
+      if (coordinator.getSnapshot().loading && (hasMediaAhead(video) || video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA)) {
         if (video.playbackRate === 0) ensurePlaybackRate(video)
         // readyState alone can be stale — only clear on readyState if the
         // playhead is inside a buffered range OR stream adapter will re-assert.
         if (hasMediaAhead(video) || currentSourceType === 'native') {
           clearLoadingState('seeked-ahead')
-          if (resumeAfterSeek) {
-            resumeAfterSeek = false
+          if (coordinator.getSnapshot().intent === 'play') {
             void play().catch((e) => {
               logger.warn('[PlayerEngine] Play after seeked-ahead failed', e)
             })
@@ -985,25 +1057,32 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       events.emit('seeked', video.currentTime)
     }
     const onPlaying = () => {
+      suppressMediaLifecycle = false
       // Playback resumed — clear spinner even if Shaka never re-fired
       // buffering=false (FakeEvent prop miss / race with our seek waiting).
       // Also undo a stuck rate=0 so "playing" is not a silent freeze.
       if (video.playbackRate === 0) ensurePlaybackRate(video)
+      if (pendingSeekOperationId !== null) {
+        events.emit('playing', undefined)
+        return
+      }
       clearLoadingState('playing')
+      coordinator.markPlaying()
       events.emit('playing', undefined)
     }
     const onCanPlay = () => {
+      if (suppressMediaLifecycle) return
       if (!canAcceptNativeCanPlay()) return
       clearLoadingState('native-canplay')
 
-      if (autoPlayOnReady) {
-        autoPlayOnReady = false
+      if (coordinator.getSnapshot().intent === 'play') {
         void play().catch((e) => {
           logger.warn('[PlayerEngine] Auto-play failed after canplay', e)
         })
       }
     }
     const onError = (e: Event) => {
+      if (suppressMediaLifecycle || coordinator.getSnapshot().phase === 'resolving') return
       if (pluginHandlingError) {
         logger.debug('[PlayerEngine] Skipping native error, plugin is already handling recovery')
         return
@@ -1024,14 +1103,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
         fatal: true,
         details: e
       }
-      void errorRecovery.handleRecoveryError(err)
-        .then((recovered) => {
-          if (!recovered) errorRecovery.reportFatalError(err)
-        })
-        .catch((e) => {
-          logger.warn('[PlayerEngine] Error recovery chain failed', e)
-          errorRecovery.reportFatalError(err)
-        })
+      void recoverFromError(err, 'Native media')
     }
     const onEnterPiP = () => {
       events.emit('enterpictureinpicture', undefined)
@@ -1111,7 +1183,6 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   const destroy = (): void => {
     if (destroyed) return
     destroyed = true
-    resumeAfterSeek = false
 
     if (removeVideoListeners) {
       removeVideoListeners()
@@ -1132,7 +1203,10 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       currentAdapterType = null
     }
     pluginManager.destroy()
+    suppressMediaPauseIntent = true
     releaseVideoElementMedia(videoElement)
+    removeCoordinatorListener()
+    if (ownsCoordinator) coordinator.destroy()
     events.destroy()
   }
 
@@ -1145,8 +1219,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
 
     errorRecovery.clearWaitingRecovery()
-    resumeAfterSeek = false
     lastTimeUpdateMediaTime = Number.NaN
+    suppressMediaPauseIntent = true
+    suppressMediaLifecycle = true
     releaseVideoElementMedia(previousVideoElement)
     videoElement = el
     setupVideoListeners()
@@ -1181,6 +1256,10 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   }
 
   const play = async (): Promise<boolean> => {
+    coordinator.setIntent('play')
+    // During provider resolution the attached element still belongs to the
+    // detached previous source. Queue intent without touching or reviving it.
+    if (coordinator.getSnapshot().phase === 'resolving') return true
     if (!videoElement) return false
     try {
       if (audioContext?.state === 'suspended') {
@@ -1198,24 +1277,42 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   }
 
   const pause = (): void => {
+    coordinator.setIntent('pause')
+    if (coordinator.getSnapshot().phase === 'resolving') {
+      suspendForSourceChange()
+      return
+    }
     if (!videoElement) return
     videoElement.pause()
   }
 
-  const seek = (time: number): void => {
-    if (!videoElement) return
+  const suspendForSourceChange = (): void => {
+    suppressMediaPauseIntent = true
+    suppressMediaLifecycle = true
+    videoElement?.pause()
+  }
+
+  const seek = async (time: number) => {
+    if (!videoElement) return null
+    // A seek against the detached previous element must never supersede the
+    // active provider resolve operation for the next video.
+    if (coordinator.getSnapshot().phase === 'resolving') return null
     errorRecovery.clearWaitingRecovery()
     // Allow googlevideo segment fetch after scrub, but do not suppress so long
     // that a stuck rebuffer is invisible — soft recovery uses retryStreaming
     // (not re-seek) so a few seconds is enough.
     errorRecovery.suppressWaitingRecovery(Math.max(retryDelay * 2, 4000))
     const target = Number(time)
-    if (!Number.isFinite(target)) return
+    if (!Number.isFinite(target)) return null
     const clamped = Math.max(0, target)
     // If the user was watching (or element is "playing" at rate 0 while Shaka
     // buffers), re-arm play once the stream adapter reports not buffering.
     // rate===0 is never a user pause — treat it as still wanting playback.
-    resumeAfterSeek = !videoElement.paused
+    const operation = coordinator.beginSeek(
+      clamped,
+      coordinator.getSnapshot().intent === 'play',
+    )
+    pendingSeekOperationId = operation.operationId
     // A timeupdate caused only by assigning currentTime is not proof that
     // playback resumed; movement must occur beyond this landing point.
     lastTimeUpdateMediaTime = clamped
@@ -1226,27 +1323,27 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     // (or only buffered ~0.02s), our old 0.5s probe never cleared store.loading.
     const streamOwned = streamAdapterOwnsBuffering()
 
+    let driverCompletion: Promise<StreamSeekResult | void> = Promise.resolve()
     try {
       // Prefer the stream adapter's seek when available so dash.js rebuffers
       // at the target without resetting the MediaSource attachment.
       if (currentStreamAdapter?.seek) {
-        currentStreamAdapter.seek(clamped)
+        driverCompletion = Promise.resolve(currentStreamAdapter.seek(clamped))
       } else {
         videoElement.currentTime = clamped
       }
     } catch (e) {
       logger.warn('[PlayerEngine] Seek failed', e)
-      resumeAfterSeek = false
-      clearLoadingState('seek-failed')
-      return
+      if (pendingSeekOperationId === operation.operationId) pendingSeekOperationId = null
+      coordinator.markReady(Boolean(!videoElement.paused && !videoElement.ended))
+      return null
     }
 
     // Already-buffered landings: clear immediately (tiny ahead is enough).
-    if (hasMediaAhead(videoElement)) {
+    if (hasMediaAhead(videoElement) && !currentStreamAdapter?.seek) {
       ensurePlaybackRate(videoElement)
-      if (loading) clearLoadingState('seek-ahead')
-      if (resumeAfterSeek) {
-        resumeAfterSeek = false
+      if (coordinator.getSnapshot().loading) clearLoadingState('seek-ahead')
+      if (coordinator.getSnapshot().intent === 'play') {
         void play().catch((e) => {
           logger.warn('[PlayerEngine] Play after buffered seek failed', e)
         })
@@ -1255,20 +1352,58 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       // Unbuffered DASH seek: show spinner; adapter buffering=false +
       // adapter loadingStateChanged(false) is the primary clear path.
       // Adapter seek() also re-syncs isBuffering() on a microtask.
-      if (!loading) {
-        loading = true
-        events.emit('waiting', undefined)
-      } else {
-        // Keep store in buffering stage if we were already spinning.
-        events.emit('waiting', undefined)
-      }
+      events.emit('waiting', undefined)
       errorRecovery.scheduleWaitingRecovery()
     } else {
-      loading = true
       events.emit('waiting', undefined)
       errorRecovery.scheduleWaitingRecovery()
     }
     events.emit('seeking', clamped)
+
+    try {
+      const driverResult = await driverCompletion
+      if (!coordinator.isCurrent(operation)) return null
+      if (pendingSeekOperationId === operation.operationId) pendingSeekOperationId = null
+
+      // Adapters such as Shaka resolve seek() only after a destination frame
+      // was presented (including decoder/manifest repair when necessary).
+      // Void adapters fall through immediately and remain event-driven when
+      // their destination is not buffered yet.
+      if (driverResult?.visuallyReady || (driverResult === undefined && hasMediaAhead(videoElement))) {
+        ensurePlaybackRate(videoElement)
+        coordinator.markReady(!videoElement.paused && !videoElement.ended)
+        if (coordinator.getSnapshot().intent === 'play') {
+          void play().catch((e) => {
+            logger.warn('[PlayerEngine] Play after visually completed seek failed', e)
+          })
+        }
+      }
+
+      return await coordinator.waitFor(
+        operation,
+        state => (
+          state.phase === 'ready'
+          || state.phase === 'playing'
+          || state.phase === 'paused'
+          || state.phase === 'error'
+        ),
+        20_000,
+      )
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        logger.warn('[PlayerEngine] Seek operation did not settle', error)
+        if (coordinator.isCurrent(operation)) {
+          await recoverFromError({
+            code: 'SEEK_TIMEOUT',
+            message: errorMessage(error, 'Playback seek timed out'),
+            fatal: false,
+          }, 'Seek timeout')
+        }
+      }
+      return null
+    } finally {
+      if (pendingSeekOperationId === operation.operationId) pendingSeekOperationId = null
+    }
   }
 
   const setVolume = (vol: number): void => {
@@ -1597,7 +1732,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
         : null,
       codec: currentQualityLabel,
       sourceType: currentSourceType,
-      bufferedPercent: bufferedProgress,
+      bufferedPercent: coordinator.getSnapshot().bufferedPercent,
       playbackRate: video?.playbackRate ?? playbackRate,
       quality: currentQualityLabel,
       volume: volume,
@@ -1620,6 +1755,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
     play,
     pause,
+    suspendForSourceChange,
     seek,
     setVolume,
     setMuted,
@@ -1635,6 +1771,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     togglePictureInPicture,
 
     loadSource,
+    getState,
     getSource: () => currentSource,
     getSourceType: () => currentSourceType,
 

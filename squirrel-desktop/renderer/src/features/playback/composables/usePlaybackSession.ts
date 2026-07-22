@@ -1,8 +1,10 @@
 import { reactive, readonly } from 'vue'
 
 import type { MediaSource, SubtitleTrack } from '@/features/playback/components/video-player/core'
-import type { ExternalErrorState, PlaylistEntry } from '@/features/playback/types/playerSession'
+import type { PlaybackCoordinator } from '@/features/playback/components/video-player/core/PlaybackCoordinator'
+import type { PlaylistEntry } from '@/features/playback/types/playerSession'
 import type { VideoPageVideo } from '@/features/playback/types/videoPlayback'
+import { usePlaybackCoordinator } from './usePlaybackCoordinator'
 
 /**
  * The facts-layer state for "what is playing right now".
@@ -21,8 +23,6 @@ export interface PlaybackSessionFacts {
   video: VideoPageVideo | null
   subtitles: SubtitleTrack[]
   initialTime: number
-  externalError: ExternalErrorState | null
-  externalLoading: boolean
   relatedVideos: VideoPageVideo[]
   loadingRelated: boolean
   pictureInPicture: boolean
@@ -49,7 +49,9 @@ export interface PlaybackSession {
    * direct writes no-op.
    */
   readonly facts: Readonly<PlaybackSessionFacts>
-  /** Switch to a different video: clear stale facts, mark loading. */
+  /** Single lifecycle authority shared with the resolver and media engine. */
+  readonly playback: PlaybackCoordinator
+  /** Switch to a different video and clear source-scoped facts. */
   beginNewVideo(videoId: string, seed?: VideoPageVideo | null): void
   /** Apply a partial patch to the facts. Unmentioned fields are left intact. */
   update(patch: Partial<PlaybackSessionFacts>): void
@@ -67,8 +69,6 @@ const createInitialFacts = (): PlaybackSessionFacts => ({
   video: null,
   subtitles: [],
   initialTime: 0,
-  externalError: null,
-  externalLoading: false,
   relatedVideos: [],
   loadingRelated: false,
   pictureInPicture: false,
@@ -96,24 +96,22 @@ let sessionInstance: PlaybackSession | null = null
 
 const createSession = (): PlaybackSession => {
   const facts = reactive<PlaybackSessionFacts>(createInitialFacts())
+  const playback = usePlaybackCoordinator()
 
   const beginNewVideo = (videoId: string, seed: VideoPageVideo | null = null): void => {
-    // Only the session-ROOT facts are reset here — the ones that drive loading
-    // state and reuse decisions. Presentation projections (title / uploader /
-    // theme / widescreen / hasPrev / hasNext / playlist / initialTime) are
-    // intentionally left untouched: in PR1 the shell's watcher re-fires on the
-    // next tick with the new video's values and overwrites them, and clearing
-    // them here would flash empty values in between. (PR2, once the watcher is
-    // gone, will have the orchestrator call update() with the full new
-    // presentation set right after beginNewVideo.)
+    // Preserve shell-owned presentation preferences (theme, widescreen,
+    // playlist/navigation) but reset every source-scoped fact synchronously.
+    // In particular, stale initialTime must never seek a newly loaded source
+    // before the new video's progress projection arrives on the next Vue tick.
     facts.videoId = String(videoId || '')
     facts.source = null
     facts.video = seed
-    facts.externalError = null
-    facts.externalLoading = true
+    facts.initialTime = 0
     facts.relatedVideos = []
     facts.loadingRelated = false
     facts.subtitles = []
+    facts.title = String(seed?.title || '')
+    facts.uploader = String(seed?.uploader || seed?.uploader_name || '')
   }
 
   const update = (patch: Partial<PlaybackSessionFacts>): void => {
@@ -122,7 +120,7 @@ const createSession = (): PlaybackSession => {
 
   const isReusableFor = (videoId: string): boolean => {
     if (String(facts.videoId || '') !== String(videoId || '')) return false
-    return !!(facts.source || facts.externalError || facts.externalLoading)
+    return Boolean(facts.source || playback.getSnapshot().phase !== 'idle')
   }
 
   const release = (): void => {
@@ -132,6 +130,7 @@ const createSession = (): PlaybackSession => {
     // done — clear it so a stale video doesn't leak into the next mount.
     if (facts.pictureInPicture) return
     Object.assign(facts, createInitialFacts())
+    playback.reset()
   }
 
   const setPictureInPicture = (value: boolean): void => {
@@ -143,6 +142,7 @@ const createSession = (): PlaybackSession => {
     // into props expecting the mutable `MediaSource` type. Runtime enforcement
     // is still Vue's full-depth readonly() — see the `facts is readonly` test.
     facts: readonly(facts) as unknown as Readonly<PlaybackSessionFacts>,
+    playback,
     beginNewVideo,
     update,
     isReusableFor,
@@ -163,5 +163,6 @@ export function usePlaybackSession(): PlaybackSession {
  * needs an isolated session per case; production code never resets.
  */
 export function __resetPlaybackSessionForTests(): void {
+  sessionInstance?.playback.reset()
   sessionInstance = null
 }

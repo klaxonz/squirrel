@@ -1,5 +1,5 @@
-import { ref, watch, type Ref } from 'vue'
-import type { ExternalErrorState } from '@/features/playback/types/playerSession'
+import { ref, type Ref } from 'vue'
+import { classifyPlaybackError } from '../core/playback-error-classifier'
 
 /**
  * Player error-overlay state + i18n message resolution.
@@ -26,7 +26,6 @@ export interface PlayerErrorState {
 export interface UsePlayerErrorOptions {
   t: (key: string, params?: Record<string, string | number>) => string
   onRetry?: () => void
-  externalError?: Ref<ExternalErrorState | null | undefined>
 }
 
 export interface UsePlayerErrorReturn {
@@ -35,19 +34,16 @@ export interface UsePlayerErrorReturn {
   resolveErrorMessage: (code: string, fallback: string) => string
   /** Surface an engine-reported error on the overlay. */
   reportError: (code: string, rawMessage: string) => void
-  /** Surface a playback-resolution error supplied by the session owner. */
-  reportExternalError: (error: ExternalErrorState) => void
   /** Hide the overlay (source swap, recovery, etc.). */
   clear: () => void
-  /** Clear only an engine error; an external resolution error remains visible. */
+  /** Clear the active playback error when a new source operation begins. */
   clearEngineError: () => void
   /** Hide the overlay and bubble a retry request to the parent. */
   handleRetry: () => void
 }
 
 export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorReturn {
-  const { t, onRetry, externalError } = options
-  let activeErrorSource: 'engine' | 'external' | null = null
+  const { t, onRetry } = options
 
   const errorState = ref<PlayerErrorState>({
     show: false,
@@ -61,24 +57,17 @@ export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorRe
   // core/error-recovery.ts、createPlayerEngine.ts、adapters/{Hls,Dash,ShakaDash}Adapter.ts，
   // 在源头改会侵入多个适配器并丢失原始信息，故在 UI 层统一翻译。
   const resolveErrorMessage = (code: string, fallback: string): string => {
-    const upper = String(code || '').toUpperCase()
-    if (upper.includes('NETWORK') || upper.includes('TIMEOUT')) return t('errorNetwork')
-    // Chromium reports MEDIA_ERR_SRC_NOT_SUPPORTED for many non-format failures
-    // (403 empty body, expired CDN URL, blocked googlevideo). Prefer a retryable
-    // stream-unavailable message over "unsupported format".
-    if (upper.includes('MEDIA_NOT_SUPPORTED') || upper.includes('SRC_NOT_SUPPORTED')) {
-      return t('errorStreamUnavailable')
-    }
-    if (upper.includes('NOT_SUPPORTED') || upper.includes('CAPABILITY')) return t('errorNotSupported')
-    if (upper.includes('DECODE')) return t('errorDecode')
-    // Stall that exhausted recovery — not a soft "buffering" spinner message.
-    if (upper.includes('STALL') || upper.includes('BUFFER')) return t('errorPlaybackStalled')
-    if (upper.includes('MEDIA') || upper.includes('HLS_') || upper.includes('DASH_')) return t('errorMedia')
+    const kind = classifyPlaybackError({ code, message: fallback })
+    if (kind === 'network') return t('errorNetwork')
+    if (kind === 'authorization' || kind === 'source') return t('errorStreamUnavailable')
+    if (kind === 'capability') return t('errorNotSupported')
+    if (kind === 'decode') return t('errorDecode')
+    if (kind === 'buffer') return t('errorPlaybackStalled')
+    if (kind === 'media') return t('errorMedia')
     return fallback || t('errorUnknown')
   }
 
   const reportError = (code: string, rawMessage: string) => {
-    activeErrorSource = 'engine'
     errorState.value = {
       show: true,
       title: t('errorTitle'),
@@ -88,46 +77,21 @@ export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorRe
     }
   }
 
-  const reportExternalError = (error: ExternalErrorState) => {
-    activeErrorSource = 'external'
-    errorState.value = {
-      show: true,
-      title: error.title || t('errorTitle'),
-      message: error.message || t('errorUnknown'),
-      code: error.code,
-      canRetry: error.canRetry,
-    }
-  }
-
   const clear = () => {
-    activeErrorSource = null
     errorState.value.show = false
   }
 
-  const clearEngineError = () => {
-    if (activeErrorSource === 'engine') clear()
-  }
+  const clearEngineError = clear
 
   const handleRetry = () => {
     clear()
     onRetry?.()
   }
 
-  if (externalError) {
-    watch(externalError, (error) => {
-      if (error) {
-        reportExternalError(error)
-      } else if (activeErrorSource === 'external') {
-        clear()
-      }
-    }, { immediate: true })
-  }
-
   return {
     errorState,
     resolveErrorMessage,
     reportError,
-    reportExternalError,
     clear,
     clearEngineError,
     handleRetry,

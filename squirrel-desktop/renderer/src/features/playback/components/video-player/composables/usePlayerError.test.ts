@@ -1,34 +1,23 @@
-import { nextTick, ref } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 
 import { usePlayerError } from './usePlayerError'
-import type { ExternalErrorState } from '@/features/playback/types/playerSession'
 
 const t = (key: string) => `translated:${key}`
 
 describe('usePlayerError', () => {
-  it('presents session resolution errors and keeps them across source-sync engine cleanup', async () => {
-    const externalError = ref<ExternalErrorState | null>({
-      code: 'RESOLVE_FAILED',
-      title: '播放失败',
-      message: '无法获取播放地址',
-      canRetry: true,
-    })
-    const state = usePlayerError({ t, externalError })
+  it('presents resolver and engine failures through the same error entry point', () => {
+    const state = usePlayerError({ t })
+    state.reportError('RESOLVE_FAILED', '无法获取播放地址')
 
     expect(state.errorState.value).toMatchObject({
       show: true,
       code: 'RESOLVE_FAILED',
-      title: '播放失败',
+      title: 'translated:errorTitle',
       message: '无法获取播放地址',
       canRetry: true,
     })
 
     state.clearEngineError()
-    expect(state.errorState.value.show).toBe(true)
-
-    externalError.value = null
-    await nextTick()
     expect(state.errorState.value.show).toBe(false)
   })
 

@@ -22,7 +22,7 @@ describe('usePlaybackSession', () => {
   })
 
   describe('beginNewVideo', () => {
-    it('clears stale source / video / externalError and marks loading when switching to a new video', () => {
+    it('clears stale source and video when switching to a new video', () => {
       const session = usePlaybackSession()
 
       // Prime the session with an existing video so we can observe the clear.
@@ -30,8 +30,9 @@ describe('usePlaybackSession', () => {
         videoId: 'vid-1',
         source: makeSource(),
         video: makeVideo(),
-        externalError: null,
-        externalLoading: false,
+        initialTime: 321,
+        title: 'Stale title',
+        uploader: 'Stale uploader',
       })
 
       session.beginNewVideo('vid-2')
@@ -39,8 +40,9 @@ describe('usePlaybackSession', () => {
       expect(session.facts.videoId).toBe('vid-2')
       expect(session.facts.source).toBeNull()
       expect(session.facts.video).toBeNull()
-      expect(session.facts.externalError).toBeNull()
-      expect(session.facts.externalLoading).toBe(true)
+      expect(session.facts.initialTime).toBe(0)
+      expect(session.facts.title).toBe('')
+      expect(session.facts.uploader).toBe('')
     })
   })
 
@@ -72,9 +74,10 @@ describe('usePlaybackSession', () => {
       expect(session.isReusableFor('vid-1')).toBe(true)
     })
 
-    it('returns true when the session is mid-resolution (externalLoading or externalError)', () => {
+    it('returns true when the shared lifecycle is mid-resolution', () => {
       const session = usePlaybackSession()
-      session.update({ videoId: 'vid-1', source: null, externalLoading: true })
+      session.update({ videoId: 'vid-1', source: null })
+      session.playback.beginResolving('vid-1')
 
       expect(session.isReusableFor('vid-1')).toBe(true)
     })
@@ -88,7 +91,8 @@ describe('usePlaybackSession', () => {
 
     it('returns false when the session has no resolvable state for the id', () => {
       const session = usePlaybackSession()
-      session.update({ videoId: 'vid-1', source: null, externalError: null, externalLoading: false })
+      session.update({ videoId: 'vid-1', source: null })
+      session.playback.reset()
 
       expect(session.isReusableFor('vid-1')).toBe(false)
     })
@@ -105,6 +109,7 @@ describe('usePlaybackSession', () => {
       expect(session.facts.source).toBeNull()
       expect(session.facts.title).toBe('')
       expect(session.facts.pictureInPicture).toBe(false)
+      expect(session.playback.getSnapshot().phase).toBe('idle')
     })
 
     it('keeps the facts intact when PiP is active (continuity)', () => {

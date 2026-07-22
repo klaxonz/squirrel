@@ -11,11 +11,12 @@ import { createDefaultPlayerPlugins, createDefaultStreamAdapterOptions } from '.
 import { BUILT_IN_PRESETS } from '../plugins/subtitles'
 import { useA11y } from './useA11y'
 import { useControlsLayout } from './useControlsLayout'
+import { usePlaybackCoordinator } from '@/features/playback/composables/usePlaybackCoordinator'
 
 import { useIcons } from '../core/useIcons'
 import { DEFAULT_SHORTCUTS, type KeyboardShortcutsConfig } from './keyboardShortcuts'
 import type { UserConfig } from '../core/PlayerAdapter'
-import type { MediaSource, PlayerError, PlayerStats, PluginConfig, QualityLevel, SubtitleStyle, SubtitleTrack } from '../core/types'
+import type { MediaSource, PlayerError, PlayerState, PlayerStats, PluginConfig, QualityLevel, SubtitleStyle, SubtitleTrack } from '../core/types'
 
 // ponytail: subtitle style is a loose CSS-style bag persisted to localStorage
 // and read dynamically across the player UI (backgroundOpacity, fontSize, etc.).
@@ -82,7 +83,8 @@ export interface PlayerReturn {
 
   play: () => Promise<boolean>
   pause: () => void
-  seek: (time: number) => void
+  suspendForSourceChange: () => void
+  seek: (time: number) => ReturnType<PlayerEngine['seek']>
   setVolume: (volume: number) => void
   toggleMute: () => void
   setPlaybackRate: (rate: number) => void
@@ -105,7 +107,7 @@ export interface PlayerReturn {
   toggleSubtitles: () => void
   setSubtitleOffset: (offsetSeconds: number) => void
 
-  loadSource: (source: MediaSource) => void
+  loadSource: (source: MediaSource) => ReturnType<PlayerEngine['loadSource']>
 
   theme: Ref<ThemeName>
   setTheme: (theme: ThemeName) => void
@@ -131,27 +133,6 @@ export interface PlayerReturn {
   destroy: () => void
 }
 
-const calculateBufferedAheadPercent = (buffered: TimeRanges, duration: number, currentTime: number): number => {
-  if (!isFinite(duration) || isNaN(duration) || duration <= 0 || buffered.length <= 0) {
-    return 0
-  }
-
-  for (let index = 0; index < buffered.length; index += 1) {
-    const start = buffered.start(index)
-    const end = buffered.end(index)
-
-    if (buffered.start(index) <= currentTime && currentTime <= buffered.end(index)) {
-      return (end / duration) * 100
-    }
-
-    if (currentTime < start) {
-      break
-    }
-  }
-
-  return Math.min(100, Math.max(0, (currentTime / duration) * 100))
-}
-
 const loadSubtitleStyleFromStorage = (): SubtitleStyleBag => {
   try {
     const raw = getItem('playerSubtitleStyle')
@@ -168,6 +149,7 @@ const saveSubtitleStyleToStorage = (style: SubtitleStyleBag): void => {
 }
 
 export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
+  const coordinator = usePlaybackCoordinator()
   const {
     autoplay = false,
     autoplayNext = true,
@@ -256,6 +238,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     : { enableHls, enableDash }
 
   const engine = createPlayerEngine({
+    coordinator,
     autoplay,
     autoplayNext,
     muted,
@@ -337,68 +320,23 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     return tracks.find((track) => track.default) || tracks[0] || null
   }
 
-  const markPlaybackActive = () => {
-    store.setPlaying(true)
-    store.setHasStartedPlayback(true)
-    store.setLoading(false, 'ready')
-    store.setCanPlay('video', true)
+  const projectLifecycleState = (state: PlayerState) => {
+    store.setPlaying(state.playing)
+    store.setLoading(state.waiting, state.loadingStage)
+    store.setCanPlay('video', state.phase === 'ready' || state.phase === 'playing' || state.phase === 'paused')
+    store.setSeeking('video', state.seeking)
+    store.setCurrentTime(state.currentTime)
+    store.setDuration(state.duration)
+    store.setBufferedProgress(state.buffered)
+    if (state.playing) store.setHasStartedPlayback(true)
   }
 
-  engine.on('play', () => {
-    markPlaybackActive()
-  })
-
-  engine.on('playing', () => {
-    markPlaybackActive()
-  })
-
-  engine.on('pause', () => {
-    store.setPlaying(false)
-  })
-
-  engine.on('timeupdate', ({ currentTime, duration }) => {
-    store.setCurrentTime(currentTime)
-    if (isFinite(duration) && !isNaN(duration)) store.setDuration(duration)
-  })
-
-  engine.on('seeking', (time) => {
-    if (!isFinite(time) || isNaN(time)) return
-    const duration = store.duration
-    const nextTime = Math.max(0, time)
-    store.setCurrentTime((isFinite(duration) && !isNaN(duration) && duration > 0) ? Math.min(nextTime, duration) : nextTime)
-  })
-
-  engine.on('durationchange', (d) => {
-    if (!isFinite(d) || isNaN(d)) return
-    store.setDuration(d)
-  })
-
-  engine.on('loadedmetadata', ({ duration }) => {
-    if (!isFinite(duration) || isNaN(duration)) return
-    store.setDuration(duration)
-  })
-
-  engine.on('progress', ({ buffered, duration }) => {
-    store.setBufferedProgress(calculateBufferedAheadPercent(buffered, duration, store.currentTime))
-  })
-
-  engine.on('loadsstart', () => {
-    store.setCanPlay('video', false)
-    store.setLoading(true, 'fetching')
-  })
+  engine.on('statechange', projectLifecycleState)
+  projectLifecycleState(engine.getState())
 
   engine.on('volumechange', ({ volume, muted }) => {
     store.setVolume(volume * 100)
     store.setMuted(muted)
-  })
-
-  engine.on('waiting', () => {
-    store.setLoading(true, 'buffering')
-  })
-
-  engine.on('canplay', () => {
-    store.setLoading(false, 'ready')
-    store.setCanPlay('video', true)
   })
 
   engine.on('fullscreenchange', (isFs) => {
@@ -460,15 +398,6 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     syncCodecFamilies()
   })
 
-  engine.on('error', () => {
-    store.setLoading(false, 'idle')
-    store.setPlaying(false)
-  })
-
-  engine.on('ended', () => {
-    store.setLoading(false, 'idle')
-  })
-
   watch(videoElement, (el) => {
     engine.attachVideoElement(el)
   }, { immediate: true })
@@ -485,9 +414,11 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     engine.pause()
   }
 
-  const seek = (time: number): void => {
-    engine.seek(time)
+  const suspendForSourceChange = (): void => {
+    engine.suspendForSourceChange()
   }
+
+  const seek = (time: number) => engine.seek(time)
 
   const setVolume = (value: number): void => {
     engine.setVolume(value)
@@ -593,19 +524,14 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     setSubtitle(findPreferredSubtitleTrack(subtitleTracks.value))
   }
 
-  const loadSource = (source: MediaSource): void => {
-    store.setCurrentTime(0)
-    store.setDuration(0)
-    store.setBufferedProgress(0)
-    store.setPlaying(false)
-    store.setLoading(true, 'fetching')
+  const loadSource = (source: MediaSource) => {
     currentQualityLabel.value = null
     currentQualityId.value = null
     codecFamilies.value = []
     selectedCodecFamily.value = 'auto'
     currentCodecFamily.value = null
     store.setCurrentQuality(null, null)
-    engine.loadSource(source)
+    return engine.loadSource(source)
   }
 
   const saveProgress = (): void => {
@@ -668,6 +594,7 @@ export function usePlayer(options: PlayerOptions = {}): PlayerReturn {
     isDashStream,
     play,
     pause,
+    suspendForSourceChange,
     seek,
     setVolume,
     toggleMute,

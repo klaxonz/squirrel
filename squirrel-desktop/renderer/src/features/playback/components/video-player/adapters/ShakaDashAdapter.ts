@@ -19,7 +19,7 @@ import {
   hasPresentedVideoFrameAfterSeek,
   shouldRecoverVideoAfterSeek,
 } from '../core/post-seek-video-health'
-import type { StreamAdapter, StreamContext } from '../core/StreamAdapter'
+import type { StreamAdapter, StreamContext, StreamSeekResult } from '../core/StreamAdapter'
 import type { StreamSink } from '../core/StreamSink'
 import type {
   MediaSource,
@@ -62,6 +62,7 @@ export class ShakaDashAdapter implements StreamAdapter {
   private postSeekWatchdogTimer: number | null = null
   private postSeekFrameCallbackId: number | null = null
   private postSeekFrameCallbackVideo: HTMLVideoElement | null = null
+  private postSeekCompletion: ((visuallyReady: boolean) => void) | null = null
 
   constructor(context: StreamContext, options?: ShakaDashAdapterOptions) {
     this.context = context
@@ -622,12 +623,12 @@ export class ShakaDashAdapter implements StreamAdapter {
    * player "buffering". After scrub we re-publish isBuffering() so the engine
    * spinner cannot stick when Shaka never re-fires a buffering edge.
    */
-  seek(time: number): void {
+  seek(time: number): Promise<StreamSeekResult | void> {
     const target = Number(time)
-    if (!Number.isFinite(target)) return
+    if (!Number.isFinite(target)) return Promise.resolve()
     const clamped = Math.max(0, target)
     const video = this.context.videoElement()
-    if (!video) return
+    if (!video) return Promise.resolve()
     const seekPlayer = this.player
     const baselineDecodedFrames = this.getDecodedVideoFrameCount(video)
     try {
@@ -635,15 +636,12 @@ export class ShakaDashAdapter implements StreamAdapter {
       if (Math.abs((video.currentTime || 0) - clamped) < 0.05) {
         this.cancelPostSeekVideoWatchdog()
         this.syncBufferingToSink()
-        return
+        return Promise.resolve({ visuallyReady: true })
       }
       video.currentTime = clamped
     } catch (e) {
       this.context.logger.warn('[ShakaDashAdapter] seek failed', e)
-      return
-    }
-    if (seekPlayer) {
-      this.armPostSeekVideoWatchdog(seekPlayer, video, clamped, baselineDecodedFrames)
+      return Promise.resolve()
     }
     // Microtask: Shaka updates buffering state after the seek is observed.
     const syncCurrentSeek = () => {
@@ -654,6 +652,21 @@ export class ShakaDashAdapter implements StreamAdapter {
     // Second pass after the segment pipeline has a chance to go STARVING/SATISFIED.
     window.setTimeout(syncCurrentSeek, 50)
     window.setTimeout(syncCurrentSeek, 250)
+
+    // Paused seeks have no advancing audio/video clock to verify. Their native
+    // seeked/canplay events remain authoritative; the frozen-video failure only
+    // occurs while playback continues after the seek.
+    if (!seekPlayer || video.paused || video.ended) return Promise.resolve()
+
+    return new Promise<StreamSeekResult>((resolve) => {
+      this.armPostSeekVideoWatchdog(
+        seekPlayer,
+        video,
+        clamped,
+        baselineDecodedFrames,
+        (visuallyReady) => resolve({ visuallyReady }),
+      )
+    })
   }
 
   private getDecodedVideoFrameCount(video: HTMLVideoElement): number | null {
@@ -680,9 +693,12 @@ export class ShakaDashAdapter implements StreamAdapter {
     this.postSeekFrameCallbackVideo = null
   }
 
-  private cancelPostSeekVideoWatchdog(): void {
+  private cancelPostSeekVideoWatchdog(visuallyReady = false): void {
     this.postSeekWatchdogSeq += 1
     this.clearPostSeekVideoWatchdogResources()
+    const complete = this.postSeekCompletion
+    this.postSeekCompletion = null
+    complete?.(visuallyReady)
   }
 
   private armPostSeekVideoWatchdog(
@@ -690,8 +706,10 @@ export class ShakaDashAdapter implements StreamAdapter {
     video: HTMLVideoElement,
     targetTime: number,
     baselineDecodedFrames: number | null,
+    complete: (visuallyReady: boolean) => void,
   ): void {
     this.cancelPostSeekVideoWatchdog()
+    this.postSeekCompletion = complete
     const watchdogSeq = this.postSeekWatchdogSeq
     this.schedulePostSeekVideoCheck(
       player,
@@ -709,7 +727,7 @@ export class ShakaDashAdapter implements StreamAdapter {
     targetTime: number,
     baselineDecodedFrames: number | null,
     watchdogSeq: number,
-    recoveryStage: 'clear-video-buffer' | 'reload-manifest',
+    recoveryStage: 'clear-video-buffer' | 'reload-manifest' | 'verify-reload',
   ): void {
     this.clearPostSeekVideoWatchdogResources()
     let lastPresentedFrameMediaTime: number | null = null
@@ -738,7 +756,7 @@ export class ShakaDashAdapter implements StreamAdapter {
           baselineDecodedFrames,
           decodedFrames: this.getDecodedVideoFrameCount(video),
         })) {
-          this.cancelPostSeekVideoWatchdog()
+          this.cancelPostSeekVideoWatchdog(true)
           return
         }
         observeNextFrame()
@@ -774,7 +792,18 @@ export class ShakaDashAdapter implements StreamAdapter {
       })
 
       if (!shouldRecover) {
-        this.cancelPostSeekVideoWatchdog()
+        const visuallyReady = hasPresentedVideoFrameAfterSeek({
+          hasActiveVideoTrack,
+          paused: video.paused,
+          ended: video.ended,
+          targetTime,
+          currentTime: video.currentTime,
+          frameCallbackSupported,
+          lastPresentedFrameMediaTime,
+          baselineDecodedFrames,
+          decodedFrames: this.getDecodedVideoFrameCount(video),
+        })
+        this.cancelPostSeekVideoWatchdog(visuallyReady)
         return
       }
 
@@ -805,7 +834,21 @@ export class ShakaDashAdapter implements StreamAdapter {
         return
       }
 
-      this.reloadManifestAfterFrozenSeek(player, video, watchdogSeq)
+      if (recoveryStage === 'reload-manifest') {
+        this.reloadManifestAfterFrozenSeek(player, video, watchdogSeq)
+        return
+      }
+
+      this.context.logger.warn('[ShakaDashAdapter] Video frame remained frozen after manifest reload', {
+        targetTime,
+        currentTime: video.currentTime,
+      })
+      this.cancelPostSeekVideoWatchdog(false)
+      this.sink?.error({
+        code: 'POST_SEEK_VIDEO_FROZEN',
+        message: 'Video frames did not resume after seek recovery',
+        fatal: false,
+      })
     }, POST_SEEK_FRAME_CHECK_DELAY_MS)
   }
 
@@ -833,7 +876,6 @@ export class ShakaDashAdapter implements StreamAdapter {
       ) {
         return
       }
-      this.cancelPostSeekVideoWatchdog()
       this.updateActiveCodecFamily()
       this.updateQualities()
       this.syncBufferingToSink()
@@ -842,6 +884,14 @@ export class ShakaDashAdapter implements StreamAdapter {
           this.context.logger.warn('[ShakaDashAdapter] Play after frozen-video reload failed', e)
         })
       }
+      this.schedulePostSeekVideoCheck(
+        player,
+        video,
+        resumeTime,
+        this.getDecodedVideoFrameCount(video),
+        watchdogSeq,
+        'verify-reload',
+      )
     }).catch((e) => {
       if (this.postSeekWatchdogSeq === watchdogSeq) {
         this.cancelPostSeekVideoWatchdog()

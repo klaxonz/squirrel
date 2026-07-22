@@ -3,7 +3,16 @@ export { PluginManager } from './PluginManager'
 export { noopLogger, type PlayerLogger } from './logger'
 export { createPlayerEngine, type PlayerEngine, type PlayerEngineOptions } from './createPlayerEngine'
 export { createDefaultPlayerPlugins, createDefaultStreamAdapterOptions, type DefaultPluginsOptions } from './defaultPlugins'
-export { type StreamAdapter, type StreamContext, type StreamAdapterType } from './StreamAdapter'
+export { type StreamAdapter, type StreamContext, type StreamAdapterType, type StreamSeekResult } from './StreamAdapter'
+export {
+  PlaybackCoordinator,
+  type PlaybackIntent,
+  type PlaybackLifecycleSnapshot,
+  type PlaybackLoadingStage,
+  type PlaybackOperationResult,
+  type PlaybackOperationToken,
+  type PlaybackPhase,
+} from './PlaybackCoordinator'
 export { useIcons, type IconName } from './useIcons'
 export { getCodecFamily, CODEC_FAMILY_ORDER, compareCodecFamilies } from './codec'
 export {

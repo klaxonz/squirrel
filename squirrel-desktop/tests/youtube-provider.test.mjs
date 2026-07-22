@@ -81,9 +81,10 @@ test('renderer youtube official dash uses FreeTube data URL + shaka', async () =
   assert.match(engineSource, /clearLoadingState\(/)
   // FreeTube: do not force spinner before every seek — stream-owned path only
   // waits when the landing is unbuffered; spinner primarily tracks isBuffering.
-  assert.match(engineSource, /const seek = \(time: number\): void => \{[\s\S]*?streamOwned/)
-  assert.match(engineSource, /resumeAfterSeek/)
-  assert.match(engineSource, /const onPause = \(\) => \{[\s\S]*?resumeAfterSeek = false/)
+  assert.match(engineSource, /const seek = async \(time: number\) => \{[\s\S]*?streamOwned/)
+  assert.match(engineSource, /coordinator\.beginSeek/)
+  assert.match(engineSource, /coordinator\.getSnapshot\(\)\.intent === 'play'/)
+  assert.doesNotMatch(engineSource, /resumeAfterSeek/)
   // FreeTube rebufferingGoal 0.02 — clear spinner with a few frames, not 0.5s+.
   assert.match(engineSource, /minAheadSec = 0\.05/)
   assert.match(shakaSource, /syncBufferingToSink/)
@@ -226,15 +227,17 @@ test('desktop youtube uses MWEB toDash with mandatory content-bound PO Token', a
   assert.doesNotMatch(source, /createPlaybackRuntime[\s\S]*?client_type: 'ANDROID'/)
 })
 
-test('desktop youtube playback resolve does not reference undeclared cache binding', async () => {
+test('desktop youtube playback uses scoped cache as stale-while-revalidate', async () => {
   const source = await readFile(providerPath, 'utf8')
   const fnStart = source.indexOf('export async function resolveYouTubePlayback')
   assert.notEqual(fnStart, -1)
   const fnBody = source.slice(fnStart, fnStart + 1800)
 
-  // `cached` must be declared in function scope before any read (previously a
-  // block-scoped const caused ReferenceError and broke all YouTube playback).
-  assert.match(fnBody, /let cached = null/)
+  // Cache hit returns official DASH immediately while one deduplicated refresh
+  // updates the short-lived signed URLs for the next navigation.
+  assert.match(fnBody, /const cached = forceRefresh \? null : await cache\.getCachedPayload\(cacheKey\)/)
+  assert.match(fnBody, /scoreMappedPayload\(cached\) >= 2000/)
+  assert.match(fnBody, /void refreshYouTubePlayback\(params\)/)
   assert.doesNotMatch(fnBody, /const maxAttempts = cached \? 1 : 2/)
 })
 

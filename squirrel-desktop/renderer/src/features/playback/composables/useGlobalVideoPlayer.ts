@@ -63,8 +63,10 @@ export function useGlobalVideoPlayer() {
     const nextTime = Number(time)
     if (!Number.isFinite(nextTime)) return false
     try {
-      playerStore.playerRef?.seek?.(nextTime)
-      return true
+      const seek = playerStore.playerRef?.seek
+      if (!seek) return false
+      const result = await seek(nextTime)
+      return result !== null
     } catch (err) {
       Logger.warn('[useGlobalVideoPlayer] Seek failed', err)
       return false

@@ -28,6 +28,7 @@ function createHarness(opts?: {
   registeredQualityId?: string | number | null
   enableQualityFallback?: boolean
   maxRetries?: number
+  playIntent?: boolean
 }) {
   const qualities = opts?.qualities ?? [
     { id: '1440', label: '1440p', height: 1440 },
@@ -95,8 +96,8 @@ function createHarness(opts?: {
     setCurrentSourceKey: () => {},
     getPendingSourceKey: () => '',
     setPendingSourceKey: () => {},
-    getAutoPlayOnReady: () => false,
-    setAutoPlayOnReady: () => {},
+    getPlaybackIntent: () => opts?.playIntent === false ? 'pause' : 'play',
+    setPlaybackIntent: () => {},
     getProgressKey: () => 'vid-1',
     getMaxRetries: () => opts?.maxRetries ?? 3,
     getRetryDelay: () => 10,
@@ -174,6 +175,19 @@ describe('error recovery stall handling', () => {
     expect(recovered).toBe(true)
     expect(play).toHaveBeenCalled()
     expect(setQuality).not.toHaveBeenCalled()
+  })
+
+  it('never resumes a user pause while clearing stale buffering state', async () => {
+    const { recovery, play, getLoading } = createHarness({ paused: true, playIntent: false })
+    const recovered = await recovery.handleRecoveryError({
+      code: 'STALL_DETECTED',
+      message: 'Playback stalled while waiting for media',
+      fatal: false,
+    })
+
+    expect(recovered).toBe(true)
+    expect(play).not.toHaveBeenCalled()
+    expect(getLoading()).toBe(false)
   })
 
   it('restores rate=0 starve flag, plays, and clears loading when buffer is ahead', async () => {

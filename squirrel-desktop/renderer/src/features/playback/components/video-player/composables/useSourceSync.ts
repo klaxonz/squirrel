@@ -13,10 +13,10 @@ export interface UseSourceSyncOptions {
   isPlaying: ComputedRef<boolean> | Ref<boolean>
   hasStartedPlayback: ComputedRef<boolean> | Ref<boolean> | boolean
   /** Transport actions. */
-  loadSource: (source: MediaSource) => void
+  loadSource: (source: MediaSource) => Promise<unknown> | void
   play: () => unknown
-  pause: () => void
-  seek: (time: number) => void
+  suspendForSourceChange: () => void
+  seek: (time: number) => Promise<unknown> | void
   /** Called when a new source is detected so the caller can clear its UI. */
   onSourceChange: () => void
 }
@@ -52,7 +52,7 @@ export function useSourceSync(options: UseSourceSyncOptions): UseSourceSyncRetur
   const {
     videoRef, source, initialTime, autoplay,
     currentTime, isPlaying, hasStartedPlayback,
-    loadSource, play, pause, seek, onSourceChange,
+    loadSource, play, suspendForSourceChange, seek, onSourceChange,
   } = options
 
   const shouldResumeAfterSourceSwap = ref(false)
@@ -91,7 +91,7 @@ export function useSourceSync(options: UseSourceSyncOptions): UseSourceSyncRetur
 
       if (boundedTime <= 0) return
       initialTimeAppliedSourceKey = sourceKey
-      seek(Math.max(0, boundedTime))
+      void seek(Math.max(0, boundedTime))
     }
 
     if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
@@ -149,10 +149,10 @@ export function useSourceSync(options: UseSourceSyncOptions): UseSourceSyncRetur
     if (!s) {
       shouldResumeAfterSourceSwap.value = isPlaying.value
       clearResumeAfterSourceSwapListener()
-      pause()
+      suspendForSourceChange()
       return
     }
-    loadSource(s)
+    void loadSource(s)
     if (shouldResumeAfterSourceSwap.value) {
       if (autoplayValue(autoplay)) {
         shouldResumeAfterSourceSwap.value = false

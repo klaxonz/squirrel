@@ -176,7 +176,7 @@ export default function useVideoPlaybackShell({
       // orchestrator's computed projections reflect it. Nothing to fetch.
     } else {
       // loadAndPlayById owns session.beginNewVideo(videoId, seed) — it clears
-      // stale facts, seeds facts.video, and marks externalLoading. Calling
+      // stale facts, seeds facts.video, and starts the shared resolver phase. Calling
       // beginNewVideo here too would null the seed (begin sets facts.video =
       // seed, and the inner call passes null).
       await loadAndPlayById(videoId, consumePlaybackSeed(videoId))

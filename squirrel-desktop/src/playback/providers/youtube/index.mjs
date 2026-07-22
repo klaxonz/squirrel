@@ -10,6 +10,7 @@ const RESOLVE_RETRY_DELAY_MS = 500
 // manifests can start at byte zero but become permanently unusable after seek.
 const PLAYBACK_CACHE_VERSION = 'mweb-pot-v1'
 const cache = createPlaybackCache('youtube')
+const playbackRefreshes = new Map()
 
 const YOUTUBE_ID_PATTERNS = [
   /[?&]v=([\w-]{11})/i,
@@ -323,20 +324,7 @@ export const prewarmYouTubePlayback = (cookie = '') => {
   return prewarmYoutubeiRuntime(cookie)
 }
 
-export async function resolveYouTubePlayback(targetUrl, { cookie = '', forceRefresh = false } = {}) {
-  const videoId = extractYouTubeVideoId(targetUrl)
-  if (!videoId) {
-    throw new Error('Invalid YouTube URL')
-  }
-
-  const cacheKey = `${PLAYBACK_CACHE_VERSION}|${videoId}|${cacheScopeForCookie(cookie)}|${cacheScopeForOAuth()}`
-  // Keep a fallback copy for resolve failures. Do not early-return on cache hits:
-  // googlevideo URLs expire quickly; always prefer a fresh resolve when possible.
-  let cached = null
-  if (!forceRefresh) {
-    cached = await cache.getCachedPayload(cacheKey)
-  }
-
+const resolveFreshYouTubePlayback = async ({ videoId, cookie, cacheKey }) => {
   let bestPayload = null
   let lastError = null
   const maxAttempts = 2
@@ -370,22 +358,60 @@ export async function resolveYouTubePlayback(targetUrl, { cookie = '', forceRefr
     }
   }
 
-  // Prefer a still-cached official DASH payload over a fresh progressive collapse.
-  if (cached && scoreMappedPayload(cached) > scoreMappedPayload(bestPayload)) {
-    return cached
-  }
-
   if (bestPayload) {
     await cache.setCachedPayload(cacheKey, bestPayload)
     return bestPayload
-  }
-
-  if (cached) {
-    return cached
   }
 
   if (lastError) {
     throw lastError
   }
   throw new Error('Desktop YouTube provider failed')
+}
+
+/** Deduplicate foreground resolves and stale-while-revalidate refreshes. */
+const refreshYouTubePlayback = (params) => {
+  const existing = playbackRefreshes.get(params.cacheKey)
+  if (existing) return existing
+
+  const refresh = resolveFreshYouTubePlayback(params)
+    .finally(() => {
+      if (playbackRefreshes.get(params.cacheKey) === refresh) {
+        playbackRefreshes.delete(params.cacheKey)
+      }
+    })
+  playbackRefreshes.set(params.cacheKey, refresh)
+  return refresh
+}
+
+export async function resolveYouTubePlayback(targetUrl, { cookie = '', forceRefresh = false } = {}) {
+  const videoId = extractYouTubeVideoId(targetUrl)
+  if (!videoId) {
+    throw new Error('Invalid YouTube URL')
+  }
+
+  const cacheKey = `${PLAYBACK_CACHE_VERSION}|${videoId}|${cacheScopeForCookie(cookie)}|${cacheScopeForOAuth()}`
+  const params = { videoId, cookie, cacheKey }
+  const cached = forceRefresh ? null : await cache.getCachedPayload(cacheKey)
+
+  // A cache entry lives for only five minutes and is scoped by cookie/OAuth
+  // identity + authorization contract version. An official toDash payload is
+  // therefore safe to start immediately; refresh its signed URLs in the
+  // background so the next navigation is equally fast. This removes the full
+  // youtubei/PO-token round trip from repeat startup without extending URL TTL.
+  if (cached && scoreMappedPayload(cached) >= 2000) {
+    void refreshYouTubePlayback(params).catch((error) => {
+      console.debug('[squirrel-desktop] youtube playback background refresh failed', error)
+    })
+    return cached
+  }
+
+  try {
+    const fresh = await refreshYouTubePlayback(params)
+    // Do not replace a still-valid adaptive source with a progressive collapse.
+    return cached && scoreMappedPayload(cached) > scoreMappedPayload(fresh) ? cached : fresh
+  } catch (error) {
+    if (cached) return cached
+    throw error
+  }
 }

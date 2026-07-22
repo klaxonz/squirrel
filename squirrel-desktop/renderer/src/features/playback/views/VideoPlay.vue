@@ -323,7 +323,7 @@ const {
 // The initial seed is no longer passed here; the shell hands it to
 // session.beginNewVideo(id, seed) at mount. `video` is a computed projection —
 // mutations go through session.update({ video }). The other projections
-// (playbackSource / subtitleTracks / externalError / isResolvingPlayback /
+// (playbackSource / subtitleTracks /
 // startTime) were only ever forwarded into the shell's watcher; with the
 // watcher gone, VideoPlay no longer reads them, so they're not destructured.
 const {

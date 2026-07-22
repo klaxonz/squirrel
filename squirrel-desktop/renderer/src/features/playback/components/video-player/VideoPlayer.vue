@@ -344,7 +344,7 @@ import { usePlayer, type PlayerOptions } from './runtime/usePlayer'
 import type { MediaSource, SubtitleTrack } from './core'
 import type { ThemeName } from './themes'
 import type { VideoClipMarker } from '@/features/video/types/videoClipMarker'
-import type { ExternalErrorState, PlaylistEntry } from '@/features/playback/types/playerSession'
+import type { PlaylistEntry } from '@/features/playback/types/playerSession'
 import PlayerIcon from './PlayerIcon.vue'
 import StatsOverlay from './StatsOverlay.vue'
 import LoadingOverlay from './LoadingOverlay.vue'
@@ -389,8 +389,6 @@ interface Props {
   theme?: ThemeName
   initialTime?: number
   widescreen?: boolean
-  externalLoading?: boolean
-  externalError?: ExternalErrorState | null
   hasPrev?: boolean
   hasNext?: boolean
   playlistEntries?: PlaylistEntry[]
@@ -409,8 +407,6 @@ const props = withDefaults(defineProps<Props>(), {
   i18nOptions: undefined,
   theme: 'dark',
   widescreen: false,
-  externalLoading: false,
-  externalError: null,
   hasPrev: false,
   hasNext: false,
   playlistEntries: () => [],
@@ -439,7 +435,7 @@ const MAX_VOLUME = 200
 
 const {
   store, videoElement, containerElement, isPlaying, currentTime, duration, volume, isMuted, isFullscreen,
-  play, pause, seek, setVolume, toggleMute, setPlaybackRate, toggleFullscreen,
+  play, pause, suspendForSourceChange, seek, setVolume, toggleMute, setPlaybackRate, toggleFullscreen,
   togglePictureInPicture,
   subtitleTracks, currentSubtitle, subtitleStyle, subtitlePresets, subtitleOffset,
   setSubtitle, setSubtitleTracks, setSubtitleStyle, applySubtitlePreset, setSubtitleOffset,
@@ -469,7 +465,6 @@ const {
 const playerError = usePlayerError({
   t: t as (key: string, params?: Record<string, string | number>) => string,
   onRetry: () => emit('retry'),
-  externalError: computed(() => props.externalError),
 })
 const { errorState, handleRetry } = playerError
 
@@ -525,11 +520,11 @@ const showPlaylist = ref(false)
 
 const pendingWidescreenValue = ref<boolean | null>(null)
 
-const showLoadingOverlay = computed(() => (store.loading || props.externalLoading) && !playerError.errorState.value.show)
+const showLoadingOverlay = computed(() => store.loading && !playerError.errorState.value.show)
 const isAudioOnly = computed(() => !!props.source?.audioOnly)
 const loadingStageText = computed(() => {
-  if (store.loadingStage === 'fetching') return t('loading')
-  if (store.loadingStage === 'buffering') return t('buffering')
+  if (store.loadingStage === 'resolving' || store.loadingStage === 'fetching') return t('loading')
+  if (store.loadingStage === 'buffering' || store.loadingStage === 'recovering') return t('buffering')
   return null
 })
 
@@ -713,7 +708,7 @@ const { cleanup: cleanupSourceSync } = useSourceSync({
   hasStartedPlayback: computed(() => store.hasStartedPlayback),
   loadSource,
   play,
-  pause,
+  suspendForSourceChange,
   seek,
   onSourceChange: () => { playerError.clearEngineError() },
 })
@@ -729,6 +724,13 @@ watch(() => store.playing, (playing) => {
   if (playing && errorState.value.show) {
     playerError.clear()
   }
+})
+
+// A new resolve/load/recovery operation supersedes the fatal state that owned
+// the overlay. The coordinator drives loading, so this also covers retrying the
+// same video while the source prop is still null.
+watch(() => store.loading, (loading) => {
+  if (loading && errorState.value.show) playerError.clearEngineError()
 })
 
 const togglePlay = () => isPlaying.value ? pause() : play()

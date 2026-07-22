@@ -1,7 +1,7 @@
 import { reactive } from 'vue'
 import type { SubtitleTrack } from '../core/types'
 
-export type LoadingStage = 'idle' | 'fetching' | 'buffering' | 'ready'
+export type LoadingStage = 'idle' | 'resolving' | 'fetching' | 'buffering' | 'recovering' | 'ready'
 
 type PlayerRuntimeStoreData = {
   // Media state

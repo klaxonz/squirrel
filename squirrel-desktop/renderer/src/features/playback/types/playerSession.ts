@@ -1,18 +1,11 @@
 import type { MediaSource, SubtitleTrack } from '@/features/playback/components/video-player/core'
 import type { ClipMarker } from './videoPlayback'
 
-export type ExternalErrorState = {
-  code: string
-  title: string
-  message: string
-  canRetry: boolean
-}
-
 // Structural handle for the global VideoPlayer component instance exposed via
 // the player store. Typed structurally to avoid a circular import on the SFC.
 export interface VideoPlayerHandle {
   $el?: HTMLElement
-  seek?: (time: number) => void
+  seek?: (time: number) => Promise<unknown> | void
   play?: () => Promise<void>
 }
 

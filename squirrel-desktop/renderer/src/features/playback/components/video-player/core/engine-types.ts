@@ -9,6 +9,7 @@
 import type { EventEmitter } from './EventEmitter'
 import type { IPlayerAdapter, UserConfig } from './PlayerAdapter'
 import type { StreamAdapter } from './StreamAdapter'
+import type { PlaybackCoordinator, PlaybackOperationResult } from './PlaybackCoordinator'
 import type { HlsAdapterOptions } from '../adapters/HlsAdapter'
 import type { DashAdapterOptions } from '../adapters/DashAdapter'
 import type { ShakaDashAdapterOptions } from '../adapters/ShakaDashAdapter'
@@ -52,6 +53,8 @@ export type PlayerEngineOptions = {
   volume?: number
   loop?: boolean
   playbackRate?: number
+  /** Shared app-scoped lifecycle authority. Falls back to an engine-local instance. */
+  coordinator?: PlaybackCoordinator
 
   adapter?: IPlayerAdapter
   plugins?: PluginConfig[]
@@ -105,7 +108,9 @@ export type PlayerEngine = {
 
   play: () => Promise<boolean>
   pause: () => void
-  seek: (time: number) => void
+  /** Pause detached/old media without changing the active lifecycle intent. */
+  suspendForSourceChange: () => void
+  seek: (time: number) => Promise<PlaybackOperationResult | null>
   setVolume: (volume: number) => void
   setMuted: (muted: boolean) => void
   toggleMute: () => void
@@ -119,9 +124,10 @@ export type PlayerEngine = {
   toggleFullscreen: () => Promise<void>
   togglePictureInPicture: () => Promise<void>
 
-  loadSource: (source: MediaSource) => void
+  loadSource: (source: MediaSource) => Promise<PlaybackOperationResult | null>
   getSource: () => MediaSource | null
   getSourceType: () => 'native' | 'hls' | 'dash' | null
+  getState: () => import('./types').PlayerState
 
   setSubtitleTracks: (tracks: SubtitleTrack[]) => Promise<void>
   setSubtitle: (track: SubtitleTrack | null) => void

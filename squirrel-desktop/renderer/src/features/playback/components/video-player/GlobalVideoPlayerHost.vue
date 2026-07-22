@@ -3,7 +3,7 @@
 
   <Teleport v-if="isSessionActive && teleportTarget" :to="teleportTarget">
     <VideoPlayer
-      v-if="session.facts.source || session.facts.externalLoading || session.facts.externalError"
+      v-if="isSessionActive"
       ref="playerRef"
       v-bind="playerProps"
       :i18n-options="{ persist: true, storageKey: 'sp-locale', applyToDocument: true, useGlobal: true }"
