@@ -100,6 +100,8 @@ class LRUMap {
 }
 
 const SESSION_CACHE = new LRUMap(3);
+const PLAYBACK_RUNTIME_IN_FLIGHT = new Map();
+const PO_TOKEN_MINTER_WARMUPS = new WeakMap();
 
 // ── OAuth state helpers ─────────────────────────────────────────────────────
 
@@ -736,7 +738,9 @@ function playbackSessionKey(cookie = '') {
 
 /** Drop a cached playback runtime so the next get rebuilds a fresh session. */
 function invalidatePlaybackRuntime(cookie = '') {
-  SESSION_CACHE.delete(playbackSessionKey(cookie));
+  const key = playbackSessionKey(cookie);
+  SESSION_CACHE.delete(key);
+  PLAYBACK_RUNTIME_IN_FLIGHT.delete(key);
 }
 
 /**
@@ -766,13 +770,33 @@ async function createOAuthRuntime(oauthCredentials) {
 
 async function getPlaybackRuntime(cookie = '') {
   const key = playbackSessionKey(cookie);
-  let runtime = SESSION_CACHE.get(key);
+  const runtime = SESSION_CACHE.get(key);
   if (runtime) {
     return runtime;
   }
-  runtime = await createPlaybackRuntime(cookie);
-  SESSION_CACHE.set(key, runtime);
-  return runtime;
+
+  const existing = PLAYBACK_RUNTIME_IN_FLIGHT.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  let pending;
+  pending = createPlaybackRuntime(cookie)
+    .then((createdRuntime) => {
+      // invalidatePlaybackRuntime may have deliberately detached this build
+      // while it was in flight. Do not let a stale session repopulate the cache.
+      if (PLAYBACK_RUNTIME_IN_FLIGHT.get(key) === pending) {
+        SESSION_CACHE.set(key, createdRuntime);
+      }
+      return createdRuntime;
+    })
+    .finally(() => {
+      if (PLAYBACK_RUNTIME_IN_FLIGHT.get(key) === pending) {
+        PLAYBACK_RUNTIME_IN_FLIGHT.delete(key);
+      }
+    });
+  PLAYBACK_RUNTIME_IN_FLIGHT.set(key, pending);
+  return pending;
 }
 
 async function getOAuthRuntime() {
@@ -819,6 +843,17 @@ async function buildPoToken(videoId, runtime, attempts) {
   }
 
   try {
+    // App startup primes the expensive BotGuard integrity-token minter. If a
+    // user opens a video while that work is still running, join the same promise
+    // instead of starting a second challenge / VM snapshot in parallel.
+    try {
+      await warmPoTokenMinter(runtime);
+    } catch (error) {
+      attempts.push({
+        client: 'POTOKEN_WARMUP',
+        po_token_error: error?.message || String(error),
+      });
+    }
     const tokenData = await runtime.sessionManager.generatePoToken(
       videoId,
       '',
@@ -838,14 +873,62 @@ async function buildPoToken(videoId, runtime, attempts) {
   }
 }
 
+function hasFreshPoTokenMinter(runtime) {
+  const minterCache = runtime?.sessionManager?.minterCache;
+  if (!minterCache || typeof minterCache.values !== 'function') {
+    return false;
+  }
+  const now = Date.now();
+  for (const entry of minterCache.values()) {
+    if (entry?.expiry && new Date(entry.expiry).getTime() > now) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function warmPoTokenMinter(runtime) {
+  if (!runtime?.sessionManager || !runtime?.yt?.session?.context) {
+    return Promise.resolve();
+  }
+  const existing = PO_TOKEN_MINTER_WARMUPS.get(runtime);
+  if (existing) {
+    return existing;
+  }
+  if (hasFreshPoTokenMinter(runtime)) {
+    return Promise.resolve();
+  }
+
+  const visitorData = runtime.yt.session.context.client?.visitorData;
+  let pending;
+  pending = runtime.sessionManager.generatePoToken(
+    visitorData,
+    '',
+    false,
+    undefined,
+    false,
+    undefined,
+    runtime.yt.session.context,
+  ).finally(() => {
+    if (PO_TOKEN_MINTER_WARMUPS.get(runtime) === pending) {
+      PO_TOKEN_MINTER_WARMUPS.delete(runtime);
+    }
+  });
+  PO_TOKEN_MINTER_WARMUPS.set(runtime, pending);
+  return pending;
+}
+
 // ── OAuth in-flight flow tracker ──────────────────────────────────────────────
 
 let _oauthFlowInFlight = null; // { yt, resolve, reject, settled }
 
 export async function prewarmYoutubeiRuntime(cookie = '') {
-  // Warm the official playback session (anonymous ANDROID bootstrap + player).
-  // OAuth is optional and only needed for auth gates / account UI.
-  await getPlaybackRuntime(cookie);
+  // Warm both the remote WEB/player session and BotGuard token minter. The
+  // per-video token itself stays video-bound, but minting it is sub-millisecond
+  // once the integrity-token minter exists (and SessionManager keeps it fresh).
+  // OAuth remains lazy because it is only needed for auth gates / account UI.
+  const runtime = await getPlaybackRuntime(cookie);
+  await warmPoTokenMinter(runtime);
   return {
     status: 'ok',
     prewarmed: true,
@@ -1077,8 +1160,11 @@ export async function resolveYoutubeiPayload(payload) {
   let playbackRuntime = await getPlaybackRuntime(cookie);
   timings.get_runtime_ms = Number((performance.now() - runtimeStart).toFixed(1));
 
-  const oauthRuntime = await getOAuthRuntime();
-  const hasAuth = Boolean(oauthRuntime) || playbackRuntime.authMode === 'cookie';
+  // Reading persisted credentials is cheap. Constructing and signing in an
+  // OAuth Innertube runtime is not, so defer that work unless anonymous
+  // playback actually encounters an auth gate.
+  const hasOAuthCredentials = Boolean(loadOAuthState()?.credentials);
+  const hasAuth = hasOAuthCredentials || playbackRuntime.authMode === 'cookie';
 
   // Primary: FreeTube-style official clients that produce VideoInfo.toDash().
   const primaryClients = requestedClients.length
@@ -1169,11 +1255,15 @@ export async function resolveYoutubeiPayload(payload) {
   if (
     (!bestCandidate || bestCandidate.score < 4)
     && authGated
-    && oauthRuntime
+    && hasOAuthCredentials
     && requestedClients.length === 0
   ) {
     const authStart = performance.now();
     try {
+      const oauthRuntime = await getOAuthRuntime();
+      if (!oauthRuntime) {
+        throw new Error('YouTube OAuth session is unavailable');
+      }
       const authBest = await resolveFormatsWithRuntime({
         runtime: oauthRuntime,
         videoId,

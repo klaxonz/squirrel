@@ -146,9 +146,15 @@ test('desktop youtube prefers official toDash over remote and progressive', asyn
 
 test('desktop youtube provider exposes runtime prewarm', async () => {
   const source = await readFile(providerPath, 'utf8')
+  const coreSource = await readFile(corePath, 'utf8')
 
   assert.match(source, /import \{ prewarmYoutubeiRuntime, resolveYoutubeiPayload \}/)
   assert.match(source, /export const prewarmYouTubePlayback = \(cookie = ''\) => \{[\s\S]*?return prewarmYoutubeiRuntime\(cookie\)/)
+  assert.match(coreSource, /const PLAYBACK_RUNTIME_IN_FLIGHT = new Map\(\)/)
+  assert.match(coreSource, /const PO_TOKEN_MINTER_WARMUPS = new WeakMap\(\)/)
+  assert.match(coreSource, /function warmPoTokenMinter\(runtime\)/)
+  assert.match(coreSource, /export async function prewarmYoutubeiRuntime[\s\S]*?await warmPoTokenMinter\(runtime\)/)
+  assert.match(coreSource, /async function buildPoToken[\s\S]*?await warmPoTokenMinter\(runtime\)/)
 })
 
 test('desktop youtube provider exposes tv oauth actions', async () => {
@@ -208,6 +214,8 @@ test('desktop youtube uses MWEB toDash with mandatory content-bound PO Token', a
   // Must not route playback through OAuth session first.
   assert.doesNotMatch(source, /const AUTHENTICATED_PLAYBACK_CLIENTS/)
   assert.doesNotMatch(source, /const ANONYMOUS_CLIENTS = \['IOS'/)
+  assert.match(source, /const hasOAuthCredentials = Boolean\(loadOAuthState\(\)\?\.credentials\)/)
+  assert.match(source, /&& hasOAuthCredentials[\s\S]*?const oauthRuntime = await getOAuthRuntime\(\)/)
   // Must not boot the playback session as ANDROID local (poisoned visitor).
   assert.doesNotMatch(source, /createPlaybackRuntime[\s\S]*?client_type: 'ANDROID'/)
 })
