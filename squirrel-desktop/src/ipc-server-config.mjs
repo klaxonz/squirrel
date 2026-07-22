@@ -7,7 +7,9 @@ const getServerConfigPath = () => {
   return path.join(app.getPath('userData'), SERVER_CONFIG_FILE)
 }
 
-const loadServerConfig = () => {
+let cachedServerUrl = null
+
+const readServerConfig = () => {
   try {
     const raw = fs.readFileSync(getServerConfigPath(), 'utf8')
     const parsed = JSON.parse(raw)
@@ -27,10 +29,16 @@ const loadServerConfig = () => {
   }
 }
 
+export const getConfiguredServerUrl = () => {
+  if (cachedServerUrl === null) cachedServerUrl = readServerConfig()
+  return cachedServerUrl
+}
+
 const saveServerConfig = (url) => {
   try {
     fs.mkdirSync(path.dirname(getServerConfigPath()), { recursive: true })
     fs.writeFileSync(getServerConfigPath(), JSON.stringify({ serverUrl: url }, null, 2), 'utf8')
+    cachedServerUrl = url
     return true
   } catch {
     console.error('[squirrel-desktop] ipc-server-config: saveServerConfig failed', getServerConfigPath())
@@ -41,7 +49,7 @@ const saveServerConfig = (url) => {
 export const installServerConfigHandlers = () => {
   ipcMain.removeHandler('server:get-url')
   ipcMain.handle('server:get-url', () => {
-    return loadServerConfig()
+    return getConfiguredServerUrl()
   })
 
   ipcMain.removeHandler('server:set-url')
@@ -77,6 +85,8 @@ export const installServerConfigHandlers = () => {
     } catch {
       console.debug('[squirrel-desktop] ipc-server-config: server:clear-url no config to remove')
     }
+
+    cachedServerUrl = ''
 
     BrowserWindow.getAllWindows().forEach((win) => {
       if (!win.isDestroyed()) {

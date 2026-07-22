@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { onScopeDispose, ref } from 'vue'
 import { getUserMe, loginUser, logoutUser, registerUser, updateUserMe } from '@/shared/api'
-import { clearAuthStorage } from '@/shared/lib/auth'
+import { clearAuthStorage, subscribeToAuthInvalidation } from '@/shared/lib/auth'
 import { isApiError } from '@/shared/lib/apiError'
 import { resetReactive as resetNavigationHistory } from '@/shared/lib/navigationHistory'
 import type { User } from '@/shared/types/user'
@@ -28,6 +28,9 @@ export const useUserStore = defineStore('user', () => {
     isAuthenticated.value = false
     hasResolvedAuth.value = true
   }
+
+  const unsubscribeAuthInvalidation = subscribeToAuthInvalidation(clearState)
+  onScopeDispose(unsubscribeAuthInvalidation)
 
   const fetchCurrentUser = async (): Promise<ResultTuple<User>> => {
     loading.value = true

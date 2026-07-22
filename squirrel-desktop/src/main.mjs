@@ -1,4 +1,3 @@
-import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow } from 'electron'
@@ -8,6 +7,7 @@ import { installDesktopMediaHeaders, installDesktopSessionUserAgent } from './me
 import { createMainWindow, ensureRendererLoaded, setRendererOrigin } from './window.mjs'
 import { setRendererUrl } from './shell-pages.mjs'
 import { APP_ICON_PATH, APP_ID, __dirname, youtubeOAuthStateFilePath } from './constants.mjs'
+import { resolveDesktopRendererUrl } from './renderer-url.mjs'
 
 // Ensure YouTube TV OAuth state resolves even when the process launcher does
 // not inject YOUTUBE_OAUTH_STATE_FILE (common for `npm run dev:desktop`).
@@ -23,27 +23,12 @@ const resolvePackagedRendererUrl = () => {
 }
 
 const resolveRendererUrl = () => {
-  const envValue = String(process.env.DESKTOP_RENDERER_URL || '').trim()
-  if (envValue) {
-    try {
-      return new URL(envValue).toString()
-    } catch {
-      // Fall through to packaged / default resolution.
-    }
-  }
-
-  // Dev always passes DESKTOP_RENDERER_URL (Vite). Packaged builds load local dist.
-  if (app.isPackaged) {
-    return resolvePackagedRendererUrl()
-  }
-
-  // Unpackaged `electron .` without env: prefer built renderer if present, else Vite default.
-  const builtIndex = path.join(__dirname, '..', 'renderer', 'dist', 'index.html')
-  if (fs.existsSync(builtIndex)) {
-    return pathToFileURL(builtIndex).href
-  }
-
-  return DEFAULT_DEV_RENDERER_URL
+  return resolveDesktopRendererUrl({
+    configuredUrl: process.env.DESKTOP_RENDERER_URL,
+    isPackaged: app.isPackaged,
+    packagedRendererUrl: resolvePackagedRendererUrl(),
+    devRendererUrl: DEFAULT_DEV_RENDERER_URL,
+  })
 }
 
 const rendererUrl = resolveRendererUrl()

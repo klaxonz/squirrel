@@ -1,6 +1,8 @@
 import { app, session } from 'electron'
 import { buildCookieHeaderForUrl } from './site-login.mjs'
 import { mergeCookieHeaders } from './cookie-header.mjs'
+import { attachBackendSessionCookies, isConfiguredBackendApiUrl } from './backend-auth-headers.mjs'
+import { getConfiguredServerUrl } from './ipc-server-config.mjs'
 import {
   APP_NAME,
   desktopChromeUserAgent,
@@ -217,22 +219,33 @@ export const installDesktopMediaHeaders = () => {
   // Passing `null` as the listener removes the previous handler (see Electron docs).
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
     const rule = matchMediaHeaderRule(details.url)
-    if (!rule) {
-      callback({ requestHeaders: details.requestHeaders })
+    const requestHeaders = rule
+      ? applyRequestHeaders(details, rule)
+      : { ...details.requestHeaders }
+
+    if (rule?.attachCookies === false || rule?.stripCookies) {
+      callback({ requestHeaders })
       return
     }
 
-    const requestHeaders = applyRequestHeaders(details, rule)
-
-    if (rule.attachCookies === false || rule.stripCookies) {
+    const isBackendRequest = isConfiguredBackendApiUrl(details.url, getConfiguredServerUrl())
+    const shouldAttachSiteCookies = Boolean(rule?.attachCookies)
+    if (!isBackendRequest && !shouldAttachSiteCookies) {
       callback({ requestHeaders })
       return
     }
 
     void buildCookieHeaderForUrl(details.url).then((desktopCookieHeader) => {
+      if (isBackendRequest) {
+        callback({
+          requestHeaders: attachBackendSessionCookies(requestHeaders, desktopCookieHeader),
+        })
+        return
+      }
+
       const cookieHeader = mergeCookieHeaders(
-        details.requestHeaders?.Cookie,
-        details.requestHeaders?.cookie,
+        requestHeaders.Cookie,
+        requestHeaders.cookie,
         desktopCookieHeader,
       )
       if (cookieHeader) {

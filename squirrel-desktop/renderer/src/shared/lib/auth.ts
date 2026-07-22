@@ -1,6 +1,19 @@
+export const AUTH_INVALIDATED_EVENT = 'squirrel:auth-invalidated'
+
 export const clearAuthStorage = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
+}
+
+export const subscribeToAuthInvalidation = (listener: () => void): (() => void) => {
+  if (typeof window === 'undefined') return () => {}
+  window.addEventListener(AUTH_INVALIDATED_EVENT, listener)
+  return () => window.removeEventListener(AUTH_INVALIDATED_EVENT, listener)
+}
+
+const notifyAuthInvalidated = () => {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new Event(AUTH_INVALIDATED_EVENT))
 }
 
 /**
@@ -45,5 +58,9 @@ const redirectToLogin = () => {
 
 export const logoutAndRedirect = async () => {
   clearAuthStorage()
+  // Keep Pinia and the router in the same state before changing the hash. The
+  // event is synchronous, so a 401 can never leave a stale authenticated user
+  // that immediately bounces /login back to the protected home route.
+  notifyAuthInvalidated()
   redirectToLogin()
 }
