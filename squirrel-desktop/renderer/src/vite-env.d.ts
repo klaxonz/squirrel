@@ -43,9 +43,44 @@ type DesktopPlaybackResolver = (
   targetUrl: string,
   options?: { forceRefresh?: boolean; title?: string; videoNo?: string }
 ) => Promise<{
-  stream_type?: 'hls' | 'dash' | 'progressive'
+  stream_type?: 'hls' | 'dash' | 'progressive' | 'sabr'
   mpd_url?: string | null
   mpd_content?: string | null
+  fallback_mpd_content?: string | null
+  sabr?: {
+    server_abr_url: string
+    ustreamer_config: string
+    formats: Array<{
+      itag: number
+      lastModified: string
+      xtags?: string
+      width?: number
+      height?: number
+      contentLength?: number
+      audioTrackId?: string
+      mimeType?: string
+      isDrc?: boolean
+      quality?: string
+      qualityLabel?: string
+      averageBitrate?: number
+      bitrate: number
+      audioQuality?: string
+      approxDurationMs: number
+      language?: string | null
+      isDubbed?: boolean
+      isAutoDubbed?: boolean
+      isDescriptive?: boolean
+      isSecondary?: boolean
+      isOriginal?: boolean
+    }>
+    client_info: {
+      clientName: number
+      clientVersion: string
+      osName: string
+      osVersion: string
+    }
+    po_token: string
+  } | null
   video_url?: string | null
   audio_url?: string | null
   title?: string | null

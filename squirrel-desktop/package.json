@@ -58,6 +58,7 @@
     "clsx": "^2.1.1",
     "dashjs": "^4.7.3",
     "dompurify": "^3.4.12",
+    "googlevideo": "^4.1.1",
     "hls.js": "^1.5.20",
     "kugoumusicapi": "https://github.com/MakcRe/KuGouMusicApi/archive/566de02034493af31c5a44f124429cbc1cb11b13.tar.gz",
     "lucide-vue-next": "^0.577.0",
@@ -68,7 +69,7 @@
     "vue": "^3.4.35",
     "vue-router": "^4.4.3",
     "vue-virtual-scroller": "2.0.0-beta.8",
-    "youtubei.js": "^17.0.1"
+    "youtubei.js": "^17.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

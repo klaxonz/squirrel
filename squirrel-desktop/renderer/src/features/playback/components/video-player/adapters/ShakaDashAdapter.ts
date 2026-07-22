@@ -8,8 +8,10 @@
  */
 
 import shaka from 'shaka-player'
+import { SabrStreamingAdapter } from 'googlevideo/sabr-streaming-adapter'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { chooseOriginalAudioTrack } from './originalAudioTrack'
+import { SabrShakaPlayerAdapter } from './SabrShakaPlayerAdapter'
 
 // ponytail: shaka-player's TypedEvent<->detail surface and track.allowedByApplication
 // field are runtime-only or loosely declared. The few `as any` reads below are
@@ -29,6 +31,8 @@ import type {
   PlayerError,
   QualityLevel,
   QualitySelectionRequest,
+  SabrPlaybackConfig,
+  SabrPlaybackSession,
 } from '../core/types'
 
 export interface ShakaDashAdapterOptions {
@@ -52,6 +56,7 @@ export class ShakaDashAdapter implements StreamAdapter {
   // The sink handed to onSourceChange; the only channel back to the engine.
   private sink: StreamSink | null = null
   private player: shaka.Player | null = null
+  private sabrAdapter: SabrStreamingAdapter | null = null
   private currentSource: string | null = null
   private sourceQualityHints: QualityLevel[] = []
   private selectedCodecFamily = 'auto'
@@ -95,11 +100,12 @@ export class ShakaDashAdapter implements StreamAdapter {
     this.updateQualities()
 
     const requestSeq = ++this.loadRequestSeq
-    void this.loadSource(source.src, requestSeq)
+    void this.loadSource(source, requestSeq)
   }
 
-  private async loadSource(src: string, requestSeq: number): Promise<void> {
+  private async loadSource(source: MediaSource, requestSeq: number): Promise<void> {
     if (!this.context.videoElement()) return
+    const src = source.src
 
     if (!this.hasInstalledPolyfills) {
       shaka.polyfill.installAll()
@@ -135,9 +141,12 @@ export class ShakaDashAdapter implements StreamAdapter {
         defaultBandwidthEstimate: 2_000_000,
       },
       streaming: {
-        bufferingGoal: 180,
+        // SABR already has server-side buffer control. Asking Shaka for three
+        // minutes causes an unnecessary UMP request storm; a 30s forward
+        // window is enough for smooth playback and keeps startup responsive.
+        bufferingGoal: source.sabr ? 30 : 180,
         rebufferingGoal: 0.02,
-        bufferBehind: 300,
+        bufferBehind: source.sabr ? 60 : 300,
         retryParameters: {
           maxAttempts: 4,
           baseDelay: 1000,
@@ -171,15 +180,33 @@ export class ShakaDashAdapter implements StreamAdapter {
       preferredDecodingAttributes: ['smooth', 'powerEfficient'],
     })
 
-    // FreeTube ft-shaka-video-player: googlevideo videoplayback uses POST +
-    // range= query + alr=yes, and follows textual http redirect bodies.
-    this.installYouTubeNetworkingFilters(player)
+    if (source.sabr) {
+      this.installSabrPlayback(player, source.sabr)
+    } else {
+      // Legacy official DASH: googlevideo videoplayback uses POST + range=
+      // query + alr=yes, and follows textual http redirect bodies.
+      this.installYouTubeNetworkingFilters(player)
+    }
     this.setupEventListeners(player)
 
     try {
       // FreeTube: player.load(manifestSrc, startTime, manifestMimeType).
       // Pass DASH mime so data: / remote MPD never mis-detect as other types.
-      await player.load(src, /* startTime */ null, 'application/dash+xml')
+      try {
+        await player.load(src, /* startTime */ null, 'application/dash+xml')
+      } catch (sabrError) {
+        if (!source.sabr?.fallbackSrc) throw sabrError
+        if (requestSeq !== this.loadRequestSeq || this.player !== player) return
+
+        // SABR is preferred but not required. The provider includes a regular
+        // DASH manifest from the same player response so this retry adds no
+        // resolver round trip and preserves a reliable playback path.
+        this.context.logger.warn('[ShakaDashAdapter] SABR load failed; falling back to DASH', sabrError)
+        this.disposeSabrAdapter()
+        this.installYouTubeNetworkingFilters(player)
+        this.currentSource = source.sabr.fallbackSrc
+        await player.load(source.sabr.fallbackSrc, /* startTime */ null, 'application/dash+xml')
+      }
       if (requestSeq !== this.loadRequestSeq || this.player !== player) {
         await player.destroy().catch((e) => {
           this.context.logger.warn('[ShakaDashAdapter] Failed to destroy player on load race', e)
@@ -200,6 +227,44 @@ export class ShakaDashAdapter implements StreamAdapter {
         details: error,
       })
     }
+  }
+
+  private installSabrPlayback(player: shaka.Player, config: SabrPlaybackConfig): void {
+    let activeSession: SabrPlaybackSession = config
+    const adapter = new SabrStreamingAdapter({
+      playerAdapter: new SabrShakaPlayerAdapter(),
+      clientInfo: activeSession.clientInfo,
+      enableCaching: true,
+      maxCacheSizeMB: 8,
+      maxCacheAgeSeconds: 300,
+    })
+
+    adapter.onMintPoToken(async () => activeSession.poToken)
+    adapter.onReloadPlayerResponse(async () => {
+      const refreshed = await config.refresh?.()
+      if (!refreshed) {
+        throw new Error('YouTube SABR session refresh returned no playable payload')
+      }
+      activeSession = refreshed
+      adapter.setStreamingURL(refreshed.serverAbrUrl)
+      adapter.setUstreamerConfig(refreshed.ustreamerConfig)
+      adapter.setServerAbrFormats(refreshed.formats)
+    })
+    adapter.onSnackbarMessage((message) => {
+      this.context.logger.debug('[ShakaDashAdapter] YouTube SABR message', message)
+    })
+
+    adapter.attach(player)
+    adapter.setStreamingURL(activeSession.serverAbrUrl)
+    adapter.setUstreamerConfig(activeSession.ustreamerConfig)
+    adapter.setServerAbrFormats(activeSession.formats)
+    this.sabrAdapter = adapter
+  }
+
+  private disposeSabrAdapter(): void {
+    if (!this.sabrAdapter) return
+    this.sabrAdapter.dispose()
+    this.sabrAdapter = null
   }
 
   /**
@@ -1036,6 +1101,7 @@ export class ShakaDashAdapter implements StreamAdapter {
 
   private async destroyPlayer(): Promise<void> {
     this.cancelPostSeekVideoWatchdog()
+    this.disposeSabrAdapter()
     const player = this.player
     this.player = null
     if (player) {

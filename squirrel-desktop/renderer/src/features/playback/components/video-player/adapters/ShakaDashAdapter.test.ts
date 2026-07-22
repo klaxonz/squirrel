@@ -6,7 +6,31 @@ import type { PlayerState } from '../core/types'
 const shakaMockState = vi.hoisted(() => ({
   latestPlayer: null as unknown,
   audioTracks: [] as Array<Record<string, unknown>>,
+  loadFailures: 0,
 }))
+
+const sabrMockState = vi.hoisted(() => ({
+  latestAdapter: null as unknown,
+}))
+
+vi.mock('googlevideo/sabr-streaming-adapter', () => {
+  class MockSabrStreamingAdapter {
+    attach = vi.fn()
+    dispose = vi.fn()
+    onMintPoToken = vi.fn()
+    onReloadPlayerResponse = vi.fn()
+    onSnackbarMessage = vi.fn()
+    setStreamingURL = vi.fn()
+    setUstreamerConfig = vi.fn()
+    setServerAbrFormats = vi.fn()
+
+    constructor() {
+      sabrMockState.latestAdapter = this
+    }
+  }
+
+  return { SabrStreamingAdapter: MockSabrStreamingAdapter }
+})
 
 vi.mock('shaka-player', () => {
   const track = {
@@ -21,13 +45,20 @@ vi.mock('shaka-player', () => {
   const networkingEngine = {
     registerRequestFilter: vi.fn(),
     registerResponseFilter: vi.fn(),
+    unregisterRequestFilter: vi.fn(),
+    unregisterResponseFilter: vi.fn(),
     request: vi.fn(),
   }
 
   class MockPlayer {
     attach = vi.fn(async () => {})
     configure = vi.fn()
-    load = vi.fn(async () => {})
+    load = vi.fn(async () => {
+      if (shakaMockState.loadFailures > 0) {
+        shakaMockState.loadFailures -= 1
+        throw new Error('mock SABR load failure')
+      }
+    })
     destroy = vi.fn(async () => {})
     addEventListener = vi.fn()
     getVariantTracks = vi.fn(() => [track])
@@ -65,6 +96,7 @@ vi.mock('shaka-player', () => {
 })
 
 import { ShakaDashAdapter } from './ShakaDashAdapter'
+import { SabrShakaPlayerAdapter } from './SabrShakaPlayerAdapter'
 
 interface MockShakaPlayer {
   configure: ReturnType<typeof vi.fn>
@@ -86,6 +118,8 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     vi.stubGlobal('window', globalThis)
     shakaMockState.latestPlayer = null
     shakaMockState.audioTracks = []
+    shakaMockState.loadFailures = 0
+    sabrMockState.latestAdapter = null
   })
 
   afterEach(() => {
@@ -238,5 +272,103 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
       expect.objectContaining({ language: 'en-US' }),
     )
     adapter.destroy()
+  })
+
+  it('falls back to the bundled DASH manifest when SABR cannot start', async () => {
+    const video = {
+      currentTime: 0,
+      paused: true,
+      ended: false,
+      playbackRate: 1,
+      defaultPlaybackRate: 1,
+    } as HTMLVideoElement
+    const context: StreamContext = {
+      videoElement: () => video,
+      getState: () => ({ quality: null } as PlayerState),
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+    }
+    const sink: StreamSink = {
+      qualitiesResolved: vi.fn(),
+      qualityChanged: vi.fn(),
+      loadingStateChanged: vi.fn(),
+      error: vi.fn(),
+    }
+    const sabrSource = 'data:application/dash+xml;charset=UTF-8,SABR'
+    const fallbackSource = 'data:application/dash+xml;charset=UTF-8,DASH'
+    shakaMockState.loadFailures = 1
+
+    const adapter = new ShakaDashAdapter(context)
+    adapter.onSourceChange({
+      src: sabrSource,
+      type: 'dash',
+      playbackEngine: 'shaka',
+      sabr: {
+        serverAbrUrl: 'https://example.googlevideo.com/videoplayback?sabr=1',
+        ustreamerConfig: 'dGVzdA==',
+        formats: [{
+          itag: 137,
+          lastModified: '1',
+          bitrate: 2_000_000,
+          approxDurationMs: 60_000,
+          width: 1920,
+          height: 1080,
+        }],
+        clientInfo: {
+          clientName: 1,
+          clientVersion: '1.0',
+          osName: 'Windows',
+          osVersion: '10',
+        },
+        poToken: 'token',
+        fallbackSrc: fallbackSource,
+      },
+    }, sink)
+    await flushPromises()
+
+    const player = shakaMockState.latestPlayer as MockShakaPlayer
+    expect(player.load).toHaveBeenNthCalledWith(1, sabrSource, null, 'application/dash+xml')
+    expect(player.load).toHaveBeenNthCalledWith(2, fallbackSource, null, 'application/dash+xml')
+    expect(context.logger.warn).toHaveBeenCalledWith(
+      '[ShakaDashAdapter] SABR load failed; falling back to DASH',
+      expect.any(Error),
+    )
+    const sabrAdapter = sabrMockState.latestAdapter as {
+      attach: ReturnType<typeof vi.fn>
+      dispose: ReturnType<typeof vi.fn>
+      setStreamingURL: ReturnType<typeof vi.fn>
+    }
+    expect(sabrAdapter.attach).toHaveBeenCalledWith(player)
+    expect(sabrAdapter.setStreamingURL).toHaveBeenCalled()
+    expect(sabrAdapter.dispose).toHaveBeenCalled()
+    expect(sink.error).not.toHaveBeenCalled()
+    adapter.destroy()
+  })
+
+  it('limits SABR media concurrency so YouTube does not impose startup backoff', async () => {
+    const transport = new SabrShakaPlayerAdapter() as unknown as {
+      acquireNetworkSlot: () => Promise<() => void>
+    }
+    const releaseFirst = await transport.acquireNetworkSlot()
+    const releaseSecond = await transport.acquireNetworkSlot()
+    let thirdAcquired = false
+    const thirdSlot = transport.acquireNetworkSlot().then((release) => {
+      thirdAcquired = true
+      return release
+    })
+
+    await Promise.resolve()
+    expect(thirdAcquired).toBe(false)
+
+    releaseFirst()
+    const releaseThird = await thirdSlot
+    expect(thirdAcquired).toBe(true)
+
+    releaseSecond()
+    releaseThird()
   })
 })

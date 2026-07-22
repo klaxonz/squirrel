@@ -8,14 +8,15 @@ import { tmpdir } from 'node:os';
 // file-backed (FreeTube's PlayerCache equivalent). youtubei.js/web uses
 // IndexedDB, which is unavailable in the main process and silently disables
 // player script caching; that forces flaky decipher / "No valid URL" paths.
-import { Innertube, Platform, UniversalCache } from 'youtubei.js';
+import { Constants, Innertube, Platform, UniversalCache } from 'youtubei.js';
+import { buildSabrFormat } from 'googlevideo/utils';
 
 import { youtubeOAuthStateFilePath } from '../../../constants.mjs';
 import { SessionManager } from './build/session_manager.js';
 
-// Official youtubei.js playback path (FreeTube getLocalVideoInfo + VideoInfo.toDash):
+// Official youtubei.js playback path:
 //   remote WEB session (generate_session_locally: false) → MWEB player + poToken → toDash
-//   → data:application/dash+xml + shaka (POST/alr googlevideo filters)
+//   → SABR + Shaka (primary), regular DASH + Shaka (fallback)
 //
 // Measured (youtubei.js 17.x, Electron main / node entry):
 //   - FreeTube watch path boots WEB with *remote* session + retrieve_innertube_config.
@@ -255,7 +256,99 @@ async function normalizeStreamingData(info, player, poToken) {
  * Do not hand-build MPD XML — SegmentBase / AdaptationSet grouping from
  * youtubei.js is what dash.js needs for smooth ABR.
  */
-async function buildLocalDashManifest(manifestInfo, { poToken } = {}) {
+function formatIdentity(format) {
+  return [
+    format?.itag ?? '',
+    format?.last_modified_ms ?? format?.lastModified ?? '',
+    format?.xtags ?? '',
+    format?.audio_track?.id ?? format?.audioTrackId ?? '',
+  ].join('|');
+}
+
+/**
+ * YouTube now returns every auto-dub language in adaptive_formats. Feeding all
+ * of them to Shaka creates hundreds of audio/video variants and makes it fetch
+ * dozens of init/index segments before the first frame. Keep the complete
+ * video ladder, but expose only creator-original, non-DRC audio in playback
+ * manifests. This also makes the native audio choice deterministic.
+ */
+function selectPlaybackAdaptiveFormats(videoInfo) {
+  const adaptiveFormats = Array.isArray(videoInfo?.streaming_data?.adaptive_formats)
+    ? videoInfo.streaming_data.adaptive_formats
+    : [];
+  const videoFormats = adaptiveFormats.filter((format) => Boolean(format?.has_video));
+  const audioFormats = adaptiveFormats.filter((format) => Boolean(format?.has_audio));
+  const creatorOriginal = audioFormats.filter((format) => Boolean(format?.is_original));
+  const nonDubbed = audioFormats.filter((format) => !(
+    format?.is_auto_dubbed
+    || format?.is_dubbed
+    || format?.is_descriptive
+    || format?.is_secondary
+  ));
+  const preferredAudio = creatorOriginal.length > 0 ? creatorOriginal : nonDubbed;
+  const cleanAudio = preferredAudio.filter((format) => !(format?.is_drc || format?.is_vb));
+  const selectedAudio = cleanAudio.length > 0
+    ? cleanAudio
+    : (preferredAudio.length > 0 ? preferredAudio : audioFormats);
+
+  return [...videoFormats, ...selectedAudio];
+}
+
+function mediaCodecFamily(format) {
+  const mimeType = String(format?.mime_type || format?.mimeType || '').toLowerCase();
+  if (/codecs="?(vp09|vp9)/.test(mimeType)) return 'vp9';
+  if (/codecs="?(avc1|avc|h264)/.test(mimeType)) return 'avc';
+  if (/codecs="?(av01|av1)/.test(mimeType)) return 'av1';
+  if (/codecs="?opus/.test(mimeType)) return 'opus';
+  if (/codecs="?(mp4a|aac)/.test(mimeType)) return 'aac';
+  return 'other';
+}
+
+/**
+ * A DASH SegmentBase MPD makes Shaka resolve the index for every exposed
+ * representation before startup. Keep one broadly-supported VP9 (then AVC,
+ * then AV1) representation per height for SABR startup and one best stream per
+ * original audio track. The regular DASH fallback retains every video codec.
+ */
+function selectSabrStartupFormats(playbackFormats) {
+  const videoFormats = playbackFormats.filter((format) => Boolean(format?.has_video));
+  const audioFormats = playbackFormats.filter((format) => Boolean(format?.has_audio));
+  const availableVideoFamilies = new Set(videoFormats.map((format) => mediaCodecFamily(format)));
+  const selectedVideoFamily = ['vp9', 'avc', 'av1']
+    .find((family) => availableVideoFamilies.has(family));
+  const compatibleVideo = selectedVideoFamily
+    ? videoFormats.filter((format) => mediaCodecFamily(format) === selectedVideoFamily)
+    : videoFormats;
+  const videoByHeight = new Map();
+  for (const format of compatibleVideo) {
+    const height = Number(format?.height || 0);
+    const current = videoByHeight.get(height);
+    if (!current || Number(format?.bitrate || 0) > Number(current?.bitrate || 0)) {
+      videoByHeight.set(height, format);
+    }
+  }
+
+  const audioByTrack = new Map();
+  for (const format of audioFormats) {
+    const trackId = String(format?.audio_track?.id || format?.audioTrackId || 'original');
+    const current = audioByTrack.get(trackId);
+    const formatScore = (mediaCodecFamily(format) === 'opus' ? 1_000_000_000 : 0)
+      + Number(format?.bitrate || 0);
+    const currentScore = current
+      ? (mediaCodecFamily(current) === 'opus' ? 1_000_000_000 : 0) + Number(current?.bitrate || 0)
+      : -1;
+    if (formatScore > currentScore) {
+      audioByTrack.set(trackId, format);
+    }
+  }
+
+  return [...videoByHeight.values(), ...audioByTrack.values()];
+}
+
+async function buildLocalDashManifest(
+  manifestInfo,
+  { poToken, isSabr = false, allowedFormats = null } = {},
+) {
   if (!manifestInfo || typeof manifestInfo.toDash !== 'function') {
     return null;
   }
@@ -264,9 +357,16 @@ async function buildLocalDashManifest(manifestInfo, { poToken } = {}) {
     const options = {
       manifest_options: {
         include_thumbnails: false,
+        ...(isSabr ? { is_sabr: true } : {}),
       },
     };
-    if (poToken) {
+    if (Array.isArray(allowedFormats) && allowedFormats.length > 0) {
+      const allowedKeys = new Set(allowedFormats.map((format) => formatIdentity(format)));
+      options.format_filter = (format) => !allowedKeys.has(formatIdentity(format));
+    }
+    // SABR BaseURLs use the custom sabr: scheme. Its PO token is supplied by
+    // SabrStreamingAdapter instead of being appended to an HTTP media URL.
+    if (poToken && !isSabr) {
       options.url_transformer = (url) => {
         try {
           const next = new URL(String(url));
@@ -286,6 +386,71 @@ async function buildLocalDashManifest(manifestInfo, { poToken } = {}) {
     // progressive. Log the real reason for diagnostics.
     console.debug(
       '[squirrel-desktop] youtubei_core: official VideoInfo.toDash failed',
+      error?.message || String(error),
+    );
+    return null;
+  }
+}
+
+async function buildSabrPlayback(videoInfo, runtime, poToken, adaptiveFormats) {
+  const streamingData = videoInfo?.streaming_data;
+  const serverAbrStreamingUrl = streamingData?.server_abr_streaming_url;
+  const ustreamerConfig = videoInfo?.player_config?.media_common_config
+    ?.media_ustreamer_request_config?.video_playback_ustreamer_config;
+  const basicInfo = videoInfo?.basic_info || {};
+
+  if (
+    !poToken
+    || !serverAbrStreamingUrl
+    || !ustreamerConfig
+    || adaptiveFormats.length === 0
+    || basicInfo.is_live
+    || basicInfo.is_post_live_dvr
+  ) {
+    return null;
+  }
+
+  const player = runtime?.yt?.session?.player;
+  if (!player || typeof player.decipher !== 'function') {
+    return null;
+  }
+
+  try {
+    const manifest = await buildLocalDashManifest(videoInfo, {
+      isSabr: true,
+      allowedFormats: adaptiveFormats,
+    });
+    if (!manifest) return null;
+
+    const serverAbrUrl = await player.decipher(String(serverAbrStreamingUrl));
+    const client = runtime?.yt?.session?.context?.client || {};
+    const clientName = Number(Constants.CLIENT_NAME_IDS[client.clientName]);
+    const formats = adaptiveFormats
+      .map((format) => buildSabrFormat(format))
+      .filter((format) => Number.isFinite(format?.itag) && Number.isFinite(format?.bitrate));
+
+    if (!serverAbrUrl || !Number.isFinite(clientName) || formats.length === 0) {
+      return null;
+    }
+
+    return {
+      manifest,
+      server_abr_url: String(serverAbrUrl),
+      ustreamer_config: String(ustreamerConfig),
+      formats,
+      client_info: {
+        clientName,
+        clientVersion: String(client.clientVersion || ''),
+        osName: String(client.osName || ''),
+        osVersion: String(client.osVersion || ''),
+      },
+      po_token: poToken,
+    };
+  } catch (error) {
+    // SABR is an optimization. A complete regular DASH manifest is generated
+    // alongside it, so a protocol/API change can degrade safely.
+    console.debug(
+      '[squirrel-desktop] youtubei_core: SABR payload build failed',
       error?.message || String(error),
     );
     return null;
@@ -402,9 +567,14 @@ function isPlayableFormatSet(formats) {
  * 1 = progressive/muxed only
  * 2 = adaptive video+audio URLs (no official MPD yet)
  * 3 = official YouTube-hosted dash_manifest_url
- * 4 = official VideoInfo.toDash() body (best for Electron + FreeTube shaka path)
+ * 4 = official VideoInfo.toDash() body
+ * 5 = official SABR manifest + session payload (best for Electron + Shaka)
  */
-function scoreFormatSet(formats, { localDashManifest = null, dashManifestUrl = null } = {}) {
+function scoreFormatSet(
+  formats,
+  { sabrPlayback = null, localDashManifest = null, dashManifestUrl = null } = {},
+) {
+  if (sabrPlayback) return 5;
   if (localDashManifest) return 4;
   if (dashManifestUrl) return 3;
   const playable = (formats || []).filter((item) => Boolean(item?.url));
@@ -1362,11 +1532,23 @@ async function resolveFormatsWithRuntime({
       // for streaming_data (getInfo is only needed for watch-page extras).
       const videoInfo = await runtime.yt.getBasicInfo(videoId, requestOptions);
       const infoMs = Number((performance.now() - infoStart).toFixed(1));
+      const playbackAdaptiveFormats = selectPlaybackAdaptiveFormats(videoInfo);
+      const sabrAdaptiveFormats = selectSabrStartupFormats(playbackAdaptiveFormats);
+
+      const sabrStart = performance.now();
+      const sabrPlayback = await buildSabrPlayback(
+        videoInfo,
+        runtime,
+        activePoToken,
+        sabrAdaptiveFormats,
+      );
+      const sabrMs = Number((performance.now() - sabrStart).toFixed(1));
 
       // Official path first: VideoInfo.toDash() — never hand-build MPD XML.
       const localDashStart = performance.now();
       const localDashManifest = await buildLocalDashManifest(videoInfo, {
         poToken: activePoToken || undefined,
+        allowedFormats: playbackAdaptiveFormats,
       });
       const localDashMs = Number((performance.now() - localDashStart).toFixed(1));
 
@@ -1400,6 +1582,7 @@ async function resolveFormatsWithRuntime({
         || null;
       const basicInfo = videoInfo.basic_info || {};
       const score = scoreFormatSet(formats, {
+        sabrPlayback,
         localDashManifest,
         dashManifestUrl: normalizedStreamingData?.dash_manifest_url || null,
       });
@@ -1410,11 +1593,14 @@ async function resolveFormatsWithRuntime({
         format_count: formats.length,
         playable: score > 0,
         format_score: score,
+        sabr: Boolean(sabrPlayback),
+        sabr_format_count: sabrPlayback?.formats?.length || 0,
         official_todash: Boolean(localDashManifest),
         po_token: Boolean(activePoToken && requestOptions.po_token),
         get_info_ms: infoMs,
         collect_formats_ms: formatsMs,
         normalize_streaming_data_ms: streamingDataMs,
+        build_sabr_ms: sabrMs,
         build_local_dash_ms: localDashMs,
       });
 
@@ -1428,6 +1614,7 @@ async function resolveFormatsWithRuntime({
         playability_status: playabilityStatus,
         formats,
         streaming_data: normalizedStreamingData,
+        sabr_playback: sabrPlayback,
         local_dash_manifest: localDashManifest,
         basic_info: pickBasicInfo(basicInfo),
       };
@@ -1437,6 +1624,7 @@ async function resolveFormatsWithRuntime({
           get_info_ms: infoMs,
           collect_formats_ms: formatsMs,
           normalize_streaming_data_ms: streamingDataMs,
+          build_sabr_ms: sabrMs,
           build_local_dash_ms: localDashMs,
         };
       }
@@ -1444,7 +1632,8 @@ async function resolveFormatsWithRuntime({
       if (!bestCandidate || score > bestCandidate.score) {
         bestCandidate = { score, response };
       }
-      // Official toDash is the best outcome — stop early.
+      // A complete official manifest is sufficient; SABR scores above regular
+      // DASH when the same client exposes both.
       if (score >= 4) {
         return bestCandidate;
       }

@@ -11,16 +11,18 @@ const ipcPlaybackPath = new URL('../src/ipc-playback.mjs', import.meta.url)
 const pluginCorePath = new URL('../../squirrel-site-runtimes/youtube/src/squirrel_youtube/node/youtubei_core.mjs', import.meta.url)
 const frontendDetailPath = new URL('../renderer/src/features/video/composables/useVideoDetail.ts', import.meta.url)
 
-test('desktop youtube provider keeps complete dash payload for direct playback', async () => {
+test('desktop youtube provider keeps complete SABR and DASH payloads for direct playback', async () => {
   const source = await readFile(providerPath, 'utf8')
 
   assert.match(source, /resolveYoutubeiPayload\(\{[\s\S]*?resolution_mode:\s*'all'/)
   assert.doesNotMatch(source, /include_local_dash_manifest:\s*false/)
-  assert.match(source, /const PLAYBACK_CACHE_VERSION = 'mweb-pot-v1'/)
+  assert.match(source, /const PLAYBACK_CACHE_VERSION = 'mweb-sabr-v1'/)
   assert.match(source, /const cacheKey = `\$\{PLAYBACK_CACHE_VERSION\}\|\$\{videoId\}/)
+  assert.match(source, /fallback_mpd_content: officialLocalDash \|\| null/)
+  assert.match(source, /stream_type: 'sabr'/)
 })
 
-test('desktop youtube playback uses official youtubei.js toDash only', async () => {
+test('desktop youtube playback uses official youtubei.js and googlevideo only', async () => {
   const source = await readFile(providerPath, 'utf8')
   const coreSource = await readFile(corePath, 'utf8')
 
@@ -32,13 +34,22 @@ test('desktop youtube playback uses official youtubei.js toDash only', async () 
   assert.doesNotMatch(source, /rewriteYouTubeMpdThroughProxy/)
   assert.doesNotMatch(source, /youtube-media-proxy/)
 
-  // Official path: VideoInfo.toDash, then YouTube-hosted dash_manifest_url.
+  // Official path: SABR-flavoured toDash first, regular toDash fallback, then
+  // YouTube-hosted dash_manifest_url.
   assert.match(source, /VideoInfo\.toDash\(\)/)
   assert.match(source, /streaming_data\.dash_manifest_url/)
   assert.match(coreSource, /manifestInfo\.toDash\(/)
+  assert.match(coreSource, /from 'googlevideo\/utils'/)
+  assert.match(coreSource, /is_sabr: true/)
+  assert.match(coreSource, /buildSabrFormat/)
+  assert.match(coreSource, /server_abr_streaming_url/)
+  assert.match(coreSource, /selectPlaybackAdaptiveFormats/)
+  assert.match(coreSource, /format\?\.is_auto_dubbed/)
+  assert.match(coreSource, /format\?\.is_original/)
+  assert.match(coreSource, /selectSabrStartupFormats/)
 })
 
-test('renderer youtube official dash uses FreeTube data URL + shaka', async () => {
+test('renderer youtube SABR uses googlevideo + Shaka with DASH fallback', async () => {
   const opsPath = new URL(
     '../renderer/src/features/video/composables/useVideoOperations.ts',
     import.meta.url,
@@ -47,13 +58,31 @@ test('renderer youtube official dash uses FreeTube data URL + shaka', async () =
     '../renderer/src/features/playback/components/video-player/adapters/ShakaDashAdapter.ts',
     import.meta.url,
   )
+  const sabrShakaPath = new URL(
+    '../renderer/src/features/playback/components/video-player/adapters/SabrShakaPlayerAdapter.ts',
+    import.meta.url,
+  )
   const opsSource = await readFile(opsPath, 'utf8')
   const shakaSource = await readFile(shakaPath, 'utf8')
+  const sabrShakaSource = await readFile(sabrShakaPath, 'utf8')
 
   // FreeTube Watch.createLocalDashManifest style data: URL for official toDash body.
   assert.match(opsSource, /data:application\/dash\+xml;charset=UTF-8/)
   assert.match(opsSource, /playbackEngine:\s*'shaka'/)
   assert.match(opsSource, /isYouTubeOfficialDash/)
+  assert.match(opsSource, /isYouTubeSabr/)
+  assert.match(opsSource, /fallbackSrc:/)
+
+  // MIT GoogleVideo integration, scoped to sabr: so other providers retain
+  // Shaka's built-in HTTP/HTTPS transports.
+  assert.match(shakaSource, /new SabrStreamingAdapter/)
+  assert.match(shakaSource, /new SabrShakaPlayerAdapter/)
+  assert.match(shakaSource, /SABR load failed; falling back to DASH/)
+  assert.match(sabrShakaSource, /registerScheme\(\s*'sabr'/)
+  assert.doesNotMatch(sabrShakaSource, /registerScheme\(\s*'https?'/)
+  assert.match(sabrShakaSource, /new SabrUmpProcessor/)
+  assert.match(sabrShakaSource, /activeNetworkRequests >= 2/)
+  assert.match(sabrShakaSource, /acquireNetworkSlot/)
 
   // FreeTube googlevideo videoplayback filters (POST + alr + http-body redirect).
   assert.match(shakaSource, /installYouTubeNetworkingFilters/)
@@ -61,7 +90,8 @@ test('renderer youtube official dash uses FreeTube data URL + shaka', async () =
   assert.match(shakaSource, /request\.method = 'POST'/)
   assert.match(shakaSource, /HTTP_IN_HEX/)
   // FreeTube getPlayerConfig buffer goals (not the old 10s/2s spinner-prone defaults).
-  assert.match(shakaSource, /bufferingGoal:\s*180/)
+  assert.match(shakaSource, /bufferingGoal:\s*source\.sabr \? 30 : 180/)
+  assert.match(shakaSource, /bufferBehind:\s*source\.sabr \? 60 : 300/)
   assert.match(shakaSource, /rebufferingGoal:\s*0\.02/)
   assert.match(shakaSource, /restrictToElementSize:\s*true/)
 
@@ -136,16 +166,19 @@ test('renderer youtube official dash uses FreeTube data URL + shaka', async () =
   assert.match(shakaSource, /player\.load\(src,\s*\/\* startTime \*\/ null,\s*'application\/dash\+xml'\)/)
 })
 
-test('desktop youtube prefers official toDash over remote and progressive', async () => {
+test('desktop youtube prefers SABR, then official DASH, then remote and progressive', async () => {
   const source = await readFile(providerPath, 'utf8')
 
+  const sabr = source.indexOf("stream_type: 'sabr'")
   const officialLocal = source.indexOf('Official youtubei.js DASH (VideoInfo.toDash)')
   const officialRemote = source.indexOf('Official YouTube-hosted DASH manifest URL')
   const progressive = source.indexOf('Progressive muxed')
 
+  assert.notEqual(sabr, -1)
   assert.notEqual(officialLocal, -1)
   assert.notEqual(officialRemote, -1)
   assert.notEqual(progressive, -1)
+  assert.ok(sabr < officialLocal)
   assert.ok(officialLocal < officialRemote)
   assert.ok(officialRemote < progressive)
   assert.match(source, /scoreMappedPayload/)

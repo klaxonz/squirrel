@@ -1,6 +1,9 @@
 import { Logger } from '@/shared/lib/logger'
 import { getDesktopBridge } from '@/shared/composables/useDesktopBridge'
-import type { MediaSource } from '@/features/playback/components/video-player/core'
+import type {
+  MediaSource,
+  SabrPlaybackSession,
+} from '@/features/playback/components/video-player/core'
 
 type VideoId = string | number
 
@@ -14,9 +17,17 @@ type PlaybackVideoLike = {
 }
 
 export type VideoUrlInfo = {
-  stream_type?: 'hls' | 'dash' | 'progressive'
+  stream_type?: 'hls' | 'dash' | 'progressive' | 'sabr'
   mpd_url?: string | null
   mpd_content?: string | null
+  fallback_mpd_content?: string | null
+  sabr?: {
+    server_abr_url: string
+    ustreamer_config: string
+    formats: SabrPlaybackSession['formats']
+    client_info: SabrPlaybackSession['clientInfo']
+    po_token: string
+  } | null
   video_url?: string | null
   audio_url?: string | null
   title?: string | null
@@ -41,7 +52,33 @@ export type VideoUrlInfo = {
 
 export const toPlayerSourceType = (streamType?: VideoUrlInfo['stream_type']): MediaSource['type'] => {
   if (streamType === 'progressive') return 'native'
+  if (streamType === 'sabr') return 'dash'
   return streamType || 'auto'
+}
+
+const toDashDataUrl = (manifest: string) =>
+  `data:application/dash+xml;charset=UTF-8,${encodeURIComponent(manifest)}`
+
+const normalizeSabrSession = (value: VideoUrlInfo['sabr']): SabrPlaybackSession | null => {
+  if (
+    !value
+    || !value.server_abr_url
+    || !value.ustreamer_config
+    || !value.po_token
+    || !Number.isFinite(value.client_info?.clientName)
+    || !Array.isArray(value.formats)
+    || value.formats.length === 0
+  ) {
+    return null
+  }
+
+  return {
+    serverAbrUrl: value.server_abr_url,
+    ustreamerConfig: value.ustreamer_config,
+    formats: value.formats,
+    clientInfo: value.client_info,
+    poToken: value.po_token,
+  }
 }
 
 export const DESKTOP_PLAYBACK_TIMEOUT_MS = 120000
@@ -147,6 +184,7 @@ export default function useVideoOperations() {
 
       const mpdUrl = data?.mpd_url
       const mpdContent = data?.mpd_content
+      const fallbackMpdContent = data?.fallback_mpd_content
       const videoUrl = data?.video_url
       const audioUrl = data?.audio_url
       const streamType = data?.stream_type
@@ -169,18 +207,29 @@ export default function useVideoOperations() {
       }).filter((item) => item.id !== undefined && item.id !== null && item.label)
       const key = `${videoId}:${Date.now()}`
       const progressKey = String(videoId)
-      // FreeTube Watch.createLocalDashManifest uses a data: URL so the MPD body
-      // never needs a separate fetch. Official youtubei.js toDash + shaka is the
-      // YouTube path; Bilibili keeps a blob + dash.js.
+      // Keep YouTube manifests inline so the MPD never needs another fetch.
+      // SABR uses the same DASH XML container with custom sabr: BaseURLs.
       const trimmedMpd = typeof mpdContent === 'string' ? mpdContent.trim() : ''
-      const isYouTubeOfficialDash =
+      const trimmedFallbackMpd = typeof fallbackMpdContent === 'string'
+        ? fallbackMpdContent.trim()
+        : ''
+      const sabrSession = streamType === 'sabr' ? normalizeSabrSession(data.sabr) : null
+      const isYouTubeSabr =
         matchedDesktopProvider.site === 'youtube'
-        && streamType === 'dash'
+        && streamType === 'sabr'
         && Boolean(trimmedMpd)
-      const localMpdUrl = trimmedMpd
+        && Boolean(sabrSession)
+      const isYouTubeOfficialDash = matchedDesktopProvider.site === 'youtube'
+        && (streamType === 'dash' || streamType === 'sabr')
+      // If an older/malformed bridge response advertises SABR without its
+      // session payload, start directly on the bundled regular DASH fallback.
+      const playbackMpd = streamType === 'sabr' && !isYouTubeSabr
+        ? trimmedFallbackMpd
+        : trimmedMpd
+      const localMpdUrl = playbackMpd
         ? (isYouTubeOfficialDash
-          ? `data:application/dash+xml;charset=UTF-8,${encodeURIComponent(trimmedMpd)}`
-          : URL.createObjectURL(new Blob([trimmedMpd], { type: 'application/dash+xml' })))
+          ? toDashDataUrl(playbackMpd)
+          : URL.createObjectURL(new Blob([playbackMpd], { type: 'application/dash+xml' })))
         : undefined
       const resolvedMpdUrl = localMpdUrl || mpdUrl
 
@@ -207,9 +256,24 @@ export default function useVideoOperations() {
       if (resolvedMpdUrl) return {
         src: resolvedMpdUrl,
         type: toPlayerSourceType(streamType),
-        // FreeTube plays youtubei.js toDash with shaka-player + googlevideo
-        // POST/alr filters. dash.js alone lacks that request rewrite path.
+        // Both YouTube SABR and its DASH fallback require Shaka. dash.js has no
+        // UMP/SABR transport and lacks the legacy POST/alr rewrite path.
         ...(isYouTubeOfficialDash ? { playbackEngine: 'shaka' as const } : {}),
+        ...(isYouTubeSabr && sabrSession ? {
+          sabr: {
+            ...sabrSession,
+            fallbackSrc: trimmedFallbackMpd ? toDashDataUrl(trimmedFallbackMpd) : undefined,
+            refresh: async () => {
+              const refreshed = await resolveDesktopPlayback(
+                matchedDesktopProvider,
+                playbackUrl,
+                { forceRefresh: true },
+                playbackVideo,
+              )
+              return normalizeSabrSession(refreshed?.sabr)
+            },
+          },
+        } : {}),
         key,
         progressKey,
         qualities,

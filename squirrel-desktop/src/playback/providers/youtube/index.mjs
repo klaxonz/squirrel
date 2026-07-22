@@ -6,9 +6,9 @@ import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.
 import { createPlaybackCache } from '../shared/playback-cache.mjs'
 
 const RESOLVE_RETRY_DELAY_MS = 500
-// Bump whenever the media authorization contract changes. Older IOS/no-pot
-// manifests can start at byte zero but become permanently unusable after seek.
-const PLAYBACK_CACHE_VERSION = 'mweb-pot-v1'
+// Bump whenever the media authorization contract changes. SABR payloads carry
+// session-bound URLs/config and must never reuse older DASH-only cache entries.
+const PLAYBACK_CACHE_VERSION = 'mweb-sabr-v1'
 const cache = createPlaybackCache('youtube')
 const playbackRefreshes = new Map()
 
@@ -149,12 +149,15 @@ const pickQualitySourceFormats = (formats) => {
   return (formats || []).filter((format) => format?.has_video)
 }
 
-/** Higher is better. Official youtubei.js toDash > YouTube-hosted MPD > progressive. */
+/** Higher is better. SABR > official youtubei.js DASH > hosted MPD > progressive. */
 const scoreMappedPayload = (payload) => {
   if (!payload) return 0
   const qualityCount = Array.isArray(payload.qualities) ? payload.qualities.length : 0
+  if (payload.stream_type === 'sabr' && payload.mpd_content && payload.sabr) {
+    return 3000 + qualityCount * 10
+  }
   if (payload.stream_type === 'dash' && payload.mpd_content) {
-    // Official VideoInfo.toDash() body — preferred playback path (FreeTube data URL + shaka).
+    // Official VideoInfo.toDash() body — safe fallback for SABR.
     return 2000 + qualityCount * 10
   }
   if (payload.stream_type === 'dash' && payload.mpd_url) {
@@ -171,17 +174,22 @@ const scoreMappedPayload = (payload) => {
 }
 
 /**
- * Official youtubei.js playback mapping (FreeTube-compatible, no homemade MPD):
- * 1. VideoInfo.toDash() → mpd_content  (primary — FreeTube data: URL + shaka)
- * 2. streaming_data.dash_manifest_url → mpd_url
- * 3. live HLS
- * 4. progressive muxed (last resort only)
+ * Official youtubei.js playback mapping (no homemade MPD):
+ * 1. SABR-flavoured VideoInfo.toDash() + googlevideo session payload
+ * 2. Regular VideoInfo.toDash() → mpd_content (also carried as SABR fallback)
+ * 3. streaming_data.dash_manifest_url → mpd_url
+ * 4. live HLS
+ * 5. progressive muxed (last resort only)
  */
 const mapPlaybackPayload = (response) => {
   const formats = Array.isArray(response?.formats) ? response.formats : []
   const bestProgressive = pickFormats(formats, (format) => format.has_audio && format.has_video)[0] || null
   const officialLocalDash = typeof response?.local_dash_manifest === 'string'
     ? response.local_dash_manifest.trim()
+    : ''
+  const sabrPlayback = response?.sabr_playback
+  const sabrManifest = typeof sabrPlayback?.manifest === 'string'
+    ? sabrPlayback.manifest.trim()
     : ''
   const dashManifestUrl = String(response?.streaming_data?.dash_manifest_url || '').trim()
   const hlsManifestUrl = String(response?.streaming_data?.hls_manifest_url || '').trim()
@@ -207,7 +215,40 @@ const mapPlaybackPayload = (response) => {
     }
   }
 
-  // 1) Official youtubei.js DASH (VideoInfo.toDash) — FreeTube data: + shaka.
+  // 1) SABR: YouTube's native ABR request protocol. Keep the regular DASH MPD
+  // in the same payload so the renderer can fall back without another resolve.
+  if (
+    sabrManifest
+    && sabrPlayback?.server_abr_url
+    && sabrPlayback?.ustreamer_config
+    && sabrPlayback?.po_token
+    && Array.isArray(sabrPlayback?.formats)
+    && sabrPlayback.formats.length > 0
+    && Number.isFinite(sabrPlayback?.client_info?.clientName)
+  ) {
+    const qualities = buildQualities(pickQualitySourceFormats(formats), { requireUrl: false })
+    return {
+      ...basePayload,
+      stream_type: 'sabr',
+      video_url: null,
+      audio_url: null,
+      mpd_url: null,
+      mpd_content: sabrManifest,
+      fallback_mpd_content: officialLocalDash || null,
+      sabr: {
+        server_abr_url: String(sabrPlayback.server_abr_url),
+        ustreamer_config: String(sabrPlayback.ustreamer_config),
+        formats: sabrPlayback.formats,
+        client_info: sabrPlayback.client_info,
+        po_token: String(sabrPlayback.po_token),
+      },
+      qualities: qualities.length > 0 ? qualities : null,
+      default_quality_id: qualities[0]?.id || null,
+      supports_manual_quality: qualities.length > 1,
+    }
+  }
+
+  // 2) Official youtubei.js DASH (VideoInfo.toDash) — data: + Shaka.
   if (officialLocalDash) {
     const qualities = buildQualities(pickQualitySourceFormats(formats), {
       // toDash already deciphered segment URLs inside the MPD; menu can list
@@ -227,7 +268,7 @@ const mapPlaybackPayload = (response) => {
     }
   }
 
-  // 2) Official YouTube-hosted DASH manifest URL.
+  // 3) Official YouTube-hosted DASH manifest URL.
   if (dashManifestUrl) {
     const qualities = buildQualities(pickQualitySourceFormats(formats), { requireUrl: false })
     return {
@@ -243,7 +284,7 @@ const mapPlaybackPayload = (response) => {
     }
   }
 
-  // 3) Progressive muxed — last resort (typically itag 18 / 360p only).
+  // 4) Progressive muxed — last resort (typically itag 18 / 360p only).
   if (bestProgressive?.url) {
     const progressiveQualities = buildQualities([bestProgressive], { requireUrl: true })
     return {

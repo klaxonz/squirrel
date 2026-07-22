@@ -5,6 +5,7 @@
 import type { EventEmitter } from './EventEmitter'
 import type { PlayerLogger } from './logger'
 import type { PlaybackIntent, PlaybackLoadingStage, PlaybackPhase } from './PlaybackCoordinator'
+import type { SabrFormat } from 'googlevideo/shared-types'
 
 /**
  * Subtitle style bag persisted to localStorage and read dynamically across the
@@ -111,11 +112,30 @@ export interface Chapter {
   thumbnail?: string
 }
 
+export interface SabrPlaybackSession {
+  serverAbrUrl: string
+  ustreamerConfig: string
+  formats: SabrFormat[]
+  clientInfo: {
+    clientName: number
+    clientVersion: string
+    osName: string
+    osVersion: string
+  }
+  poToken: string
+}
+
+export interface SabrPlaybackConfig extends SabrPlaybackSession {
+  fallbackSrc?: string
+  refresh?: () => Promise<SabrPlaybackSession | null>
+}
+
 // 媒体源配置
 export interface MediaSource {
   src: string
   type?: 'auto' | 'native' | 'hls' | 'dash'
   playbackEngine?: 'dashjs' | 'shaka'
+  sabr?: SabrPlaybackConfig
   key?: string
   progressKey?: string
   poster?: string
