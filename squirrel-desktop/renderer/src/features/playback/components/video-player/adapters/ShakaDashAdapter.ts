@@ -15,6 +15,10 @@ import { errorMessage } from '@/shared/lib/errorMessage'
 // deliberate interop casts at the shaka boundary, not loose internal typing.
 
 import { getCodecFamily, compareCodecFamilies } from '../core/codec'
+import {
+  hasPresentedVideoFrameAfterSeek,
+  shouldRecoverVideoAfterSeek,
+} from '../core/post-seek-video-health'
 import type { StreamAdapter, StreamContext } from '../core/StreamAdapter'
 import type { StreamSink } from '../core/StreamSink'
 import type {
@@ -35,6 +39,11 @@ type ShakaVariantTrack = shaka.extern.Track
 /** FreeTube: body of a googlevideo alr=yes redirect starts with ASCII "http". */
 const HTTP_IN_HEX = 0x68747470
 const RequestType = shaka.net.NetworkingEngine.RequestType
+const POST_SEEK_FRAME_CHECK_DELAY_MS = 3000
+
+type VideoWithDecodedFrameCount = HTMLVideoElement & {
+  webkitDecodedFrameCount?: number
+}
 
 export class ShakaDashAdapter implements StreamAdapter {
   private context: StreamContext
@@ -49,6 +58,10 @@ export class ShakaDashAdapter implements StreamAdapter {
   private hasInstalledPolyfills = false
   private loadRequestSeq = 0
   private isSelectingQuality = false
+  private postSeekWatchdogSeq = 0
+  private postSeekWatchdogTimer: number | null = null
+  private postSeekFrameCallbackId: number | null = null
+  private postSeekFrameCallbackVideo: HTMLVideoElement | null = null
 
   constructor(context: StreamContext, options?: ShakaDashAdapterOptions) {
     this.context = context
@@ -60,6 +73,7 @@ export class ShakaDashAdapter implements StreamAdapter {
   }
 
   onSourceChange(source: MediaSource, sink: StreamSink): void {
+    this.cancelPostSeekVideoWatchdog()
     this.sink = sink
     this.sourceQualityHints = Array.isArray(source.qualities) ? source.qualities : []
 
@@ -615,9 +629,11 @@ export class ShakaDashAdapter implements StreamAdapter {
     const video = this.context.videoElement()
     if (!video) return
     const seekPlayer = this.player
+    const baselineDecodedFrames = this.getDecodedVideoFrameCount(video)
     try {
       // Avoid no-op seeks that still thrash the segment pipeline.
       if (Math.abs((video.currentTime || 0) - clamped) < 0.05) {
+        this.cancelPostSeekVideoWatchdog()
         this.syncBufferingToSink()
         return
       }
@@ -625,6 +641,9 @@ export class ShakaDashAdapter implements StreamAdapter {
     } catch (e) {
       this.context.logger.warn('[ShakaDashAdapter] seek failed', e)
       return
+    }
+    if (seekPlayer) {
+      this.armPostSeekVideoWatchdog(seekPlayer, video, clamped, baselineDecodedFrames)
     }
     // Microtask: Shaka updates buffering state after the seek is observed.
     const syncCurrentSeek = () => {
@@ -635,6 +654,200 @@ export class ShakaDashAdapter implements StreamAdapter {
     // Second pass after the segment pipeline has a chance to go STARVING/SATISFIED.
     window.setTimeout(syncCurrentSeek, 50)
     window.setTimeout(syncCurrentSeek, 250)
+  }
+
+  private getDecodedVideoFrameCount(video: HTMLVideoElement): number | null {
+    try {
+      const total = video.getVideoPlaybackQuality?.().totalVideoFrames
+      if (Number.isFinite(total)) return Number(total)
+    } catch {
+      // Fall through to Chromium's legacy counter.
+    }
+
+    const legacyCount = (video as VideoWithDecodedFrameCount).webkitDecodedFrameCount
+    return Number.isFinite(legacyCount) ? Number(legacyCount) : null
+  }
+
+  private clearPostSeekVideoWatchdogResources(): void {
+    if (this.postSeekWatchdogTimer !== null) {
+      window.clearTimeout(this.postSeekWatchdogTimer)
+      this.postSeekWatchdogTimer = null
+    }
+    if (this.postSeekFrameCallbackId !== null && this.postSeekFrameCallbackVideo?.cancelVideoFrameCallback) {
+      this.postSeekFrameCallbackVideo.cancelVideoFrameCallback(this.postSeekFrameCallbackId)
+    }
+    this.postSeekFrameCallbackId = null
+    this.postSeekFrameCallbackVideo = null
+  }
+
+  private cancelPostSeekVideoWatchdog(): void {
+    this.postSeekWatchdogSeq += 1
+    this.clearPostSeekVideoWatchdogResources()
+  }
+
+  private armPostSeekVideoWatchdog(
+    player: shaka.Player,
+    video: HTMLVideoElement,
+    targetTime: number,
+    baselineDecodedFrames: number | null,
+  ): void {
+    this.cancelPostSeekVideoWatchdog()
+    const watchdogSeq = this.postSeekWatchdogSeq
+    this.schedulePostSeekVideoCheck(
+      player,
+      video,
+      targetTime,
+      baselineDecodedFrames,
+      watchdogSeq,
+      'clear-video-buffer',
+    )
+  }
+
+  private schedulePostSeekVideoCheck(
+    player: shaka.Player,
+    video: HTMLVideoElement,
+    targetTime: number,
+    baselineDecodedFrames: number | null,
+    watchdogSeq: number,
+    recoveryStage: 'clear-video-buffer' | 'reload-manifest',
+  ): void {
+    this.clearPostSeekVideoWatchdogResources()
+    let lastPresentedFrameMediaTime: number | null = null
+    const frameCallbackSupported = typeof video.requestVideoFrameCallback === 'function'
+
+    const observeNextFrame = (): void => {
+      if (!frameCallbackSupported || this.postSeekWatchdogSeq !== watchdogSeq) return
+      this.postSeekFrameCallbackVideo = video
+      this.postSeekFrameCallbackId = video.requestVideoFrameCallback((_now, metadata) => {
+        this.postSeekFrameCallbackId = null
+        this.postSeekFrameCallbackVideo = null
+        if (this.postSeekWatchdogSeq !== watchdogSeq || this.player !== player) return
+        if (Number.isFinite(metadata.mediaTime)) {
+          lastPresentedFrameMediaTime = metadata.mediaTime
+        }
+        // Keep observing until a frame from the seek destination arrives. The
+        // first callback can still describe the old frame that was on screen.
+        if (hasPresentedVideoFrameAfterSeek({
+          hasActiveVideoTrack: true,
+          paused: video.paused,
+          ended: video.ended,
+          targetTime,
+          currentTime: video.currentTime,
+          frameCallbackSupported,
+          lastPresentedFrameMediaTime,
+          baselineDecodedFrames,
+          decodedFrames: this.getDecodedVideoFrameCount(video),
+        })) {
+          this.cancelPostSeekVideoWatchdog()
+          return
+        }
+        observeNextFrame()
+      })
+    }
+    observeNextFrame()
+
+    this.postSeekWatchdogTimer = window.setTimeout(() => {
+      this.postSeekWatchdogTimer = null
+      if (
+        this.postSeekWatchdogSeq !== watchdogSeq
+        || this.player !== player
+        || this.context.videoElement() !== video
+      ) {
+        return
+      }
+
+      const activeTrack = this.getVariantTracks().find((track) => track.active)
+      const hasActiveVideoTrack = Boolean(
+        activeTrack
+        && (activeTrack.videoCodec || activeTrack.height || activeTrack.width),
+      )
+      const shouldRecover = shouldRecoverVideoAfterSeek({
+        hasActiveVideoTrack,
+        paused: video.paused,
+        ended: video.ended,
+        targetTime,
+        currentTime: video.currentTime,
+        frameCallbackSupported,
+        lastPresentedFrameMediaTime,
+        baselineDecodedFrames,
+        decodedFrames: this.getDecodedVideoFrameCount(video),
+      })
+
+      if (!shouldRecover) {
+        this.cancelPostSeekVideoWatchdog()
+        return
+      }
+
+      if (recoveryStage === 'clear-video-buffer' && activeTrack) {
+        this.context.logger.warn('[ShakaDashAdapter] Video frame froze after seek; rebuilding active variant', {
+          targetTime,
+          currentTime: video.currentTime,
+          trackId: activeTrack.id,
+        })
+        try {
+          // Shaka force-reselects even the same variant when clearBuffer=true.
+          // This rebuilds the SourceBuffer/decoder state at the audio playhead.
+          player.selectVariantTrack(activeTrack, true, 0)
+          player.retryStreaming?.(0.1)
+        } catch (e) {
+          this.context.logger.warn('[ShakaDashAdapter] Failed to rebuild frozen video variant', e)
+        }
+
+        const retryTarget = video.currentTime
+        this.schedulePostSeekVideoCheck(
+          player,
+          video,
+          retryTarget,
+          this.getDecodedVideoFrameCount(video),
+          watchdogSeq,
+          'reload-manifest',
+        )
+        return
+      }
+
+      this.reloadManifestAfterFrozenSeek(player, video, watchdogSeq)
+    }, POST_SEEK_FRAME_CHECK_DELAY_MS)
+  }
+
+  private reloadManifestAfterFrozenSeek(
+    player: shaka.Player,
+    video: HTMLVideoElement,
+    watchdogSeq: number,
+  ): void {
+    const source = this.currentSource
+    if (!source || this.player !== player || this.postSeekWatchdogSeq !== watchdogSeq) return
+
+    const resumeTime = Number.isFinite(video.currentTime) ? Math.max(0, video.currentTime) : 0
+    const shouldResume = !video.paused && !video.ended
+    const loadRequestSeq = this.loadRequestSeq
+    this.clearPostSeekVideoWatchdogResources()
+    this.context.logger.warn('[ShakaDashAdapter] Video frame still frozen; reloading DASH at playhead', {
+      resumeTime,
+    })
+
+    void player.load(source, resumeTime, 'application/dash+xml').then(() => {
+      if (
+        this.player !== player
+        || this.loadRequestSeq !== loadRequestSeq
+        || this.postSeekWatchdogSeq !== watchdogSeq
+      ) {
+        return
+      }
+      this.cancelPostSeekVideoWatchdog()
+      this.updateActiveCodecFamily()
+      this.updateQualities()
+      this.syncBufferingToSink()
+      if (shouldResume && !video.ended) {
+        void video.play().catch((e) => {
+          this.context.logger.warn('[ShakaDashAdapter] Play after frozen-video reload failed', e)
+        })
+      }
+    }).catch((e) => {
+      if (this.postSeekWatchdogSeq === watchdogSeq) {
+        this.cancelPostSeekVideoWatchdog()
+      }
+      this.context.logger.warn('[ShakaDashAdapter] Frozen-video manifest reload failed', e)
+    })
   }
 
   /** Publish current Shaka buffering flag to the engine spinner. */
@@ -738,6 +951,7 @@ export class ShakaDashAdapter implements StreamAdapter {
   }
 
   destroy(): void {
+    this.cancelPostSeekVideoWatchdog()
     this.loadRequestSeq += 1
     void this.destroyPlayer()
     this.currentSource = null
@@ -745,6 +959,7 @@ export class ShakaDashAdapter implements StreamAdapter {
   }
 
   private async destroyPlayer(): Promise<void> {
+    this.cancelPostSeekVideoWatchdog()
     const player = this.player
     this.player = null
     if (player) {

@@ -118,6 +118,12 @@ test('renderer youtube official dash uses FreeTube data URL + shaka', async () =
   assert.match(shakaSource, /playbackRate !== 0/)
   assert.match(shakaSource, /this\.player !== seekPlayer/)
   assert.match(shakaSource, /const shouldResume = Boolean\(video && !video\.paused && !video\.ended\)/)
+  // Audio time can keep advancing while Chromium's video decoder is frozen.
+  // Verify seek health with presented frames, then rebuild/reload in place.
+  assert.match(shakaSource, /requestVideoFrameCallback/)
+  assert.match(shakaSource, /shouldRecoverVideoAfterSeek/)
+  assert.match(shakaSource, /selectVariantTrack\(activeTrack, true, 0\)/)
+  assert.match(shakaSource, /reloadManifestAfterFrozenSeek/)
   // FreeTube: literal string append — never URLSearchParams (re-encodes sig/lsig).
   // Idempotent: do not stack range/alr on Shaka retries of an already-rewritten URI.
   assert.match(shakaSource, /request\.uris\[0\] \+= `&range=\$\{/)
