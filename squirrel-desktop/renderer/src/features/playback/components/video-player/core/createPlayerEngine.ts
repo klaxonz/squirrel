@@ -98,6 +98,10 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   let pendingSource: MediaSource | null = null
   let pendingSourceKey = ''
   let autoPlayOnReady = false
+  /** After scrub, resume play once rebuffer finishes (even if element stayed "playing" at rate 0). */
+  let resumeAfterSeek = false
+  /** Last observed playhead used to distinguish real playback from a seek timeupdate. */
+  let lastTimeUpdateMediaTime = Number.NaN
   let mediaLoadStartedForCurrentSource = false
   let mediaMetadataLoadedForCurrentSource = false
 
@@ -125,6 +129,12 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
 
   let pluginHandlingError = false
   let retryCount = 0
+
+  // dash.js and Shaka publish explicit bufferingStarted/bufferingCompleted state.
+  // HlsAdapter intentionally relies on native <video> waiting/canplay events.
+  const streamAdapterOwnsBuffering = (): boolean => {
+    return currentAdapterType === 'dash' || currentAdapterType === 'shaka-dash'
+  }
 
   const releaseVideoElementMedia = (video: HTMLVideoElement | null): void => {
     if (!video) return
@@ -208,7 +218,11 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       el.volume = Math.max(0, Math.min(1, volume / 100))
     }
     el.muted = muted
-    el.playbackRate = playbackRate
+    // Keep defaultPlaybackRate in sync so post-rebuffer restore (rate stuck at
+    // Shaka's 0 starve flag) can recover the user-selected rate, not always 1.
+    const rate = Number.isFinite(playbackRate) && playbackRate > 0 ? playbackRate : 1
+    el.playbackRate = rate
+    el.defaultPlaybackRate = rate
     el.loop = loop
   }
 
@@ -259,16 +273,63 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     events.emit('loadsstart', undefined)
   }
 
+  /**
+   * Native <video> canplay is only authoritative for progressive/native sources.
+   * DASH buffering is owned by the stream adapter (Shaka/dash.js) via
+   * loadingStateChanged — accepting native canplay mid-rebuffer against a stale
+   * MSE attachment left the spinner out of sync (or cleared too early).
+   * After DASH seek we still clear via: loadingStateChanged(false), seeked +
+   * hasMediaAhead, playing, or timeupdate while media is ahead.
+   */
   const canAcceptNativeCanPlay = (): boolean => {
+    // Stream adapters drive canplay through loadingStateChanged.
+    if (streamAdapterOwnsBuffering()) return false
     if (!isNativeMediaSourceCurrent()) return false
     if (!loading) return true
     return mediaLoadStartedForCurrentSource && mediaMetadataLoadedForCurrentSource
   }
 
+  /**
+   * True when the playhead already has enough buffered media to resume.
+   *
+   * FreeTube / official Shaka use rebufferingGoal ≈ 0.02s — the spinner must
+   * clear as soon as a few frames exist at the NEW playhead. A 0.5s threshold
+   * left store.loading stuck forever after scrub: Shaka was SATISFIED and
+   * often already playing, but our probe still said "not ready".
+   *
+   * Do NOT use readyState alone as the sole signal: after scrub it can stay
+   * HAVE_FUTURE_DATA against the pre-seek buffer while currentTime has jumped
+   * to an unbuffered region. Always require a buffered range that covers the
+   * current time (tiny ahead is enough).
+   */
+  const hasMediaAhead = (video: HTMLVideoElement, minAheadSec = 0.05): boolean => {
+    try {
+      const t = video.currentTime
+      const { buffered } = video
+      for (let i = 0; i < buffered.length; i += 1) {
+        // Range must cover the playhead (small epsilon for float edges).
+        if (buffered.start(i) <= t + 0.1 && buffered.end(i) >= t + minAheadSec) {
+          return true
+        }
+      }
+    } catch {
+      // ignore buffer probe failures
+    }
+    return false
+  }
+
   const errorRecovery = createErrorRecovery({
     getVideoElement: () => videoElement,
     getLoading: () => loading,
-    setLoading: (v) => { loading = v },
+    // Always clear spinner through canplay so usePlayer store.loading stays
+    // in sync — setLoading(false) alone left the UI spinning forever.
+    setLoading: (v) => {
+      if (v) {
+        loading = true
+        return
+      }
+      clearLoadingState('error-recovery')
+    },
     getRetryCount: () => retryCount,
     setRetryCount: (v) => { retryCount = v },
     getQualities: () => qualities,
@@ -286,15 +347,25 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     getMaxRetries: () => maxRetries,
     getRetryDelay: () => retryDelay,
     getEnableQualityFallback: () => enableQualityFallback,
-  events,
-  getStreamAdapter: () => currentStreamAdapter,
-  logger,
+    events,
+    getStreamAdapter: () => currentStreamAdapter,
+    logger,
     adapter,
     onError: options.onError,
     play: () => play(),
     setQuality: (q) => setQuality(q),
     doLoadSource: (s) => doLoadSource(s),
   })
+
+  /** Clear engine + UI spinner together (store.loading only flips on canplay). */
+  const clearLoadingState = (reason: string): void => {
+    if (!loading) return
+    loading = false
+    retryCount = 0
+    errorRecovery.clearWaitingRecovery()
+    logger.debug(`[PlayerEngine] clearLoadingState (${reason})`)
+    events.emit('canplay', undefined)
+  }
 
   const createPluginContext = (): PluginContext => ({
     get videoElement() { return videoElement },
@@ -533,20 +604,32 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     },
 
     loadingStateChanged: (isLoading) => {
+      // Must emit waiting/canplay so usePlayer's store.loading stays in sync.
+      // Pre-StreamSink plugins did this via emit intercept; mutating the local
+      // `loading` flag alone left the UI spinner spinning after Shaka/DASH
+      // rebuffer completed (seek → waiting → buffering=false with no canplay).
       if (isLoading) {
-        loading = true
-        errorRecovery.scheduleWaitingRecovery()
-      } else {
-        loading = false
-        retryCount = 0
-        errorRecovery.clearWaitingRecovery()
-
-        if (autoPlayOnReady) {
-          autoPlayOnReady = false
-          void play().catch((e) => {
-            logger.warn('[PlayerEngine] Auto-play failed after canplay', e)
-          })
+        if (!loading) {
+          loading = true
+          errorRecovery.scheduleWaitingRecovery()
+          events.emit('waiting', undefined)
+        } else {
+          errorRecovery.scheduleWaitingRecovery()
         }
+        return
+      }
+      clearLoadingState('stream-adapter')
+      // Always undo rate=0 starve flag when the adapter reports not buffering,
+      // even if the user had paused (pause should keep paused, not rate 0).
+      if (videoElement) ensurePlaybackRate(videoElement)
+      // After scrub: re-arm play so A/V actually move (not just clear spinner).
+      // Do not un-pause intentional pauses (resumeAfterSeek is false for those).
+      if (autoPlayOnReady || resumeAfterSeek) {
+        autoPlayOnReady = false
+        resumeAfterSeek = false
+        void play().catch((e) => {
+          logger.warn('[PlayerEngine] Auto-play failed after canplay', e)
+        })
       }
     },
 
@@ -646,6 +729,9 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     const nextKey = source.key || src
     if (nextKey === currentSourceKey) return
 
+    // Source changes invalidate any pending resume intent from the old stream.
+    resumeAfterSeek = false
+    lastTimeUpdateMediaTime = Number.NaN
     markSourceLoadingStarted()
     pluginHandlingError = false
 
@@ -797,25 +883,38 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       events.emit('play', undefined)
       options.onPlay?.()
     }
-    const onPlaying = () => {
-      loading = false
-      retryCount = 0
-      errorRecovery.clearWaitingRecovery()
-      events.emit('playing', undefined)
-    }
     const onPause = () => {
+      // A pause after scrub is explicit user intent; never let a later Shaka
+      // buffering=false edge auto-resume it.
+      resumeAfterSeek = false
       errorRecovery.clearWaitingRecovery()
       flushProgress()
       events.emit('pause', undefined)
       options.onPause?.()
     }
     const onEnded = () => {
+      resumeAfterSeek = false
       errorRecovery.clearWaitingRecovery()
       flushProgress()
       events.emit('ended', undefined)
       options.onEnded?.()
     }
     const onTimeUpdate = () => {
+      const currentMediaTime = video.currentTime
+      const playheadMoved = Number.isFinite(lastTimeUpdateMediaTime)
+        && Math.abs(currentMediaTime - lastTimeUpdateMediaTime) >= 0.01
+      lastTimeUpdateMediaTime = currentMediaTime
+      // Post-seek safety net: if the playhead has media (or is actually moving),
+      // never leave the UI spinner up even when buffering/canplay events miss.
+      if (loading) {
+        if (
+          hasMediaAhead(video)
+          || (playheadMoved && !video.paused && video.playbackRate > 0 && video.readyState >= 2)
+        ) {
+          ensurePlaybackRate(video)
+          clearLoadingState('timeupdate-ahead')
+        }
+      }
       scheduleProgressSave()
       events.emit('timeupdate', { currentTime: video.currentTime, duration: video.duration })
       options.onTimeUpdate?.(video.currentTime)
@@ -853,43 +952,49 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       events.emit('volumechange', { volume: v / 100, muted: video.muted })
     }
     const onWaiting = () => {
+      // DASH buffering is owned by the stream adapter. Native waiting still
+      // fires on MSE gap seeks and would fight Shaka's buffering=false by
+      // re-arming the stall timer while rate is still 0 — leave it to the adapter.
+      if (streamAdapterOwnsBuffering()) return
       loading = true
       errorRecovery.scheduleWaitingRecovery()
       events.emit('waiting', undefined)
     }
     const onStalled = () => {
+      if (streamAdapterOwnsBuffering()) return
       events.emit('waiting', undefined)
     }
     const onSeeked = () => {
-      // After scrub settles, drop the spinner as soon as we have media ahead.
-      // Waiting for a late canplay after DASH index seeks left users spinning
-      // even when the playhead was already buffered.
-      try {
-        if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
-          loading = false
-          errorRecovery.clearWaitingRecovery()
-        } else {
-          const t = video.currentTime
-          const { buffered } = video
-          for (let i = 0; i < buffered.length; i += 1) {
-            if (buffered.start(i) <= t + 0.35 && buffered.end(i) >= t + 0.5) {
-              loading = false
-              errorRecovery.clearWaitingRecovery()
-              break
-            }
+      // After scrub settles: FreeTube drops the loading symbol when Shaka is no
+      // longer buffering. We approximate with range coverage OR a playable
+      // readyState at the new playhead (range is authoritative when present).
+      if (loading && (hasMediaAhead(video) || video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA)) {
+        if (video.playbackRate === 0) ensurePlaybackRate(video)
+        // readyState alone can be stale — only clear on readyState if the
+        // playhead is inside a buffered range OR stream adapter will re-assert.
+        if (hasMediaAhead(video) || currentSourceType === 'native') {
+          clearLoadingState('seeked-ahead')
+          if (resumeAfterSeek) {
+            resumeAfterSeek = false
+            void play().catch((e) => {
+              logger.warn('[PlayerEngine] Play after seeked-ahead failed', e)
+            })
           }
         }
-      } catch {
-        // ignore buffer probe failures
       }
       events.emit('seeked', video.currentTime)
     }
+    const onPlaying = () => {
+      // Playback resumed — clear spinner even if Shaka never re-fired
+      // buffering=false (FakeEvent prop miss / race with our seek waiting).
+      // Also undo a stuck rate=0 so "playing" is not a silent freeze.
+      if (video.playbackRate === 0) ensurePlaybackRate(video)
+      clearLoadingState('playing')
+      events.emit('playing', undefined)
+    }
     const onCanPlay = () => {
       if (!canAcceptNativeCanPlay()) return
-      loading = false
-      retryCount = 0
-      errorRecovery.clearWaitingRecovery()
-      events.emit('canplay', undefined)
+      clearLoadingState('native-canplay')
 
       if (autoPlayOnReady) {
         autoPlayOnReady = false
@@ -1006,6 +1111,7 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   const destroy = (): void => {
     if (destroyed) return
     destroyed = true
+    resumeAfterSeek = false
 
     if (removeVideoListeners) {
       removeVideoListeners()
@@ -1039,6 +1145,8 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     }
 
     errorRecovery.clearWaitingRecovery()
+    resumeAfterSeek = false
+    lastTimeUpdateMediaTime = Number.NaN
     releaseVideoElementMedia(previousVideoElement)
     videoElement = el
     setupVideoListeners()
@@ -1055,13 +1163,33 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
     containerElement = el
   }
 
+  /**
+   * Shaka sets playbackRate=0 while buffering (STARVING). If that flag sticks
+   * after rebuffer, play() succeeds but A/V never advance — classic post-scrub
+   * freeze. Always restore the engine's intended rate before play().
+   */
+  const ensurePlaybackRate = (el: HTMLVideoElement): void => {
+    const intended = Number.isFinite(playbackRate) && playbackRate > 0 ? playbackRate : 1
+    if (el.playbackRate === 0 || !Number.isFinite(el.playbackRate) || el.playbackRate < 0) {
+      try {
+        el.playbackRate = intended
+        el.defaultPlaybackRate = intended
+      } catch (e) {
+        logger.warn('[PlayerEngine] Failed to restore playbackRate', e)
+      }
+    }
+  }
+
   const play = async (): Promise<boolean> => {
     if (!videoElement) return false
     try {
       if (audioContext?.state === 'suspended') {
         await audioContext.resume()
       }
+      ensurePlaybackRate(videoElement)
       await videoElement.play()
+      // play() can leave rate 0 if Shaka re-entered STARVING mid-call; re-check.
+      ensurePlaybackRate(videoElement)
       return true
     } catch (e) {
       logger.warn('[PlayerEngine] Play failed', e)
@@ -1077,13 +1205,27 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
   const seek = (time: number): void => {
     if (!videoElement) return
     errorRecovery.clearWaitingRecovery()
-    // Keep stall recovery suppressed long enough for DASH index + googlevideo
-    // segment fetch after a seek lands. Live scrub no longer multi-fires seek.
-    errorRecovery.suppressWaitingRecovery(Math.max(retryDelay * 4, 12000))
+    // Allow googlevideo segment fetch after scrub, but do not suppress so long
+    // that a stuck rebuffer is invisible — soft recovery uses retryStreaming
+    // (not re-seek) so a few seconds is enough.
+    errorRecovery.suppressWaitingRecovery(Math.max(retryDelay * 2, 4000))
     const target = Number(time)
     if (!Number.isFinite(target)) return
     const clamped = Math.max(0, target)
-    loading = true
+    // If the user was watching (or element is "playing" at rate 0 while Shaka
+    // buffers), re-arm play once the stream adapter reports not buffering.
+    // rate===0 is never a user pause — treat it as still wanting playback.
+    resumeAfterSeek = !videoElement.paused
+    // A timeupdate caused only by assigning currentTime is not proof that
+    // playback resumed; movement must occur beyond this landing point.
+    lastTimeUpdateMediaTime = clamped
+
+    // FreeTube does NOT force a loading overlay on every seek — spinner tracks
+    // shaka Player "buffering". Forcing waiting=true here was the main reason
+    // scrub left a permanent spinner: if Shaka never re-emitted buffering=false
+    // (or only buffered ~0.02s), our old 0.5s probe never cleared store.loading.
+    const streamOwned = streamAdapterOwnsBuffering()
+
     try {
       // Prefer the stream adapter's seek when available so dash.js rebuffers
       // at the target without resetting the MediaSource attachment.
@@ -1094,10 +1236,38 @@ export function createPlayerEngine(options: PlayerEngineOptions = {}): PlayerEng
       }
     } catch (e) {
       logger.warn('[PlayerEngine] Seek failed', e)
-      loading = false
+      resumeAfterSeek = false
+      clearLoadingState('seek-failed')
       return
     }
-    errorRecovery.scheduleWaitingRecovery()
+
+    // Already-buffered landings: clear immediately (tiny ahead is enough).
+    if (hasMediaAhead(videoElement)) {
+      ensurePlaybackRate(videoElement)
+      if (loading) clearLoadingState('seek-ahead')
+      if (resumeAfterSeek) {
+        resumeAfterSeek = false
+        void play().catch((e) => {
+          logger.warn('[PlayerEngine] Play after buffered seek failed', e)
+        })
+      }
+    } else if (streamOwned) {
+      // Unbuffered DASH seek: show spinner; adapter buffering=false +
+      // adapter loadingStateChanged(false) is the primary clear path.
+      // Adapter seek() also re-syncs isBuffering() on a microtask.
+      if (!loading) {
+        loading = true
+        events.emit('waiting', undefined)
+      } else {
+        // Keep store in buffering stage if we were already spinning.
+        events.emit('waiting', undefined)
+      }
+      errorRecovery.scheduleWaitingRecovery()
+    } else {
+      loading = true
+      events.emit('waiting', undefined)
+      errorRecovery.scheduleWaitingRecovery()
+    }
     events.emit('seeking', clamped)
   }
 

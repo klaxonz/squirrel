@@ -16,6 +16,8 @@ test('desktop youtube provider keeps complete dash payload for direct playback',
 
   assert.match(source, /resolveYoutubeiPayload\(\{[\s\S]*?resolution_mode:\s*'all'/)
   assert.doesNotMatch(source, /include_local_dash_manifest:\s*false/)
+  assert.match(source, /const PLAYBACK_CACHE_VERSION = 'mweb-pot-v1'/)
+  assert.match(source, /const cacheKey = `\$\{PLAYBACK_CACHE_VERSION\}\|\$\{videoId\}/)
 })
 
 test('desktop youtube playback uses official youtubei.js toDash only', async () => {
@@ -62,6 +64,69 @@ test('renderer youtube official dash uses FreeTube data URL + shaka', async () =
   assert.match(shakaSource, /bufferingGoal:\s*180/)
   assert.match(shakaSource, /rebufferingGoal:\s*0\.02/)
   assert.match(shakaSource, /restrictToElementSize:\s*true/)
+
+  // Seek/spinner: StreamSink loadingStateChanged must re-emit waiting/canplay so
+  // usePlayer store.loading clears after Shaka rebuffer (not just engine flag).
+  const enginePath = new URL(
+    '../renderer/src/features/playback/components/video-player/core/createPlayerEngine.ts',
+    import.meta.url,
+  )
+  const videoPlayerPath = new URL(
+    '../renderer/src/features/playback/components/video-player/VideoPlayer.vue',
+    import.meta.url,
+  )
+  const engineSource = await readFile(enginePath, 'utf8')
+  const videoPlayerSource = await readFile(videoPlayerPath, 'utf8')
+  assert.match(engineSource, /loadingStateChanged:\s*\(isLoading\)\s*=>\s*\{[\s\S]*?events\.emit\('waiting'/)
+  assert.match(engineSource, /clearLoadingState\(/)
+  // FreeTube: do not force spinner before every seek — stream-owned path only
+  // waits when the landing is unbuffered; spinner primarily tracks isBuffering.
+  assert.match(engineSource, /const seek = \(time: number\): void => \{[\s\S]*?streamOwned/)
+  assert.match(engineSource, /resumeAfterSeek/)
+  assert.match(engineSource, /const onPause = \(\) => \{[\s\S]*?resumeAfterSeek = false/)
+  // FreeTube rebufferingGoal 0.02 — clear spinner with a few frames, not 0.5s+.
+  assert.match(engineSource, /minAheadSec = 0\.05/)
+  assert.match(shakaSource, /syncBufferingToSink/)
+  // dash.js/Shaka own buffering state. HLS still relies on native canplay/waiting.
+  assert.match(
+    engineSource,
+    /streamAdapterOwnsBuffering[\s\S]*?currentAdapterType === 'dash'[\s\S]*?currentAdapterType === 'shaka-dash'/,
+  )
+  assert.match(engineSource, /if \(streamAdapterOwnsBuffering\(\)\) return false/)
+  // rate=0 starve flag must be restored before play() or A/V freeze after scrub.
+  assert.match(engineSource, /ensurePlaybackRate/)
+  assert.match(engineSource, /playbackRate === 0/)
+  // DASH native waiting must not re-arm stall recovery over Shaka buffering.
+  assert.match(
+    engineSource,
+    /const onWaiting = \(\) => \{[\s\S]*?streamAdapterOwnsBuffering\(\)[\s\S]*?return/,
+  )
+  // Visibility regain must NOT re-seek (aborts googlevideo segments mid-play).
+  assert.doesNotMatch(
+    videoPlayerSource,
+    /handleVisibilityChange[\s\S]*?video\.currentTime\s*=\s*t/,
+  )
+
+  // Shaka buffering is FakeEvent.buffering (Map props), not CustomEvent.detail.
+  assert.match(shakaSource, /typeof e\.buffering === 'boolean'/)
+  assert.match(shakaSource, /isBuffering\(\)/)
+  // Stall recovery must NOT re-seek the same time (aborts googlevideo segments).
+  assert.match(shakaSource, /retryStreaming/)
+  assert.match(shakaSource, /NEVER re-seek to the same time/)
+  // Resume only when rate stuck at 0 (Shaka STARVING) — not every paused state.
+  assert.match(shakaSource, /restorePlaybackRateAfterRebuffer/)
+  assert.match(shakaSource, /playbackRate !== 0/)
+  assert.match(shakaSource, /this\.player !== seekPlayer/)
+  assert.match(shakaSource, /const shouldResume = Boolean\(video && !video\.paused && !video\.ended\)/)
+  // FreeTube: literal string append — never URLSearchParams (re-encodes sig/lsig).
+  // Idempotent: do not stack range/alr on Shaka retries of an already-rewritten URI.
+  assert.match(shakaSource, /request\.uris\[0\] \+= `&range=\$\{/)
+  assert.match(shakaSource, /request\.uris\[0\] \+= '&alr=yes'/)
+  assert.match(shakaSource, /if \(!\/\[\?&\]range=\/\.test\(request\.uris\[0\]\)\)/)
+  assert.match(shakaSource, /if \(!\/\[\?&\]alr=\/\.test\(request\.uris\[0\]\)\)/)
+  assert.doesNotMatch(shakaSource, /searchParams\.set\('range'/)
+  // FreeTube player.load(src, startTime, mimeType).
+  assert.match(shakaSource, /player\.load\(src,\s*\/\* startTime \*\/ null,\s*'application\/dash\+xml'\)/)
 })
 
 test('desktop youtube prefers official toDash over remote and progressive', async () => {
@@ -101,14 +166,15 @@ test('desktop youtube login status uses tv oauth instead of cookie checks', asyn
   assert.match(source, /const buildYouTubeDesktopLoginStatus = async \(profile\) => \{[\s\S]*?resolveYouTubeOAuthStatus\(\)/)
 })
 
-test('desktop youtube client order prefers official IOS/MWEB toDash', async () => {
+test('desktop youtube uses MWEB toDash with mandatory content-bound PO Token', async () => {
   const source = await readFile(corePath, 'utf8')
 
-  // Official FreeTube-style path: remote WEB session + IOS/MWEB toDash.
+  // A remote WEB session supplies visitor data; MWEB supplies classic adaptive
+  // URLs, and its video-bound token authorizes distant googlevideo byte ranges.
   // FreeTube getLocalVideoInfo uses generateSessionLocally:false + WEB bootstrap;
   // local ANDROID sessions intermittently LOGIN_REQUIRED every official client.
   // OAuth is never the primary streaming session.
-  assert.match(source, /const OFFICIAL_PLAYBACK_CLIENTS = \['IOS', 'MWEB'\]/)
+  assert.match(source, /const OFFICIAL_PLAYBACK_CLIENTS = \['MWEB'\]/)
   assert.match(source, /const OFFICIAL_FALLBACK_CLIENTS = \['ANDROID', 'WEB'\]/)
   assert.match(source, /const AUTH_GATE_PLAYBACK_CLIENTS = \['TV', 'WEB'\]/)
   // Electron main uses node youtubei.js + file UniversalCache (not /web IndexedDB).
@@ -129,7 +195,13 @@ test('desktop youtube client order prefers official IOS/MWEB toDash', async () =
   assert.match(source, /resolveFormatsWithRuntime/)
   assert.match(source, /preferPoToken: false/)
   assert.match(source, /preferPoToken: true/)
-  assert.match(source, /client === 'WEB'/)
+  assert.match(source, /const requiresPoToken = preferPoToken && \(client === 'MWEB' \|\| client === 'WEB'\)/)
+  assert.match(source, /Content-bound PO Token unavailable for \$\{client\}/)
+  assert.match(source, /runtime\.yt\.session\.player\.po_token = undefined/)
+  assert.match(source, /poToken: activePoToken \|\| undefined/)
+  // IOS manifests can start but their far ranges reject this token; never make
+  // that unverified path the default merely because toDash() returned XML.
+  assert.doesNotMatch(source, /const OFFICIAL_PLAYBACK_CLIENTS = \[[^\]]*'IOS'/)
   // Official toDash scores highest and stops the client loop.
   assert.match(source, /if \(score >= 4\)/)
   assert.match(source, /localDashManifest/)

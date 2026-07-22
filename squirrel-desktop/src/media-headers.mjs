@@ -1,8 +1,10 @@
-import { session } from 'electron'
+import { app, session } from 'electron'
 import { buildCookieHeaderForUrl } from './site-login.mjs'
 import { mergeCookieHeaders } from './cookie-header.mjs'
 import {
+  APP_NAME,
   desktopChromeUserAgent,
+  stripElectronFromUserAgent,
 } from './constants.mjs'
 
 const BILIBILI_MEDIA_HEADERS = {
@@ -17,11 +19,14 @@ const BILIBILI_MEDIA_HEADERS = {
  *  - googlevideo /videoplayback: Referer + Origin youtube.com
  *  - strip Content-Type (YouTube itself does not send it on media)
  *  - never attach site cookies to signature-bound googlevideo URLs
+ *  - force Chrome UA (no Electron token) — session default alone is not enough
+ *    if a request plugin reintroduces Electron in User-Agent
  * Do NOT rewrite UA per client, re-map Range across redirects, or proxy.
  */
 const YOUTUBE_MEDIA_HEADERS = {
   Referer: 'https://www.youtube.com/',
   Origin: 'https://www.youtube.com',
+  'User-Agent': desktopChromeUserAgent,
 }
 
 const MEDIA_HEADER_RULES = [
@@ -142,28 +147,71 @@ const isYouTubeVideoplaybackUrl = (targetUrl) => {
   }
 }
 
+/**
+ * Chromium may keep both `Origin` and `origin` (and same for Referer/UA).
+ * Spreading rule headers only overwrites one casing — the renderer page
+ * origin (dev Vite loopback) can still win and googlevideo returns 403.
+ * Always delete both casings before applying FreeTube media headers.
+ */
+const deleteHeaderCaseInsensitive = (headers, name) => {
+  const target = String(name || '').toLowerCase()
+  for (const key of Object.keys(headers || {})) {
+    if (String(key).toLowerCase() === target) {
+      delete headers[key]
+    }
+  }
+}
+
 const applyRequestHeaders = (details, rule) => {
   const requestHeaders = {
     ...details.requestHeaders,
-    ...rule.headers,
   }
 
+  // Drop any prior Origin/Referer/User-Agent (both casings) before FreeTube values.
+  for (const name of Object.keys(rule.headers || {})) {
+    deleteHeaderCaseInsensitive(requestHeaders, name)
+  }
+  Object.assign(requestHeaders, rule.headers)
+
   if (rule.stripCookies) {
-    delete requestHeaders.Cookie
-    delete requestHeaders.cookie
+    deleteHeaderCaseInsensitive(requestHeaders, 'Cookie')
   }
 
   // FreeTube: YouTube does not send Content-Type on media segment requests.
   if (rule.stripContentTypeOnVideoplayback && isYouTubeVideoplaybackUrl(details.url)) {
-    delete requestHeaders['Content-Type']
-    delete requestHeaders['content-type']
+    deleteHeaderCaseInsensitive(requestHeaders, 'Content-Type')
   }
 
   return requestHeaders
 }
 
+/**
+ * FreeTube: session.defaultSession.setUserAgent(strip Electron / product).
+ * Must run before media requests; otherwise googlevideo sees Electron/x.y.
+ * Also set app.userAgentFallback so new webContents inherit Chrome UA.
+ */
+export const installDesktopSessionUserAgent = () => {
+  const ses = session.defaultSession
+  const raw = typeof ses.getUserAgent === 'function' ? ses.getUserAgent() : desktopChromeUserAgent
+  const fixed = stripElectronFromUserAgent(raw, APP_NAME) || desktopChromeUserAgent
+  if (typeof ses.setUserAgent === 'function') {
+    ses.setUserAgent(fixed)
+  }
+  // Electron: fallback UA for webContents that do not set their own.
+  try {
+    if (app && typeof app.userAgentFallback === 'string') {
+      app.userAgentFallback = fixed
+    }
+  } catch {
+    // app may be unavailable in unit-test import graphs
+  }
+  return fixed
+}
+
 export const installDesktopMediaHeaders = () => {
   const ses = session.defaultSession
+  // Session-wide Chrome UA (FreeTube). Also force UA on YouTube media rules below.
+  installDesktopSessionUserAgent()
 
   // Electron webRequest listeners do NOT return an unsubscribe function.
   // Passing `null` as the listener removes the previous handler (see Electron docs).

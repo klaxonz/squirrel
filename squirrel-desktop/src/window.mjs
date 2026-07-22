@@ -7,7 +7,13 @@ import {
   loadWindowState,
 } from './window-state.mjs'
 import { showErrorShell, formatWindowTitle } from './shell-pages.mjs'
-import { APP_ICON_PATH, APP_NAME, __dirname } from './constants.mjs'
+import {
+  APP_ICON_PATH,
+  APP_NAME,
+  __dirname,
+  desktopChromeUserAgent,
+  stripElectronFromUserAgent,
+} from './constants.mjs'
 
 let rendererUrl = ''
 let rendererOrigin = ''
@@ -353,6 +359,18 @@ export const createMainWindow = () => {
 
   bindWindowStatePersistence(userDataPath, mainWindow)
   installMainWindowBehaviors(mainWindow)
+
+  // FreeTube: Chrome UA without Electron token on the main webContents.
+  // Session-level setUserAgent alone is not always inherited by every request.
+  try {
+    const fixedUa = stripElectronFromUserAgent(
+      mainWindow.webContents.getUserAgent?.() || desktopChromeUserAgent,
+      APP_NAME,
+    ) || desktopChromeUserAgent
+    mainWindow.webContents.setUserAgent(fixedUa)
+  } catch (err) {
+    console.debug('[squirrel-desktop] window: setUserAgent failed', err)
+  }
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()

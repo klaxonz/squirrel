@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFile } from 'node:fs/promises'
+import { stripElectronFromUserAgent } from '../src/constants.mjs'
 
 const siteLoginPath = new URL('../src/site-login.mjs', import.meta.url)
 const constantsPath = new URL('../src/constants.mjs', import.meta.url)
@@ -8,6 +9,19 @@ const cookieHeaderPath = new URL('../src/cookie-header.mjs', import.meta.url)
 const mediaHeadersPath = new URL('../src/media-headers.mjs', import.meta.url)
 const documentLoaderPath = new URL('../src/document-loader.mjs', import.meta.url)
 const mainPath = new URL('../src/main.mjs', import.meta.url)
+
+test('desktop media user agent removes Electron and app product tokens', () => {
+  const raw = 'Mozilla/5.0 Chrome/146.0.0.0 Squirrel/0.1.0 Electron/41.2.0 Safari/537.36'
+
+  assert.equal(
+    stripElectronFromUserAgent(raw),
+    'Mozilla/5.0 Chrome/146.0.0.0 Safari/537.36',
+  )
+  assert.equal(
+    stripElectronFromUserAgent('Mozilla/5.0 squirrel/0.1.0 electron/41.2.0 Chrome/146.0.0.0'),
+    'Mozilla/5.0 Chrome/146.0.0.0',
+  )
+})
 
 test('desktop bilibili/youtube login profiles remain wired', async () => {
   const constants = await readFile(constantsPath, 'utf8')
@@ -65,6 +79,8 @@ test('main.mjs is slim composition root', async () => {
 
 test('youtube media headers stay FreeTube-aligned (official toDash path)', async () => {
   const source = await readFile(mediaHeadersPath, 'utf8')
+  const constants = await readFile(new URL('../src/constants.mjs', import.meta.url), 'utf8')
+  const mainSource = await readFile(new URL('../src/main.mjs', import.meta.url), 'utf8')
 
   // FreeTube: Referer + Origin + strip Content-Type on videoplayback; no cookies.
   assert.match(source, /YOUTUBE_MEDIA_HEADERS/)
@@ -72,6 +88,15 @@ test('youtube media headers stay FreeTube-aligned (official toDash path)', async
   assert.match(source, /Origin: 'https:\/\/www\.youtube\.com'/)
   assert.match(source, /stripCookies:\s*true/)
   assert.match(source, /stripContentTypeOnVideoplayback:\s*true/)
+  // FreeTube: strip Electron from session UA; also force Chrome UA on media.
+  assert.match(source, /installDesktopSessionUserAgent/)
+  assert.match(source, /stripElectronFromUserAgent/)
+  assert.match(source, /'User-Agent': desktopChromeUserAgent/)
+  // Renderer page origin must not survive as lowercase `origin` next to
+  // FreeTube Origin — that combo is a common googlevideo 403 cause.
+  assert.match(source, /deleteHeaderCaseInsensitive/)
+  assert.match(constants, /export const stripElectronFromUserAgent/)
+  assert.match(mainSource, /installDesktopSessionUserAgent/)
   assert.doesNotMatch(source, /com\.google\.ios\.youtube/)
   assert.doesNotMatch(source, /onBeforeRedirect/)
   assert.doesNotMatch(source, /restoreRange/)

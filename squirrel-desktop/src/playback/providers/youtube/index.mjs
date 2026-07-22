@@ -6,6 +6,9 @@ import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.
 import { createPlaybackCache } from '../shared/playback-cache.mjs'
 
 const RESOLVE_RETRY_DELAY_MS = 500
+// Bump whenever the media authorization contract changes. Older IOS/no-pot
+// manifests can start at byte zero but become permanently unusable after seek.
+const PLAYBACK_CACHE_VERSION = 'mweb-pot-v1'
 const cache = createPlaybackCache('youtube')
 
 const YOUTUBE_ID_PATTERNS = [
@@ -326,7 +329,7 @@ export async function resolveYouTubePlayback(targetUrl, { cookie = '', forceRefr
     throw new Error('Invalid YouTube URL')
   }
 
-  const cacheKey = `${videoId}|${cacheScopeForCookie(cookie)}|${cacheScopeForOAuth()}`
+  const cacheKey = `${PLAYBACK_CACHE_VERSION}|${videoId}|${cacheScopeForCookie(cookie)}|${cacheScopeForOAuth()}`
   // Keep a fallback copy for resolve failures. Do not early-return on cache hits:
   // googlevideo URLs expire quickly; always prefer a fresh resolve when possible.
   let cached = null

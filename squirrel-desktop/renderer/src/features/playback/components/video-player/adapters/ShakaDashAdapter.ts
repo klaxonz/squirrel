@@ -151,7 +151,9 @@ export class ShakaDashAdapter implements StreamAdapter {
     this.setupEventListeners(player)
 
     try {
-      await player.load(src)
+      // FreeTube: player.load(manifestSrc, startTime, manifestMimeType).
+      // Pass DASH mime so data: / remote MPD never mis-detect as other types.
+      await player.load(src, /* startTime */ null, 'application/dash+xml')
       if (requestSeq !== this.loadRequestSeq || this.player !== player) {
         await player.destroy().catch((e) => {
           this.context.logger.warn('[ShakaDashAdapter] Failed to destroy player on load race', e)
@@ -176,6 +178,11 @@ export class ShakaDashAdapter implements StreamAdapter {
   /**
    * FreeTube request/response filters for official youtubei.js DASH BaseURLs.
    * Without POST+alr, long googlevideo SegmentBase sessions often 403 mid-play.
+   *
+   * CRITICAL: append range=/alr= as literal strings. Never rebuild the URI via
+   * URL / URLSearchParams — that re-encodes googlevideo `sig` / `lsig`
+   * (e.g. A/B+C → A%2FB+C) and YouTube rejects the segment (403 / empty).
+   * FreeTube: `request.uris[0] += \`&range=${...}\`` then `+= '&alr=yes'`.
    */
   private installYouTubeNetworkingFilters(player: shaka.Player): void {
     const networkingEngine = player.getNetworkingEngine()
@@ -198,26 +205,31 @@ export class ShakaDashAdapter implements StreamAdapter {
         return
       }
 
-      // Official player: POST with tiny protobuf body, Range → ?range=, alr=yes.
+      // Official player: POST with tiny protobuf body, Range → query range=, alr=yes.
       request.method = 'POST'
       request.body = new Uint8Array([0x78, 0]) // protobuf: { 15: 0 }
 
-      const rangeHeader = request.headers?.Range || request.headers?.range
+      // FreeTube always appends via string concat (BaseURLs already have a query).
+      // Never rebuild with URLSearchParams — re-encodes sig/lsig → 403.
+      //
+      // Idempotent on Shaka retries: if the URI was already rewritten, do not
+      // stack a second &range= / &alr=yes (double params → googlevideo 403).
+      const rangeHeader = request.headers.Range || request.headers.range
       if (rangeHeader) {
-        // FreeTube always uses &range= because youtubei BaseURLs already carry
-        // a query string; keep a ? fallback for any bare path.
-        const rangeValue = String(rangeHeader).includes('=')
-          ? String(rangeHeader).split('=')[1]
-          : String(rangeHeader)
-        const joiner = request.uris[0].includes('?') ? '&' : '?'
-        request.uris[0] += `${joiner}range=${rangeValue}`
+        if (!/[?&]range=/.test(request.uris[0])) {
+          const rangeValue = String(rangeHeader).includes('=')
+            ? String(rangeHeader).split('=').slice(1).join('=')
+            : String(rangeHeader)
+          request.uris[0] += `&range=${rangeValue}`
+        }
         delete request.headers.Range
         delete request.headers.range
       }
-
-      if (!request.uris[0].includes('alr=')) {
-        const joiner = request.uris[0].includes('?') ? '&' : '?'
-        request.uris[0] += `${joiner}alr=yes`
+      // Strip Content-Type here too — main-process webRequest can miss casing races.
+      delete request.headers['Content-Type']
+      delete request.headers['content-type']
+      if (!/[?&]alr=/.test(request.uris[0])) {
+        request.uris[0] += '&alr=yes'
       }
     })
 
@@ -229,22 +241,28 @@ export class ShakaDashAdapter implements StreamAdapter {
         // continue — still try redirect body decode
       }
 
-      // shaka.extern.Response.data is ArrayBuffer | ArrayBufferView; DataView
-      // only accepts ArrayBufferLike, so normalize the view first.
+      // FreeTube: DataView(response.data) assumes ArrayBuffer. Shaka may hand
+      // an ArrayBufferView; normalize so getUint32 / fromUTF8 see the same bytes.
       const rawData = response.data
-      const dataView = ArrayBuffer.isView(rawData)
-        ? new DataView(rawData.buffer, rawData.byteOffset, rawData.byteLength)
-        : new DataView(rawData as ArrayBuffer)
-      if (dataView.byteLength <= 4) return
+      const bytes = ArrayBuffer.isView(rawData)
+        ? new Uint8Array(rawData.buffer, rawData.byteOffset, rawData.byteLength)
+        : new Uint8Array(rawData as ArrayBuffer)
+      if (bytes.byteLength <= 4) return
+      const dataView = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
       if (dataView.getUint32(0) !== HTTP_IN_HEX) return
 
       // googlevideo alr redirect: body is a plain URL string to the real media.
-      const responseAsString = shaka.util.StringUtils.fromUTF8(rawData)
-      if (!/^https?:\/\//i.test(responseAsString.trim())) return
+      // Strip whitespace/NUL — a dirty URL on makeRequest follow → 403 / empty.
+      const responseAsString = shaka.util.StringUtils.fromUTF8(bytes)
+        .replace(/\0+$/g, '')
+        .trim()
+      if (!/^https?:\/\//i.test(responseAsString)) return
 
       const retryParameters = player.getConfiguration().streaming.retryParameters
+      // FreeTube: makeRequest → SEGMENT request → same requestFilter rewrites
+      // to POST + alr. Session UA must be Chrome (no Electron) or follow 403s.
       const redirectRequest = shaka.net.NetworkingEngine.makeRequest(
-        [responseAsString.trim()],
+        [responseAsString],
         retryParameters,
       )
       const requestOperation = player.getNetworkingEngine()?.request(
@@ -262,6 +280,7 @@ export class ShakaDashAdapter implements StreamAdapter {
 
   private setupEventListeners(player: shaka.Player): void {
     player.addEventListener('error', (event: Event) => {
+      if (this.player !== player) return
       const detail = (event as CustomEvent).detail
       this.sink?.error({
         code: `SHAKA_${detail?.code || 'UNKNOWN'}`,
@@ -272,12 +291,33 @@ export class ShakaDashAdapter implements StreamAdapter {
     })
 
     player.addEventListener('buffering', (event: Event) => {
-      const detail = (event as CustomEvent<any>).detail
-      const buffering = Boolean(detail?.buffering ?? (event as any)?.buffering)
+      // destroyPlayer() nulls this.player before awaiting Shaka teardown; ignore
+      // late events from that old instance so they cannot mutate a new source.
+      if (this.player !== player) return
+      // Shaka FakeEvent copies Map('buffering', isBuffering) onto the event
+      // itself (see makeEvent_ + FakeEvent). FreeTube reads event.buffering;
+      // CustomEvent.detail is not used for this event and is usually undefined.
+      const e = event as Event & { buffering?: boolean; detail?: { buffering?: boolean } }
+      let buffering: boolean
+      if (typeof e.buffering === 'boolean') {
+        buffering = e.buffering
+      } else if (typeof e.detail?.buffering === 'boolean') {
+        buffering = e.detail.buffering
+      } else {
+        buffering = this.player?.isBuffering() ?? false
+      }
       this.sink?.loadingStateChanged(buffering)
+
+      // Shaka PlayRateController forces playbackRate=0 while STARVING. On the
+      // SATISFIED edge it normally restores the rate; repair only a stale zero.
+      // Playback intent remains engine-owned so a user pause is never undone.
+      if (!buffering) {
+        this.restorePlaybackRateAfterRebuffer()
+      }
     })
 
     const refresh = () => {
+      if (this.player !== player) return
       this.updateActiveCodecFamily()
       this.updateQualities()
     }
@@ -537,54 +577,153 @@ export class ShakaDashAdapter implements StreamAdapter {
   }
 
   /**
-   * Seek via shaka so the stream controller rebuffers at `time` without
-   * reloading the MPD (which would rewind the playhead to 0).
+   * After rebuffer, undo a stale Shaka rate=0 without changing paused state.
+   * The engine tracks whether a pre-seek playing session should resume; keeping
+   * that decision out of the adapter preserves intentional pauses.
+   */
+  private restorePlaybackRateAfterRebuffer(): void {
+    const video = this.context.videoElement()
+    if (!video || video.ended) return
+
+    const stillBuffering = this.player?.isBuffering?.() ?? false
+    if (stillBuffering) return
+
+    // User-selected rates are always > 0 in our UI; 0 is only Shaka's starve flag.
+    if (video.playbackRate !== 0) return
+
+    try {
+      const defaultRate = Number(video.defaultPlaybackRate)
+      video.playbackRate = Number.isFinite(defaultRate) && defaultRate > 0 ? defaultRate : 1
+    } catch (e) {
+      this.context.logger.warn('[ShakaDashAdapter] restore playbackRate after rebuffer failed', e)
+    }
+  }
+
+  /**
+   * Seek via the media element so Shaka's StreamingEngine observes the time
+   * change and rebuffers SegmentBase ranges without reloading the MPD
+   * (reload would rewind the playhead to 0).
+   *
+   * FreeTube sets video.currentTime only — the loading symbol tracks
+   * player "buffering". After scrub we re-publish isBuffering() so the engine
+   * spinner cannot stick when Shaka never re-fires a buffering edge.
    */
   seek(time: number): void {
     const target = Number(time)
     if (!Number.isFinite(target)) return
     const clamped = Math.max(0, target)
     const video = this.context.videoElement()
-    if (video) {
-      try {
-        video.currentTime = clamped
-      } catch (e) {
-        this.context.logger.warn('[ShakaDashAdapter] seek failed', e)
+    if (!video) return
+    const seekPlayer = this.player
+    try {
+      // Avoid no-op seeks that still thrash the segment pipeline.
+      if (Math.abs((video.currentTime || 0) - clamped) < 0.05) {
+        this.syncBufferingToSink()
+        return
       }
+      video.currentTime = clamped
+    } catch (e) {
+      this.context.logger.warn('[ShakaDashAdapter] seek failed', e)
+      return
+    }
+    // Microtask: Shaka updates buffering state after the seek is observed.
+    const syncCurrentSeek = () => {
+      if (this.player !== seekPlayer) return
+      this.syncBufferingToSink()
+    }
+    queueMicrotask(syncCurrentSeek)
+    // Second pass after the segment pipeline has a chance to go STARVING/SATISFIED.
+    window.setTimeout(syncCurrentSeek, 50)
+    window.setTimeout(syncCurrentSeek, 250)
+  }
+
+  /** Publish current Shaka buffering flag to the engine spinner. */
+  private syncBufferingToSink(): void {
+    if (!this.player || !this.sink) return
+    let buffering = false
+    try {
+      buffering = Boolean(this.player.isBuffering())
+    } catch {
+      buffering = false
+    }
+    this.sink.loadingStateChanged(buffering)
+    if (!buffering) {
+      this.restorePlaybackRateAfterRebuffer()
     }
   }
 
+  /**
+   * Soft stall recovery for YouTube DASH:
+   * NEVER re-seek to the same time on the first attempts — that aborts in-flight
+   * googlevideo segment fetches and leaves Shaka permanently STARVING (spinner,
+   * rate=0, no A/V). FreeTube relies on shaka's own streaming engine; we nudge
+   * via retryStreaming and post-buffer rate restoration instead.
+   */
   recoverPlayback(error: PlayerError, context: PlaybackRecoveryContext): PlaybackRecoveryAction {
     const signature = String(error.code || error.message || '').toUpperCase()
-    // Seek/buffer stalls: soft re-seek, never full source reload.
+    const video = this.context.videoElement()
+    const player = this.player
+
     if (signature.includes('STALL') || signature.includes('BUFFER')) {
-      const resumeTime = Number.isFinite(context.currentTime)
-        ? context.currentTime
-        : (this.context.videoElement()?.currentTime ?? 0)
-      this.seek(resumeTime)
+      let retried = false
+      try {
+        // Kick segment pipeline without moving the playhead.
+        if (player && typeof player.retryStreaming === 'function') {
+          retried = Boolean(player.retryStreaming(0.1))
+        }
+      } catch (e) {
+        this.context.logger.warn('[ShakaDashAdapter] retryStreaming failed', e)
+      }
+
+      // Restore rate=0 starve flag + re-arm play; never soft re-seek first.
+      this.restorePlaybackRateAfterRebuffer()
+
+      // Only after several soft retries: micro-nudge the playhead so shaka
+      // re-evaluates the segment map without a full reload.
+      if (!retried && context.retryCount >= 2 && video && Number.isFinite(video.currentTime)) {
+        try {
+          const t = video.currentTime
+          video.currentTime = Math.max(0, t + 0.001)
+        } catch (e) {
+          this.context.logger.warn('[ShakaDashAdapter] stall micro-nudge failed', e)
+        }
+      }
+
       this.context.logger.debug('[ShakaDashAdapter] Stall recovery soft-handled', {
         code: error.code,
         retryCount: context.retryCount,
-        resumeTime,
+        retried,
+        buffering: player?.isBuffering?.() ?? null,
+        paused: video?.paused ?? null,
+        rate: video?.playbackRate ?? null,
       })
       return 'handled'
     }
 
     if (context.retryCount <= 2) {
+      try {
+        player?.retryStreaming?.(0.1)
+      } catch {
+        // ignore
+      }
       return 'handled'
     }
 
-    if (this.player && this.currentSource) {
+    if (player && this.currentSource) {
       try {
-        const resumeTime = this.context.videoElement()?.currentTime ?? context.currentTime ?? 0
-        void this.player.load(this.currentSource).then(() => {
-          const video = this.context.videoElement()
-          if (video && Number.isFinite(resumeTime) && resumeTime > 0) {
-            try {
-              video.currentTime = Math.max(0, resumeTime)
-            } catch (e) {
-              this.context.logger.warn('[ShakaDashAdapter] restore time after reload failed', e)
-            }
+        // FreeTube reload: load(src, playbackPosition, mimeType) — startTime in load
+        // restores SegmentBase state without a second currentTime race.
+        const resumeTime = video?.currentTime ?? context.currentTime ?? 0
+        const startAt = Number.isFinite(resumeTime) && resumeTime > 0 ? resumeTime : null
+        const shouldResume = Boolean(video && !video.paused && !video.ended)
+        void player.load(this.currentSource, startAt, 'application/dash+xml').then(() => {
+          const el = this.context.videoElement()
+          // Preserve the intent captured before load; never start content that
+          // was already paused when recovery began.
+          if (shouldResume && el && !el.ended && this.player === player) {
+            void el.play().catch((e) => {
+              this.context.logger.warn('[ShakaDashAdapter] play after reload failed', e)
+            })
           }
         }).catch((e) => {
           this.context.logger.warn('[ShakaDashAdapter] recover load failed', e)

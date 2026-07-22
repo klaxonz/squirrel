@@ -72,12 +72,13 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     waitingRecoveryTimer = null
   }
 
-  const hasBufferAhead = (video: HTMLVideoElement, minAheadSec = 0.75): boolean => {
+  // FreeTube rebufferingGoal is 0.02s — treat a few frames as enough to drop stall UI.
+  const hasBufferAhead = (video: HTMLVideoElement, minAheadSec = 0.05): boolean => {
     try {
       const t = video.currentTime
       const { buffered } = video
       for (let i = 0; i < buffered.length; i += 1) {
-        if (buffered.start(i) <= t + 0.35 && buffered.end(i) >= t + minAheadSec) {
+        if (buffered.start(i) <= t + 0.1 && buffered.end(i) >= t + minAheadSec) {
           return true
         }
       }
@@ -99,6 +100,7 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
       if (!videoElement || !deps.getLoading() || videoElement.ended) return
       if (Math.abs((videoElement.currentTime ?? 0) - stalledAtTime) > 1) return
       // Already have media queued ahead — drop the spinner, no recovery.
+      // setLoading(false) must also drive store.loading clear (engine emits canplay).
       if (hasBufferAhead(videoElement)) {
         deps.setLoading(false)
         return
@@ -330,16 +332,40 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
     const code = String(error.code || '')
     if (code.includes('STALL')) {
       const videoElement = deps.getVideoElement()
-      // Paused mid-buffer (autoplay policy / accidental pause): just resume.
-      if (videoElement && !videoElement.ended && videoElement.paused) {
-        try {
-          const played = await deps.play()
-          if (played !== false) {
-            deps.logger.debug('[ErrorRecovery] Recovered stall via play()')
-            return true
+      // Paused mid-buffer, or Shaka left rate=0 after rebuffer: restore rate + play.
+      // play() alone while playbackRate is 0 freezes A/V (silent "playing").
+      if (videoElement && !videoElement.ended) {
+        if (videoElement.playbackRate === 0) {
+          try {
+            const intended = Number(videoElement.defaultPlaybackRate)
+            videoElement.playbackRate = Number.isFinite(intended) && intended > 0 ? intended : 1
+          } catch (e) {
+            deps.logger.warn('[ErrorRecovery] restore playbackRate failed', e)
           }
-        } catch (e) {
-          deps.logger.warn('[ErrorRecovery] Stall play() failed', e)
+        }
+        const looksStuck =
+          videoElement.paused
+          || videoElement.playbackRate === 0
+          || (deps.getLoading() && videoElement.readyState >= 2)
+        if (looksStuck) {
+          try {
+            const played = await deps.play()
+            // After a successful play(), if the playhead has media ahead the
+            // stall is cleared even if store.loading has not flipped yet.
+            if (played !== false) {
+              if (hasBufferAhead(videoElement)) {
+                deps.setLoading(false)
+                deps.logger.debug('[ErrorRecovery] Recovered stall via play() + buffer ahead')
+                return true
+              }
+              if (!deps.getLoading()) {
+                deps.logger.debug('[ErrorRecovery] Recovered stall via play()')
+                return true
+              }
+            }
+          } catch (e) {
+            deps.logger.warn('[ErrorRecovery] Stall play() failed', e)
+          }
         }
       }
       // Mid-playback stall while not paused: fall through to quality/retry.

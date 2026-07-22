@@ -37,9 +37,10 @@ export interface StreamSink {
   /**
    * Replaces emit('waiting') / emit('canplay'). The adapter reports its
    * buffering state so the engine can drive the loading-state machine and
-   * autoPlayOnReady. HLS does not call this (it relies on the native <video>
-   * element's waiting/canplay events, which the engine listens to directly);
-   * Dash/Shaka call it because they manage their own buffering.
+   * autoPlayOnReady. The engine MUST re-emit waiting/canplay to listeners
+   * (usePlayer store) — mutating only an internal flag leaves the UI spinner
+   * stuck after YouTube/Shaka rebuffer. HLS does not call this (native
+   * waiting/canplay); Dash/Shaka call it because they manage buffering.
    */
   loadingStateChanged(isLoading: boolean): void
 

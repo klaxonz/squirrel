@@ -16,6 +16,29 @@ export const desktopChromeMajorVersion = desktopChromeVersion.split('.')[0] || '
 export const desktopChromeUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${desktopChromeVersion} Safari/537.36`
 export const androidMobileChromeUserAgent = `Mozilla/5.0 (Linux; Android 12; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${desktopChromeVersion} Mobile Safari/537.36`
 
+/**
+ * FreeTube (`src/main/index.js`): strip Electron / product-name tokens from the
+ * Chromium session UA. googlevideo videoplayback often 403s when the request
+ * advertises `Electron/x.y.z` — official Chrome UA is required for segment
+ * fetches (including Shaka alr redirect follow-ups).
+ */
+export const stripElectronFromUserAgent = (userAgent, productName = APP_NAME) => {
+  const productToken = String(productName || '').trim().toLowerCase()
+  return String(userAgent || '')
+    .split(/\s+/)
+    .filter((part) => {
+      if (!part) return false
+      const normalizedPart = part.toLowerCase()
+      if (normalizedPart.startsWith('electron/')) return false
+      if (
+        productToken
+        && (normalizedPart === productToken || normalizedPart.startsWith(`${productToken}/`))
+      ) return false
+      return true
+    })
+    .join(' ')
+}
+
 export const youtubeOAuthStateFilePath = path.join(repoRoot, 'config', 'youtube_oauth.json')
 
 export const SITE_SESSION_STORAGE_TYPES = [

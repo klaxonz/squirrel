@@ -14,20 +14,22 @@ import { youtubeOAuthStateFilePath } from '../../../constants.mjs';
 import { SessionManager } from './build/session_manager.js';
 
 // Official youtubei.js playback path (FreeTube getLocalVideoInfo + VideoInfo.toDash):
-//   remote WEB session (generate_session_locally: false) → IOS/MWEB player → toDash
+//   remote WEB session (generate_session_locally: false) → MWEB player + poToken → toDash
 //   → data:application/dash+xml + shaka (POST/alr googlevideo filters)
 //
 // Measured (youtubei.js 17.x, Electron main / node entry):
 //   - FreeTube watch path boots WEB with *remote* session + retrieve_innertube_config.
-//     Locally generated sessions (especially ANDROID bootstrap) make IOS/MWEB return
+//     Locally generated sessions (especially ANDROID bootstrap) make MWEB return
 //     LOGIN_REQUIRED / empty streaming_data intermittently → progressive 360p collapse.
-//   - IOS: clear adaptive URLs, reliable toDash once the visitor session is remote-WEB
-//   - MWEB: full ladder on a healthy remote session
+//   - MWEB: full ladder on a healthy remote session; distant byte ranges require
+//     the video-bound poToken even when initial media bytes are accepted.
+//   - IOS: clear adaptive URLs can start without pot, but long seeks 403 because
+//     the generated token is not valid for IOS media URLs.
 //   - ANDROID/WEB player clients: often SABR / "No valid URL to decipher" without pot
 // OAuth WEB/TV is auth-gate only — not the primary streaming session.
 //
 // Order is success-rate order for toDash, not "feature completeness".
-const OFFICIAL_PLAYBACK_CLIENTS = ['IOS', 'MWEB'];
+const OFFICIAL_PLAYBACK_CLIENTS = ['MWEB'];
 // Last-resort clients (often progressive-only or SABR without cipher URLs).
 const OFFICIAL_FALLBACK_CLIENTS = ['ANDROID', 'WEB'];
 // OAuth-only clients used when anonymous hits LOGIN_REQUIRED / bot gate.
@@ -700,8 +702,8 @@ function attachOAuthCredentialPersistence(yt) {
  *
  * Matches FreeTube getLocalVideoInfo session shape:
  *   withPlayer + generateSessionLocally:false + default WEB client_type
- * so IOS/MWEB player calls inherit a real YouTube visitorData / config.
- * Locally generated sessions routinely gate IOS with LOGIN_REQUIRED.
+ * so MWEB player calls inherit a real YouTube visitorData / config.
+ * Locally generated sessions routinely gate MWEB with LOGIN_REQUIRED.
  */
 async function createPlaybackRuntime(cookie = '') {
   const normalizedCookie = typeof cookie === 'string' ? cookie.trim() : '';
@@ -711,7 +713,7 @@ async function createPlaybackRuntime(cookie = '') {
     // FreeTube disables cross-instance session reuse to limit tracking.
     enable_session_cache: false,
     // FreeTube watch path: remote session (sw.js_data / innertube config), not
-    // a locally synthesised ANDROID visitor — required for stable IOS toDash.
+    // a locally synthesised ANDROID visitor — required for stable MWEB toDash.
     generate_session_locally: false,
     retrieve_innertube_config: true,
     retrieve_player: true,
@@ -722,8 +724,7 @@ async function createPlaybackRuntime(cookie = '') {
 
   return {
     yt,
-    // poToken minting is required for official WEB paths (FreeTube).
-    // Keep it for anonymous too — generation is best-effort / auth-gate.
+    // poToken minting is required for MWEB media range authorization.
     sessionManager: new SessionManager(false, {}),
     authMode: normalizedCookie ? 'cookie' : 'anonymous',
   };
@@ -827,9 +828,6 @@ async function buildPoToken(videoId, runtime, attempts) {
       undefined,
       runtime.yt.session.context,
     );
-    if (runtime.yt.session.player && tokenData?.poToken) {
-      runtime.yt.session.player.po_token = tokenData.poToken;
-    }
     return tokenData?.poToken || null;
   } catch (error) {
     attempts.push({
@@ -1101,8 +1099,10 @@ export async function resolveYoutubeiPayload(payload) {
       timings,
       includeDebugTimings,
       attemptLabelPrefix,
-      // Primary clients are IOS/MWEB — no pot required for official toDash.
-      preferPoToken: false,
+      // YouTube may authorize the initial media bytes while rejecting distant
+      // byte ranges. Mint the content-bound token before building the MPD so
+      // seeks do not fail later with googlevideo 403 responses.
+      preferPoToken: true,
     });
 
     if (bestCandidate && bestCandidate.score >= 4) {
@@ -1140,7 +1140,7 @@ export async function resolveYoutubeiPayload(payload) {
   }
 
   // Secondary: ANDROID/WEB on the same anonymous runtime (progressive / partial).
-  // Only after official IOS/MWEB failed — never prefer these over a valid toDash.
+  // Only after official MWEB failed — never prefer these over a valid toDash.
   if (
     (!bestCandidate || bestCandidate.score < 4)
     && requestedClients.length === 0
@@ -1241,18 +1241,29 @@ async function resolveFormatsWithRuntime({
     const attemptClient = attemptLabelPrefix ? `${attemptLabelPrefix}:${client}` : client;
     try {
       let requestOptions = { client };
-      // FreeTube attaches a content-bound poToken for WEB player calls.
-      // IOS returns clear adaptive URLs without pot. MWEB often works without
-      // pot when not LOGIN_REQUIRED; forcing pot on MWEB can yield
-      // "Streaming data not available" and adds seconds.
-      if (preferPoToken && client === 'WEB') {
+      let activePoToken = null;
+      // Player is cached across video resolves; never let a token bound to the
+      // previous video or client leak into URL deciphering for this attempt.
+      if (runtime.yt.session.player) {
+        runtime.yt.session.player.po_token = undefined;
+      }
+      // The same content-bound token must authorize both the player request and
+      // every URL emitted by toDash(). MWEB without it appears playable at byte
+      // zero but distant ranges fail later with googlevideo 403 responses.
+      const requiresPoToken = preferPoToken && (client === 'MWEB' || client === 'WEB');
+      if (requiresPoToken) {
         if (contentPoToken === undefined) {
           const poTokenStart = performance.now();
           contentPoToken = await buildPoToken(videoId, runtime, attempts);
           timings.build_po_token_ms = Number((performance.now() - poTokenStart).toFixed(1));
         }
-        if (contentPoToken) {
-          requestOptions = { client, po_token: contentPoToken };
+        if (!contentPoToken) {
+          throw new Error(`Content-bound PO Token unavailable for ${client}`);
+        }
+        activePoToken = contentPoToken;
+        requestOptions = { client, po_token: activePoToken };
+        if (runtime.yt.session.player) {
+          runtime.yt.session.player.po_token = activePoToken;
         }
       }
 
@@ -1265,7 +1276,7 @@ async function resolveFormatsWithRuntime({
       // Official path first: VideoInfo.toDash() — never hand-build MPD XML.
       const localDashStart = performance.now();
       const localDashManifest = await buildLocalDashManifest(videoInfo, {
-        poToken: contentPoToken || undefined,
+        poToken: activePoToken || undefined,
       });
       const localDashMs = Number((performance.now() - localDashStart).toFixed(1));
 
@@ -1273,7 +1284,7 @@ async function resolveFormatsWithRuntime({
       const normalizedStreamingData = await normalizeStreamingData(
         videoInfo,
         runtime.yt.session.player,
-        contentPoToken,
+        activePoToken,
       );
       const streamingDataMs = Number((performance.now() - streamingDataStart).toFixed(1));
 
@@ -1310,7 +1321,7 @@ async function resolveFormatsWithRuntime({
         playable: score > 0,
         format_score: score,
         official_todash: Boolean(localDashManifest),
-        po_token: Boolean(contentPoToken && requestOptions.po_token),
+        po_token: Boolean(activePoToken && requestOptions.po_token),
         get_info_ms: infoMs,
         collect_formats_ms: formatsMs,
         normalize_streaming_data_ms: streamingDataMs,

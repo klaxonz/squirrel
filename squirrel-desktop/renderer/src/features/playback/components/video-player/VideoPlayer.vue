@@ -968,17 +968,25 @@ watch(isScrubbing, (scrubbing) => {
 
 // When the window regains visibility (e.g. after Alt-Tab or minimize), the
 // <video> element may have dropped its last decoded frame during background
-// throttling and render black even though playback continues. Nudge it by
-// re-seeking to the current time to force a fresh frame paint.
+// throttling and render black even though playback continues.
+//
+// Do NOT re-assign currentTime here. For YouTube DASH (SegmentBase + googlevideo)
+// a same-time seek aborts in-flight segment fetches and leaves Shaka STARVING
+// (rate=0, frozen frame, infinite spinner) — the exact "scrub then dead" failure.
+// A zero-cost paint kick is enough for the black-frame case.
 const handleVisibilityChange = () => {
   if (document.hidden) return
   const video = videoRef.value
   if (!video || video.paused || video.ended) return
-  const t = video.currentTime
-  if (!Number.isFinite(t)) return
-  // Re-assigning currentTime (even to the same value) triggers a seek that
-  // forces the decoder to repaint the current frame.
-  video.currentTime = t
+  try {
+    // Force a compositor repaint without touching the media timeline.
+    const prev = video.style.transform
+    video.style.transform = 'translateZ(0)'
+    video.getBoundingClientRect()
+    video.style.transform = prev
+  } catch {
+    // Ignore style thrash failures; black frame is cosmetic vs dead seek.
+  }
 }
 
 onMounted(() => {

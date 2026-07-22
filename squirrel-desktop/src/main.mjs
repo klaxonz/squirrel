@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow } from 'electron'
 import { prewarmPlaybackProviders } from './playback/providers/index.mjs'
 import { installDesktopBridgeHandlers } from './ipc-handlers.mjs'
-import { installDesktopMediaHeaders } from './media-headers.mjs'
+import { installDesktopMediaHeaders, installDesktopSessionUserAgent } from './media-headers.mjs'
 import { createMainWindow, ensureRendererLoaded, setRendererOrigin } from './window.mjs'
 import { setRendererUrl } from './shell-pages.mjs'
 import { APP_ICON_PATH, APP_ID, __dirname, youtubeOAuthStateFilePath } from './constants.mjs'
@@ -94,6 +94,8 @@ if (!hasSingleInstanceLock) {
     }
 
     installDesktopBridgeHandlers()
+    // FreeTube: strip Electron from session UA before any googlevideo traffic.
+    installDesktopSessionUserAgent()
     const cleanupMediaHeaders = installDesktopMediaHeaders()
     app.on('will-quit', cleanupMediaHeaders)
     createMainWindow()
