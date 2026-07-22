@@ -9,6 +9,7 @@
 
 import shaka from 'shaka-player'
 import { errorMessage } from '@/shared/lib/errorMessage'
+import { chooseOriginalAudioTrack } from './originalAudioTrack'
 
 // ponytail: shaka-player's TypedEvent<->detail surface and track.allowedByApplication
 // field are runtime-only or loosely declared. The few `as any` reads below are
@@ -156,6 +157,16 @@ export class ShakaDashAdapter implements StreamAdapter {
           timeout: 30000,
         },
       },
+      // youtubei.js marks creator-original audio as role=main and localized
+      // dubbing as alternate+dub. Make the correct language the initial Shaka
+      // adaptation set; a post-load refinement below removes DRC/Stable Volume.
+      preferredAudio: [{
+        language: '',
+        role: 'main',
+        label: '',
+        channelCount: 0,
+        codec: '',
+      }],
       // Prefer variants that decode smoothly / with hardware when available.
       preferredDecodingAttributes: ['smooth', 'powerEfficient'],
     })
@@ -175,6 +186,7 @@ export class ShakaDashAdapter implements StreamAdapter {
         })
         return
       }
+      this.selectOriginalAudioTrack()
       this.updateActiveCodecFamily()
       this.updateQualities()
     } catch (error) {
@@ -346,6 +358,20 @@ export class ShakaDashAdapter implements StreamAdapter {
   private getVariantTracks(): ShakaVariantTrack[] {
     if (!this.player) return []
     return this.player.getVariantTracks().filter((track) => track.type === 'variant')
+  }
+
+  private selectOriginalAudioTrack(): void {
+    if (!this.player) return
+    const tracks = this.player.getAudioTracks()
+    const originalTrack = chooseOriginalAudioTrack(tracks)
+    if (!originalTrack || originalTrack.active) return
+
+    this.player.selectAudioTrack(originalTrack, 0)
+    this.context.logger.info('[ShakaDashAdapter] Selected creator-original audio track', {
+      language: originalTrack.language,
+      label: originalTrack.label,
+      roles: originalTrack.roles,
+    })
   }
 
 

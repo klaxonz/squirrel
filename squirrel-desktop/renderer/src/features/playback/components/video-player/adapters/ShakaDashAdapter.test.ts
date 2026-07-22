@@ -5,6 +5,7 @@ import type { PlayerState } from '../core/types'
 
 const shakaMockState = vi.hoisted(() => ({
   latestPlayer: null as unknown,
+  audioTracks: [] as Array<Record<string, unknown>>,
 }))
 
 vi.mock('shaka-player', () => {
@@ -30,6 +31,7 @@ vi.mock('shaka-player', () => {
     destroy = vi.fn(async () => {})
     addEventListener = vi.fn()
     getVariantTracks = vi.fn(() => [track])
+    getAudioTracks = vi.fn(() => shakaMockState.audioTracks)
     getNetworkingEngine = vi.fn(() => networkingEngine)
     getConfiguration = vi.fn(() => ({
       abr: { enabled: true },
@@ -37,6 +39,7 @@ vi.mock('shaka-player', () => {
     }))
     isBuffering = vi.fn(() => false)
     selectVariantTrack = vi.fn()
+    selectAudioTrack = vi.fn()
     retryStreaming = vi.fn(() => true)
 
     constructor() {
@@ -64,7 +67,9 @@ vi.mock('shaka-player', () => {
 import { ShakaDashAdapter } from './ShakaDashAdapter'
 
 interface MockShakaPlayer {
+  configure: ReturnType<typeof vi.fn>
   load: ReturnType<typeof vi.fn>
+  selectAudioTrack: ReturnType<typeof vi.fn>
   selectVariantTrack: ReturnType<typeof vi.fn>
   retryStreaming: ReturnType<typeof vi.fn>
 }
@@ -80,6 +85,7 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     vi.useFakeTimers()
     vi.stubGlobal('window', globalThis)
     shakaMockState.latestPlayer = null
+    shakaMockState.audioTracks = []
   })
 
   afterEach(() => {
@@ -156,6 +162,81 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     await seekCompletion
     expect(seekCompleted).toBe(true)
     expect(sink.error).not.toHaveBeenCalled()
+    adapter.destroy()
+  })
+
+  it('selects creator-original audio instead of a localized dub or Stable Volume mix', async () => {
+    const video = {
+      currentTime: 0,
+      paused: true,
+      ended: false,
+      playbackRate: 1,
+      defaultPlaybackRate: 1,
+    } as HTMLVideoElement
+    const context: StreamContext = {
+      videoElement: () => video,
+      getState: () => ({ quality: null } as PlayerState),
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+    }
+    const sink: StreamSink = {
+      qualitiesResolved: vi.fn(),
+      qualityChanged: vi.fn(),
+      loadingStateChanged: vi.fn(),
+      error: vi.fn(),
+    }
+    const dubbed = {
+      active: true,
+      language: 'ar',
+      label: 'Arabic',
+      primary: false,
+      roles: ['alternate', 'dub'],
+      codecs: 'opus',
+      mimeType: 'audio/webm',
+    }
+    const stableVolume = {
+      active: false,
+      language: 'en-US',
+      label: 'English (US) original (Stable Volume)',
+      primary: true,
+      roles: ['main', 'enhanced-audio-intelligibility'],
+      codecs: 'opus',
+      mimeType: 'audio/webm',
+    }
+    const original = {
+      active: false,
+      language: 'en-US',
+      label: 'English (US) original',
+      primary: true,
+      roles: ['main'],
+      codecs: 'opus',
+      mimeType: 'audio/webm',
+    }
+    shakaMockState.audioTracks = [dubbed, stableVolume, original]
+
+    const adapter = new ShakaDashAdapter(context)
+    adapter.onSourceChange({
+      src: 'data:application/dash+xml;charset=UTF-8,%3CMPD%3E',
+      type: 'dash',
+      playbackEngine: 'shaka',
+    }, sink)
+    await flushPromises()
+
+    const player = shakaMockState.latestPlayer as MockShakaPlayer
+    expect(player.configure).toHaveBeenCalledWith(expect.objectContaining({
+      preferredAudio: [expect.objectContaining({ role: 'main' })],
+    }))
+    expect(player.selectAudioTrack).toHaveBeenCalledWith(original, 0)
+    expect(player.selectAudioTrack).not.toHaveBeenCalledWith(dubbed, expect.anything())
+    expect(player.selectAudioTrack).not.toHaveBeenCalledWith(stableVolume, expect.anything())
+    expect(context.logger.info).toHaveBeenCalledWith(
+      '[ShakaDashAdapter] Selected creator-original audio track',
+      expect.objectContaining({ language: 'en-US' }),
+    )
     adapter.destroy()
   })
 })
