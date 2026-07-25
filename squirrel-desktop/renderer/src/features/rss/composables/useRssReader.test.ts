@@ -62,12 +62,12 @@ describe('useRssReader', () => {
     expect(state.readerFontSize.value).toBe(14)
   })
 
-  it('opens HTTP articles in the isolated desktop content window', async () => {
+  it('opens original articles in the in-app iframe overlay', () => {
     const openWebContent = vi.fn().mockResolvedValue(true)
     vi.mocked(getDesktopBridge).mockReturnValue({
       isDesktop: true,
       openWebContent,
-    })
+    } as never)
     const state = useRssReader({})
     state.readingEntry.value = {
       id: 1,
@@ -84,13 +84,16 @@ describe('useRssReader', () => {
       is_starred: false,
     }
 
-    await expect(state.openInAppBrowser()).resolves.toBe(true)
-    expect(openWebContent).toHaveBeenCalledWith('https://example.com/post')
+    expect(state.openInAppBrowser()).toBe(true)
+    expect(state.showInAppBrowser.value).toBe(true)
+    expect(state.originalArticleUrl.value).toBe('https://example.com/post')
+    expect(state.iframeLoadKey.value).toBe(1)
+    expect(openWebContent).not.toHaveBeenCalled()
   })
 
-  it('rejects non-HTTP article URLs before invoking the desktop bridge', async () => {
+  it('rejects non-HTTP article URLs before showing the overlay', () => {
     const openWebContent = vi.fn().mockResolvedValue(true)
-    vi.mocked(getDesktopBridge).mockReturnValue({ isDesktop: true, openWebContent })
+    vi.mocked(getDesktopBridge).mockReturnValue({ isDesktop: true, openWebContent } as never)
     const onStatus = vi.fn()
     const state = useRssReader({ onStatus })
     state.readingEntry.value = {
@@ -108,7 +111,8 @@ describe('useRssReader', () => {
       is_starred: false,
     }
 
-    await expect(state.openInAppBrowser()).resolves.toBe(false)
+    expect(state.openInAppBrowser()).toBe(false)
+    expect(state.showInAppBrowser.value).toBe(false)
     expect(openWebContent).not.toHaveBeenCalled()
     expect(onStatus).toHaveBeenCalledWith('文章链接无效', true)
   })

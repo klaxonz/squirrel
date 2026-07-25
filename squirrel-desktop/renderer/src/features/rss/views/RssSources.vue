@@ -455,6 +455,82 @@
               </p>
             </article>
           </div>
+
+          <!-- Reeder-style in-app original article overlay (iframe) -->
+          <div
+            v-if="showInAppBrowser"
+            class="rss-browser-overlay"
+          >
+            <header class="rss-browser-toolbar">
+              <div class="flex items-center gap-3 min-w-0">
+                <Button
+                  text severity="secondary"
+                  size="sm" icon-only
+                  @click="closeInAppBrowser"
+                  class="rss-browser-toolbar__button"
+                  title="返回正文"
+                  aria-label="返回正文"
+                >
+                  <AppIcon name="back" class="h-4 w-4" />
+                </Button>
+                <div class="flex flex-col min-w-0 leading-tight">
+                  <span class="rss-browser-toolbar__label">正在浏览原文</span>
+                  <span class="text-xs font-semibold text-foreground/80 truncate max-w-[150px] lg:max-w-[280px]">
+                    {{ readingEntry.title }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="rss-browser-address">
+                <AppIcon name="siteFallback" class="h-3.5 w-3.5 mr-1.5 text-muted-foreground/60 shrink-0" />
+                <span class="truncate">{{ getDisplayDomain(readingEntry.canonical_url) }}</span>
+              </div>
+
+              <div class="flex items-center gap-2 shrink-0">
+                <Button
+                  text severity="secondary"
+                  size="sm" icon-only
+                  @click="refreshIframe"
+                  class="rss-browser-toolbar__button"
+                  title="重新加载"
+                  aria-label="重新加载"
+                >
+                  <AppSpinner v-if="iframeLoading" size="sm" muted />
+                  <AppIcon v-else name="refresh" class="h-4 w-4" />
+                </Button>
+
+                <Button
+                  title="在系统浏览器打开"
+                  aria-label="在系统浏览器打开"
+                  text
+                  severity="secondary"
+                  size="sm"
+                  icon-only
+                  class="rss-browser-toolbar__button"
+                  @click="openExternalUrl(readingEntry.canonical_url)"
+                >
+                  <AppIcon name="externalLink" class="h-4 w-4" />
+                </Button>
+              </div>
+            </header>
+
+            <div class="rss-browser-frame">
+              <iframe
+                v-if="originalArticleUrl"
+                :key="iframeLoadKey"
+                ref="iframeRef"
+                :src="originalArticleUrl"
+                :data-load-key="iframeLoadKey"
+                class="rss-browser-frame__iframe"
+                @load="handleIframeLoad"
+              />
+
+              <div v-if="!isElectron && !iframeLoading" class="rss-browser-alert">
+                <span class="rss-browser-alert__title">原文加载提示</span>
+                <span class="text-muted-foreground">如果页面显示空白或拒绝连接，是由于源站安全策略限制。您可以点击右上角图标在外部浏览器中打开。</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- If no article is selected, render a neutral placeholder -->
@@ -860,9 +936,14 @@ const {
   readerFontFamily,
   showReaderSettings,
   readerSettingsRef,
+  showInAppBrowser,
+  iframeLoading,
+  iframeLoadKey,
+  iframeRef,
+  isElectron,
+  originalArticleUrl,
   activeLightboxImg,
   lightboxScale,
-
   readerFontClass,
   readerContentClass,
   sanitizedArticleHtml,
@@ -872,7 +953,10 @@ const {
   handleContentClick,
   closeLightbox,
   handleKeyDown,
+  refreshIframe,
   openInAppBrowser,
+  closeInAppBrowser,
+  handleIframeLoad,
   entryPreviewText,
   stripHtmlTags,
   formatRelativeTime,
@@ -1065,6 +1149,11 @@ const handleWorkspaceKeyDown = (event: KeyboardEvent) => {
     if (showReaderSettings.value) {
       event.preventDefault()
       showReaderSettings.value = false
+      return
+    }
+    if (showInAppBrowser.value) {
+      event.preventDefault()
+      closeInAppBrowser()
       return
     }
     if (readingEntry.value) {
@@ -1532,6 +1621,108 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   background: hsl(var(--background));
+}
+
+.rss-browser-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  border-inline-start: 1px solid hsl(var(--border) / 0.42);
+  background: hsl(var(--background));
+}
+
+.rss-browser-toolbar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  height: 3.5rem;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid hsl(var(--border) / 0.38);
+  background: hsl(var(--background));
+  padding: 0 1.5rem;
+}
+
+.rss-browser-toolbar__button {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  background: hsl(var(--accent) / 0.3);
+}
+
+.rss-browser-toolbar__label {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.rss-browser-address {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: none;
+  max-width: 20rem;
+  transform: translate(-50%, -50%);
+  align-items: center;
+  border: 1px solid hsl(var(--border) / 0.42);
+  border-radius: var(--radius-md);
+  background: hsl(var(--muted) / 0.28);
+  padding: 0.25rem 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-badge-size);
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .rss-browser-address {
+    display: flex;
+  }
+}
+
+.rss-browser-frame {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  width: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  background: hsl(var(--background));
+}
+
+.rss-browser-frame__iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: hsl(var(--card));
+}
+
+.rss-browser-alert {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 20;
+  display: flex;
+  max-width: 20rem;
+  flex-direction: column;
+  gap: 0.375rem;
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: var(--radius-md);
+  background: hsl(var(--popover));
+  padding: 0.75rem;
+  color: hsl(var(--popover-foreground));
+  font-size: 0.6875rem;
+  line-height: 1.55;
+  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.12);
+}
+
+.rss-browser-alert__title {
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .rss-reader-toolbar__identity {

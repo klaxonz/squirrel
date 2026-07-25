@@ -37,6 +37,12 @@ export function useRssReader(options: {
   const readerFontFamily = ref<ReaderFontFamily>(loadFontFamily())
   const showReaderSettings = ref(false)
   const readerSettingsRef = ref<HTMLElement | null>(null)
+  // Reeder-style original-article overlay (iframe), not a separate OS window.
+  const showInAppBrowser = ref(false)
+  const iframeLoading = ref(false)
+  const iframeLoadKey = ref(0)
+  const iframeRef = ref<HTMLIFrameElement | null>(null)
+  const isElectron = computed(() => getDesktopBridge()?.isDesktop === true)
   const activeLightboxImg = ref<string | null>(null)
   const lightboxScale = ref(1)
   let contentRequestToken = 0
@@ -103,24 +109,36 @@ export function useRssReader(options: {
     }
   }
 
-  const openInAppBrowser = async () => {
-    const url = normalizeHttpUrl(readingEntry.value?.canonical_url)
+  const originalArticleUrl = computed(() => normalizeHttpUrl(readingEntry.value?.canonical_url))
+
+  const refreshIframe = () => {
+    if (!showInAppBrowser.value || !originalArticleUrl.value) return
+    iframeLoading.value = true
+    iframeLoadKey.value += 1
+  }
+
+  const openInAppBrowser = () => {
+    const url = originalArticleUrl.value
     if (!url) {
       options.onStatus?.('文章链接无效', true)
       return false
     }
-    const bridge = getDesktopBridge()
-    if (bridge?.isDesktop && bridge.openWebContent) {
-      let opened = false
-      try {
-        opened = await bridge.openWebContent(url)
-      } catch {
-        opened = false
-      }
-      if (!opened) options.onStatus?.('无法打开应用内浏览器', true)
-      return opened
-    }
-    return openExternalUrl(url)
+    showInAppBrowser.value = true
+    iframeLoading.value = true
+    iframeLoadKey.value += 1
+    return true
+  }
+
+  const closeInAppBrowser = () => {
+    showInAppBrowser.value = false
+    iframeLoading.value = false
+  }
+
+  const handleIframeLoad = (event: Event) => {
+    const target = event.currentTarget
+    if (!(target instanceof HTMLIFrameElement)) return
+    if (target.dataset.loadKey !== String(iframeLoadKey.value)) return
+    iframeLoading.value = false
   }
 
   const entryPreviewText = (entry: Pick<RssEntry, 'excerpt' | 'summary'> | null | undefined) => {
@@ -191,6 +209,7 @@ export function useRssReader(options: {
     () => readingEntry.value?.id ?? null,
     (entryId) => {
       showReaderSettings.value = false
+      closeInAppBrowser()
       nextTick(() => {
         if (readerScrollContainer.value) readerScrollContainer.value.scrollTop = 0
       })
@@ -213,6 +232,12 @@ export function useRssReader(options: {
     readerFontFamily,
     showReaderSettings,
     readerSettingsRef,
+    showInAppBrowser,
+    iframeLoading,
+    iframeLoadKey,
+    iframeRef,
+    isElectron,
+    originalArticleUrl,
     activeLightboxImg,
     lightboxScale,
     readerFontClass,
@@ -223,7 +248,10 @@ export function useRssReader(options: {
     handleContentClick,
     closeLightbox,
     handleKeyDown,
+    refreshIframe,
     openInAppBrowser,
+    closeInAppBrowser,
+    handleIframeLoad,
     entryPreviewText,
     stripHtmlTags,
     formatRelativeTime,
