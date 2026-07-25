@@ -19,6 +19,7 @@ from ._base import (
 logger = logging.getLogger(__name__)
 
 G_READER_PAGE_SIZE = 1000
+G_READER_ITEM_IDS_PAGE_SIZE = 5000
 G_READER_CONTENT_BATCH_SIZE = 500
 G_READER_QUICK_ENTRIES_PER_FEED = 10
 G_READER_QUICK_MAX_ENTRIES = 1000
@@ -158,41 +159,65 @@ class GReaderClient:
                 break
 
     def fetch_all_item_ids(self, stream_id: str = G_READER_READING_LIST_STATE, limit: int = 200000) -> list[str]:
-        params = {'output': 'json', 's': stream_id, 'n': str(limit)}
-        data = self.http_client.get_json(
-            f'{self.config.base_url}/reader/api/0/stream/items/ids?{urllib.parse.urlencode(params)}',
-            self._headers(),
-        )
-        if not isinstance(data, dict):
-            return []
-        ids = data.get('itemRefs') or data.get('itemIds')
-        if isinstance(ids, list):
-            return [_greader_normalize_item_id(i.get('id') if isinstance(i, dict) else i) for i in ids if i]
-        items = data.get('items')
-        if isinstance(items, list):
-            return [_greader_normalize_item_id(i.get('id')) for i in items if isinstance(i, dict) and i.get('id')]
-        return []
+        return self._fetch_item_ids(stream_id=stream_id, limit=limit)
 
     def fetch_unread_item_ids(self, limit: int = 200000) -> list[str]:
-        params = {
-            'output': 'json',
-            's': G_READER_READING_LIST_STATE,
-            'xt': G_READER_READ_STATE,
-            'n': str(limit),
-        }
-        data = self.http_client.get_json(
-            f'{self.config.base_url}/reader/api/0/stream/items/ids?{urllib.parse.urlencode(params)}',
-            self._headers(),
+        return self._fetch_item_ids(
+            stream_id=G_READER_READING_LIST_STATE,
+            exclude_target=G_READER_READ_STATE,
+            limit=limit,
         )
-        if not isinstance(data, dict):
-            return []
-        ids = data.get('itemRefs') or data.get('itemIds')
-        if isinstance(ids, list):
-            return [_greader_normalize_item_id(i.get('id') if isinstance(i, dict) else i) for i in ids if i]
-        items = data.get('items')
-        if isinstance(items, list):
-            return [_greader_normalize_item_id(i.get('id')) for i in items if isinstance(i, dict) and i.get('id')]
-        return []
+
+    def _fetch_item_ids(
+        self,
+        *,
+        stream_id: str,
+        exclude_target: str | None = None,
+        limit: int | None = None,
+        page_size: int = G_READER_ITEM_IDS_PAGE_SIZE,
+    ) -> list[str]:
+        """Page through ``stream/items/ids`` using the GReader continuation token.
+
+        FreshRSS supports ``n`` + ``c`` for this endpoint. Requesting the full unread
+        set (often tens of thousands of IDs) in one shot routinely exceeds the HTTP
+        read timeout and aborts an otherwise successful sync.
+        """
+        result: list[str] = []
+        continuation: str | None = None
+        effective_page_size = max(1, int(page_size))
+
+        while True:
+            remaining = None if limit is None else max(0, limit - len(result))
+            if remaining == 0:
+                break
+            page_limit = effective_page_size if remaining is None else min(effective_page_size, remaining)
+            params: dict[str, str] = {
+                'output': 'json',
+                's': stream_id,
+                'n': str(page_limit),
+            }
+            if exclude_target:
+                params['xt'] = exclude_target
+            if continuation:
+                params['c'] = continuation
+
+            data = self.http_client.get_json(
+                f'{self.config.base_url}/reader/api/0/stream/items/ids?{urllib.parse.urlencode(params)}',
+                self._headers(),
+            )
+            page_ids = _greader_extract_item_ids(data if isinstance(data, dict) else None)
+            if page_ids:
+                result.extend(page_ids)
+
+            continuation = ''
+            if isinstance(data, dict):
+                continuation = str(data.get('continuation') or '').strip()
+            if not page_ids or not continuation:
+                break
+            if limit is not None and len(result) >= limit:
+                break
+
+        return result[:limit] if limit is not None else result
 
     def fetch_items_contents(self, entry_ids: list[str]) -> list[RemoteEntry]:
         base = f'{self.config.base_url}/reader/api/0/stream/items/contents?output=json'
@@ -215,9 +240,7 @@ class GReaderClient:
 
     def _get_token(self) -> str:
         url = f'{self.config.base_url}/reader/api/0/token'
-        request = urllib.request.Request(url, headers=self._headers(), method='GET')
-        with urllib.request.urlopen(request, timeout=20) as response:
-            return response.read().decode('utf-8').strip()
+        return self.http_client.get_text(url, self._headers()).strip()
 
     def update_entry(self, external_entry_id: str, is_read: bool | None = None, is_starred: bool | None = None) -> None:
         try:
@@ -301,6 +324,18 @@ def _greader_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
         is_starred=G_READER_STARRED_STATE in category_set,
         raw_data=dict(item),
     )
+
+
+def _greader_extract_item_ids(data: dict[str, Any] | None) -> list[str]:
+    if not isinstance(data, dict):
+        return []
+    ids = data.get('itemRefs') or data.get('itemIds')
+    if isinstance(ids, list):
+        return [_greader_normalize_item_id(i.get('id') if isinstance(i, dict) else i) for i in ids if i]
+    items = data.get('items')
+    if isinstance(items, list):
+        return [_greader_normalize_item_id(i.get('id')) for i in items if isinstance(i, dict) and i.get('id')]
+    return []
 
 
 def _greader_normalize_item_id(value: Any) -> str:

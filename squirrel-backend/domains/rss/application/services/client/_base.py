@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
-import urllib.parse
-import urllib.request
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
+
+import requests
+from requests.adapters import HTTPAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -71,35 +73,102 @@ def _parse_datetime(value: Any) -> datetime | None:
 
 
 class _JsonHttpClient:
+    """Session-backed JSON client with connection reuse and bounded retries.
+
+    FreshRSS/GReader sync issues many sequential HTTPS calls against the same host.
+    Opening a fresh TLS handshake for each call regularly hit ``handshake timed out``
+    / ``read operation timed out`` on flaky links and aborted the whole account sync.
+    A shared ``requests.Session`` keeps the connection warm; retries stay local to one
+    request so callers keep their own pagination/progress semantics.
+    """
+
+    def __init__(
+        self,
+        *,
+        timeout: float = 60.0,
+        retries: int = 3,
+        retry_backoff_seconds: float = 0.5,
+        session: requests.Session | None = None,
+    ) -> None:
+        self.timeout = timeout
+        self.retries = max(0, int(retries))
+        self.retry_backoff_seconds = max(0.0, float(retry_backoff_seconds))
+        self._session = session or self._build_session()
+
+    @staticmethod
+    def _build_session() -> requests.Session:
+        session = requests.Session()
+        # Keep a small pool so multi-page GReader fetches reuse the TLS socket.
+        adapter = HTTPAdapter(pool_connections=4, pool_maxsize=4, max_retries=0)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+        return session
+
     def get_json(self, url: str, headers: dict[str, str]) -> Any:
-        request = urllib.request.Request(url, headers=headers, method='GET')
-        with urllib.request.urlopen(request, timeout=20) as response:
-            return json.loads(response.read().decode('utf-8'))
+        return self._request('GET', url, headers=headers).json()
+
+    def get_text(self, url: str, headers: dict[str, str]) -> str:
+        return self._request('GET', url, headers=headers).text
 
     def post_text(self, url: str, data: Mapping[str, Any] | Sequence[tuple[str, Any]], headers: dict[str, str]) -> str:
-        body = urllib.parse.urlencode(data).encode('utf-8')
-        request = urllib.request.Request(url, data=body, headers=headers, method='POST')
-        with urllib.request.urlopen(request, timeout=20) as response:
-            return response.read().decode('utf-8')
+        return self._request('POST', url, headers=headers, data=data).text
 
     def post_json(self, url: str, data: dict[str, str], headers: dict[str, str]) -> Any:
-        body = urllib.parse.urlencode(data).encode('utf-8')
-        request = urllib.request.Request(url, data=body, headers=headers, method='POST')
-        with urllib.request.urlopen(request, timeout=20) as response:
-            return json.loads(response.read().decode('utf-8'))
+        return self._request('POST', url, headers=headers, data=data).json()
 
     def put_json(self, url: str, data: dict[str, Any], headers: dict[str, str]) -> str:
-        body = json.dumps(data).encode('utf-8')
-        request = urllib.request.Request(url, data=body, headers=headers, method='PUT')
-        with urllib.request.urlopen(request, timeout=20) as response:
-            return response.read().decode('utf-8')
+        return self._request(
+            'PUT',
+            url,
+            headers={**headers, 'Content-Type': 'application/json'},
+            data=json.dumps(data),
+        ).text
 
     def put_text(self, url: str, headers: dict[str, str]) -> str:
-        request = urllib.request.Request(url, headers=headers, method='PUT')
-        with urllib.request.urlopen(request, timeout=20) as response:
-            return response.read().decode('utf-8')
+        return self._request('PUT', url, headers=headers).text
 
     def delete(self, url: str, headers: dict[str, str]) -> str:
-        request = urllib.request.Request(url, headers=headers, method='DELETE')
-        with urllib.request.urlopen(request, timeout=20) as response:
-            return response.read().decode('utf-8')
+        return self._request('DELETE', url, headers=headers).text
+
+    def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        data: Any = None,
+    ) -> requests.Response:
+        attempts = self.retries + 1
+        last_error: BaseException | None = None
+        for attempt in range(attempts):
+            try:
+                response = self._session.request(
+                    method,
+                    url,
+                    headers=headers,
+                    data=data,
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+                return response
+            except requests.HTTPError:
+                # 4xx/5xx responses are application-level; do not retry.
+                raise
+            except (requests.RequestException, TimeoutError, OSError) as exc:
+                last_error = exc
+                if attempt + 1 >= attempts:
+                    break
+                delay = self.retry_backoff_seconds * (2**attempt)
+                logger.warning(
+                    'Transient RSS HTTP failure on %s %s (attempt %s/%s): %s; retrying in %.1fs',
+                    method,
+                    url,
+                    attempt + 1,
+                    attempts,
+                    exc,
+                    delay,
+                )
+                if delay > 0:
+                    time.sleep(delay)
+        assert last_error is not None
+        raise RssServiceError(f'RSS service request failed: {last_error}') from last_error

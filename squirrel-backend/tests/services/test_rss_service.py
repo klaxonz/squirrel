@@ -3,6 +3,7 @@ from datetime import datetime
 from unittest.mock import patch
 
 import pytest
+import requests
 from sqlalchemy import Text, select
 from sqlalchemy.orm import Session
 
@@ -684,8 +685,73 @@ def test_greader_client_fetches_unread_item_ids():
 
     assert result == ['tag:google.com,2005:reader/item/00065546b380d0dd', 'entry-2']
     assert 'stream/items/ids?' in http_client.urls[0]
+    assert 'n=5000' in http_client.urls[0]
     assert 's=user%2F-%2Fstate%2Fcom.google%2Freading-list' in http_client.urls[0]
     assert 'xt=user%2F-%2Fstate%2Fcom.google%2Fread' in http_client.urls[0]
+
+
+def test_greader_client_paginates_unread_item_ids():
+    class _FakeHttpClient:
+        def __init__(self):
+            self.urls = []
+
+        def post_text(self, url, data, headers):
+            return 'Auth=reader-token\n'
+
+        def get_json(self, url, headers):
+            self.urls.append(url)
+            if 'c=' not in url:
+                return {
+                    'itemRefs': [{'id': '1782612007899357'}],
+                    'continuation': '1782612007899357',
+                }
+            return {'itemRefs': [{'id': 'entry-2'}]}
+
+    http_client = _FakeHttpClient()
+    client = GReaderClient(
+        RssAccountConfig(
+            provider='greader',
+            base_url='https://reader.example.com/api/greader.php',
+            username='alice',
+            credential='api-password',
+        ),
+        http_client=http_client,
+    )
+
+    result = client.fetch_unread_item_ids(limit=200000)
+
+    assert result == ['tag:google.com,2005:reader/item/00065546b380d0dd', 'entry-2']
+    assert len(http_client.urls) == 2
+    assert 'n=5000' in http_client.urls[0]
+    assert 'c=1782612007899357' in http_client.urls[1]
+
+
+def test_json_http_client_retries_transient_timeouts(monkeypatch):
+    from domains.rss.application.services.client._base import _JsonHttpClient
+
+    attempts = {'count': 0}
+
+    class _Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {'ok': True}
+
+    class _Session:
+        def request(self, method, url, headers=None, data=None, timeout=None):
+            attempts['count'] += 1
+            if attempts['count'] < 3:
+                raise requests.exceptions.ReadTimeout('The read operation timed out')
+            return _Response()
+
+    monkeypatch.setattr('domains.rss.application.services.client._base.time.sleep', lambda *_args, **_kwargs: None)
+
+    client = _JsonHttpClient(timeout=1, retries=3, retry_backoff_seconds=0, session=_Session())
+    result = client.get_json('https://reader.example.com/ping', {'Accept': 'application/json'})
+
+    assert result == {'ok': True}
+    assert attempts['count'] == 3
 
 
 def test_greader_normalizes_decimal_item_id_to_entry_id():
