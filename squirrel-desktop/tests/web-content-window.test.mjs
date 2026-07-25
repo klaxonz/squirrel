@@ -5,8 +5,10 @@ import {
   createWebContentOpener,
   createWebContentSession,
   createWebContentWindowOptions,
+  evaluateFrameEmbeddability,
   hardenWebContentSession,
   normalizeWebContentUrl,
+  probeFrameEmbeddability,
   WEB_CONTENT_SESSION_PARTITION,
 } from '../src/web-content-window.mjs'
 
@@ -305,4 +307,75 @@ test('openWebContent keeps its false contract when error reporting also fails', 
   })
 
   assert.equal(await opener.openWebContent('https://example.com/'), false)
+})
+
+test('evaluateFrameEmbeddability blocks DENY and SAMEORIGIN frame options', () => {
+  assert.deepEqual(
+    evaluateFrameEmbeddability({ 'X-Frame-Options': 'DENY' }, 'https://champhoon.xyz/log/hello-astro/'),
+    {
+      ok: true,
+      embeddable: false,
+      reason: 'x-frame-options',
+      finalUrl: 'https://champhoon.xyz/log/hello-astro/',
+      detail: 'DENY',
+    },
+  )
+  assert.equal(
+    evaluateFrameEmbeddability({ 'x-frame-options': 'SAMEORIGIN' }).embeddable,
+    false,
+  )
+  assert.equal(
+    evaluateFrameEmbeddability({ 'content-security-policy': "frame-ancestors 'none'" }).embeddable,
+    false,
+  )
+  assert.equal(
+    evaluateFrameEmbeddability({ 'content-security-policy': "frame-ancestors 'self' https://partner.example" }).embeddable,
+    false,
+  )
+  assert.equal(
+    evaluateFrameEmbeddability({ 'content-security-policy': 'frame-ancestors *' }).embeddable,
+    true,
+  )
+  assert.equal(evaluateFrameEmbeddability({}).embeddable, true)
+})
+
+test('probeFrameEmbeddability uses response headers and discards the body', async () => {
+  const cancelled = []
+  const fetchImpl = async (url, init) => {
+    assert.equal(url, 'https://champhoon.xyz/log/hello-astro/')
+    assert.equal(init.method, 'GET')
+    assert.equal(init.headers.Range, 'bytes=0-0')
+    return {
+      url,
+      headers: {
+        entries: () => [['x-frame-options', 'DENY']],
+      },
+      body: {
+        cancel: async () => {
+          cancelled.push(url)
+        },
+      },
+    }
+  }
+
+  const result = await probeFrameEmbeddability('https://champhoon.xyz/log/hello-astro/', { fetchImpl })
+  assert.deepEqual(result, {
+    ok: true,
+    embeddable: false,
+    reason: 'x-frame-options',
+    finalUrl: 'https://champhoon.xyz/log/hello-astro/',
+    detail: 'DENY',
+  })
+  assert.deepEqual(cancelled, ['https://champhoon.xyz/log/hello-astro/'])
+})
+
+test('probeFrameEmbeddability stays optimistic when the network probe fails', async () => {
+  const result = await probeFrameEmbeddability('https://example.com/post', {
+    fetchImpl: async () => {
+      throw new Error('offline')
+    },
+  })
+  assert.equal(result.ok, false)
+  assert.equal(result.embeddable, true)
+  assert.equal(result.reason, 'probe-failed')
 })

@@ -27,6 +27,155 @@ export const normalizeWebContentUrl = (targetUrl) => {
   }
 }
 
+const FRAME_OPTIONS_DENY = /(?:^|[,;\s])(?:DENY|SAMEORIGIN)(?:$|[,;\s])/i
+
+const parseCspDirectives = (headerValue) => {
+  if (typeof headerValue !== 'string' || !headerValue.trim()) return []
+  return headerValue
+    .split(',')
+    .flatMap((policy) => policy.split(';'))
+    .map((part) => part.trim())
+    .filter(Boolean)
+}
+
+const cspAllowsFraming = (headerValue) => {
+  const directives = parseCspDirectives(headerValue)
+  const frameAncestors = directives.find((directive) => /^frame-ancestors\b/i.test(directive))
+  if (!frameAncestors) return true
+
+  const sources = frameAncestors
+    .replace(/^frame-ancestors\b/i, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  if (sources.length === 0) return true
+  if (sources.some((source) => source === '*' || source === 'https:' || source === 'http:')) return true
+  // Any non-wildcard source list effectively blocks cross-origin app iframes.
+  return false
+}
+
+export const evaluateFrameEmbeddability = (headers = {}, finalUrl = null) => {
+  const normalized = {}
+  for (const [key, value] of Object.entries(headers || {})) {
+    if (value == null) continue
+    normalized[String(key).toLowerCase()] = Array.isArray(value) ? value.join(', ') : String(value)
+  }
+
+  const xFrameOptions = normalized['x-frame-options']
+  if (xFrameOptions && FRAME_OPTIONS_DENY.test(xFrameOptions)) {
+    return {
+      ok: true,
+      embeddable: false,
+      reason: 'x-frame-options',
+      finalUrl: finalUrl || null,
+      detail: xFrameOptions,
+    }
+  }
+
+  const csp = normalized['content-security-policy'] || normalized['content-security-policy-report-only']
+  if (csp && !cspAllowsFraming(csp)) {
+    return {
+      ok: true,
+      embeddable: false,
+      reason: 'csp-frame-ancestors',
+      finalUrl: finalUrl || null,
+      detail: csp,
+    }
+  }
+
+  return {
+    ok: true,
+    embeddable: true,
+    reason: null,
+    finalUrl: finalUrl || null,
+    detail: null,
+  }
+}
+
+const headersToObject = (headers) => {
+  if (!headers) return {}
+  if (typeof headers.entries === 'function') {
+    return Object.fromEntries(headers.entries())
+  }
+  if (typeof headers === 'object') return { ...headers }
+  return {}
+}
+
+/**
+ * Probe whether a remote article can be shown inside an app iframe.
+ * Uses a lightweight GET so CDNs that only attach frame headers on full
+ * responses still report correctly; body is discarded immediately.
+ */
+export const probeFrameEmbeddability = async (targetUrl, { fetchImpl = globalThis.fetch, timeoutMs = 8000 } = {}) => {
+  const normalizedUrl = normalizeWebContentUrl(targetUrl)
+  if (!normalizedUrl) {
+    return {
+      ok: false,
+      embeddable: false,
+      reason: 'invalid-url',
+      finalUrl: null,
+      detail: null,
+    }
+  }
+
+  if (typeof fetchImpl !== 'function') {
+    // Without a network probe, keep the optimistic path so non-desktop
+    // environments can still attempt the iframe.
+    return {
+      ok: true,
+      embeddable: true,
+      reason: 'probe-unavailable',
+      finalUrl: normalizedUrl,
+      detail: null,
+    }
+  }
+
+  const controller = typeof AbortController === 'function' ? new AbortController() : null
+  const timer = controller
+    ? setTimeout(() => controller.abort(), Math.max(1000, timeoutMs))
+    : null
+
+  try {
+    const response = await fetchImpl(normalizedUrl, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller?.signal,
+      headers: {
+        Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+        // Prefer headers without downloading multi-MB article bodies.
+        Range: 'bytes=0-0',
+      },
+    })
+
+    // Drain/cancel body so keep-alive sockets free promptly.
+    try {
+      if (response.body && typeof response.body.cancel === 'function') {
+        await response.body.cancel()
+      } else if (typeof response.arrayBuffer === 'function') {
+        await response.arrayBuffer()
+      }
+    } catch {
+      // Ignore body cleanup failures; headers already decide embeddability.
+    }
+
+    return evaluateFrameEmbeddability(
+      headersToObject(response.headers),
+      response.url || normalizedUrl,
+    )
+  } catch (error) {
+    return {
+      ok: false,
+      embeddable: true,
+      reason: 'probe-failed',
+      finalUrl: normalizedUrl,
+      detail: error instanceof Error ? error.message : String(error),
+    }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export const hardenWebContentSession = (webContentSession) => {
   const hasSessionApi = webContentSession
     && (typeof webContentSession === 'object' || typeof webContentSession === 'function')

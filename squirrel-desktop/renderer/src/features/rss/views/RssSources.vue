@@ -514,9 +514,9 @@
               </div>
             </header>
 
-            <div class="rss-browser-frame">
+            <div ref="inAppWebViewHostRef" class="rss-browser-frame">
               <iframe
-                v-if="originalArticleUrl"
+                v-if="!usesNativeInAppWebView && originalArticleUrl"
                 :key="iframeLoadKey"
                 ref="iframeRef"
                 :src="originalArticleUrl"
@@ -525,7 +525,10 @@
                 @load="handleIframeLoad"
               />
 
-              <div v-if="!isElectron && !iframeLoading" class="rss-browser-alert">
+              <div
+                v-if="!usesNativeInAppWebView && !isElectron && !iframeLoading"
+                class="rss-browser-alert"
+              >
                 <span class="rss-browser-alert__title">原文加载提示</span>
                 <span class="text-muted-foreground">如果页面显示空白或拒绝连接，是由于源站安全策略限制。您可以点击右上角图标在外部浏览器中打开。</span>
               </div>
@@ -940,7 +943,9 @@ const {
   iframeLoading,
   iframeLoadKey,
   iframeRef,
+  inAppWebViewHostRef,
   isElectron,
+  usesNativeInAppWebView,
   originalArticleUrl,
   activeLightboxImg,
   lightboxScale,

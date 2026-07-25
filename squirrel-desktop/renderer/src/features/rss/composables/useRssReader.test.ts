@@ -62,11 +62,69 @@ describe('useRssReader', () => {
     expect(state.readerFontSize.value).toBe(14)
   })
 
-  it('opens original articles in the in-app iframe overlay', () => {
+  it('opens original articles with the native in-app web view on desktop', async () => {
+    const openInAppWebView = vi.fn().mockResolvedValue(true)
+    const hideInAppWebView = vi.fn().mockResolvedValue(true)
     const openWebContent = vi.fn().mockResolvedValue(true)
+    const openExternal = vi.fn().mockResolvedValue(true)
     vi.mocked(getDesktopBridge).mockReturnValue({
       isDesktop: true,
+      openInAppWebView,
+      hideInAppWebView,
+      setInAppWebViewBounds: vi.fn().mockResolvedValue(true),
+      reloadInAppWebView: vi.fn().mockResolvedValue(true),
       openWebContent,
+      openExternal,
+    } as never)
+
+    const host = document.createElement('div')
+    host.getBoundingClientRect = () => ({
+      x: 40,
+      y: 80,
+      top: 80,
+      left: 40,
+      bottom: 680,
+      right: 840,
+      width: 800,
+      height: 600,
+      toJSON: () => ({}),
+    })
+
+    const state = useRssReader({})
+    state.inAppWebViewHostRef.value = host
+    state.readingEntry.value = {
+      id: 1,
+      account_id: 1,
+      feed_id: 1,
+      external_entry_id: 'entry-1',
+      canonical_url: 'https://champhoon.xyz/log/hello-astro/',
+      title: 'Post',
+      summary: null,
+      thumbnail: null,
+      author: null,
+      published_at: null,
+      is_read: false,
+      is_starred: false,
+    }
+
+    await expect(state.openInAppBrowser()).resolves.toBe(true)
+    expect(state.showInAppBrowser.value).toBe(true)
+    expect(openInAppWebView).toHaveBeenCalledWith({
+      url: 'https://champhoon.xyz/log/hello-astro/',
+      bounds: { x: 40, y: 80, width: 800, height: 600 },
+    })
+    expect(openWebContent).not.toHaveBeenCalled()
+    expect(openExternal).not.toHaveBeenCalled()
+
+    state.closeInAppBrowser()
+    expect(state.showInAppBrowser.value).toBe(false)
+    await Promise.resolve()
+    expect(hideInAppWebView).toHaveBeenCalled()
+  })
+
+  it('uses iframe overlay when native in-app web view is unavailable', async () => {
+    vi.mocked(getDesktopBridge).mockReturnValue({
+      isDesktop: false,
     } as never)
     const state = useRssReader({})
     state.readingEntry.value = {
@@ -84,16 +142,18 @@ describe('useRssReader', () => {
       is_starred: false,
     }
 
-    expect(state.openInAppBrowser()).toBe(true)
+    await expect(state.openInAppBrowser()).resolves.toBe(true)
     expect(state.showInAppBrowser.value).toBe(true)
-    expect(state.originalArticleUrl.value).toBe('https://example.com/post')
+    expect(state.usesNativeInAppWebView.value).toBe(false)
     expect(state.iframeLoadKey.value).toBe(1)
-    expect(openWebContent).not.toHaveBeenCalled()
   })
 
-  it('rejects non-HTTP article URLs before showing the overlay', () => {
-    const openWebContent = vi.fn().mockResolvedValue(true)
-    vi.mocked(getDesktopBridge).mockReturnValue({ isDesktop: true, openWebContent } as never)
+  it('rejects non-HTTP article URLs before showing the overlay', async () => {
+    const openInAppWebView = vi.fn()
+    vi.mocked(getDesktopBridge).mockReturnValue({
+      isDesktop: true,
+      openInAppWebView,
+    } as never)
     const onStatus = vi.fn()
     const state = useRssReader({ onStatus })
     state.readingEntry.value = {
@@ -111,9 +171,38 @@ describe('useRssReader', () => {
       is_starred: false,
     }
 
-    expect(state.openInAppBrowser()).toBe(false)
+    await expect(state.openInAppBrowser()).resolves.toBe(false)
     expect(state.showInAppBrowser.value).toBe(false)
-    expect(openWebContent).not.toHaveBeenCalled()
+    expect(openInAppWebView).not.toHaveBeenCalled()
+    expect(onStatus).toHaveBeenCalledWith('文章链接无效', true)
+  })
+
+  it('rejects non-HTTP article URLs before showing the overlay', async () => {
+    const probeFrameEmbeddability = vi.fn()
+    vi.mocked(getDesktopBridge).mockReturnValue({
+      isDesktop: true,
+      probeFrameEmbeddability,
+    } as never)
+    const onStatus = vi.fn()
+    const state = useRssReader({ onStatus })
+    state.readingEntry.value = {
+      id: 1,
+      account_id: 1,
+      feed_id: 1,
+      external_entry_id: 'entry-1',
+      canonical_url: 'javascript:alert(1)',
+      title: 'Post',
+      summary: null,
+      thumbnail: null,
+      author: null,
+      published_at: null,
+      is_read: false,
+      is_starred: false,
+    }
+
+    await expect(state.openInAppBrowser()).resolves.toBe(false)
+    expect(state.showInAppBrowser.value).toBe(false)
+    expect(probeFrameEmbeddability).not.toHaveBeenCalled()
     expect(onStatus).toHaveBeenCalledWith('文章链接无效', true)
   })
 

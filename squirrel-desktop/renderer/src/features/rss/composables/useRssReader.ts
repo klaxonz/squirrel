@@ -1,4 +1,4 @@
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, getCurrentScope, nextTick, onScopeDispose, ref, watch } from 'vue'
 import { usePointerOutside } from '@/shared/composables/usePointerOutside'
 import { getDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { formatDate } from '@/shared/lib/dateFormat'
@@ -37,15 +37,22 @@ export function useRssReader(options: {
   const readerFontFamily = ref<ReaderFontFamily>(loadFontFamily())
   const showReaderSettings = ref(false)
   const readerSettingsRef = ref<HTMLElement | null>(null)
-  // Reeder-style original-article overlay (iframe), not a separate OS window.
+  // Original-article overlay: desktop uses an embedded WebContentsView host;
+  // non-desktop falls back to iframe (subject to X-Frame-Options).
   const showInAppBrowser = ref(false)
   const iframeLoading = ref(false)
   const iframeLoadKey = ref(0)
   const iframeRef = ref<HTMLIFrameElement | null>(null)
+  const inAppWebViewHostRef = ref<HTMLElement | null>(null)
   const isElectron = computed(() => getDesktopBridge()?.isDesktop === true)
+  const usesNativeInAppWebView = computed(() => {
+    const bridge = getDesktopBridge()
+    return Boolean(bridge?.isDesktop && bridge.openInAppWebView)
+  })
   const activeLightboxImg = ref<string | null>(null)
   const lightboxScale = ref(1)
   let contentRequestToken = 0
+  let hostResizeObserver: ResizeObserver | null = null
 
   usePointerOutside(readerSettingsRef, () => {
     showReaderSettings.value = false
@@ -111,20 +118,134 @@ export function useRssReader(options: {
 
   const originalArticleUrl = computed(() => normalizeHttpUrl(readingEntry.value?.canonical_url))
 
-  const refreshIframe = () => {
-    if (!showInAppBrowser.value || !originalArticleUrl.value) return
-    iframeLoading.value = true
-    iframeLoadKey.value += 1
+  const readHostBounds = () => {
+    const host = inAppWebViewHostRef.value
+    if (!host) return null
+    const rect = host.getBoundingClientRect()
+    const width = Math.round(rect.width)
+    const height = Math.round(rect.height)
+    if (width <= 0 || height <= 0) return null
+    return {
+      x: Math.round(rect.left),
+      y: Math.round(rect.top),
+      width,
+      height,
+    }
   }
 
-  const openInAppBrowser = () => {
+  const syncNativeInAppWebViewBounds = async () => {
+    if (!showInAppBrowser.value || !usesNativeInAppWebView.value) return false
+    const bridge = getDesktopBridge()
+    const bounds = readHostBounds()
+    if (!bridge?.setInAppWebViewBounds || !bounds) return false
+    try {
+      return Boolean(await bridge.setInAppWebViewBounds(bounds))
+    } catch {
+      return false
+    }
+  }
+
+  const stopHostBoundsTracking = () => {
+    hostResizeObserver?.disconnect()
+    hostResizeObserver = null
+    window.removeEventListener('resize', handleWindowResizeForInAppWebView)
+  }
+
+  function handleWindowResizeForInAppWebView() {
+    void syncNativeInAppWebViewBounds()
+  }
+
+  const startHostBoundsTracking = () => {
+    stopHostBoundsTracking()
+    if (!usesNativeInAppWebView.value) return
+    const host = inAppWebViewHostRef.value
+    if (host && typeof ResizeObserver === 'function') {
+      hostResizeObserver = new ResizeObserver(() => {
+        void syncNativeInAppWebViewBounds()
+      })
+      hostResizeObserver.observe(host)
+    }
+    window.addEventListener('resize', handleWindowResizeForInAppWebView)
+  }
+
+  const hideNativeInAppWebView = async () => {
+    stopHostBoundsTracking()
+    const bridge = getDesktopBridge()
+    if (!bridge?.hideInAppWebView) return
+    try {
+      await bridge.hideInAppWebView()
+    } catch {
+      // Ignore hide failures during teardown.
+    }
+  }
+
+  const openNativeInAppWebView = async (url: string) => {
+    const bridge = getDesktopBridge()
+    if (!bridge?.openInAppWebView) return false
+    await nextTick()
+    let bounds = readHostBounds()
+    if (!bounds) {
+      await nextTick()
+      bounds = readHostBounds()
+    }
+    if (!bounds) return false
+    try {
+      const opened = await bridge.openInAppWebView({ url, bounds })
+      if (!opened) return false
+      startHostBoundsTracking()
+      iframeLoading.value = false
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const refreshIframe = async () => {
+    if (!showInAppBrowser.value || !originalArticleUrl.value) return
+    iframeLoading.value = true
+    if (usesNativeInAppWebView.value) {
+      const bridge = getDesktopBridge()
+      try {
+        const reloaded = await bridge?.reloadInAppWebView?.()
+        if (reloaded) {
+          iframeLoading.value = false
+          return
+        }
+      } catch {
+        // Fall through to re-open.
+      }
+      const reopened = await openNativeInAppWebView(originalArticleUrl.value)
+      if (!reopened) iframeLoading.value = false
+      return
+    }
+    iframeLoadKey.value += 1
+  }
+  const openInAppBrowser = async () => {
     const url = originalArticleUrl.value
     if (!url) {
       options.onStatus?.('文章链接无效', true)
       return false
     }
+
+    // Entry switches schedule closeInAppBrowser via watch; settle that first so
+    // a follow-up open (e.g. feed open_method=app_browser) is not clobbered.
+    await nextTick()
+
     showInAppBrowser.value = true
     iframeLoading.value = true
+
+    if (usesNativeInAppWebView.value) {
+      const opened = await openNativeInAppWebView(url)
+      if (!opened) {
+        showInAppBrowser.value = false
+        iframeLoading.value = false
+        options.onStatus?.('无法在应用内打开原文', true)
+        return false
+      }
+      return true
+    }
+
+    // Browser / non-desktop: iframe best-effort (sites may still block framing).
     iframeLoadKey.value += 1
     return true
   }
@@ -132,13 +253,21 @@ export function useRssReader(options: {
   const closeInAppBrowser = () => {
     showInAppBrowser.value = false
     iframeLoading.value = false
+    void hideNativeInAppWebView()
   }
 
   const handleIframeLoad = (event: Event) => {
+    if (usesNativeInAppWebView.value) return
     const target = event.currentTarget
     if (!(target instanceof HTMLIFrameElement)) return
     if (target.dataset.loadKey !== String(iframeLoadKey.value)) return
     iframeLoading.value = false
+  }
+
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      void hideNativeInAppWebView()
+    })
   }
 
   const entryPreviewText = (entry: Pick<RssEntry, 'excerpt' | 'summary'> | null | undefined) => {
@@ -236,7 +365,9 @@ export function useRssReader(options: {
     iframeLoading,
     iframeLoadKey,
     iframeRef,
+    inAppWebViewHostRef,
     isElectron,
+    usesNativeInAppWebView,
     originalArticleUrl,
     activeLightboxImg,
     lightboxScale,

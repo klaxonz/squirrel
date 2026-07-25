@@ -22,6 +22,25 @@ interface DesktopAppBridge {
   reloadApp?: () => void
   openExternal?: (targetUrl: string) => Promise<boolean>
   openWebContent?: (targetUrl: string) => Promise<boolean>
+  probeFrameEmbeddability?: (targetUrl: string) => Promise<{
+    ok: boolean
+    embeddable: boolean
+    reason?: string | null
+    finalUrl?: string | null
+    detail?: string | null
+  }>
+  openInAppWebView?: (payload: {
+    url: string
+    bounds: { x: number; y: number; width: number; height: number }
+  }) => Promise<boolean>
+  setInAppWebViewBounds?: (bounds: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }) => Promise<boolean>
+  reloadInAppWebView?: () => Promise<boolean>
+  hideInAppWebView?: () => Promise<boolean>
   resolveBilibiliPlayback?: DesktopPlaybackResolver
   resolveYouTubePlayback?: DesktopPlaybackResolver
   resolveYouTubeSubtitles?: DesktopSubtitleResolver
