@@ -155,6 +155,30 @@ export const isDesktopPlaybackClient = () => {
   return /electron|tauri/i.test(userAgent)
 }
 
+/**
+ * Best-effort warm of the desktop provider cache while the user is still on a
+ * list/history card. Resolve is identity-scoped and short-lived; a hit removes
+ * the full youtubei + PO-token round trip from first paint.
+ */
+export const prefetchDesktopPlaybackSource = (
+  playbackVideo: PlaybackVideoLike & { id?: VideoId | null } | null | undefined,
+): void => {
+  if (!isDesktopPlaybackClient()) return
+
+  const videoUrl = String(playbackVideo?.url || '').trim()
+  if (!videoUrl) return
+
+  const provider = findDesktopPlaybackProvider(videoUrl)
+  if (!provider) return
+
+  void resolveDesktopPlayback(provider, videoUrl, {}, playbackVideo).catch((error) => {
+    Logger.debug('[prefetchDesktopPlaybackSource] skipped', {
+      url: videoUrl,
+      error: error instanceof Error ? error.message : String(error || 'unknown'),
+    })
+  })
+}
+
 export default function useVideoOperations() {
   const getPlaybackSource = async (
     videoId: VideoId,

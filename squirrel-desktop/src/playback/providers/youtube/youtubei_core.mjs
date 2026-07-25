@@ -132,6 +132,68 @@ function saveOAuthState(state) {
   writeFileSync(stateFile, JSON.stringify(state, null, 2), 'utf-8');
 }
 
+/**
+ * youtubei.js emits `{ credentials: OAuth2Tokens }` on auth / update-credentials.
+ * Older squirrel builds sometimes re-persisted that whole event object, producing
+ * `state.credentials.credentials.access_token`. OAuth2.validateTokens only accepts
+ * a flat token bag (access_token + refresh_token + expiry_date).
+ */
+function normalizeOAuthTokens(input) {
+  let tokens = input;
+  for (let depth = 0; depth < 4; depth += 1) {
+    if (!tokens || typeof tokens !== 'object' || Array.isArray(tokens)) {
+      return null;
+    }
+    if (typeof tokens.access_token === 'string' && tokens.access_token) {
+      if (
+        typeof tokens.refresh_token === 'string'
+        && tokens.refresh_token
+        && tokens.expiry_date
+      ) {
+        return tokens;
+      }
+      return null;
+    }
+    // Event payloads and double-wrapped state files.
+    if (tokens.credentials && typeof tokens.credentials === 'object') {
+      tokens = tokens.credentials;
+      continue;
+    }
+    return null;
+  }
+  return null;
+}
+
+function oauthTokensFromSession(yt) {
+  return normalizeOAuthTokens(yt?.session?.oauth?.oauth2_tokens)
+    || normalizeOAuthTokens(yt?.session?.credentials);
+}
+
+/** Read flat OAuth2 tokens from disk; rewrite the file if it was double-wrapped. */
+function readStoredOAuthTokens() {
+  const state = loadOAuthState();
+  if (!state || state.error) {
+    return null;
+  }
+  const tokens = normalizeOAuthTokens(state.credentials);
+  if (!tokens) {
+    return null;
+  }
+  // Heal nested on-disk shape so subsequent signIn / cache-scope reads stay flat.
+  if (state.credentials !== tokens) {
+    try {
+      saveOAuthState({
+        pending: false,
+        credentials: tokens,
+        ...(state.account ? { account: state.account } : {}),
+      });
+    } catch (err) {
+      console.debug('[squirrel-desktop] youtubei_core: heal OAuth state failed', err);
+    }
+  }
+  return tokens;
+}
+
 function extractAccountInfo(yt) {
   try {
     const account =
@@ -306,24 +368,39 @@ function mediaCodecFamily(format) {
 
 /**
  * A DASH SegmentBase MPD makes Shaka resolve the index for every exposed
- * representation before startup. Keep one broadly-supported VP9 (then AVC,
- * then AV1) representation per height for SABR startup and one best stream per
- * original audio track. The regular DASH fallback retains every video codec.
+ * representation before startup. Keep ONE representation per height for SABR
+ * (plus one best stream per original audio track) so first-frame work stays
+ * bounded. Prefer VP9 at a given height when YouTube offers it, but NEVER lock
+ * the whole ladder to a single codec family — many uploads only ship AVC/AV1
+ * above 360p, and a global VP9 filter collapses SABR to a single low rung
+ * while the regular DASH fallback still has 720p/1080p.
  */
+function sabrVideoCodecRank(format) {
+  const family = mediaCodecFamily(format);
+  if (family === 'vp9') return 3;
+  if (family === 'avc') return 2;
+  if (family === 'av1') return 1;
+  return 0;
+}
+
 function selectSabrStartupFormats(playbackFormats) {
   const videoFormats = playbackFormats.filter((format) => Boolean(format?.has_video));
   const audioFormats = playbackFormats.filter((format) => Boolean(format?.has_audio));
-  const availableVideoFamilies = new Set(videoFormats.map((format) => mediaCodecFamily(format)));
-  const selectedVideoFamily = ['vp9', 'avc', 'av1']
-    .find((family) => availableVideoFamilies.has(family));
-  const compatibleVideo = selectedVideoFamily
-    ? videoFormats.filter((format) => mediaCodecFamily(format) === selectedVideoFamily)
-    : videoFormats;
+
   const videoByHeight = new Map();
-  for (const format of compatibleVideo) {
+  for (const format of videoFormats) {
     const height = Number(format?.height || 0);
+    if (height <= 0) continue;
     const current = videoByHeight.get(height);
-    if (!current || Number(format?.bitrate || 0) > Number(current?.bitrate || 0)) {
+    if (!current) {
+      videoByHeight.set(height, format);
+      continue;
+    }
+    const formatScore = sabrVideoCodecRank(format) * 1_000_000_000
+      + Number(format?.bitrate || 0);
+    const currentScore = sabrVideoCodecRank(current) * 1_000_000_000
+      + Number(current?.bitrate || 0);
+    if (formatScore > currentScore) {
       videoByHeight.set(height, format);
     }
   }
@@ -846,23 +923,30 @@ function sessionCacheKey(cookie) {
   return `auth:${createHash('sha1').update(cookie).digest('hex')}`;
 }
 
-function oauthSessionCacheKey(oauthState) {
-  if (!oauthState?.credentials) {
+function oauthSessionCacheKey(oauthTokens) {
+  if (!oauthTokens) {
     return 'oauth:none';
   }
-  return `oauth:${createHash('sha1').update(JSON.stringify(oauthState.credentials)).digest('hex')}`;
+  return `oauth:${createHash('sha1').update(JSON.stringify(oauthTokens)).digest('hex')}`;
 }
 
 function persistOAuthCredentials(credentials) {
-  if (!credentials || typeof credentials !== 'object') return;
-  saveOAuthState({ pending: false, credentials });
+  const tokens = normalizeOAuthTokens(credentials);
+  if (!tokens) return;
+  saveOAuthState({ pending: false, credentials: tokens });
 }
 
 function attachOAuthCredentialPersistence(yt) {
   if (!yt?.session?.on) return;
   try {
-    yt.session.on('update-credentials', (credentials) => {
-      persistOAuthCredentials(credentials || yt.session.credentials);
+    // youtubei.js emits the event object `{ credentials: oauth2_tokens }`.
+    // Always unwrap — persisting the event itself double-nests the file and
+    // makes every later signIn throw "Invalid tokens provided".
+    yt.session.on('update-credentials', (event) => {
+      persistOAuthCredentials(event);
+    });
+    yt.session.on('auth', (event) => {
+      persistOAuthCredentials(event);
     });
   } catch (err) {
     console.debug('[squirrel-desktop] youtubei_core: attachOAuthCredentialPersistence failed', err);
@@ -919,6 +1003,10 @@ function invalidatePlaybackRuntime(cookie = '') {
  * decipherable adaptive URLs for toDash in current youtubei.js.
  */
 async function createOAuthRuntime(oauthCredentials) {
+  const tokens = normalizeOAuthTokens(oauthCredentials);
+  if (!tokens) {
+    throw new Error('Invalid YouTube OAuth tokens');
+  }
   const yt = await Innertube.create({
     cache: createPlayerCache(true),
     enable_session_cache: false,
@@ -929,8 +1017,10 @@ async function createOAuthRuntime(oauthCredentials) {
   });
 
   attachOAuthCredentialPersistence(yt);
-  await yt.session.signIn(oauthCredentials);
-  persistOAuthCredentials(yt.session.credentials || oauthCredentials);
+  await yt.session.signIn(tokens);
+  // session.credentials is not a real getter on current youtubei.js — tokens live
+  // on session.oauth.oauth2_tokens after a successful signIn / refresh.
+  persistOAuthCredentials(oauthTokensFromSession(yt) || tokens);
   return {
     yt,
     sessionManager: new SessionManager(false, {}),
@@ -970,12 +1060,11 @@ async function getPlaybackRuntime(cookie = '') {
 }
 
 async function getOAuthRuntime() {
-  const oauthState = loadOAuthState();
-  const oauthCredentials = oauthState?.credentials || null;
+  const oauthCredentials = readStoredOAuthTokens();
   if (!oauthCredentials) {
     return null;
   }
-  const key = `oauth|${oauthSessionCacheKey(oauthState)}`;
+  const key = `oauth|${oauthSessionCacheKey(oauthCredentials)}`;
   let runtime = SESSION_CACHE.get(key);
   if (runtime) {
     return runtime;
@@ -988,7 +1077,8 @@ async function getOAuthRuntime() {
     );
     return null;
   }
-  const resolvedKey = `oauth|${oauthSessionCacheKey(loadOAuthState())}`;
+  const healed = readStoredOAuthTokens() || oauthCredentials;
+  const resolvedKey = `oauth|${oauthSessionCacheKey(healed)}`;
   SESSION_CACHE.set(resolvedKey, runtime);
   if (resolvedKey !== key) {
     SESSION_CACHE.set(key, runtime);
@@ -1112,8 +1202,8 @@ async function resolveOAuthSetup() {
   }
 
   // If credentials exist, validate them before claiming "authenticated"
-  const existing = loadOAuthState();
-  if (existing?.credentials) {
+  const existingTokens = readStoredOAuthTokens();
+  if (existingTokens) {
     try {
       const validatorYt = await Innertube.create({
         cache: createPlayerCache(false),
@@ -1122,7 +1212,9 @@ async function resolveOAuthSetup() {
         client_type: 'WEB',
         fetch: buildYoutubeFetch(),
       });
-      await validatorYt.session.signIn(existing.credentials);
+      attachOAuthCredentialPersistence(validatorYt);
+      await validatorYt.session.signIn(existingTokens);
+      persistOAuthCredentials(oauthTokensFromSession(validatorYt) || existingTokens);
       return {
         action: 'oauth-setup',
         status: 'authenticated',
@@ -1173,8 +1265,8 @@ async function resolveOAuthSetup() {
       });
     });
 
-    yt.session.on('auth', ({ credentials }) => {
-      saveOAuthState({ pending: false, credentials });
+    yt.session.on('auth', (event) => {
+      persistOAuthCredentials(event);
       if (_oauthFlowInFlight) {
         _oauthFlowInFlight.settled = true;
         _oauthFlowInFlight.resolve({
@@ -1225,12 +1317,13 @@ async function resolveOAuthStatus() {
     // In-flight but no pending in file → auth may have completed
   }
 
-  if (!state?.credentials) {
-    return { status: 'not_configured' };
+  if (state?.error) {
+    return { status: 'error', error: state.error };
   }
 
-  if (state.error) {
-    return { status: 'error', error: state.error };
+  const tokens = readStoredOAuthTokens();
+  if (!tokens) {
+    return { status: 'not_configured' };
   }
 
   // Credentials exist in file. Always validate them through sign-in so the
@@ -1240,9 +1333,10 @@ async function resolveOAuthStatus() {
       cache: createPlayerCache(false),
       fetch: buildYoutubeFetch(),
     });
-    await yt.session.signIn(state.credentials);
-    const updatedCredentials = yt.session.credentials || state.credentials;
-    saveOAuthState({ pending: false, credentials: updatedCredentials });
+    attachOAuthCredentialPersistence(yt);
+    await yt.session.signIn(tokens);
+    const updatedCredentials = oauthTokensFromSession(yt) || tokens;
+    persistOAuthCredentials(updatedCredentials);
     return {
       status: 'authenticated',
       account: extractAccountInfo(yt),
@@ -1264,14 +1358,14 @@ async function resolveOAuthRevoke() {
     _oauthFlowInFlight = null;
   }
 
-  const state = loadOAuthState();
-  if (state?.credentials) {
+  const tokens = readStoredOAuthTokens();
+  if (tokens) {
     try {
       const yt = await Innertube.create({
         cache: createPlayerCache(false),
         fetch: buildYoutubeFetch(),
       });
-      await yt.session.signIn(state.credentials);
+      await yt.session.signIn(tokens);
       await yt.session.signOut();
     } catch {
       console.debug('[squirrel-desktop] youtubei_core: resolveOAuthRevoke signOut failed');
@@ -1332,8 +1426,9 @@ export async function resolveYoutubeiPayload(payload) {
 
   // Reading persisted credentials is cheap. Constructing and signing in an
   // OAuth Innertube runtime is not, so defer that work unless anonymous
-  // playback actually encounters an auth gate.
-  const hasOAuthCredentials = Boolean(loadOAuthState()?.credentials);
+  // playback actually encounters an auth gate. Nested/invalid files must not
+  // count as "has auth" — that would skip the login-required UX path.
+  const hasOAuthCredentials = Boolean(readStoredOAuthTokens());
   const hasAuth = hasOAuthCredentials || playbackRuntime.authMode === 'cookie';
 
   // Primary: FreeTube-style official clients that produce VideoInfo.toDash().
@@ -1535,36 +1630,52 @@ async function resolveFormatsWithRuntime({
       const playbackAdaptiveFormats = selectPlaybackAdaptiveFormats(videoInfo);
       const sabrAdaptiveFormats = selectSabrStartupFormats(playbackAdaptiveFormats);
 
-      const sabrStart = performance.now();
-      const sabrPlayback = await buildSabrPlayback(
-        videoInfo,
-        runtime,
-        activePoToken,
-        sabrAdaptiveFormats,
-      );
-      const sabrMs = Number((performance.now() - sabrStart).toFixed(1));
+      // FreeTube chooses SABR XOR regular DASH, but its SABR path is a cheap
+      // JSON manifest — not VideoInfo.toDash. Our SABR path still needs a
+      // toDash(is_sabr) body for Shaka, and the player relies on
+      // fallback_mpd_content when SABR attach fails. Run both toDash builds
+      // in parallel so wall time is max(sabr, dash), not sum, and first frame
+      // keeps an immediate DASH fallback without a second resolve round trip.
+      const manifestStart = performance.now();
+      const [sabrPlayback, localDashManifest] = await Promise.all([
+        buildSabrPlayback(
+          videoInfo,
+          runtime,
+          activePoToken,
+          sabrAdaptiveFormats,
+        ),
+        buildLocalDashManifest(videoInfo, {
+          poToken: activePoToken || undefined,
+          allowedFormats: playbackAdaptiveFormats,
+        }),
+      ]);
+      const parallelManifestMs = Number((performance.now() - manifestStart).toFixed(1));
+      // Attribute the shared wall clock to both keys for existing log consumers.
+      const sabrMs = parallelManifestMs;
+      const localDashMs = parallelManifestMs;
 
-      // Official path first: VideoInfo.toDash() — never hand-build MPD XML.
-      const localDashStart = performance.now();
-      const localDashManifest = await buildLocalDashManifest(videoInfo, {
-        poToken: activePoToken || undefined,
-        allowedFormats: playbackAdaptiveFormats,
-      });
-      const localDashMs = Number((performance.now() - localDashStart).toFixed(1));
-
-      const streamingDataStart = performance.now();
-      const normalizedStreamingData = await normalizeStreamingData(
-        videoInfo,
-        runtime.yt.session.player,
-        activePoToken,
-      );
-      const streamingDataMs = Number((performance.now() - streamingDataStart).toFixed(1));
+      // Hosted dash/hls URLs are only needed when official toDash failed.
+      let normalizedStreamingData = {
+        dash_manifest_url: null,
+        hls_manifest_url: null,
+        expires: videoInfo?.streaming_data?.expires ?? null,
+      };
+      let streamingDataMs = 0;
+      if (!sabrPlayback && !localDashManifest) {
+        const streamingDataStart = performance.now();
+        normalizedStreamingData = await normalizeStreamingData(
+          videoInfo,
+          runtime.yt.session.player,
+          activePoToken,
+        );
+        streamingDataMs = Number((performance.now() - streamingDataStart).toFixed(1));
+      }
 
       const formatsStart = performance.now();
       let formats;
-      if (localDashManifest) {
+      if (localDashManifest || sabrPlayback) {
         // Metadata-only ladder for the quality menu (heights/itags). No per-itag
-        // decipher — MPD already carries playable BaseURLs from toDash.
+        // decipher — MPD already carries playable BaseURLs from toDash / SABR.
         const streamingData = videoInfo.streaming_data || {};
         const rawFormats = [
           ...(streamingData.formats || []),
@@ -1638,9 +1749,16 @@ async function resolveFormatsWithRuntime({
         return bestCandidate;
       }
     } catch (error) {
+      const playability = error?.info || error?.playability_status || null;
+      const subreason = playability?.error_screen?.subreason?.text
+        || playability?.error_screen?.reason?.text
+        || null;
       attempts.push({
         client: attemptClient,
         error: error?.message || String(error),
+        playability_status: playability?.status || null,
+        playability_reason: playability?.reason || subreason || null,
+        playability_subreason: subreason,
       });
     }
   }
@@ -1650,11 +1768,31 @@ async function resolveFormatsWithRuntime({
 
 function attemptLooksLikeAuthGate(attempt) {
   const status = String(attempt?.playability_status || '').toUpperCase();
-  const reason = String(attempt?.playability_reason || attempt?.error || '');
+  const reason = String(
+    attempt?.playability_reason
+    || attempt?.playability_subreason
+    || attempt?.error
+    || '',
+  );
   if (status === 'LOGIN_REQUIRED' || (status === 'UNPLAYABLE' && /sign in|login/i.test(reason))) {
     return true;
   }
   return /sign in to confirm|not a bot|login required|auth.?required|please sign in/i.test(reason);
+}
+
+function attemptLooksLikePermanentUnavailability(attempt) {
+  const status = String(attempt?.playability_status || '').toUpperCase();
+  const reason = String(
+    attempt?.playability_reason
+    || attempt?.playability_subreason
+    || attempt?.error
+    || '',
+  );
+  if (status === 'LOGIN_REQUIRED') {
+    return false;
+  }
+  return /this video is unavailable|video unavailable|has been removed|removed by the uploader|private video|video has been deleted|account associated with this video has been terminated/i
+    .test(reason);
 }
 
 function buildPlaybackFailureError(attempts, hasAuth) {
@@ -1673,6 +1811,24 @@ function buildPlaybackFailureError(attempts, hasAuth) {
       message: 'YouTube 授权可能已失效，请在设置中重新完成 YouTube TV 授权后重试。',
     };
   }
+
+  const permanent = (attempts || []).find((attempt) => attemptLooksLikePermanentUnavailability(attempt));
+  if (permanent) {
+    const detail = String(
+      permanent.playability_subreason
+      || permanent.playability_reason
+      || permanent.error
+      || '',
+    ).trim();
+    return {
+      type: 'PlaybackResolverError',
+      code: 'YOUTUBE_VIDEO_UNAVAILABLE',
+      message: detail && !/^this video is unavailable$/i.test(detail)
+        ? `该 YouTube 视频不可播放：${detail}`
+        : '该 YouTube 视频不可播放（已删除、设为私密或对当前地区不可用）。',
+    };
+  }
+
   return {
     type: 'PlaybackResolverError',
     code: 'YOUTUBE_NO_FORMAT_SET',

@@ -1,6 +1,7 @@
 import { type ComputedRef, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
+import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import type { RemoteVideoItem, RemoteChannelProfile } from '@/features/video/composables/useRemoteChannel'
 import type { SubscriptionListItem } from '@/features/video/types/subscription'
 
@@ -103,6 +104,7 @@ export function useRemoteVideoMapping(
     if (!item.url || !canPlayRemoteResult(item)) return
     const videoSeed = buildRemoteVideoSeed(item)
     rememberVideoPlaybackSeed(videoSeed)
+    void prefetchDesktopPlaybackSource(videoSeed)
     await router.push({ name: 'VideoPlay', params: { videoId: videoSeed.id } })
   }
 

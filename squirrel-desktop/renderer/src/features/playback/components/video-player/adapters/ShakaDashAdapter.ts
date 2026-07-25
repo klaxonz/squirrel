@@ -45,6 +45,67 @@ type ShakaVariantTrack = shaka.extern.Track
 const HTTP_IN_HEX = 0x68747470
 const RequestType = shaka.net.NetworkingEngine.RequestType
 const POST_SEEK_FRAME_CHECK_DELAY_MS = 3000
+// FreeTube remaps settings "auto" → 720 until auto is fixed. Match that
+// opening rung so first frame is watchable; ABR may still climb afterward.
+const STARTUP_QUALITY_HEIGHT = 720
+
+const trackPrimaryDimension = (track: ShakaVariantTrack): number => {
+  const width = Number(track.width || 0)
+  const height = Number(track.height || 0)
+  if (height <= 0 && width <= 0) return 0
+  // FreeTube setDashQuality: portrait uses width as the "resolution" axis.
+  return height > width && width > 0 ? width : height
+}
+
+/** Runtime Shaka flag; published d.ts omits allowedByApplication. */
+const isApplicationAllowedTrack = (track: ShakaVariantTrack): boolean => {
+  // Read via `in` + unknown so we never fall back to `any`.
+  if (!('allowedByApplication' in track)) return true
+  const flag: unknown = Reflect.get(track, 'allowedByApplication')
+  return flag !== false
+}
+
+/**
+ * Pick the best opening variant for auto quality.
+ * Prefer an exact 720p-class match; otherwise the highest rung at or below
+ * target; finally the lowest available (never jump straight to 4K on open).
+ */
+const pickStartupVariantTrack = (
+  tracks: ShakaVariantTrack[],
+  targetHeight = STARTUP_QUALITY_HEIGHT,
+): ShakaVariantTrack | null => {
+  if (tracks.length === 0) return null
+
+  const scored = tracks
+    .map((track) => ({ track, dimension: trackPrimaryDimension(track) }))
+    .filter((entry) => entry.dimension > 0)
+
+  if (scored.length === 0) {
+    return [...tracks].sort((left, right) => (right.bandwidth || 0) - (left.bandwidth || 0))[0] || null
+  }
+
+  const exact = scored
+    .filter((entry) => entry.dimension === targetHeight)
+    .sort((left, right) => (right.track.bandwidth || 0) - (left.track.bandwidth || 0))
+  if (exact[0]) return exact[0].track
+
+  const atOrBelow = scored
+    .filter((entry) => entry.dimension <= targetHeight)
+    .sort((left, right) => {
+      const dimensionDelta = right.dimension - left.dimension
+      if (dimensionDelta !== 0) return dimensionDelta
+      return (right.track.bandwidth || 0) - (left.track.bandwidth || 0)
+    })
+  if (atOrBelow[0]) return atOrBelow[0].track
+
+  // Everything is above target (rare short ladder) — take the lowest height.
+  const ascending = [...scored].sort((left, right) => {
+    const dimensionDelta = left.dimension - right.dimension
+    if (dimensionDelta !== 0) return dimensionDelta
+    return (left.track.bandwidth || 0) - (right.track.bandwidth || 0)
+  })
+  return ascending[0]?.track ?? null
+}
 
 type VideoWithDecodedFrameCount = HTMLVideoElement & {
   webkitDecodedFrameCount?: number
@@ -64,6 +125,8 @@ export class ShakaDashAdapter implements StreamAdapter {
   private hasInstalledPolyfills = false
   private loadRequestSeq = 0
   private isSelectingQuality = false
+  /** Whether ABR should come back on after the FreeTube-style 720p pin. */
+  private wantAutoQualityAfterStartupPin = true
   private postSeekWatchdogSeq = 0
   private postSeekWatchdogTimer: number | null = null
   private postSeekFrameCallbackId: number | null = null
@@ -132,21 +195,35 @@ export class ShakaDashAdapter implements StreamAdapter {
     // respects the video element size. Our previous 10s/2s goals forced long
     // spinner waits on SegmentBase index seeks; rebufferingGoal 0.02 matches
     // official FreeTube and resumes as soon as a few frames are buffered.
+    //
+    // FreeTube remaps settings "auto" → fixed 720p and leaves abr.enabled false
+    // for the opening selection (pure ABR often opens on a tiny rung, or on a
+    // prior-session high estimate that jumps straight to 1080p/4K and stalls
+    // first frame). We pin ~720p after load, then re-enable ABR so quality can
+    // still climb — see applyStartupQuality.
+    const wantAutoQuality = this.options.enableAutoQuality !== false
     player.configure({
       abr: {
-        enabled: this.options.enableAutoQuality !== false,
+        // Disabled until applyStartupQuality pins the opening rung. Leaving ABR
+        // on during player.load lets a warm bandwidth estimate fetch 1080p/4K
+        // init+media before we can pin, which is the dominant "slow start" after
+        // resolve is already warm.
+        enabled: false,
         // Only affects auto quality — manual selection still free.
         restrictToElementSize: true,
-        // Start ~720p-class then climb once throughput is known.
+        // Seed ~720p-class so the first AbrManager sample after re-enable is
+        // not Shaka's 500 kbps default.
         defaultBandwidthEstimate: 2_000_000,
       },
       streaming: {
         // SABR already has server-side buffer control. Asking Shaka for three
-        // minutes causes an unnecessary UMP request storm; a 30s forward
+        // minutes causes an unnecessary UMP request storm; a shorter forward
         // window is enough for smooth playback and keeps startup responsive.
-        bufferingGoal: source.sabr ? 30 : 180,
+        // 12s ≈ a couple of media segments — far less than FreeTube's 180s DASH
+        // goal, and tighter than our previous 30s SABR window.
+        bufferingGoal: source.sabr ? 12 : 60,
         rebufferingGoal: 0.02,
-        bufferBehind: source.sabr ? 60 : 300,
+        bufferBehind: source.sabr ? 30 : 120,
         retryParameters: {
           maxAttempts: 4,
           baseDelay: 1000,
@@ -179,6 +256,8 @@ export class ShakaDashAdapter implements StreamAdapter {
       // Prefer variants that decode smoothly / with hardware when available.
       preferredDecodingAttributes: ['smooth', 'powerEfficient'],
     })
+    // Stash so applyStartupQuality knows whether to re-enable ABR.
+    this.wantAutoQualityAfterStartupPin = wantAutoQuality
 
     if (source.sabr) {
       this.installSabrPlayback(player, source.sabr)
@@ -214,6 +293,10 @@ export class ShakaDashAdapter implements StreamAdapter {
         return
       }
       this.selectOriginalAudioTrack()
+      // FreeTube: after first load, setDashQuality(defaultQuality||720). Pin a
+      // concrete mid ladder before the first segment so AbrManager cannot open
+      // on 144p/240p; ABR stays enabled and may still climb afterward.
+      this.applyStartupQuality()
       this.updateActiveCodecFamily()
       this.updateQualities()
     } catch (error) {
@@ -439,6 +522,72 @@ export class ShakaDashAdapter implements StreamAdapter {
     })
   }
 
+  /**
+   * FreeTube pins defaultQuality (or 720 when settings say "auto") after the
+   * first load, with abr disabled for that selection. Without an explicit pin:
+   *   - cold AbrManager opens on 144p/240p (undersized layout / 500kbps default)
+   *   - warm AbrManager opens on 1080p/4K from the previous video's throughput
+   * Both feel like "slow start": either mushy first frame or a multi-MB first
+   * segment. Always force the ~720p rung, then re-enable ABR so quality climbs.
+   */
+  private applyStartupQuality(): void {
+    if (!this.player) return
+
+    const tracks = this.getVariantTracks().filter(isApplicationAllowedTrack)
+    if (tracks.length === 0) {
+      this.restoreAbrAfterStartupPin()
+      return
+    }
+
+    const selected = pickStartupVariantTrack(tracks, STARTUP_QUALITY_HEIGHT)
+    if (!selected) {
+      this.restoreAbrAfterStartupPin()
+      return
+    }
+
+    try {
+      this.isSelectingQuality = true
+      // ABR stays off (configured at load). Always pin ~720 even when the active
+      // track is already higher — that warm AbrManager path is the slow start.
+      const active = tracks.find((track) => track.active) || null
+      const activeDimension = active ? trackPrimaryDimension(active) : 0
+      const selectedDimension = trackPrimaryDimension(selected)
+      const needsDownshift = activeDimension > selectedDimension && selectedDimension > 0
+      if (!selected.active || needsDownshift) {
+        // clearBuffer only when abandoning a higher rung so its init/media cannot
+        // monopolize the first network slots; otherwise keep whatever is buffered.
+        this.player.selectVariantTrack(
+          selected,
+          /* clearBuffer */ needsDownshift,
+          /* safeMargin */ 0,
+        )
+      }
+      this.context.logger.debug('[ShakaDashAdapter] Pinned FreeTube-style startup quality', {
+        height: selected.height,
+        bandwidth: selected.bandwidth,
+        id: selected.id,
+        wasActive: selected.active,
+        needsDownshift,
+      })
+    } catch (error) {
+      this.context.logger.warn('[ShakaDashAdapter] Failed to pin startup quality', error)
+    } finally {
+      this.isSelectingQuality = false
+      this.restoreAbrAfterStartupPin()
+    }
+  }
+
+  private restoreAbrAfterStartupPin(): void {
+    if (!this.player) return
+    if (this.wantAutoQualityAfterStartupPin === false) return
+    if (this.options.enableAutoQuality === false) return
+    try {
+      this.player.configure({ abr: { enabled: true } })
+    } catch (error) {
+      this.context.logger.warn('[ShakaDashAdapter] Failed to re-enable ABR after startup pin', error)
+    }
+  }
+
 
 
   private updateActiveCodecFamily(): void {
@@ -637,7 +786,7 @@ export class ShakaDashAdapter implements StreamAdapter {
 
     this.player.configure({ abr: { enabled: false } })
 
-    const tracks = this.getVariantTracks().filter((track) => (track as any).allowedByApplication !== false)
+    const tracks = this.getVariantTracks().filter(isApplicationAllowedTrack)
     if (tracks.length === 0) return
 
     const targetId = String(quality)

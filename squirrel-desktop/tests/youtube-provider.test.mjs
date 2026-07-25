@@ -16,7 +16,7 @@ test('desktop youtube provider keeps complete SABR and DASH payloads for direct 
 
   assert.match(source, /resolveYoutubeiPayload\(\{[\s\S]*?resolution_mode:\s*'all'/)
   assert.doesNotMatch(source, /include_local_dash_manifest:\s*false/)
-  assert.match(source, /const PLAYBACK_CACHE_VERSION = 'mweb-sabr-v1'/)
+  assert.match(source, /const PLAYBACK_CACHE_VERSION = 'mweb-sabr-v4'/)
   assert.match(source, /const cacheKey = `\$\{PLAYBACK_CACHE_VERSION\}\|\$\{videoId\}/)
   assert.match(source, /fallback_mpd_content: officialLocalDash \|\| null/)
   assert.match(source, /stream_type: 'sabr'/)
@@ -34,8 +34,8 @@ test('desktop youtube playback uses official youtubei.js and googlevideo only', 
   assert.doesNotMatch(source, /rewriteYouTubeMpdThroughProxy/)
   assert.doesNotMatch(source, /youtube-media-proxy/)
 
-  // Official path: SABR-flavoured toDash first, regular toDash fallback, then
-  // YouTube-hosted dash_manifest_url.
+  // Official path: SABR-flavoured toDash and regular toDash run in parallel so
+  // wall time is max(), not sum. Regular DASH stays available as Shaka fallback.
   assert.match(source, /VideoInfo\.toDash\(\)/)
   assert.match(source, /streaming_data\.dash_manifest_url/)
   assert.match(coreSource, /manifestInfo\.toDash\(/)
@@ -47,6 +47,14 @@ test('desktop youtube playback uses official youtubei.js and googlevideo only', 
   assert.match(coreSource, /format\?\.is_auto_dubbed/)
   assert.match(coreSource, /format\?\.is_original/)
   assert.match(coreSource, /selectSabrStartupFormats/)
+  // Per-height best itag (VP9 preferred at a height) — never a global codec lock.
+  assert.match(coreSource, /sabrVideoCodecRank/)
+  assert.doesNotMatch(
+    coreSource,
+    /const selectedVideoFamily = \['vp9', 'avc', 'av1'\]/,
+  )
+  assert.match(coreSource, /Promise\.all\(\[\s*buildSabrPlayback\(/)
+  assert.match(coreSource, /buildLocalDashManifest\(videoInfo, \{\s*poToken:/)
 })
 
 test('renderer youtube SABR uses googlevideo + Shaka with DASH fallback', async () => {
@@ -65,6 +73,7 @@ test('renderer youtube SABR uses googlevideo + Shaka with DASH fallback', async 
   const opsSource = await readFile(opsPath, 'utf8')
   const shakaSource = await readFile(shakaPath, 'utf8')
   const sabrShakaSource = await readFile(sabrShakaPath, 'utf8')
+  const providerSource = await readFile(providerPath, 'utf8')
 
   // FreeTube Watch.createLocalDashManifest style data: URL for official toDash body.
   assert.match(opsSource, /data:application\/dash\+xml;charset=UTF-8/)
@@ -89,11 +98,21 @@ test('renderer youtube SABR uses googlevideo + Shaka with DASH fallback', async 
   assert.match(shakaSource, /alr=yes/)
   assert.match(shakaSource, /request\.method = 'POST'/)
   assert.match(shakaSource, /HTTP_IN_HEX/)
-  // FreeTube getPlayerConfig buffer goals (not the old 10s/2s spinner-prone defaults).
-  assert.match(shakaSource, /bufferingGoal:\s*source\.sabr \? 30 : 180/)
-  assert.match(shakaSource, /bufferBehind:\s*source\.sabr \? 60 : 300/)
+  // Startup-tuned buffer goals: SABR keeps a short forward window so first
+  // media isn't a multi-segment storm; rebufferingGoal still FreeTube 0.02.
+  assert.match(shakaSource, /bufferingGoal:\s*source\.sabr \? 12 : 60/)
+  assert.match(shakaSource, /bufferBehind:\s*source\.sabr \? 30 : 120/)
   assert.match(shakaSource, /rebufferingGoal:\s*0\.02/)
   assert.match(shakaSource, /restrictToElementSize:\s*true/)
+  // FreeTube pins ~720p after first load (ABR off during load, then re-enabled).
+  assert.match(shakaSource, /applyStartupQuality/)
+  assert.match(shakaSource, /restoreAbrAfterStartupPin/)
+  assert.match(shakaSource, /STARTUP_QUALITY_HEIGHT = 720/)
+  assert.match(shakaSource, /pickStartupVariantTrack/)
+  assert.match(shakaSource, /enabled: false/)
+  // SABR menu rows must come from the playable SABR format ladder.
+  assert.match(providerSource, /sabrMenuFormats/)
+  assert.match(providerSource, /normalizeMenuFormat/)
 
   // Seek/spinner: StreamSink loadingStateChanged must re-emit waiting/canplay so
   // usePlayer store.loading clears after Shaka rebuffer (not just engine flag).
@@ -254,7 +273,7 @@ test('desktop youtube uses MWEB toDash with mandatory content-bound PO Token', a
   // Must not route playback through OAuth session first.
   assert.doesNotMatch(source, /const AUTHENTICATED_PLAYBACK_CLIENTS/)
   assert.doesNotMatch(source, /const ANONYMOUS_CLIENTS = \['IOS'/)
-  assert.match(source, /const hasOAuthCredentials = Boolean\(loadOAuthState\(\)\?\.credentials\)/)
+  assert.match(source, /const hasOAuthCredentials = Boolean\(readStoredOAuthTokens\(\)\)/)
   assert.match(source, /&& hasOAuthCredentials[\s\S]*?const oauthRuntime = await getOAuthRuntime\(\)/)
   // Must not boot the playback session as ANDROID local (poisoned visitor).
   assert.doesNotMatch(source, /createPlaybackRuntime[\s\S]*?client_type: 'ANDROID'/)
@@ -300,6 +319,31 @@ test('youtube captions treat tv oauth as an authenticated session', async () => 
 
   assert.match(desktopSource, /const hasAuth = runtime\.authMode === 'oauth' \|\| runtime\.authMode === 'cookie';[\s\S]*?const clients = hasAuth \? CAPTIONS_AUTHENTICATED_CLIENTS : CAPTIONS_ANONYMOUS_CLIENTS;/)
   assert.match(pluginSource, /const hasAuth = runtime\.authMode === 'oauth' \|\| runtime\.authMode === 'cookie';[\s\S]*?const clients = hasAuth \? CAPTIONS_AUTHENTICATED_CLIENTS : CAPTIONS_ANONYMOUS_CLIENTS;/)
+})
+
+test('youtube oauth tokens are unwrapped before signIn and persistence', async () => {
+  const desktopSource = await readFile(corePath, 'utf8')
+  const pluginSource = await readFile(pluginCorePath, 'utf8')
+
+  for (const source of [desktopSource, pluginSource]) {
+    assert.match(source, /function normalizeOAuthTokens\(/)
+    assert.match(source, /function readStoredOAuthTokens\(/)
+    assert.match(source, /function persistOAuthCredentials\(/)
+    assert.match(source, /oauthTokensFromSession/)
+    // Must never re-nest the event object `{ credentials }` into state.credentials.
+    assert.doesNotMatch(
+      source,
+      /yt\.session\.on\('auth', \(\{ credentials \}\) => \{\s*saveOAuthState\(\{ pending: false, credentials \}\)/,
+    )
+    assert.doesNotMatch(
+      source,
+      /yt\.session\.on\('update-credentials', \(credentials\) => \{\s*persistOAuthCredentials\(credentials \|\| yt\.session\.credentials\)/,
+    )
+  }
+
+  assert.match(desktopSource, /YOUTUBE_VIDEO_UNAVAILABLE/)
+  assert.match(desktopSource, /attemptLooksLikePermanentUnavailability/)
+  assert.match(desktopSource, /playability_subreason/)
 })
 
 test('desktop youtube subtitles are resolved through the electron bridge', async () => {

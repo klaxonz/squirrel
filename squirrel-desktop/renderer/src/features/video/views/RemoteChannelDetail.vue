@@ -149,6 +149,7 @@ import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import { Button } from '@/shared/ui/button'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
+import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
@@ -467,6 +468,7 @@ const openResult = async (item: RemoteSearchItem) => {
 
   const videoSeed = buildRemoteVideoSeed(item)
   rememberVideoPlaybackSeed(videoSeed)
+  void prefetchDesktopPlaybackSource(videoSeed)
   await router.push({ name: 'VideoPlay', params: { videoId: videoSeed.id } })
 }
 

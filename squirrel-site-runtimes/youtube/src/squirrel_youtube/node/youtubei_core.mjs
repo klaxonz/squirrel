@@ -42,6 +42,69 @@ function saveOAuthState(state) {
   writeFileSync(stateFile, JSON.stringify(state, null, 2), 'utf-8');
 }
 
+/**
+ * youtubei.js emits `{ credentials: OAuth2Tokens }`. Never persist that event
+ * object as-is — it double-nests the state file and breaks later signIn.
+ */
+function normalizeOAuthTokens(input) {
+  let tokens = input;
+  for (let depth = 0; depth < 4; depth += 1) {
+    if (!tokens || typeof tokens !== 'object' || Array.isArray(tokens)) {
+      return null;
+    }
+    if (typeof tokens.access_token === 'string' && tokens.access_token) {
+      if (
+        typeof tokens.refresh_token === 'string'
+        && tokens.refresh_token
+        && tokens.expiry_date
+      ) {
+        return tokens;
+      }
+      return null;
+    }
+    if (tokens.credentials && typeof tokens.credentials === 'object') {
+      tokens = tokens.credentials;
+      continue;
+    }
+    return null;
+  }
+  return null;
+}
+
+function oauthTokensFromSession(yt) {
+  return normalizeOAuthTokens(yt?.session?.oauth?.oauth2_tokens)
+    || normalizeOAuthTokens(yt?.session?.credentials);
+}
+
+function persistOAuthCredentials(credentials) {
+  const tokens = normalizeOAuthTokens(credentials);
+  if (!tokens) return;
+  saveOAuthState({ pending: false, credentials: tokens });
+}
+
+function readStoredOAuthTokens() {
+  const state = loadOAuthState();
+  if (!state || state.error) {
+    return null;
+  }
+  const tokens = normalizeOAuthTokens(state.credentials);
+  if (!tokens) {
+    return null;
+  }
+  if (state.credentials !== tokens) {
+    try {
+      saveOAuthState({
+        pending: false,
+        credentials: tokens,
+        ...(state.account ? { account: state.account } : {}),
+      });
+    } catch {
+      // best-effort heal
+    }
+  }
+  return tokens;
+}
+
 function extractAccountInfo(yt) {
   try {
     const account =
@@ -430,26 +493,28 @@ function sessionCacheKey(cookie) {
   return `auth:${createHash('sha1').update(cookie).digest('hex')}`;
 }
 
-function oauthSessionCacheKey(oauthState) {
-  if (!oauthState?.credentials) {
+function oauthSessionCacheKey(oauthTokens) {
+  if (!oauthTokens) {
     return 'oauth:none';
   }
-  return `oauth:${createHash('sha1').update(JSON.stringify(oauthState.credentials)).digest('hex')}`;
+  return `oauth:${createHash('sha1').update(JSON.stringify(oauthTokens)).digest('hex')}`;
 }
 
 async function createRuntime(cookie, oauthCredentials = null) {
+  const tokens = normalizeOAuthTokens(oauthCredentials);
   const yt = await Innertube.create({
     cache: new UniversalCache(true),
-    generate_session_locally: !cookie && !oauthCredentials,
+    generate_session_locally: !cookie && !tokens,
     retrieve_player: true,
-    client_type: oauthCredentials ? 'WEB' : cookie ? 'MWEB' : 'ANDROID',
+    client_type: tokens ? 'WEB' : cookie ? 'MWEB' : 'ANDROID',
     fetch: buildYoutubeFetch(),
-    ...((cookie && !oauthCredentials) ? { cookie } : {}),
+    ...((cookie && !tokens) ? { cookie } : {}),
   });
 
-  if (oauthCredentials) {
+  if (tokens) {
     try {
-      await yt.session.signIn(oauthCredentials);
+      await yt.session.signIn(tokens);
+      persistOAuthCredentials(oauthTokensFromSession(yt) || tokens);
       return { yt, sessionManager: null, authMode: 'oauth' };
     } catch (err) {
       console.error(`[DEBUG] OAuth signIn failed (credentials will be skipped): ${err?.message || err}`);
@@ -465,8 +530,7 @@ async function createRuntime(cookie, oauthCredentials = null) {
 }
 
 async function getRuntime(cookie) {
-  const oauthState = loadOAuthState();
-  let oauthCredentials = oauthState?.credentials || null;
+  let oauthCredentials = readStoredOAuthTokens();
 
   // If OAuth credentials are present but stale, attempt to validate by creating a session
   if (oauthCredentials) {
@@ -479,6 +543,7 @@ async function getRuntime(cookie) {
         fetch: buildYoutubeFetch(),
       });
       await testYt.session.signIn(oauthCredentials);
+      persistOAuthCredentials(oauthTokensFromSession(testYt) || oauthCredentials);
       // Sign-in succeeded, proceed with OAuth
     } catch {
       // OAuth credentials are invalid or expired, clear them
@@ -486,7 +551,7 @@ async function getRuntime(cookie) {
     }
   }
 
-  const key = `${sessionCacheKey(cookie)}|${oauthSessionCacheKey(oauthState)}`;
+  const key = `${sessionCacheKey(cookie)}|${oauthSessionCacheKey(oauthCredentials)}`;
   let runtime = SESSION_CACHE.get(key);
   if (runtime) {
     return runtime;
@@ -544,8 +609,8 @@ async function resolveOAuthSetup() {
   }
 
   // If credentials exist, validate them before claiming "authenticated"
-  const existing = loadOAuthState();
-  if (existing?.credentials) {
+  const existingTokens = readStoredOAuthTokens();
+  if (existingTokens) {
     try {
       const validatorYt = await Innertube.create({
         cache: new UniversalCache(false),
@@ -554,7 +619,8 @@ async function resolveOAuthSetup() {
         client_type: 'WEB',
         fetch: buildYoutubeFetch(),
       });
-      await validatorYt.session.signIn(existing.credentials);
+      await validatorYt.session.signIn(existingTokens);
+      persistOAuthCredentials(oauthTokensFromSession(validatorYt) || existingTokens);
       return {
         action: 'oauth-setup',
         status: 'authenticated',
@@ -605,8 +671,8 @@ async function resolveOAuthSetup() {
       });
     });
 
-    yt.session.on('auth', ({ credentials }) => {
-      saveOAuthState({ pending: false, credentials });
+    yt.session.on('auth', (event) => {
+      persistOAuthCredentials(event);
       if (_oauthFlowInFlight) {
         _oauthFlowInFlight.settled = true;
         _oauthFlowInFlight.resolve({
@@ -657,12 +723,13 @@ async function resolveOAuthStatus() {
     // In-flight but no pending in file → auth may have completed
   }
 
-  if (!state?.credentials) {
-    return { status: 'not_configured' };
+  if (state?.error) {
+    return { status: 'error', error: state.error };
   }
 
-  if (state.error) {
-    return { status: 'error', error: state.error };
+  const tokens = readStoredOAuthTokens();
+  if (!tokens) {
+    return { status: 'not_configured' };
   }
 
   // Credentials exist in file. Always validate them through sign-in so the
@@ -672,9 +739,9 @@ async function resolveOAuthStatus() {
       cache: new UniversalCache(false),
       fetch: buildYoutubeFetch(),
     });
-    await yt.session.signIn(state.credentials);
-    const updatedCredentials = yt.session.credentials || state.credentials;
-    saveOAuthState({ pending: false, credentials: updatedCredentials });
+    await yt.session.signIn(tokens);
+    const updatedCredentials = oauthTokensFromSession(yt) || tokens;
+    persistOAuthCredentials(updatedCredentials);
     return {
       status: 'authenticated',
       account: extractAccountInfo(yt),
@@ -695,14 +762,14 @@ async function resolveOAuthRevoke() {
     _oauthFlowInFlight = null;
   }
 
-  const state = loadOAuthState();
-  if (state?.credentials) {
+  const tokens = readStoredOAuthTokens();
+  if (tokens) {
     try {
       const yt = await Innertube.create({
         cache: new UniversalCache(false),
         fetch: buildYoutubeFetch(),
       });
-      await yt.session.signIn(state.credentials);
+      await yt.session.signIn(tokens);
       await yt.session.signOut();
     } catch {
       // Ignore errors

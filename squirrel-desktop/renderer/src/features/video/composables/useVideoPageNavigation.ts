@@ -4,6 +4,7 @@ import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
 
 import { getRandomVideo } from '@/shared/api'
 import { rememberVideoPlaybackSeed } from './videoPlaybackSeed'
+import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import type { VideoId, VideoPageVideo } from '@/features/playback/types/videoPlayback'
 
 type RouteLike = Pick<RouteLocationNormalizedLoaded, 'params'>
@@ -59,6 +60,7 @@ export default function useVideoPageNavigation({
     pushRecentlyPlayed(video.value?.id)
     if (videoData) {
       rememberVideoPlaybackSeed(videoData)
+      void prefetchDesktopPlaybackSource(videoData)
     }
 
     if (String(route.params.videoId ?? '') !== targetId) {

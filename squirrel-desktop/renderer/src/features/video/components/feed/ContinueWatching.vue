@@ -35,6 +35,8 @@
           type="button"
           class="continue-workbench__card"
           :aria-label="`继续播放：${item.title}`"
+          @pointerenter="prefetchPlayback(item)"
+          @pointerdown.left="prefetchPlayback(item)"
           @click="$emit('openModal', item)"
         >
           <span class="continue-workbench__visual">
@@ -71,6 +73,7 @@ import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import { Button } from '@/shared/ui/button'
 import { useVideoHistory } from '@/features/video/composables/useVideoHistory'
+import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { Logger } from '@/shared/lib/logger'
@@ -104,6 +107,10 @@ const remainingDuration = (video: VideoHistoryEntry) => formatDuration(
 const itemSource = (video: VideoHistoryEntry) => (
   video.subscriptions?.[0]?.name || video.actors?.[0]?.name || video.site || '本地媒体'
 )
+
+const prefetchPlayback = (video: VideoHistoryEntry) => {
+  void prefetchDesktopPlaybackSource(video)
+}
 
 const load = async () => {
   loading.value = true

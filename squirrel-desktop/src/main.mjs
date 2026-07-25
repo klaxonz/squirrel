@@ -43,9 +43,10 @@ setRendererUrl(rendererUrl)
 setRendererOrigin(rendererUrl, rendererOrigin)
 
 const prewarmDesktopPlaybackProviders = () => {
-  setTimeout(() => {
-    prewarmPlaybackProviders()
-  }, 1000)
+  // Start as soon as the main process is ready. The previous 1s delay left the
+  // first click cold for remote WEB session + BotGuard minter (~1–6s), which
+  // dominated YouTube start latency.
+  prewarmPlaybackProviders()
 }
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
@@ -83,8 +84,10 @@ if (!hasSingleInstanceLock) {
     installDesktopSessionUserAgent()
     const cleanupMediaHeaders = installDesktopMediaHeaders()
     app.on('will-quit', cleanupMediaHeaders)
-    createMainWindow()
+    // Prewarm before createMainWindow so BotGuard + WEB session start while
+    // the renderer boots — first click more often hits a warm minter.
     prewarmDesktopPlaybackProviders()
+    createMainWindow()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {

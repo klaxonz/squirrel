@@ -258,6 +258,7 @@ import {
 import { Input } from '@/shared/ui/input'
 import { Textarea } from '@/shared/ui/textarea'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
+import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import { usePlaylist } from '@/features/video/composables/usePlaylist'
 import { usePlaylistEditor } from '@/features/video/composables/usePlaylistEditor'
 import { usePlaylistDeleteConfirm } from '@/features/video/composables/usePlaylistDeleteConfirm'
@@ -398,6 +399,7 @@ const {
 const playVideo = (item: PlaylistItem) => {
   if (item.video?.id) {
     rememberVideoPlaybackSeed(item.video)
+    void prefetchDesktopPlaybackSource(item.video)
     setCurrentVideo(item.video.id)
     router.push(`/video/${item.video.id}`)
   }

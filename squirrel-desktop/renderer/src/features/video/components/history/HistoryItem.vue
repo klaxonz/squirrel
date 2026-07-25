@@ -15,6 +15,8 @@
       class="history-item__open"
       role="button"
       tabindex="0"
+      @pointerenter="prefetchPlayback"
+      @pointerdown.left="prefetchPlayback"
       @click="emit('open', video)"
       @keydown.enter.prevent="emit('open', video)"
       @keydown.space.prevent="emit('open', video)"
@@ -92,6 +94,7 @@ import { computed } from 'vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import type { VideoHistoryEntry, VideoProfile } from '@/features/video/types/video'
+import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { Button } from '@/shared/ui/button'
@@ -105,6 +108,10 @@ const emit = defineEmits<{
   openProfile: [profile: VideoProfile]
   delete: [historyId: number]
 }>()
+
+const prefetchPlayback = () => {
+  void prefetchDesktopPlaybackSource(props.video)
+}
 
 const timeFormatter = new Intl.DateTimeFormat('zh-CN', {
   hour: '2-digit',

@@ -839,7 +839,8 @@ const openSelectedRemote = () => {
 }
 
 const openRecentVideo = (videoId: number) => {
-  openVideo({ id: videoId })
+  const recent = selectedChannel.value?.recent_videos?.find((item) => item.id === videoId)
+  openVideo(recent ? { id: recent.id, url: recent.url, title: recent.title } : { id: videoId })
 }
 
 const handleReadChange = (payload: { videoId: number; isRead: boolean }) => {

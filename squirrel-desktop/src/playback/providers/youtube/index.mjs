@@ -6,9 +6,10 @@ import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.
 import { createPlaybackCache } from '../shared/playback-cache.mjs'
 
 const RESOLVE_RETRY_DELAY_MS = 500
-// Bump whenever the media authorization contract changes. SABR payloads carry
-// session-bound URLs/config and must never reuse older DASH-only cache entries.
-const PLAYBACK_CACHE_VERSION = 'mweb-sabr-v1'
+// Bump whenever the media authorization / quality-menu / SABR ladder contract
+// changes. v2 restored fallback_mpd_content; v3 aligned menu rows with SABR
+// formats; v4 stops global VP9-only filtering that collapsed mixed ladders.
+const PLAYBACK_CACHE_VERSION = 'mweb-sabr-v4'
 const cache = createPlaybackCache('youtube')
 const playbackRefreshes = new Map()
 
@@ -100,7 +101,12 @@ const qualityBucketKey = (format, fallbackIndex) => {
   if (typeof format?.height === 'number' && format.height > 0) {
     return `height:${format.height}`
   }
-  const label = String(format?.quality_label ?? format?.itag ?? fallbackIndex).trim().toLowerCase()
+  const label = String(
+    format?.quality_label
+    ?? format?.qualityLabel
+    ?? format?.itag
+    ?? fallbackIndex,
+  ).trim().toLowerCase()
   return `label:${label}`
 }
 
@@ -109,16 +115,52 @@ const pickFormats = (formats, predicate) => {
 }
 
 /**
+ * Menu ladder rows accept both youtubei.js adaptive_formats (snake_case +
+ * has_video) and googlevideo buildSabrFormat rows (camelCase, no has_video —
+ * video is implied by height/width).
+ */
+const normalizeMenuFormat = (format) => {
+  if (!format || typeof format !== 'object') return null
+  const height = typeof format.height === 'number' ? format.height : null
+  const width = typeof format.width === 'number' ? format.width : null
+  const mimeType = format.mime_type || format.mimeType || null
+  const qualityLabel = format.quality_label || format.qualityLabel || format.quality || null
+  const hasVideo = format.has_video === true
+    || format.hasVideo === true
+    || (typeof height === 'number' && height > 0)
+    || (typeof width === 'number' && width > 0 && /video\//i.test(String(mimeType || '')))
+  const hasAudio = format.has_audio === true
+    || format.hasAudio === true
+    || Boolean(format.audio_quality || format.audioQuality)
+    || /audio\//i.test(String(mimeType || ''))
+  if (!hasVideo) return null
+  return {
+    ...format,
+    height,
+    width,
+    mime_type: mimeType,
+    quality_label: qualityLabel,
+    bitrate: typeof format.bitrate === 'number' ? format.bitrate : null,
+    itag: format.itag ?? null,
+    url: format.url || undefined,
+    has_video: true,
+    has_audio: hasAudio,
+  }
+}
+
+/**
  * Quality ladder for the player menu. Built from Innertube adaptive_formats
  * (official metadata) — not from homemade MPD parsing.
  */
 const buildQualities = (formats, { requireUrl = true } = {}) => {
   const seen = new Set()
-  const candidates = sortFormats((formats || []).filter((format) => {
-    if (!format?.has_video) return false
-    if (requireUrl && !format?.url) return false
-    return true
-  }))
+  const candidates = sortFormats((formats || [])
+    .map((format) => normalizeMenuFormat(format))
+    .filter((format) => {
+      if (!format) return false
+      if (requireUrl && !format.url) return false
+      return true
+    }))
 
   return candidates.reduce((qualities, format, index) => {
     const bucketKey = qualityBucketKey(format, index)
@@ -142,11 +184,14 @@ const buildQualities = (formats, { requireUrl = true } = {}) => {
 }
 
 const pickQualitySourceFormats = (formats) => {
-  const adaptiveVideo = (formats || []).filter((format) => format?.has_video && !format?.has_audio)
+  const normalized = (formats || [])
+    .map((format) => normalizeMenuFormat(format))
+    .filter(Boolean)
+  const adaptiveVideo = normalized.filter((format) => format.has_video && !format.has_audio)
   if (adaptiveVideo.length > 0) {
     return adaptiveVideo
   }
-  return (formats || []).filter((format) => format?.has_video)
+  return normalized.filter((format) => format.has_video)
 }
 
 /** Higher is better. SABR > official youtubei.js DASH > hosted MPD > progressive. */
@@ -154,6 +199,13 @@ const scoreMappedPayload = (payload) => {
   if (!payload) return 0
   const qualityCount = Array.isArray(payload.qualities) ? payload.qualities.length : 0
   if (payload.stream_type === 'sabr' && payload.mpd_content && payload.sabr) {
+    // SABR without a bundled regular DASH body is still playable, but first-frame
+    // recovery needs a second resolve if Shaka SABR attach fails. Keep it below
+    // the stale-while-revalidate threshold so we never start on a no-fallback
+    // cache entry from older contracts.
+    if (!payload.fallback_mpd_content) {
+      return 1900 + qualityCount * 10
+    }
     return 3000 + qualityCount * 10
   }
   if (payload.stream_type === 'dash' && payload.mpd_content) {
@@ -214,9 +266,9 @@ const mapPlaybackPayload = (response) => {
       supports_manual_quality: false,
     }
   }
-
-  // 1) SABR: YouTube's native ABR request protocol. Keep the regular DASH MPD
-  // in the same payload so the renderer can fall back without another resolve.
+  // 1) SABR: YouTube's native ABR request protocol. Regular toDash is still
+  // built in parallel as fallback_mpd_content so Shaka can recover without a
+  // second provider round trip if SABR attach fails.
   if (
     sabrManifest
     && sabrPlayback?.server_abr_url
@@ -226,7 +278,15 @@ const mapPlaybackPayload = (response) => {
     && sabrPlayback.formats.length > 0
     && Number.isFinite(sabrPlayback?.client_info?.clientName)
   ) {
-    const qualities = buildQualities(pickQualitySourceFormats(formats), { requireUrl: false })
+    // Prefer the SABR-exposed ladder (one codec family per height) so the menu
+    // matches what Shaka can actually select. Full adaptive_formats mix AVC
+    // into height buckets the SABR MPD never contains (e.g. 1080p AVC while
+    // only VP9 itag 248 is playable) — that made manual picks no-op / feel broken.
+    const sabrMenuFormats = Array.isArray(sabrPlayback.formats) ? sabrPlayback.formats : []
+    const qualities = buildQualities(
+      pickQualitySourceFormats(sabrMenuFormats.length > 0 ? sabrMenuFormats : formats),
+      { requireUrl: false },
+    )
     return {
       ...basePayload,
       stream_type: 'sabr',

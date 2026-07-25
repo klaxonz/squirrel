@@ -3,6 +3,7 @@ import type { Router } from 'vue-router'
 import { resolveRemoteChannelSite } from '@/shared/lib/remoteChannelSite'
 import { Logger } from '@/shared/lib/logger'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
+import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import type { VideoProfile } from '@/features/video/types/video'
 
 export type ProfileNavTarget = {
@@ -45,8 +46,12 @@ export function profileDisplayNames(video: VideoWithProfiles | null | undefined,
 }
 
 export function useProfileNavigation(router: Router) {
-  const openVideo = (video: { id: string | number }) => {
+  // List cards already carry url/title. Seed the full object so playback can
+  // start resolving immediately without waiting on /api/video/detail, and kick
+  // off a best-effort desktop resolve so the first paint can hit cache.
+  const openVideo = (video: { id: string | number; url?: string | null; title?: string | null }) => {
     rememberVideoPlaybackSeed(video)
+    void prefetchDesktopPlaybackSource(video)
     router.push({ name: 'VideoPlay', params: { videoId: String(video.id) } })
   }
 

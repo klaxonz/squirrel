@@ -5,6 +5,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import VideoItem from './VideoItem.vue'
 import type { VideoListItem } from '@/features/video/types/video'
 
+const { prefetchDesktopPlaybackSourceMock } = vi.hoisted(() => ({
+  prefetchDesktopPlaybackSourceMock: vi.fn(),
+}))
+
+vi.mock('@/features/video/composables/useVideoOperations', () => ({
+  prefetchDesktopPlaybackSource: prefetchDesktopPlaybackSourceMock,
+}))
 vi.mock('@/shared/icons/AppIcon.vue', () => ({ default: { render: () => null } }))
 vi.mock('@/features/video/components/SubscriptionAvatar.vue', () => ({ default: { render: () => null } }))
 vi.mock('@/features/video/components/feed/VideoThumbnail.vue', () => ({ default: { render: () => null } }))
@@ -29,6 +36,7 @@ const mountedApps: Array<ReturnType<typeof createApp>> = []
 afterEach(() => {
   mountedApps.splice(0).forEach((app) => app.unmount())
   document.body.replaceChildren()
+  prefetchDesktopPlaybackSourceMock.mockReset()
 })
 
 function mountVideoItem(onOpen: (video: VideoListItem) => void, overrides: Partial<VideoListItem> = {}) {
@@ -87,5 +95,23 @@ describe('VideoItem playback activation', () => {
 
     expect(host.querySelector('.video-item__progress')).not.toBeNull()
     expect(host.querySelector('.video-item__flags')).toBeNull()
+  })
+
+  it('prefetches desktop playback on hover and left pointerdown', async () => {
+    const { host, video } = mountVideoItem(vi.fn(), {
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    })
+    const card = host.querySelector<HTMLElement>('.video-item')
+    expect(card).not.toBeNull()
+
+    card?.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }))
+    card?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+    await nextTick()
+
+    expect(prefetchDesktopPlaybackSourceMock).toHaveBeenCalledTimes(2)
+    expect(prefetchDesktopPlaybackSourceMock).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      id: video.id,
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    }))
   })
 })

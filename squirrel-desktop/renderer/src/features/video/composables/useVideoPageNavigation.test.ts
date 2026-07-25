@@ -13,6 +13,9 @@ vi.mock('@/shared/api', () => ({
   getRandomVideo: getRandomVideoMock,
 }))
 
+vi.mock('@/features/video/composables/useVideoOperations', () => ({
+  prefetchDesktopPlaybackSource: vi.fn(),
+}))
 const createNavigation = () => {
   const route = { params: { videoId: '1' } }
   const router = { replace: vi.fn().mockResolvedValue(undefined) } as unknown as Router

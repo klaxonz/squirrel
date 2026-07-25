@@ -131,6 +131,7 @@ import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import HistoryItem from '@/features/video/components/history/HistoryItem.vue'
 import HistoryItemSkeleton from '@/features/video/components/history/HistoryItemSkeleton.vue'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
+import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import { useProfileNavigation } from '@/features/video/composables/useProfileNavigation'
 import type { VideoHistoryEntry, VideoProfile } from '@/features/video/types/video'
 import AppIcon from '@/shared/icons/AppIcon.vue'
@@ -321,6 +322,7 @@ const handleDeleteItem = async (historyId: number) => {
 
 const handleOpenVideo = (video: VideoHistoryEntry) => {
   rememberVideoPlaybackSeed(video)
+  void prefetchDesktopPlaybackSource(video)
   router.push(`/video/${video.id}`)
 }
 

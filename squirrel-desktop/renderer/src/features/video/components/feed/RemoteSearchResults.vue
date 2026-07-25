@@ -125,6 +125,7 @@ import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.v
 import VideoSkeleton from './VideoSkeleton.vue'
 import VideoThumbnail from './VideoThumbnail.vue'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
+import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
@@ -409,6 +410,7 @@ const openResult = async (item: RemoteSearchItem) => {
 
   const videoSeed = buildRemoteVideoSeed(item)
   rememberVideoPlaybackSeed(videoSeed)
+  void prefetchDesktopPlaybackSource(videoSeed)
   await router.push({ name: 'VideoPlay', params: { videoId: videoSeed.id } })
 }
 

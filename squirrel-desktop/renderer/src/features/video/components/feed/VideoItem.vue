@@ -9,6 +9,8 @@
     tabindex="0"
     :aria-label="`播放：${video.title}`"
     @contextmenu.prevent="showContextMenu"
+    @pointerenter="prefetchPlayback"
+    @pointerdown.left="prefetchPlayback"
     @click="handleOpen"
     @keydown.enter.prevent="handleOpen"
     @keydown.space.prevent="handleOpen"
@@ -182,6 +184,7 @@ import {
   pickPrimaryProfile,
   profileDisplayNames,
 } from '@/features/video/composables/useProfileNavigation'
+import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 
 const props = withDefaults(defineProps<{
   video: VideoListItem
@@ -274,6 +277,12 @@ const showContextMenu = async (event: MouseEvent) => {
 }
 
 const handleOpen = () => emit('openModal', props.video)
+
+// Warm the desktop provider cache while the pointer is still on the card so a
+// subsequent click can skip the cold youtubei/PO-token round trip.
+const prefetchPlayback = () => {
+  void prefetchDesktopPlaybackSource(props.video)
+}
 const goToProfile = (profile: VideoProfile | null | undefined) => {
   if (!profile) return
   // Fill profile_source when list payload omitted it, so navigation never

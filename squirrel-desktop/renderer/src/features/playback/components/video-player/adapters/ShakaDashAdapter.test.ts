@@ -3,11 +3,44 @@ import type { StreamContext } from '../core/StreamAdapter'
 import type { StreamSink } from '../core/StreamSink'
 import type { PlayerState } from '../core/types'
 
-const shakaMockState = vi.hoisted(() => ({
-  latestPlayer: null as unknown,
-  audioTracks: [] as Array<Record<string, unknown>>,
-  loadFailures: 0,
-}))
+const shakaMockState = vi.hoisted(() => {
+  const lowTrack = {
+    id: 278,
+    type: 'variant',
+    active: true,
+    width: 256,
+    height: 144,
+    bandwidth: 100_000,
+    videoCodec: 'vp9',
+  }
+  const midTrack = {
+    id: 247,
+    type: 'variant',
+    active: false,
+    width: 1280,
+    height: 720,
+    bandwidth: 1_900_000,
+    videoCodec: 'vp9',
+  }
+  const highTrack = {
+    id: 248,
+    type: 'variant',
+    active: false,
+    width: 1920,
+    height: 1080,
+    bandwidth: 3_400_000,
+    videoCodec: 'vp9',
+  }
+  return {
+    latestPlayer: null as unknown,
+    audioTracks: [] as Array<Record<string, unknown>>,
+    loadFailures: 0,
+    lowTrack,
+    midTrack,
+    highTrack,
+    variantTracks: [lowTrack, midTrack, highTrack] as Array<Record<string, unknown>>,
+  }
+})
 
 const sabrMockState = vi.hoisted(() => ({
   latestAdapter: null as unknown,
@@ -33,15 +66,6 @@ vi.mock('googlevideo/sabr-streaming-adapter', () => {
 })
 
 vi.mock('shaka-player', () => {
-  const track = {
-    id: 137,
-    type: 'variant',
-    active: true,
-    width: 1920,
-    height: 1080,
-    bandwidth: 2_000_000,
-    videoCodec: 'avc1.640028',
-  }
   const networkingEngine = {
     registerRequestFilter: vi.fn(),
     registerResponseFilter: vi.fn(),
@@ -61,7 +85,7 @@ vi.mock('shaka-player', () => {
     })
     destroy = vi.fn(async () => {})
     addEventListener = vi.fn()
-    getVariantTracks = vi.fn(() => [track])
+    getVariantTracks = vi.fn(() => shakaMockState.variantTracks)
     getAudioTracks = vi.fn(() => shakaMockState.audioTracks)
     getNetworkingEngine = vi.fn(() => networkingEngine)
     getConfiguration = vi.fn(() => ({
@@ -119,6 +143,15 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     shakaMockState.latestPlayer = null
     shakaMockState.audioTracks = []
     shakaMockState.loadFailures = 0
+    // Default ladder: 144p active (cold ABR case).
+    shakaMockState.lowTrack.active = true
+    shakaMockState.midTrack.active = false
+    shakaMockState.highTrack.active = false
+    shakaMockState.variantTracks = [
+      shakaMockState.lowTrack,
+      shakaMockState.midTrack,
+      shakaMockState.highTrack,
+    ]
     sabrMockState.latestAdapter = null
   })
 
@@ -175,7 +208,7 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     await vi.advanceTimersByTimeAsync(3000)
 
     expect(player.selectVariantTrack).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 137, active: true }),
+      expect.objectContaining({ id: 278, active: true }),
       true,
       0,
     )
@@ -271,6 +304,112 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
       '[ShakaDashAdapter] Selected creator-original audio track',
       expect.objectContaining({ language: 'en-US' }),
     )
+    adapter.destroy()
+  })
+
+  it('pins FreeTube-style 720p startup quality without disabling ABR', async () => {
+    const video = {
+      currentTime: 0,
+      paused: true,
+      ended: false,
+      playbackRate: 1,
+      defaultPlaybackRate: 1,
+    } as HTMLVideoElement
+    const context: StreamContext = {
+      videoElement: () => video,
+      getState: () => ({ quality: null } as PlayerState),
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+    }
+    const sink: StreamSink = {
+      qualitiesResolved: vi.fn(),
+      qualityChanged: vi.fn(),
+      loadingStateChanged: vi.fn(),
+      error: vi.fn(),
+    }
+
+    const adapter = new ShakaDashAdapter(context)
+    adapter.onSourceChange({
+      src: 'data:application/dash+xml;charset=UTF-8,%3CMPD%3E',
+      type: 'dash',
+      playbackEngine: 'shaka',
+    }, sink)
+    await flushPromises()
+
+    const player = shakaMockState.latestPlayer as MockShakaPlayer
+    // Load starts with ABR off so a warm bandwidth estimate cannot fetch
+    // 1080p/4K before the pin; defaultBandwidthEstimate still seeds ~720p.
+    expect(player.configure).toHaveBeenCalledWith(expect.objectContaining({
+      abr: expect.objectContaining({
+        enabled: false,
+        defaultBandwidthEstimate: 2_000_000,
+      }),
+    }))
+    // Opening track was 144p; pin exact 720p without clearing buffer.
+    expect(player.selectVariantTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 247, height: 720 }),
+      false,
+      0,
+    )
+    // ABR re-enabled after the pin so quality can still climb.
+    expect(player.configure).toHaveBeenCalledWith({ abr: { enabled: true } })
+    adapter.destroy()
+  })
+
+  it('downshifts a warm 1080p active track to 720p before first media', async () => {
+    // Warm ABR case: prior throughput left 1080p as the active opening track.
+    shakaMockState.lowTrack.active = false
+    shakaMockState.midTrack.active = false
+    shakaMockState.highTrack.active = true
+    shakaMockState.variantTracks = [
+      shakaMockState.highTrack,
+      shakaMockState.midTrack,
+      shakaMockState.lowTrack,
+    ]
+
+    const video = {
+      currentTime: 0,
+      paused: true,
+      ended: false,
+      playbackRate: 1,
+      defaultPlaybackRate: 1,
+    } as HTMLVideoElement
+    const context: StreamContext = {
+      videoElement: () => video,
+      getState: () => ({ quality: null } as PlayerState),
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+    }
+    const sink: StreamSink = {
+      qualitiesResolved: vi.fn(),
+      qualityChanged: vi.fn(),
+      loadingStateChanged: vi.fn(),
+      error: vi.fn(),
+    }
+
+    const adapter = new ShakaDashAdapter(context)
+    adapter.onSourceChange({
+      src: 'data:application/dash+xml;charset=UTF-8,%3CMPD%3E',
+      type: 'dash',
+      playbackEngine: 'shaka',
+    }, sink)
+    await flushPromises()
+
+    const player = shakaMockState.latestPlayer as MockShakaPlayer
+    expect(player.selectVariantTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 247, height: 720 }),
+      true,
+      0,
+    )
+    expect(player.configure).toHaveBeenCalledWith({ abr: { enabled: true } })
     adapter.destroy()
   })
 
