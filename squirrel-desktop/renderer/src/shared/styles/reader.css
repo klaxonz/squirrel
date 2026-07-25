@@ -10,10 +10,10 @@
   --reader-line-height: 1.75;
   --reader-paragraph-gap: 1.15em;
   --reader-block-gap: 1.35em;
-  --reader-measure: 42rem;
+  --reader-measure: var(--app-content-reading-max, 56rem);
 
   width: 100%;
-  max-width: var(--reader-measure);
+  max-width: none;
   color: hsl(var(--foreground) / 0.9);
   font-family: var(--reader-font, var(--reader-font-sans));
   font-size: inherit;

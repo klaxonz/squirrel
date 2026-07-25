@@ -50,7 +50,7 @@
   --app-content-media-gutter: clamp(1.25rem, 2.5vw, 2.5rem);
   --app-content-table-max: 96rem;
   --app-content-form-max: 64rem;
-  --app-content-reading-max: 48rem;
+  --app-content-reading-max: 56rem;
   --app-page-max-width: var(--app-content-table-max);
   --app-page-readable-width: var(--app-content-reading-max);
 

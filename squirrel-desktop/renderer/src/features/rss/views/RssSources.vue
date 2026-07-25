@@ -1773,9 +1773,7 @@ onUnmounted(() => {
 }
 
 .rss-reader-article {
-  width: min(100%, 42rem);
-  max-width: 42rem;
-  margin-inline: auto;
+  width: 100%;
 }
 
 .rss-reader-article__header {
