@@ -10,7 +10,7 @@ import {
   updateRssEntries,
   updateRssEntry,
 } from '@/shared/api'
-import type { RssEntry, RssFeed, RecentEntry, ReadBatchMode } from '@/features/rss/types/rss'
+import type { RssEntry, RssEntryFilter, RssFeed, RecentEntry, ReadBatchMode } from '@/features/rss/types/rss'
 
 // 单次 push 之前的状态快照。当用户从「全部/筛选列表」跳进某个 feed
 // （通过右键菜单"查看该源"、或在阅读面板点订阅源名字），需要把
@@ -22,11 +22,25 @@ import type { RssEntry, RssFeed, RecentEntry, ReadBatchMode } from '@/features/r
 // 把「出栈」接进应用导航，让鼠标、Alt+← 和快捷键行为一致。
 export interface FeedNavSnapshot {
   selectedFeedId: number | null
-  activeFilter: 'all' | 'unread' | 'starred' | 'recent'
+  activeFilter: RssEntryFilter
   page: number
   entries: RssEntry[]
   totalEntries: number
   readingEntry: RssEntry | null
+}
+
+const RSS_DEFAULT_ENTRY_FILTER_KEY = 'rss_default_entry_filter'
+const RSS_ENTRY_FILTERS: readonly RssEntryFilter[] = ['all', 'unread', 'starred', 'recent']
+
+export const loadDefaultRssEntryFilter = (): RssEntryFilter => {
+  const stored = localStorage.getItem(RSS_DEFAULT_ENTRY_FILTER_KEY)
+  return RSS_ENTRY_FILTERS.includes(stored as RssEntryFilter)
+    ? (stored as RssEntryFilter)
+    : 'all'
+}
+
+export const saveDefaultRssEntryFilter = (filter: RssEntryFilter) => {
+  localStorage.setItem(RSS_DEFAULT_ENTRY_FILTER_KEY, filter)
 }
 
 type EntriesPageResult =
@@ -44,7 +58,8 @@ export function useRssEntries(options: {
   onStatus?: (message: string, isError?: boolean) => void
 }) {
   const entries = ref<RssEntry[]>([])
-  const activeFilter = ref<'all' | 'unread' | 'starred' | 'recent'>('all')
+  const defaultEntryFilter = ref<RssEntryFilter>(loadDefaultRssEntryFilter())
+  const activeFilter = ref<RssEntryFilter>(defaultEntryFilter.value)
   const page = ref(1)
   const pageSize = ref(30)
   const totalEntries = ref(0)
@@ -227,6 +242,16 @@ export function useRssEntries(options: {
       recentlyViewed.value.splice(idx, 1)
     }
     recentlyViewed.value.unshift(recent)
+  }
+
+  const setDefaultEntryFilter = (filter: RssEntryFilter) => {
+    if (!RSS_ENTRY_FILTERS.includes(filter)) return
+    defaultEntryFilter.value = filter
+    saveDefaultRssEntryFilter(filter)
+  }
+
+  const resetActiveFilterToDefault = () => {
+    activeFilter.value = defaultEntryFilter.value
   }
 
   const goToFeedFromContextMenu = async (entry: RssEntry) => {
@@ -433,6 +458,7 @@ export function useRssEntries(options: {
   return {
     entries,
     activeFilter,
+    defaultEntryFilter,
     page,
     pageSize,
     totalEntries,
@@ -467,6 +493,8 @@ export function useRssEntries(options: {
     copyArticleLink,
     openInExternalBrowser,
     goToFeedFromContextMenu,
+    setDefaultEntryFilter,
+    resetActiveFilterToDefault,
     initObserver,
   }
 }

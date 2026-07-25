@@ -10,6 +10,8 @@
 export type RssProvider = 'greader' | 'miniflux' | 'fever'
 export type RssFeedOpenMethod = 'app_browser' | 'external_browser' | null
 export type ReadBatchMode = 'above' | 'below' | 'all'
+export type RssEntryFilter = 'all' | 'unread' | 'starred' | 'recent'
+
 
 export interface RssAccount {
   id: number

@@ -396,9 +396,11 @@
                   :visible="showReaderSettings"
                   :font-family="readerFontFamily"
                   :font-size="readerFontSize"
+                  :default-entry-filter="defaultEntryFilter"
                   @update:visible="showReaderSettings = $event"
                   @update:font-family="readerFontFamily = $event; saveReaderPrefs()"
                   @update:font-size="setReaderFontSize"
+                  @update:default-entry-filter="setDefaultEntryFilter"
                   @save="saveReaderPrefs()"
                 />
               </div>
@@ -971,6 +973,7 @@ const {
 
 const {
   activeFilter,
+  defaultEntryFilter,
   loadingEntries,
   totalEntries,
   loadingMoreEntries,
@@ -998,6 +1001,8 @@ const {
   copyArticleLink,
   openInExternalBrowser,
   goToFeedFromContextMenu,
+  setDefaultEntryFilter,
+  resetActiveFilterToDefault,
   initObserver,
 } = useRssEntries({
   selectedAccountId,
@@ -1247,7 +1252,7 @@ watch(selectedAccountId, (accountId, previousAccountId) => {
   readingEntry.value = null
   clearFeedNavStack()
   feedSearch.value = ''
-  activeFilter.value = 'all'
+  resetActiveFilterToDefault()
   collapsedFolders.value = {}
   showReaderSettings.value = false
   showUnsubscribeConfirm.value = false

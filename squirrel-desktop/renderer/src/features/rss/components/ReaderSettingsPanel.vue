@@ -47,22 +47,48 @@
         >A+</Button>
       </div>
     </div>
+
+    <div class="reader-settings-section">
+      <span class="reader-settings-label">默认筛选</span>
+      <div class="reader-settings-grid">
+        <Button
+          v-for="option in filterOptions"
+          :key="option.value"
+          text severity="secondary"
+          size="sm"
+          class="reader-settings-option"
+          :class="{ 'is-selected': defaultEntryFilter === option.value }"
+          :title="option.title"
+          @click="selectDefaultFilter(option.value)"
+        >{{ option.label }}</Button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { Button } from '@/shared/ui/button'
+import type { RssEntryFilter } from '@/features/rss/types/rss'
+
+const filterOptions: Array<{ value: RssEntryFilter; label: string; title: string }> = [
+  { value: 'all', label: '全部', title: '进入时显示全部文章' },
+  { value: 'unread', label: '未读', title: '进入时显示未读文章' },
+  { value: 'starred', label: '星标', title: '进入时显示星标文章' },
+  { value: 'recent', label: '最近', title: '进入时显示最近浏览' },
+]
 
 const props = defineProps<{
   visible: boolean
   fontFamily: 'sans' | 'serif'
   fontSize: number
+  defaultEntryFilter: RssEntryFilter
 }>()
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
   'update:fontFamily': [value: 'sans' | 'serif']
   'update:fontSize': [value: number]
+  'update:defaultEntryFilter': [value: RssEntryFilter]
   save: []
 }>()
 
@@ -78,6 +104,10 @@ function changeSize(delta: number) {
     emit('save')
   }
 }
+
+function selectDefaultFilter(filter: RssEntryFilter) {
+  emit('update:defaultEntryFilter', filter)
+}
 </script>
 
 <style scoped>
@@ -86,7 +116,7 @@ function changeSize(delta: number) {
   top: 100%;
   right: 0;
   z-index: 50;
-  width: 13rem;
+  width: 14.5rem;
   margin-top: 0.375rem;
   padding: 0.75rem;
   border: 1px solid hsl(var(--border) / 0.36);

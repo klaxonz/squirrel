@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope, nextTick, ref } from 'vue'
 import { getRssEntries, getRssRecentlyViewed, updateRssEntries, updateRssEntry } from '@/shared/api'
 import type { RecentEntry, RssEntry } from '@/features/rss/types/rss'
@@ -24,6 +24,13 @@ const deferred = <T>() => {
 
 describe('useRssEntries', () => {
   beforeEach(() => {
+    const values = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+      clear: () => values.clear(),
+    })
     vi.clearAllMocks()
     vi.mocked(getRssEntries).mockResolvedValue({ data: [], total: 0, page: 1, pageSize: 30 })
     vi.mocked(getRssRecentlyViewed).mockResolvedValue({ data: [] })
@@ -35,9 +42,13 @@ describe('useRssEntries', () => {
     }))
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('defaults to the all entries filter', () => {
     const scope = effectScope()
-    const { activeFilter } = scope.run(() => useRssEntries({
+    const { activeFilter, defaultEntryFilter } = scope.run(() => useRssEntries({
       selectedAccountId: ref(null),
       selectedFeedId: ref(null),
       feeds: ref([]),
@@ -47,6 +58,47 @@ describe('useRssEntries', () => {
     }))!
 
     expect(activeFilter.value).toBe('all')
+    expect(defaultEntryFilter.value).toBe('all')
+    scope.stop()
+  })
+
+  it('restores the preferred default entry filter from localStorage', () => {
+    localStorage.setItem('rss_default_entry_filter', 'unread')
+    const scope = effectScope()
+    const { activeFilter, defaultEntryFilter } = scope.run(() => useRssEntries({
+      selectedAccountId: ref(null),
+      selectedFeedId: ref(null),
+      feeds: ref([]),
+      searchQuery: ref(''),
+      searchTrigger: ref(0),
+      getFeedTitle: () => '',
+    }))!
+
+    expect(defaultEntryFilter.value).toBe('unread')
+    expect(activeFilter.value).toBe('unread')
+    scope.stop()
+  })
+
+  it('persists the preferred default entry filter without forcing the active filter', () => {
+    const scope = effectScope()
+    const state = scope.run(() => useRssEntries({
+      selectedAccountId: ref(null),
+      selectedFeedId: ref(null),
+      feeds: ref([]),
+      searchQuery: ref(''),
+      searchTrigger: ref(0),
+      getFeedTitle: () => '',
+    }))!
+
+    state.activeFilter.value = 'starred'
+    state.setDefaultEntryFilter('unread')
+
+    expect(state.defaultEntryFilter.value).toBe('unread')
+    expect(state.activeFilter.value).toBe('starred')
+    expect(localStorage.getItem('rss_default_entry_filter')).toBe('unread')
+
+    state.resetActiveFilterToDefault()
+    expect(state.activeFilter.value).toBe('unread')
     scope.stop()
   })
 
