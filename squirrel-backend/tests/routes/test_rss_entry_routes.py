@@ -27,6 +27,26 @@ class FakeRssService:
         )
         return {'data': [], 'total': 0, 'page': page, 'page_size': page_size}
 
+    def get_entry(self, user_id, entry_id):
+        self.calls.append({'method': 'get_entry', 'user_id': user_id, 'entry_id': entry_id})
+        if entry_id == 42:
+            return {
+                'id': 42,
+                'account_id': 1,
+                'feed_id': 2,
+                'external_entry_id': 'entry-42',
+                'canonical_url': 'https://example.com/42',
+                'title': 'Detail',
+                'excerpt': 'Short preview',
+                'summary': '<p>Full body</p>',
+                'thumbnail': None,
+                'author': None,
+                'published_at': None,
+                'is_read': False,
+                'is_starred': False,
+            }
+        return None
+
     def record_entry_view(self, user_id, entry_id):
         self.calls.append({'method': 'record_entry_view', 'user_id': user_id, 'entry_id': entry_id})
         return False
@@ -76,6 +96,23 @@ def test_list_rss_entries_forwards_query_model_values():
             'page_size': 40,
         }
     ]
+
+
+def test_get_rss_entry_returns_detail_payload():
+    fake_service = FakeRssService()
+    response = _create_client(fake_service).get('/entries/42')
+
+    assert response.status_code == 200
+    assert response.json()['data']['summary'] == '<p>Full body</p>'
+    assert fake_service.calls == [{'method': 'get_entry', 'user_id': 7, 'entry_id': 42}]
+
+
+def test_get_rss_entry_returns_not_found_when_missing():
+    fake_service = FakeRssService()
+    response = _create_client(fake_service).get('/entries/99')
+
+    assert response.status_code == 404
+    assert fake_service.calls == [{'method': 'get_entry', 'user_id': 7, 'entry_id': 99}]
 
 
 def test_record_rss_entry_view_returns_not_found_when_entry_is_not_owned():

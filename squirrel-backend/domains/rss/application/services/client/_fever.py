@@ -117,5 +117,4 @@ def _fever_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
         published_at=_parse_datetime(item.get('created_on_time')),
         is_read=bool(item.get('is_read')),
         is_starred=bool(item.get('is_saved')),
-        raw_data=dict(item),
     )

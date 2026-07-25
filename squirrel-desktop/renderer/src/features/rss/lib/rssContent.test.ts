@@ -29,17 +29,21 @@ describe('RSS article content sanitization', () => {
     expect(sanitized).toContain('href="https://example.com/post"')
   })
 
-  it('removes application-like styling hooks from untrusted article markup', () => {
+  it('promotes bare feed wrappers into readable paragraphs', () => {
     const sanitized = sanitizeRssHtml(`
-      <div id="app" class="fixed inset-0 z-toast bg-background" data-state="open">
-        Article text
-      </div>
+      <div><span>第一段内容。</span></div>
+      <div><span>第二段内容。</span></div>
     `)
 
-    expect(sanitized).toContain('<div>')
-    expect(sanitized).not.toContain('id=')
-    expect(sanitized).not.toContain('class=')
-    expect(sanitized).not.toContain('data-state')
+    expect(sanitized).toContain('<p>第一段内容。</p>')
+    expect(sanitized).toContain('<p>第二段内容。</p>')
+    expect(sanitized).not.toContain('<div>')
+    expect(sanitized).not.toContain('<span>')
+  })
+
+  it('wraps bare text articles into paragraphs', () => {
+    const sanitized = sanitizeRssHtml('第一段。\n\n第二段。')
+    expect(sanitized).toBe('<p>第一段。</p><p>第二段。</p>')
   })
 
   it('allows only HTTP(S) image resources and HTTP(S) or fragment links', () => {
@@ -76,5 +80,13 @@ describe('RSS article content sanitization', () => {
 
   it('produces safe plain text for entry previews', () => {
     expect(rssHtmlToText('<p>Hello <strong>world</strong></p><script>bad()</script>')).toBe('Hello world')
+  })
+
+  it('keeps real list structure intact while cleaning wrappers', () => {
+    const sanitized = sanitizeRssHtml('<ul><li><span>item one</span></li><li>item two</li></ul>')
+    expect(sanitized).toContain('<ul>')
+    expect(sanitized).toContain('<li>')
+    expect(sanitized).toContain('item one')
+    expect(sanitized).not.toContain('<span>')
   })
 })

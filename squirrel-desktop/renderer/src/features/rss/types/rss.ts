@@ -49,6 +49,9 @@ export interface RssEntry {
   external_entry_id: string
   canonical_url: string
   title: string
+  /** Plain-text list preview from the API; preferred over summary for rows. */
+  excerpt?: string | null
+  /** Full HTML body — present on detail/update payloads, null on list rows. */
   summary: string | null
   thumbnail: string | null
   author: string | null

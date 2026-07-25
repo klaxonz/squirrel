@@ -3,24 +3,35 @@ import { usePointerOutside } from '@/shared/composables/usePointerOutside'
 import { getDesktopBridge } from '@/shared/composables/useDesktopBridge'
 import { formatDate } from '@/shared/lib/dateFormat'
 import { normalizeHttpUrl, openExternalUrl } from '@/shared/lib/externalUrl'
+import { errorMessage } from '@/shared/lib/errorMessage'
+import { getRssEntry } from '@/shared/api'
 import { rssHtmlToText, sanitizeRssHtml } from '@/features/rss/lib/rssContent'
 import type { RecentEntry, RssEntry } from '@/features/rss/types/rss'
 
 type ReaderFontFamily = 'sans' | 'serif'
 
 const clampFontSize = (value: unknown) => {
+  // localStorage miss is null; Number(null) === 0 would wrongly clamp to 14.
+  if (value === null || value === undefined || value === '') return 18
   const parsed = Number(value)
-  return Number.isFinite(parsed) ? Math.max(12, Math.min(24, parsed)) : 17
+  return Number.isFinite(parsed) ? Math.max(14, Math.min(24, parsed)) : 18
 }
 
 const loadFontFamily = (): ReaderFontFamily => {
-  return localStorage.getItem('rss_reader_font_family') === 'sans' ? 'sans' : 'serif'
+  const stored = localStorage.getItem('rss_reader_font_family')
+  if (stored === 'serif') return 'serif'
+  // Default to sans — serif stacks render poorly for mixed CJK feeds on Windows.
+  return 'sans'
 }
+
+const countCjkChars = (text: string) => (text.match(/[\u3400-\u9fff\uf900-\ufaff]/g) || []).length
 
 export function useRssReader(options: {
   onStatus?: (message: string, isError?: boolean) => void
 }) {
   const readingEntry = ref<RssEntry | null>(null)
+  const articleContent = ref<string | null>(null)
+  const loadingArticleContent = ref(false)
   const readerScrollContainer = ref<HTMLElement | null>(null)
   const readerFontSize = ref(clampFontSize(localStorage.getItem('rss_reader_font_size')))
   const readerFontFamily = ref<ReaderFontFamily>(loadFontFamily())
@@ -28,17 +39,29 @@ export function useRssReader(options: {
   const readerSettingsRef = ref<HTMLElement | null>(null)
   const activeLightboxImg = ref<string | null>(null)
   const lightboxScale = ref(1)
+  let contentRequestToken = 0
 
   usePointerOutside(readerSettingsRef, () => {
     showReaderSettings.value = false
   })
 
   const readerFontClass = computed(() => {
-    return readerFontFamily.value === 'serif'
-      ? 'font-serif tracking-normal leading-loose'
-      : 'font-sans tracking-normal leading-loose'
+    return readerFontFamily.value === 'serif' ? 'font-serif' : 'font-sans'
   })
-  const sanitizedArticleHtml = computed(() => sanitizeRssHtml(readingEntry.value?.summary))
+  const sanitizedArticleHtml = computed(() => sanitizeRssHtml(articleContent.value ?? readingEntry.value?.summary))
+  const isCjkArticle = computed(() => {
+    const source = articleContent.value ?? readingEntry.value?.summary ?? readingEntry.value?.excerpt ?? ''
+    const plain = source.replace(/<[^>]+>/g, ' ')
+    const cjk = countCjkChars(plain)
+    if (cjk < 12) return false
+    const letters = (plain.match(/[A-Za-z\u3400-\u9fff\uf900-\ufaff]/g) || []).length
+    return letters === 0 ? true : cjk / letters >= 0.35
+  })
+  const readerContentClass = computed(() => [
+    'reader-content',
+    readerFontClass.value,
+    isCjkArticle.value ? 'is-cjk' : '',
+  ])
 
   const setReaderFontSize = (size: number) => {
     readerFontSize.value = clampFontSize(size)
@@ -100,6 +123,12 @@ export function useRssReader(options: {
     return openExternalUrl(url)
   }
 
+  const entryPreviewText = (entry: Pick<RssEntry, 'excerpt' | 'summary'> | null | undefined) => {
+    if (!entry) return ''
+    if (entry.excerpt) return entry.excerpt
+    return rssHtmlToText(entry.summary)
+  }
+
   const stripHtmlTags = (html: string) => rssHtmlToText(html)
 
   const formatRelativeTime = (dateStr: string) => {
@@ -117,20 +146,68 @@ export function useRssReader(options: {
     return formatDate(dateStr)
   }
 
+  const loadArticleContent = async (entry: RssEntry) => {
+    // List rows omit full HTML; detail fetch hydrates the reader body.
+    if (entry.summary) {
+      articleContent.value = entry.summary
+      loadingArticleContent.value = false
+      return
+    }
+
+    const requestToken = ++contentRequestToken
+    loadingArticleContent.value = true
+    articleContent.value = null
+    try {
+      const detail = await getRssEntry(entry.id)
+      if (requestToken !== contentRequestToken) return
+      if (!readingEntry.value || String(readingEntry.value.id) !== String(entry.id)) return
+      if (!detail) {
+        articleContent.value = null
+        return
+      }
+      articleContent.value = detail.summary ?? null
+      // Mutate in place so the readingEntry ref identity stays stable and the
+      // watch does not re-enter loadArticleContent in a loop.
+      Object.assign(readingEntry.value, {
+        ...detail,
+        summary: detail.summary ?? null,
+        excerpt: detail.excerpt ?? readingEntry.value.excerpt ?? null,
+      })
+    } catch (err) {
+      if (requestToken !== contentRequestToken) return
+      options.onStatus?.(errorMessage(err, '加载正文失败'), true)
+      articleContent.value = null
+    } finally {
+      if (requestToken === contentRequestToken) loadingArticleContent.value = false
+    }
+  }
+
   const openRecentEntry = (recent: RecentEntry) => {
     if (String(readingEntry.value?.id) === String(recent.id)) return
     readingEntry.value = recent
   }
 
-  watch(readingEntry, () => {
-    showReaderSettings.value = false
-    nextTick(() => {
-      if (readerScrollContainer.value) readerScrollContainer.value.scrollTop = 0
-    })
-  })
+  watch(
+    () => readingEntry.value?.id ?? null,
+    (entryId) => {
+      showReaderSettings.value = false
+      nextTick(() => {
+        if (readerScrollContainer.value) readerScrollContainer.value.scrollTop = 0
+      })
+      const entry = readingEntry.value
+      if (entryId == null || !entry) {
+        contentRequestToken += 1
+        articleContent.value = null
+        loadingArticleContent.value = false
+        return
+      }
+      void loadArticleContent(entry)
+    },
+  )
 
   return {
     readingEntry,
+    loadingArticleContent,
     readerScrollContainer,
     readerFontSize,
     readerFontFamily,
@@ -139,6 +216,7 @@ export function useRssReader(options: {
     activeLightboxImg,
     lightboxScale,
     readerFontClass,
+    readerContentClass,
     sanitizedArticleHtml,
     setReaderFontSize,
     saveReaderPrefs,
@@ -146,6 +224,7 @@ export function useRssReader(options: {
     closeLightbox,
     handleKeyDown,
     openInAppBrowser,
+    entryPreviewText,
     stripHtmlTags,
     formatRelativeTime,
     openRecentEntry,

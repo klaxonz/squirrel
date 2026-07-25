@@ -158,14 +158,24 @@ class GReaderClient:
             if not items or not continuation:
                 break
 
-    def fetch_all_item_ids(self, stream_id: str = G_READER_READING_LIST_STATE, limit: int = 200000) -> list[str]:
-        return self._fetch_item_ids(stream_id=stream_id, limit=limit)
+    def fetch_all_item_ids(
+        self,
+        stream_id: str = G_READER_READING_LIST_STATE,
+        limit: int = 200000,
+        progress_callback: Callable[[int, bool], None] | None = None,
+    ) -> list[str]:
+        return self._fetch_item_ids(stream_id=stream_id, limit=limit, progress_callback=progress_callback)
 
-    def fetch_unread_item_ids(self, limit: int = 200000) -> list[str]:
+    def fetch_unread_item_ids(
+        self,
+        limit: int = 200000,
+        progress_callback: Callable[[int, bool], None] | None = None,
+    ) -> list[str]:
         return self._fetch_item_ids(
             stream_id=G_READER_READING_LIST_STATE,
             exclude_target=G_READER_READ_STATE,
             limit=limit,
+            progress_callback=progress_callback,
         )
 
     def _fetch_item_ids(
@@ -175,6 +185,7 @@ class GReaderClient:
         exclude_target: str | None = None,
         limit: int | None = None,
         page_size: int = G_READER_ITEM_IDS_PAGE_SIZE,
+        progress_callback: Callable[[int, bool], None] | None = None,
     ) -> list[str]:
         """Page through ``stream/items/ids`` using the GReader continuation token.
 
@@ -212,6 +223,9 @@ class GReaderClient:
             continuation = ''
             if isinstance(data, dict):
                 continuation = str(data.get('continuation') or '').strip()
+            has_more = bool(page_ids and continuation and (limit is None or len(result) < limit))
+            if progress_callback:
+                progress_callback(len(result), has_more)
             if not page_ids or not continuation:
                 break
             if limit is not None and len(result) >= limit:
@@ -322,7 +336,6 @@ def _greader_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
         published_at=_parse_datetime(item.get('published') or item.get('updated') or item.get('crawlTimeMsec')),
         is_read=G_READER_READ_STATE in category_set,
         is_starred=G_READER_STARRED_STATE in category_set,
-        raw_data=dict(item),
     )
 
 

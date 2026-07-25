@@ -1,0 +1,292 @@
+/*
+ * Quiet article reader — shared by RSS (and any future long-form surface).
+ * Owns body rhythm only. Page chrome stays in feature views.
+ */
+
+.reader-content {
+  --reader-font-sans: var(--font-sans);
+  --reader-font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif CJK SC",
+    "Source Han Serif SC", "Songti SC", "STSong", serif;
+  --reader-line-height: 1.75;
+  --reader-paragraph-gap: 1.15em;
+  --reader-block-gap: 1.35em;
+  --reader-measure: 42rem;
+
+  width: 100%;
+  max-width: var(--reader-measure);
+  color: hsl(var(--foreground) / 0.9);
+  font-family: var(--reader-font, var(--reader-font-sans));
+  font-size: inherit;
+  font-weight: 400;
+  line-height: var(--reader-line-height);
+  letter-spacing: 0.01em;
+  text-align: start;
+  text-wrap: pretty;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+.reader-content.font-sans {
+  --reader-font: var(--reader-font-sans);
+  --reader-line-height: 1.7;
+  letter-spacing: 0.005em;
+}
+
+.reader-content.font-serif {
+  --reader-font: var(--reader-font-serif);
+  --reader-line-height: 1.85;
+  letter-spacing: 0.02em;
+}
+
+.reader-content > *:first-child {
+  margin-top: 0 !important;
+}
+
+.reader-content > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Body copy — every common feed block, not only <p>. */
+.reader-content p,
+.reader-content div,
+.reader-content section,
+.reader-content article {
+  margin: 0 0 var(--reader-paragraph-gap);
+  color: inherit;
+  font-size: 1em;
+  line-height: inherit;
+  text-indent: 0;
+}
+
+.reader-content.font-serif.is-cjk p {
+  text-indent: 2em;
+}
+
+.reader-content.font-serif.is-cjk p:first-child,
+.reader-content.font-serif li p,
+.reader-content.font-serif blockquote p,
+.reader-content.font-serif td p,
+.reader-content.font-serif th p,
+.reader-content.font-serif.is-cjk li p,
+.reader-content.font-serif.is-cjk blockquote p {
+  text-indent: 0;
+}
+
+.reader-content h1,
+.reader-content h2,
+.reader-content h3,
+.reader-content h4,
+.reader-content h5,
+.reader-content h6 {
+  margin: 1.6em 0 0.65em;
+  color: hsl(var(--foreground) / 0.94);
+  font-family: var(--app-heading-font, var(--font-display, var(--font-sans)));
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  text-indent: 0;
+  text-wrap: balance;
+}
+
+.reader-content h1 {
+  font-size: 1.45em;
+}
+
+.reader-content h2 {
+  font-size: 1.28em;
+}
+
+.reader-content h3 {
+  font-size: 1.14em;
+}
+
+.reader-content h4,
+.reader-content h5,
+.reader-content h6 {
+  font-size: 1.05em;
+  font-weight: 600;
+}
+
+.reader-content a {
+  color: hsl(var(--primary) / 0.92);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: hsl(var(--primary) / 0.28);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  transition: color var(--duration-fast, 120ms) var(--ease-default, ease),
+    text-decoration-color var(--duration-fast, 120ms) var(--ease-default, ease);
+}
+
+.reader-content a:hover {
+  color: hsl(var(--primary));
+  text-decoration-color: hsl(var(--primary) / 0.55);
+}
+
+.reader-content strong,
+.reader-content b {
+  color: hsl(var(--foreground) / 0.96);
+  font-weight: 650;
+}
+
+.reader-content em,
+.reader-content i {
+  font-style: italic;
+}
+
+.reader-content ul,
+.reader-content ol {
+  margin: 0 0 var(--reader-block-gap);
+  padding-left: 1.35em;
+}
+
+.reader-content li {
+  margin: 0 0 0.4em;
+  line-height: inherit;
+  color: inherit;
+}
+
+.reader-content li > p {
+  margin-bottom: 0.4em;
+}
+
+.reader-content ul {
+  list-style: disc;
+}
+
+.reader-content ol {
+  list-style: decimal;
+}
+
+.reader-content ul ul,
+.reader-content ol ol,
+.reader-content ul ol,
+.reader-content ol ul {
+  margin-top: 0.35em;
+  margin-bottom: 0.35em;
+}
+
+.reader-content img,
+.reader-content video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: min(70vh, 36rem);
+  margin: 1.4em auto;
+  border-radius: var(--radius-md, 0.5rem);
+  object-fit: contain;
+  background: hsl(var(--muted) / 0.25);
+}
+
+.dark .reader-content img {
+  opacity: 0.94;
+}
+
+.reader-content figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 1.5em 0;
+}
+
+.reader-content figcaption {
+  margin-top: 0.55em;
+  color: hsl(var(--muted-foreground) / 0.82);
+  font-size: 0.86em;
+  line-height: 1.5;
+  text-align: center;
+  text-indent: 0;
+}
+
+.reader-content blockquote {
+  margin: var(--reader-block-gap) 0;
+  padding: 0.15em 0 0.15em 1em;
+  border: 0;
+  border-inline-start: 3px solid hsl(var(--primary) / 0.35);
+  background: transparent;
+  color: hsl(var(--foreground) / 0.72);
+  font-size: 0.98em;
+  line-height: inherit;
+  text-indent: 0;
+}
+
+.reader-content blockquote p {
+  margin-bottom: 0.55em;
+  text-indent: 0;
+}
+
+.reader-content blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.reader-content hr {
+  height: 1px;
+  margin: 2em 0;
+  border: 0;
+  background: hsl(var(--border) / 0.45);
+}
+
+.reader-content pre {
+  width: 100%;
+  margin: var(--reader-block-gap) 0;
+  padding: 0.95rem 1.1rem;
+  overflow-x: auto;
+  border: 1px solid hsl(var(--border) / 0.35);
+  border-radius: var(--radius-md, 0.5rem);
+  background: hsl(var(--muted) / 0.42);
+  color: hsl(var(--foreground) / 0.9);
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  line-height: 1.65;
+  text-indent: 0;
+}
+
+.reader-content pre code {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.reader-content :not(pre) > code {
+  padding: 0.12em 0.38em;
+  border-radius: 0.3rem;
+  background: hsl(var(--muted) / 0.55);
+  color: hsl(var(--foreground) / 0.86);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.reader-content table {
+  width: 100%;
+  margin: var(--reader-block-gap) 0;
+  border-collapse: collapse;
+  font-size: 0.94em;
+  text-indent: 0;
+}
+
+.reader-content th,
+.reader-content td {
+  padding: 0.55em 0.7em;
+  border-bottom: 1px solid hsl(var(--border) / 0.4);
+  text-align: start;
+  vertical-align: top;
+  text-indent: 0;
+}
+
+.reader-content th {
+  color: hsl(var(--foreground) / 0.88);
+  font-weight: 600;
+}
+
+.reader-content br {
+  line-height: inherit;
+}

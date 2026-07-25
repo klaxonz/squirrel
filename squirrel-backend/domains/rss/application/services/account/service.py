@@ -222,6 +222,9 @@ class RssAccountService:
             page_size=page_size,
         )
 
+    def get_entry(self, user_id: int, entry_id: int) -> dict[str, Any] | None:
+        return self.library_service.get_entry(user_id, entry_id)
+
     def update_entry(
         self,
         user_id: int,
@@ -299,6 +302,7 @@ test_account = rss_account_service.test_account
 list_feeds = rss_account_service.list_feeds
 update_feed = rss_account_service.update_feed
 list_entries = rss_account_service.list_entries
+get_entry = rss_account_service.get_entry
 update_entry = rss_account_service.update_entry
 update_entries_read_status = rss_account_service.update_entries_read_status
 mark_feed_as_read = rss_account_service.mark_feed_as_read

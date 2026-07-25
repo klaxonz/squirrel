@@ -77,6 +77,27 @@ def update_rss_entries_bulk(
     )
 
 
+@router.get('/entries/recently-viewed')
+def list_recently_viewed(
+    account_id: int | None = Query(None, alias='accountId'),
+    current_user: CurrentUserDto = Depends(get_current_user),
+    svc: RssService = Depends(get_rss_service),
+):
+    return response.success({'data': svc.list_recently_viewed(current_user.id, account_id=account_id)})
+
+
+@router.get('/entries/{entry_id}')
+def get_rss_entry(
+    entry_id: int,
+    current_user: CurrentUserDto = Depends(get_current_user),
+    svc: RssService = Depends(get_rss_service),
+):
+    entry = svc.get_entry(current_user.id, entry_id)
+    if entry is None:
+        return response.not_found('RSS entry not found')
+    return response.success(entry)
+
+
 @router.patch('/entries/{entry_id}')
 def update_rss_entry(
     entry_id: int,
@@ -102,17 +123,9 @@ def record_rss_entry_view(
     svc: RssService = Depends(get_rss_service),
 ):
     try:
-        if not svc.record_entry_view(current_user.id, entry_id):
-            return response.not_found('RSS 文章不存在')
+        recorded = svc.record_entry_view(current_user.id, entry_id)
     except RssServiceError as exc:
-        return response.param_error(str(exc))
+        return response.error(str(exc))
+    if not recorded:
+        return response.not_found('RSS 文章不存在')
     return response.success()
-
-
-@router.get('/entries/recently-viewed')
-def list_recently_viewed(
-    account_id: int | None = Query(None, alias='accountId'),
-    current_user: CurrentUserDto = Depends(get_current_user),
-    svc: RssService = Depends(get_rss_service),
-):
-    return response.success({'data': svc.list_recently_viewed(current_user.id, account_id=account_id)})

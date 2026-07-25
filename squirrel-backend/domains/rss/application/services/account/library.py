@@ -121,8 +121,27 @@ class RssLibraryService:
                 'total': entry_page.total,
                 'page': entry_page.page,
                 'pageSize': entry_page.size,
-                'data': [serialize_entry(entry) for entry in entry_page.items],
+                # List rows never include full HTML summaries — use get_entry for the reader.
+                'data': [serialize_entry(entry, include_summary=False) for entry in entry_page.items],
             }
+
+    def get_entry(self, user_id: int, entry_id: int) -> dict[str, Any] | None:
+        with self.session_factory() as session:
+            entry = session.scalars(
+                select(RssEntry).where(
+                    RssEntry.id == entry_id,
+                    RssEntry.user_id == user_id,
+                    RssEntry.account_id.in_(
+                        select(RssAccount.id).where(
+                            RssAccount.user_id == user_id,
+                            RssAccount.is_deleted.is_(False),
+                        )
+                    ),
+                )
+            ).first()
+            if entry is None:
+                return None
+            return serialize_entry(entry, include_summary=True)
 
     def record_entry_view(self, user_id: int, entry_id: int) -> bool:
         with self.session_factory() as session:
@@ -185,7 +204,7 @@ class RssLibraryService:
             rows = session.execute(statement).all()
             items: list[dict[str, Any]] = []
             for entry, viewed_at in rows:
-                item = serialize_entry(entry)
+                item = serialize_entry(entry, include_summary=False)
                 item['viewed_at'] = viewed_at.isoformat()
                 items.append(item)
             return items

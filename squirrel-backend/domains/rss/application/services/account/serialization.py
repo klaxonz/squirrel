@@ -1,9 +1,27 @@
 from __future__ import annotations
 
+import re
+from html import unescape
 from typing import Any
 
 from domains.rss.application.services.client._factory import get_provider_capabilities
 from domains.rss.domain.models.rss import RssAccount, RssEntry, RssFeed
+
+_TAG_RE = re.compile(r'<[^>]+>')
+_WS_RE = re.compile(r'\s+')
+_EXCERPT_MAX_LEN = 280
+
+
+def entry_excerpt(summary: str | None, *, max_len: int = _EXCERPT_MAX_LEN) -> str | None:
+    """Plain-text preview for list rows — never ship full HTML to the entry list."""
+    if not summary:
+        return None
+    text = _WS_RE.sub(' ', _TAG_RE.sub(' ', unescape(summary))).strip()
+    if not text:
+        return None
+    if len(text) <= max_len:
+        return text
+    return f'{text[: max_len - 1].rstrip()}…'
 
 
 def serialize_account(account: RssAccount) -> dict[str, Any]:
@@ -39,18 +57,24 @@ def serialize_feed(feed: RssFeed) -> dict[str, Any]:
     }
 
 
-def serialize_entry(entry: RssEntry) -> dict[str, Any]:
-    return {
+def serialize_entry(entry: RssEntry, *, include_summary: bool = True) -> dict[str, Any]:
+    payload = {
         'id': entry.id,
         'account_id': entry.account_id,
         'feed_id': entry.feed_id,
         'external_entry_id': entry.external_entry_id,
         'canonical_url': entry.canonical_url,
         'title': entry.title,
-        'summary': entry.summary,
+        'excerpt': entry_excerpt(entry.summary),
         'thumbnail': entry.thumbnail,
         'author': entry.author,
         'published_at': entry.published_at.isoformat() if entry.published_at else None,
         'is_read': entry.is_read,
         'is_starred': entry.is_starred,
     }
+    if include_summary:
+        payload['summary'] = entry.summary
+    else:
+        # List payloads omit full HTML; clients use excerpt for the row preview.
+        payload['summary'] = None
+    return payload

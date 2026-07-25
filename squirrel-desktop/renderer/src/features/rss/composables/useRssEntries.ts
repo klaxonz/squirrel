@@ -80,8 +80,8 @@ export function useRssEntries(options: {
       const query = options.searchQuery.value.trim().toLowerCase()
       if (query) {
         list = list.filter((entry) => {
-          return entry.title.toLowerCase().includes(query) ||
-            (entry.summary ? entry.summary.toLowerCase().includes(query) : false)
+          const haystack = `${entry.title} ${entry.excerpt || entry.summary || ''}`.toLowerCase()
+          return haystack.includes(query)
         })
       }
       return list

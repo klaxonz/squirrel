@@ -57,6 +57,7 @@ export const getRssFeeds = async (params: Record<string, unknown> = {}) =>
 export const getRssEntries = async (params: Record<string, unknown> = {}) =>
   get<RssEntryListResponse>('/api/rss/entries', params)
 
+export const getRssEntry = async (entryId: string | number) => get<RssEntry>(`/api/rss/entries/${entryId}`)
 export const updateRssEntry = async (entryId: string | number, payload: { isRead?: boolean; isStarred?: boolean }) => {
   return patch<RssEntry>(`/api/rss/entries/${entryId}`, payload)
 }

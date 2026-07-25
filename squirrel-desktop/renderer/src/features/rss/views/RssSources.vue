@@ -271,9 +271,9 @@
                     {{ entry.title }}
                   </h4>
                   <p
-                    v-if="entry.summary"
+                    v-if="entry.excerpt || entry.summary"
                     class="rss-entry-item__summary"
-                  >{{ stripHtmlTags(entry.summary) }}</p>
+                  >{{ entryPreviewText(entry) }}</p>
                 </div>
 
                 <div
@@ -431,14 +431,26 @@
               </header>
 
               <div
-                v-if="sanitizedArticleHtml"
-                class="reader-content prose prose-neutral dark:prose-invert"
-                :class="readerFontClass"
+                v-if="loadingArticleContent"
+                class="text-muted-foreground"
+                :class="readerContentClass"
+                :style="{ fontSize: readerFontSize + 'px' }"
+              >
+                正在加载正文…
+              </div>
+              <div
+                v-else-if="sanitizedArticleHtml"
+                :class="readerContentClass"
                 :style="{ fontSize: readerFontSize + 'px' }"
                 @click="handleContentClick"
                 v-html="sanitizedArticleHtml"
               />
-              <p v-else class="reader-content text-muted-foreground" :style="{ fontSize: readerFontSize + 'px' }">
+              <p
+                v-else
+                class="text-muted-foreground"
+                :class="readerContentClass"
+                :style="{ fontSize: readerFontSize + 'px' }"
+              >
                 该文章暂无正文内容。
               </p>
             </article>
@@ -852,13 +864,16 @@ const {
   lightboxScale,
 
   readerFontClass,
+  readerContentClass,
   sanitizedArticleHtml,
+  loadingArticleContent,
   setReaderFontSize,
   saveReaderPrefs,
   handleContentClick,
   closeLightbox,
   handleKeyDown,
   openInAppBrowser,
+  entryPreviewText,
   stripHtmlTags,
   formatRelativeTime,
 } = useRssReader({
@@ -1338,7 +1353,7 @@ onUnmounted(() => {
 }
 
 .rss-reader-body {
-  padding: clamp(1.5rem, 3vh, 2.5rem) clamp(2rem, 5vw, 5rem) 6rem;
+  padding: clamp(1.25rem, 2.5vh, 2rem) clamp(1.25rem, 3.5vw, 3rem) 5rem;
   background: hsl(var(--background));
 }
 
@@ -1557,12 +1572,14 @@ onUnmounted(() => {
 }
 
 .rss-reader-article {
-  max-width: var(--app-content-reading-max);
+  width: min(100%, 42rem);
+  max-width: 42rem;
+  margin-inline: auto;
 }
 
 .rss-reader-article__header {
-  margin-bottom: 1.75rem;
-  padding-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.1rem;
   border-bottom: 1px solid hsl(var(--border) / 0.22);
 }
 
@@ -1579,10 +1596,10 @@ onUnmounted(() => {
   color: hsl(var(--foreground) / 0.94);
   cursor: pointer;
   font-family: var(--app-heading-font);
-  font-size: 2rem;
+  font-size: clamp(1.55rem, 2.1vw, 1.9rem);
   font-weight: 650;
-  letter-spacing: 0;
-  line-height: 1.22;
+  letter-spacing: -0.015em;
+  line-height: 1.28;
   transition: color var(--duration-fast) var(--ease-default);
   text-wrap: balance;
 }
@@ -1650,257 +1667,6 @@ onUnmounted(() => {
   transform: translateY(-50%);
 }
 
-/* Scoped stylesheet for reader content typography — WeRead-inspired */
-.font-serif {
-  font-family: Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
-}
-.font-sans {
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-}
-
-.reader-content {
-  font-family: var(--reader-font, inherit);
-  text-align: justify;
-  text-justify: normal;
-  word-break: break-word;
-  padding-top: 0.5rem;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-.reader-content.font-sans {
-  --reader-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-}
-
-.reader-content.font-serif {
-  --reader-font: Georgia, Cambria, "Times New Roman", Times, "Nimbus Roman No9 L", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
-}
-
-/* Paragraphs — generous spacing, first-line indent for Chinese (serif fonts only).
-   Specificity > Tailwind/Prose preflight, so no `!important` needed.
-   First/last-child reset is universal across families. */
-.reader-content :deep(p) {
-  margin-bottom: 1.25rem;
-  letter-spacing: 0;
-  color: hsl(var(--foreground) / 0.82);
-}
-
-.reader-content.font-serif :deep(p) {
-  line-height: 2;
-  text-indent: 2em;
-}
-
-.reader-content :deep(p:first-child),
-.reader-content.font-serif :deep(p:first-child) {
-  text-indent: 0;
-}
-
-.reader-content :deep(p:last-child) {
-  margin-bottom: 0;
-}
-
-.dark .reader-content :deep(p) {
-  color: hsl(var(--foreground) / 0.78);
-}
-
-/* Headings — understated, no decoration */
-.reader-content :deep(h1) {
-  font-size: 1.6em;
-  margin-top: 2.5rem;
-  margin-bottom: 1.2rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.4;
-  color: hsl(var(--foreground) / 0.9);
-  text-indent: 0;
-}
-
-.reader-content :deep(h2) {
-  font-size: 1.3em;
-  margin-top: 2.2rem;
-  margin-bottom: 1rem;
-  font-weight: 600;
-  letter-spacing: 0;
-  color: hsl(var(--foreground) / 0.88);
-  text-indent: 0;
-}
-
-.reader-content :deep(h3) {
-  font-size: 1.15em;
-  margin-top: 1.8rem;
-  margin-bottom: 0.8rem;
-  font-weight: 600;
-  color: hsl(var(--foreground) / 0.85);
-  text-indent: 0;
-}
-
-.reader-content :deep(h4) {
-  font-size: 1.05em;
-  margin-top: 1.5rem;
-  margin-bottom: 0.6rem;
-  font-weight: 600;
-  color: hsl(var(--foreground) / 0.82);
-  text-indent: 0;
-}
-
-/* Links — minimal, color only */
-.reader-content :deep(a) {
-  color: hsl(var(--primary) / 0.9);
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.15s ease;
-}
-
-.reader-content :deep(a:hover) {
-  color: hsl(var(--primary));
-}
-
-/* Lists */
-.reader-content :deep(ul),
-.reader-content :deep(ol) {
-  padding-left: 1.75em;
-  margin-bottom: 1.25rem;
-}
-
-.reader-content :deep(li) {
-  margin-bottom: 0.35rem;
-  line-height: 2;
-  color: hsl(var(--foreground) / 0.82);
-}
-
-.reader-content :deep(li > p) {
-  text-indent: 0;
-  margin-bottom: 0.35rem;
-}
-
-.reader-content :deep(ul > li) {
-  list-style-type: none;
-  padding-left: 0;
-  position: relative;
-}
-
-.reader-content :deep(ul > li::before) {
-  content: '';
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background-color: hsl(var(--foreground) / 0.25);
-  position: absolute;
-  left: -0.75em;
-  top: 0.7em;
-}
-
-.reader-content :deep(ol > li) {
-  list-style-type: decimal;
-}
-
-/* Images — clean, centered */
-.reader-content :deep(img) {
-  max-width: 100%;
-  max-height: 50vh;
-  object-fit: contain;
-  border-radius: 4px;
-  margin: 1.75rem auto;
-  display: block;
-}
-
-.dark .reader-content :deep(img) {
-  opacity: 0.92;
-}
-
-.reader-content :deep(figure) {
-  margin: 1.75rem 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.reader-content :deep(figcaption) {
-  font-size: 0.8rem;
-  color: hsl(var(--muted-foreground) / 0.7);
-  margin-top: 0.5rem;
-  text-align: center;
-  font-style: normal;
-  letter-spacing: 0;
-  text-indent: 0;
-}
-
-/* Code blocks */
-.reader-content :deep(pre) {
-  background: hsl(var(--muted) / 0.45);
-  border: none;
-  border-radius: 4px;
-  padding: 1rem 1.25rem;
-  overflow-x: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.85rem;
-  line-height: 1.7;
-  margin: 1.5rem 0;
-  text-indent: 0;
-}
-
-.reader-content :deep(pre p),
-.reader-content.font-serif :deep(pre p) {
-  text-indent: 0;
-}
-
-.reader-content :deep(code:not(pre code)) {
-  background: hsl(var(--muted) / 0.5);
-  color: hsl(var(--foreground) / 0.8);
-  padding: 0.15rem 0.4rem;
-  border-radius: 3px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.88em;
-  font-weight: 400;
-}
-
-/* Blockquotes — left bar, quiet */
-.reader-content :deep(blockquote) {
-  border: none;
-  box-shadow: inset 2px 0 0 hsl(var(--primary) / 0.42);
-  padding: 0.5rem 1.25rem;
-  margin: 1.5rem 0;
-  background: transparent;
-  color: hsl(var(--foreground) / 0.65);
-  font-size: 0.97em;
-  line-height: 2;
-  text-indent: 0;
-}
-
-.reader-content :deep(blockquote p),
-.reader-content.font-serif :deep(blockquote p) {
-  text-indent: 0;
-  margin-bottom: 0.5rem;
-  line-height: 2;
-}
-
-.reader-content :deep(blockquote p:last-child),
-.reader-content.font-serif :deep(blockquote p:last-child) {
-  margin-bottom: 0;
-}
-
-/* Divider — subtle */
-.reader-content :deep(hr) {
-  border: 0;
-  height: 1px;
-  background: hsl(var(--border) / 0.4);
-  margin: 2rem 0;
-}
-
-.reader-content :deep(hr::after) {
-  content: none;
-}
-
-/* Table handling — no indent */
-.reader-content :deep(table) {
-  text-indent: 0;
-}
-
-.reader-content :deep(th),
-.reader-content :deep(td) {
-  text-indent: 0;
-}
 
 @keyframes fadeIn {
   from {

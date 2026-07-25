@@ -47,10 +47,22 @@ class GReaderSync:
         )
         self.account_service.set_sync_progress(
             account_id,
-            phase='entries_fetching',
+            phase='unread_ids',
             message='Fetching unread RSS item IDs',
+            entries_fetched=0,
+            has_more=True,
         )
-        unread_ids = set(client.fetch_unread_item_ids(limit=200000))
+
+        def _on_unread_ids_fetched(id_count: int, has_more: bool) -> None:
+            self.account_service.set_sync_progress(
+                account_id,
+                phase='unread_ids',
+                entries_fetched=id_count,
+                has_more=has_more,
+                message=f'Fetching unread RSS item IDs ({id_count})',
+            )
+
+        unread_ids = set(client.fetch_unread_item_ids(limit=200000, progress_callback=_on_unread_ids_fetched))
         missing_unread_ids = self._sync_unread_state(account_id=account_id, unread_ids=unread_ids)
         if missing_unread_ids:
             synced_entries += self._import_missing_unread_entries(

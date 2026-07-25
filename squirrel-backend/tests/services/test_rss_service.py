@@ -137,6 +137,58 @@ def test_sync_account_upserts_feeds_and_entries(engine, session_factory, account
     assert account_svc.list_entries(1, query='missing')['total'] == 0
 
 
+def test_list_entries_returns_excerpt_without_full_summary(engine, session_factory, account_svc, sync_svc):
+    _create_tables(engine)
+    account = account_svc.create_account(
+        1,
+        provider='miniflux',
+        name='Reader',
+        base_url='https://reader.example',
+        username=None,
+        credential='secret-token',
+    )
+
+    class _FakeClient:
+        def list_feeds(self):
+            return [
+                RemoteFeed(
+                    external_feed_id='feed-1',
+                    title='Feed One',
+                    feed_url='https://example.com/feed.xml',
+                    site_url='https://example.com',
+                ),
+            ]
+
+        def list_entries(self, external_feed_id, limit):
+            return [
+                RemoteEntry(
+                    external_entry_id='entry-1',
+                    canonical_url='https://example.com/posts/1',
+                    title='Entry One',
+                    summary='<p>Hello <strong>world</strong> from a long article body that should be excerpted.</p>',
+                    published_at=datetime(2024, 1, 1, 10, 0, 0),
+                ),
+            ]
+
+    with patch('domains.rss.application.services.sync.service.create_client', lambda config: _FakeClient()):
+        sync_svc.sync_account(1, account['id'], entry_limit=20)
+
+    listed = account_svc.list_entries(1)
+    row = listed['data'][0]
+    assert row['summary'] is None
+    assert row['excerpt'] == 'Hello world from a long article body that should be excerpted.'
+
+    detail = account_svc.get_entry(1, row['id'])
+    assert detail is not None
+    assert detail['summary'] == '<p>Hello <strong>world</strong> from a long article body that should be excerpted.</p>'
+    assert detail['excerpt'] == row['excerpt']
+
+    with Session(engine) as session:
+        stored = session.get(RssEntry, row['id'])
+        assert stored is not None
+        assert stored.raw_data is None
+
+
 def test_bulk_update_entries_read_status_updates_user_entries_only(engine, session_factory, account_svc, sync_svc):
     _create_tables(engine)
     account = account_svc.create_account(
@@ -726,6 +778,44 @@ def test_greader_client_paginates_unread_item_ids():
     assert 'c=1782612007899357' in http_client.urls[1]
 
 
+def test_greader_client_reports_unread_item_id_progress():
+    class _FakeHttpClient:
+        def __init__(self):
+            self.urls = []
+
+        def post_text(self, url, data, headers):
+            return 'Auth=reader-token\n'
+
+        def get_json(self, url, headers):
+            self.urls.append(url)
+            if 'c=' not in url:
+                return {
+                    'itemRefs': [{'id': '1782612007899357'}],
+                    'continuation': '1782612007899357',
+                }
+            return {'itemRefs': [{'id': 'entry-2'}]}
+
+    http_client = _FakeHttpClient()
+    client = GReaderClient(
+        RssAccountConfig(
+            provider='greader',
+            base_url='https://reader.example.com/api/greader.php',
+            username='alice',
+            credential='api-password',
+        ),
+        http_client=http_client,
+    )
+    progress = []
+
+    result = client.fetch_unread_item_ids(
+        limit=200000,
+        progress_callback=lambda count, has_more: progress.append((count, has_more)),
+    )
+
+    assert result == ['tag:google.com,2005:reader/item/00065546b380d0dd', 'entry-2']
+    assert progress == [(1, True), (2, False)]
+
+
 def test_json_http_client_retries_transient_timeouts(monkeypatch):
     from domains.rss.application.services.client._base import _JsonHttpClient
 
@@ -963,10 +1053,10 @@ def test_sync_greader_uses_reading_list_entries(engine, session_factory, account
                 ),
             ]
 
-        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
+        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000, progress_callback=None):
             return ['entry-1']
 
-        def fetch_unread_item_ids(self, limit=200000):
+        def fetch_unread_item_ids(self, limit=200000, progress_callback=None):
             return ['entry-1']
 
         def fetch_items_contents(self, entry_ids):
@@ -1053,7 +1143,7 @@ def test_sync_greader_imports_missing_unread_entries(engine, session_factory, ac
             if False:
                 yield []
 
-        def fetch_unread_item_ids(self, limit=200000):
+        def fetch_unread_item_ids(self, limit=200000, progress_callback=None):
             return [
                 'tag:google.com,2005:reader/item/00065546b380d0dd',
                 'tag:google.com,2005:reader/item/00065546b380d0de',
@@ -1071,7 +1161,7 @@ def test_sync_greader_imports_missing_unread_entries(engine, session_factory, ac
                 ),
             ]
 
-        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
+        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000, progress_callback=None):
             raise AssertionError('incremental sync should not run full state reconciliation')
 
     client = _FakeGReaderClient()
@@ -1139,10 +1229,10 @@ def test_sync_progress_reports_completed_state(engine, session_factory, account_
                 ),
             ]
 
-        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
+        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000, progress_callback=None):
             return ['entry-1']
 
-        def fetch_unread_item_ids(self, limit=200000):
+        def fetch_unread_item_ids(self, limit=200000, progress_callback=None):
             return ['entry-1']
 
         def fetch_items_contents(self, entry_ids):
@@ -1232,10 +1322,10 @@ def test_greader_incremental_sync_stops_when_page_has_no_changes(engine, session
             ]
             raise AssertionError('incremental sync should stop before requesting older pages')
 
-        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
+        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000, progress_callback=None):
             raise AssertionError('incremental sync should not run full state reconciliation')
 
-        def fetch_unread_item_ids(self, limit=200000):
+        def fetch_unread_item_ids(self, limit=200000, progress_callback=None):
             return ['entry-1']
 
         def fetch_items_contents(self, entry_ids):
@@ -1357,7 +1447,7 @@ def test_greader_full_sync_reconciles_read_and_starred_state(engine, session_fac
             if False:
                 yield []
 
-        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000):
+        def fetch_all_item_ids(self, stream_id='reading-list', limit=200000, progress_callback=None):
             self.state_streams.append(stream_id)
             if stream_id == G_READER_READING_LIST_STATE:
                 return ['entry-1']
@@ -1367,7 +1457,7 @@ def test_greader_full_sync_reconciles_read_and_starred_state(engine, session_fac
                 return ['entry-1']
             return []
 
-        def fetch_unread_item_ids(self, limit=200000):
+        def fetch_unread_item_ids(self, limit=200000, progress_callback=None):
             return []
 
         def fetch_items_contents(self, entry_ids):

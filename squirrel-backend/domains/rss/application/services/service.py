@@ -3,6 +3,7 @@ from domains.rss.application.services.account.serialization import serialize_acc
 from domains.rss.application.services.account.service import (
     create_account,
     delete_account,
+    get_entry,
     get_sync_progress,
     list_accounts,
     list_entries,
@@ -85,6 +86,9 @@ class RssService:
             page=page,
             page_size=page_size,
         )
+
+    def get_entry(self, user_id, entry_id):
+        return get_entry(user_id, entry_id)
 
     def list_feeds(self, user_id, account_id=None):
         return list_feeds(user_id, account_id=account_id)

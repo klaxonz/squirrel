@@ -127,5 +127,4 @@ def _miniflux_entry_to_remote(item: dict[str, Any]) -> RemoteEntry:
         published_at=_parse_datetime(item.get('published_at') or item.get('created_at')),
         is_read=str(item.get('status') or '').lower() == 'read',
         is_starred=bool(item.get('starred')),
-        raw_data=dict(item),
     )

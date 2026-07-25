@@ -103,7 +103,9 @@ class RssEntryStore:
                 'published_at': remote_entry.published_at,
                 'is_read': remote_entry.is_read,
                 'is_starred': remote_entry.is_starred,
-                'raw_data': remote_entry.raw_data,
+                # raw_data is never returned by serialize_entry and was full GReader
+                # content JSON — drop write amplification on every insert/update.
+                'raw_data': None,
             }
 
             if entry is None:

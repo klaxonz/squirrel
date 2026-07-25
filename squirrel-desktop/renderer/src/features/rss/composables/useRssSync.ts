@@ -35,6 +35,7 @@ const formatRunningStatus = (data: RssSyncStatus) => {
     feeds_saving: '同步订阅源',
     entries_fetching: '同步文章',
     entries_saving: '同步文章',
+    unread_ids: '同步未读状态',
   }
   const modeLabel = getRssSyncModeLabel(data.sync_mode)
   const phaseLabel = (data.phase && phaseLabels[data.phase]) || data.phase || ''
@@ -43,6 +44,8 @@ const formatRunningStatus = (data: RssSyncStatus) => {
     progress = data.entries_fetched != null ? `已获取 ${data.entries_fetched} 篇` : '等待服务器响应'
   } else if (data.phase === 'entries_saving') {
     progress = `已更新 ${data.entries_synced || 0} 篇`
+  } else if (data.phase === 'unread_ids') {
+    progress = data.entries_fetched != null ? `已获取 ${data.entries_fetched} 个 ID` : '等待服务器响应'
   } else if (data.feeds_synced != null) {
     progress = `${data.feeds_synced} 个`
   }

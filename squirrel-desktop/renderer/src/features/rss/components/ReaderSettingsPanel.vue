@@ -12,16 +12,16 @@
           @click="select('sans')"
           class="reader-settings-option"
           :class="{ 'is-selected': fontFamily === 'sans' }"
-          title="极简现代 (Inter)"
-        >Inter</Button>
+          title="现代无衬线（推荐）"
+        >无衬线</Button>
         <Button
           text severity="secondary"
           size="sm"
           @click="select('serif')"
           class="reader-settings-option font-serif"
           :class="{ 'is-selected': fontFamily === 'serif' }"
-          title="经典衬线 (Georgia)"
-        >Georgia</Button>
+          title="经典衬线"
+        >衬线</Button>
       </div>
     </div>
 
@@ -36,7 +36,7 @@
           size="sm"
           @click="changeSize(-1)"
           class="reader-settings-size-button"
-          :disabled="fontSize <= 12"
+          :disabled="fontSize <= 14"
         >A-</Button>
         <Button
           text severity="secondary"
@@ -73,7 +73,7 @@ function select(family: 'sans' | 'serif') {
 
 function changeSize(delta: number) {
   const newSize = props.fontSize + delta
-  if (newSize >= 12 && newSize <= 24) {
+  if (newSize >= 14 && newSize <= 24) {
     emit('update:fontSize', newSize)
     emit('save')
   }

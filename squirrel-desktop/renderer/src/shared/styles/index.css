@@ -10,6 +10,7 @@
 @import '@fontsource/plus-jakarta-sans/latin-600.css';
 @import '@fontsource/plus-jakarta-sans/latin-700.css';
 @import '@fontsource/plus-jakarta-sans/latin-800.css';
+@import './reader.css';
 
 @tailwind base;
 @tailwind components;
@@ -178,85 +179,7 @@
   opacity: 0;
 }
 
-/* Reader Blockquote Styles */
-.reader-content blockquote {
-  border: none !important;
-  border-inline-start: 3px solid hsl(var(--primary) / 0.35) !important;
-  padding: 0.5rem 1.25rem !important;
-  margin: 1.5rem 0 !important;
-  background: transparent !important;
-  border-radius: 0 !important;
-  color: hsl(var(--foreground) / 0.65) !important;
-  font-size: 0.97em !important;
-  line-height: 2 !important;
-  font-weight: 400 !important;
-  text-indent: 0 !important;
-}
-
-.reader-content blockquote p::before,
-.reader-content blockquote p::after,
-.reader-content blockquote p:first-of-type::before,
-.reader-content blockquote p:last-of-type::after {
-  content: none !important;
-}
-
-.reader-content blockquote p {
-  margin-bottom: 0.5rem !important;
-  text-indent: 0 !important;
-  line-height: 2 !important;
-}
-
-.reader-content blockquote p:last-child {
-  margin-bottom: 0 !important;
-}
-
-.reader-content blockquote blockquote {
-  margin: 0.75rem 0 0 0 !important;
-  padding: 0.4rem 1rem !important;
-  border-left-width: 2px !important;
-  font-size: 0.95em !important;
-}
-
-/* Code Blocks & Inline Code */
-
-.reader-content pre {
-  background: hsl(var(--muted) / 0.45) !important;
-  border: none !important;
-  border-radius: 4px !important;
-  padding: 1rem 1.25rem !important;
-  margin: 1.5rem 0 !important;
-  overflow-x: auto !important;
-  width: 100% !important;
-  text-indent: 0 !important;
-}
-
-.reader-content pre p {
-  text-indent: 0 !important;
-}
-
-.reader-content pre code {
-  background: transparent !important;
-  padding: 0 !important;
-  border: none !important;
-  border-radius: 0 !important;
-  color: hsl(var(--foreground)) !important;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
-  font-size: 0.85rem !important;
-  line-height: 1.7 !important;
-}
-
-.reader-content :not(pre) > code {
-  background: hsl(var(--muted) / 0.5) !important;
-  color: hsl(var(--foreground) / 0.8) !important;
-  padding: 0.15rem 0.4rem !important;
-  border-radius: 3px !important;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
-  font-size: 0.88em !important;
-  font-weight: 400 !important;
-  border: none !important;
-}
-
-/* Layout Hugo / Chroma syntax highlighter tables correctly */
+/* Feed syntax highlighters (Hugo/Chroma) — keep tables readable inside reader. */
 .reader-content table.lntable {
   display: table !important;
   width: 100% !important;
@@ -303,7 +226,6 @@
   border-radius: 0 !important;
 }
 
-/* Thin custom scrollbar on code blocks */
 .reader-content pre::-webkit-scrollbar {
   height: 6px !important;
 }
