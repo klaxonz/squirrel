@@ -195,10 +195,33 @@ export const useMusicPlayerStore = defineStore('musicPlayer', () => {
   }
 
   function clear() {
+    // Invalidate in-flight resolve / lyric / prefetch so a late response cannot
+    // re-arm audio after logout or an intentional stop.
+    resolveRequestId += 1
+    lyricRequestId += 1
+    prefetchAbortId += 1
+    urlCache.clear()
+
+    const audio = audioRef.value
+    if (audio) {
+      try {
+        audio.pause()
+      } catch {
+        // Element may already be detaching; best-effort stop is enough.
+      }
+      audio.removeAttribute('src')
+      try {
+        audio.load()
+      } catch {
+        // Ignore load failures during teardown.
+      }
+    }
+
     currentTrack.value = null
     queue.value = []
     queueIndex.value = -1
     playing.value = false
+    resolvingUrl.value = false
     currentTime.value = 0
     duration.value = 0
     audioSrc.value = ''

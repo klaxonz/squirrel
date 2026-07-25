@@ -59,6 +59,12 @@ export interface PlaybackSession {
   isReusableFor(videoId: string): boolean
   /** View unmount: keep the session if PiP is active, clear otherwise. */
   release(): void
+  /**
+   * Force-end the session (auth loss, account switch). Unlike `release`, this
+   * always clears — including an active picture-in-picture session — so media
+   * cannot keep playing after the user is no longer authenticated.
+   */
+  end(): void
   /** Update the PiP fact. Engine events are the only legitimate writer. */
   setPictureInPicture(value: boolean): void
 }
@@ -129,6 +135,15 @@ const createSession = (): PlaybackSession => {
     // the next view mount can reuse this session. Otherwise the session is
     // done — clear it so a stale video doesn't leak into the next mount.
     if (facts.pictureInPicture) return
+    clearFacts()
+  }
+
+  const end = (): void => {
+    // Auth / account boundary: never keep media alive for a logged-out user.
+    clearFacts()
+  }
+
+  const clearFacts = (): void => {
     Object.assign(facts, createInitialFacts())
     playback.reset()
   }
@@ -147,6 +162,7 @@ const createSession = (): PlaybackSession => {
     update,
     isReusableFor,
     release,
+    end,
     setPictureInPicture,
   }
 }

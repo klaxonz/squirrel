@@ -67,6 +67,20 @@ export function useAudioElementBridge(options: UseAudioElementBridgeOptions): Us
   )
 
   onUnmounted(() => {
+    const el = audioEl.value
+    if (el) {
+      try {
+        el.pause()
+      } catch {
+        // Element may already be detaching.
+      }
+      el.removeAttribute('src')
+      try {
+        el.load()
+      } catch {
+        // Ignore load failures during teardown.
+      }
+    }
     store.setAudioRef(null)
   })
 

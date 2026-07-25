@@ -125,6 +125,22 @@ describe('usePlaybackSession', () => {
     })
   })
 
+  describe('end', () => {
+    it('force-clears the session even when PiP is active', () => {
+      const session = usePlaybackSession()
+      session.update({ videoId: 'vid-1', source: makeSource(), title: 'Was playing' })
+      session.setPictureInPicture(true)
+
+      session.end()
+
+      expect(session.facts.videoId).toBe('')
+      expect(session.facts.source).toBeNull()
+      expect(session.facts.title).toBe('')
+      expect(session.facts.pictureInPicture).toBe(false)
+      expect(session.playback.getSnapshot().phase).toBe('idle')
+    })
+  })
+
   describe('facts is readonly', () => {
     it('exposes facts as a Vue readonly view (direct writes are rejected at runtime)', () => {
       const session = usePlaybackSession()

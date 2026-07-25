@@ -4,6 +4,7 @@ import { getUserMe, loginUser, logoutUser, registerUser, updateUserMe } from '@/
 import { clearAuthStorage, subscribeToAuthInvalidation } from '@/shared/lib/auth'
 import { isApiError } from '@/shared/lib/apiError'
 import { resetReactive as resetNavigationHistory } from '@/shared/lib/navigationHistory'
+import { stopMediaOnAuthInvalidation } from '@/shared/lib/stopMediaOnAuthInvalidation'
 import type { User } from '@/shared/types/user'
 
 export type { User }
@@ -27,6 +28,9 @@ export const useUserStore = defineStore('user', () => {
     currentUser.value = null
     isAuthenticated.value = false
     hasResolvedAuth.value = true
+    // Auth boundary: stop video/music immediately so logout cannot leave media
+    // playing after AppLayout tears down (or while PiP would retain the session).
+    stopMediaOnAuthInvalidation()
   }
 
   const unsubscribeAuthInvalidation = subscribeToAuthInvalidation(clearState)
