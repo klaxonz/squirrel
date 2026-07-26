@@ -1,7 +1,7 @@
 <template>
   <AuthEntryCard
-    title="欢迎回来"
-    description="使用此服务器上的账户继续。"
+    title="登录"
+    description="使用此服务器上的账户进入工作台。"
   >
     <form class="auth-entry__form" @submit.prevent="handleSubmit">
       <Transition name="auth-alert">
