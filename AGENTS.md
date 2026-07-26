@@ -3,4 +3,4 @@
 2. 编写任何功能、修复任何Bug都不能妥协，一定要找到最根本的原因，从源头解决，不管改动有多大，影响面有多广
 3. 一旦开始就一步到位改完，不要工作到一半停下来询问
 4. 如果有开源替代方案或者依赖库最好不要自己实现
-5. UI 以 [design direction](squirrel-desktop/renderer/docs/design/direction.md) 为方向真源；实现以代码（styles / shared/ui / 壳与页面）为准。允许 redesign 布局与气质，禁止用已删除的旧锚点/Spec 文档阻挡合理改动；禁止业务页私建第二套控件皮肤
+5. UI 实现以代码（styles / shared/ui / 壳与页面）为准。允许 redesign 布局与气质，禁止用已删除的旧锚点/Spec 文档阻挡合理改动；禁止业务页私建第二套控件皮肤
