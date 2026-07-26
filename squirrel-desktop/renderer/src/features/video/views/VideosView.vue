@@ -160,7 +160,7 @@ const remoteSearchRef = ref<{ refresh?: () => void } | null>(null)
 const remoteSite = ref('')
 const searchMode = ref<'local' | 'remote'>('local')
 const childFilters = computed(() => filters.value)
-const viewPreferenceKey = computed(() => `local:${activeTab.value}`)
+const viewPreferenceKey = computed(() => `local-v2:${activeTab.value}`)
 const isActiveVideosRoute = computed(() => route.matched.some((record) => record.name === 'VideosView'))
 
 const visibleRemoteSiteOptions = computed(() =>
@@ -284,21 +284,22 @@ watch(() => route.query.special, (value) => {
   background: hsl(var(--background));
 }
 
-/* Full-bleed sticky toolbar — not a floating 44rem island. */
+/* Full-bleed sticky toolbar — light canvas, not a heavy SaaS slab. */
 .videos-workbench__toolbar {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  background: hsl(var(--card));
-  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--background) / 0.92);
+  border-bottom: 1px solid hsl(var(--border) / 0.7);
+  backdrop-filter: blur(10px);
 }
 
 .videos-workbench__toolbar-inner {
   display: flex;
   width: 100%;
-  max-width: var(--app-content-media-max);
-  min-height: 3.25rem;
-  margin-inline: auto;
+  max-width: none;
+  min-height: 3rem;
+  margin-inline: 0;
   padding-inline: var(--app-content-media-gutter);
   align-items: center;
 }
@@ -318,16 +319,16 @@ watch(() => route.query.special, (value) => {
 }
 
 .videos-workbench__filters-band {
-  background: hsl(var(--card));
-  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--background) / 0.88);
+  border-bottom: 1px solid hsl(var(--border) / 0.55);
 }
 
 .videos-workbench__filters {
   display: flex;
   width: 100%;
-  max-width: var(--app-content-media-max);
+  max-width: none;
   min-height: 2.5rem;
-  margin-inline: auto;
+  margin-inline: 0;
   padding-inline: var(--app-content-media-gutter);
   align-items: center;
   gap: 0.375rem;
@@ -375,12 +376,12 @@ watch(() => route.query.special, (value) => {
   align-items: start;
 }
 
-/* Grid fills the workspace; list mode still centers post cards. */
+/* Full workspace width; list cards hug the left, grid fills. */
 .videos-workbench__canvas {
   min-width: 0;
   width: 100%;
-  max-width: var(--app-content-media-max);
-  margin-inline: auto;
+  max-width: none;
+  margin-inline: 0;
   padding-inline: var(--app-content-media-gutter);
   padding-block: 1rem 3rem;
 }

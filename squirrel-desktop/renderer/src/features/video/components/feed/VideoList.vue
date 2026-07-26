@@ -116,7 +116,8 @@ useInfiniteScrollSentinel({
 .video-list__list {
   display: flex;
   max-width: var(--app-content-feed-max);
-  margin-inline: auto;
+  /* Hug content start — no centered island on ultrawide. */
+  margin-inline: 0;
   flex-direction: column;
   gap: 0.75rem;
 }
@@ -140,12 +141,13 @@ useInfiniteScrollSentinel({
   gap: 1.5rem 1.25rem;
 }
 
-/* Reddit feed: discrete white cards with gap, not stacked hairlines. */
+/* Workbench list fills the media canvas as dense media rows. */
 .video-list__workbench-list {
   display: flex;
-  max-width: var(--app-content-feed-max);
-  margin-inline: auto;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 </style>

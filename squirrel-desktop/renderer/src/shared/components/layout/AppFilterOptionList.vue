@@ -168,29 +168,25 @@ const handleKeydown = (event: KeyboardEvent, index: number) => {
 }
 
 .app-filter-option.is-active .app-filter-option__icon :deep(.app-filter-all-icon) {
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground));
 }
 
 .app-filter-option__label {
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
-  font-size: 0.75rem;
-  font-weight: 560;
-  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.app-filter-option.is-active .app-filter-option__label {
-  font-weight: 650;
-}
-
 .app-filter-option__check {
   display: inline-flex;
-  width: 0.875rem;
-  height: 0.875rem;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground));
 }
 
 .app-filter-option__check :deep(svg) {

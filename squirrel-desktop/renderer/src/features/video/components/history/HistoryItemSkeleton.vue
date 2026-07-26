@@ -33,7 +33,11 @@ import AppSkeleton from '@/shared/components/AppSkeleton.vue'
   min-width: 0;
   grid-template-columns: minmax(0, 1fr) 2rem;
   column-gap: var(--space-2);
-  border-bottom: 1px solid var(--app-hairline);
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
+  padding-inline: 0.75rem;
 }
 
 .history-item-skeleton__inner {

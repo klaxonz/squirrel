@@ -41,7 +41,7 @@
         </div>
       </div>
 
-      <div class="history-item__body">
+      <div class="history-item__main">
         <h3 class="history-item__title">{{ video.title }}</h3>
 
         <div
@@ -65,20 +65,24 @@
           <span class="history-item__channel">{{ displayChannel }}</span>
           <span v-if="video.site" class="history-item__site">{{ video.site }}</span>
         </div>
+      </div>
 
-        <div class="history-item__meta">
-          <span>{{ playedTime }}</span>
-          <span aria-hidden="true">·</span>
-          <span :class="{ 'history-item__status--active': isUnfinished }">
-            {{ progressLabel }}
-          </span>
-        </div>
+      <div class="history-item__meta" aria-label="播放信息">
+        <span class="history-item__time">{{ playedTime }}</span>
+        <span
+          class="history-item__status"
+          :class="{ 'history-item__status--active': isUnfinished }"
+        >
+          {{ progressLabel }}
+        </span>
       </div>
     </div>
 
     <Button
-      text severity="secondary"
-      size="sm" icon-only
+      text
+      severity="secondary"
+      size="sm"
+      icon-only
       class="history-item__delete"
       title="删除此条历史"
       aria-label="删除此条历史"
@@ -105,36 +109,28 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   open: [video: VideoHistoryEntry]
-  openProfile: [profile: VideoProfile]
   delete: [historyId: number]
+  openProfile: [profile: VideoProfile]
 }>()
 
-const prefetchPlayback = () => {
-  void prefetchDesktopPlaybackSource(props.video)
-}
+const progress = computed(() => {
+  const duration = Number(props.video.duration || 0)
+  if (duration <= 0) return 0
+  return Math.max(0, Math.min(1, Number(props.video.last_position || 0) / duration))
+})
+const progressPercent = computed(() => Math.round(progress.value * 100))
+const isUnfinished = computed(() => progress.value > 0.01 && progress.value < 0.95)
+const progressLabel = computed(() => {
+  if (progress.value <= 0) return '已播放'
+  if (progress.value >= 0.95) return '已播放'
+  return `继续观看 · ${progressPercent.value}%`
+})
 
 const timeFormatter = new Intl.DateTimeFormat('zh-CN', {
   hour: '2-digit',
   minute: '2-digit',
-  hourCycle: 'h23',
+  hour12: false,
 })
-
-const progress = computed(() => {
-  const duration = Number(props.video.duration)
-  return duration > 0
-    ? Math.max(0, Math.min(1, Number(props.video.last_position) / duration))
-    : 0
-})
-
-const progressPercent = computed(() => Math.round(progress.value * 100))
-const isUnfinished = computed(() => progress.value > 0.01 && progress.value < 0.95)
-
-const progressLabel = computed(() => {
-  if (progress.value >= 0.95) return '已看完'
-  if (progress.value > 0.01) return `继续观看 · ${progressPercent.value}%`
-  return '已播放'
-})
-
 const playedTime = computed(() => {
   if (!props.video.played_at) return '时间未知'
   const date = new Date(props.video.played_at)
@@ -156,6 +152,10 @@ const displaySource = computed(() => {
 const displayChannel = computed(
   () => videoSources.value.map((source) => source.name).filter(Boolean).join(' / ') || '未知作者',
 )
+
+const prefetchPlayback = () => {
+  void prefetchDesktopPlaybackSource(props.video)
+}
 </script>
 
 <style scoped>
@@ -164,29 +164,38 @@ const displayChannel = computed(
   min-width: 0;
   grid-template-columns: minmax(0, 1fr) 2rem;
   align-items: center;
-  column-gap: var(--space-2);
-  border-bottom: 1px solid var(--app-hairline);
-  background: transparent;
-  transition: background-color var(--duration-fast) var(--ease-default);
+  column-gap: 0.5rem;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
+  padding-inline: 0.75rem;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
 }
 
 .history-item:hover,
 .history-item:focus-within {
-  background: hsl(var(--foreground) / 0.025);
+  border-color: hsl(var(--foreground) / 0.18);
+  background: hsl(var(--card));
 }
 
+/* Always three columns on desktop workbench widths. */
 .history-item__open {
   display: grid;
   width: 100%;
   min-width: 0;
-  grid-template-columns: 11.5rem minmax(0, 1fr);
-  gap: var(--space-3);
-  padding: 0.75rem 0;
+  grid-template-columns: 10.5rem minmax(0, 1fr) 10rem;
+  align-items: center;
+  column-gap: 1rem;
+  padding: 0.625rem 0;
   cursor: pointer;
   outline: none;
 }
 
 .history-item__open:focus-visible {
+  border-radius: var(--radius-sm);
   box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.62);
 }
 
@@ -233,12 +242,12 @@ const displayChannel = computed(
   background: hsl(var(--primary));
 }
 
-.history-item__body {
+.history-item__main {
   display: flex;
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
 }
 
 .history-item__title {
@@ -253,8 +262,7 @@ const displayChannel = computed(
   -webkit-line-clamp: 2;
 }
 
-.history-item__source,
-.history-item__meta {
+.history-item__source {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -303,11 +311,29 @@ const displayChannel = computed(
 }
 
 .history-item__meta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.25rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.history-item__time {
+  color: hsl(var(--muted-foreground));
+}
+
+.history-item__status {
+  color: hsl(var(--muted-foreground) / 0.92);
 }
 
 .history-item__status--active {
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground) / 0.8);
   font-weight: 600;
 }
 
@@ -332,7 +358,22 @@ const displayChannel = computed(
   color: hsl(var(--destructive));
 }
 
-/* Touch + reduced-motion: hover-reveal is unusable; keep delete discoverable. */
+@media (max-width: 720px) {
+  .history-item__open {
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    row-gap: 0.35rem;
+  }
+
+  .history-item__meta {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    text-align: left;
+  }
+}
+
 @media (hover: none), (prefers-reduced-motion: reduce) {
   .history-item__delete {
     opacity: 1;

@@ -274,14 +274,19 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   height: 2.25rem;
   border: 1px solid transparent;
   border-radius: 999px;
-  background: hsl(var(--muted));
+  background: hsl(var(--muted) / 0.72);
   box-shadow: none;
 }
 
 .app-header__search-slot :deep(.global-search__box:focus-within) {
-  border-color: hsl(var(--foreground) / 0.16);
+  border-color: hsl(var(--foreground) / 0.1);
   background: hsl(var(--card));
-  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.05);
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.04);
+}
+
+.app-header__search-slot :deep(.global-search__box.is-open:not(:focus-within)) {
+  border-color: hsl(var(--border) / 0.35);
+  background: hsl(var(--muted) / 0.55);
 }
 
 .app-header__search-slot :deep(.global-search__suggestions) {

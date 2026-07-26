@@ -64,4 +64,13 @@ describe('ui search contexts', () => {
       expect.stringContaining('local:later'),
     )
   })
+
+  it('falls back to grid media wall when preference is missing', () => {
+    const store = useUIStore()
+    store.setViewMode('list')
+    store.setVideoDensity('large')
+    store.applyVideoViewPreference('local-v2:all')
+    expect(store.viewMode).toBe('grid')
+    expect(store.videoDensity).toBe('comfortable')
+  })
 })

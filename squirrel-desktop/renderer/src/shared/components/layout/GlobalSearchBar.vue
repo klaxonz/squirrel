@@ -1,23 +1,24 @@
 <template>
   <div ref="rootRef" class="global-search" @focusin="handleFocusIn" @focusout="handleFocusOut">
     <div class="global-search__box" :class="{ 'is-open': showSuggestions }">
+      <AppIcon name="search" class="global-search__leading-icon" :stroke-width="2.25" />
+
       <div v-if="searchModesList.length > 0" class="global-search__mode-wrap">
         <Button
           type="button"
           text severity="secondary"
           size="sm"
           class="global-search__mode"
+          :class="{ 'is-remote': activeSearchMode === 'remote' }"
           :aria-pressed="activeSearchMode === 'remote'"
           :aria-label="`搜索范围：${activeSearchModeLabel}`"
+          :title="`搜索范围：${activeSearchModeLabel}`"
           @click="toggleMode"
         >
-          <AppIcon :name="activeSearchMode === 'local' ? 'library' : 'siteFallback'" class="w-3.5 h-3.5" />
-          {{ activeSearchModeLabel }}
+          <AppIcon :name="activeSearchMode === 'local' ? 'library' : 'siteFallback'" class="global-search__mode-icon" />
+          <span class="global-search__mode-label">{{ activeSearchModeLabel }}</span>
         </Button>
       </div>
-
-      <div v-if="searchModesList.length > 0" class="global-search__divider" />
-      <AppIcon v-else name="search" class="global-search__leading-icon" :stroke-width="2.5" />
 
       <input
         ref="inputRef"
@@ -37,21 +38,18 @@
       <div class="global-search__actions">
         <AppSpinner v-if="isTyping" size="sm" />
 
-        <Button v-if="inputValue" text severity="secondary" size="sm" icon-only class="global-search__icon-button" @click="clearSearch">
-          <AppIcon name="close" class="w-3.5 h-3.5" />
-        </Button>
-
         <Button
-          type="button"
-          text severity="secondary"
-          size="sm" icon-only
-          class="global-search__icon-button"
-          :disabled="!trimmedInputValue"
-          title="搜索"
-          @mousedown.prevent
-          @click="handleSearch"
+          v-if="inputValue"
+          text
+          severity="secondary"
+          size="sm"
+          icon-only
+          class="global-search__clear"
+          title="清除"
+          aria-label="清除"
+          @click="clearSearch"
         >
-          <AppIcon name="search" class="h-3.5 w-3.5" />
+          <AppIcon name="close" class="w-3.5 h-3.5" />
         </Button>
       </div>
     </div>
@@ -418,12 +416,12 @@ onUnmounted(() => {
 .global-search__box {
   display: flex;
   align-items: center;
-  gap: 0.125rem;
+  gap: 0.25rem;
   height: 2.25rem;
-  padding: 0.125rem 0.375rem 0.125rem 0.25rem;
+  padding: 0 0.5rem 0 0.75rem;
   border: 1px solid transparent;
   border-radius: 999px;
-  background: hsl(var(--muted));
+  background: hsl(var(--muted) / 0.72);
   transition:
     background-color var(--duration-fast) var(--ease-default),
     border-color var(--duration-fast) var(--ease-default),
@@ -434,14 +432,27 @@ onUnmounted(() => {
    Nested input/button focus rings are suppressed below so they do not
    stack with this ring (global :focus-visible + Button ring utilities). */
 .global-search__box:focus-within {
-  border-color: hsl(var(--foreground) / 0.16);
+  border-color: hsl(var(--foreground) / 0.1);
   background: hsl(var(--card));
-  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.05);
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.04);
 }
 
 /* is-open only while the panel is visible; never override focus chrome. */
 .global-search__box.is-open:not(:focus-within) {
-  border-color: hsl(var(--border) / 0.45);
+  border-color: hsl(var(--border) / 0.35);
+  background: hsl(var(--muted) / 0.55);
+}
+
+.global-search__leading-icon {
+  flex: 0 0 auto;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: hsl(var(--muted-foreground) / 0.55);
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.global-search__box:focus-within .global-search__leading-icon {
+  color: hsl(var(--muted-foreground) / 0.78);
 }
 
 .global-search__mode-wrap {
@@ -451,64 +462,56 @@ onUnmounted(() => {
 }
 
 .global-search__mode {
-  gap: 0.3125rem;
-  height: 1.625rem;
-  padding: 0 0.45rem;
-  border-radius: calc(var(--radius-md) - 1px);
+  gap: 0.25rem;
+  height: 1.375rem;
+  min-width: 0;
+  padding: 0 0.375rem 0 0.25rem;
+  border-radius: 999px;
   border-color: transparent;
   background: transparent;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.72);
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.01em;
 }
 
 .global-search__mode:hover {
   border-color: transparent;
   background: hsl(var(--foreground) / 0.05);
-  color: hsl(var(--foreground));
+  color: hsl(var(--foreground) / 0.82);
 }
 
-.global-search__mode[aria-pressed='true'] {
-  background: var(--app-selection-bg);
-  color: var(--app-selection-fg);
+/* Neutral ink-wash active — never brand primary */
+.global-search__mode[aria-pressed='true'],
+.global-search__mode.is-remote {
+  background: hsl(var(--foreground) / 0.06);
+  color: hsl(var(--foreground) / 0.88);
 }
 
 .global-search__mode:active {
   transform: none;
 }
 
-.global-search__divider {
-  flex: 0 0 auto;
-  width: 1px;
-  height: 0.875rem;
-  margin: 0 0.2rem 0 0.1rem;
-  background: hsl(var(--border) / 0.4);
-  border-radius: 1px;
+.global-search__mode-icon {
+  width: 0.8125rem;
+  height: 0.8125rem;
+  opacity: 0.85;
 }
 
-.global-search__leading-icon {
-  width: 0.875rem;
-  height: 0.875rem;
-  margin: 0 0.375rem 0 0.5rem;
-  color: hsl(var(--muted-foreground) / 0.55);
-  transition: color var(--duration-fast) var(--ease-default);
-}
-
-.global-search__box:focus-within .global-search__leading-icon {
-  color: hsl(var(--muted-foreground) / 0.85);
+.global-search__mode-label {
+  line-height: 1;
 }
 
 .global-search__input {
   min-width: 0;
   flex: 1 1 auto;
   height: 100%;
-  padding: 0 0.375rem;
+  padding: 0 0.25rem;
   border: 0;
   background: transparent;
   color: hsl(var(--foreground));
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 400;
   outline: none;
   box-shadow: none;
 }
@@ -521,25 +524,28 @@ onUnmounted(() => {
 }
 
 .global-search__input::placeholder {
-  color: hsl(var(--muted-foreground) / 0.52);
+  color: hsl(var(--muted-foreground) / 0.5);
+  font-weight: 400;
 }
 
 .global-search__actions {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  padding-right: 0.125rem;
+  gap: 0.125rem;
+  min-width: 1.5rem;
+  justify-content: flex-end;
 }
 
-.global-search__icon-button {
+.global-search__clear {
   width: 1.5rem;
   height: 1.5rem;
-  border-radius: 0.375rem;
-  color: hsl(var(--muted-foreground) / 0.72);
+  border-radius: 999px;
+  color: hsl(var(--muted-foreground) / 0.62);
 }
 
-.global-search__icon-button:hover:not(:disabled) {
+.global-search__clear:hover:not(:disabled) {
   color: hsl(var(--foreground));
+  background: hsl(var(--foreground) / 0.06);
 }
 
 /* Composite control: internal buttons never paint their own focus ring. */

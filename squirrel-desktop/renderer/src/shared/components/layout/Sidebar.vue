@@ -207,12 +207,7 @@ const showSidebarMusicPlayer = computed(() =>
 }
 
 .sidebar-group__label--collapsed {
-  overflow: hidden;
-  padding-inline: 0;
-  text-align: center;
-  letter-spacing: 0;
-  font-size: 0.5rem;
-  text-overflow: clip;
+  display: none;
 }
 
 .sidebar-group__items {

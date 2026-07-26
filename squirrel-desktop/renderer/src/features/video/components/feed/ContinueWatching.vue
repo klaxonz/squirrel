@@ -130,23 +130,24 @@ defineExpose({ refresh: load })
 </script>
 
 <style scoped>
-/* Thin horizontal rail above the feed — not a boxed SaaS module. */
+
+/* Thin horizontal shelf above the feed — no nested card box. */
 .continue-rail {
   min-width: 0;
   overflow: hidden;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-md);
-  background: hsl(var(--card));
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .continue-rail__header {
   display: flex;
-  min-height: 2.5rem;
+  min-height: 2rem;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.5rem 0.875rem;
-  border-bottom: 1px solid hsl(var(--border));
+  padding: 0.125rem 0.125rem 0.375rem;
+  border-bottom: 0;
 }
 
 .continue-rail__header h2 {
@@ -163,7 +164,7 @@ defineExpose({ refresh: load })
   grid-auto-columns: minmax(10.5rem, 1fr);
   gap: 0.625rem;
   margin: 0;
-  padding: 0.75rem 0.875rem;
+  padding: 0.125rem 0 0.25rem;
   overflow-x: auto;
   list-style: none;
   scrollbar-width: thin;

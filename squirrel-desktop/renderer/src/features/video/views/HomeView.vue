@@ -3,8 +3,20 @@
     <div class="home-feed__page">
       <main class="home-feed__main" aria-label="首页信息流">
         <div class="home-feed__sort">
-          <span class="home-feed__sort-label">最新</span>
-          <Button text severity="secondary" size="sm" class="home-feed__sort-refresh" @click="refresh">
+          <div class="home-feed__sort-chips" role="tablist" aria-label="排序">
+            <button type="button" class="home-feed__chip is-active" role="tab" aria-selected="true">
+              最新
+            </button>
+          </div>
+          <Button
+            text
+            severity="secondary"
+            size="sm"
+            class="home-feed__sort-refresh"
+            title="刷新"
+            aria-label="刷新首页"
+            @click="refresh"
+          >
             <AppIcon name="refresh" class="size-3.5" />
             刷新
           </Button>
@@ -31,16 +43,57 @@
       <aside class="home-feed__rail" aria-label="辅助信息">
         <section class="home-feed__widget">
           <header class="home-feed__widget-head">
-            <h2>快捷入口</h2>
+            <h2>浏览</h2>
           </header>
           <div class="home-feed__widget-links">
-            <button type="button" class="home-feed__widget-link" @click="goToAllVideos">全部视频</button>
-            <button type="button" class="home-feed__widget-link" @click="goToContinueWatching">继续观看</button>
-            <button type="button" class="home-feed__widget-link" @click="goToSubscribed">订阅中心</button>
+            <button type="button" class="home-feed__widget-link" @click="goToAllVideos">
+              <span class="home-feed__widget-icon" aria-hidden="true">
+                <AppIcon name="film" class="size-4" />
+              </span>
+              <span class="home-feed__widget-copy">
+                <strong>视频库</strong>
+                <small>全部 / 未读 / 稍后看</small>
+              </span>
+            </button>
+            <button type="button" class="home-feed__widget-link" @click="goToContinueWatching">
+              <span class="home-feed__widget-icon" aria-hidden="true">
+                <AppIcon name="history" class="size-4" />
+              </span>
+              <span class="home-feed__widget-copy">
+                <strong>继续观看</strong>
+                <small>未看完的播放进度</small>
+              </span>
+            </button>
+            <button type="button" class="home-feed__widget-link" @click="goToSubscribed">
+              <span class="home-feed__widget-icon" aria-hidden="true">
+                <AppIcon name="subscriptions" class="size-4" />
+              </span>
+              <span class="home-feed__widget-copy">
+                <strong>订阅中心</strong>
+                <small>管理多站频道</small>
+              </span>
+            </button>
+            <button type="button" class="home-feed__widget-link" @click="goToPlaylists">
+              <span class="home-feed__widget-icon" aria-hidden="true">
+                <AppIcon name="playlists" class="size-4" />
+              </span>
+              <span class="home-feed__widget-copy">
+                <strong>播放列表</strong>
+                <small>整理合集与队列</small>
+              </span>
+            </button>
           </div>
         </section>
-        <section class="home-feed__widget home-feed__widget--muted">
-          <p>信息流按订阅同步时间排列。点开卡片即可播放；喜欢 / 稍后看在帖子底部。</p>
+
+        <section class="home-feed__widget">
+          <header class="home-feed__widget-head">
+            <h2>信息流说明</h2>
+          </header>
+          <ul class="home-feed__tips">
+            <li>按订阅同步时间排列新内容</li>
+            <li>点卡片进入播放，底栏可喜欢 / 已读 / 稍后看</li>
+            <li>右上搜索支持本地库与远端检索</li>
+          </ul>
         </section>
       </aside>
     </div>
@@ -69,6 +122,7 @@ let lastRefreshedAt = 0
 const goToContinueWatching = () => router.push({ name: 'History', query: { mode: 'continue' } })
 const goToAllVideos = () => router.push({ name: 'AllVideos' })
 const goToSubscribed = () => router.push({ name: 'Subscribed' })
+const goToPlaylists = () => router.push({ name: 'Playlists' })
 
 const refresh = () => {
   Promise.allSettled([
@@ -91,51 +145,90 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.home-feed {
-  background: hsl(var(--background));
-}
-
-/* Reddit home: main post column + right widgets on gray canvas. */
+/*
+  Delivery geometry:
+  - post column + right rail form one band
+  - band is centered in the workspace on wide screens (Reddit-like)
+  - posts cap at readable measure; rail fixed
+*/
 .home-feed__page {
   display: grid;
   width: 100%;
-  max-width: 72rem;
-  margin-inline: auto;
+  max-width: none;
+  margin-inline: 0;
   grid-template-columns: minmax(0, 1fr);
-  gap: 1.5rem;
-  padding: 1rem var(--app-content-media-gutter) 3rem;
+  gap: 1.25rem;
+  padding: 0.75rem var(--app-content-media-gutter) 3rem;
 }
 
 @media (min-width: 1100px) {
   .home-feed__page {
-    grid-template-columns: minmax(0, 1fr) 20rem;
+    grid-template-columns: minmax(22rem, 40rem) 20rem;
+    justify-content: center;
     align-items: start;
+  }
+}
+
+@media (min-width: 1400px) {
+  .home-feed__page {
+    grid-template-columns: minmax(28rem, 48rem) 20rem;
+  }
+}
+
+@media (min-width: 1800px) {
+  .home-feed__page {
+    grid-template-columns: minmax(32rem, 52rem) 20rem;
   }
 }
 
 .home-feed__main {
   display: flex;
   min-width: 0;
+  width: 100%;
+  max-width: none;
   flex-direction: column;
   gap: 0.75rem;
 }
 
 .home-feed__sort {
   display: flex;
-  min-height: 2.5rem;
+  min-height: 2.25rem;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg);
-  background: hsl(var(--card));
-  padding: 0.375rem 0.75rem;
+  padding: 0.125rem 0;
 }
 
-.home-feed__sort-label {
-  color: hsl(var(--foreground));
+.home-feed__sort-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.home-feed__chip {
+  height: 2rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 0.875rem;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
-  font-weight: 700;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.home-feed__chip.is-active {
+  background: hsl(var(--foreground) / 0.08);
+  color: hsl(var(--foreground));
+}
+
+.home-feed__chip:hover:not(.is-active) {
+  background: hsl(var(--foreground) / 0.05);
+  color: hsl(var(--foreground));
+}
+
+.home-feed__sort-refresh {
+  color: hsl(var(--muted-foreground));
 }
 
 .home-feed__rail {
@@ -158,32 +251,32 @@ onMounted(() => {
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius-lg);
   background: hsl(var(--card));
-  padding: 0.875rem;
+  padding: 0.75rem;
 }
 
 .home-feed__widget-head h2 {
-  margin: 0 0 0.625rem;
-  font-size: 0.875rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .home-feed__widget-links {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.125rem;
 }
 
 .home-feed__widget-link {
   display: flex;
-  min-height: 2rem;
+  min-height: 2.75rem;
   align-items: center;
+  gap: 0.75rem;
   border: 0;
   border-radius: var(--radius-md);
-  padding: 0 0.5rem;
+  padding: 0.375rem 0.5rem;
   background: transparent;
   color: hsl(var(--foreground));
-  font-size: 0.8125rem;
-  font-weight: 600;
   text-align: left;
   cursor: pointer;
 }
@@ -192,10 +285,46 @@ onMounted(() => {
   background: hsl(var(--foreground) / 0.06);
 }
 
-.home-feed__widget--muted p {
+.home-feed__widget-icon {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+.home-feed__widget-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.125rem;
+}
+
+.home-feed__widget-copy strong {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.home-feed__widget-copy small {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.home-feed__tips {
   margin: 0;
+  padding-left: 1.1rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
-  line-height: 1.5;
+  line-height: 1.55;
+}
+
+.home-feed__tips li + li {
+  margin-top: 0.35rem;
 }
 </style>

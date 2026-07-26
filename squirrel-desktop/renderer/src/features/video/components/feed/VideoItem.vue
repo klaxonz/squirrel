@@ -2,7 +2,9 @@
   <article
     class="video-item group"
     :class="[
-      layout === 'list' ? 'video-item--card' : 'video-item--grid',
+      layout === 'list'
+        ? (appearance === 'workbench' ? 'video-item--row' : 'video-item--card')
+        : 'video-item--grid',
       `video-item--appearance-${appearance}`,
     ]"
     role="button"
@@ -15,143 +17,283 @@
     @keydown.enter.prevent="handleOpen"
     @keydown.space.prevent="handleOpen"
   >
-    <!-- Reddit card: community meta on top -->
-    <header v-if="layout === 'list'" class="video-item__top">
-      <div class="video-item__community">
-        <SubscriptionAvatar
-          v-if="showAvatar && displayAvatars.length"
-          class="video-item__avatar"
-          :src="displayAvatars[0].avatar"
-          :name="displayAvatars[0].name"
-          size="sm"
-          @click.stop="goToProfile(displayAvatars[0])"
-        />
-        <button
-          type="button"
-          class="video-item__source-name"
-          @click.stop="goToProfile(primaryProfile)"
-        >
-          {{ displayNames }}
-        </button>
-        <span v-if="displayDateText" class="video-item__date">{{ displayDateText }}</span>
-        <span v-if="video.site" class="video-item__site">{{ video.site }}</span>
-      </div>
-      <div class="video-item__top-actions" @click.stop>
-        <button
-          type="button"
-          class="video-item__join"
-          :class="{ 'is-on': isLater === 1 }"
-          :title="isLater === 1 ? '取消稍后看' : '稍后看'"
-          @click="toggleLater"
-        >
-          {{ isLater === 1 ? '已加' : '加入' }}
-        </button>
-      </div>
-    </header>
-
-    <h3
-      class="video-item__title"
-      :class="layout === 'list' ? 'video-item__title--card' : 'video-item__title--grid'"
-    >
-      {{ video.title }}
-    </h3>
-
-    <div
-      class="video-item__thumb"
-      :class="layout === 'list' ? 'video-item__thumb--card' : 'video-item__thumb--grid'"
-    >
-      <VideoThumbnail
-        :src="thumbnailSrc"
-        :alt="video.title"
-        fit="cover"
-        interactive
-        :blur="shouldBlurThumbnail"
-      />
-
-      <span
-        v-if="video.duration && showDuration"
-        class="video-item__duration app-mono"
-        :class="{ 'video-item__duration--with-progress': progressRatio > 0 }"
-      >
-        {{ formatDuration(video.duration) }}
-      </span>
-
-      <div v-if="layout !== 'list'" class="video-item__scrim" />
-
+    <!-- Workbench list: horizontal media row (fills wide canvas without giant 16:9). -->
+    <template v-if="layout === 'list' && appearance === 'workbench'">
       <div
-        v-if="showThumbnailProgress"
-        class="video-item__progress"
-        role="progressbar"
-        :aria-valuenow="Math.round(progressRatio * 100)"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        :aria-label="`已观看 ${Math.round(progressRatio * 100)}%`"
+        class="video-item__thumb video-item__thumb--row"
       >
-        <div
-          class="video-item__progress-fill"
-          :style="{ width: `${progressRatio * 100}%` }"
+        <VideoThumbnail
+          :src="thumbnailSrc"
+          :alt="video.title"
+          fit="cover"
+          interactive
+          :blur="shouldBlurThumbnail"
         />
-      </div>
-    </div>
-
-    <!-- Grid keeps compact meta under thumb -->
-    <div v-if="layout !== 'list'" class="video-item__body">
-      <div class="video-item__meta">
-        <div v-if="showAvatar && displayAvatars.length" class="video-item__avatar">
-          <SubscriptionAvatar
-            :src="displayAvatars[0].avatar"
-            :name="displayAvatars[0].name"
-            size="md"
-            @click.stop="goToProfile(displayAvatars[0])"
+        <span
+          v-if="video.duration && showDuration"
+          class="video-item__duration app-mono"
+          :class="{ 'video-item__duration--with-progress': progressRatio > 0 }"
+        >
+          {{ formatDuration(video.duration) }}
+        </span>
+        <div
+          v-if="showThumbnailProgress"
+          class="video-item__progress"
+          role="progressbar"
+          :aria-valuenow="Math.round(progressRatio * 100)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`已观看 ${Math.round(progressRatio * 100)}%`"
+        >
+          <div
+            class="video-item__progress-fill"
+            :style="{ width: `${progressRatio * 100}%` }"
           />
         </div>
-        <div class="video-item__meta-main">
-          <div class="video-item__meta-line">
-            <span class="video-item__source-name" @click.stop="goToProfile(primaryProfile)">
+      </div>
+
+      <div class="video-item__row-body">
+        <header class="video-item__top video-item__top--row">
+          <div class="video-item__community">
+            <SubscriptionAvatar
+              v-if="showAvatar && displayAvatars.length"
+              class="video-item__avatar"
+              :src="displayAvatars[0].avatar"
+              :name="displayAvatars[0].name"
+              size="sm"
+              @click.stop="goToProfile(displayAvatars[0])"
+            />
+            <button
+              type="button"
+              class="video-item__source-name"
+              @click.stop="goToProfile(primaryProfile)"
+            >
               {{ displayNames }}
-            </span>
+            </button>
             <span v-if="displayDateText" class="video-item__date">{{ displayDateText }}</span>
+            <span v-if="video.site" class="video-item__site">{{ video.site }}</span>
+          </div>
+          <div class="video-item__top-actions" @click.stop>
+            <button
+              type="button"
+              class="video-item__join"
+              :class="{ 'is-on': isLater === 1 }"
+              :title="isLater === 1 ? '取消稍后看' : '稍后看'"
+              @click="toggleLater"
+            >
+              {{ isLater === 1 ? '已加' : '加入' }}
+            </button>
+          </div>
+        </header>
+
+        <h3 class="video-item__title video-item__title--row">
+          {{ video.title }}
+        </h3>
+
+        <footer class="video-item__bar video-item__bar--row" @click.stop>
+          <button
+            type="button"
+            class="video-item__bar-btn"
+            :class="{ 'is-on': isLiked === 1 }"
+            :title="isLiked === 1 ? '取消喜欢' : '喜欢'"
+            :aria-pressed="isLiked === 1"
+            @click="toggleLikeVideo"
+          >
+            <AppIcon name="heart" class="size-4" :class="{ 'fill-current': isLiked === 1 }" />
+            <span>{{ isLiked === 1 ? '已喜欢' : '喜欢' }}</span>
+          </button>
+          <button
+            type="button"
+            class="video-item__bar-btn"
+            :class="{ 'is-on': isRead }"
+            :title="isRead ? '标记未读' : '标记已读'"
+            :aria-pressed="isRead"
+            @click="toggleReadStatus(!isRead)"
+          >
+            <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-4" />
+            <span>{{ isRead ? '已读' : '标已读' }}</span>
+          </button>
+          <button
+            type="button"
+            class="video-item__bar-btn"
+            :class="{ 'is-on': isLater === 1 }"
+            :title="isLater === 1 ? '取消稍后看' : '稍后看'"
+            :aria-pressed="isLater === 1"
+            @click="toggleLater"
+          >
+            <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-4" />
+            <span>稍后看</span>
+          </button>
+        </footer>
+      </div>
+    </template>
+
+    <!-- Reddit card post: community meta on top (home feed). -->
+    <template v-else-if="layout === 'list'">
+      <header class="video-item__top">
+        <div class="video-item__community">
+          <SubscriptionAvatar
+            v-if="showAvatar && displayAvatars.length"
+            class="video-item__avatar"
+            :src="displayAvatars[0].avatar"
+            :name="displayAvatars[0].name"
+            size="sm"
+            @click.stop="goToProfile(displayAvatars[0])"
+          />
+          <button
+            type="button"
+            class="video-item__source-name"
+            @click.stop="goToProfile(primaryProfile)"
+          >
+            {{ displayNames }}
+          </button>
+          <span v-if="displayDateText" class="video-item__date">{{ displayDateText }}</span>
+          <span v-if="video.site" class="video-item__site">{{ video.site }}</span>
+        </div>
+        <div class="video-item__top-actions" @click.stop>
+          <button
+            type="button"
+            class="video-item__join"
+            :class="{ 'is-on': isLater === 1 }"
+            :title="isLater === 1 ? '取消稍后看' : '稍后看'"
+            @click="toggleLater"
+          >
+            {{ isLater === 1 ? '已加' : '加入' }}
+          </button>
+        </div>
+      </header>
+
+      <h3 class="video-item__title video-item__title--card">
+        {{ video.title }}
+      </h3>
+
+      <div class="video-item__thumb video-item__thumb--card">
+        <VideoThumbnail
+          :src="thumbnailSrc"
+          :alt="video.title"
+          fit="cover"
+          interactive
+          :blur="shouldBlurThumbnail"
+        />
+        <span
+          v-if="video.duration && showDuration"
+          class="video-item__duration app-mono"
+          :class="{ 'video-item__duration--with-progress': progressRatio > 0 }"
+        >
+          {{ formatDuration(video.duration) }}
+        </span>
+        <div
+          v-if="showThumbnailProgress"
+          class="video-item__progress"
+          role="progressbar"
+          :aria-valuenow="Math.round(progressRatio * 100)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`已观看 ${Math.round(progressRatio * 100)}%`"
+        >
+          <div
+            class="video-item__progress-fill"
+            :style="{ width: `${progressRatio * 100}%` }"
+          />
+        </div>
+      </div>
+
+      <footer class="video-item__bar" @click.stop>
+        <button
+          type="button"
+          class="video-item__bar-btn"
+          :class="{ 'is-on': isLiked === 1 }"
+          :title="isLiked === 1 ? '取消喜欢' : '喜欢'"
+          :aria-pressed="isLiked === 1"
+          @click="toggleLikeVideo"
+        >
+          <AppIcon name="heart" class="size-4" :class="{ 'fill-current': isLiked === 1 }" />
+          <span>{{ isLiked === 1 ? '已喜欢' : '喜欢' }}</span>
+        </button>
+        <button
+          type="button"
+          class="video-item__bar-btn"
+          :class="{ 'is-on': isRead }"
+          :title="isRead ? '标记未读' : '标记已读'"
+          :aria-pressed="isRead"
+          @click="toggleReadStatus(!isRead)"
+        >
+          <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-4" />
+          <span>{{ isRead ? '已读' : '标已读' }}</span>
+        </button>
+        <button
+          type="button"
+          class="video-item__bar-btn"
+          :class="{ 'is-on': isLater === 1 }"
+          :title="isLater === 1 ? '取消稍后看' : '稍后看'"
+          :aria-pressed="isLater === 1"
+          @click="toggleLater"
+        >
+          <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-4" />
+          <span>稍后看</span>
+        </button>
+      </footer>
+    </template>
+
+    <!-- Grid keeps compact meta under thumb -->
+    <template v-else>
+      <div class="video-item__thumb video-item__thumb--grid">
+        <VideoThumbnail
+          :src="thumbnailSrc"
+          :alt="video.title"
+          fit="cover"
+          interactive
+          :blur="shouldBlurThumbnail"
+        />
+        <span
+          v-if="video.duration && showDuration"
+          class="video-item__duration app-mono"
+          :class="{ 'video-item__duration--with-progress': progressRatio > 0 }"
+        >
+          {{ formatDuration(video.duration) }}
+        </span>
+        <div class="video-item__scrim" />
+        <div
+          v-if="showThumbnailProgress"
+          class="video-item__progress"
+          role="progressbar"
+          :aria-valuenow="Math.round(progressRatio * 100)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`已观看 ${Math.round(progressRatio * 100)}%`"
+        >
+          <div
+            class="video-item__progress-fill"
+            :style="{ width: `${progressRatio * 100}%` }"
+          />
+        </div>
+      </div>
+
+      <h3 class="video-item__title video-item__title--grid">
+        {{ video.title }}
+      </h3>
+
+      <div class="video-item__body">
+        <div class="video-item__meta">
+          <div v-if="showAvatar && displayAvatars.length" class="video-item__avatar">
+            <SubscriptionAvatar
+              :src="displayAvatars[0].avatar"
+              :name="displayAvatars[0].name"
+              size="md"
+              @click.stop="goToProfile(displayAvatars[0])"
+            />
+          </div>
+          <div class="video-item__meta-main">
+            <div class="video-item__meta-line">
+              <span class="video-item__source-name" @click.stop="goToProfile(primaryProfile)">
+                {{ displayNames }}
+              </span>
+              <span v-if="displayDateText" class="video-item__date">{{ displayDateText }}</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Reddit-style bottom action bar on cards -->
-    <footer v-if="layout === 'list'" class="video-item__bar" @click.stop>
-      <button
-        type="button"
-        class="video-item__bar-btn"
-        :class="{ 'is-on': isLiked === 1 }"
-        :title="isLiked === 1 ? '取消喜欢' : '喜欢'"
-        :aria-pressed="isLiked === 1"
-        @click="toggleLikeVideo"
-      >
-        <AppIcon name="heart" class="size-4" :class="{ 'fill-current': isLiked === 1 }" />
-        <span>{{ isLiked === 1 ? '已喜欢' : '喜欢' }}</span>
-      </button>
-      <button
-        type="button"
-        class="video-item__bar-btn"
-        :class="{ 'is-on': isRead }"
-        :title="isRead ? '标记未读' : '标记已读'"
-        :aria-pressed="isRead"
-        @click="toggleReadStatus(!isRead)"
-      >
-        <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-4" />
-        <span>{{ isRead ? '已读' : '标已读' }}</span>
-      </button>
-      <button
-        type="button"
-        class="video-item__bar-btn"
-        :class="{ 'is-on': isLater === 1 }"
-        :title="isLater === 1 ? '取消稍后看' : '稍后看'"
-        :aria-pressed="isLater === 1"
-        @click="toggleLater"
-      >
-        <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-4" />
-        <span>稍后看</span>
-      </button>
-    </footer>
+    </template>
 
     <Teleport to="body">
       <ContextMenu
@@ -383,6 +525,60 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   border-radius: var(--radius-md);
 }
 
+/* Workbench list: thumb left + body right. Compact enough for delivery density. */
+.video-item--row {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.875rem;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
+  padding: 0.625rem;
+}
+
+.video-item--row:hover {
+  border-color: hsl(var(--foreground) / 0.18);
+  background: hsl(var(--card));
+}
+
+.video-item__thumb--row {
+  position: relative;
+  width: clamp(11rem, 16vw, 16rem);
+  flex: 0 0 clamp(11rem, 16vw, 16rem);
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--app-media-thumb-placeholder);
+  isolation: isolate;
+}
+
+.video-item__row-body {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.video-item__top--row {
+  padding: 0;
+}
+
+.video-item__title--row {
+  padding: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  -webkit-line-clamp: 2;
+}
+
+.video-item__bar--row {
+  margin-top: 0.125rem;
+  padding: 0;
+}
+
 .video-item:focus-visible {
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
 }
@@ -597,18 +793,18 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.375rem 0.5rem 0.5rem;
+  gap: 0.125rem;
+  padding: 0.25rem 0.375rem 0.5rem;
 }
 
 .video-item__bar-btn {
   display: inline-flex;
   height: 2rem;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.375rem;
   border: 0;
   border-radius: 999px;
-  padding: 0 0.625rem;
+  padding: 0 0.75rem;
   background: transparent;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
@@ -622,8 +818,8 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item__bar-btn.is-on {
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
+  background: hsl(var(--foreground) / 0.08);
+  color: hsl(var(--foreground));
 }
 
 .video-item--appearance-workbench.video-item--card {

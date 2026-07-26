@@ -564,7 +564,7 @@ onMounted(async () => {
 }
 
 .playlist-item.is-current {
-  background: hsl(var(--primary) / 0.08);
+  background: hsl(var(--foreground) / 0.08);
 }
 
 .playlist-item-index {

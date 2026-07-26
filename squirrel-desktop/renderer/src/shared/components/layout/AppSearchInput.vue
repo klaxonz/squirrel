@@ -63,7 +63,7 @@ const emit = defineEmits<{
 }
 
 .app-search-input:focus-within .app-search-input__icon {
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground) / 0.85);
 }
 
 :deep(.app-search-input__control) {

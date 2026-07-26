@@ -93,11 +93,19 @@ export const useUIStore = defineStore('ui', () => {
     localStorage.setItem(VIDEO_VIEW_PREFERENCES_KEY, JSON.stringify(videoViewPreferences))
   }
 
-  const applyVideoViewPreference = (key: string) => {
+  const applyVideoViewPreference = (
+    key: string,
+    defaults: VideoViewPreference = { viewMode: 'grid', density: 'comfortable' },
+  ) => {
     const preference = videoViewPreferences[key]
-    if (!preference) return
-    viewMode.value = preference.viewMode
-    videoDensity.value = preference.density
+    if (preference) {
+      viewMode.value = preference.viewMode
+      videoDensity.value = preference.density
+      return
+    }
+    // First visit / no saved preference: workbench defaults to media wall.
+    viewMode.value = defaults.viewMode
+    videoDensity.value = defaults.density
   }
 
   const setViewMode = (mode: VideoViewMode, preferenceKey?: string) => {

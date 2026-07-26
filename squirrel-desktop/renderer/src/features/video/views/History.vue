@@ -339,9 +339,11 @@ onMounted(() => {
 
 <style scoped>
 .history-content {
-  max-width: var(--app-content-feed-max);
-  margin-inline: auto;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
   padding-block: var(--space-4) var(--app-content-padding-bottom);
+  padding-inline: var(--app-content-media-gutter);
 }
 
 .history-toolbar {
@@ -372,17 +374,13 @@ onMounted(() => {
 
 .history-groups {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .history-day {
   display: grid;
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-md);
-  background: hsl(var(--card));
-  padding: 0;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
 .history-day__header {
@@ -390,8 +388,7 @@ onMounted(() => {
   min-width: 0;
   align-items: baseline;
   gap: var(--space-4);
-  padding: 0.625rem 0.875rem;
-  border-bottom: 1px solid hsl(var(--border));
+  padding: 0.125rem 0.125rem 0;
 }
 
 .history-day__heading {
@@ -423,10 +420,6 @@ onMounted(() => {
 .history-day__items {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  row-gap: 0;
-}
-
-.history-day__items > * + * {
-  border-top: 1px solid hsl(var(--border));
+  gap: var(--space-2);
 }
 </style>

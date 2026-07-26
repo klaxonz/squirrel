@@ -1,9 +1,9 @@
 <template>
   <section class="home-inbox" aria-labelledby="home-inbox-title">
+    <!-- Flat filter row on canvas — not a second card chrome -->
     <header class="home-inbox__header">
       <div class="home-inbox__heading">
         <h2 id="home-inbox-title">最新入库</h2>
-        <p class="home-inbox__subtitle">订阅同步后的连续信息流</p>
       </div>
 
       <div class="home-inbox__tools">
@@ -14,18 +14,6 @@
           aria-label="首页内容范围"
           @update:model-value="setFilter"
         />
-        <Button
-          text
-          severity="secondary"
-          size="sm"
-          icon-only
-          title="刷新首页"
-          aria-label="刷新首页"
-          :disabled="loading"
-          @click="emit('refresh')"
-        >
-          <AppIcon name="refresh" class="size-4" />
-        </Button>
         <Button text severity="secondary" size="sm" @click="emit('viewMore')">
           全部
           <AppIcon name="chevronRight" class="size-3.5" />
@@ -47,7 +35,7 @@
         :key="index"
         :delay="(index - 1) * 35"
         layout="list"
-        appearance="workbench"
+        appearance="default"
       />
     </div>
 
@@ -65,7 +53,7 @@
             layout="list"
             show-avatar
             show-duration
-            appearance="workbench"
+            appearance="default"
             @openModal="emit('openModal', video)"
             @goToProfile="(profile) => emit('goToProfile', profile)"
             @goToSubscription="(id) => emit('goToSubscription', id)"
@@ -154,7 +142,7 @@ defineExpose({ refresh: load })
 </script>
 
 <style scoped>
-/* Separate white post cards on gray canvas — not one giant panel. */
+/* Flat stream: filters on canvas, posts are the only cards. */
 .home-inbox {
   min-width: 0;
   display: flex;
@@ -171,19 +159,15 @@ defineExpose({ refresh: load })
 }
 
 .home-inbox__header {
-  min-height: 3rem;
+  min-height: 2.25rem;
   justify-content: space-between;
   gap: 1rem;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg);
-  background: hsl(var(--card));
-  padding: 0.625rem 0.875rem;
+  padding: 0.125rem 0;
+  background: transparent;
 }
 
 .home-inbox__heading {
   min-width: 0;
-  display: grid;
-  gap: 0.125rem;
 }
 
 .home-inbox__header h2,
@@ -196,13 +180,6 @@ defineExpose({ refresh: load })
   font-size: 0.9375rem;
   font-weight: 700;
   letter-spacing: -0.01em;
-}
-
-.home-inbox__subtitle {
-  margin: 0;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  line-height: 1.3;
 }
 
 .home-inbox__tools {
