@@ -12,12 +12,6 @@
     @touchstart.capture="cancelScrollRestoration"
     @pointerdown.capture="cancelScrollRestoration"
   >
-    <DesktopTitleBar
-      v-if="isDesktop"
-      class="app-layout__titlebar"
-      :persist-sidebar-toggle="persistSidebarToggle"
-    />
-
     <div class="app-layout__frame">
       <AppSidebar
         class="app-layout__sidebar"
@@ -25,6 +19,12 @@
       />
 
       <main class="app-layout__workspace">
+        <DesktopTitleBar
+          v-if="isDesktop"
+          class="app-layout__titlebar"
+          :persist-sidebar-toggle="persistSidebarToggle"
+        />
+
         <AppHeader
           v-if="showAppHeader"
           class="app-layout__header"
@@ -337,12 +337,11 @@ onUnmounted(() => {
   background: hsl(var(--background));
 }
 
-.app-layout__titlebar {
-  flex: 0 0 auto;
-  position: relative;
-  z-index: var(--z-sidebar);
-}
-
+/*
+  Current Reddit shell geometry:
+  - left rail is full viewport height (brand sits at the top of the rail)
+  - titlebar only spans the workspace column, not over the rail
+*/
 .app-layout__frame {
   flex: 1 1 auto;
   min-height: 0;
@@ -355,14 +354,14 @@ onUnmounted(() => {
   inset: 0 auto 0 0;
   width: var(--workspace-offset);
   overflow: hidden;
-  z-index: 1;
+  z-index: var(--z-sidebar);
   transition: width var(--duration-base) var(--ease-out);
 }
 
 .app-layout__workspace {
   position: absolute;
   inset: 0 0 0 var(--workspace-offset);
-  z-index: var(--z-sidebar);
+  z-index: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -370,6 +369,12 @@ onUnmounted(() => {
   background: hsl(var(--background));
   transition: left var(--duration-base) var(--ease-out);
   will-change: left;
+}
+
+.app-layout__titlebar {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: var(--z-header);
 }
 
 .app-layout__header {

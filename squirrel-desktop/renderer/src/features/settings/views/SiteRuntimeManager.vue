@@ -593,17 +593,23 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-  border-bottom: 1px solid var(--app-hairline);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
+  padding: 0.5rem 0.75rem;
 }
 
 .site-runtime-filterbar > span {
-  color: hsl(var(--muted-foreground) / 0.72);
+  color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .site-runtime-file-button {
   max-width: 11rem;
-  color: hsl(var(--muted-foreground) / 0.84);
+  color: hsl(var(--muted-foreground));
 }
 
 .site-runtime-file-button.is-active {

@@ -412,18 +412,18 @@ onUnmounted(() => {
 .global-search {
   position: relative;
   width: 100%;
-  max-width: 35rem;
+  max-width: 40rem;
 }
 
 .global-search__box {
   display: flex;
   align-items: center;
   gap: 0.125rem;
-  height: 2rem;
-  padding: 0.125rem 0.25rem 0.125rem 0.1875rem;
-  border: 1px solid hsl(var(--border) / 0.32);
-  border-radius: var(--radius-md);
-  background: hsl(var(--muted) / 0.35);
+  height: 2.25rem;
+  padding: 0.125rem 0.375rem 0.125rem 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: hsl(var(--muted));
   transition:
     background-color var(--duration-fast) var(--ease-default),
     border-color var(--duration-fast) var(--ease-default),
@@ -434,14 +434,14 @@ onUnmounted(() => {
    Nested input/button focus rings are suppressed below so they do not
    stack with this ring (global :focus-visible + Button ring utilities). */
 .global-search__box:focus-within {
-  border-color: hsl(var(--border) / 0.55);
-  background: hsl(var(--card) / 0.72);
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.16);
+  border-color: hsl(var(--foreground) / 0.16);
+  background: hsl(var(--card));
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.05);
 }
 
 /* is-open only while the panel is visible; never override focus chrome. */
 .global-search__box.is-open:not(:focus-within) {
-  border-color: hsl(var(--border) / 0.65);
+  border-color: hsl(var(--border) / 0.45);
 }
 
 .global-search__mode-wrap {

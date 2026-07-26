@@ -53,46 +53,50 @@ const selectOption = (value: string | number) => {
   min-width: 0;
   flex: none;
   align-items: center;
-  gap: var(--space-5);
+  gap: 0.25rem;
 }
 
 .app-section-nav--optical {
-  margin-inline-start: calc(var(--space-2) * -1);
+  margin-inline-start: 0;
 }
 
 .app-section-nav__item {
   display: inline-flex;
-  height: 2.5rem;
+  height: 2rem;
   align-items: center;
   gap: 0.325rem;
-  border-radius: 0;
-  padding: 0;
-  color: hsl(var(--muted-foreground) / 0.86);
+  border-radius: 999px;
+  padding: 0 0.75rem;
+  color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: color var(--duration-fast) var(--ease-default);
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
 }
 
-.app-section-nav__item:hover,
-.app-section-nav__item.is-active {
+.app-section-nav__item:hover {
   color: hsl(var(--foreground));
+  background: hsl(var(--foreground) / 0.06);
 }
 
 .app-section-nav__item:focus-visible {
   color: hsl(var(--foreground));
   outline: 2px solid hsl(var(--ring));
-  outline-offset: 0.2rem;
+  outline-offset: 0.15rem;
 }
 
 .app-section-nav__item.is-active {
-  font-weight: 620;
+  color: hsl(var(--foreground));
+  background: hsl(var(--foreground) / 0.1);
+  font-weight: 700;
 }
 
 .app-section-nav__badge {
   min-width: 0.75rem;
-  color: hsl(var(--muted-foreground) / 0.76);
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-badge-size);
   line-height: 1;
   text-align: center;
@@ -106,7 +110,7 @@ const selectOption = (value: string | number) => {
 
 @media (min-width: 1280px) {
   .app-section-nav--optical {
-    margin-inline-start: calc(var(--space-4) * -1);
+    margin-inline-start: 0;
   }
 }
 </style>

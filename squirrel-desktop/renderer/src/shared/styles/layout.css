@@ -10,11 +10,11 @@
   --space-8: 3rem;
   --space-9: 4rem;
 
-  --radius: 7px;
-  --radius-sm: 5px;
-  --radius-md: 7px;
-  --radius-lg: 9px;
-  --radius-xl: 11px;
+  --radius: 4px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 
   /* Z-index scale — single source of truth for stacking order across the app.
      Replaces scattered magic stacking values with named overlay layers aligned
@@ -43,14 +43,16 @@
   --ease-out: cubic-bezier(0, 0, 0.2, 1);          /* entering elements */
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* press/active bounce */
 
-  --app-page-gutter: 1.25rem;
-  --app-page-gutter-sm: 1.5rem;
-  --app-page-gutter-lg: 2rem;
-  --app-content-media-max: 106rem;
-  --app-content-media-gutter: clamp(1.25rem, 2.5vw, 2.5rem);
-  --app-content-table-max: 96rem;
-  --app-content-form-max: 64rem;
-  --app-content-reading-max: 56rem;
+  --app-page-gutter: 1rem;
+  --app-page-gutter-sm: 1.25rem;
+  --app-page-gutter-lg: 1.5rem;
+  /* Reddit home: wide post column + optional right rail. */
+  --app-content-media-max: 80rem;
+  --app-content-media-gutter: clamp(1rem, 2vw, 1.5rem);
+  --app-content-feed-max: 44rem;
+  --app-content-table-max: 80rem;
+  --app-content-form-max: 40rem;
+  --app-content-reading-max: 44rem;
   --app-page-max-width: var(--app-content-table-max);
   --app-page-readable-width: var(--app-content-reading-max);
 
@@ -86,12 +88,13 @@
      Values are implementation defaults — redesign may change them with tests. */
   --app-titlebar-height: 3.25rem;
   --app-header-height: 3.25rem;
-  --sidebar-expanded-width: 14rem;
-  --sidebar-collapsed-width: 3.25rem;
-  --sidebar-icon-size: 1rem;
+  /* Reddit community rail under continuous brand cell. */
+  --sidebar-expanded-width: 15.5rem;
+  --sidebar-collapsed-width: 3.5rem;
+  --sidebar-icon-size: 1.25rem;
   --sidebar-item-height: 2.25rem;
-  --sidebar-item-gap: 0.1875rem;
-  --sidebar-footer-height: calc(var(--sidebar-item-height) + 1.5rem + 1px);
+  --sidebar-item-gap: 0.125rem;
+  --sidebar-footer-height: calc(var(--sidebar-item-height) + 1.125rem + 1px);
   --sidebar-player-height: 4.5rem;
 
   --app-control-bg: hsl(var(--secondary));
@@ -109,54 +112,42 @@
      Borders use foreground alpha (not --border) so selected edges stay readable
      on both dark canvas and light popovers. Light theme overrides alpha in
      themes/dark.css `.light` for paper surfaces. */
-  --app-selection-bg: hsl(var(--primary) / 0.1);
-  --app-selection-bg-hover: hsl(var(--primary) / 0.15);
-  --app-selection-border: hsl(var(--primary) / 0.22);
-  --app-selection-border-hover: hsl(var(--foreground) / 0.26);
+  --app-selection-bg: hsl(var(--foreground) / 0.08);
+  --app-selection-bg-hover: hsl(var(--foreground) / 0.12);
+  --app-selection-border: hsl(var(--foreground) / 0.14);
+  --app-selection-border-hover: hsl(var(--foreground) / 0.22);
   --app-selection-fg: hsl(var(--foreground));
-  --app-selection-count-bg: hsl(var(--foreground) / 0.16);
+  --app-selection-count-bg: hsl(var(--foreground) / 0.14);
   --app-selection-count-fg: hsl(var(--foreground));
 
-  /* Segmented controls — dual-theme raised language.
-     Dark defaults here; Light overrides in themes/dark.css `.light`.
-     Raised must be LIGHTER than track in dark (card ~L9% is darker than
-     secondary ~L13% and reads as a sunken pit — use a true lift step).
-     Light keeps card-on-secondary. Never brand primary. */
+  /* Segmented controls — Reddit chip track */
   --app-filter-track-bg: hsl(var(--secondary));
-  --app-filter-raised-bg: hsl(28 8% 17%);
+  --app-filter-raised-bg: hsl(var(--card));
   --app-filter-raised-fg: hsl(var(--foreground));
-  --app-filter-raised-shadow: var(--shadow-xs);
+  --app-filter-raised-shadow: none;
   --app-dense-toolbar-gap: 0.75rem;
 
   /* Soft structural lines — strong enough to read, weak enough not to
      carve the shell into a grid of boxes once regions share one canvas. */
-  --app-hairline-alpha: 0.32;
+  --app-hairline-alpha: 0.85;
   --app-hairline: hsl(var(--border) / var(--app-hairline-alpha));
 
   --app-empty-min-height: 12rem;
   --app-empty-gap: 1rem;
   --app-empty-padding: 2rem;
-  --app-empty-border-alpha: 0.5;
-  --app-surface-radius: var(--radius-xl);
-  --app-card-radius: var(--radius-lg);
+  --app-empty-border-alpha: 0.55;
+  --app-surface-radius: var(--radius-md);
+  --app-card-radius: var(--radius-md);
   --app-empty-copy-width: 22rem;
 
-  --app-row-hover-bg: hsl(var(--foreground) / 0.03);
-  --app-surface-border: hsl(var(--border) / 0.65);
-  --app-surface-border-subtle: hsl(var(--border) / 0.5);
-  --app-surface-shadow: 0 1px 0 hsl(var(--foreground) / 0.025);
-  --app-panel-shadow:
-    0 1px 0 hsl(var(--foreground) / 0.035) inset,
-    0 10px 24px hsl(0 0% 0% / 0.12);
-  --app-floating-shadow:
-    0 1px 0 hsl(var(--foreground) / 0.045) inset,
-    0 8px 24px hsl(0 0% 0% / 0.18),
-    0 24px 56px hsl(0 0% 0% / 0.12);
-  --app-overlay-shadow:
-    0 1px 0 hsl(var(--foreground) / 0.05) inset,
-    0 18px 48px hsl(0 0% 0% / 0.28),
-    0 36px 96px hsl(0 0% 0% / 0.18);
-  --app-muted-surface: hsl(var(--muted) / 0.45);
+  --app-row-hover-bg: hsl(var(--foreground) / 0.04);
+  --app-surface-border: hsl(var(--border));
+  --app-surface-border-subtle: hsl(var(--border) / 0.7);
+  --app-surface-shadow: none;
+  --app-panel-shadow: 0 2px 10px hsl(0 0% 0% / 0.35);
+  --app-floating-shadow: 0 4px 16px hsl(0 0% 0% / 0.45);
+  --app-overlay-shadow: 0 12px 40px hsl(0 0% 0% / 0.55);
+  --app-muted-surface: hsl(var(--muted) / 0.6);
 
   /* On-image overlays: darken with --overlay alpha; ink stays H28 warm. */
   --app-media-on-image: 28 12% 97%;
@@ -168,7 +159,7 @@
   --app-media-scrim-strong: hsl(var(--overlay) / 0.72);
   --app-media-progress-track: hsl(var(--overlay) / 0.48);
 
-  --app-heading-font: var(--font-display);
+  --app-heading-font: var(--font-sans);
   --app-heading-color: hsl(var(--foreground));
   --app-heading-color-muted: hsl(var(--foreground) / 0.82);
 
@@ -433,10 +424,10 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  /* Flat chrome on the shared canvas — amber is state, not atmosphere. */
+  /* Flat community canvas — orangered is action, not atmosphere. */
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  --app-workbench-header-height: 3.5rem;
+  --app-workbench-header-height: 3.25rem;
 }
 
 .app-workbench__sidebar {
@@ -446,8 +437,8 @@
   flex-direction: column;
   width: var(--app-workbench-sidebar-width, 17.5rem);
   /* Structure only — no tinted island that stacks a third "card" beside the rail. */
-  border-right: 1px solid var(--app-hairline);
-  background: var(--app-workbench-sidebar-bg, hsl(var(--sidebar) / 0.62));
+  border-right: 1px solid hsl(var(--border));
+  background: var(--app-workbench-sidebar-bg, hsl(var(--sidebar)));
 }
 
 .app-workbench__sidebar--always {
@@ -461,7 +452,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  border-bottom: 1px solid var(--app-hairline);
+  border-bottom: 1px solid hsl(var(--border));
   padding-inline: var(--space-4);
 }
 
@@ -479,11 +470,11 @@
   display: flex;
   min-height: var(--app-workbench-header-height);
   flex: none;
-  border-bottom: 1px solid var(--app-hairline);
+  border-bottom: 1px solid hsl(var(--border));
   /* Keep secondary navigation on the workbench canvas. A translucent card
      layer creates a visible light band in the light theme and fragments the
      otherwise flat shell hierarchy. */
-  background: transparent;
+  background: hsl(var(--card));
 }
 
 .app-workbench__header-content {
@@ -533,8 +524,8 @@
   min-height: 0;
   flex: none;
   flex-direction: column;
-  border-right: 1px solid var(--app-hairline);
-  background: hsl(var(--card) / 0.32);
+  border-right: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
 }
 
 .app-pane--fluid {
@@ -557,9 +548,9 @@
   flex: none;
   flex-direction: column;
   gap: var(--space-3);
-  min-height: var(--app-workbench-header-height, 3.5rem);
-  border-bottom: 1px solid var(--app-hairline);
-  background: transparent;
+  min-height: var(--app-workbench-header-height, 3.25rem);
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
   padding: var(--space-3) var(--space-4);
 }
 
@@ -605,7 +596,7 @@
   position: relative;
   z-index: var(--z-content);
   flex: none;
-  border-bottom: 1px solid var(--app-hairline);
+  border-bottom: 1px solid hsl(var(--border));
   padding: var(--space-3) var(--space-4);
 }
 
@@ -630,7 +621,6 @@
   gap: var(--space-2);
 }
 
-
 .app-pane__list {
   position: relative;
   min-height: 0;
@@ -641,7 +631,7 @@
 
 .app-pane__footer {
   flex: 0 0 auto;
-  border-top: 1px solid var(--app-hairline);
+  border-top: 1px solid hsl(var(--border));
   background: transparent;
   padding: var(--space-3);
 }
@@ -1442,10 +1432,10 @@ button.app-selection-active:hover {
   margin: 0 0 1.125rem;
 }
 .app-section-title__text {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: var(--app-h2-size);
-  font-weight: 650;
-  letter-spacing: -0.022em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   line-height: 1.2;
   color: hsl(var(--foreground));
 }

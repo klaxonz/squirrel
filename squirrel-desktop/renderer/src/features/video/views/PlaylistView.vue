@@ -425,13 +425,14 @@ onMounted(async () => {
 .playlist-workbench-content {
   max-width: none;
   min-height: 100%;
-  padding: var(--space-4) var(--space-6) var(--app-content-padding-bottom);
+  padding: var(--space-4) var(--space-5) var(--app-content-padding-bottom);
 }
 
 .playlist-nav-item {
   min-height: 3.5rem;
   align-items: stretch;
   padding: 0.5rem;
+  border-radius: var(--radius-md);
 }
 
 .playlist-nav-thumb {
@@ -442,7 +443,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--app-media-thumb-placeholder);
   isolation: isolate;
 }
@@ -468,7 +469,7 @@ onMounted(async () => {
   overflow: hidden;
   color: hsl(var(--foreground));
   font-size: 0.8125rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -478,9 +479,9 @@ onMounted(async () => {
   display: inline-flex;
   flex: none;
   align-items: center;
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   background: var(--app-selection-count-bg);
-  padding: 0.125rem 0.3rem;
+  padding: 0.125rem 0.35rem;
   color: var(--app-selection-count-fg);
   font-size: var(--app-text-badge-size);
   font-weight: 700;
@@ -499,6 +500,10 @@ onMounted(async () => {
   flex-direction: column;
   gap: var(--space-4);
   width: 100%;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
+  padding: var(--space-4);
 }
 
 .playlist-table {
@@ -524,16 +529,18 @@ onMounted(async () => {
 
 .playlist-table-head {
   min-height: 2rem;
-  border-bottom: 1px solid var(--app-hairline);
-  color: hsl(var(--muted-foreground) / 0.68);
+  border-bottom: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
-  font-weight: 650;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .playlist-item {
   min-height: 4.5rem;
   border: 1px solid transparent;
-  border-bottom-color: var(--app-hairline);
+  border-bottom-color: hsl(var(--border));
   border-radius: 0;
   padding: 0.5rem 0;
   cursor: pointer;
@@ -547,7 +554,7 @@ onMounted(async () => {
 .playlist-item:hover,
 .playlist-item:focus-visible {
   border-color: transparent;
-  border-bottom-color: var(--app-hairline);
+  border-bottom-color: hsl(var(--border));
   background: var(--app-row-hover-bg);
 }
 
@@ -557,7 +564,7 @@ onMounted(async () => {
 }
 
 .playlist-item.is-current {
-  background: hsl(var(--primary) / 0.07);
+  background: hsl(var(--primary) / 0.08);
 }
 
 .playlist-item-index {

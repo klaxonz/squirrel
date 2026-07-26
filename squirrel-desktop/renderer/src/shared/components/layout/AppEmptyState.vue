@@ -69,9 +69,9 @@ const variantClass = computed(() =>
 }
 
 .app-empty-state--bordered {
-  border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: var(--app-surface-radius);
-  background: hsl(var(--card) / 0.42);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
 }
 
 .app-empty-state__icon-wrap {
@@ -80,46 +80,46 @@ const variantClass = computed(() =>
   justify-content: center;
   width: 3.25rem;
   height: 3.25rem;
-  border-radius: var(--radius-xl);
-  background: hsl(var(--muted) / 0.52);
-  border: 1px solid hsl(var(--border) / 0.62);
+  border-radius: 999px;
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
   margin-bottom: var(--space-1);
 }
 
 .app-empty-state--icon-circle .app-empty-state__icon-wrap {
   width: 3.5rem;
   height: 3.5rem;
-  border-radius: var(--radius-xl);
-  background: hsl(var(--muted) / 0.52);
-  box-shadow: inset 0 0 0 4px hsl(var(--background) / 0.58);
+  border-radius: 999px;
+  background: hsl(var(--secondary));
+  box-shadow: none;
 }
 
 .app-empty-state__icon {
   width: 1.5rem;
   height: 1.5rem;
-  color: hsl(var(--muted-foreground) / 0.84);
+  color: hsl(var(--muted-foreground));
 }
 
 .app-empty-state--icon-circle .app-empty-state__icon {
   width: 1.25rem;
   height: 1.25rem;
-  color: hsl(var(--muted-foreground) / 0.84);
+  color: hsl(var(--muted-foreground));
 }
 
 .app-empty-state__title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--font-display);
-  font-size: var(--app-h2-size);
-  font-weight: 650;
-  line-height: var(--app-h2-leading);
-  letter-spacing: -0.022em;
+  font-family: var(--font-sans);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .app-empty-state__copy {
   margin: 0;
   max-width: var(--app-empty-copy-width);
-  color: hsl(var(--muted-foreground) / 0.92);
+  color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
   line-height: 1.6;
   text-wrap: pretty;

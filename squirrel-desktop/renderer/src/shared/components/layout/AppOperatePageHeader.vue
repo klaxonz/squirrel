@@ -48,9 +48,9 @@ defineProps<{
 .app-operate-page-header__title h1 {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: 1.375rem;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 

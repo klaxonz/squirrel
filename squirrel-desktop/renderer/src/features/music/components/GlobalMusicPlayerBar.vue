@@ -384,8 +384,8 @@ function removeQueueItem(index: number) {
   height: var(--app-music-player-height);
   flex-direction: column;
   overflow: hidden;
-  border-top: 1px solid var(--app-hairline);
-  background: hsl(var(--background) / 0.98);
+  border-top: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
   transition:
     left var(--duration-base) var(--ease-out),
     border-color var(--duration-fast) var(--ease-default);
@@ -405,10 +405,10 @@ function removeQueueItem(index: number) {
   height: var(--sidebar-player-height);
   max-width: none;
   border: 0;
-  border-top: 1px solid var(--app-hairline);
-  border-right: 1px solid var(--app-hairline);
+  border-top: 1px solid hsl(var(--border));
+  border-right: 1px solid hsl(var(--border));
   border-radius: 0;
-  background: hsl(var(--background) / 0.92);
+  background: hsl(var(--sidebar));
   box-shadow: none;
   overflow: hidden;
 }

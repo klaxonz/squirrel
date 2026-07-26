@@ -418,7 +418,10 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-  border-bottom: 1px solid var(--app-hairline);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
+  padding: 0.5rem 0.75rem;
 }
 
 .log-filterbar__controls {
@@ -438,9 +441,9 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   min-height: 2rem;
   align-items: center;
   gap: var(--space-2);
-  color: hsl(var(--muted-foreground) / 0.82);
+  color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
-  font-weight: 550;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -456,16 +459,19 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   flex: 1 1 auto;
   flex-direction: column;
   overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
 }
 
 .log-feed__head {
   display: flex;
-  min-height: 4.25rem;
+  min-height: 3.5rem;
   flex: none;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-  border-bottom: 1px solid var(--app-hairline);
+  border-bottom: 1px solid hsl(var(--border));
   padding: 0.75rem var(--space-4);
 }
 
@@ -479,7 +485,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   margin: 0;
   color: hsl(var(--foreground));
   font-size: 0.875rem;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .log-feed__heading p {

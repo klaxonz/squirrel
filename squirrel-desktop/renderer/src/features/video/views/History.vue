@@ -339,7 +339,9 @@ onMounted(() => {
 
 <style scoped>
 .history-content {
-  padding-block: var(--space-5) var(--app-content-padding-bottom);
+  max-width: var(--app-content-feed-max);
+  margin-inline: auto;
+  padding-block: var(--space-4) var(--app-content-padding-bottom);
 }
 
 .history-toolbar {
@@ -358,24 +360,29 @@ onMounted(() => {
 }
 
 .history-toolbar__clear {
-  color: hsl(var(--muted-foreground) / 0.78);
+  color: hsl(var(--muted-foreground));
 }
 
 .history-toolbar__clear:hover,
 .history-toolbar__clear:focus-visible {
-  border-color: hsl(var(--destructive) / 0.18);
-  background: hsl(var(--destructive) / 0.08);
+  border-color: hsl(var(--destructive) / 0.28);
+  background: hsl(var(--destructive) / 0.1);
   color: hsl(var(--destructive));
 }
 
 .history-groups {
   display: grid;
-  gap: var(--space-8);
+  gap: var(--space-4);
 }
 
 .history-day {
   display: grid;
-  gap: var(--space-3);
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
+  padding: 0;
 }
 
 .history-day__header {
@@ -383,8 +390,8 @@ onMounted(() => {
   min-width: 0;
   align-items: baseline;
   gap: var(--space-4);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid hsl(var(--border) / 0.35);
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .history-day__heading {
@@ -397,11 +404,11 @@ onMounted(() => {
 .history-day__title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--font-display);
-  font-size: 1.0625rem;
-  font-weight: 650;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 700;
   line-height: 1.25;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .history-day__detail {
@@ -416,13 +423,10 @@ onMounted(() => {
 .history-day__items {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  column-gap: var(--space-6);
   row-gap: 0;
 }
 
-@media (min-width: 1500px) {
-  .history-day__items {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.history-day__items > * + * {
+  border-top: 1px solid hsl(var(--border));
 }
 </style>

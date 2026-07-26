@@ -700,6 +700,8 @@ async function handleLogout() {
 
 .music-content {
   min-height: 100%;
+  max-width: 64rem;
+  margin-inline: auto;
   padding-block: var(--space-4) var(--space-7);
 }
 </style>

@@ -1,9 +1,8 @@
 <template>
   <RouterLink
-    :to="targetPath"
-    :replace="!item.resolvePath"
-    custom
     v-slot="{ href, navigate }"
+    :to="targetPath"
+    custom
   >
     <a
       :href="href"
@@ -11,13 +10,15 @@
       :class="{ 'is-active': isActive, 'is-collapsed': collapsed }"
       :aria-current="isActive ? 'page' : undefined"
       :title="collapsed ? item.name : undefined"
-      @click="handleClick($event, navigate)"
+      @click="(event) => handleClick(event, navigate)"
     >
-      <AppIcon
-        :name="item.icon"
-        class="sidebar-item__icon"
-        :stroke-width="isActive ? 2 : 1.75"
-      />
+      <span class="sidebar-item__icon-wrap" aria-hidden="true">
+        <AppIcon
+          :name="item.icon"
+          class="sidebar-item__icon"
+          :stroke-width="isActive ? 2.25 : 1.75"
+        />
+      </span>
       <span class="sidebar-item__label">{{ item.name }}</span>
     </a>
   </RouterLink>
@@ -74,22 +75,28 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
 </script>
 
 <style scoped>
+/*
+  Current Reddit nav row:
+  - soft gray pill active (not brand orange)
+  - icon inherits ink; brand color is reserved for the wordmark only
+*/
 .sidebar-item {
   position: relative;
   display: flex;
   width: 100%;
-  min-height: 2.25rem;
+  min-height: var(--sidebar-item-height);
+  height: var(--sidebar-item-height);
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.75rem;
   overflow: hidden;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  padding: 0 0.625rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 0.875rem 0 0.625rem;
   background: transparent;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
-  font-weight: 520;
-  line-height: 1.2;
+  color: hsl(var(--foreground) / 0.88);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
   text-decoration: none;
   outline: none;
   transition:
@@ -98,39 +105,59 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
 }
 
 .sidebar-item:hover {
-  background: hsl(var(--accent) / 0.56);
+  background: hsl(var(--foreground) / 0.05);
   color: hsl(var(--foreground));
 }
 
 .sidebar-item:focus-visible {
-  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.46);
+  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.55);
 }
 
 .sidebar-item.is-active {
-  background: hsl(var(--primary) / 0.1);
+  background: hsl(var(--foreground) / 0.08);
   color: hsl(var(--foreground));
-  font-weight: 620;
+  font-weight: 600;
 }
 
 .sidebar-item.is-collapsed {
   justify-content: center;
   gap: 0;
-  padding-inline: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  margin-inline: auto;
+  padding: 0;
+  border-radius: 999px;
 }
 
 .sidebar-item.is-collapsed .sidebar-item__label {
   display: none;
 }
 
+.sidebar-item__icon-wrap {
+  display: inline-flex;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+}
+
+.sidebar-item.is-active .sidebar-item__icon-wrap {
+  color: hsl(var(--foreground));
+}
+
 .sidebar-item__icon {
   width: var(--sidebar-icon-size);
   height: var(--sidebar-icon-size);
   flex: 0 0 auto;
-  color: hsl(var(--muted-foreground));
+  color: currentColor;
+  opacity: 0.92;
 }
 
 .sidebar-item.is-active .sidebar-item__icon {
-  color: hsl(var(--primary));
+  opacity: 1;
 }
 
 .sidebar-item__label {

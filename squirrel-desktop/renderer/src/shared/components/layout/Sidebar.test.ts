@@ -51,7 +51,7 @@ describe('Sidebar navigation structure', () => {
       .map((label) => label.textContent?.trim())
 
     expect(labels).toEqual(['视频', '订阅', 'RSS', '音乐', '历史', '播放列表', '站点', '定时', '日志'])
-    expect(categories).toEqual(['媒体', '资料库', '工具'])
+    expect(categories).toEqual(['信息流', '我的', '运维'])
     expect(mainNav?.querySelectorAll('.sidebar-group')).toHaveLength(categories.length)
   })
 

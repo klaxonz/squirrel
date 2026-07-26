@@ -1,20 +1,18 @@
 <template>
-  <header class="app-header">
-    <!--
-      Always keep three grid cells: leading | center | actions.
-      Desktop hosts the rail toggle on DesktopTitleBar, so leading is a balance
-      spacer there. If leading is omitted with `v-if`, CSS grid auto-placement
-      drops the search into column 1 (auto) and it sits on the content's left.
-    -->
+  <header
+    class="app-header"
+    :class="{ 'app-header--desktop': variant === 'desktop' }"
+  >
     <div
+      v-if="showLeading"
       class="app-header__leading"
-      :aria-hidden="isDesktopClient ? 'true' : undefined"
     >
       <Button
-        v-if="!isDesktopClient"
         type="button"
-        text severity="secondary"
-        size="sm" icon-only
+        text
+        severity="secondary"
+        size="sm"
+        icon-only
         class="app-header__sidebar-toggle"
         :title="isSidebarOpen ? '收起侧边栏 (Ctrl+B)' : '展开侧边栏 (Ctrl+B)'"
         :aria-label="isSidebarOpen ? '收起侧边栏' : '展开侧边栏'"
@@ -25,14 +23,14 @@
       </Button>
     </div>
 
-    <div class="app-header__center">
+    <div class="app-header__search-slot">
       <Transition name="fade" mode="out-in">
         <div v-if="showSearch" key="search" class="app-header__search-wrap">
           <GlobalSearchBar
             :key="searchScope"
             class="app-header__search"
             :search-scope="searchScope"
-            :placeholder="String(route.meta.searchPlaceholder || '搜索或输入命令...')"
+            :placeholder="String(route.meta.searchPlaceholder || '搜索归仓')"
             :suggestion-scope="String(route.meta.search || 'home')"
             :suggestions-enabled="searchSuggestionsEnabled"
             :search-modes="showVideoSearchMode ? searchModeOptions : []"
@@ -48,7 +46,8 @@
     <div class="app-header__actions">
       <Button
         type="button"
-        text severity="secondary"
+        text
+        severity="secondary"
         size="sm"
         class="app-header__user"
         :title="`${userDisplayName} - 个人资料`"
@@ -76,8 +75,11 @@ import { useUserStore } from '@/shared/stores/user'
 
 const props = withDefaults(defineProps<{
   persistSidebarToggle?: boolean
+  /** desktop = fragment inside Electron titlebar (no own chrome) */
+  variant?: 'default' | 'desktop'
 }>(), {
   persistSidebarToggle: true,
+  variant: 'default',
 })
 
 const route = useRoute()
@@ -88,6 +90,7 @@ const { isDesktop: isDesktopEnv } = useDesktopBridge()
 const isDesktopClient = isDesktopEnv()
 
 const isSidebarOpen = computed(() => uiStore.isSidebarOpen)
+const showLeading = computed(() => props.variant !== 'desktop' && !isDesktopClient)
 
 const toggleSidebar = () => {
   uiStore.toggleSidebar({ persist: props.persistSidebarToggle })
@@ -149,51 +152,64 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 </script>
 
 <style scoped>
+/*
+  default: standalone header bar
+  desktop: transparent fragment — search centered in remaining middle,
+           user pinned right next to window controls
+*/
 .app-header {
   height: var(--app-header-height);
-  display: grid;
-  /* Equal side tracks keep the search optically centered in the header,
-     independent of whether the left toggle or right user chip is wider. */
-  grid-template-columns: minmax(3rem, 1fr) minmax(18rem, 34rem) minmax(3rem, 1fr);
+  display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: 0 1rem;
-  border-bottom: 1px solid var(--app-hairline);
-  background: hsl(var(--background));
+  gap: 0.75rem;
+  padding: 0 0.75rem;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
   position: relative;
   z-index: var(--z-header);
   user-select: none;
 }
 
+.app-header--desktop {
+  height: 100%;
+  border-bottom: 0;
+  padding: 0 0.25rem 0 0.5rem;
+  background: transparent;
+  z-index: auto;
+}
+
 .app-header__leading {
-  grid-column: 1;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
-  justify-content: flex-start;
   min-width: 0;
 }
 
 .app-header__sidebar-toggle {
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   color: hsl(var(--muted-foreground));
 }
 
 .app-header__sidebar-toggle:hover {
   color: hsl(var(--foreground));
-  background: hsl(var(--accent) / 0.72);
+  background: hsl(var(--foreground) / 0.06);
 }
 
-.app-header__center {
-  grid-column: 2;
-  min-width: 0;
-  width: 100%;
+/*
+  Search slot takes all free middle width and centers the pill optically.
+  max-width keeps the control readable; flex:1 keeps it from looking left-stuck.
+*/
+.app-header__search-slot {
   display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
   justify-content: center;
 }
 
 .app-header__search-wrap {
   width: 100%;
-  max-width: 34rem;
+  max-width: 40rem;
   display: flex;
   justify-content: center;
 }
@@ -207,8 +223,8 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 }
 
 .app-header__actions {
-  grid-column: 3;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: flex-end;
   min-width: 0;
@@ -220,50 +236,56 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   max-width: 11rem;
   gap: 0.5rem;
   height: 2rem;
-  border-radius: var(--radius-sm);
-  padding: 0 0.5rem 0 0.25rem;
+  border-radius: 999px;
+  padding: 0 0.625rem 0 0.25rem;
+  color: hsl(var(--foreground));
+}
+
+.app-header--desktop .app-header__user {
+  max-width: 9rem;
 }
 
 .app-header__user:hover {
-  background: hsl(var(--accent) / 0.72);
-  color: hsl(var(--foreground));
+  background: hsl(var(--foreground) / 0.06);
 }
 
 .app-header__avatar {
   width: 1.5rem;
   height: 1.5rem;
-  border: 1px solid hsl(var(--foreground) / 0.28);
-  border-radius: var(--radius-sm);
-  background: hsl(var(--muted) / 0.32);
+  border: 0;
+  border-radius: 999px;
+  background: hsl(var(--primary));
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 0.6875rem;
   font-weight: 700;
-  color: hsl(var(--foreground));
+  color: hsl(var(--primary-foreground));
   flex: 0 0 auto;
   letter-spacing: 0;
 }
 
-.app-header__user:hover .app-header__avatar {
-  border-color: hsl(var(--background) / 0.45);
+/* Soft gray pill — Reddit search */
+.app-header__search-slot :deep(.global-search) {
+  max-width: 40rem;
 }
 
-.app-header__center :deep(.global-search__box) {
-  border: 1px solid hsl(var(--border) / 0.62);
-  border-radius: var(--radius-md);
-  background: hsl(var(--muted) / 0.22);
+.app-header__search-slot :deep(.global-search__box) {
+  height: 2.25rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: hsl(var(--muted));
   box-shadow: none;
 }
 
-.app-header__center :deep(.global-search__box:focus-within) {
-  border-color: hsl(var(--primary) / 0.55);
-  background: hsl(var(--background));
-  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+.app-header__search-slot :deep(.global-search__box:focus-within) {
+  border-color: hsl(var(--foreground) / 0.16);
+  background: hsl(var(--card));
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.05);
 }
 
-.app-header__center :deep(.global-search__suggestions) {
-  border-color: hsl(var(--border) / 0.7);
+.app-header__search-slot :deep(.global-search__suggestions) {
+  border-color: hsl(var(--border));
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-popover);
 }
@@ -286,10 +308,6 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 }
 
 @media (max-width: 980px) {
-  .app-header {
-    padding-right: var(--space-3);
-  }
-
   .app-header__user-name {
     display: none;
   }

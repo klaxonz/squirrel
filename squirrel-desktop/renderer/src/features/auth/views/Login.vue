@@ -1,7 +1,7 @@
 <template>
   <AuthEntryCard
-    title="登录"
-    description="使用此服务器上的账户进入工作台。"
+    title="登录归仓"
+    description="连接到你的自托管订阅中枢，浏览、整理并播放。"
   >
     <form class="auth-entry__form" @submit.prevent="handleSubmit">
       <Transition name="auth-alert">

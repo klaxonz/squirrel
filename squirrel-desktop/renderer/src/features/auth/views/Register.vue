@@ -1,7 +1,7 @@
 <template>
   <AuthEntryCard
-    title="创建账户"
-    description="在当前服务器上创建账户。"
+    title="加入归仓"
+    description="在当前服务器创建账户，开始同步多站内容。"
   >
     <form class="auth-entry__form" @submit.prevent="handleSubmit">
       <Transition name="auth-alert">

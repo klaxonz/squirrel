@@ -1,7 +1,7 @@
 <template>
   <AuthEntryCard
     title="连接服务器"
-    description="先保存 API 地址，再使用该服务器上的账户。"
+    description="先保存 API 地址，再用该服务器上的账户进入归仓。"
     :show-server-action="false"
     stage="server"
   >

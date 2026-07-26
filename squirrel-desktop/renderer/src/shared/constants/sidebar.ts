@@ -128,7 +128,7 @@ export const NAV_ITEMS: NavigationItem[] = [
   {
     key: 'home',
     name: '首页',
-    title: '推荐',
+    title: '首页',
     path: '/home',
     icon: 'home',
     group: 'media',
@@ -261,17 +261,17 @@ export const SIDEBAR_FOOTER_ITEMS = NAV_ITEMS.filter((item) => item.key === 'set
 export const NAV_GROUPS: NavigationGroup[] = [
   {
     key: 'media',
-    label: '媒体',
+    label: '信息流',
     items: NAV_ITEMS.filter((item) => item.group === 'media' && item.key !== 'home'),
   },
   {
     key: 'library',
-    label: '资料库',
+    label: '我的',
     items: NAV_ITEMS.filter((item) => item.group === 'library'),
   },
   {
     key: 'system',
-    label: '工具',
+    label: '运维',
     items: NAV_ITEMS.filter((item) => item.group === 'system' && item.key !== 'settings'),
   },
 ]

@@ -477,9 +477,9 @@ const onSystemToggle = async (key: string, value: boolean) => {
   min-height: 0;
   flex-direction: column;
   gap: var(--space-3);
-  border-right: 1px solid hsl(var(--border) / 0.35);
-  padding: var(--space-6) var(--space-3);
-  background: hsl(var(--background));
+  border-right: 1px solid hsl(var(--border));
+  padding: var(--space-5) var(--space-3);
+  background: hsl(var(--sidebar));
   height: 100%;
 }
 
@@ -494,10 +494,10 @@ const onSystemToggle = async (key: string, value: boolean) => {
 .settings-nav__title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-family: var(--font-sans);
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .settings-nav__list {
@@ -516,8 +516,8 @@ const onSystemToggle = async (key: string, value: boolean) => {
   align-items: center;
   gap: 0.55rem;
   border: 0;
-  border-radius: var(--radius-md);
-  padding: 0 0.625rem;
+  border-radius: 999px;
+  padding: 0 0.75rem;
   background: transparent;
   color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
@@ -530,14 +530,14 @@ const onSystemToggle = async (key: string, value: boolean) => {
 }
 
 .settings-nav__item:hover {
-  background: hsl(var(--foreground) / 0.04);
+  background: hsl(var(--foreground) / 0.06);
   color: hsl(var(--foreground));
 }
 
 .settings-nav__item.is-active {
-  background: var(--app-selection-bg);
-  color: var(--app-selection-fg);
-  font-weight: 600;
+  background: hsl(var(--foreground) / 0.1);
+  color: hsl(var(--foreground));
+  font-weight: 700;
 }
 
 .settings-nav__item:focus-visible {
@@ -562,6 +562,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   flex-direction: column;
   overflow: auto;
   padding: var(--space-6) var(--space-6) var(--space-8);
+  background: hsl(var(--background));
 }
 
 .settings-loading,
@@ -576,9 +577,9 @@ const onSystemToggle = async (key: string, value: boolean) => {
 
 .settings-page-intro h1 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: 1.375rem;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 

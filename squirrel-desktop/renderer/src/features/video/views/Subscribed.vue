@@ -1065,21 +1065,22 @@ onUnmounted(() => {
 }
 
 .subscription-toolbar__icon-action {
-  color: hsl(var(--muted-foreground) / 0.78);
+  color: hsl(var(--muted-foreground));
 }
 
 .subscription-toolbar__add {
   margin-left: var(--space-1);
-  border-color: hsl(var(--border) / 0.58);
-  background: transparent;
-  color: hsl(var(--foreground));
-  font-weight: 620;
+  border-color: transparent;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 700;
   box-shadow: none;
 }
 
 .subscription-toolbar__add:hover {
-  border-color: hsl(var(--border) / 0.78);
-  background: hsl(var(--muted) / 0.42);
+  border-color: transparent;
+  background: hsl(var(--primary));
+  filter: brightness(1.08);
 }
 
 .subscription-workspace {
@@ -1114,11 +1115,17 @@ onUnmounted(() => {
 
 .subscription-feed,
 .subscription-feed-skeletons {
-  padding-block: var(--space-5) var(--app-content-padding-bottom);
+  width: min(100%, var(--app-content-feed-max));
+  margin-inline: auto;
+  padding-block: var(--space-4) var(--app-content-padding-bottom);
+  padding-inline: var(--app-content-media-gutter);
 }
 
 .subscription-list-view {
-  padding-block: var(--space-5) var(--app-content-padding-bottom);
+  width: min(100%, 56rem);
+  margin-inline: auto;
+  padding-block: var(--space-4) var(--app-content-padding-bottom);
+  padding-inline: var(--app-content-media-gutter);
 }
 
 .subscription-feed-skeletons {
@@ -1127,49 +1134,60 @@ onUnmounted(() => {
 }
 
 .subscription-feed-day + .subscription-feed-day {
-  margin-top: var(--space-9);
+  margin-top: var(--space-5);
 }
 
 .subscription-feed-day {
   display: grid;
-  grid-template-columns: 7.5rem minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: var(--space-6);
+  gap: 0.5rem;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
 }
 
 .subscription-feed-day__header {
   position: sticky;
-  top: var(--space-4);
+  top: 0;
+  z-index: var(--z-content);
   display: flex;
-  align-items: flex-start;
-  flex-direction: column;
-  gap: 0.375rem;
-  padding-top: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  flex-direction: row;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
 }
 
 .subscription-feed-day__header h2 {
-  color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: 0.9375rem;
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   line-height: 1.35;
+  text-transform: uppercase;
 }
 
 .subscription-feed-day__header span {
-  color: hsl(var(--muted-foreground) / 0.64);
+  color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
-  font-weight: 550;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .subscription-feed-day__items {
   min-width: 0;
-  width: min(100%, 82rem);
-  border-top: 1px solid var(--app-hairline);
+  width: 100%;
+  border-top: 0;
 }
 
 .subscription-feed-day__items > * + * {
-  border-top: 1px solid var(--app-hairline);
+  border-top: 1px solid hsl(var(--border));
 }
 
 .subscription-channel-table {

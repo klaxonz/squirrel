@@ -76,16 +76,17 @@ const selectOption = (value: string | number) => {
   gap: 2px;
   flex: 0 0 auto;
   background: var(--app-filter-track-bg);
-  border-radius: var(--radius-md);
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
   padding: 2px;
 }
 
 .app-segmented-control__item {
   padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   transition:
     color var(--duration-fast) var(--ease-default),
@@ -100,7 +101,8 @@ const selectOption = (value: string | number) => {
 .app-segmented-control__item.is-active {
   color: var(--app-filter-raised-fg);
   background: var(--app-filter-raised-bg);
-  box-shadow: var(--app-filter-raised-shadow);
+  box-shadow: none;
+  font-weight: 700;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -127,8 +129,8 @@ const selectOption = (value: string | number) => {
 }
 
 .app-segmented-control--icon {
-  border: 1px solid hsl(var(--border) / 0.58);
-  background: hsl(var(--background) / 0.36);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--secondary));
 }
 
 .app-segmented-control--icon .app-segmented-control__item {

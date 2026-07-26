@@ -125,17 +125,17 @@ function handleCoverError() {
 }
 
 .music-card--xs { --music-card-radius: var(--radius-sm); }
-.music-card--sm { --music-card-radius: var(--radius-md); }
+.music-card--sm { --music-card-radius: var(--radius-sm); }
 .music-card--md,
 .music-card--lg,
-.music-card--xl { --music-card-radius: var(--radius-lg); }
+.music-card--xl { --music-card-radius: var(--radius-md); }
 
 .music-card-cover {
   position: relative;
   aspect-ratio: 1;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.45);
-  border-radius: var(--music-card-radius, var(--radius-lg));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--music-card-radius, var(--radius-md));
   background: hsl(var(--muted) / 0.3);
   transition: border-color var(--duration-fast) var(--ease-default);
 }
@@ -144,11 +144,11 @@ function handleCoverError() {
   width: 4rem;
   height: 4rem;
   aspect-ratio: auto;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
 }
 
 .music-card--feature .music-card-cover {
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
 }
 
 .music-card-cover::after {

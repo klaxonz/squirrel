@@ -1,7 +1,7 @@
 <template>
   <AppPageShell class="videos-workbench" variant="compact" surface="consume" width="fluid">
     <header class="videos-workbench__toolbar">
-      <div class="app-media-content-frame app-media-content-frame--divider videos-workbench__toolbar-inner">
+      <div class="videos-workbench__toolbar-inner">
         <FeedToolbar
           v-if="searchMode !== 'remote'"
           variant="workbench"
@@ -53,7 +53,7 @@
 
     <div v-if="activeFilterTokens.length" class="videos-workbench__filters-band">
       <div
-        class="app-media-content-frame app-media-content-frame--divider videos-workbench__filters"
+        class="videos-workbench__filters"
         aria-label="已启用筛选"
       >
         <span>已筛选</span>
@@ -65,7 +65,7 @@
       </div>
     </div>
 
-    <div class="app-media-content-frame videos-workbench__body">
+    <div class="videos-workbench__body">
       <main class="videos-workbench__canvas" aria-label="视频内容">
         <div v-if="loadError" class="videos-workbench__error">
           <AppEmptyState variant="error" title="加载失败" :copy="loadError">
@@ -284,16 +284,22 @@ watch(() => route.query.special, (value) => {
   background: hsl(var(--background));
 }
 
+/* Full-bleed sticky toolbar — not a floating 44rem island. */
 .videos-workbench__toolbar {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  background: hsl(var(--background));
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .videos-workbench__toolbar-inner {
   display: flex;
-  min-height: 4.25rem;
+  width: 100%;
+  max-width: var(--app-content-media-max);
+  min-height: 3.25rem;
+  margin-inline: auto;
+  padding-inline: var(--app-content-media-gutter);
   align-items: center;
 }
 
@@ -312,12 +318,17 @@ watch(() => route.query.special, (value) => {
 }
 
 .videos-workbench__filters-band {
-  background: hsl(var(--muted) / 0.14);
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .videos-workbench__filters {
   display: flex;
-  min-height: 2.75rem;
+  width: 100%;
+  max-width: var(--app-content-media-max);
+  min-height: 2.5rem;
+  margin-inline: auto;
+  padding-inline: var(--app-content-media-gutter);
   align-items: center;
   gap: 0.375rem;
 }
@@ -326,6 +337,9 @@ watch(() => route.query.special, (value) => {
   margin-right: 0.25rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .videos-workbench__filters button {
@@ -333,24 +347,26 @@ watch(() => route.query.special, (value) => {
   min-height: 1.625rem;
   align-items: center;
   gap: 0.3rem;
-  border: 1px solid hsl(var(--border) / 0.58);
-  border-radius: var(--radius-sm);
-  padding: 0 0.45rem;
-  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  padding: 0 0.55rem;
+  background: hsl(var(--secondary));
   color: hsl(var(--foreground));
   font-size: 0.6875rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .videos-workbench__filters button:hover {
-  border-color: hsl(var(--primary) / 0.42);
+  border-color: hsl(var(--foreground) / 0.28);
+  background: hsl(var(--accent));
 }
 
 .videos-workbench__filters .videos-workbench__clear {
   margin-left: auto;
   border-color: transparent;
   background: transparent;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--info));
 }
 
 .videos-workbench__body {
@@ -359,9 +375,14 @@ watch(() => route.query.special, (value) => {
   align-items: start;
 }
 
+/* Grid fills the workspace; list mode still centers post cards. */
 .videos-workbench__canvas {
   min-width: 0;
-  padding-block: 1.25rem 3rem;
+  width: 100%;
+  max-width: var(--app-content-media-max);
+  margin-inline: auto;
+  padding-inline: var(--app-content-media-gutter);
+  padding-block: 1rem 3rem;
 }
 
 .videos-workbench__error {

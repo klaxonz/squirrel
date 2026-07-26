@@ -1295,7 +1295,7 @@ onUnmounted(() => {
 
 .rss-source-pane-toggle {
   flex: 0 0 auto;
-  color: hsl(var(--muted-foreground) / 0.82);
+  color: hsl(var(--muted-foreground));
 }
 
 .rss-source-pane-toggle:hover {
@@ -1303,15 +1303,17 @@ onUnmounted(() => {
 }
 
 .rss-add-account-button {
-  border-color: hsl(var(--border) / 0.58);
-  background: hsl(var(--accent) / 0.24);
-  color: hsl(var(--foreground) / 0.82);
+  border-color: transparent;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 700;
 }
 
 .rss-add-account-button:hover {
-  border-color: hsl(var(--border) / 0.78);
-  background: hsl(var(--accent) / 0.58);
-  color: hsl(var(--foreground));
+  border-color: transparent;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  filter: brightness(1.08);
 }
 
 .rss-sync-status {

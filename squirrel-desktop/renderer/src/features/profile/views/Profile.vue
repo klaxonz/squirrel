@@ -206,7 +206,9 @@ const handleLogout = async () => {
 <style scoped>
 .profile-page {
   --app-page-max-width: var(--app-content-form-max);
-  padding-top: var(--space-6);
+  max-width: var(--app-content-feed-max);
+  margin-inline: auto;
+  padding-top: var(--space-5);
   padding-bottom: var(--space-8);
 }
 
@@ -214,9 +216,11 @@ const handleLogout = async () => {
   display: flex;
   align-items: center;
   gap: var(--space-5);
-  margin-bottom: var(--space-6);
-  padding-bottom: var(--space-5);
-  border-bottom: 1px solid var(--app-hairline);
+  margin-bottom: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
 }
 
 .profile-avatar-control {
@@ -225,8 +229,8 @@ const handleLogout = async () => {
   height: 4rem;
   flex: 0 0 auto;
   overflow: hidden;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--app-surface-radius);
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
   background: hsl(var(--muted));
   cursor: pointer;
   transition:
@@ -236,8 +240,8 @@ const handleLogout = async () => {
 
 .profile-avatar-control:hover,
 .profile-avatar-control:focus-visible {
-  border-color: hsl(var(--primary) / 0.28);
-  background: hsl(var(--primary) / 0.06);
+  border-color: hsl(var(--primary) / 0.45);
+  background: hsl(var(--primary) / 0.08);
 }
 
 .profile-avatar-image,
@@ -295,6 +299,9 @@ const handleLogout = async () => {
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-5);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
 }
 
 .profile-field {

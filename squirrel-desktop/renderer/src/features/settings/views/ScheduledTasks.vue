@@ -452,23 +452,33 @@ watch(searchQueryDebounced, () => {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-  border-bottom: 1px solid var(--app-hairline);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
+  padding: 0.5rem 0.75rem;
 }
 
 .scheduled-tasks-filterbar > span {
-  color: hsl(var(--muted-foreground) / 0.72);
+  color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .scheduled-task-list {
   width: 100%;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
+  overflow: hidden;
 }
 
 .scheduled-task-list__head {
   display: flex;
-  min-height: 4.25rem;
+  min-height: 3.5rem;
   align-items: center;
-  border-bottom: 1px solid var(--app-hairline);
+  border-bottom: 1px solid hsl(var(--border));
   padding: 0.75rem var(--space-4);
 }
 
@@ -482,7 +492,7 @@ watch(searchQueryDebounced, () => {
   margin: 0;
   color: hsl(var(--foreground));
   font-size: 0.875rem;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .scheduled-task-list__heading p {

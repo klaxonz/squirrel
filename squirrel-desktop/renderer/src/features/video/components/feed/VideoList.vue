@@ -115,41 +115,37 @@ useInfiniteScrollSentinel({
 
 .video-list__list {
   display: flex;
-  max-width: 56rem;
+  max-width: var(--app-content-feed-max);
   margin-inline: auto;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 0.75rem;
 }
 
 .video-list__workbench-grid {
-  --video-canvas-min: 17.5rem;
+  --video-canvas-min: 15.5rem;
   display: grid;
+  width: 100%;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--video-canvas-min)), 1fr));
   align-items: start;
-  gap: 1.35rem 0.75rem;
+  gap: 1.25rem 1rem;
 }
 
 .video-list__workbench-grid.is-compact {
-  --video-canvas-min: 14rem;
+  --video-canvas-min: 13rem;
+  gap: 1rem 0.75rem;
 }
 
 .video-list__workbench-grid.is-large {
-  --video-canvas-min: 22rem;
-  gap: 1.75rem 1rem;
+  --video-canvas-min: 18rem;
+  gap: 1.5rem 1.25rem;
 }
 
+/* Reddit feed: discrete white cards with gap, not stacked hairlines. */
 .video-list__workbench-list {
   display: flex;
-  max-width: 76rem;
+  max-width: var(--app-content-feed-max);
+  margin-inline: auto;
   flex-direction: column;
-  gap: 0.25rem;
-}
-
-.video-list__workbench-list :deep(.video-item) {
-  padding-block: 0.5rem;
-}
-
-.video-list__workbench-list :deep(.video-item + .video-item) {
-  border-top: 1px solid var(--app-hairline);
+  gap: 0.75rem;
 }
 </style>

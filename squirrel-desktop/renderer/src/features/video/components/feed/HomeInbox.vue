@@ -1,8 +1,9 @@
 <template>
   <section class="home-inbox" aria-labelledby="home-inbox-title">
     <header class="home-inbox__header">
-      <div>
+      <div class="home-inbox__heading">
         <h2 id="home-inbox-title">最新入库</h2>
+        <p class="home-inbox__subtitle">订阅同步后的连续信息流</p>
       </div>
 
       <div class="home-inbox__tools">
@@ -26,7 +27,7 @@
           <AppIcon name="refresh" class="size-4" />
         </Button>
         <Button text severity="secondary" size="sm" @click="emit('viewMore')">
-          查看全部
+          全部
           <AppIcon name="chevronRight" class="size-3.5" />
         </Button>
       </div>
@@ -40,8 +41,14 @@
       </AppEmptyState>
     </div>
 
-    <div v-else-if="loading && items.length === 0" class="home-inbox__grid" aria-label="正在加载最新内容">
-      <VideoSkeleton v-for="index in 8" :key="index" :delay="(index - 1) * 35" appearance="workbench" />
+    <div v-else-if="loading && items.length === 0" class="home-inbox__posts" aria-label="正在加载最新内容">
+      <VideoSkeleton
+        v-for="index in 4"
+        :key="index"
+        :delay="(index - 1) * 35"
+        layout="list"
+        appearance="workbench"
+      />
     </div>
 
     <div v-else-if="videoGroups.length" class="home-inbox__timeline">
@@ -50,11 +57,12 @@
           <h3>{{ group.title }}</h3>
           <span>{{ group.videos.length }}</span>
         </header>
-        <div class="home-inbox__grid">
+        <div class="home-inbox__posts">
           <VideoItem
             v-for="video in group.videos"
             :key="video.id"
             :video="video"
+            layout="list"
             show-avatar
             show-duration
             appearance="workbench"
@@ -97,7 +105,7 @@ const emit = defineEmits<{
 }>()
 
 const filterOptions = [
-  { value: 'all', label: '全部更新' },
+  { value: 'all', label: '全部' },
   { value: 'unread', label: '未看' },
   { value: 'special', label: '特别关注' },
 ] as const
@@ -146,8 +154,13 @@ defineExpose({ refresh: load })
 </script>
 
 <style scoped>
+/* Separate white post cards on gray canvas — not one giant panel. */
 .home-inbox {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: transparent;
 }
 
 .home-inbox__header,
@@ -158,10 +171,19 @@ defineExpose({ refresh: load })
 }
 
 .home-inbox__header {
-  min-height: 3.25rem;
+  min-height: 3rem;
   justify-content: space-between;
-  gap: 1.5rem;
-  border-bottom: 1px solid var(--app-hairline);
+  gap: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  background: hsl(var(--card));
+  padding: 0.625rem 0.875rem;
+}
+
+.home-inbox__heading {
+  min-width: 0;
+  display: grid;
+  gap: 0.125rem;
 }
 
 .home-inbox__header h2,
@@ -170,31 +192,48 @@ defineExpose({ refresh: load })
 }
 
 .home-inbox__header h2 {
-  font-family: var(--font-display);
-  font-size: 1.125rem;
-  font-weight: 680;
-  letter-spacing: -0.02em;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.home-inbox__subtitle {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  line-height: 1.3;
 }
 
 .home-inbox__tools {
-  gap: 0.5rem;
+  gap: 0.375rem;
+  flex: 0 0 auto;
 }
 
 .home-inbox__timeline {
-  display: grid;
-  gap: 2.25rem;
-  padding-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.home-inbox__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .home-inbox__group-header {
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  gap: 0.75rem;
+  padding: 0 0.25rem;
 }
 
 .home-inbox__group-header h3 {
-  color: hsl(var(--foreground));
-  font-size: 0.8125rem;
-  font-weight: 650;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .home-inbox__group-header span {
@@ -203,15 +242,18 @@ defineExpose({ refresh: load })
   font-variant-numeric: tabular-nums;
 }
 
-.home-inbox__grid {
-  --home-inbox-min: 15.5rem;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--home-inbox-min)), 1fr));
-  gap: 1.5rem 0.875rem;
+.home-inbox__posts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .home-inbox__state {
-  min-height: 15rem;
+  min-height: 14rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  background: hsl(var(--card));
+  padding: 1rem;
 }
 
 @media (max-width: 760px) {

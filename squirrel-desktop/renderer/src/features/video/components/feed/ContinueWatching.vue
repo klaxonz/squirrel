@@ -1,16 +1,14 @@
 <template>
-  <section v-if="historyItems.length > 0 || loading || loadError" class="continue-workbench">
-    <header class="continue-workbench__header">
-      <div>
-        <h2>继续观看</h2>
-      </div>
+  <section v-if="historyItems.length > 0 || loading || loadError" class="continue-rail">
+    <header class="continue-rail__header">
+      <h2>继续观看</h2>
       <Button text severity="secondary" size="sm" @click="$emit('viewMore')">
-        观看记录
+        全部
         <AppIcon name="chevronRight" class="size-3.5" />
       </Button>
     </header>
 
-    <div v-if="loadError && !loading && historyItems.length === 0" class="continue-workbench__state">
+    <div v-if="loadError && !loading && historyItems.length === 0" class="continue-rail__state">
       <AppEmptyState variant="error" title="继续观看加载失败" :copy="loadError">
         <template #actions>
           <Button size="sm" @click="load">重试</Button>
@@ -18,31 +16,30 @@
       </AppEmptyState>
     </div>
 
-    <div v-else-if="loading && historyItems.length === 0" class="continue-workbench__loading" aria-label="正在加载继续观看">
-      <div v-for="index in 4" :key="index" class="continue-workbench__loading-card">
-        <div class="continue-workbench__loading-thumb" />
-        <div class="continue-workbench__loading-copy">
-          <span />
+    <div v-else-if="loading && historyItems.length === 0" class="continue-rail__track" aria-label="正在加载继续观看">
+      <div v-for="index in 4" :key="index" class="continue-rail__skeleton">
+        <div class="continue-rail__skeleton-thumb" />
+        <div class="continue-rail__skeleton-copy">
           <span />
           <span />
         </div>
       </div>
     </div>
 
-    <ol v-else class="continue-workbench__grid" aria-label="未完成内容">
+    <ol v-else class="continue-rail__track" aria-label="未完成内容">
       <li v-for="item in historyItems" :key="item.history_id">
         <button
           type="button"
-          class="continue-workbench__card"
+          class="continue-rail__card"
           :aria-label="`继续播放：${item.title}`"
           @pointerenter="prefetchPlayback(item)"
           @pointerdown.left="prefetchPlayback(item)"
           @click="$emit('openModal', item)"
         >
-          <span class="continue-workbench__visual">
+          <span class="continue-rail__visual">
             <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" interactive />
             <span
-              class="continue-workbench__progress"
+              class="continue-rail__progress"
               role="progressbar"
               :aria-label="`已观看 ${progressPercent(item)}%`"
               :aria-valuenow="progressPercent(item)"
@@ -53,10 +50,9 @@
             </span>
           </span>
 
-          <span class="continue-workbench__copy">
-            <span class="continue-workbench__source">{{ itemSource(item) }}</span>
-            <span class="continue-workbench__title">{{ item.title }}</span>
-            <span class="continue-workbench__meta">
+          <span class="continue-rail__copy">
+            <span class="continue-rail__title">{{ item.title }}</span>
+            <span class="continue-rail__meta">
               {{ progressPercent(item) }}% · 剩余 {{ remainingDuration(item) }}
             </span>
           </span>
@@ -104,9 +100,6 @@ const progressPercent = (video: VideoHistoryEntry) => Math.round(getProgress(vid
 const remainingDuration = (video: VideoHistoryEntry) => formatDuration(
   Math.max(0, Number(video.duration || 0) - Number(video.last_position || 0)),
 )
-const itemSource = (video: VideoHistoryEntry) => (
-  video.subscriptions?.[0]?.name || video.actors?.[0]?.name || video.site || '本地媒体'
-)
 
 const prefetchPlayback = (video: VideoHistoryEntry) => {
   void prefetchDesktopPlaybackSource(video)
@@ -137,54 +130,55 @@ defineExpose({ refresh: load })
 </script>
 
 <style scoped>
-.continue-workbench {
+/* Thin horizontal rail above the feed — not a boxed SaaS module. */
+.continue-rail {
   min-width: 0;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
 }
 
-.continue-workbench__header {
+.continue-rail__header {
   display: flex;
-  min-height: 3.25rem;
+  min-height: 2.5rem;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
-  border-bottom: 1px solid var(--app-hairline);
+  gap: 1rem;
+  padding: 0.5rem 0.875rem;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
-.continue-workbench__header h2,
-.continue-workbench__source {
+.continue-rail__header h2 {
   margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
-.continue-workbench__header h2 {
-  font-family: var(--font-display);
-  font-size: 1.125rem;
-  font-weight: 680;
-  letter-spacing: -0.02em;
-}
-
-.continue-workbench__grid {
-  --continue-card-min: 15.5rem;
+.continue-rail__track {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--continue-card-min)), 1fr));
-  gap: 1.25rem 0.875rem;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(10.5rem, 1fr);
+  gap: 0.625rem;
   margin: 0;
-  margin-top: 0.875rem;
-  padding: 0;
+  padding: 0.75rem 0.875rem;
+  overflow-x: auto;
   list-style: none;
+  scrollbar-width: thin;
 }
 
-.continue-workbench__grid > li {
+.continue-rail__track > li {
   min-width: 0;
 }
 
-.continue-workbench__card {
+.continue-rail__card {
   display: grid;
   width: 100%;
   min-width: 0;
-  align-content: start;
-  gap: 0.5rem;
+  gap: 0.375rem;
   border: 0;
-  border-radius: var(--app-card-radius);
   padding: 0;
   background: transparent;
   color: inherit;
@@ -192,153 +186,109 @@ defineExpose({ refresh: load })
   cursor: pointer;
 }
 
-.continue-workbench__card:hover .continue-workbench__visual,
-.continue-workbench__card:focus-visible .continue-workbench__visual {
+.continue-rail__card:hover .continue-rail__visual,
+.continue-rail__card:focus-visible .continue-rail__visual {
   box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 
-.continue-workbench__card:focus-visible {
+.continue-rail__card:focus-visible {
   outline: none;
 }
 
-.continue-workbench__card:focus-visible .continue-workbench__visual {
+.continue-rail__card:focus-visible .continue-rail__visual {
   box-shadow:
     0 0 0 2px hsl(var(--background)),
     0 0 0 4px hsl(var(--ring) / 0.45);
 }
 
-.continue-workbench__visual {
+.continue-rail__visual {
   position: relative;
   display: block;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border-radius: var(--app-card-radius);
+  border-radius: var(--radius-sm);
   background: var(--app-media-thumb-placeholder);
   isolation: isolate;
-  transition: box-shadow var(--duration-base) var(--ease-default);
 }
 
-.continue-workbench__copy {
-  display: grid;
-  min-width: 0;
-  gap: 0.2rem;
-  padding: 0 0.125rem 0.125rem;
-}
-
-.continue-workbench__source {
-  overflow: hidden;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 550;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.continue-workbench__title {
-  display: -webkit-box;
-  overflow: hidden;
-  color: hsl(var(--foreground));
-  font-size: 0.9375rem;
-  font-weight: 620;
-  line-height: 1.3;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.continue-workbench__meta {
-  overflow: hidden;
-  margin-top: 0.05rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.continue-workbench__progress {
+.continue-rail__progress {
   position: absolute;
-  inset-inline: 0;
+  right: 0;
   bottom: 0;
-  z-index: 20;
+  left: 0;
+  z-index: 2;
   height: 3px;
   overflow: hidden;
   background: var(--app-media-progress-track);
 }
 
-.continue-workbench__progress span {
+.continue-rail__progress > span {
   display: block;
   height: 100%;
   background: hsl(var(--primary));
 }
 
-.continue-workbench__state {
-  min-height: 12rem;
-}
-
-.continue-workbench__loading {
-  --continue-card-min: 15.5rem;
+.continue-rail__copy {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--continue-card-min)), 1fr));
-  gap: 1.25rem 0.875rem;
-  margin-top: 0.875rem;
+  min-width: 0;
+  gap: 0.125rem;
 }
 
-.continue-workbench__loading-card {
-  display: grid;
-  align-content: start;
-  gap: 0.5rem;
+.continue-rail__title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-.continue-workbench__loading-thumb,
-.continue-workbench__loading-copy span {
-  border-radius: var(--radius-md);
-  background: hsl(var(--muted) / 0.54);
-  animation: continue-pulse 1.25s ease-in-out infinite alternate;
+.continue-rail__meta {
+  overflow: hidden;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.continue-workbench__loading-thumb {
-  aspect-ratio: 16 / 9;
-  border-radius: var(--app-card-radius);
+.continue-rail__state {
+  min-height: 8rem;
+  padding: 0.75rem;
 }
 
-.continue-workbench__loading-copy {
+.continue-rail__skeleton {
   display: grid;
   gap: 0.375rem;
-  padding: 0 0.125rem;
 }
 
-.continue-workbench__loading-copy span {
+.continue-rail__skeleton-thumb {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  background: hsl(var(--muted) / 0.55);
+}
+
+.continue-rail__skeleton-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.continue-rail__skeleton-copy > span {
   display: block;
   height: 0.625rem;
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.55);
 }
 
-.continue-workbench__loading-copy span:nth-child(2) {
-  width: 92%;
-  height: 0.875rem;
-}
-
-.continue-workbench__loading-copy span:last-child {
-  width: 62%;
-}
-
-@keyframes continue-pulse {
-  to { opacity: 0.55; }
-}
-
-@media (max-width: 760px) {
-  .continue-workbench__grid,
-  .continue-workbench__loading {
-    --continue-card-min: 100%;
-  }
+.continue-rail__skeleton-copy > span:last-child {
+  width: 55%;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .continue-workbench__loading-thumb,
-  .continue-workbench__loading-copy span {
-    animation: none;
-  }
-
-  .continue-workbench__visual {
+  .continue-rail__card,
+  .continue-rail__visual {
     transition: none;
   }
 }

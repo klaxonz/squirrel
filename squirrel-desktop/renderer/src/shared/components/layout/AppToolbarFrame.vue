@@ -48,9 +48,8 @@ withDefaults(defineProps<{
   --app-divider-inline-gutter: var(--app-toolbar-inline-gutter);
   width: 100%;
   margin: 0 auto;
-  /* Opaque on the shared canvas so sticky toolbars cover scroll content
-     without a frosted or card-tinted band. */
-  background: hsl(var(--background));
+  /* Opaque Reddit chrome so sticky toolbars cover scroll content cleanly. */
+  background: hsl(var(--card));
 }
 
 .app-toolbar-frame--sticky {
@@ -61,7 +60,7 @@ withDefaults(defineProps<{
 }
 
 .app-toolbar-frame--bordered.app-toolbar-frame--divider-full {
-  border-bottom: 1px solid hsl(var(--border) / 0.32);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .app-toolbar-frame__inner {

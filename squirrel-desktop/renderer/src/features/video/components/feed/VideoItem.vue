@@ -2,7 +2,7 @@
   <article
     class="video-item group"
     :class="[
-      layout === 'list' ? 'video-item--list' : 'video-item--grid',
+      layout === 'list' ? 'video-item--card' : 'video-item--grid',
       `video-item--appearance-${appearance}`,
     ]"
     role="button"
@@ -15,9 +15,50 @@
     @keydown.enter.prevent="handleOpen"
     @keydown.space.prevent="handleOpen"
   >
+    <!-- Reddit card: community meta on top -->
+    <header v-if="layout === 'list'" class="video-item__top">
+      <div class="video-item__community">
+        <SubscriptionAvatar
+          v-if="showAvatar && displayAvatars.length"
+          class="video-item__avatar"
+          :src="displayAvatars[0].avatar"
+          :name="displayAvatars[0].name"
+          size="sm"
+          @click.stop="goToProfile(displayAvatars[0])"
+        />
+        <button
+          type="button"
+          class="video-item__source-name"
+          @click.stop="goToProfile(primaryProfile)"
+        >
+          {{ displayNames }}
+        </button>
+        <span v-if="displayDateText" class="video-item__date">{{ displayDateText }}</span>
+        <span v-if="video.site" class="video-item__site">{{ video.site }}</span>
+      </div>
+      <div class="video-item__top-actions" @click.stop>
+        <button
+          type="button"
+          class="video-item__join"
+          :class="{ 'is-on': isLater === 1 }"
+          :title="isLater === 1 ? '取消稍后看' : '稍后看'"
+          @click="toggleLater"
+        >
+          {{ isLater === 1 ? '已加' : '加入' }}
+        </button>
+      </div>
+    </header>
+
+    <h3
+      class="video-item__title"
+      :class="layout === 'list' ? 'video-item__title--card' : 'video-item__title--grid'"
+    >
+      {{ video.title }}
+    </h3>
+
     <div
       class="video-item__thumb"
-      :class="layout === 'list' ? 'video-item__thumb--list' : 'video-item__thumb--grid'"
+      :class="layout === 'list' ? 'video-item__thumb--card' : 'video-item__thumb--grid'"
     >
       <VideoThumbnail
         :src="thumbnailSrc"
@@ -35,7 +76,7 @@
         {{ formatDuration(video.duration) }}
       </span>
 
-      <div class="video-item__scrim" />
+      <div v-if="layout !== 'list'" class="video-item__scrim" />
 
       <div
         v-if="showThumbnailProgress"
@@ -53,101 +94,64 @@
       </div>
     </div>
 
-    <div class="video-item__body" :class="{ 'video-item__body--list': layout === 'list' }">
-      <h3
-        class="video-item__title"
-        :class="layout === 'list' ? 'video-item__title--list' : 'video-item__title--grid'"
-      >
-        {{ video.title }}
-      </h3>
-
+    <!-- Grid keeps compact meta under thumb -->
+    <div v-if="layout !== 'list'" class="video-item__body">
       <div class="video-item__meta">
         <div v-if="showAvatar && displayAvatars.length" class="video-item__avatar">
           <SubscriptionAvatar
             :src="displayAvatars[0].avatar"
             :name="displayAvatars[0].name"
-            :size="layout === 'list' ? 'lg' : 'md'"
+            size="md"
             @click.stop="goToProfile(displayAvatars[0])"
           />
         </div>
-
         <div class="video-item__meta-main">
-          <!-- One scannable meta line — source · date (site demoted / list-only). -->
           <div class="video-item__meta-line">
             <span class="video-item__source-name" @click.stop="goToProfile(primaryProfile)">
               {{ displayNames }}
             </span>
             <span v-if="displayDateText" class="video-item__date">{{ displayDateText }}</span>
-            <span
-              v-if="layout === 'list' && video.site"
-              class="video-item__site"
-            >{{ video.site }}</span>
-            <span
-              v-if="layout === 'list' && video.duration"
-              class="video-item__list-duration app-mono"
-            >
-              {{ formatDuration(video.duration) }}
-            </span>
           </div>
         </div>
-
-        <!-- Secondary ops: ghost icon toggles in meta, not on the poster. -->
-        <div
-          class="video-item__quick"
-          role="group"
-          aria-label="视频快捷操作"
-          @click.stop
-        >
-          <button
-            type="button"
-            class="video-item__quick-btn"
-            :class="{ 'is-on': isRead }"
-            :title="isRead ? '标记未读' : '标记已读'"
-            :aria-label="isRead ? '标记未读' : '标记已读'"
-            :aria-pressed="isRead"
-            @click="toggleReadStatus(!isRead)"
-          >
-            <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-3.5" />
-          </button>
-          <button
-            type="button"
-            class="video-item__quick-btn"
-            :class="{ 'is-on': isLater === 1 }"
-            :title="isLater === 1 ? '取消稍后看' : '稍后看（会替换喜欢）'"
-            :aria-label="isLater === 1 ? '取消稍后看' : '稍后看'"
-            :aria-pressed="isLater === 1"
-            @click="toggleLater"
-          >
-            <AppIcon
-              :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'"
-              class="size-3.5"
-            />
-          </button>
-          <button
-            type="button"
-            class="video-item__quick-btn"
-            :class="{ 'is-on': isLiked === 1 }"
-            :title="isLiked === 1 ? '取消喜欢' : '喜欢（会替换稍后看）'"
-            :aria-label="isLiked === 1 ? '取消喜欢' : '喜欢'"
-            :aria-pressed="isLiked === 1"
-            @click="toggleLikeVideo"
-          >
-            <AppIcon
-              name="heart"
-              class="size-3.5"
-              :class="{ 'fill-current': isLiked === 1 }"
-            />
-          </button>
-        </div>
-      </div>
-
-      <div
-        v-if="layout === 'list' && video.description"
-        class="video-item__description"
-      >
-        {{ video.description }}
       </div>
     </div>
+
+    <!-- Reddit-style bottom action bar on cards -->
+    <footer v-if="layout === 'list'" class="video-item__bar" @click.stop>
+      <button
+        type="button"
+        class="video-item__bar-btn"
+        :class="{ 'is-on': isLiked === 1 }"
+        :title="isLiked === 1 ? '取消喜欢' : '喜欢'"
+        :aria-pressed="isLiked === 1"
+        @click="toggleLikeVideo"
+      >
+        <AppIcon name="heart" class="size-4" :class="{ 'fill-current': isLiked === 1 }" />
+        <span>{{ isLiked === 1 ? '已喜欢' : '喜欢' }}</span>
+      </button>
+      <button
+        type="button"
+        class="video-item__bar-btn"
+        :class="{ 'is-on': isRead }"
+        :title="isRead ? '标记未读' : '标记已读'"
+        :aria-pressed="isRead"
+        @click="toggleReadStatus(!isRead)"
+      >
+        <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-4" />
+        <span>{{ isRead ? '已读' : '标已读' }}</span>
+      </button>
+      <button
+        type="button"
+        class="video-item__bar-btn"
+        :class="{ 'is-on': isLater === 1 }"
+        :title="isLater === 1 ? '取消稍后看' : '稍后看'"
+        :aria-pressed="isLater === 1"
+        @click="toggleLater"
+      >
+        <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-4" />
+        <span>稍后看</span>
+      </button>
+    </footer>
 
     <Teleport to="body">
       <ContextMenu
@@ -215,19 +219,11 @@ const toast = useToast()
 const showMenu = ref(false)
 const menuPosition = ref({ x: 0, y: 0 })
 
-/**
- * Local optimistic engagement state, seeded from list fields:
- * - is_read: explicit inbox state, independent from playback progress
- * - interaction_type: exclusive 1=like / 2=dislike / 3=later
- *
- * Like and later share one backend row — setting one replaces the other.
- */
 const isRead = ref(false)
 const isLiked = ref<number | null>(null)
 const isLater = ref<number | null>(null)
 
 function hydrateFromVideo(video: VideoListItem) {
-  // Prefer explicit is_read; fall back to last_position for older payloads.
   isRead.value = video.is_read ?? Number(video.last_position || 0) > 0
   const type = video.interaction_type
   isLiked.value = type === INTERACTION_TYPE.LIKE ? 1 : null
@@ -278,15 +274,12 @@ const showContextMenu = async (event: MouseEvent) => {
 
 const handleOpen = () => emit('openModal', props.video)
 
-// Warm the desktop provider cache while the pointer is still on the card so a
-// subsequent click can skip the cold youtubei/PO-token round trip.
 const prefetchPlayback = () => {
   void prefetchDesktopPlaybackSource(props.video)
 }
+
 const goToProfile = (profile: VideoProfile | null | undefined) => {
   if (!profile) return
-  // Fill profile_source when list payload omitted it, so navigation never
-  // mistakes a creator id for a subscription id.
   let source = profile.profile_source
   if (!source) {
     const id = profile.id
@@ -314,10 +307,6 @@ const toggleReadStatus = async (markRead: boolean) => {
   showMenu.value = false
 }
 
-/**
- * Exclusive engagement toggle. Backend stores one interaction_type per
- * user/video, so enabling like clears later (and vice versa).
- */
 const setExclusiveInteraction = async (next: 'like' | 'later' | null) => {
   const prevLiked = isLiked.value
   const prevLater = isLater.value
@@ -367,71 +356,133 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   display: flex;
   cursor: pointer;
   border: 0;
-  border-radius: var(--radius-lg);
   background: transparent;
   padding: 0;
   outline: none;
-  transition:
-    color var(--duration-fast) var(--ease-default);
+  transition: background-color var(--duration-fast) var(--ease-default);
 }
 
-.video-item:hover {
-  background: transparent;
+/* Reddit card post: white surface, full-width media */
+.video-item--card {
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  background: hsl(var(--card));
+}
+
+.video-item--card:hover {
+  border-color: hsl(var(--foreground) / 0.18);
+  background: hsl(var(--card));
 }
 
 .video-item--grid {
   flex-direction: column;
   gap: 0.5rem;
-}
-
-.video-item--list {
-  flex-direction: row;
-  gap: var(--space-4);
+  border-radius: var(--radius-md);
 }
 
 .video-item:focus-visible {
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.4);
 }
 
-/* Thumbnail: media first, no action toolbar. */
+.video-item__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.875rem 0.25rem;
+}
+
+.video-item__community {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.video-item__top-actions {
+  flex: 0 0 auto;
+}
+
+.video-item__join {
+  height: 1.75rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 0.75rem;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.video-item__join.is-on {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+.video-item__join:hover {
+  filter: brightness(1.05);
+}
+
+.video-item__title {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-weight: 700;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.video-item__title--card {
+  padding: 0.25rem 0.875rem 0.625rem;
+  font-size: 1.125rem;
+  letter-spacing: -0.015em;
+  -webkit-line-clamp: 3;
+}
+
+.video-item__title--grid {
+  min-height: calc(2 * 0.875rem * 1.35);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .video-item__thumb {
   position: relative;
   overflow: hidden;
   border: 0;
-  border-radius: var(--app-card-radius);
   background: var(--app-media-thumb-placeholder);
   isolation: isolate;
-  transition:
-    box-shadow var(--duration-base) var(--ease-default),
-    transform var(--duration-base) var(--ease-default);
 }
 
-.video-item:hover .video-item__thumb,
-.video-item:focus-visible .video-item__thumb {
-  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
-}
-
-.video-item__thumb--list {
+.video-item__thumb--card {
+  width: 100%;
   aspect-ratio: 16 / 9;
-  width: 12rem;
-  flex: 0 0 auto;
-}
-
-@media (min-width: 768px) {
-  .video-item__thumb--list {
-    width: 16rem;
-  }
+  border-radius: 0;
 }
 
 .video-item__thumb--grid {
-  aspect-ratio: 16 / 9;
   width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+}
+
+.video-item--card:hover .video-item__thumb--card {
+  filter: brightness(0.98);
 }
 
 .video-item__duration {
   position: absolute;
-  right: 0.375rem;
-  bottom: 0.375rem;
+  right: 0.5rem;
+  bottom: 0.5rem;
   z-index: 20;
   display: inline-flex;
   align-items: center;
@@ -442,12 +493,11 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   color: hsl(var(--app-media-on-image));
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-weight: 600;
 }
 
 .video-item__duration--with-progress {
-  bottom: 0.55rem;
+  bottom: 0.65rem;
 }
 
 .video-item__scrim {
@@ -475,54 +525,17 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 .video-item__progress-fill {
   height: 100%;
   background: hsl(var(--primary));
-  transition: width var(--duration-slow) var(--ease-out);
 }
 
-/* ── Body / meta ────────────────────────────────────────────────────────── */
 .video-item__body {
   display: flex;
   min-width: 0;
-  flex: 1 1 auto;
   flex-direction: column;
   gap: 0.25rem;
   padding: 0 0.125rem 0.25rem;
 }
 
-.video-item__body--list {
-  padding-block: 0.25rem;
-}
-
-
-.video-item__title {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  color: hsl(var(--foreground));
-  font-weight: 600;
-  line-height: 1.3;
-  transition: color var(--duration-fast) var(--ease-default);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.video-item__title--grid {
-  min-height: calc(2 * 0.875rem * 1.35);
-  font-size: 0.875rem;
-  line-height: 1.35;
-}
-
-.video-item__title--list {
-  margin-bottom: 0.125rem;
-  font-size: 1rem;
-  -webkit-line-clamp: 2;
-}
-
-.video-item:hover .video-item__title {
-  color: hsl(var(--foreground));
-}
-
 .video-item__meta {
-  position: relative;
   display: flex;
   min-width: 0;
   align-items: center;
@@ -534,11 +547,8 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item__meta-main {
-  display: flex;
   min-width: 0;
   flex: 1 1 auto;
-  flex-direction: column;
-  gap: 0;
 }
 
 .video-item__meta-line {
@@ -551,182 +561,79 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   font-weight: 500;
 }
 
-.video-item__date {
-  flex: 0 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: hsl(var(--muted-foreground) / 0.88);
-}
-
-.video-item__date::before {
-  content: '·';
-  margin-right: 0.3rem;
-  color: hsl(var(--muted-foreground) / 0.45);
-}
-
 .video-item__source-name {
   overflow: hidden;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: hsl(var(--foreground));
+  font: inherit;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: color var(--duration-fast) var(--ease-default);
+  cursor: pointer;
 }
 
 .video-item__source-name:hover {
-  color: hsl(var(--foreground));
+  text-decoration: underline;
 }
 
+.video-item__date,
 .video-item__site {
-  flex: 0 0 auto;
-  max-width: 5.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
-  font-weight: 500;
+  color: hsl(var(--muted-foreground));
 }
 
+.video-item__date::before,
 .video-item__site::before {
   content: '·';
   margin-right: 0.3rem;
-  color: hsl(var(--muted-foreground) / 0.45);
+  color: hsl(var(--muted-foreground) / 0.5);
 }
 
-.video-item__list-duration {
-  margin-left: 0.5rem;
-  padding: 0 0.25rem;
-  border-radius: 0.25rem;
-  background: hsl(var(--muted));
-}
-
-/* Quick ops overlay secondary metadata on demand instead of permanently
-   shrinking the source/date line. Active state is already visible on-image. */
-.video-item__quick {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  z-index: var(--z-content);
-  display: inline-flex;
+.video-item__bar {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.125rem;
-  padding-left: 0.75rem;
-  background: linear-gradient(to right, hsl(var(--background) / 0), hsl(var(--background)) 32%);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-50%);
-  transition: opacity var(--duration-fast) var(--ease-default);
+  gap: 0.25rem;
+  padding: 0.375rem 0.5rem 0.5rem;
 }
 
-.video-item__quick-btn {
+.video-item__bar-btn {
   display: inline-flex;
-  width: 1.5rem;
-  height: 1.5rem;
-  flex: 0 0 auto;
+  height: 2rem;
   align-items: center;
-  justify-content: center;
+  gap: 0.35rem;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
+  padding: 0 0.625rem;
   background: transparent;
-  color: hsl(var(--muted-foreground) / 0.55);
-  cursor: pointer;
-  transition:
-    color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default);
-}
-
-.video-item:hover .video-item__quick,
-.video-item:focus-within .video-item__quick {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.video-item__quick-btn:hover {
-  background: hsl(var(--foreground) / 0.06);
-  color: var(--app-selection-fg);
-}
-
-.video-item__quick-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.45);
-}
-
-.video-item__quick-btn.is-on {
-  background: var(--app-selection-bg);
-  color: var(--app-selection-fg);
-}
-
-.video-item__quick-btn.is-on:hover {
-  background: var(--app-selection-bg-hover);
-}
-
-.video-item__description {
-  display: none;
-  margin-top: 0.375rem;
-  overflow: hidden;
-  color: hsl(var(--muted-foreground) / 0.72);
+  color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
-  line-height: 1.4;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.video-item--appearance-workbench {
-  padding: 0;
+.video-item__bar-btn:hover {
+  background: hsl(var(--foreground) / 0.06);
+  color: hsl(var(--foreground));
 }
 
-.video-item--appearance-workbench:hover {
-  background: transparent;
+.video-item__bar-btn.is-on {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
 }
 
-.video-item--appearance-workbench .video-item__thumb {
-  border-radius: var(--radius-md);
-  box-shadow: none;
-}
-
-.video-item--appearance-workbench:hover .video-item__thumb,
-.video-item--appearance-workbench:focus-visible .video-item__thumb {
-  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
-}
-
-.video-item--appearance-workbench .video-item__scrim {
-  display: none;
-}
-
-.video-item--appearance-workbench .video-item__body {
-  padding: 0 0.125rem 0.25rem;
-}
-
-.video-item--appearance-workbench .video-item__title {
-  font-weight: 620;
-  letter-spacing: -0.012em;
-}
-
-@media (min-width: 768px) {
-  .video-item__description {
-    display: -webkit-box;
-  }
-}
-
-@media (hover: none) {
-  .video-item__quick {
-    position: static;
-    padding-left: 0;
-    background: transparent;
-    opacity: 1;
-    pointer-events: auto;
-    transform: none;
-  }
+.video-item--appearance-workbench.video-item--card {
+  border-radius: var(--radius-lg);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .video-item,
-  .video-item__thumb,
   .video-item__progress-fill,
-  .video-item__quick,
-  .video-item__quick-btn,
-  .video-item__source-name,
-  .video-item__title {
+  .video-item__source-name {
     transition: none;
   }
 }
