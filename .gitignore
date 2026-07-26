@@ -50,6 +50,9 @@ runtime-audit/
 # Desktop visual baselines (local only — regenerate with npm run visual:update)
 squirrel-desktop/renderer/visual-baselines/*.png
 
+# Local dual-monitor Electron review captures
+e2e-shots/
+
 # Test related
 *.test
 coverage/
