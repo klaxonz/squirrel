@@ -1,29 +1,29 @@
 :root {
-  /* Reddit-inspired community shell.
-     Near-black canvas, slightly lifted surfaces, orangered action, hairline
-     structure. Content (thumbs, posts) carries the color — chrome stays cold. */
+  /* Official Reddit dark (new reddit): near-black canvas #0E1113, card #1A1A1B,
+     hairline #343536, body #D7DADC, link #4FBCFF. One orangered action
+     (#FF4500), cold chrome, content carries the color. */
 
   /* Semantic surfaces */
-  --background: 0 0% 1%;            /* #030303 */
-  --foreground: 210 9% 84%;         /* #D7DADC */
+  --background: 204 15% 6%;            /* #0E1113 */
+  --foreground: 210 6% 85%;            /* #D7DADC */
 
-  --card: 240 2% 10%;               /* #1A1A1B */
-  --card-foreground: 210 9% 84%;
+  --card: 240 2% 10%;                  /* #1A1A1B */
+  --card-foreground: 210 6% 85%;
 
-  --popover: 240 2% 12%;            /* #1F1F20 */
-  --popover-foreground: 210 9% 84%;
+  --popover: 240 2% 12%;               /* #1F1F20 */
+  --popover-foreground: 210 6% 85%;
 
-  --primary: 16 100% 50%;           /* #FF4500 orangered */
+  --primary: 16 100% 50%;              /* #FF4500 orangered */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 240 2% 14%;          /* #222223 */
-  --secondary-foreground: 210 9% 84%;
+  --secondary: 240 2% 14%;             /* #222223 */
+  --secondary-foreground: 210 6% 85%;
 
   --muted: 240 2% 13%;
-  --muted-foreground: 210 3% 51%;   /* #818384 */
+  --muted-foreground: 210 3% 51%;      /* #818384 */
 
   --accent: 240 2% 16%;
-  --accent-foreground: 210 9% 90%;
+  --accent-foreground: 210 6% 90%;
 
   --destructive: 0 72% 55%;
   --destructive-foreground: 0 0% 98%;
@@ -32,20 +32,20 @@
   --success-foreground: 0 0% 100%;
   --warning: 38 92% 50%;
   --warning-foreground: 0 0% 8%;
-  --info: 206 100% 41%;             /* Reddit link blue #0079D3 */
-  --info-foreground: 0 0% 100%;
+  --info: 204 100% 66%;                /* #4FBCFF — Reddit dark link blue */
+  --info-foreground: 0 0% 8%;
 
-  --border: 240 2% 21%;             /* #343536 */
-  --input: 240 2% 21%;
+  --border: 210 2% 21%;                /* #343536 */
+  --input: 210 2% 21%;
   --control: 240 2% 12%;
   --ring: 16 100% 50%;
 
   --overlay: 0 0% 0%;
 
   /* Community rail — slightly above pure black, like Reddit left nav */
-  --sidebar: 0 0% 4%;               /* #0B0B0B */
-  --sidebar-foreground: 210 9% 84%;
-  --sidebar-border: 240 2% 18%;
+  --sidebar: 204 15% 7%;               /* #0F1214 */
+  --sidebar-foreground: 210 6% 85%;
+  --sidebar-border: 210 2% 19%;
 
   /* Reddit prefers hairlines over deep drop shadows */
   --shadow-xs: 0 1px 0 hsl(0 0% 0% / 0.35);
@@ -68,28 +68,29 @@
 }
 
 .light {
-  /* Official Reddit light: cool gray canvas, pure white posts/rail.
-     Posts cast a hairline + soft lift; chrome stays cold and flat. */
-  --background: 210 16% 91%;        /* #E5EBEF-ish cool canvas */
-  --foreground: 220 13% 12%;
+  /* Official Reddit light: cool gray-blue canvas #DAE0E6, pure white cards,
+     hairline #EDEFF1, body #1A1A1B, link blue #0079D3. Cards carry 1px border
+     + zero shadow — hierarchy comes from canvas vs card, not elevation. */
+  --background: 210 14% 88%;           /* #DAE0E6 */
+  --foreground: 240 2% 10%;            /* #1A1A1B */
 
   --card: 0 0% 100%;
-  --card-foreground: 220 13% 12%;
+  --card-foreground: 240 2% 10%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 220 13% 12%;
+  --popover-foreground: 240 2% 10%;
 
-  --primary: 16 100% 50%;
+  --primary: 16 100% 50%;              /* #FF4500 */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 210 14% 94%;
-  --secondary-foreground: 220 13% 12%;
+  --secondary: 210 12% 95%;            /* #F1F3F5 */
+  --secondary-foreground: 240 2% 10%;
 
-  --muted: 210 14% 94%;
-  --muted-foreground: 215 9% 40%;
+  --muted: 210 12% 95%;
+  --muted-foreground: 0 0% 47%;        /* #787878 — Reddit muted gray */
 
-  --accent: 210 14% 92%;
-  --accent-foreground: 220 13% 12%;
+  --accent: 210 12% 93%;               /* #EDEFF1 */
+  --accent-foreground: 240 2% 10%;
 
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
@@ -98,24 +99,25 @@
   --success-foreground: 0 0% 100%;
   --warning: 32 95% 44%;
   --warning-foreground: 0 0% 100%;
-  --info: 206 100% 41%;
+  --info: 206 100% 41%;                /* #0079D3 — Reddit link blue */
   --info-foreground: 0 0% 100%;
 
-  --border: 210 14% 82%;
-  --input: 210 14% 82%;
+  --border: 210 12% 94%;               /* #EDEFF1 */
+  --input: 210 12% 89%;                /* #D8DEE3 */
   --control: 0 0% 100%;
   --ring: 16 100% 50%;
 
   --overlay: 0 0% 0%;
 
   --sidebar: 0 0% 100%;
-  --sidebar-foreground: 220 13% 12%;
-  --sidebar-border: 210 14% 84%;
-  --shadow-xs: 0 1px 0 hsl(220 20% 20% / 0.04);
-  --shadow-sm: 0 1px 2px hsl(220 20% 20% / 0.06), 0 1px 1px hsl(220 20% 20% / 0.04);
-  --shadow-md: 0 4px 12px hsl(220 20% 20% / 0.08);
-  --shadow-lg: 0 12px 28px hsl(220 20% 20% / 0.12);
-  --shadow-premium: 0 1px 2px hsl(220 20% 20% / 0.06), 0 12px 28px hsl(220 20% 20% / 0.1);
+  --sidebar-foreground: 240 2% 10%;
+  --sidebar-border: 210 12% 92%;       /* #E9ECEF */
+
+  --shadow-xs: 0 1px 2px hsl(210 14% 12% / 0.05);
+  --shadow-sm: 0 1px 3px hsl(210 14% 12% / 0.08), 0 1px 2px hsl(210 14% 12% / 0.05);
+  --shadow-md: 0 4px 12px hsl(210 14% 12% / 0.1);
+  --shadow-lg: 0 12px 28px hsl(210 14% 12% / 0.14);
+  --shadow-premium: 0 1px 2px hsl(210 14% 12% / 0.08), 0 12px 28px hsl(210 14% 12% / 0.12);
 
   --gray-50:  210 20% 98%;
   --gray-100: 210 16% 95%;
@@ -141,11 +143,11 @@
   --app-filter-track-bg: hsl(var(--secondary));
   --app-filter-raised-bg: hsl(var(--card));
   --app-filter-raised-fg: hsl(var(--foreground));
-  --app-filter-raised-shadow: var(--shadow-xs);
+  --app-filter-raised-shadow: none;
 
-  --app-hairline-alpha: 0.95;
-  --app-surface-shadow: 0 1px 0 hsl(220 20% 20% / 0.04);
-  --app-panel-shadow: 0 1px 2px hsl(220 20% 20% / 0.06), 0 4px 14px hsl(220 20% 20% / 0.06);
-  --app-floating-shadow: 0 4px 18px hsl(220 20% 20% / 0.12);
-  --app-overlay-shadow: 0 10px 32px hsl(220 20% 20% / 0.16);
+  --app-hairline-alpha: 1;
+  --app-surface-shadow: none;
+  --app-panel-shadow: 0 1px 2px hsl(210 14% 12% / 0.06);
+  --app-floating-shadow: 0 4px 18px hsl(210 14% 12% / 0.12);
+  --app-overlay-shadow: 0 10px 32px hsl(210 14% 12% / 0.16);
 }

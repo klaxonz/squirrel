@@ -208,10 +208,10 @@
 
     <Dialog :open="editorOpen" @update:open="handleEditorOpenChange">
       <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
-        <DialogHeader class="app-divider-bottom p-5 text-left">
+        <DialogHeader class="app-divider-bottom p-4 text-left">
           <DialogTitle class="text-base font-semibold">{{ editingPlaylist ? '编辑列表' : '新建播放列表' }}</DialogTitle>
         </DialogHeader>
-        <div class="space-y-4 p-5">
+        <div class="space-y-4 p-4">
           <div class="space-y-2">
             <label for="name" class="text-sm font-medium">列表名称</label>
             <Input fluid id="name" v-model="formName" placeholder="例如：我的最爱" @keyup.enter="handleSave" />
@@ -429,9 +429,9 @@ onMounted(async () => {
 }
 
 .playlist-nav-item {
-  min-height: 3.5rem;
+  min-height: 2.75rem;
   align-items: stretch;
-  padding: 0.5rem;
+  padding: 0.375rem;
   border-radius: var(--radius-md);
 }
 

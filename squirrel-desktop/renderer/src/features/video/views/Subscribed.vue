@@ -1027,7 +1027,7 @@ onUnmounted(() => {
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 .subscription-toolbar__navigation,
@@ -1115,14 +1115,14 @@ onUnmounted(() => {
 
 .subscription-feed,
 .subscription-feed-skeletons {
-  width: min(100%, var(--app-content-feed-max));
+  width: min(100%, var(--app-content-media-max));
   margin-inline: auto;
   padding-block: var(--space-4) var(--app-content-padding-bottom);
   padding-inline: var(--app-content-media-gutter);
 }
 
 .subscription-list-view {
-  width: min(100%, 56rem);
+  width: min(100%, var(--app-content-media-max));
   margin-inline: auto;
   padding-block: var(--space-4) var(--app-content-padding-bottom);
   padding-inline: var(--app-content-media-gutter);
@@ -1134,7 +1134,7 @@ onUnmounted(() => {
 }
 
 .subscription-feed-day + .subscription-feed-day {
-  margin-top: var(--space-5);
+  margin-top: var(--space-3);
 }
 
 .subscription-feed-day {

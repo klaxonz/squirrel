@@ -241,7 +241,7 @@ const {
 .music-track-list {
   display: flex;
   flex-direction: column;
-  padding: 0 1.5rem;
+  padding: 0 1rem;
 }
 
 .music-track-batch-bar {

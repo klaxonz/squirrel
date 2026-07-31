@@ -210,8 +210,8 @@ function handlePlayTrack(track: MusicTrack) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(17rem, 20rem);
   align-items: start;
-  gap: clamp(var(--space-5), 2.25vw, var(--space-7));
-  margin-bottom: var(--space-7);
+  gap: clamp(var(--space-4), 2vw, var(--space-6));
+  margin-bottom: var(--space-6);
 }
 
 .music-home-board > .music-section {

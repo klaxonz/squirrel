@@ -206,42 +206,36 @@ onMounted(() => {
 
 .home-feed__sort {
   display: flex;
-  min-height: 2.35rem;
+  min-height: 2.25rem;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.15rem 0.15rem 0.1rem;
+  padding: 0.1rem 0.1rem 0;
 }
 
 .home-feed__sort-chips {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.15rem;
-  border-radius: 999px;
-  background: hsl(var(--foreground) / 0.04);
 }
 
 .home-feed__chip {
-  height: 1.85rem;
+  height: 1.75rem;
   border: 0;
-  border-radius: 999px;
-  padding: 0 0.9rem;
+  border-radius: 0;
+  padding: 0 0.125rem;
   background: transparent;
   color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition:
-    color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-fast) var(--ease-default);
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .home-feed__chip.is-active {
-  background: hsl(var(--card));
-  color: hsl(var(--foreground));
-  box-shadow: var(--shadow-xs), 0 0 0 1px hsl(var(--border) / 0.55);
+  background: transparent;
+  color: hsl(var(--primary));
+  box-shadow: none;
 }
 
 .home-feed__chip:hover:not(.is-active) {
@@ -272,7 +266,6 @@ onMounted(() => {
   border: 1px solid hsl(var(--border) / 0.9);
   border-radius: var(--radius-lg);
   background: hsl(var(--card));
-  box-shadow: var(--app-surface-shadow);
   padding: 0.8rem 0.75rem;
 }
 

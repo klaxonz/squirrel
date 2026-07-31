@@ -90,7 +90,7 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
   gap: 0.75rem;
   overflow: hidden;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   padding: 0 0.9rem 0 0.65rem;
   background: transparent;
   color: hsl(var(--foreground) / 0.86);
@@ -129,7 +129,7 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
   min-height: 2.5rem;
   margin-inline: auto;
   padding: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-md);
 }
 
 .sidebar-item.is-collapsed .sidebar-item__label {

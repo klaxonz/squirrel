@@ -145,7 +145,6 @@ defineExpose({ refresh: load })
   border: 1px solid hsl(var(--border) / 0.85);
   border-radius: var(--radius-lg);
   background: hsl(var(--card));
-  box-shadow: var(--app-surface-shadow);
   padding: 0.7rem 0.75rem 0.8rem;
 }
 

@@ -140,8 +140,8 @@ const fmButtonTitle = computed(() => {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--muted-foreground));
 }
 
 .music-home-controls__icon svg {

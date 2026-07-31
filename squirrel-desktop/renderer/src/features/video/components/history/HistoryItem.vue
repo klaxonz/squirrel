@@ -173,19 +173,16 @@ const prefetchPlayback = () => {
   border: 1px solid hsl(var(--border) / 0.88);
   border-radius: var(--radius-lg);
   background: hsl(var(--card));
-  box-shadow: var(--app-surface-shadow);
   padding-inline: 0.7rem;
   transition:
     border-color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-fast) var(--ease-default);
+    background-color var(--duration-fast) var(--ease-default);
 }
 
 .history-item:hover,
 .history-item:focus-within {
   border-color: hsl(var(--foreground) / 0.16);
   background: hsl(var(--card));
-  box-shadow: var(--app-panel-shadow);
 }
 
 /* Always three columns on desktop workbench widths. */

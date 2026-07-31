@@ -124,7 +124,7 @@ defineEmits<{
 }
 
 .music-login-title {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 700;
   margin-bottom: 0.75rem;
   color: hsl(var(--foreground));

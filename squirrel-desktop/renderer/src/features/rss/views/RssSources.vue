@@ -1286,7 +1286,7 @@ onUnmounted(() => {
 
 <style scoped>
 .rss-workspace {
-  --app-workbench-header-height: 3.25rem;
+  --app-workbench-header-height: 3rem;
 }
 
 .rss-source-controls {
@@ -1378,7 +1378,7 @@ onUnmounted(() => {
 
 .rss-entry-pane {
   --app-pane-list-width: clamp(20rem, 34cqi, 30rem);
-  background: transparent;
+  background: hsl(var(--card));
 }
 
 @container workbench (max-width: 68rem) {
@@ -1797,10 +1797,10 @@ onUnmounted(() => {
   color: hsl(var(--foreground) / 0.94);
   cursor: pointer;
   font-family: var(--app-heading-font);
-  font-size: clamp(1.55rem, 2.1vw, 1.9rem);
+  font-size: clamp(1.25rem, 1.6vw, 1.375rem);
   font-weight: 650;
-  letter-spacing: -0.015em;
-  line-height: 1.28;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
   transition: color var(--duration-fast) var(--ease-default);
   text-wrap: balance;
 }

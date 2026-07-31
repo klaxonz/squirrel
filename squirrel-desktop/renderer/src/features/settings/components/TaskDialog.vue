@@ -4,7 +4,7 @@
       class="max-h-[90vh] min-h-0 w-full max-w-xl overflow-hidden rounded-lg p-0"
       content-class="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-      <DialogHeader class="app-divider-bottom flex shrink-0 flex-row items-center justify-between space-y-0 p-5 text-left">
+      <DialogHeader class="app-divider-bottom flex shrink-0 flex-row items-center justify-between space-y-0 p-4 text-left">
         <div class="min-w-0">
           <DialogTitle class="text-base font-semibold text-foreground">
             {{ isEditing ? '编辑任务' : '新建任务' }}
@@ -16,7 +16,7 @@
       </DialogHeader>
 
       <div class="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
-        <form class="space-y-6 p-5" @submit.prevent="handleSubmit">
+        <form class="space-y-4 p-4" @submit.prevent="handleSubmit">
           <section class="space-y-4">
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground" for="task-dialog-name">任务名称</label>

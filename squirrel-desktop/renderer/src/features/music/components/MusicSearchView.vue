@@ -230,7 +230,7 @@ function handlePlaySong(track: MusicTrack) {
 
 <style scoped>
 .music-search {
-  padding: 1.5rem;
+  padding: 1rem;
   max-width: var(--app-content-table-max);
   margin: 0 auto;
 }
@@ -332,7 +332,7 @@ function handlePlaySong(track: MusicTrack) {
 
 .music-search-summary-title {
   margin-top: 0.25rem;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 650;
   color: hsl(var(--foreground));
 }

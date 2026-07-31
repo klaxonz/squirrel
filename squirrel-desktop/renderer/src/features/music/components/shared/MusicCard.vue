@@ -178,15 +178,10 @@ function handleCoverError() {
 .music-card-cover-button img {
   display: block;
   object-fit: cover;
-  transition: transform var(--duration-slow) var(--ease-out);
 }
 
 .music-card:hover .music-card-cover {
-  border-color: hsl(var(--border));
-}
-
-.music-card:hover .music-card-cover-button img {
-  transform: scale(1.025);
+  border-color: hsl(var(--foreground) / 0.18);
 }
 
 .music-card-cover-button:focus-visible,

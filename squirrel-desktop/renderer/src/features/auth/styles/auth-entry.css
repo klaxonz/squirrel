@@ -44,8 +44,7 @@
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius-md);
   background: hsl(var(--card));
-  padding: 1.5rem 1.25rem;
-  box-shadow: var(--app-surface-shadow);
+  padding: 1.25rem 1rem;
 }
 
 .auth-entry__intro {
@@ -57,9 +56,9 @@
 .auth-entry__title {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   line-height: 1.25;
 }
 

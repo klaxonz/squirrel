@@ -693,9 +693,9 @@ const {
   max-width: 64rem;
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: clamp(1.125rem, 1.5vw, 1.375rem);
+  font-size: clamp(1rem, 1.25vw, 1.125rem);
   line-height: 1.35;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .video-detail__meta {
@@ -803,9 +803,9 @@ const {
 
 .video-detail__subscribe-button {
   min-width: 4.25rem;
-  height: 2.125rem;
+  height: 2rem;
   padding-inline: var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: 999px;
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   font-size: 0.75rem;
@@ -831,29 +831,23 @@ const {
   opacity: 0.6;
 }
 
+/* Reddit vote-style action buttons: independent pills, no shared container. */
 .video-detail__actions {
-  gap: 0.125rem;
-  padding: 0.1875rem;
-  border: 1px solid var(--app-hairline);
-  border-radius: calc(var(--radius-md) + 0.1875rem);
-  background: hsl(var(--muted) / 0.22);
+  gap: 0.25rem;
 }
 
 .video-detail__action-group {
-  gap: 0.125rem;
-  margin-right: 0.1875rem;
-  padding-right: 0.3125rem;
-  border-right: 1px solid var(--app-hairline);
+  gap: 0.25rem;
 }
 
 .video-detail__action-button {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  height: 2rem;
-  min-width: 2rem;
-  padding-inline: 0.625rem;
-  border-radius: var(--radius-md);
+  height: 1.75rem;
+  min-width: 1.75rem;
+  padding-inline: 0.5rem;
+  border-radius: 999px;
   background: transparent;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;

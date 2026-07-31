@@ -504,7 +504,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   transition: background-color var(--duration-fast) var(--ease-default);
 }
 
-/* Reddit card post: white surface, full-width media, soft lift on hover */
+/* Reddit card post: white surface, full-width media, hairline border. */
 .video-item--card {
   position: relative;
   flex-direction: column;
@@ -513,16 +513,14 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   border: 1px solid hsl(var(--border) / 0.9);
   border-radius: var(--radius-lg);
   background: hsl(var(--card));
-  box-shadow: var(--app-surface-shadow);
   transition:
     border-color var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-fast) var(--ease-default),
-    transform var(--duration-fast) var(--ease-default);
+    background-color var(--duration-fast) var(--ease-default);
 }
 
 .video-item--card:hover {
   border-color: hsl(var(--foreground) / 0.16);
-  box-shadow: var(--app-panel-shadow);
+  background: hsl(var(--card));
 }
 
 .video-item--card:focus-visible {
@@ -552,17 +550,15 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   border: 1px solid hsl(var(--border) / 0.9);
   border-radius: var(--radius-lg);
   background: hsl(var(--card));
-  box-shadow: var(--app-surface-shadow);
   padding: 0.7rem;
   transition:
     border-color var(--duration-fast) var(--ease-default),
-    box-shadow var(--duration-fast) var(--ease-default);
+    background-color var(--duration-fast) var(--ease-default);
 }
 
 .video-item--row:hover {
   border-color: hsl(var(--foreground) / 0.16);
   background: hsl(var(--card));
-  box-shadow: var(--app-panel-shadow);
 }
 
 .video-item__thumb--row {

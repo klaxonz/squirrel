@@ -284,21 +284,20 @@ watch(() => route.query.special, (value) => {
   background: hsl(var(--background));
 }
 
-/* Full-bleed sticky toolbar — light canvas, not a heavy SaaS slab. */
+/* Full-bleed sticky toolbar — opaque Reddit sort bar, not a frosted slab. */
 .videos-workbench__toolbar {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  background: hsl(var(--background) / 0.9);
+  background: hsl(var(--card));
   border-bottom: 1px solid hsl(var(--border) / 0.72);
-  backdrop-filter: blur(12px);
 }
 
 .videos-workbench__toolbar-inner {
   display: flex;
   width: 100%;
   max-width: none;
-  min-height: 3.1rem;
+  min-height: 3rem;
   margin-inline: 0;
   padding-inline: var(--app-content-media-gutter);
   align-items: center;

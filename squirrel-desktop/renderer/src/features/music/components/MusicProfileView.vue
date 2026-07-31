@@ -552,7 +552,7 @@ watch(activeTab, (tab) => {
 .music-profile-tab-btn[data-state="active"] {
   color: hsl(var(--foreground));
   background: hsl(var(--card));
-  box-shadow: var(--shadow-xs);
+  box-shadow: 0 0 0 1px hsl(var(--border) / 0.55);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -576,8 +576,8 @@ watch(activeTab, (tab) => {
 .music-profile-playlists {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-  padding: 0 1.5rem;
+  gap: 1.5rem;
+  padding: 0 1rem;
 }
 
 .music-profile-playlist-section {

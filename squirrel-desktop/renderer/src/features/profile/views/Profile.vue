@@ -215,9 +215,9 @@ const handleLogout = async () => {
 .profile-header {
   display: flex;
   align-items: center;
-  gap: var(--space-5);
+  gap: var(--space-4);
   margin-bottom: var(--space-4);
-  padding: var(--space-5);
+  padding: var(--space-4);
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius-md);
   background: hsl(var(--card));
@@ -298,7 +298,7 @@ const handleLogout = async () => {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding: var(--space-5);
+  padding: var(--space-4);
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius-md);
   background: hsl(var(--card));

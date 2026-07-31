@@ -479,7 +479,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   gap: var(--space-3);
   border-right: 1px solid hsl(var(--border));
   padding: var(--space-5) var(--space-3);
-  background: hsl(var(--sidebar));
+  background: transparent;
   height: 100%;
 }
 
@@ -516,7 +516,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   align-items: center;
   gap: 0.55rem;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   padding: 0 0.75rem;
   background: transparent;
   color: hsl(var(--muted-foreground));
@@ -535,9 +535,10 @@ const onSystemToggle = async (key: string, value: boolean) => {
 }
 
 .settings-nav__item.is-active {
-  background: hsl(var(--foreground) / 0.1);
+  background: hsl(var(--foreground) / 0.08);
   color: hsl(var(--foreground));
-  font-weight: 700;
+  font-weight: 650;
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.04);
 }
 
 .settings-nav__item:focus-visible {
@@ -572,15 +573,15 @@ const onSystemToggle = async (key: string, value: boolean) => {
   flex: 0 0 auto;
   flex-direction: column;
   align-self: center;
-  gap: var(--space-7);
+  gap: var(--space-6);
 }
 
 .settings-page-intro h1 {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 1.375rem;
+  font-size: 1.125rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .settings-page-intro p {
