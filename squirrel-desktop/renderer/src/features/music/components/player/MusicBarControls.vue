@@ -5,7 +5,7 @@
         text severity="secondary"
         size="sm" icon-only
         class="music-bar-mode-button"
-        :class="{ 'text-primary': shuffle }"
+        :class="{ 'app-selection-active': shuffle }"
         title="随机播放"
         aria-label="随机播放"
         :aria-pressed="shuffle"
@@ -57,7 +57,7 @@
         text severity="secondary"
         size="sm" icon-only
         class="music-bar-mode-button"
-        :class="{ 'text-primary': repeat !== 'none' }"
+        :class="{ 'app-selection-active': repeat !== 'none' }"
         :title="repeatTitle"
         :aria-label="repeatTitle"
         :aria-pressed="repeat !== 'none'"

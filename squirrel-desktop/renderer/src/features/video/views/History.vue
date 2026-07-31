@@ -374,12 +374,12 @@ onMounted(() => {
 
 .history-groups {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-6);
 }
 
 .history-day {
   display: grid;
-  gap: var(--space-2);
+  gap: 0.7rem;
   min-width: 0;
 }
 
@@ -388,29 +388,29 @@ onMounted(() => {
   min-width: 0;
   align-items: baseline;
   gap: var(--space-4);
-  padding: 0.125rem 0.125rem 0;
+  padding: 0.15rem 0.2rem 0;
 }
 
 .history-day__heading {
   display: flex;
   min-width: 0;
   align-items: baseline;
-  gap: var(--space-2);
+  gap: 0.55rem;
 }
 
 .history-day__title {
   margin: 0;
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 700;
   line-height: 1.25;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 .history-day__detail {
   overflow: hidden;
-  color: hsl(var(--muted-foreground) / 0.85);
+  color: hsl(var(--muted-foreground) / 0.9);
   font-size: 0.75rem;
   line-height: 1.3;
   text-overflow: ellipsis;
@@ -420,6 +420,6 @@ onMounted(() => {
 .history-day__items {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-2);
+  gap: 0.55rem;
 }
 </style>

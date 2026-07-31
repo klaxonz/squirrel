@@ -53,7 +53,7 @@ defineEmits<{
   height: 2.5rem;
   margin-bottom: 0.75rem;
   border: 1px solid hsl(var(--destructive) / 0.18);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   background: hsl(var(--destructive) / 0.08);
   color: hsl(var(--destructive));
 }

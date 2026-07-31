@@ -968,7 +968,7 @@ const {
   gap: 0.25rem;
   margin-top: 0.5rem;
   padding: 0.125rem 0.25rem;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   color: hsl(var(--foreground) / 0.72);
   font-size: 0.875rem;
   font-weight: 650;

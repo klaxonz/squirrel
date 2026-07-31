@@ -1212,7 +1212,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 1rem;
   border-bottom: 1px solid var(--app-hairline);
-  background: hsl(var(--background) / 0.96);
+  background: var(--app-muted-surface);
   padding: 0.5rem 0.75rem;
   color: hsl(var(--muted-foreground) / 0.68);
   font-size: var(--app-text-badge-size);

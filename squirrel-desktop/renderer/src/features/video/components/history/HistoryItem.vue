@@ -118,7 +118,11 @@ const progress = computed(() => {
   if (duration <= 0) return 0
   return Math.max(0, Math.min(1, Number(props.video.last_position || 0) / duration))
 })
-const progressPercent = computed(() => Math.round(progress.value * 100))
+const progressPercent = computed(() => {
+  if (progress.value <= 0) return 0
+  // Unfinished rows never round down to 0% — that reads as "not started".
+  return Math.max(1, Math.min(99, Math.round(progress.value * 100)))
+})
 const isUnfinished = computed(() => progress.value > 0.01 && progress.value < 0.95)
 const progressLabel = computed(() => {
   if (progress.value <= 0) return '已播放'
@@ -164,21 +168,24 @@ const prefetchPlayback = () => {
   min-width: 0;
   grid-template-columns: minmax(0, 1fr) 2rem;
   align-items: center;
-  column-gap: 0.5rem;
+  column-gap: 0.35rem;
   overflow: hidden;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-md);
+  border: 1px solid hsl(var(--border) / 0.88);
+  border-radius: var(--radius-lg);
   background: hsl(var(--card));
-  padding-inline: 0.75rem;
+  box-shadow: var(--app-surface-shadow);
+  padding-inline: 0.7rem;
   transition:
     border-color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default);
+    background-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
 }
 
 .history-item:hover,
 .history-item:focus-within {
-  border-color: hsl(var(--foreground) / 0.18);
+  border-color: hsl(var(--foreground) / 0.16);
   background: hsl(var(--card));
+  box-shadow: var(--app-panel-shadow);
 }
 
 /* Always three columns on desktop workbench widths. */
@@ -186,10 +193,10 @@ const prefetchPlayback = () => {
   display: grid;
   width: 100%;
   min-width: 0;
-  grid-template-columns: 10.5rem minmax(0, 1fr) 10rem;
+  grid-template-columns: 11rem minmax(0, 1fr) 10.5rem;
   align-items: center;
   column-gap: 1rem;
-  padding: 0.625rem 0;
+  padding: 0.7rem 0;
   cursor: pointer;
   outline: none;
 }
@@ -207,12 +214,13 @@ const prefetchPlayback = () => {
   border-radius: var(--radius-md);
   background: var(--app-media-thumb-placeholder);
   isolation: isolate;
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.04);
 }
 
 .history-item__duration {
   position: absolute;
   right: 0.375rem;
-  bottom: 0.5rem;
+  bottom: 0.55rem;
   z-index: 10;
   display: inline-flex;
   align-items: center;
@@ -223,7 +231,7 @@ const prefetchPlayback = () => {
   color: hsl(var(--app-media-on-image));
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .history-item__progress {
@@ -247,7 +255,7 @@ const prefetchPlayback = () => {
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  gap: 0.375rem;
+  gap: 0.4rem;
 }
 
 .history-item__title {
@@ -255,9 +263,11 @@ const prefetchPlayback = () => {
   overflow: hidden;
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: 0.9375rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   line-height: 1.35;
+  text-wrap: pretty;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -266,7 +276,7 @@ const prefetchPlayback = () => {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.4rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   line-height: 1.3;
@@ -316,7 +326,7 @@ const prefetchPlayback = () => {
   flex-direction: column;
   align-items: flex-end;
   justify-content: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
@@ -329,12 +339,19 @@ const prefetchPlayback = () => {
 }
 
 .history-item__status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35rem;
+  border-radius: 999px;
+  padding: 0 0.5rem;
   color: hsl(var(--muted-foreground) / 0.92);
+  background: hsl(var(--foreground) / 0.04);
 }
 
 .history-item__status--active {
-  color: hsl(var(--foreground) / 0.8);
-  font-weight: 600;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+  font-weight: 700;
 }
 
 .history-item__delete {
@@ -360,8 +377,8 @@ const prefetchPlayback = () => {
 
 @media (max-width: 720px) {
   .history-item__open {
-    grid-template-columns: 7.5rem minmax(0, 1fr);
-    row-gap: 0.35rem;
+    grid-template-columns: 7.75rem minmax(0, 1fr);
+    row-gap: 0.4rem;
   }
 
   .history-item__meta {

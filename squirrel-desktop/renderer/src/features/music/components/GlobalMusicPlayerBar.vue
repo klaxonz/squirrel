@@ -565,7 +565,7 @@ function removeQueueItem(index: number) {
   width: 2rem;
   height: 2rem;
   flex-shrink: 0;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: hsl(var(--muted) / 0.5);
   color: hsl(var(--muted-foreground));
@@ -655,9 +655,9 @@ function removeQueueItem(index: number) {
   align-items: center;
   justify-content: center;
   border-radius: inherit;
-  background: hsl(var(--background) / 0.2);
-  color: hsl(var(--foreground));
-  filter: drop-shadow(0 1px 1px hsl(var(--background) / 0.72));
+  background: var(--app-media-scrim-soft);
+  color: hsl(var(--app-media-on-image));
+  filter: drop-shadow(0 1px 1px hsl(var(--overlay) / 0.5));
 }
 
 .music-bar--mini :deep(.music-progress-fill) {

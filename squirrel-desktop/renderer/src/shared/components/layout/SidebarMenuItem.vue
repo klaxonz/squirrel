@@ -91,9 +91,9 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
   overflow: hidden;
   border: 0;
   border-radius: 999px;
-  padding: 0 0.875rem 0 0.625rem;
+  padding: 0 0.9rem 0 0.65rem;
   background: transparent;
-  color: hsl(var(--foreground) / 0.88);
+  color: hsl(var(--foreground) / 0.86);
   font-size: 0.875rem;
   font-weight: 500;
   line-height: 1;
@@ -101,7 +101,8 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
   outline: none;
   transition:
     background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
+    color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
 }
 
 .sidebar-item:hover {
@@ -116,7 +117,8 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
 .sidebar-item.is-active {
   background: hsl(var(--foreground) / 0.08);
   color: hsl(var(--foreground));
-  font-weight: 600;
+  font-weight: 650;
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.04);
 }
 
 .sidebar-item.is-collapsed {

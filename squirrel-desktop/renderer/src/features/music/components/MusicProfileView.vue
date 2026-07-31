@@ -378,9 +378,9 @@ watch(activeTab, (tab) => {
   font-weight: 600;
   padding: 0.125rem 0.4375rem;
   color: hsl(var(--foreground));
-  background: hsl(var(--background));
+  background: var(--app-muted-surface);
   border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
 }
 
 .music-profile-header-info {
@@ -431,7 +431,7 @@ watch(activeTab, (tab) => {
   padding: 0 0.4375rem;
   border: 1px solid hsl(var(--border) / 0.28);
   border-radius: var(--radius-sm);
-  background: hsl(var(--background) / 0.72);
+  background: var(--app-muted-surface);
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
   font-weight: 500;
@@ -456,7 +456,7 @@ watch(activeTab, (tab) => {
 
 .music-profile-logout:hover {
   border-color: hsl(var(--border) / 0.34);
-  background: hsl(var(--background) / 0.72);
+  background: var(--app-selection-bg-hover);
   color: hsl(var(--foreground));
 }
 

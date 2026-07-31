@@ -349,11 +349,11 @@ watch(() => props.subscriptionId, () => {
 
 .channel-header__badge {
   flex: none;
-  border: 1px solid hsl(var(--primary) / 0.35);
+  border: 1px solid var(--app-surface-border-subtle);
   border-radius: var(--radius-sm);
-  background: hsl(var(--primary) / 0.08);
+  background: hsl(var(--muted) / 0.4);
   padding: 0.125rem 0.375rem;
-  color: hsl(var(--primary));
+  color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
   font-weight: 650;
 }

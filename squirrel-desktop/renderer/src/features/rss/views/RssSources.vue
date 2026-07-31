@@ -1455,7 +1455,7 @@ onUnmounted(() => {
 
 .rss-reader-body {
   padding: clamp(1.25rem, 2.5vh, 2rem) clamp(1.25rem, 3.5vw, 3rem) 5rem;
-  background: hsl(var(--background));
+  background: hsl(var(--card));
 }
 
 .rss-entry-stack {
@@ -1497,13 +1497,13 @@ onUnmounted(() => {
 }
 
 .rss-entry-stack :deep(.app-selectable-list-item--flush.is-selected) {
-  background: hsl(var(--foreground) / 0.035);
+  background: var(--app-selection-bg);
   box-shadow: none;
 }
 
 .rss-entry-stack :deep(.app-selectable-list-item--flush:not(.is-selected):hover),
 .rss-entry-stack :deep(.app-selectable-list-item--flush:not(.is-selected):focus-visible) {
-  background: hsl(var(--foreground) / 0.025);
+  background: var(--app-row-hover-bg);
 }
 
 .rss-entry-item__meta-row {
@@ -1608,7 +1608,7 @@ onUnmounted(() => {
 }
 
 .rss-reader-pane {
-  background: hsl(var(--background));
+  background: hsl(var(--card));
 }
 
 .rss-reader-empty {
@@ -1620,7 +1620,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
-  background: hsl(var(--background));
+  background: hsl(var(--card));
   text-align: center;
   user-select: none;
 }
@@ -1632,7 +1632,7 @@ onUnmounted(() => {
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  background: hsl(var(--background));
+  background: hsl(var(--card));
 }
 
 .rss-browser-overlay {
@@ -1642,7 +1642,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   border-inline-start: 1px solid hsl(var(--border) / 0.42);
-  background: hsl(var(--background));
+  background: hsl(var(--card));
 }
 
 .rss-browser-toolbar {
@@ -1654,7 +1654,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid hsl(var(--border) / 0.38);
-  background: hsl(var(--background));
+  background: hsl(var(--card));
   padding: 0 1.5rem;
 }
 
@@ -1702,7 +1702,7 @@ onUnmounted(() => {
   width: 100%;
   flex-direction: column;
   overflow: hidden;
-  background: hsl(var(--background));
+  background: hsl(var(--card));
 }
 
 .rss-browser-frame__iframe {
@@ -1728,7 +1728,7 @@ onUnmounted(() => {
   color: hsl(var(--popover-foreground));
   font-size: 0.6875rem;
   line-height: 1.55;
-  box-shadow: 0 8px 24px hsl(var(--foreground) / 0.12);
+  box-shadow: var(--app-floating-shadow);
 }
 
 .rss-browser-alert__title {

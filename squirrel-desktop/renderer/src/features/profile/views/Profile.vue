@@ -240,8 +240,8 @@ const handleLogout = async () => {
 
 .profile-avatar-control:hover,
 .profile-avatar-control:focus-visible {
-  border-color: hsl(var(--primary) / 0.45);
-  background: hsl(var(--primary) / 0.08);
+  border-color: var(--app-selection-border-hover);
+  background: var(--app-selection-bg-hover);
 }
 
 .profile-avatar-image,

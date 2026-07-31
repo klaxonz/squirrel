@@ -52,7 +52,7 @@ defineEmits<{
   display: flex;
   align-items: center;
   justify-content: center;
-  background: hsl(var(--background) / 0.96);
+  background: hsl(var(--overlay) / 0.82);
 }
 
 .rss-image-lightbox__close {
@@ -62,14 +62,14 @@ defineEmits<{
   width: 2.5rem;
   height: 2.5rem;
   border: 1px solid hsl(var(--border) / 0.16);
-  border-radius: 0.5rem;
-  background: hsl(var(--accent) / 0.24);
+  border-radius: var(--radius-md);
+  background: var(--app-selection-bg);
   color: hsl(var(--foreground));
 }
 
 .rss-image-lightbox__close:hover {
-  border-color: hsl(var(--border) / 0.32);
-  background: hsl(var(--accent) / 0.42);
+  border-color: var(--app-selection-border-hover);
+  background: var(--app-selection-bg-hover);
 }
 
 .rss-image-lightbox__frame {
@@ -83,7 +83,7 @@ defineEmits<{
 .rss-image-lightbox__image {
   max-width: 100%;
   max-height: 90vh;
-  border-radius: 0.625rem;
+  border-radius: var(--radius-lg);
   object-fit: contain;
   cursor: zoom-out;
   transition: transform 0.2s ease;

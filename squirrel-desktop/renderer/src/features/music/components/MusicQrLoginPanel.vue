@@ -120,7 +120,7 @@ defineEmits<{
   justify-content: center;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
 }
 
 .music-login-title {
@@ -172,8 +172,9 @@ defineEmits<{
 .music-qr-card {
   width: 200px;
   height: 200px;
+  /* 二维码需要纯白底才能被扫描，保持白色不随主题 */
   background: white;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -194,7 +195,7 @@ defineEmits<{
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: hsl(var(--background) / 0.9);
+  background: hsl(var(--card) / 0.92);
   cursor: pointer;
 }
 

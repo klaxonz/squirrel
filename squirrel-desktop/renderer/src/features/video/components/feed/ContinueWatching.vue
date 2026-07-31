@@ -1,8 +1,11 @@
 <template>
   <section v-if="historyItems.length > 0 || loading || loadError" class="continue-rail">
     <header class="continue-rail__header">
-      <h2>继续观看</h2>
-      <Button text severity="secondary" size="sm" @click="$emit('viewMore')">
+      <div class="continue-rail__heading">
+        <h2>继续观看</h2>
+        <span v-if="historyItems.length" class="continue-rail__count">{{ historyItems.length }}</span>
+      </div>
+      <Button text severity="secondary" size="sm" class="continue-rail__more" @click="$emit('viewMore')">
         全部
         <AppIcon name="chevronRight" class="size-3.5" />
       </Button>
@@ -38,6 +41,10 @@
         >
           <span class="continue-rail__visual">
             <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" interactive />
+            <span class="continue-rail__resume">
+              <AppIcon name="play" class="size-3" />
+              续播
+            </span>
             <span
               class="continue-rail__progress"
               role="progressbar"
@@ -53,7 +60,8 @@
           <span class="continue-rail__copy">
             <span class="continue-rail__title">{{ item.title }}</span>
             <span class="continue-rail__meta">
-              {{ progressPercent(item) }}% · 剩余 {{ remainingDuration(item) }}
+              <span class="continue-rail__percent">{{ progressPercent(item) }}%</span>
+              <span>剩余 {{ remainingDuration(item) }}</span>
             </span>
           </span>
         </button>
@@ -130,41 +138,67 @@ defineExpose({ refresh: load })
 </script>
 
 <style scoped>
-
-/* Thin horizontal shelf above the feed — no nested card box. */
+/* Resume shelf: denser media strip above the feed, not a nested card box. */
 .continue-rail {
   min-width: 0;
   overflow: hidden;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  border: 1px solid hsl(var(--border) / 0.85);
+  border-radius: var(--radius-lg);
+  background: hsl(var(--card));
+  box-shadow: var(--app-surface-shadow);
+  padding: 0.7rem 0.75rem 0.8rem;
 }
 
 .continue-rail__header {
   display: flex;
-  min-height: 2rem;
+  min-height: 1.75rem;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.125rem 0.125rem 0.375rem;
-  border-bottom: 0;
+  margin-bottom: 0.55rem;
+}
+
+.continue-rail__heading {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
 }
 
 .continue-rail__header h2 {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+}
+
+.continue-rail__count {
+  display: inline-flex;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: hsl(var(--foreground) / 0.07);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  padding-inline: 0.35rem;
+}
+
+.continue-rail__more {
+  color: hsl(var(--muted-foreground));
 }
 
 .continue-rail__track {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(10.5rem, 1fr);
-  gap: 0.625rem;
+  grid-auto-columns: minmax(11rem, 1fr);
+  gap: 0.7rem;
   margin: 0;
-  padding: 0.125rem 0 0.25rem;
+  padding: 0;
   overflow-x: auto;
   list-style: none;
   scrollbar-width: thin;
@@ -178,7 +212,7 @@ defineExpose({ refresh: load })
   display: grid;
   width: 100%;
   min-width: 0;
-  gap: 0.375rem;
+  gap: 0.45rem;
   border: 0;
   padding: 0;
   background: transparent;
@@ -189,7 +223,12 @@ defineExpose({ refresh: load })
 
 .continue-rail__card:hover .continue-rail__visual,
 .continue-rail__card:focus-visible .continue-rail__visual {
-  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.14);
+}
+
+.continue-rail__card:hover .continue-rail__resume {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .continue-rail__card:focus-visible {
@@ -207,9 +246,31 @@ defineExpose({ refresh: load })
   display: block;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--app-media-thumb-placeholder);
   isolation: isolate;
+}
+
+.continue-rail__resume {
+  position: absolute;
+  left: 0.4rem;
+  bottom: 0.55rem;
+  z-index: 3;
+  display: inline-flex;
+  height: 1.35rem;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 999px;
+  padding: 0 0.45rem 0 0.35rem;
+  background: hsl(var(--overlay) / 0.72);
+  color: hsl(var(--app-media-on-image));
+  font-size: 0.6875rem;
+  font-weight: 700;
+  opacity: 0;
+  transform: translateY(0.15rem);
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
 }
 
 .continue-rail__progress {
@@ -232,27 +293,35 @@ defineExpose({ refresh: load })
 .continue-rail__copy {
   display: grid;
   min-width: 0;
-  gap: 0.125rem;
+  gap: 0.15rem;
 }
 
 .continue-rail__title {
   display: -webkit-box;
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 650;
   line-height: 1.3;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
 .continue-rail__meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
   overflow: hidden;
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.continue-rail__percent {
+  color: hsl(var(--primary));
+  font-weight: 700;
 }
 
 .continue-rail__state {
@@ -262,12 +331,12 @@ defineExpose({ refresh: load })
 
 .continue-rail__skeleton {
   display: grid;
-  gap: 0.375rem;
+  gap: 0.4rem;
 }
 
 .continue-rail__skeleton-thumb {
   aspect-ratio: 16 / 9;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: hsl(var(--muted) / 0.55);
 }
 
@@ -287,10 +356,23 @@ defineExpose({ refresh: load })
   width: 55%;
 }
 
+@media (hover: none) {
+  .continue-rail__resume {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .continue-rail__card,
-  .continue-rail__visual {
+  .continue-rail__visual,
+  .continue-rail__resume {
     transition: none;
+  }
+
+  .continue-rail__resume {
+    opacity: 1;
+    transform: none;
   }
 }
 </style>

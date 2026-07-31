@@ -289,16 +289,16 @@ watch(() => route.query.special, (value) => {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  background: hsl(var(--background) / 0.92);
-  border-bottom: 1px solid hsl(var(--border) / 0.7);
-  backdrop-filter: blur(10px);
+  background: hsl(var(--background) / 0.9);
+  border-bottom: 1px solid hsl(var(--border) / 0.72);
+  backdrop-filter: blur(12px);
 }
 
 .videos-workbench__toolbar-inner {
   display: flex;
   width: 100%;
   max-width: none;
-  min-height: 3rem;
+  min-height: 3.1rem;
   margin-inline: 0;
   padding-inline: var(--app-content-media-gutter);
   align-items: center;
@@ -327,11 +327,11 @@ watch(() => route.query.special, (value) => {
   display: flex;
   width: 100%;
   max-width: none;
-  min-height: 2.5rem;
+  min-height: 2.55rem;
   margin-inline: 0;
   padding-inline: var(--app-content-media-gutter);
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.4rem;
 }
 
 .videos-workbench__filters > span {
@@ -345,21 +345,22 @@ watch(() => route.query.special, (value) => {
 
 .videos-workbench__filters button {
   display: inline-flex;
-  min-height: 1.625rem;
+  min-height: 1.7rem;
   align-items: center;
   gap: 0.3rem;
   border: 1px solid hsl(var(--border));
   border-radius: 999px;
-  padding: 0 0.55rem;
-  background: hsl(var(--secondary));
+  padding: 0 0.6rem;
+  background: hsl(var(--card));
   color: hsl(var(--foreground));
+  box-shadow: var(--shadow-xs);
   font-size: 0.6875rem;
   font-weight: 600;
   cursor: pointer;
 }
 
 .videos-workbench__filters button:hover {
-  border-color: hsl(var(--foreground) / 0.28);
+  border-color: hsl(var(--foreground) / 0.24);
   background: hsl(var(--accent));
 }
 
@@ -367,6 +368,7 @@ watch(() => route.query.special, (value) => {
   margin-left: auto;
   border-color: transparent;
   background: transparent;
+  box-shadow: none;
   color: hsl(var(--info));
 }
 
@@ -383,7 +385,7 @@ watch(() => route.query.special, (value) => {
   max-width: none;
   margin-inline: 0;
   padding-inline: var(--app-content-media-gutter);
-  padding-block: 1rem 3rem;
+  padding-block: 1.05rem 3rem;
 }
 
 .videos-workbench__error {

@@ -117,7 +117,7 @@
                 class="font-mono bg-muted/30 px-4 py-3 text-xs text-foreground"
                 placeholder='{ "名称": "内容" }'
               />
-              <div v-if="jsonError" class="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-md border border-destructive/20 bg-background px-2 py-1 text-xs font-medium text-destructive">
+              <div v-if="jsonError" class="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-md border border-destructive/20 bg-card px-2 py-1 text-xs font-medium text-destructive">
                 <AppIcon name="alert" class="h-3 w-3" />
                 格式错误
               </div>

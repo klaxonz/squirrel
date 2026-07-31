@@ -181,10 +181,8 @@ function playVideo(video: MusicVideo) {
 }
 
 .music-artist-video-card:focus-visible .music-artist-video-card__thumb {
-  box-shadow:
-    0 0 0 2px hsl(var(--background)),
-    0 0 0 4px hsl(var(--ring) / 0.45),
-    inset 0 0 0 1px hsl(var(--foreground) / 0.16);
+  outline: 2px solid hsl(var(--ring) / 0.55);
+  outline-offset: 2px;
 }
 
 .music-artist-video-card__thumb img {

@@ -249,8 +249,8 @@ const {
   align-items: center;
   justify-content: space-between;
   padding: 0.875rem 1rem;
-  background: hsl(var(--primary) / 0.08);
-  border: 1px solid hsl(var(--primary) / 0.2);
+  background: var(--app-selection-bg);
+  border: 1px solid var(--app-selection-border);
   border-radius: var(--app-surface-radius);
   margin-bottom: 1rem;
 }
@@ -309,11 +309,11 @@ const {
 }
 
 .music-track-row--playing {
-  background: hsl(var(--primary) / 0.1);
+  background: var(--app-selection-bg);
 }
 
 .music-track-row--selected {
-  background: hsl(var(--primary) / 0.12);
+  background: var(--app-selection-bg-hover);
 }
 
 .music-track-col--checkbox {
@@ -379,10 +379,9 @@ const {
 .music-track-col--cover {
   width: 3rem;
   height: 3rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: hsl(var(--muted) / 0.3);
-  box-shadow: 0 2px 6px hsl(var(--foreground) / 0.05);
 }
 
 .music-track-col--cover img {

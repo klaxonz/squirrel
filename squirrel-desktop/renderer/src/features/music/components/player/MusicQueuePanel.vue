@@ -128,7 +128,7 @@ onUnmounted(() => {
   right: 1.5rem;
   width: 24rem;
   max-height: 28rem;
-  background: hsl(var(--background));
+  background: hsl(var(--popover));
   border: 1px solid hsl(var(--border) / 0.5);
   border-radius: var(--app-surface-radius);
   box-shadow: var(--app-floating-shadow);
@@ -193,7 +193,7 @@ onUnmounted(() => {
 }
 
 .music-queue-item--active {
-  background: hsl(var(--primary) / 0.08);
+  background: var(--app-selection-bg);
 }
 
 .music-queue-item-index {
@@ -208,7 +208,7 @@ onUnmounted(() => {
 .music-queue-item-cover {
   width: 2.25rem;
   height: 2.25rem;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   object-fit: cover;
   flex-shrink: 0;
 }

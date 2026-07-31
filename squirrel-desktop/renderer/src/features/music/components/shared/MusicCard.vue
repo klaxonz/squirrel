@@ -283,8 +283,8 @@ function handleCoverError() {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
+  background: var(--app-media-badge-bg);
+  color: hsl(var(--app-media-on-image) / 0.92);
 }
 
 .music-card-badge {

@@ -228,8 +228,8 @@ const handleTest = async () => {
 }
 
 .server-status-trigger--open {
-  color: hsl(var(--primary));
-  border-color: hsl(var(--primary) / 0.4);
+  color: var(--app-selection-fg);
+  border-color: var(--app-selection-border);
   background: hsl(var(--card) / 0.95);
 }
 

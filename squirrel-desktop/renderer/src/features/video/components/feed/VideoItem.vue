@@ -504,42 +504,65 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   transition: background-color var(--duration-fast) var(--ease-default);
 }
 
-/* Reddit card post: white surface, full-width media */
+/* Reddit card post: white surface, full-width media, soft lift on hover */
 .video-item--card {
+  position: relative;
   flex-direction: column;
   gap: 0;
   overflow: hidden;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid hsl(var(--border) / 0.9);
   border-radius: var(--radius-lg);
   background: hsl(var(--card));
+  box-shadow: var(--app-surface-shadow);
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
 }
 
 .video-item--card:hover {
-  border-color: hsl(var(--foreground) / 0.18);
-  background: hsl(var(--card));
+  border-color: hsl(var(--foreground) / 0.16);
+  box-shadow: var(--app-panel-shadow);
+}
+
+.video-item--card:focus-visible {
+  border-color: hsl(var(--ring) / 0.55);
 }
 
 .video-item--grid {
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.55rem;
   border-radius: var(--radius-md);
+}
+
+.video-item--grid:hover .video-item__thumb--grid {
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.1);
+}
+
+.video-item--grid:hover .video-item__title--grid {
+  color: hsl(var(--foreground));
 }
 
 /* Workbench list: thumb left + body right. Compact enough for delivery density. */
 .video-item--row {
   flex-direction: row;
   align-items: stretch;
-  gap: 0.875rem;
+  gap: 0.9rem;
   overflow: hidden;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-md);
+  border: 1px solid hsl(var(--border) / 0.9);
+  border-radius: var(--radius-lg);
   background: hsl(var(--card));
-  padding: 0.625rem;
+  box-shadow: var(--app-surface-shadow);
+  padding: 0.7rem;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
 }
 
 .video-item--row:hover {
-  border-color: hsl(var(--foreground) / 0.18);
+  border-color: hsl(var(--foreground) / 0.16);
   background: hsl(var(--card));
+  box-shadow: var(--app-panel-shadow);
 }
 
 .video-item__thumb--row {
@@ -588,7 +611,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.75rem 0.875rem 0.25rem;
+  padding: 0.875rem 0.95rem 0.3rem;
 }
 
 .video-item__community {
@@ -609,21 +632,32 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   height: 1.75rem;
   border: 0;
   border-radius: 999px;
-  padding: 0 0.75rem;
+  padding: 0 0.8rem;
   background: hsl(var(--foreground));
   color: hsl(var(--background));
   font-size: 0.75rem;
   font-weight: 700;
+  letter-spacing: 0.01em;
   cursor: pointer;
+  transition:
+    filter var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .video-item__join.is-on {
   background: hsl(var(--secondary));
   color: hsl(var(--foreground));
+  box-shadow: inset 0 0 0 1px hsl(var(--border));
 }
 
 .video-item__join:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.06);
+}
+
+.video-item__join.is-on:hover {
+  background: hsl(var(--accent));
+  filter: none;
 }
 
 .video-item__title {
@@ -638,9 +672,11 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item__title--card {
-  padding: 0.25rem 0.875rem 0.625rem;
+  padding: 0.2rem 0.95rem 0.7rem;
   font-size: 1.125rem;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
+  line-height: 1.28;
+  text-wrap: pretty;
   -webkit-line-clamp: 3;
 }
 
@@ -665,14 +701,16 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   border-radius: 0;
 }
 
-.video-item__thumb--grid {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius-sm);
+.video-item--card:hover .video-item__thumb--card {
+  filter: brightness(0.985);
 }
 
-.video-item--card:hover .video-item__thumb--card {
-  filter: brightness(0.98);
+.video-item--card .video-item__thumb--card :deep(img) {
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.video-item--card:hover .video-item__thumb--card :deep(img) {
+  transform: scale(1.015);
 }
 
 .video-item__duration {
@@ -793,8 +831,10 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.125rem;
-  padding: 0.25rem 0.375rem 0.5rem;
+  gap: 0.2rem;
+  padding: 0.35rem 0.45rem 0.55rem;
+  border-top: 1px solid hsl(var(--border) / 0.55);
+  background: hsl(var(--card));
 }
 
 .video-item__bar-btn {
@@ -810,6 +850,9 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
 }
 
 .video-item__bar-btn:hover {
@@ -822,6 +865,12 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   color: hsl(var(--foreground));
 }
 
+.video-item__bar-btn.is-on[title*='喜欢'],
+.video-item__bar-btn.is-on:has(.fill-current) {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+}
+
 .video-item--appearance-workbench.video-item--card {
   border-radius: var(--radius-lg);
 }
@@ -829,8 +878,14 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 @media (prefers-reduced-motion: reduce) {
   .video-item,
   .video-item__progress-fill,
-  .video-item__source-name {
+  .video-item__source-name,
+  .video-item--card,
+  .video-item--card .video-item__thumb--card :deep(img) {
     transition: none;
+  }
+
+  .video-item--card:hover .video-item__thumb--card :deep(img) {
+    transform: none;
   }
 }
 </style>

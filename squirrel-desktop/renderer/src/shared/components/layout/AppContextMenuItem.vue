@@ -92,7 +92,7 @@ const ariaChecked = computed(() =>
   width: 0.75rem;
   height: 0.75rem;
   flex: 0 0 auto;
-  color: hsl(var(--primary));
+  color: var(--app-selection-fg);
 }
 
 @media (prefers-reduced-motion: reduce) {

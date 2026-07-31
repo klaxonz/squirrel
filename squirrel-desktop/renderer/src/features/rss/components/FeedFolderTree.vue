@@ -199,7 +199,7 @@ defineEmits<{
 .feed-folder-tree__add,
 .feed-folder-tree__remove {
   flex: 0 0 auto;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   color: hsl(var(--muted-foreground) / 0.62);
 }
 
@@ -210,7 +210,7 @@ defineEmits<{
 
 .feed-folder-tree__add:hover {
   color: hsl(var(--foreground));
-  background: hsl(var(--accent) / 0.58);
+  background: var(--app-selection-bg-hover);
 }
 
 .feed-folder-tree__separator {
@@ -242,7 +242,7 @@ defineEmits<{
 }
 
 .feed-folder-tree__folder-button:hover {
-  background: hsl(var(--accent) / 0.35);
+  background: var(--app-row-hover-bg);
   color: hsl(var(--foreground));
 }
 

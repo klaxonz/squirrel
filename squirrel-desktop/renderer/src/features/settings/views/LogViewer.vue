@@ -662,8 +662,8 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 }
 
 .log-trace:hover {
-  border-color: hsl(var(--primary) / 0.26);
-  background: hsl(var(--primary) / 0.06);
+  border-color: var(--app-selection-border-hover);
+  background: var(--app-selection-bg-hover);
   color: hsl(var(--foreground));
 }
 

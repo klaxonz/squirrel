@@ -108,7 +108,7 @@ const showSidebarMusicPlayer = computed(() =>
   height: 100%;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid hsl(var(--border));
+  border-right: 1px solid hsl(var(--sidebar-border));
   background: hsl(var(--sidebar));
   color: hsl(var(--sidebar-foreground));
   user-select: none;
@@ -119,8 +119,8 @@ const showSidebarMusicPlayer = computed(() =>
   flex: 0 0 auto;
   align-items: center;
   min-height: var(--app-titlebar-height);
-  padding: 0 0.75rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.55);
+  padding: 0 0.85rem;
+  border-bottom: 1px solid hsl(var(--sidebar-border) / 0.9);
 }
 
 .sidebar-brand.is-collapsed {
@@ -132,7 +132,7 @@ const showSidebarMusicPlayer = computed(() =>
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   color: inherit;
   text-decoration: none;
 }
@@ -161,19 +161,19 @@ const showSidebarMusicPlayer = computed(() =>
   display: flex;
   flex: 0 0 auto;
   flex-direction: column;
-  gap: 0.125rem;
-  padding: 0.5rem 0.75rem;
+  gap: 0.15rem;
+  padding: 0.55rem 0.75rem;
 }
 
 .sidebar-top-nav {
-  padding-top: 0.625rem;
-  padding-bottom: 0.25rem;
+  padding-top: 0.7rem;
+  padding-bottom: 0.3rem;
 }
 
 .sidebar-footer {
-  border-top: 1px solid hsl(var(--border) / 0.55);
-  padding-top: 0.5rem;
-  padding-bottom: 0.625rem;
+  border-top: 1px solid hsl(var(--sidebar-border) / 0.9);
+  padding-top: 0.55rem;
+  padding-bottom: 0.7rem;
 }
 
 .sidebar-nav {
@@ -181,7 +181,7 @@ const showSidebarMusicPlayer = computed(() =>
   flex: 1 1 auto;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 0.25rem 0.75rem 0.75rem;
+  padding: 0.3rem 0.75rem 0.8rem;
   transition: padding-bottom var(--duration-base) var(--ease-out);
 }
 
@@ -190,18 +190,18 @@ const showSidebarMusicPlayer = computed(() =>
 }
 
 .sidebar-group + .sidebar-group {
-  margin-top: 0.75rem;
-  padding-top: 0.625rem;
-  border-top: 1px solid hsl(var(--border) / 0.4);
+  margin-top: 0.85rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid hsl(var(--sidebar-border) / 0.7);
 }
 
 .sidebar-group__label {
-  margin: 0 0 0.25rem;
-  padding: 0.125rem 0.75rem;
+  margin: 0 0 0.3rem;
+  padding: 0.125rem 0.8rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   line-height: 1.4;
   white-space: nowrap;
 }
@@ -213,7 +213,7 @@ const showSidebarMusicPlayer = computed(() =>
 .sidebar-group__items {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.15rem;
 }
 
 .sidebar-rail.is-collapsed :is(.sidebar-top-nav, .sidebar-nav, .sidebar-footer) {

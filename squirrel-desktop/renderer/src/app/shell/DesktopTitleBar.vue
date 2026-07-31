@@ -151,7 +151,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding-left: 0.5rem;
-  border-bottom: 1px solid hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--border) / 0.9);
   background: hsl(var(--card));
   user-select: none;
   -webkit-app-region: drag;
@@ -162,14 +162,14 @@ onUnmounted(() => {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0.125rem;
+  gap: 0.15rem;
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
 
 .titlebar__icon-btn {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.8rem;
+  height: 1.8rem;
   border-radius: 999px;
   color: hsl(var(--muted-foreground));
 }

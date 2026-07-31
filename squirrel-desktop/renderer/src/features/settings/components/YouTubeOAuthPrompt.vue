@@ -2,7 +2,7 @@
   <Transition name="oauth-prompt">
     <div
       v-if="prompt.visible"
-      class="fixed bottom-6 right-6 z-toast w-[min(24rem,calc(100vw-2rem))] rounded-md border border-border/80 bg-background p-4 text-foreground shadow-popover"
+      class="fixed bottom-6 right-6 z-toast w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-border/80 bg-popover p-4 text-foreground shadow-popover"
     >
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">

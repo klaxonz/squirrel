@@ -403,7 +403,7 @@ function handlePlaySong(track: MusicTrack) {
 .music-search-song-row {
   min-height: 3.625rem;
   padding: 0.375rem 0.625rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -434,7 +434,7 @@ function handlePlaySong(track: MusicTrack) {
 .music-search-song-cover {
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: hsl(var(--muted) / 0.3);
   display: flex;
@@ -508,7 +508,7 @@ function handlePlaySong(track: MusicTrack) {
   align-items: center;
   gap: 0.625rem;
   padding: 0.5rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -571,7 +571,7 @@ function handlePlaySong(track: MusicTrack) {
   align-items: center;
   gap: 0.625rem;
   padding: 0.5rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -584,7 +584,7 @@ function handlePlaySong(track: MusicTrack) {
   width: 2.5rem;
   height: 2.5rem;
   flex: 0 0 auto;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   object-fit: cover;
 }
 

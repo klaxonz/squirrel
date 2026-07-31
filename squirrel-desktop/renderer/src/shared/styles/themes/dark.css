@@ -68,27 +68,28 @@
 }
 
 .light {
-  /* Official Reddit light: cool gray canvas, pure white posts/rail. */
-  --background: 210 14% 93%;        /* closer to #F6F7F8 / #DAE0E6 family */
-  --foreground: 220 9% 13%;
+  /* Official Reddit light: cool gray canvas, pure white posts/rail.
+     Posts cast a hairline + soft lift; chrome stays cold and flat. */
+  --background: 210 16% 91%;        /* #E5EBEF-ish cool canvas */
+  --foreground: 220 13% 12%;
 
   --card: 0 0% 100%;
-  --card-foreground: 220 9% 13%;
+  --card-foreground: 220 13% 12%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 220 9% 13%;
+  --popover-foreground: 220 13% 12%;
 
   --primary: 16 100% 50%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 210 12% 94%;
-  --secondary-foreground: 220 9% 13%;
+  --secondary: 210 14% 94%;
+  --secondary-foreground: 220 13% 12%;
 
-  --muted: 210 12% 94%;
-  --muted-foreground: 215 8% 42%;
+  --muted: 210 14% 94%;
+  --muted-foreground: 215 9% 40%;
 
-  --accent: 210 12% 92%;
-  --accent-foreground: 220 9% 13%;
+  --accent: 210 14% 92%;
+  --accent-foreground: 220 13% 12%;
 
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
@@ -100,21 +101,21 @@
   --info: 206 100% 41%;
   --info-foreground: 0 0% 100%;
 
-  --border: 210 12% 84%;
-  --input: 210 12% 84%;
+  --border: 210 14% 82%;
+  --input: 210 14% 82%;
   --control: 0 0% 100%;
   --ring: 16 100% 50%;
 
   --overlay: 0 0% 0%;
 
   --sidebar: 0 0% 100%;
-  --sidebar-foreground: 220 9% 13%;
-  --sidebar-border: 210 12% 86%;
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.1);
-  --shadow-premium: 0 1px 2px rgba(0, 0, 0, 0.08), 0 12px 28px rgba(0, 0, 0, 0.12);
+  --sidebar-foreground: 220 13% 12%;
+  --sidebar-border: 210 14% 84%;
+  --shadow-xs: 0 1px 0 hsl(220 20% 20% / 0.04);
+  --shadow-sm: 0 1px 2px hsl(220 20% 20% / 0.06), 0 1px 1px hsl(220 20% 20% / 0.04);
+  --shadow-md: 0 4px 12px hsl(220 20% 20% / 0.08);
+  --shadow-lg: 0 12px 28px hsl(220 20% 20% / 0.12);
+  --shadow-premium: 0 1px 2px hsl(220 20% 20% / 0.06), 0 12px 28px hsl(220 20% 20% / 0.1);
 
   --gray-50:  210 20% 98%;
   --gray-100: 210 16% 95%;
@@ -142,9 +143,9 @@
   --app-filter-raised-fg: hsl(var(--foreground));
   --app-filter-raised-shadow: var(--shadow-xs);
 
-  --app-hairline-alpha: 0.9;
-  --app-surface-shadow: none;
-  --app-panel-shadow: 0 2px 8px hsl(0 0% 0% / 0.08);
-  --app-floating-shadow: 0 4px 16px hsl(0 0% 0% / 0.12);
-  --app-overlay-shadow: 0 8px 28px hsl(0 0% 0% / 0.16);
+  --app-hairline-alpha: 0.95;
+  --app-surface-shadow: 0 1px 0 hsl(220 20% 20% / 0.04);
+  --app-panel-shadow: 0 1px 2px hsl(220 20% 20% / 0.06), 0 4px 14px hsl(220 20% 20% / 0.06);
+  --app-floating-shadow: 0 4px 18px hsl(220 20% 20% / 0.12);
+  --app-overlay-shadow: 0 10px 32px hsl(220 20% 20% / 0.16);
 }

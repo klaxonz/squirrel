@@ -111,13 +111,13 @@ defineEmits<{
 
 .account-dropdown__trigger:hover {
   border-color: hsl(var(--border) / 0.72);
-  background: hsl(var(--accent) / 0.38);
+  background: var(--app-selection-bg-hover);
   color: hsl(var(--foreground));
 }
 
 .account-dropdown__trigger.is-selected {
-  border-color: hsl(var(--border) / 0.62);
-  background: hsl(var(--accent) / 0.28);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
   color: hsl(var(--foreground));
 }
 
@@ -136,7 +136,7 @@ defineEmits<{
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
-  background: hsl(var(--accent) / 0.72);
+  background: var(--app-muted-surface);
   color: hsl(var(--foreground) / 0.72);
 }
 
@@ -187,11 +187,11 @@ defineEmits<{
 .account-dropdown__icon-button {
   width: 1.75rem;
   height: 1.75rem;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
 }
 
 .account-dropdown__icon-button:hover {
-  background: hsl(var(--accent));
+  background: var(--app-selection-bg-hover);
   color: hsl(var(--foreground));
 }
 
@@ -201,8 +201,8 @@ defineEmits<{
 }
 
 .account-dropdown :deep(.app-selectable-list-item.is-selected) {
-  border-color: hsl(var(--border) / 0.58);
-  background: hsl(var(--accent) / 0.68);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
   color: hsl(var(--foreground));
 }
 

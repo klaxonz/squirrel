@@ -185,7 +185,7 @@ const statusClass = computed(() => ({
   flex: 0 0 22rem;
   flex-direction: column;
   border-left: 1px solid var(--app-hairline);
-  background: hsl(var(--background));
+  background: hsl(var(--card));
   box-shadow: none;
 }
 

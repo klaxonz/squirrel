@@ -120,9 +120,10 @@ function selectDefaultFilter(filter: RssEntryFilter) {
   margin-top: 0.375rem;
   padding: 0.75rem;
   border: 1px solid hsl(var(--border) / 0.36);
-  border-radius: 0.625rem;
+  border-radius: var(--radius-lg);
   background: hsl(var(--popover));
   color: hsl(var(--popover-foreground));
+  box-shadow: var(--app-floating-shadow);
 }
 
 .reader-settings-section {
@@ -148,14 +149,14 @@ function selectDefaultFilter(filter: RssEntryFilter) {
   gap: 0.25rem;
   padding: 0.25rem;
   border: 1px solid hsl(var(--border) / 0.18);
-  border-radius: 0.5rem;
-  background: hsl(var(--accent) / 0.2);
+  border-radius: var(--radius-md);
+  background: var(--app-filter-track-bg);
 }
 
 .reader-settings-option,
 .reader-settings-size-button {
   border: 1px solid transparent;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   height: auto;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
@@ -170,12 +171,12 @@ function selectDefaultFilter(filter: RssEntryFilter) {
 .reader-settings-option:hover,
 .reader-settings-size-button:hover:not(:disabled) {
   color: hsl(var(--foreground));
-  background: hsl(var(--accent) / 0.36);
+  background: var(--app-selection-bg-hover);
 }
 
 .reader-settings-option.is-selected {
-  border-color: hsl(var(--border) / 0.68);
-  background: hsl(var(--accent) / 0.72);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
   color: hsl(var(--foreground));
 }
 
@@ -201,7 +202,7 @@ function selectDefaultFilter(filter: RssEntryFilter) {
   flex: 1 1 0;
   min-height: 1.875rem;
   border-color: hsl(var(--border) / 0.42);
-  background: hsl(var(--accent) / 0.24);
+  background: var(--app-selection-bg);
 }
 
 .reader-settings-size-button:disabled {

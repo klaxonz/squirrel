@@ -331,13 +331,13 @@ watch(() => props.show, (visible) => {
 }
 
 .import-dialog__site-card:hover {
-  border-color: hsl(var(--primary) / 0.24);
+  border-color: var(--app-selection-border-hover);
 }
 
 .import-dialog__site-card--active {
-  border-color: hsl(var(--primary) / 0.4);
-  background: hsl(var(--primary) / 0.08);
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.14);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
+  box-shadow: none;
 }
 
 .import-dialog__site-icon {
@@ -407,8 +407,8 @@ watch(() => props.show, (visible) => {
 }
 
 .import-dialog__list-item--selected {
-  border-color: hsl(var(--primary) / 0.3);
-  background: hsl(var(--primary) / 0.05);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
 }
 
 .import-dialog__list-item--disabled {

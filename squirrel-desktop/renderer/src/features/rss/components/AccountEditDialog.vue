@@ -255,8 +255,8 @@ defineEmits<{
   gap: 0.25rem;
   padding: 0.25rem;
   border: 1px solid hsl(var(--border) / 0.16);
-  border-radius: 0.5rem;
-  background: hsl(var(--muted) / 0.26);
+  border-radius: var(--radius-md);
+  background: var(--app-filter-track-bg);
 }
 
 .account-dialog__provider {
@@ -274,8 +274,8 @@ defineEmits<{
 }
 
 .account-dialog__provider.is-selected {
-  border-color: hsl(var(--border) / 0.68);
-  background: hsl(var(--accent) / 0.72);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
   color: hsl(var(--foreground));
 }
 
@@ -318,14 +318,14 @@ defineEmits<{
 }
 
 .account-dialog__confirm {
-  border-color: hsl(var(--border) / 0.58);
-  background: hsl(var(--accent) / 0.24);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
   color: hsl(var(--foreground) / 0.82);
 }
 
 .account-dialog__confirm:hover {
-  border-color: hsl(var(--border) / 0.78);
-  background: hsl(var(--accent) / 0.58);
+  border-color: var(--app-selection-border-hover);
+  background: var(--app-selection-bg-hover);
   color: hsl(var(--foreground));
 }
 

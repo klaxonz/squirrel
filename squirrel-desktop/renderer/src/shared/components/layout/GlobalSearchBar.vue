@@ -606,7 +606,7 @@ onUnmounted(() => {
   gap: 0.75rem;
   height: auto;
   padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   text-align: left;
 }
 
@@ -645,7 +645,7 @@ onUnmounted(() => {
   flex: 0 0 auto;
   width: 2rem;
   height: auto;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   color: hsl(var(--muted-foreground) / 0.48);
 }
 

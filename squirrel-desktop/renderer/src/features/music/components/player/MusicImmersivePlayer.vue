@@ -79,7 +79,7 @@
                 <Button
                   text severity="secondary"
                   icon-only
-                  :class="{ 'text-primary': shuffle }"
+                  :class="{ 'app-selection-active': shuffle }"
                   title="随机播放"
                   aria-label="随机播放"
                   :aria-pressed="shuffle"
@@ -101,7 +101,7 @@
                 <Button
                   text severity="secondary"
                   icon-only
-                  :class="{ 'text-primary': repeat !== 'none' }"
+                  :class="{ 'app-selection-active': repeat !== 'none' }"
                   :title="repeat === 'one' ? '单曲循环' : '列表循环'"
                   :aria-label="repeat === 'one' ? '单曲循环' : '列表循环'"
                   :aria-pressed="repeat !== 'none'"
@@ -251,8 +251,8 @@ const handleTabChange = (value: string | number) => {
   background: radial-gradient(
     circle at 50% 50%,
     transparent 0%,
-    hsl(var(--background) / 0.5) 60%,
-    hsl(var(--background) / 0.95) 100%
+    var(--app-media-scrim-mid) 60%,
+    var(--app-media-scrim-strong) 100%
   );
   pointer-events: none;
   z-index: 2;

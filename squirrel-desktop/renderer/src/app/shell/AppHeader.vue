@@ -271,22 +271,22 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 }
 
 .app-header__search-slot :deep(.global-search__box) {
-  height: 2.25rem;
+  height: 2.3rem;
   border: 1px solid transparent;
   border-radius: 999px;
-  background: hsl(var(--muted) / 0.72);
+  background: hsl(var(--muted) / 0.78);
   box-shadow: none;
 }
 
 .app-header__search-slot :deep(.global-search__box:focus-within) {
-  border-color: hsl(var(--foreground) / 0.1);
+  border-color: hsl(var(--foreground) / 0.12);
   background: hsl(var(--card));
-  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.04);
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.04), var(--shadow-xs);
 }
 
 .app-header__search-slot :deep(.global-search__box.is-open:not(:focus-within)) {
-  border-color: hsl(var(--border) / 0.35);
-  background: hsl(var(--muted) / 0.55);
+  border-color: hsl(var(--border) / 0.45);
+  background: hsl(var(--muted) / 0.62);
 }
 
 .app-header__search-slot :deep(.global-search__suggestions) {

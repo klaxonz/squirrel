@@ -260,9 +260,8 @@ onUnmounted(() => {
   width: 8px;
   height: 8px;
   background: hsl(var(--primary));
-  border: 2px solid hsl(var(--background));
+  border: 2px solid hsl(var(--card));
   border-radius: 9999px;
-  box-shadow: 0 1px 4px hsl(var(--primary) / 0.25);
   pointer-events: none;
 }
 
@@ -275,7 +274,7 @@ onUnmounted(() => {
   font-weight: 500;
   background: hsl(var(--foreground));
   color: hsl(var(--background));
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
   pointer-events: none;
   z-index: 1;

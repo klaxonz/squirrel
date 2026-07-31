@@ -45,7 +45,7 @@
   border-radius: var(--radius-md);
   background: hsl(var(--card));
   padding: 1.5rem 1.25rem;
-  box-shadow: none;
+  box-shadow: var(--app-surface-shadow);
 }
 
 .auth-entry__intro {
@@ -127,8 +127,8 @@
 
 .auth-entry .server-status-trigger--trust:hover,
 .auth-entry .server-status-trigger--trust.server-status-trigger--open {
-  border-color: hsl(var(--primary) / 0.45);
-  background: hsl(var(--primary) / 0.1);
+  border-color: var(--app-selection-border-hover);
+  background: var(--app-selection-bg-hover);
   color: hsl(var(--foreground));
 }
 
@@ -324,8 +324,8 @@
 }
 
 .auth-chip--active {
-  border-color: hsl(var(--primary) / 0.4);
-  background: hsl(var(--primary) / 0.09);
+  border-color: var(--app-selection-border);
+  background: var(--app-selection-bg);
   color: hsl(var(--foreground));
 }
 

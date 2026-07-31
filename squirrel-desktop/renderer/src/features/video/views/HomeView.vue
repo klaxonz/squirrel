@@ -41,9 +41,9 @@
       </main>
 
       <aside class="home-feed__rail" aria-label="辅助信息">
-        <section class="home-feed__widget">
+        <section class="home-feed__widget home-feed__widget--nav">
           <header class="home-feed__widget-head">
-            <h2>浏览</h2>
+            <h2>快捷入口</h2>
           </header>
           <div class="home-feed__widget-links">
             <button type="button" class="home-feed__widget-link" @click="goToAllVideos">
@@ -54,6 +54,7 @@
                 <strong>视频库</strong>
                 <small>全部 / 未读 / 稍后看</small>
               </span>
+              <AppIcon name="chevronRight" class="home-feed__widget-chevron size-3.5" />
             </button>
             <button type="button" class="home-feed__widget-link" @click="goToContinueWatching">
               <span class="home-feed__widget-icon" aria-hidden="true">
@@ -63,6 +64,7 @@
                 <strong>继续观看</strong>
                 <small>未看完的播放进度</small>
               </span>
+              <AppIcon name="chevronRight" class="home-feed__widget-chevron size-3.5" />
             </button>
             <button type="button" class="home-feed__widget-link" @click="goToSubscribed">
               <span class="home-feed__widget-icon" aria-hidden="true">
@@ -72,6 +74,7 @@
                 <strong>订阅中心</strong>
                 <small>管理多站频道</small>
               </span>
+              <AppIcon name="chevronRight" class="home-feed__widget-chevron size-3.5" />
             </button>
             <button type="button" class="home-feed__widget-link" @click="goToPlaylists">
               <span class="home-feed__widget-icon" aria-hidden="true">
@@ -81,18 +84,28 @@
                 <strong>播放列表</strong>
                 <small>整理合集与队列</small>
               </span>
+              <AppIcon name="chevronRight" class="home-feed__widget-chevron size-3.5" />
             </button>
           </div>
         </section>
 
-        <section class="home-feed__widget">
+        <section class="home-feed__widget home-feed__widget--tips">
           <header class="home-feed__widget-head">
             <h2>信息流说明</h2>
           </header>
           <ul class="home-feed__tips">
-            <li>按订阅同步时间排列新内容</li>
-            <li>点卡片进入播放，底栏可喜欢 / 已读 / 稍后看</li>
-            <li>右上搜索支持本地库与远端检索</li>
+            <li>
+              <span class="home-feed__tip-mark" aria-hidden="true">1</span>
+              <span>按订阅同步时间排列新内容</span>
+            </li>
+            <li>
+              <span class="home-feed__tip-mark" aria-hidden="true">2</span>
+              <span>点卡片进入播放，底栏可喜欢 / 已读 / 稍后看</span>
+            </li>
+            <li>
+              <span class="home-feed__tip-mark" aria-hidden="true">3</span>
+              <span>右上搜索支持本地库与远端检索</span>
+            </li>
           </ul>
         </section>
       </aside>
@@ -158,14 +171,15 @@ onMounted(() => {
   margin-inline: 0;
   grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
-  padding: 0.75rem var(--app-content-media-gutter) 3rem;
+  padding: 0.85rem var(--app-content-media-gutter) 3rem;
 }
 
 @media (min-width: 1100px) {
   .home-feed__page {
-    grid-template-columns: minmax(22rem, 40rem) 20rem;
+    grid-template-columns: minmax(22rem, 42rem) 19.5rem;
     justify-content: center;
     align-items: start;
+    column-gap: 1.5rem;
   }
 }
 
@@ -177,7 +191,7 @@ onMounted(() => {
 
 @media (min-width: 1800px) {
   .home-feed__page {
-    grid-template-columns: minmax(32rem, 52rem) 20rem;
+    grid-template-columns: minmax(32rem, 52rem) 20.5rem;
   }
 }
 
@@ -187,43 +201,50 @@ onMounted(() => {
   width: 100%;
   max-width: none;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.9rem;
 }
 
 .home-feed__sort {
   display: flex;
-  min-height: 2.25rem;
+  min-height: 2.35rem;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.125rem 0;
+  padding: 0.15rem 0.15rem 0.1rem;
 }
 
 .home-feed__sort-chips {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  padding: 0.15rem;
+  border-radius: 999px;
+  background: hsl(var(--foreground) / 0.04);
 }
 
 .home-feed__chip {
-  height: 2rem;
+  height: 1.85rem;
   border: 0;
   border-radius: 999px;
-  padding: 0 0.875rem;
+  padding: 0 0.9rem;
   background: transparent;
   color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
 }
 
 .home-feed__chip.is-active {
-  background: hsl(var(--foreground) / 0.08);
+  background: hsl(var(--card));
   color: hsl(var(--foreground));
+  box-shadow: var(--shadow-xs), 0 0 0 1px hsl(var(--border) / 0.55);
 }
 
 .home-feed__chip:hover:not(.is-active) {
-  background: hsl(var(--foreground) / 0.05);
   color: hsl(var(--foreground));
 }
 
@@ -235,27 +256,28 @@ onMounted(() => {
   display: none;
   min-width: 0;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 @media (min-width: 1100px) {
   .home-feed__rail {
     display: flex;
     position: sticky;
-    top: 0.75rem;
+    top: 0.85rem;
   }
 }
 
 .home-feed__widget {
   overflow: hidden;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid hsl(var(--border) / 0.9);
   border-radius: var(--radius-lg);
   background: hsl(var(--card));
-  padding: 0.75rem;
+  box-shadow: var(--app-surface-shadow);
+  padding: 0.8rem 0.75rem;
 }
 
 .home-feed__widget-head h2 {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.55rem;
   font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -264,43 +286,51 @@ onMounted(() => {
 .home-feed__widget-links {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.15rem;
 }
 
 .home-feed__widget-link {
-  display: flex;
-  min-height: 2.75rem;
+  display: grid;
+  min-height: 2.85rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.7rem;
   border: 0;
   border-radius: var(--radius-md);
-  padding: 0.375rem 0.5rem;
+  padding: 0.4rem 0.45rem;
   background: transparent;
   color: hsl(var(--foreground));
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-default);
 }
 
 .home-feed__widget-link:hover {
-  background: hsl(var(--foreground) / 0.06);
+  background: hsl(var(--foreground) / 0.05);
+}
+
+.home-feed__widget-link:hover .home-feed__widget-chevron {
+  color: hsl(var(--foreground));
+  transform: translateX(1px);
 }
 
 .home-feed__widget-icon {
   display: inline-flex;
-  width: 2rem;
-  height: 2rem;
+  width: 2.05rem;
+  height: 2.05rem;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   background: hsl(var(--secondary));
   color: hsl(var(--foreground));
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.55);
 }
 
 .home-feed__widget-copy {
   display: grid;
   min-width: 0;
-  gap: 0.125rem;
+  gap: 0.12rem;
 }
 
 .home-feed__widget-copy strong {
@@ -316,15 +346,51 @@ onMounted(() => {
   line-height: 1.3;
 }
 
-.home-feed__tips {
-  margin: 0;
-  padding-left: 1.1rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  line-height: 1.55;
+.home-feed__widget-chevron {
+  color: hsl(var(--muted-foreground) / 0.75);
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
 }
 
-.home-feed__tips li + li {
-  margin-top: 0.35rem;
+.home-feed__tips {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.home-feed__tips li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+}
+
+.home-feed__tip-mark {
+  display: inline-flex;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: hsl(var(--foreground) / 0.06);
+  color: hsl(var(--foreground) / 0.72);
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-feed__chip,
+  .home-feed__widget-link,
+  .home-feed__widget-chevron {
+    transition: none;
+  }
 }
 </style>

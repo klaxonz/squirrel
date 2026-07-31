@@ -86,16 +86,17 @@ describe('ContinueWatching', () => {
     const { host, onOpenModal } = mountContinueWatching()
 
     await vi.waitFor(() => {
-      expect(host.querySelectorAll('.continue-workbench__card')).toHaveLength(2)
+      expect(host.querySelectorAll('.continue-rail__card')).toHaveLength(2)
     })
 
-    const cards = host.querySelectorAll<HTMLButtonElement>('.continue-workbench__card')
+    const cards = host.querySelectorAll<HTMLButtonElement>('.continue-rail__card')
     expect(getWatchHistoryMock).toHaveBeenCalledWith(1, { pageSize: 30 })
-    expect(host.textContent).toContain('1% · 剩余')
-    expect(host.textContent).toContain('50% · 剩余')
+    expect(host.textContent).toContain('1%')
+    expect(host.textContent).toContain('剩余')
     expect(host.textContent).not.toContain('视频 1')
     expect(host.textContent).not.toContain('视频 4')
-    expect(host.querySelector('.continue-workbench__resume')).toBeNull()
+    // 续播角标常驻 DOM，hover 才显示（触屏/减少动效下始终可见）
+    expect(host.querySelector('.continue-rail__resume')).not.toBeNull()
 
     cards[0]?.click()
     await nextTick()
