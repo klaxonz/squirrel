@@ -134,7 +134,7 @@
         filter popover / a single overflow group, not a second Operate strip.
       -->
       <div
-        v-if="showSort || showRefresh"
+        v-if="showSort"
         class="feed-toolbar__divider"
         aria-hidden="true"
       />
@@ -178,24 +178,6 @@
             <span class="feed-toolbar__density-mark" :class="`is-${option.value}`" />
           </template>
         </AppSegmentedControl>
-
-        <Button
-          v-if="showRefresh"
-          type="button"
-          text severity="secondary"
-          size="sm" icon-only
-          class="app-toolbar-control app-toolbar-icon-button"
-          title="刷新内容"
-          aria-label="刷新内容"
-          @click="$emit('refresh')"
-        >
-          <AppSpinner v-if="isRefreshing" size="sm" />
-          <AppIcon
-            v-else
-            name="refresh"
-            class="w-4 h-4 shrink-0"
-          />
-        </Button>
       </div>
     </div>
   </section>
@@ -204,7 +186,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import AppFilterOptionList from '@/shared/components/layout/AppFilterOptionList.vue'
 import AppFilterPanel from '@/shared/components/layout/AppFilterPanel.vue'
@@ -235,10 +216,8 @@ const props = withDefaults(defineProps<{
   site?: string
   subscriptionId?: string | number
   tabs?: VideoTab[]
-  isRefreshing?: boolean
   showTabs?: boolean
   showSort?: boolean
-  showRefresh?: boolean
   showFilter?: boolean
   timeRange?: TimeRange
   duration?: Duration
@@ -251,10 +230,8 @@ const props = withDefaults(defineProps<{
   nsfw: 'all',
   sortBy: 'publish_date',
   tabs: () => [],
-  isRefreshing: false,
   showTabs: true,
   showSort: true,
-  showRefresh: true,
   showFilter: true,
   timeRange: 'all',
   duration: 'all',
@@ -272,7 +249,6 @@ const emit = defineEmits([
   'update:duration',
   'update:contentType',
   'update:special',
-  'refresh',
 ])
 
 const { options: siteOptions, fetchSites } = useSites()

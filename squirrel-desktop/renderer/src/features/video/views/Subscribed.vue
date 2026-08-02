@@ -98,6 +98,7 @@
             </PopoverRoot>
 
             <Button
+              v-if="!isFeedView"
               type="button"
               text severity="secondary"
               size="sm" icon-only
@@ -142,6 +143,13 @@
           data-route-scroll="subscribed-content"
         >
           <template v-if="isFeedView">
+            <NewContentBar
+              class="subscription-content__new-content"
+              :visible="newContentVisible"
+              :count="newContentCount"
+              @apply="applyNewContent"
+            />
+
             <div v-if="feedError && !feedItems.length" class="subscription-content__empty">
               <AppEmptyState variant="error" title="内容加载失败" :copy="feedError">
                 <template #actions>
@@ -337,6 +345,8 @@ import ImportSubscriptionDialog from '@/features/video/components/dialogs/Import
 import { useSites } from '@/features/video/composables/useSites'
 import { NSFW_OPTIONS } from '@/features/video/constants/feedFilters'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
+import NewContentBar from '@/shared/components/layout/NewContentBar.vue'
+import { useNewContentDetector, prependPreservingScroll } from '@/shared/composables/useNewContentDetector'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import { sortSubscriptions } from '@/features/video/lib/subscriptionSort'
 import {
@@ -881,6 +891,56 @@ const refreshCurrentView = async () => {
   }
 }
 
+// Silent probe of the newest feed page — same params as fetchFeed but does NOT
+// mutate feedItems/cursor/loading. The caller (useNewContentDetector) decides
+// whether to surface the "view new posts" bar.
+const fetchFeedTop = async (): Promise<VideoListItem[]> => {
+  try {
+    const result = await getVideoList({
+      cursor: null,
+      pageSize: FEED_PAGE_SIZE,
+      page_size: FEED_PAGE_SIZE,
+      query: feedSearch.value.trim() || undefined,
+      category: activityScope.value === 'unread' ? 'unread' : 'all',
+      special: activityScope.value === 'special' ? 'yes' : undefined,
+      site: site.value,
+      nsfw: nsfw.value,
+      sort_by: 'publish_date',
+    })
+    return result?.data || []
+  } catch {
+    return []
+  }
+}
+
+const prependFeedItems = (newItems: VideoListItem[]) => {
+  if (!newItems.length) return
+  const seen = new Set(feedItems.value.map((item) => item.id))
+  const fresh = newItems.filter((item) => !seen.has(item.id))
+  if (fresh.length) feedItems.value = [...fresh, ...feedItems.value]
+}
+
+// Reddit-style new-content detection for the activity feed. The channel
+// workspace keeps its operational refresh button.
+const {
+  visible: newContentVisible,
+  count: newContentCount,
+  apply: applyNewContent,
+  reset: resetNewContent,
+} = useNewContentDetector<VideoListItem>({
+  getKnownId: () => feedItems.value[0]?.id ?? null,
+  fetchNewest: fetchFeedTop,
+  idOf: (item) => item.id,
+  onApply: async (newItems) => {
+    await prependPreservingScroll(() => contentScroll.value, () => prependFeedItems(newItems))
+  },
+  isEnabled: () => isFeedView.value && feedItems.value.length > 0,
+  getScrollContainer: () => contentScroll.value,
+})
+
+// Any feed param change rebuilds the list — pending detection is stale then.
+watch([workspaceMode, activityScope, site, nsfw, feedSearch], resetNewContent)
+
 const handleSubscriptionsChanged = async () => {
   showAddDialog.value = false
   showImportDialog.value = false
@@ -1075,12 +1135,19 @@ onUnmounted(() => {
   color: hsl(var(--primary-foreground));
   font-weight: 700;
   box-shadow: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .subscription-toolbar__add:hover {
   border-color: transparent;
-  background: hsl(var(--primary));
-  filter: brightness(1.08);
+  background: hsl(var(--primary) / 0.9);
+}
+
+.subscription-content__new-content {
+  margin-bottom: 0.75rem;
 }
 
 .subscription-workspace {

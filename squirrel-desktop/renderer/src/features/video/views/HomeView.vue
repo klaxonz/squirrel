@@ -8,19 +8,14 @@
               最新
             </button>
           </div>
-          <Button
-            text
-            severity="secondary"
-            size="sm"
-            class="home-feed__sort-refresh"
-            title="刷新"
-            aria-label="刷新首页"
-            @click="refresh"
-          >
-            <AppIcon name="refresh" class="size-3.5" />
-            刷新
-          </Button>
         </div>
+
+        <NewContentBar
+          class="home-feed__new-content"
+          :visible="newContentVisible"
+          :count="newContentCount"
+          @apply="applyNewContent"
+        />
 
         <ContinueWatching
           ref="continueWatchingRef"
@@ -36,7 +31,6 @@
           @goToProfile="openProfile"
           @goToSubscription="openSubscription"
           @viewMore="goToAllVideos"
-          @refresh="refresh"
         />
       </main>
 
@@ -114,14 +108,17 @@
 </template>
 
 <script setup lang="ts">
-import { onActivated, onMounted, ref } from 'vue'
+import { onActivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ContinueWatching from '@/features/video/components/feed/ContinueWatching.vue'
 import HomeInbox from '@/features/video/components/feed/HomeInbox.vue'
+import NewContentBar from '@/shared/components/layout/NewContentBar.vue'
+import { useNewContentDetector, prependPreservingScroll } from '@/shared/composables/useNewContentDetector'
+import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import { Button } from '@/shared/ui/button'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
+import type { VideoListItem } from '@/features/video/types/video'
 
 defineOptions({ name: 'HomeView' })
 
@@ -129,7 +126,13 @@ const router = useRouter()
 const { openVideo, openSubscription, openProfile } = useVideoCardNavigation(router)
 
 const continueWatchingRef = ref<{ refresh?: () => void } | null>(null)
-const homeInboxRef = ref<{ refresh?: () => void } | null>(null)
+const homeInboxRef = ref<{
+  refresh?: () => void
+  loadTop?: () => Promise<VideoListItem[]>
+  prepend?: (items: VideoListItem[]) => void
+  activeFilter?: string
+  getFirstId?: () => number | null
+} | null>(null)
 let lastRefreshedAt = 0
 
 const goToContinueWatching = () => router.push({ name: 'History', query: { mode: 'continue' } })
@@ -137,24 +140,41 @@ const goToAllVideos = () => router.push({ name: 'AllVideos' })
 const goToSubscribed = () => router.push({ name: 'Subscribed' })
 const goToPlaylists = () => router.push({ name: 'Playlists' })
 
-const refresh = () => {
-  Promise.allSettled([
-    continueWatchingRef.value?.refresh?.(),
-    homeInboxRef.value?.refresh?.(),
-  ]).finally(() => {
-    lastRefreshedAt = Date.now()
-  })
-}
+// Reddit-style new-content detection: a quiet probe on the inbox compares the
+// newest page against what is displayed and surfaces the bar; applying
+// prepends the new items without reloading the page.
+const {
+  visible: newContentVisible,
+  count: newContentCount,
+  check: checkNewContent,
+  apply: applyNewContent,
+  reset: resetNewContent,
+} = useNewContentDetector<VideoListItem>({
+  getKnownId: () => homeInboxRef.value?.getFirstId?.() ?? null,
+  fetchNewest: () => homeInboxRef.value?.loadTop?.() ?? Promise.resolve([]),
+  idOf: (item) => item.id,
+  onApply: async (newItems) => {
+    await prependPreservingScroll(getMainScrollRoot, () => {
+      homeInboxRef.value?.prepend?.(newItems)
+    })
+    // Keep the continue-watching rail in step with the newly surfaced content.
+    void continueWatchingRef.value?.refresh?.()
+  },
+})
 
 onActivated(() => {
   const now = Date.now()
   if (now - lastRefreshedAt < 30_000) return
-  refresh()
+  lastRefreshedAt = now
+  checkNewContent()
 })
 
 onMounted(() => {
   lastRefreshedAt = Date.now()
 })
+
+// The inbox filter switch rebuilds the list — pending detection is stale then.
+watch(() => homeInboxRef.value?.activeFilter, () => resetNewContent())
 </script>
 
 <style scoped>
@@ -242,8 +262,8 @@ onMounted(() => {
   color: hsl(var(--foreground));
 }
 
-.home-feed__sort-refresh {
-  color: hsl(var(--muted-foreground));
+.home-feed__new-content {
+  margin-bottom: 0.875rem;
 }
 
 .home-feed__rail {

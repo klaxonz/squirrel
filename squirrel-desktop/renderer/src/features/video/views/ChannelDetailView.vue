@@ -22,7 +22,6 @@
         :content-type="contentType"
         :subscription-id="subscriptionId"
         :tabs="tabs"
-        :is-refreshing="isRefreshing"
         variant="workbench"
         :preference-key="`subscription:${subscriptionId}`"
         :show-tabs="true"
@@ -35,7 +34,6 @@
         @update:duration="duration = $event"
         @update:content-type="contentType = $event"
         @update:special="setSpecialFilter"
-        @refresh="refreshCurrentList"
       />
     </AppToolbarFrame>
     <AppToolbarFrame v-else sticky bordered variant="compact">
@@ -55,6 +53,16 @@
 
     <!-- Main Content Area -->
     <div class="app-page-content app-page-content--media">
+
+      <!-- Reddit-style new-content bar (local feed only; remote has its own
+           operational re-fetch button in the toolbar above). -->
+      <NewContentBar
+        v-if="channelDataMode === 'local'"
+        class="channel-detail-page__new-content"
+        :visible="newContentVisible"
+        :count="newContentCount"
+        @apply="applyNewContent"
+      />
 
       <!-- Error -->
       <div v-if="feedError">
@@ -108,7 +116,11 @@ import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '@/features/video/components/feed/FeedToolbar.vue'
 import ChannelHeader from '@/features/video/components/feed/ChannelHeader.vue'
 import RemoteChannelVideoGrid from '@/features/video/components/feed/RemoteChannelVideoGrid.vue'
+import NewContentBar from '@/shared/components/layout/NewContentBar.vue'
+import { useNewContentDetector, prependPreservingScroll } from '@/shared/composables/useNewContentDetector'
+import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import type { VideoListItem } from '@/features/video/types/video'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
@@ -133,7 +145,12 @@ const isRefreshing = ref(false)
 const feedError = ref<string | null>(null)
 const channelHeaderRef = ref<{ refresh?: () => Promise<void> } | null>(null)
 // ponytail: child component (VideoTab via router-view) shares a refresh() surface.
-const videoChildRef = ref<{ refresh?: () => void } | null>(null)
+const videoChildRef = ref<{
+  refresh?: () => void
+  fetchTop?: (pageSize?: number) => Promise<VideoListItem[]>
+  prependVideos?: (items: VideoListItem[]) => void
+  getFirstId?: () => number | null
+} | null>(null)
 
 const channelDataMode = ref<'local' | 'remote'>('local')
 // ponytail: minimal shape read across the view (site/url/profile); the full channel
@@ -195,8 +212,39 @@ const setSpecialFilter = (value: string) => {
   router.replace({ query })
 }
 
-useRefreshTriggers({ onRefresh: refreshCurrentList })
+// Reddit-style new-content detection for the local subscription feed.
+const {
+  visible: newContentVisible,
+  count: newContentCount,
+  check: checkNewContent,
+  apply: applyNewContent,
+  reset: resetNewContent,
+} = useNewContentDetector<VideoListItem>({
+  getKnownId: () => videoChildRef.value?.getFirstId?.() ?? null,
+  fetchNewest: () => videoChildRef.value?.fetchTop?.() ?? Promise.resolve([]),
+  idOf: (item) => item.id,
+  onApply: async (newItems) => {
+    await prependPreservingScroll(getMainScrollRoot, () => {
+      videoChildRef.value?.prependVideos?.(newItems)
+    })
+  },
+  isEnabled: () => channelDataMode.value === 'local' && !!videoChildRef.value,
+})
+
+// R key / window-focus auto-refresh probes silently in local mode; remote
+// mode keeps the explicit re-fetch behaviour.
+useRefreshTriggers({
+  onRefresh: () => {
+    if (channelDataMode.value === 'remote') refreshCurrentList()
+    else checkNewContent()
+  },
+})
 useRouteTabSync(router, route, activeTab, subscriptionId)
+
+watch(
+  [subscriptionId, activeTab, nsfw, sortBy, timeRange, duration, contentType, special, channelDataMode],
+  resetNewContent,
+)
 
 const handleChannelModeChange = async (mode: 'local' | 'remote') => {
   channelDataMode.value = mode
@@ -237,6 +285,10 @@ onMounted(() => {
 <style scoped>
 .channel-detail-page {
   --app-page-max-width: var(--app-content-media-max);
+}
+
+.channel-detail-page__new-content {
+  margin-bottom: 0.75rem;
 }
 
 .channel-remote-toolbar {

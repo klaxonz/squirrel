@@ -11,17 +11,6 @@
         />
         <div class="history-toolbar__actions">
           <Button
-            text severity="secondary"
-            size="sm" icon-only
-            title="刷新历史"
-            aria-label="刷新历史"
-            :disabled="loading"
-            @click="loadData"
-          >
-            <AppSpinner v-if="loading" size="sm" />
-            <AppIcon v-else name="refresh" class="size-4" />
-          </Button>
-          <Button
             v-if="videos.length && !isContinueMode"
             text severity="secondary"
             size="sm" icon-only
@@ -37,6 +26,13 @@
     </AppToolbarFrame>
 
     <main class="app-media-content-frame history-content">
+      <NewContentBar
+        class="history-content__new-content"
+        :visible="newContentVisible"
+        :count="newContentCount"
+        @apply="applyNewContent"
+      />
+
       <div v-if="loading && videos.length === 0" class="history-groups" aria-label="正在加载历史记录">
         <section class="history-day">
           <div class="history-day__header">
@@ -138,6 +134,9 @@ import AppIcon from '@/shared/icons/AppIcon.vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { useUIStore } from '@/shared/stores/ui'
 import { Button } from '@/shared/ui/button'
+import NewContentBar from '@/shared/components/layout/NewContentBar.vue'
+import { useNewContentDetector, prependPreservingScroll } from '@/shared/composables/useNewContentDetector'
+import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import { useVideoHistory } from '../composables/useVideoHistory'
 
 defineOptions({ name: 'History' })
@@ -326,8 +325,45 @@ const handleOpenVideo = (video: VideoHistoryEntry) => {
   router.push(`/video/${video.id}`)
 }
 
+// Silent probe of the newest history page — no state mutation. The detector
+// decides whether to surface the "view new entries" bar.
+const fetchHistoryTop = async (): Promise<VideoHistoryEntry[]> => {
+  try {
+    const data = await getWatchHistory(1, { pageSize: PAGE_SIZE, query: query.value })
+    return data.items
+  } catch {
+    return []
+  }
+}
+
+const prependHistory = (newItems: VideoHistoryEntry[]) => {
+  if (!newItems.length) return
+  const seen = new Set(videos.value.map((video) => video.history_id))
+  const fresh = newItems.filter((video) => !seen.has(video.history_id))
+  if (fresh.length) {
+    videos.value = [...fresh, ...videos.value]
+    total.value += fresh.length
+  }
+}
+
+// Reddit-style new-content detection: silent probe surfaces the bar instead
+// of a full reload.
+const {
+  visible: newContentVisible,
+  count: newContentCount,
+  apply: applyNewContent,
+  reset: resetNewContent,
+} = useNewContentDetector<VideoHistoryEntry>({
+  getKnownId: () => videos.value[0]?.history_id ?? null,
+  fetchNewest: fetchHistoryTop,
+  idOf: (item) => item.history_id,
+  onApply: (newItems) => prependPreservingScroll(getMainScrollRoot, () => prependHistory(newItems)),
+  isEnabled: () => videos.value.length > 0,
+})
+
 watch(searchTrigger, () => {
   query.value = searchQuery.value.trim()
+  resetNewContent()
   loadData()
 })
 
@@ -344,6 +380,10 @@ onMounted(() => {
   margin-inline: 0;
   padding-block: var(--space-4) var(--app-content-padding-bottom);
   padding-inline: var(--app-content-media-gutter);
+}
+
+.history-content__new-content {
+  margin-bottom: 0.875rem;
 }
 
 .history-toolbar {
@@ -363,12 +403,16 @@ onMounted(() => {
 
 .history-toolbar__clear {
   color: hsl(var(--muted-foreground));
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .history-toolbar__clear:hover,
 .history-toolbar__clear:focus-visible {
   border-color: hsl(var(--destructive) / 0.28);
-  background: hsl(var(--destructive) / 0.1);
+  background: hsl(var(--destructive) / 0.12);
   color: hsl(var(--destructive));
 }
 

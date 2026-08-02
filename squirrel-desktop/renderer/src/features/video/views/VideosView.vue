@@ -14,7 +14,6 @@
           :duration="duration"
           :content-type="contentType"
           :tabs="tabs"
-          :is-refreshing="isRefreshing"
           :preference-key="viewPreferenceKey"
           :show-tabs="true"
           :show-sort="true"
@@ -27,7 +26,6 @@
           @update:duration="duration = $event"
           @update:contentType="contentType = $event"
           @update:special="setSpecialFilter"
-          @refresh="refreshCurrentList"
         />
 
         <div v-else class="videos-workbench__remote-tools">
@@ -67,6 +65,14 @@
 
     <div class="videos-workbench__body">
       <main class="videos-workbench__canvas" aria-label="视频内容">
+        <NewContentBar
+          v-if="searchMode !== 'remote'"
+          class="videos-workbench__new-content"
+          :visible="newContentVisible"
+          :count="newContentCount"
+          @apply="applyNewContent"
+        />
+
         <div v-if="loadError" class="videos-workbench__error">
           <AppEmptyState variant="error" title="加载失败" :copy="loadError">
             <template #actions>
@@ -122,9 +128,13 @@ import { useFeedFilters } from '../composables/useFeedFilters'
 import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '@/features/video/components/feed/FeedToolbar.vue'
 import RemoteSearchResults from '@/features/video/components/feed/RemoteSearchResults.vue'
+import NewContentBar from '@/shared/components/layout/NewContentBar.vue'
+import { useNewContentDetector, prependPreservingScroll } from '@/shared/composables/useNewContentDetector'
+import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
+import type { VideoListItem } from '@/features/video/types/video'
 import { VIDEO_LIBRARY_TABS, VIDEO_TABS } from '@/features/video/constants/videos'
 import {
   CONTENT_TYPE_OPTIONS,
@@ -155,7 +165,12 @@ const { settings } = useUserSettings()
 const tabs = [...VIDEO_TABS, ...VIDEO_LIBRARY_TABS]
 const isRefreshing = ref(false)
 const loadError = ref<string | null>(null)
-const videoChildRef = ref<{ refresh?: () => void } | null>(null)
+const videoChildRef = ref<{
+  refresh?: () => void
+  fetchTop?: (pageSize?: number) => Promise<VideoListItem[]>
+  prependVideos?: (items: VideoListItem[]) => void
+  getFirstId?: () => number | null
+} | null>(null)
 const remoteSearchRef = ref<{ refresh?: () => void } | null>(null)
 const remoteSite = ref('')
 const searchMode = ref<'local' | 'remote'>('local')
@@ -227,6 +242,27 @@ const refreshCurrentList = () => {
   else videoChildRef.value?.refresh?.()
 }
 
+// Reddit-style new-content detection for the local feed: a quiet probe
+// compares the newest page against the displayed list and only surfaces the
+// bar. Remote search is an explicit search operation — it keeps its button.
+const {
+  visible: newContentVisible,
+  count: newContentCount,
+  check: checkNewContent,
+  apply: applyNewContent,
+  reset: resetNewContent,
+} = useNewContentDetector<VideoListItem>({
+  getKnownId: () => videoChildRef.value?.getFirstId?.() ?? null,
+  fetchNewest: () => videoChildRef.value?.fetchTop?.() ?? Promise.resolve([]),
+  idOf: (item) => item.id,
+  onApply: async (newItems) => {
+    await prependPreservingScroll(getMainScrollRoot, () => {
+      videoChildRef.value?.prependVideos?.(newItems)
+    })
+  },
+  isEnabled: () => searchMode.value === 'local' && !!videoChildRef.value,
+})
+
 const setSpecialFilter = (value: string) => {
   special.value = value === 'yes' ? 'yes' : 'all'
   const query = { ...route.query }
@@ -235,8 +271,22 @@ const setSpecialFilter = (value: string) => {
   router.replace({ query })
 }
 
-useRefreshTriggers({ onRefresh: refreshCurrentList })
+// R key / window-focus auto-refresh now probe silently and surface the bar
+// (local mode); remote mode keeps the explicit re-search behaviour.
+useRefreshTriggers({
+  onRefresh: () => {
+    if (searchMode.value === 'remote') refreshCurrentList()
+    else checkNewContent()
+  },
+})
 useRouteTabSync(router, route, activeTab, undefined)
+
+// Pending detection is scoped to one list: any tab/filter/mode change makes
+// it stale, so drop it (the new list establishes its own baseline).
+watch(
+  [activeTab, nsfw, sortBy, site, timeRange, duration, contentType, special, searchQuery, searchMode],
+  resetNewContent,
+)
 
 watch(viewPreferenceKey, (key) => uiStore.applyVideoViewPreference(key), { immediate: true })
 
@@ -358,11 +408,15 @@ watch(() => route.query.special, (value) => {
   font-size: 0.6875rem;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .videos-workbench__filters button:hover {
   border-color: hsl(var(--foreground) / 0.24);
-  background: hsl(var(--accent));
+  background: var(--app-control-hover-bg);
 }
 
 .videos-workbench__filters .videos-workbench__clear {
@@ -387,6 +441,10 @@ watch(() => route.query.special, (value) => {
   margin-inline: 0;
   padding-inline: var(--app-content-media-gutter);
   padding-block: 1.05rem 3rem;
+}
+
+.videos-workbench__new-content {
+  margin-bottom: 0.75rem;
 }
 
 .videos-workbench__error {

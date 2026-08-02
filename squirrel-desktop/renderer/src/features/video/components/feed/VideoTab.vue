@@ -57,7 +57,7 @@ const showChannelAvatar = computed(
 )
 
 const {
-  videos, loading, allLoaded, loadMore, handleSearch,
+  videos, loading, allLoaded, loadMore, handleSearch, fetchTop, prependVideos,
   searchQuery, activeTab, subscriptionId, creatorId, sortBy, site, nsfw,
   timeRange, duration, contentType, special, error
 } = useLatestVideos({
@@ -93,5 +93,10 @@ watch(error, (err) => err && emit('error', err))
 watch(loading, (val) => emit('loading-change', val))
 watch(videos, (val) => emit('loaded', val), { deep: true, immediate: true })
 
-defineExpose({ refresh: () => handleSearch() })
+defineExpose({
+  refresh: () => handleSearch(),
+  fetchTop,
+  prependVideos,
+  getFirstId: () => videos.value[0]?.id ?? null,
+})
 </script>

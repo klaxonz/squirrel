@@ -186,6 +186,34 @@ export function useLatestVideos(initial: InitialState = {}) {
     }
   }
 
+  // Silent probe for the newest page. Reuses the exact current filter params
+  // but does NOT touch loading/error/cursor/state — the caller decides whether
+  // to surface a "new content" bar (see useNewContentDetector).
+  const fetchTop = async (pageSize = 15): Promise<VideoListItem[]> => {
+    try {
+      const data = await getVideoList({
+        ...createRequestParams(),
+        cursor: null,
+        pageSize,
+        page_size: pageSize,
+      })
+      return Array.isArray(data?.data) ? data.data.map(normalizeVideoListItem) : []
+    } catch {
+      return []
+    }
+  }
+
+  // Prepend newly fetched items at the top of the current list, keeping the
+  // existing items (and their local UI flags) untouched. Used by the "view N
+  // new posts" apply path.
+  const prependVideos = (newItems: VideoListItem[]): void => {
+    if (!newItems.length) return
+    videos.value = dedupeByVideoId([
+      ...newItems.map(normalizeVideoListItem),
+      ...videos.value,
+    ])
+  }
+
   return {
     videos,
     loading,
@@ -206,5 +234,7 @@ export function useLatestVideos(initial: InitialState = {}) {
     contentType,
     special,
     isResetting,
+    fetchTop,
+    prependVideos,
   }
 }

@@ -89,7 +89,6 @@ const emit = defineEmits<{
   goToProfile: [profile: VideoProfile]
   goToSubscription: [id: number | string | null | undefined]
   viewMore: []
-  refresh: []
 }>()
 
 const filterOptions = [
@@ -137,8 +136,42 @@ const load = async () => {
   }
 }
 
+// Silent probe for the newest page — same params as load() but does NOT touch
+// visible state. The caller (HomeView) decides whether to surface a
+// "view new posts" bar (see useNewContentDetector).
+const loadTop = async (): Promise<VideoListItem[]> => {
+  try {
+    const data = await getVideoList({
+      pageSize: 24,
+      page_size: 24,
+      category: activeFilter.value === 'unread' ? 'unread' : 'all',
+      sort_by: 'publish_date',
+      nsfw: 'all',
+      special: activeFilter.value === 'special' ? 'yes' : 'all',
+    })
+    return Array.isArray(data?.data) ? data.data : []
+  } catch {
+    return []
+  }
+}
+
+// Prepend newly fetched items at the top of the current inbox, keeping the
+// existing items (and their local UI state) untouched.
+const prepend = (newItems: VideoListItem[]) => {
+  if (!newItems.length) return
+  const seen = new Set(items.value.map((item) => item.id))
+  const fresh = newItems.filter((item) => !seen.has(item.id))
+  if (fresh.length) items.value = [...fresh, ...items.value]
+}
+
 watch(activeFilter, load, { immediate: true })
-defineExpose({ refresh: load })
+defineExpose({
+  refresh: load,
+  loadTop,
+  prepend,
+  activeFilter,
+  getFirstId: () => items.value[0]?.id ?? null,
+})
 </script>
 
 <style scoped>

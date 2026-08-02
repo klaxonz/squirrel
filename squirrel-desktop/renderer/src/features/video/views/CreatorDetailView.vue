@@ -16,7 +16,6 @@
         :duration="duration"
         :content-type="contentType"
         :tabs="tabs"
-        :is-refreshing="isRefreshing"
         variant="workbench"
         :preference-key="`creator:${creatorId}`"
         :show-tabs="true"
@@ -29,11 +28,17 @@
         @update:duration="duration = $event"
         @update:content-type="contentType = $event"
         @update:special="setSpecialFilter"
-        @refresh="refreshCurrentList"
       />
     </AppToolbarFrame>
 
     <div class="app-page-content app-page-content--media">
+      <NewContentBar
+        class="creator-detail-page__new-content"
+        :visible="newContentVisible"
+        :count="newContentCount"
+        @apply="applyNewContent"
+      />
+
       <div v-if="feedError">
         <AppEmptyState variant="error" title="创作者内容加载失败" :copy="feedError">
           <template #actions>
@@ -72,7 +77,11 @@ import { useFeedFilters } from '../composables/useFeedFilters'
 import { useRefreshTriggers } from '../composables/useRefreshTriggers'
 import FeedToolbar from '@/features/video/components/feed/FeedToolbar.vue'
 import CreatorHeader from '@/features/video/components/feed/CreatorHeader.vue'
+import NewContentBar from '@/shared/components/layout/NewContentBar.vue'
+import { useNewContentDetector, prependPreservingScroll } from '@/shared/composables/useNewContentDetector'
+import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import type { VideoListItem } from '@/features/video/types/video'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
@@ -95,7 +104,12 @@ const tabs = ref(VIDEO_TABS)
 const isRefreshing = ref(false)
 const feedError = ref<string | null>(null)
 const creatorHeaderRef = ref<{ refresh?: () => Promise<void> } | null>(null)
-const videoChildRef = ref<{ refresh?: () => void } | null>(null)
+const videoChildRef = ref<{
+  refresh?: () => void
+  fetchTop?: (pageSize?: number) => Promise<VideoListItem[]>
+  prependVideos?: (items: VideoListItem[]) => void
+  getFirstId?: () => number | null
+} | null>(null)
 const creatorDetail = ref<CreatorDetail | null>(null)
 
 const childFilters = computed(() => filters.value)
@@ -103,11 +117,6 @@ const childFilters = computed(() => filters.value)
 const refreshContent = () => {
   feedError.value = null
   return videoChildRef.value?.refresh?.()
-}
-
-const refreshCurrentList = () => {
-  void creatorHeaderRef.value?.refresh?.()
-  return refreshContent()
 }
 
 const setSpecialFilter = (value: string) => {
@@ -118,8 +127,34 @@ const setSpecialFilter = (value: string) => {
   router.replace({ query })
 }
 
-useRefreshTriggers({ onRefresh: refreshCurrentList })
+// Reddit-style new-content detection: silent probe surfaces the bar instead
+// of replacing the list (see useNewContentDetector).
+const {
+  visible: newContentVisible,
+  count: newContentCount,
+  check: checkNewContent,
+  apply: applyNewContent,
+  reset: resetNewContent,
+} = useNewContentDetector<VideoListItem>({
+  getKnownId: () => videoChildRef.value?.getFirstId?.() ?? null,
+  fetchNewest: () => videoChildRef.value?.fetchTop?.() ?? Promise.resolve([]),
+  idOf: (item) => item.id,
+  onApply: async (newItems) => {
+    await prependPreservingScroll(getMainScrollRoot, () => {
+      videoChildRef.value?.prependVideos?.(newItems)
+    })
+  },
+  isEnabled: () => !!videoChildRef.value,
+})
+
+// R key / window-focus auto-refresh probes silently and surfaces the bar.
+useRefreshTriggers({ onRefresh: checkNewContent })
 useRouteTabSync(router, route, activeTab, undefined, creatorId)
+
+watch(
+  [creatorId, activeTab, nsfw, sortBy, timeRange, duration, contentType, special],
+  resetNewContent,
+)
 
 watch(() => route.query.special, (value) => {
   special.value = value === 'yes' ? 'yes' : 'all'
@@ -129,5 +164,9 @@ watch(() => route.query.special, (value) => {
 <style scoped>
 .creator-detail-page {
   --app-page-max-width: var(--app-content-media-max);
+}
+
+.creator-detail-page__new-content {
+  margin-bottom: 0.75rem;
 }
 </style>

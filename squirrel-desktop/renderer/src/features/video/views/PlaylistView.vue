@@ -1,6 +1,11 @@
 <template>
   <AppPageShell variant="compact" surface="organize" width="fluid" fill>
-    <AppTwoColumnLayout preset="playlist" responsive-mode="drawer" :default-sidebar-open="false">
+    <AppTwoColumnLayout
+      ref="twoColumnRef"
+      preset="playlist"
+      responsive-mode="drawer"
+      :default-sidebar-open="false"
+    >
       <template #sidebar>
         <AppSidebarHeader title="播放列表" :subtitle="`${playlists.length} 个列表`">
           <template #actions>
@@ -54,17 +59,6 @@
               <AppIcon name="play" class="h-4 w-4 fill-current" />
               播放全部
             </Button>
-            <Button
-              text severity="secondary"
-              size="sm" icon-only
-              :disabled="loading || isHydratingSelection"
-              title="刷新"
-              aria-label="刷新"
-              @click="reloadPlaylists"
-            >
-              <AppSpinner v-if="loading || isHydratingSelection" size="sm" />
-              <AppIcon v-else name="refresh" class="h-4 w-4" />
-            </Button>
             <AppActionMenu
               v-if="activePlaylist && !activePlaylist.is_default"
               :items="playlistActionItems"
@@ -75,6 +69,13 @@
       </template>
 
       <div class="app-workbench__content playlist-workbench-content">
+        <NewContentBar
+          class="playlist-workbench-content__new-content"
+          :visible="newContentVisible"
+          :count="newContentCount"
+          @apply="applyNewContent"
+        />
+
         <div v-if="loading && !playlists.length" class="app-content-stack app-content-stack--dense">
           <AppSkeleton height="7rem" rounded="var(--radius-lg)" shimmer />
           <div class="app-content-stack app-content-stack--dense">
@@ -234,10 +235,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppActionMenu from '@/shared/components/AppActionMenu.vue'
@@ -263,6 +263,9 @@ import { Textarea } from '@/shared/ui/textarea'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import { usePlaylist } from '@/features/video/composables/usePlaylist'
+import { getPlaylistItems } from '@/shared/api/playlist'
+import NewContentBar from '@/shared/components/layout/NewContentBar.vue'
+import { useNewContentDetector, prependPreservingScroll } from '@/shared/composables/useNewContentDetector'
 import { usePlaylistEditor } from '@/features/video/composables/usePlaylistEditor'
 import { usePlaylistDeleteConfirm } from '@/features/video/composables/usePlaylistDeleteConfirm'
 import { usePlaylistThumbnails } from '@/features/video/composables/usePlaylistThumbnails'
@@ -272,6 +275,7 @@ import type { PlaylistItem } from '@/features/video/types/playlist'
 defineOptions({ name: 'PlaylistView' })
 
 const router = useRouter()
+const twoColumnRef = ref<{ scrollEl: HTMLElement | null } | null>(null)
 
 const {
   playlists,
@@ -291,6 +295,57 @@ const {
 } = usePlaylist()
 
 const isHydratingSelection = ref(false)
+
+// Silent probe of the active playlist's items — no state mutation. Playlist
+// order is positional (reorderable), so detection is set-based: any item id
+// that is not currently displayed counts as new (see hasNew/countOf below).
+const fetchItemsSilent = async (): Promise<PlaylistItem[]> => {
+  if (!activePlaylist.value) return []
+  try {
+    const data = await getPlaylistItems(activePlaylist.value.id)
+    return data || []
+  } catch {
+    return []
+  }
+}
+
+// Reddit-style new-content detection; apply reloads the active playlist.
+const {
+  visible: newContentVisible,
+  count: newContentCount,
+  apply: applyNewContent,
+  reset: resetNewContent,
+} = useNewContentDetector<PlaylistItem>({
+  getKnownId: () => activePlaylistItems.value[0]?.id ?? null,
+  fetchNewest: fetchItemsSilent,
+  idOf: (item) => item.id,
+  hasNew: (items) => {
+    const knownIds = new Set(activePlaylistItems.value.map((item) => item.id))
+    return items.some((item) => !knownIds.has(item.id))
+  },
+  countOf: (items) => {
+    const knownIds = new Set(activePlaylistItems.value.map((item) => item.id))
+    return items.filter((item) => !knownIds.has(item.id)).length
+  },
+  onApply: async () => {
+    const playlistId = activePlaylist.value?.id
+    if (playlistId == null) return
+    await prependPreservingScroll(
+      () => twoColumnRef.value?.scrollEl ?? null,
+      () => { void loadAndSetPlaylist(playlistId) },
+    )
+  },
+  isEnabled: () => (
+    !!activePlaylist.value
+    && activePlaylistItems.value.length > 0
+    && !loadingItems.value
+    && !isHydratingSelection.value
+  ),
+  getScrollContainer: () => twoColumnRef.value?.scrollEl ?? null,
+})
+
+// Switching playlists rebuilds the list — pending detection is stale then.
+watch(() => activePlaylist.value?.id, () => resetNewContent())
 
 const playlistActionItems = computed(() => [
   { label: '编辑列表', appIcon: 'pencil' as const, command: openEditModal },
@@ -429,6 +484,10 @@ onMounted(async () => {
   max-width: none;
   min-height: 100%;
   padding: var(--space-4) var(--space-5) var(--app-content-padding-bottom);
+}
+
+.playlist-workbench-content__new-content {
+  margin-bottom: var(--space-4);
 }
 
 .playlist-editor-dialog {
