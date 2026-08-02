@@ -210,11 +210,11 @@
     </ConfirmDialog>
 
     <Dialog :open="editorOpen" @update:open="handleEditorOpenChange">
-      <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
-        <DialogHeader class="app-divider-bottom p-4 text-left">
-          <DialogTitle class="text-base font-semibold">{{ editingPlaylist ? '编辑列表' : '新建播放列表' }}</DialogTitle>
+      <DialogContent class="app-dialog-surface playlist-editor-dialog">
+        <DialogHeader class="app-dialog-form-header">
+          <DialogTitle class="app-dialog-form-title">{{ editingPlaylist ? '编辑列表' : '新建播放列表' }}</DialogTitle>
         </DialogHeader>
-        <div class="space-y-4 p-4">
+        <div class="app-dialog-form-body">
           <AppFormField v-slot="{ control }" id="playlist-editor-name" label="列表名称" required>
             <Input v-bind="control" v-model="formName" fluid placeholder="例如：我的最爱" @keyup.enter="handleSave" />
           </AppFormField>
@@ -222,7 +222,7 @@
             <Textarea v-bind="control" v-model="formDesc" fluid placeholder="添加一些关于这个列表的说明" rows="3" />
           </AppFormField>
         </div>
-        <DialogFooter class="gap-2 bg-muted/30 p-4">
+        <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
           <Button severity="secondary" outlined @click="closeModal">取消</Button>
           <Button :disabled="!formName.trim()" @click="handleSave">
             {{ editingPlaylist ? '保存' : '创建' }}
@@ -429,6 +429,10 @@ onMounted(async () => {
   max-width: none;
   min-height: 100%;
   padding: var(--space-4) var(--space-5) var(--app-content-padding-bottom);
+}
+
+.playlist-editor-dialog {
+  width: min(100%, 24rem);
 }
 
 .playlist-nav-item {

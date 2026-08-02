@@ -1,15 +1,15 @@
 <template>
   <Dialog v-model:open="open">
-    <DialogContent class="max-w-sm overflow-hidden rounded-lg p-0">
-      <DialogHeader class="app-divider-bottom p-5 text-left">
+    <DialogContent class="app-dialog-surface confirm-dialog">
+      <DialogHeader class="app-dialog-form-header confirm-dialog__header">
         <div
-          class="mb-3 flex h-10 w-10 items-center justify-center rounded-md"
+          class="confirm-dialog__icon"
           :class="iconBgClass"
         >
           <AppIcon :name="icon" class="h-5 w-5" :class="iconClass" />
         </div>
-        <DialogTitle class="text-base font-semibold">{{ title }}</DialogTitle>
-        <DialogDescription class="text-sm leading-relaxed text-muted-foreground">
+        <DialogTitle class="app-dialog-form-title">{{ title }}</DialogTitle>
+        <DialogDescription class="app-dialog-form-description">
           <slot name="description">{{ description }}</slot>
         </DialogDescription>
       </DialogHeader>
@@ -53,3 +53,25 @@ const open = defineModel<boolean>('open', { required: true })
 
 defineEmits<{ confirm: [] }>()
 </script>
+
+<style scoped>
+.confirm-dialog {
+  width: min(100%, 24rem);
+}
+
+.confirm-dialog__header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.confirm-dialog__icon {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-md);
+}
+</style>

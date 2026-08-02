@@ -1,6 +1,6 @@
 <template>
   <div class="music-discovery-grid">
-    <h3 class="text-sm font-semibold mb-3">热门精品歌单</h3>
+    <h3 class="app-h3 music-discovery-grid__title">热门精品歌单</h3>
     <div v-if="tags.length" class="music-tag-strip">
       <Button
         severity="secondary"
@@ -76,6 +76,10 @@ defineEmits<{
 .music-discovery-grid {
   width: 100%;
   min-width: 0;
+}
+
+.music-discovery-grid__title {
+  margin-bottom: var(--space-3);
 }
 
 .music-tag-strip {

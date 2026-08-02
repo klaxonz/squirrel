@@ -1,6 +1,6 @@
 <template>
   <div class="music-discovery-grid">
-    <h3 class="text-sm font-semibold mb-3">新碟上架</h3>
+    <h3 class="app-h3 music-discovery-grid__title">新碟上架</h3>
     <AppBlockLoader v-if="loading" />
     <AppEmptyState
       v-else-if="albums.length === 0"
@@ -56,6 +56,10 @@ defineEmits<{
 .music-discovery-grid {
   width: 100%;
   min-width: 0;
+}
+
+.music-discovery-grid__title {
+  margin-bottom: var(--space-3);
 }
 
 .music-load-more {

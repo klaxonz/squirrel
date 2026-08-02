@@ -1,8 +1,8 @@
 <template>
   <Dialog :open="visible" @update:open="!$event && $emit('close')">
-    <DialogContent class="music-video-container gap-0 overflow-hidden rounded-lg p-0">
-      <DialogHeader class="music-video-header space-y-0">
-        <DialogTitle class="music-video-title truncate text-sm font-semibold">
+    <DialogContent class="app-dialog-surface music-video-container">
+      <DialogHeader class="app-dialog-form-header music-video-header">
+        <DialogTitle class="app-dialog-form-title music-video-title">
           {{ title }}
         </DialogTitle>
         <Button text severity="secondary" size="sm" icon-only aria-label="关闭" @click="$emit('close')">
@@ -47,8 +47,7 @@ defineEmits<{
 
 <style scoped>
 .music-video-container {
-  width: min(90vw, 960px);
-  background: hsl(var(--card));
+  width: min(90vw, 60rem);
   box-shadow: var(--app-overlay-shadow);
 }
 
@@ -57,12 +56,14 @@ defineEmits<{
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.3);
+  gap: var(--space-3);
 }
 
 .music-video-title {
-  color: hsl(var(--foreground));
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .music-video-player {

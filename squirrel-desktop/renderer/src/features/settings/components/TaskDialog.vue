@@ -1,15 +1,15 @@
 <template>
   <Dialog :open="true" @update:open="!$event && $emit('close')">
     <DialogContent
-      class="max-h-[90vh] min-h-0 w-full max-w-xl overflow-hidden rounded-lg p-0"
+      class="app-dialog-surface task-dialog"
       content-class="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-      <DialogHeader class="app-divider-bottom flex shrink-0 flex-row items-center justify-between space-y-0 p-4 text-left">
+      <DialogHeader class="app-dialog-form-header task-dialog__header">
         <div class="min-w-0">
-          <DialogTitle class="text-base font-semibold text-foreground">
+          <DialogTitle class="app-dialog-form-title">
             {{ isEditing ? '编辑任务' : '新建任务' }}
           </DialogTitle>
-          <DialogDescription class="text-xs text-muted-foreground">
+          <DialogDescription class="app-dialog-form-description">
             {{ isEditing ? '更新调度频率、运行选项和任务参数。' : '选择执行逻辑并配置任务的调度规则。' }}
           </DialogDescription>
         </div>
@@ -81,7 +81,7 @@
           </section>
 
           <section class="app-divider-top space-y-4 pt-5">
-            <div class="grid gap-4 md:grid-cols-3">
+            <div class="task-dialog__schedule-grid">
               <AppFormField
                 id="task-dialog-interval"
                 label="执行间隔"
@@ -175,7 +175,7 @@
         </form>
       </div>
 
-      <DialogFooter class="app-divider-top flex shrink-0 items-center justify-end gap-2 bg-muted/30 p-4 sm:justify-end">
+      <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end task-dialog__footer">
         <Button severity="secondary" outlined @click="$emit('close')">取消</Button>
         <Button type="submit" form="task-dialog-form" severity="contrast" :loading="loading">
           {{ isEditing ? '保存' : '创建' }}
@@ -330,6 +330,32 @@ const handleSubmit = async () => {
 onMounted(initializeForm)
 watch(() => props.task, initializeForm, { deep: true })
 </script>
+
+<style scoped>
+.task-dialog {
+  width: min(100%, 36rem);
+  max-height: 90vh;
+  min-height: 0;
+}
+
+.task-dialog__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.task-dialog__schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.task-dialog__footer {
+  flex-shrink: 0;
+}
+</style>
 
 <style scoped>
 .tabular-nums {

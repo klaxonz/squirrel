@@ -2,23 +2,23 @@
   <Transition name="oauth-prompt">
     <div
       v-if="prompt.visible"
-      class="fixed bottom-6 right-6 z-toast w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-border/80 bg-popover p-4 text-foreground shadow-popover"
+      class="oauth-prompt"
     >
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <div class="flex items-center gap-2 text-sm font-semibold">
+      <div class="oauth-prompt__header">
+        <div class="oauth-prompt__copy">
+          <div class="oauth-prompt__title">
             <AppIcon name="link" class="h-4 w-4" />
             <span>YouTube TV 授权</span>
           </div>
-          <p class="mt-1 text-xs text-muted-foreground">在授权页输入此代码</p>
+          <p class="oauth-prompt__description">在授权页输入此代码</p>
         </div>
         <Button text severity="secondary" size="sm" icon-only class="text-muted-foreground" title="关闭" @click="$emit('dismiss')">
           <AppIcon name="close" class="h-4 w-4" />
         </Button>
       </div>
 
-      <div class="mt-3 flex items-center gap-2">
-        <div class="app-surface app-surface--subtle min-w-0 flex-1 select-all px-3 py-2 font-mono text-lg font-semibold text-foreground">
+      <div class="oauth-prompt__code-row">
+        <div class="app-surface app-surface--subtle oauth-prompt__code">
           {{ prompt.userCode }}
         </div>
         <Button severity="secondary" outlined size="sm" icon-only title="复制授权码" @click="$emit('copy')">
@@ -26,8 +26,8 @@
         </Button>
       </div>
 
-      <div class="mt-3 flex items-center justify-between gap-2">
-        <span class="text-xs text-muted-foreground">{{ prompt.copied ? '已复制' : '等待授权完成' }}</span>
+      <div class="oauth-prompt__footer">
+        <span class="oauth-prompt__status">{{ prompt.copied ? '已复制' : '等待授权完成' }}</span>
         <Button severity="secondary" outlined size="sm" @click="$emit('open', prompt.verificationUrl)">
           <AppIcon name="externalLink" class="h-3.5 w-3.5" />
           打开授权页
@@ -69,14 +69,92 @@ defineEmits<{
 <style scoped>
 /* OAuth prompt banner — slides up from the bottom-right. Deliberately NOT named
    `toast-*` so it can't collide with the global toast stack's `app-toast-*`. */
+.oauth-prompt {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: var(--z-toast);
+  width: min(24rem, calc(100vw - 2rem));
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--app-toast-radius);
+  background: hsl(var(--popover));
+  color: hsl(var(--foreground));
+  padding: var(--app-toast-padding);
+  box-shadow: var(--app-floating-shadow);
+}
+
+.oauth-prompt__header,
+.oauth-prompt__code-row,
+.oauth-prompt__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.oauth-prompt__header {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.oauth-prompt__copy {
+  min-width: 0;
+}
+
+.oauth-prompt__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.oauth-prompt__description,
+.oauth-prompt__status {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+.oauth-prompt__description {
+  margin: var(--space-1) 0 0;
+}
+
+.oauth-prompt__code-row,
+.oauth-prompt__footer {
+  margin-top: var(--space-3);
+}
+
+.oauth-prompt__code {
+  min-width: 0;
+  flex: 1;
+  user-select: all;
+  padding: var(--space-2) var(--space-3);
+  color: hsl(var(--foreground));
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.oauth-prompt__footer {
+  justify-content: space-between;
+}
+
 .oauth-prompt-enter-active,
 .oauth-prompt-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity var(--duration-base) var(--ease-default), transform var(--duration-base) var(--ease-default);
 }
 
 .oauth-prompt-enter-from,
 .oauth-prompt-leave-to {
   opacity: 0;
   transform: translateY(0.5rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oauth-prompt-enter-active,
+  .oauth-prompt-leave-active {
+    transition: none;
+  }
 }
 </style>
