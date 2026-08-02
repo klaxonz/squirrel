@@ -164,22 +164,24 @@
   --app-heading-color-muted: hsl(var(--foreground) / 0.82);
 
   --app-h1-size: 1.125rem;
-  --app-h1-weight: 650;
+  /* Lighter heading weights (sspai-style): h1/h2 600, h3/h4 550 — airy but
+     heavier than sspai's 500 so UI titles keep presence. */
+  --app-h1-weight: 600;
   --app-h1-leading: 1.2;
   --app-h1-tracking: -0.01em;
 
   --app-h2-size: 1rem;
-  --app-h2-weight: 650;
+  --app-h2-weight: 600;
   --app-h2-leading: 1.25;
   --app-h2-tracking: -0.01em;
 
   --app-h3-size: 0.9375rem;
-  --app-h3-weight: 600;
+  --app-h3-weight: 550;
   --app-h3-leading: 1.3;
   --app-h3-tracking: -0.005em;
 
   --app-h4-size: 0.875rem;
-  --app-h4-weight: 600;
+  --app-h4-weight: 550;
   --app-h4-leading: 1.4;
   --app-h4-tracking: 0;
 
@@ -1357,7 +1359,8 @@ button.app-selection-active:hover {
 /* Heading scale — see the --app-h* tokens above. Replaces the ad-hoc
    `font-bold|font-semibold text-xl|text-lg|text-2xl` combos that were invented
    per-page (19 files, 22 headings, 7 different size/weight pairs). Every heading
-   now inherits the display font, so the Inter/Outfit weight contrast is real. */
+   now inherits the display font (same Instrument Sans family as body, per the
+   Apple-style direction) — headings stand out via the --app-h* weight/tracking. */
 .app-h1,
 .app-h2,
 .app-h3,
@@ -1420,8 +1423,11 @@ button.app-selection-active:hover {
    large-screen web). The old `@media (max-width: 767px)` toolbar stack branch
    was dead code — removed per the desktop-only positioning. */
 
+/* Data digits only (queue indices, counts, durations, badges) — Outfit's
+   geometric figures + tabular-nums keep columns aligned. Code/log surfaces
+   use --font-mono directly, not this class. */
 .app-mono {
-  font-family: var(--font-mono);
+  font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }

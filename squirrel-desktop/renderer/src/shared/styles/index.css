@@ -1,8 +1,10 @@
-/* UI: Reddit-like font stack — Inter (body), Plus Jakarta Sans (display headings),
-   JetBrains Mono (mono), Noto Sans SC Variable (CJK) from @fontsource (imported in
-   main.ts). Noto Sans SC sits after the Latin faces and before the system fonts so
-   Chinese renders in it instead of Microsoft YaHei; anything it lacks still falls
-   back to PingFang SC / Microsoft YaHei. */
+/* UI: Instrument Sans (SF Pro-style humanist sans — body AND display headings
+   are the same family, Apple-like; headings differentiate by weight/tracking),
+   JetBrains Mono (mono), Outfit (geometric, data digits via --font-numeric),
+   Noto Sans SC Variable (CJK) from @fontsource (imported in main.ts). Noto Sans
+   SC sits after the Latin faces and before the system fonts so Chinese renders
+   in it instead of Microsoft YaHei; anything it lacks still falls back to
+   PingFang SC / Microsoft YaHei. */
 @import './reader.css';
 
 @tailwind base;
@@ -10,9 +12,15 @@
 @tailwind utilities;
 @layer base {
   :root {
-    --font-sans: 'Inter', 'Noto Sans SC Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    --font-display: 'Plus Jakarta Sans', 'Inter', 'Noto Sans SC Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-sans: 'Instrument Sans Variable', 'Noto Sans SC Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    /* Apple-style same-family display: headings reuse the body stack and stand
+       out via the --app-h* weight/tracking tokens, not a separate typeface. */
+    --font-display: var(--font-sans);
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    /* Data digits (sspai-style): Outfit's geometric figures read cleaner than
+       the body sans at small sizes. Sits before the sans fallbacks, then a
+       mono fallback keeps tabular alignment if Outfit is unavailable. */
+    --font-numeric: 'Outfit Variable', 'Instrument Sans Variable', 'Noto Sans SC Variable', ui-monospace, SFMono-Regular, monospace;
   }
 
   html, body {

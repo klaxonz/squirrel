@@ -7,7 +7,7 @@
   --reader-font-sans: var(--font-sans);
   --reader-font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif CJK SC",
     "Source Han Serif SC", "Songti SC", "STSong", serif;
-  --reader-line-height: 1.75;
+  --reader-line-height: 1.8;
   --reader-paragraph-gap: 1.15em;
   --reader-block-gap: 1.35em;
   --reader-measure: var(--app-content-reading-max, 56rem);
@@ -32,7 +32,7 @@
 
 .reader-content.font-sans {
   --reader-font: var(--reader-font-sans);
-  --reader-line-height: 1.7;
+  --reader-line-height: 1.8;
   letter-spacing: 0.005em;
 }
 

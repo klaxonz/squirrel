@@ -1125,7 +1125,7 @@ const {
 .video-detail__description p {
   color: hsl(var(--foreground) / 0.72);
   font-size: 0.8125rem;
-  line-height: 1.7;
+  line-height: 1.8;
 }
 
 .video-detail__description-toggle {

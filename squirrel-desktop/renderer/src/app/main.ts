@@ -6,18 +6,14 @@ import router from './router'
 import { queryClient } from '@/shared/lib/queryClient'
 import { useThemeStore } from '@/shared/stores/theme'
 import { Logger } from '@/shared/lib/logger'
-// Fontsource webfonts (Reddit-like product font language): Inter for UI/body,
-// Plus Jakarta Sans for display headings, JetBrains Mono for timestamps/code.
-// These packages carry no CJK glyphs — Chinese falls back to PingFang SC /
-// Microsoft YaHei via the --font-* stacks in shared/styles/index.css.
-import '@fontsource/inter/400.css'
-import '@fontsource/inter/500.css'
-import '@fontsource/inter/600.css'
-import '@fontsource/inter/700.css'
-import '@fontsource/plus-jakarta-sans/400.css'
-import '@fontsource/plus-jakarta-sans/500.css'
-import '@fontsource/plus-jakarta-sans/600.css'
-import '@fontsource/plus-jakarta-sans/700.css'
+// Fontsource webfonts: Instrument Sans (SF Pro-style humanist sans) for both
+// UI/body and display headings — same family, Apple-like, differentiated by
+// weight/tracking. Outfit (geometric) for data digits via --font-numeric.
+// JetBrains Mono for timestamps/code, Noto Sans SC Variable for CJK. The
+// Latin faces carry no CJK glyphs — Chinese falls through the --font-* stacks
+// to Noto Sans SC Variable, then system PingFang SC / Microsoft YaHei.
+import '@fontsource-variable/instrument-sans/wght.css'
+import '@fontsource-variable/outfit/wght.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/600.css'
 // Noto Sans SC Variable (思源黑体, Google) — variable weight 100-900, ~4.3 MiB
