@@ -159,7 +159,7 @@
   --app-media-scrim-strong: hsl(var(--overlay) / 0.72);
   --app-media-progress-track: hsl(var(--overlay) / 0.48);
 
-  --app-heading-font: var(--font-sans);
+  --app-heading-font: var(--font-display);
   --app-heading-color: hsl(var(--foreground));
   --app-heading-color-muted: hsl(var(--foreground) / 0.82);
 

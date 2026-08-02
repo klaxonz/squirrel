@@ -6,6 +6,23 @@ import router from './router'
 import { queryClient } from '@/shared/lib/queryClient'
 import { useThemeStore } from '@/shared/stores/theme'
 import { Logger } from '@/shared/lib/logger'
+// Fontsource webfonts (Reddit-like product font language): Inter for UI/body,
+// Plus Jakarta Sans for display headings, JetBrains Mono for timestamps/code.
+// These packages carry no CJK glyphs — Chinese falls back to PingFang SC /
+// Microsoft YaHei via the --font-* stacks in shared/styles/index.css.
+import '@fontsource/inter/400.css'
+import '@fontsource/inter/500.css'
+import '@fontsource/inter/600.css'
+import '@fontsource/inter/700.css'
+import '@fontsource/plus-jakarta-sans/400.css'
+import '@fontsource/plus-jakarta-sans/500.css'
+import '@fontsource/plus-jakarta-sans/600.css'
+import '@fontsource/plus-jakarta-sans/700.css'
+import '@fontsource/jetbrains-mono/400.css'
+import '@fontsource/jetbrains-mono/600.css'
+// Noto Sans SC Variable (思源黑体, Google) — variable weight 100-900, ~4.3 MiB
+// woff2 split into 101 unicode-range slices so only needed CJK chunks load.
+import '@fontsource-variable/noto-sans-sc/wght.css'
 import '@/shared/styles/index.css'
 import '@/shared/styles/components.css'
 import '@/shared/styles/layout.css'

@@ -1,4 +1,8 @@
-/* UI: system font stack (Reddit-like) — no webfont payload needed for Electron. */
+/* UI: Reddit-like font stack — Inter (body), Plus Jakarta Sans (display headings),
+   JetBrains Mono (mono), Noto Sans SC Variable (CJK) from @fontsource (imported in
+   main.ts). Noto Sans SC sits after the Latin faces and before the system fonts so
+   Chinese renders in it instead of Microsoft YaHei; anything it lacks still falls
+   back to PingFang SC / Microsoft YaHei. */
 @import './reader.css';
 
 @tailwind base;
@@ -6,9 +10,9 @@
 @tailwind utilities;
 @layer base {
   :root {
-    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    --font-display: var(--font-sans);
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    --font-sans: 'Inter', 'Noto Sans SC Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-display: 'Plus Jakarta Sans', 'Inter', 'Noto Sans SC Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   }
 
   html, body {
