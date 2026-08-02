@@ -172,7 +172,7 @@ const bodyFromResponse = (response, moduleName) => {
     throw new DesktopMusicServiceError(`KuGouMusicApi ${moduleName} returned invalid payload`, response)
   }
   const status = body.status
-  if (![undefined, null, '', 0, 1, '0', '1'].includes(status)) {
+  if (![undefined, null, '', 0, 1, 200, '0', '1', '200'].includes(status)) {
     throw new DesktopMusicServiceError(musicServiceMessage(body) || 'KuGouMusicApi rejected request', response)
   }
   const errorCode = body.error_code ?? body.errcode
@@ -242,6 +242,80 @@ const playableUrlFromPayload = (payload) => {
     if (url) return url.trim()
   }
   return ''
+}
+
+const dataOrSelf = (payload) => (payload?.data && typeof payload.data === 'object' ? payload.data : payload)
+
+const firstArrayFromKeys = (payload, keys) => {
+  const roots = [payload, dataOrSelf(payload)].filter((item) => item && typeof item === 'object')
+  for (const root of roots) {
+    for (const key of keys) {
+      if (Array.isArray(root[key])) return root[key]
+    }
+  }
+  return []
+}
+
+const firstStringFromKeys = (payload, keys) => {
+  const roots = [payload, dataOrSelf(payload)].filter((item) => item && typeof item === 'object')
+  for (const root of roots) {
+    for (const key of keys) {
+      if (typeof root[key] === 'string' && root[key].trim()) return root[key].trim()
+    }
+  }
+  return ''
+}
+
+const decodeMaybeBase64Lyric = (content) => {
+  const text = String(content || '').trim()
+  if (!text) return ''
+  if (text.includes('[')) return text
+  if (!/^[A-Za-z0-9+/=\r\n]+$/.test(text)) return text
+  try {
+    const decoded = Buffer.from(text, 'base64').toString('utf8').trim()
+    return decoded || text
+  } catch {
+    return text
+  }
+}
+
+const lyricContentFromPayload = (payload) => {
+  const decoded = firstStringFromKeys(payload, [
+    'decodeContent',
+    'decodedContent',
+    'decode_content',
+    'decoded_content',
+    'lrc',
+    'lyric',
+    'lyrics',
+    'text',
+  ])
+  if (decoded) return decoded
+  return decodeMaybeBase64Lyric(firstStringFromKeys(payload, ['content']))
+}
+
+const isPlaceholderLyric = (lines) => {
+  if (!Array.isArray(lines) || lines.length === 0) return true
+  const visible = lines.map((line) => String(line?.text || '').trim()).filter(Boolean)
+  if (visible.length === 0) return true
+  if (visible.length > 1) return false
+  return /^(ok|success|暂无歌词|纯音乐|instrumental)$/i.test(visible[0])
+}
+
+const lyricCandidateId = (candidate = {}) => String(candidate.id || candidate.lyric_id || candidate.lyricId || '')
+
+const lyricCandidateAccessKey = (candidate = {}) => String(
+  candidate.accesskey || candidate.accessKey || candidate.access_key || '',
+)
+
+const uniqueLyricSearchParams = (items) => {
+  const seen = new Set()
+  return items.filter((item) => {
+    const key = JSON.stringify(item)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 const throwPlaybackRejected = (body) => {
@@ -686,21 +760,37 @@ const service = {
   },
 
   async lyric({ title, artist = '', hash, album_audio_id = null, duration = 0 }) {
-    const keyword = artist ? `${artist} - ${title}` : title
-    const lyricSearch = await requestKugou('search_lyric', {
-      keywords: keyword,
-      hash,
-      album_audio_id: album_audio_id || 0,
-      duration,
-      man: 'no',
-    })
-    const candidates = Array.isArray(lyricSearch.candidates) ? lyricSearch.candidates : []
-    const lyricCandidate = candidates.find((item) => item && typeof item === 'object') || {}
-    const lyricId = String(lyricCandidate.id || '')
-    const accessKey = String(lyricCandidate.accesskey || '')
-    if (!lyricId || !accessKey) return { lines: [] }
-    const lyricPayload = await requestKugou('lyric', { id: lyricId, accesskey: accessKey, fmt: 'lrc', decode: 'true' })
-    return { lines: parseLrc(String(lyricPayload.decodeContent || '')) }
+    const normalizedTitle = String(title || '').trim()
+    const normalizedArtist = String(artist || '').trim()
+    const keyword = normalizedArtist ? `${normalizedArtist} - ${normalizedTitle}` : normalizedTitle
+    const searchParamsList = uniqueLyricSearchParams([
+      { keywords: keyword, hash, album_audio_id: album_audio_id || 0, duration, man: 'no' },
+      // Some Kugou lyric lookups return only an OK placeholder when bound to a
+      // mismatched track hash/audio id. A clean title lookup often returns the
+      // actual third-party LRC for the same visible song.
+      { keywords: keyword, hash: '', album_audio_id: 0, duration, man: 'no' },
+      { keywords: keyword, hash: '', album_audio_id: 0, duration: 0, man: 'no' },
+    ])
+
+    for (const searchParams of searchParamsList) {
+      let lyricSearch
+      try {
+        lyricSearch = await requestKugou('search_lyric', searchParams)
+      } catch {
+        continue
+      }
+      const candidates = firstArrayFromKeys(lyricSearch, ['candidates', 'list', 'lists', 'info'])
+        .filter((item) => item && typeof item === 'object')
+      for (const lyricCandidate of candidates) {
+        const lyricId = lyricCandidateId(lyricCandidate)
+        const accessKey = lyricCandidateAccessKey(lyricCandidate)
+        if (!lyricId || !accessKey) continue
+        const lyricPayload = await requestKugou('lyric', { id: lyricId, accesskey: accessKey, fmt: 'lrc', decode: 'true' })
+        const lines = parseLrc(lyricContentFromPayload(lyricPayload))
+        if (!isPlaceholderLyric(lines)) return { lines }
+      }
+    }
+    return { lines: [] }
   },
 
   async trackMv({ album_audio_id }) {

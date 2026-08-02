@@ -242,7 +242,7 @@ export const normalizeSuggestionItems = (data) => {
 
 export const parseLrc = (content) => {
   const lines = []
-  for (const rawLine of String(content || '').split(/\r?\n/)) {
+  for (const rawLine of String(content || '').replace(/\\r\\n|\\n|\\r/g, '\n').split(/\r?\n/)) {
     if (!rawLine.startsWith('[') || !rawLine.includes(']')) continue
     const lastBracket = rawLine.lastIndexOf(']')
     const text = rawLine.slice(lastBracket + 1).trim()

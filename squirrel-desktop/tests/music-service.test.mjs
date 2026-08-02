@@ -140,6 +140,113 @@ test('desktop music play url rejects empty playback payloads', async () => {
   })
 })
 
+
+test('desktop music lyric reads nested candidates and decoded content', async () => {
+  await withMockMusicRuntime({
+    search_lyric: async (params) => {
+      assert.equal(params.keyword, undefined)
+      assert.equal(params.keywords, 'Demo Artist - Demo Song')
+      assert.equal(params.hash, 'HASH')
+      return {
+        body: {
+          data: {
+            candidates: [{ id: 'lyric-1', accesskey: 'access-1' }],
+          },
+        },
+      }
+    },
+    lyric: async (params) => {
+      assert.equal(params.id, 'lyric-1')
+      assert.equal(params.accesskey, 'access-1')
+      assert.equal(params.fmt, 'lrc')
+      return { body: { data: { decodeContent: '[00:01.00]第一句\\n[00:02.50]第二句' } } }
+    },
+  }, async () => {
+    assert.deepEqual(
+      await musicService.lyric({ title: 'Demo Song', artist: 'Demo Artist', hash: 'HASH' }),
+      { lines: [{ time: 1, text: '第一句' }, { time: 2.5, text: '第二句' }] },
+    )
+  })
+})
+
+test('desktop music lyric falls back to base64 content', async () => {
+  await withMockMusicRuntime({
+    search_lyric: async () => ({ body: { candidates: [{ id: 'lyric-1', accessKey: 'access-1' }] } }),
+    lyric: async () => ({ body: { content: Buffer.from('[00:03.00]第三句', 'utf8').toString('base64') } }),
+  }, async () => {
+    assert.deepEqual(
+      await musicService.lyric({ title: 'Demo Song', hash: 'HASH' }),
+      { lines: [{ time: 3, text: '第三句' }] },
+    )
+  })
+})
+
+
+test('desktop music lyric accepts kugou OK status payloads', async () => {
+  await withMockMusicRuntime({
+    search_lyric: async () => ({ body: { status: 200, message: 'OK', candidates: [{ id: 'lyric-1', accesskey: 'access-1' }] } }),
+    lyric: async () => ({ body: { status: 200, message: 'OK', decodeContent: '[00:04.00]OK 状态下的歌词' } }),
+  }, async () => {
+    assert.deepEqual(
+      await musicService.lyric({ title: 'Demo Song', hash: 'HASH' }),
+      { lines: [{ time: 4, text: 'OK 状态下的歌词' }] },
+    )
+  })
+})
+
+
+test('desktop music lyric skips placeholder candidates', async () => {
+  const requestedIds = []
+  await withMockMusicRuntime({
+    search_lyric: async () => ({
+      body: {
+        candidates: [
+          { id: 'placeholder', accesskey: 'access-1' },
+          { id: 'real', accesskey: 'access-2' },
+        ],
+      },
+    }),
+    lyric: async (params) => {
+      requestedIds.push(params.id)
+      if (params.id === 'placeholder') return { body: { decodeContent: '[00:00.00]OK' } }
+      return { body: { decodeContent: '[00:04.00]真正歌词' } }
+    },
+  }, async () => {
+    assert.deepEqual(
+      await musicService.lyric({ title: 'Demo Song', hash: 'HASH' }),
+      { lines: [{ time: 4, text: '真正歌词' }] },
+    )
+    assert.deepEqual(requestedIds, ['placeholder', 'real'])
+  })
+})
+
+
+test('desktop music lyric retries clean title search after placeholder results', async () => {
+  const searchParams = []
+  await withMockMusicRuntime({
+    search_lyric: async (params) => {
+      searchParams.push(params)
+      if (params.hash || params.album_audio_id) {
+        return { body: { candidates: [{ id: 'placeholder', accesskey: 'access-1' }] } }
+      }
+      return { body: { candidates: [{ id: 'real', accesskey: 'access-2' }] } }
+    },
+    lyric: async (params) => {
+      if (params.id === 'placeholder') return { body: { decodeContent: '[00:00.00]OK' } }
+      return { body: { decodeContent: "[00:07.55]No I can't forget this evening" } }
+    },
+  }, async () => {
+    assert.deepEqual(
+      await musicService.lyric({ title: 'Without You', artist: 'Vanny Vabiola', hash: 'BADHASH', album_audio_id: '123', duration: 244 }),
+      { lines: [{ time: 7.55, text: "No I can't forget this evening" }] },
+    )
+    assert.equal(searchParams.length, 2)
+    assert.equal(searchParams[0].hash, 'BADHASH')
+    assert.equal(searchParams[1].hash, '')
+    assert.equal(searchParams[1].keywords, 'Vanny Vabiola - Without You')
+  })
+})
+
 test('desktop music qr login stores desktop auth cookie', async () => {
   await withMockMusicRuntime({
     login_token: async () => ({ body: { status: 1, data: { userid: '99', token: 'tok' } } }),
