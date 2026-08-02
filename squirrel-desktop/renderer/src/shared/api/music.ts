@@ -765,13 +765,31 @@ export const searchMusicComplex = (query: string) => {
   }>('complexSearch', '/api/music/search/complex', { query })
 }
 
+export type MusicUserVip = {
+  is_vip: boolean
+  vip_type: number
+  vip_expire_time: string
+  vip_level: number
+}
+
+export type MusicVipClaimStatus = MusicUserVip & {
+  received_today: boolean
+  receive_day: string
+  month_received_days: number
+  message?: string
+  raw_status?: Record<string, unknown>
+}
+
 export const getMusicUserVip = () => {
-  return musicGet<{
-    is_vip: boolean
-    vip_type: number
-    vip_expire_time: string
-    vip_level: number
-  }>('userVip', '/api/music/user/vip')
+  return musicGet<MusicUserVip>('userVip', '/api/music/user/vip')
+}
+
+export const getMusicVipClaimStatus = () => {
+  return musicGet<MusicVipClaimStatus>('vipClaimStatus', '/api/music/user/vip/claim/status')
+}
+
+export const claimMusicDailyVip = (receive_day?: string) => {
+  return musicPost<MusicVipClaimStatus>('claimDailyVip', '/api/music/user/vip/claim', { receive_day })
 }
 
 export const sendMusicCaptcha = (phone: string) => {

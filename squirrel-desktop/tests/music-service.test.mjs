@@ -142,6 +142,7 @@ test('desktop music play url rejects empty playback payloads', async () => {
 
 test('desktop music qr login stores desktop auth cookie', async () => {
   await withMockMusicRuntime({
+    login_token: async () => ({ body: { status: 1, data: { userid: '99', token: 'tok' } } }),
     login_qr_check: async () => ({ body: { data: { status: 4, token: 'tok', userid: '99' } } }),
   }, async (runtime) => {
     const result = await musicService.checkQrLogin({ key: 'QR' })
@@ -152,6 +153,7 @@ test('desktop music qr login stores desktop auth cookie', async () => {
 
 test('desktop music qr login accepts token cookies from kugou response', async () => {
   await withMockMusicRuntime({
+    login_token: async () => ({ body: { status: 1, data: { userid: '99', token: 'tok' } } }),
     login_qr_check: async () => ({
       body: { data: { status: 4 } },
       cookie: ['token=tok;HttpOnly', 'userid=99;HttpOnly'],
@@ -165,6 +167,7 @@ test('desktop music qr login accepts token cookies from kugou response', async (
 
 test('desktop music qr login preserves dfid when kugou returns it', async () => {
   await withMockMusicRuntime({
+    login_token: async () => ({ body: { status: 1, data: { userid: '99', token: 'tok' } } }),
     login_qr_check: async () => ({
       body: { data: { status: 4 } },
       cookie: ['token=tok;HttpOnly', 'userid=99;HttpOnly', 'dfid=dfid-1;HttpOnly'],
@@ -173,6 +176,102 @@ test('desktop music qr login preserves dfid when kugou returns it', async () => 
     const result = await musicService.checkQrLogin({ key: 'QR' })
     assert.equal(result.logged_in, true)
     assert.equal(runtime.cookie, 'token=tok;userid=99;dfid=dfid-1')
+  })
+})
+
+
+test('desktop music vip claim status combines reward and vip data', async () => {
+  await withMockMusicRuntime({
+    youth_union_vip: async () => ({ body: { data: { is_receive: 1, receive_day: '2026-08-02' } } }),
+    youth_month_vip_record: async () => ({ body: { data: { count: 3 } } }),
+    user_vip_detail: async () => ({ body: { data: { is_vip: 1, vip_type: 2, vip_expire_time: '2026-08-03', vip_level: 1 } } }),
+  }, async () => {
+    assert.deepEqual(await musicService.vipClaimStatus(), {
+      is_vip: true,
+      vip_type: 2,
+      vip_expire_time: '2026-08-03',
+      vip_level: 1,
+      received_today: true,
+      receive_day: '2026-08-02',
+      month_received_days: 3,
+      raw_status: { is_receive: 1, receive_day: '2026-08-02' },
+    })
+  })
+})
+
+test('desktop music daily vip claim uses today by default and returns refreshed status', async () => {
+  let receivedDay = ''
+  await withMockMusicRuntime({
+    login_token: async () => ({ body: { status: 1, data: { userid: '99', token: 'tok' } } }),
+    youth_day_vip: async (params) => {
+      receivedDay = params.receive_day
+      assert.match(receivedDay, /^\d{4}-\d{2}-\d{2}$/)
+      return { body: { msg: 'ok' } }
+    },
+    youth_day_vip_upgrade: async () => ({ body: { msg: 'upgraded' } }),
+    youth_union_vip: async () => ({ body: { data: { is_receive: 1 } } }),
+    youth_month_vip_record: async () => ({ body: { data: { receive_days: 4 } } }),
+    user_vip_detail: async () => ({ body: { data: { vip_type: 1 } } }),
+  }, async (runtime) => {
+    runtime.setCookie('token=tok;userid=99')
+    const result = await musicService.claimDailyVip({})
+    assert.equal(result.receive_day, receivedDay)
+    assert.equal(result.received_today, true)
+    assert.equal(result.month_received_days, 4)
+    assert.equal(result.is_vip, true)
+    assert.equal(result.message, 'ok')
+  })
+})
+
+
+
+
+test('desktop music daily vip claim does not mark received without verified VIP grant', async () => {
+  await withMockMusicRuntime({
+    login_token: async () => ({ body: { status: 1, data: { userid: '99', token: 'tok' } } }),
+    youth_day_vip: async () => Promise.reject({ body: { status: 0, error_code: 51002 } }),
+    youth_vip: async () => ({ body: { status: 1, data: {} } }),
+    youth_day_vip_upgrade: async () => ({ body: { status: 1, data: {} } }),
+    youth_union_vip: async () => ({ body: { data: { is_vip: 0 } } }),
+    youth_month_vip_record: async () => ({ body: { data: { receive_days: 0 } } }),
+    user_vip_detail: async () => ({ body: { data: { vip_type: 0 } } }),
+  }, async (runtime) => {
+    runtime.setCookie('token=tok;userid=99')
+    const result = await musicService.claimDailyVip({ receive_day: '2026-08-02' })
+    assert.equal(result.received_today, false)
+    assert.match(result.message, /未返回 VIP 发放结果/)
+  })
+})
+
+test('desktop music auth status logs out expired kugou auth centrally', async () => {
+  await withMockMusicRuntime({
+    login_token: async () => Promise.reject({ body: { status: 0, error_code: 131001, error_msg: '' } }),
+  }, async (runtime) => {
+    runtime.setCookie('token=stale;userid=99')
+    assert.deepEqual(await musicService.authStatus(), { logged_in: false, source: '', userid: '' })
+    assert.equal(runtime.cookie, '')
+  })
+})
+
+test('desktop music daily vip claim surfaces kugou rejection messages', async () => {
+  await withMockMusicRuntime({
+    login_token: async () => ({ body: { status: 1, data: { userid: '99', token: 'tok' } } }),
+    youth_day_vip: async () => Promise.reject({
+      body: {
+        status: 0,
+        msg: {
+          response: {
+            data: { status: 0, error: '活动暂未开放' },
+          },
+        },
+      },
+    }),
+  }, async (runtime) => {
+    runtime.setCookie('token=tok;userid=99')
+    await assert.rejects(
+      musicService.claimDailyVip({ receive_day: '2026-08-02' }),
+      /活动暂未开放/,
+    )
   })
 })
 

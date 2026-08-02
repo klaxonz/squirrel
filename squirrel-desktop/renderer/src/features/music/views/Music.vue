@@ -170,10 +170,15 @@
           :loading="profileLoading"
           :error="profileError"
           :logout-loading="logoutLoading"
+          :vip-claim-status="vipClaimStatus"
+          :vip-claim-loading="vipClaimLoading"
+          :vip-claim-error="vipClaimError"
+          :vip-claim-message="vipClaimMessage"
           :target-playlist-id="targetUserPlaylistId"
           :create-playlist="handleCreatePlaylist"
           @retry="handleLoadProfile"
           @logout="handleLogout"
+          @claim-daily-vip="claimDailyVip"
           @play-all-profile="handlePlayAllProfile"
           @select-playlist="handleSelectUserPlaylist"
           @select-artist="handleSelectArtistFromTrack"
@@ -385,6 +390,11 @@ const {
   profileListenRank,
   profileHistoryLoading,
   profileRankLoading,
+  vipClaimStatus,
+  vipClaimLoading,
+  vipClaimError,
+  vipClaimMessage,
+  claimDailyVip,
   loadAuthStatus,
   loadProfile,
   logout,

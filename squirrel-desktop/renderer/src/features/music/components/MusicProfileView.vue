@@ -51,6 +51,23 @@
           </div>
         </div>
 
+        <section class="music-profile-vip-card" aria-label="每日 VIP 签到">
+          <div class="music-profile-vip-copy">
+            <span class="music-profile-vip-kicker">每日签到</span>
+            <strong>{{ vipClaimTitle }}</strong>
+            <small :title="vipClaimSubtitle">{{ vipClaimSubtitle }}</small>
+          </div>
+          <Button
+            size="sm"
+            class="music-profile-vip-button"
+            :disabled="vipClaimStatus?.received_today || vipClaimLoading"
+            :loading="vipClaimLoading"
+            @click="$emit('claim-daily-vip')"
+          >
+            {{ vipClaimButtonLabel }}
+          </Button>
+        </section>
+
         <div class="music-profile-header-stats" aria-label="账号统计">
           <div class="music-profile-stat-item">
             <span class="music-profile-stat-num">{{ profile?.follow_count ?? 0 }}</span>
@@ -233,7 +250,7 @@ import MusicTrackList from './MusicTrackList.vue'
 import MusicCard from './shared/MusicCard.vue'
 import MusicCreatePlaylistDialog from './profile/MusicCreatePlaylistDialog.vue'
 import { formatMusicImageUrl, formatRegTime } from '@/features/music/lib/musicFormatters'
-import type { MusicUserProfile, MusicUserPlaylist, MusicTrack, MusicAuthStatus } from '@/shared/api/music'
+import type { MusicUserProfile, MusicUserPlaylist, MusicTrack, MusicAuthStatus, MusicVipClaimStatus } from '@/shared/api/music'
 
 const props = defineProps<{
   profile: MusicUserProfile | null
@@ -246,6 +263,10 @@ const props = defineProps<{
   loading: boolean
   error: string
   logoutLoading: boolean
+  vipClaimStatus: MusicVipClaimStatus | null
+  vipClaimLoading: boolean
+  vipClaimError: string
+  vipClaimMessage: string
   targetPlaylistId: string
   createPlaylist: (name: string) => Promise<boolean>
 }>()
@@ -254,6 +275,7 @@ defineEmits<{
   'retry': []
   'logout': []
   'play-all-profile': [category: 'history' | 'rank', shuffle: boolean]
+  'claim-daily-vip': []
   'select-playlist': [playlist: MusicUserPlaylist]
   'select-artist': [track: MusicTrack]
   'add-to-playlist': [track: MusicTrack]
@@ -270,6 +292,23 @@ const profileIdentity = computed(() => props.profile?.userid || props.authStatus
 const createdPlaylists = computed(() => props.userPlaylists.filter(pl => Number(pl.type || 0) !== 1))
 const collectedPlaylists = computed(() => props.userPlaylists.filter(pl => Number(pl.type || 0) === 1))
 const currentProfileTracks = computed(() => activeTab.value === 'history' ? props.history : props.listenRank)
+const vipClaimTitle = computed(() => {
+  if (props.vipClaimStatus?.received_today) return '今日已领取'
+  if (props.vipClaimStatus?.is_vip) return '领取今日 VIP'
+  return '签到领 VIP'
+})
+const vipClaimSubtitle = computed(() => {
+  if (props.vipClaimError) return props.vipClaimError
+  if (props.vipClaimMessage) return props.vipClaimMessage
+  const receivedDays = props.vipClaimStatus?.month_received_days || 0
+  if (props.vipClaimStatus?.vip_expire_time) return `VIP 至 ${props.vipClaimStatus.vip_expire_time}`
+  if (receivedDays > 0) return `本月已领 ${receivedDays} 天`
+  return '每天可领取 1 天概念版 VIP'
+})
+const vipClaimButtonLabel = computed(() => {
+  if (props.vipClaimStatus?.received_today) return '已签到'
+  return '签到领取'
+})
 
 const pageCount = (total: number) => Math.max(1, Math.ceil(total / PROFILE_TRACKS_PAGE_SIZE))
 const pageItems = (tracks: MusicTrack[], page: number) => {
@@ -329,7 +368,7 @@ watch(activeTab, (tab) => {
 
 .music-profile-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 2rem;
   min-height: 5rem;
@@ -458,6 +497,52 @@ watch(activeTab, (tab) => {
   border-color: hsl(var(--border) / 0.34);
   background: var(--app-selection-bg-hover);
   color: hsl(var(--foreground));
+}
+
+.music-profile-vip-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.875rem;
+  min-width: 15rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid hsl(var(--border) / 0.28);
+  border-radius: var(--app-surface-radius);
+  background:
+    linear-gradient(135deg, hsl(var(--primary) / 0.1), transparent 60%),
+    var(--app-muted-surface);
+}
+
+.music-profile-vip-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.music-profile-vip-kicker {
+  color: hsl(var(--primary));
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.music-profile-vip-copy strong {
+  color: hsl(var(--foreground));
+  font-size: 0.8125rem;
+  line-height: 1.2;
+}
+
+.music-profile-vip-copy small {
+  max-width: 12rem;
+  overflow: visible;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.music-profile-vip-button {
+  flex: 0 0 auto;
 }
 
 .music-profile-header-stats {
@@ -640,6 +725,7 @@ watch(activeTab, (tab) => {
     gap: 1rem;
   }
 
+  .music-profile-vip-card,
   .music-profile-header-stats {
     grid-column: 1 / -1;
     width: 100%;
@@ -647,6 +733,11 @@ watch(activeTab, (tab) => {
     border-left: 0;
     border-top: 1px solid hsl(var(--border) / 0.2);
     padding-top: 0.75rem;
+  }
+
+  .music-profile-vip-card {
+    width: 100%;
+    min-width: 0;
   }
 }
 

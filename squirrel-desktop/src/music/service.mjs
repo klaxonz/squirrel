@@ -32,6 +32,77 @@ let authStore = {
 }
 
 const DEFAULT_COOKIE = String(process.env.KUGOU_MUSIC_COOKIE || '')
+
+const todayIsoDate = () => new Date().toISOString().slice(0, 10)
+
+const normalizeReceiveDay = (value) => {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+  return todayIsoDate()
+}
+
+const rawData = (payload) => {
+  if (!payload || typeof payload !== 'object') return {}
+  const data = payload.data && typeof payload.data === 'object' ? payload.data : payload
+  return data && typeof data === 'object' ? data : {}
+}
+
+const numberFromAny = (...values) => {
+  for (const value of values) {
+    const parsed = Number.parseInt(value ?? '', 10)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return 0
+}
+
+const boolFromAny = (...values) => values.some((value) => (
+  value === true
+  || value === 1
+  || value === '1'
+  || String(value || '').toLowerCase() === 'true'
+  || String(value || '').toLowerCase() === 'yes'
+))
+
+const normalizeUserVip = (data) => ({
+  is_vip: boolFromAny(data.is_vip, data.vip_type, data.isVip, data.vipType),
+  vip_type: numberFromAny(data.vip_type, data.vipType),
+  vip_expire_time: String(data.vip_expire_time || data.expire_time || data.expireTime || ''),
+  vip_level: numberFromAny(data.vip_level, data.vipLevel),
+})
+
+const normalizeVipClaimStatus = ({ unionPayload, monthRecordPayload, vip }) => {
+  const unionData = rawData(unionPayload)
+  const monthData = rawData(monthRecordPayload)
+  const receiveDay = normalizeReceiveDay(
+    unionData.receive_day || unionData.receiveDay || unionData.received_day || unionData.receivedDay,
+  )
+  const receivedToday = boolFromAny(
+    unionData.received_today,
+    unionData.is_receive,
+    unionData.isReceive,
+    unionData.has_receive,
+    unionData.hasReceive,
+    unionData.today_received,
+    unionData.todayReceived,
+  ) || [unionData.receive_day, unionData.receiveDay, unionData.received_day, unionData.receivedDay]
+    .map((value) => String(value || '').slice(0, 10))
+    .includes(todayIsoDate())
+  return {
+    ...vip,
+    received_today: receivedToday,
+    receive_day: receiveDay,
+    month_received_days: numberFromAny(
+      monthData.days,
+      monthData.count,
+      monthData.total,
+      monthData.receive_days,
+      monthData.receiveDays,
+      monthData.received_days,
+      monthData.receivedDays,
+    ),
+    raw_status: unionData,
+  }
+}
+
 export class DesktopMusicServiceError extends Error {
   constructor(message, details = undefined) {
     super(message)
@@ -41,13 +112,58 @@ export class DesktopMusicServiceError extends Error {
 }
 
 const musicServiceMessage = (body) => {
-  if (!body || typeof body !== 'object') return ''
-  return String(body.error || body.message || body.msg || body.error_msg || body.errmsg || '').trim()
+  if (!body) return ''
+  if (typeof body === 'string') return body.trim()
+  if (body instanceof Error) return String(body.message || '').trim()
+  if (typeof body !== 'object') return ''
+
+  const direct = body.error || body.message || body.msg || body.error_msg || body.errmsg
+  if (typeof direct === 'string') return direct.trim()
+  if (direct && typeof direct === 'object') {
+    const nested = direct.response?.data || direct.body || direct.data || direct
+    const nestedMessage = musicServiceMessage(nested)
+    if (nestedMessage) return nestedMessage
+    if (typeof direct.message === 'string') return direct.message.trim()
+  }
+
+  const responseMessage = musicServiceMessage(body.response?.data)
+  if (responseMessage) return responseMessage
+  const nestedBodyMessage = musicServiceMessage(body.body)
+  if (nestedBodyMessage) return nestedBodyMessage
+  const nestedDataMessage = musicServiceMessage(body.data)
+  if (nestedDataMessage) return nestedDataMessage
+  return ''
 }
 
 const musicServiceErrorCode = (body) => {
-  if (!body || typeof body !== 'object') return ''
-  return String(body.error_code ?? body.errcode ?? '').trim()
+  if (!body) return ''
+  if (typeof body === 'string') return body.match(/error code\s+(\d+)/i)?.[1] || ''
+  if (body instanceof Error) return musicServiceErrorCode(body.message) || musicServiceErrorCode(body.details)
+  if (typeof body !== 'object') return ''
+  const direct = body.error_code ?? body.errcode ?? body.code
+  if (![undefined, null, ''].includes(direct)) return String(direct).trim()
+  const nestedCode = musicServiceErrorCode(body.body || body.data || body.details || body.response?.data)
+  if (nestedCode) return nestedCode
+  const nested = body.msg || body.error || body.message
+  if (nested) return musicServiceErrorCode(nested)
+  return ''
+}
+
+const isAuthExpiredCode = (code) => ['20017', '20018', '131001'].includes(String(code || '').trim())
+const isKugouRejectedCode = (code) => /^\d+$/.test(String(code || '').trim())
+
+const validateMusicAuthCookie = async (cookie) => {
+  const token = cookieValue(cookie, 'token')
+  const userid = cookieValue(cookie, 'userid')
+  if (!token || !userid) return { valid: false, userid: '' }
+  try {
+    await requestKugou('login_token', { token, userid })
+    return { valid: true, userid }
+  } catch (error) {
+    const code = musicServiceErrorCode(error?.details?.body || error?.details || error)
+    if (isAuthExpiredCode(code) || isKugouRejectedCode(code)) return { valid: false, userid, expired: true }
+    throw error
+  }
 }
 
 const bodyFromResponse = (response, moduleName) => {
@@ -83,11 +199,10 @@ const responseFromKugou = async (moduleName, params = {}, { useAuth = true } = {
     return response
   } catch (error) {
     if (error instanceof DesktopMusicServiceError) throw error
-    const body = error?.body
-    if (body && typeof body === 'object') {
-      const message = musicServiceMessage(body)
-      if (message) throw new DesktopMusicServiceError(String(message), error)
-    }
+    const message = musicServiceMessage(error)
+    if (message) throw new DesktopMusicServiceError(message, error)
+    const code = musicServiceErrorCode(error)
+    if (code) throw new DesktopMusicServiceError(`KuGouMusicApi rejected request (error code ${code})`, error)
     throw new DesktopMusicServiceError(`KuGouMusicApi request failed: ${error?.message || String(error)}`, error)
   }
 }
@@ -622,10 +737,18 @@ const service = {
   async authStatus() {
     const userCookie = await authStore.read()
     const cookie = userCookie || DEFAULT_COOKIE
-    return {
-      logged_in: Boolean(cookieValue(cookie, 'token') && cookieValue(cookie, 'userid')),
-      source: userCookie ? 'desktop' : (DEFAULT_COOKIE ? 'env' : ''),
-      userid: cookieValue(cookie, 'userid'),
+    const source = userCookie ? 'desktop' : (DEFAULT_COOKIE ? 'env' : '')
+    if (!cookieValue(cookie, 'token') || !cookieValue(cookie, 'userid')) {
+      return { logged_in: false, source: '', userid: '' }
+    }
+    try {
+      const status = await validateMusicAuthCookie(cookie)
+      if (status.valid) return { logged_in: true, source, userid: status.userid }
+      if (userCookie && status.expired) await authStore.clear()
+      return { logged_in: false, source: '', userid: '' }
+    } catch {
+      if (userCookie) await authStore.clear()
+      return { logged_in: false, source: '', userid: '' }
     }
   },
 
@@ -681,11 +804,63 @@ const service = {
   async userVip() {
     const payload = await requestKugou('user_vip_detail', {})
     const data = payload.data && typeof payload.data === 'object' ? payload.data : {}
+    return normalizeUserVip(data)
+  },
+
+  async vipClaimStatus() {
+    const [unionResult, monthRecordResult, vipResult] = await Promise.allSettled([
+      requestKugou('youth_union_vip', {}),
+      requestKugou('youth_month_vip_record', {}),
+      service.userVip(),
+    ])
+
+    const unionPayload = unionResult.status === 'fulfilled' ? unionResult.value : null
+    const monthRecordPayload = monthRecordResult.status === 'fulfilled' ? monthRecordResult.value : null
+    const vip = vipResult.status === 'fulfilled' ? vipResult.value : normalizeUserVip({})
+    return normalizeVipClaimStatus({ unionPayload, monthRecordPayload, vip })
+  },
+
+  async claimDailyVip({ receive_day } = {}) {
+    const receiveDay = normalizeReceiveDay(receive_day)
+    let claimPayload = null
+    let claimError = null
+    try {
+      claimPayload = await requestKugou('youth_day_vip', { receive_day: receiveDay })
+    } catch (error) {
+      claimError = error
+      try {
+        claimPayload = await requestKugou('youth_vip', {})
+      } catch (fallbackError) {
+        const originalCode = musicServiceErrorCode(error?.details?.body || error?.details || error)
+        const fallbackCode = musicServiceErrorCode(fallbackError?.details?.body || fallbackError?.details || fallbackError)
+        const code = fallbackCode || originalCode
+        const fallbackMessage = musicServiceMessage(fallbackError)
+        const originalMessage = musicServiceMessage(error)
+        const fallbackMissing = String(fallbackMessage || fallbackError?.message || '').includes('module not found: youth_vip')
+        const message = fallbackMissing ? originalMessage : (fallbackMessage || originalMessage)
+        throw new DesktopMusicServiceError(
+          message || `领取失败：酷狗概念版 VIP 活动可能未开放、账号不符合领取条件或接口拒绝本次领取${code ? `（错误码 ${code}）` : ''}`,
+          fallbackMissing ? claimError : fallbackError,
+        )
+      }
+    }
+    let upgradePayload = null
+    try {
+      upgradePayload = await requestKugou('youth_day_vip_upgrade', {})
+    } catch {
+      // Upgrade is a best-effort follow-up for the concept VIP trial; claiming
+      // the day itself is still useful when the upgrade endpoint is unavailable.
+    }
+
+    const status = await service.vipClaimStatus()
+    const received = Boolean(status.received_today || status.is_vip)
     return {
-      is_vip: Boolean(data.is_vip || data.vip_type),
-      vip_type: Number.parseInt(data.vip_type || 0, 10),
-      vip_expire_time: String(data.vip_expire_time || data.expire_time || ''),
-      vip_level: Number.parseInt(data.vip_level || 0, 10),
+      ...status,
+      received_today: received,
+      receive_day: receiveDay,
+      message: received
+        ? (musicServiceMessage(claimPayload) || musicServiceMessage(upgradePayload) || '领取成功')
+        : '酷狗接口已接受请求，但未返回 VIP 发放结果，可能账号不符合活动资格',
     }
   },
 
