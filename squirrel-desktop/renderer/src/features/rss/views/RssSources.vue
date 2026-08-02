@@ -28,9 +28,7 @@
               <AppIcon name="panelClose" class="h-4 w-4" />
             </Button>
             <Button
-              severity="secondary" outlined
               size="sm" icon-only
-              class="rss-add-account-button"
               aria-label="添加账号"
               @click="openAddAccount"
             >
@@ -254,11 +252,12 @@
                   >
                     <SiteIcon
                       :icon-url="getFeedIconUrl(entry.feed_id)"
+                      :label="getFeedTitle(entry.feed_id)"
                       size="xs"
                       rounded="sm"
                       class="shrink-0"
                     />
-                    <span>{{ getFeedTitle(entry.feed_id) }}</span>
+                    <span class="rss-entry-item__source-name">{{ getFeedTitle(entry.feed_id) }}</span>
                   </Button>
                   <div class="rss-entry-item__status">
                     <AppIcon v-if="entry.is_starred" name="star" class="h-3 w-3 text-warning fill-warning" />
@@ -332,7 +331,11 @@
                   class="rss-reader-source-button"
                   title="查看该订阅源的所有文章"
                 >
-                  <SiteIcon :icon-url="getFeedIconUrl(readingEntry.feed_id)" size="xs" rounded="sm" class="shrink-0" />
+                  <SiteIcon
+                    :icon-url="getFeedIconUrl(readingEntry.feed_id)"
+                    :label="getFeedTitle(readingEntry.feed_id)"
+                    size="xs" rounded="sm" class="shrink-0"
+                  />
                   <span class="rss-reader-source-title" :title="getFeedTitle(readingEntry.feed_id)">
                     {{ getFeedTitle(readingEntry.feed_id) }}
                   </span>
@@ -377,7 +380,7 @@
                 :aria-pressed="readingEntry.is_starred"
                 @click="toggleStarStatus(readingEntry)"
               >
-                <AppIcon name="star" class="h-4 w-4" :class="readingEntry.is_starred ? 'text-warning fill-amber-500' : ''" />
+                <AppIcon name="star" class="h-4 w-4" :class="readingEntry.is_starred ? 'text-warning fill-warning' : ''" />
               </Button>
 
               <!-- 取消订阅该源 -->
@@ -1328,13 +1331,12 @@ onUnmounted(() => {
 }
 
 .rss-source-controls {
-  background: transparent;
+  padding: var(--space-3) var(--space-4);
 }
 
 .rss-source-pane-toggle {
   display: none;
   flex: 0 0 auto;
-  color: hsl(var(--muted-foreground));
 }
 
 @container workbench (max-width: 47.999rem) {
@@ -1347,20 +1349,6 @@ onUnmounted(() => {
   color: hsl(var(--foreground));
 }
 
-.rss-add-account-button {
-  border-color: transparent;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  font-weight: 700;
-}
-
-.rss-add-account-button:hover {
-  border-color: transparent;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  filter: brightness(1.08);
-}
-
 .rss-sync-status {
   display: flex;
   align-items: center;
@@ -1368,7 +1356,7 @@ onUnmounted(() => {
   min-height: 2rem;
   padding-left: 0.5rem;
   color: hsl(var(--muted-foreground) / 0.88);
-  font-size: 0.75rem;
+  font-size: var(--app-text-secondary-size);
 }
 
 .rss-sync-status__indicator {
@@ -1450,7 +1438,6 @@ onUnmounted(() => {
 
 .rss-entry-header {
   gap: var(--space-2);
-  padding: var(--space-3);
   background: transparent;
 }
 
@@ -1536,7 +1523,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   color: hsl(var(--muted-foreground) / 0.68);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-badge-size);
 }
 
 .rss-entry-item {
@@ -1550,6 +1537,14 @@ onUnmounted(() => {
   padding: 0.875rem 1rem;
   text-align: left;
   outline: none;
+}
+
+/* AppContentRow 的 .app-content-row__content 默认是 row 方向 flex，slot 里的
+   meta-row / content / footer 会被并排挤压（meta-row 缩到内容宽、source 按钮
+   被压扁、图标溢出到行左）。收窄为 column 后三块垂直堆叠、水平拉伸。 */
+.rss-entry-item :deep(.app-content-row__content) {
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .rss-entry-stack :deep(.app-selectable-list-item--flush.is-selected) {
@@ -1579,7 +1574,7 @@ onUnmounted(() => {
   height: auto;
   padding: 0;
   color: hsl(var(--muted-foreground) / 0.9);
-  font-size: 0.75rem;
+  font-size: var(--app-text-secondary-size);
   font-weight: 600;
 }
 
@@ -1588,7 +1583,7 @@ onUnmounted(() => {
   color: hsl(var(--foreground));
 }
 
-.rss-entry-item__source span {
+.rss-entry-item__source-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1607,7 +1602,7 @@ onUnmounted(() => {
 
 .rss-entry-item__date {
   color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-badge-size);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1615,8 +1610,8 @@ onUnmounted(() => {
 .rss-entry-item__title {
   min-width: 0;
   margin: 0;
-  color: hsl(var(--foreground) / 0.94);
-  font-size: 0.9375rem;
+  color: hsl(var(--foreground));
+  font-size: var(--app-h3-size);
   font-weight: 650;
   line-height: 1.4;
   transition: color var(--duration-fast) var(--ease-default);
@@ -1635,6 +1630,15 @@ onUnmounted(() => {
 .rss-entry-item:focus-visible .rss-entry-item__title,
 .rss-entry-item.is-selected .rss-entry-item__title {
   color: hsl(var(--foreground));
+}
+
+/* 已读行在 hover/选中时仍保留与未读的区分：降色 + 降字重不被上面的
+   hover/selected 提升规则覆盖（specificity 0,3,0 赢 0,2,0）。 */
+.rss-entry-item.is-read:hover .rss-entry-item__title,
+.rss-entry-item.is-read:focus-visible .rss-entry-item__title,
+.rss-entry-item.is-read.is-selected .rss-entry-item__title {
+  color: hsl(var(--foreground) / 0.78);
+  font-weight: 550;
 }
 
 .rss-entry-item__summary {
@@ -1660,7 +1664,7 @@ onUnmounted(() => {
   min-width: 0;
   margin-top: 0.625rem;
   color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-badge-size);
 }
 
 .rss-reader-pane {
@@ -1697,7 +1701,7 @@ onUnmounted(() => {
   z-index: 30;
   display: flex;
   flex-direction: column;
-  border-inline-start: 1px solid hsl(var(--border) / 0.42);
+  border-inline-start: 1px solid var(--app-hairline);
   background: hsl(var(--card));
 }
 
@@ -1709,7 +1713,7 @@ onUnmounted(() => {
   flex: none;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid hsl(var(--border) / 0.38);
+  border-bottom: 1px solid var(--app-hairline);
   background: hsl(var(--card));
   padding: 0 1.5rem;
 }
@@ -1723,7 +1727,7 @@ onUnmounted(() => {
 
 .rss-browser-toolbar__label {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 700;
 }
 
@@ -1777,19 +1781,19 @@ onUnmounted(() => {
   max-width: 20rem;
   flex-direction: column;
   gap: 0.375rem;
-  border: 1px solid hsl(var(--border) / 0.72);
+  border: 1px solid var(--app-surface-border-subtle);
   border-radius: var(--radius-md);
   background: hsl(var(--popover));
   padding: 0.75rem;
   color: hsl(var(--popover-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-badge-size);
   line-height: 1.55;
   box-shadow: var(--app-floating-shadow);
 }
 
 .rss-browser-alert__title {
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-body-size);
   font-weight: 600;
 }
 
@@ -1811,7 +1815,7 @@ onUnmounted(() => {
   overflow: hidden;
   max-width: 13rem;
   color: hsl(var(--foreground) / 0.85);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1826,10 +1830,6 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.rss-reader-actions {
-  gap: 0.125rem;
-}
-
 .rss-reader-article {
   width: 100%;
 }
@@ -1837,14 +1837,14 @@ onUnmounted(() => {
 .rss-reader-article__header {
   margin-bottom: 1.5rem;
   padding-bottom: 1.1rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.22);
+  border-bottom: 1px solid var(--app-hairline);
 }
 
 .rss-reader-article__category {
   display: block;
   margin-bottom: 0.625rem;
   color: hsl(var(--muted-foreground) / 0.82);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-badge-size);
   font-weight: 650;
 }
 
@@ -1872,7 +1872,7 @@ onUnmounted(() => {
   gap: 0.375rem;
   margin-top: 0.75rem;
   color: hsl(var(--muted-foreground) / 0.7);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-badge-size);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1884,7 +1884,7 @@ onUnmounted(() => {
   width: 100%;
   justify-content: space-between;
   padding: 0 0.75rem;
-  font-size: 0.75rem;
+  font-size: var(--app-text-secondary-size);
   font-weight: 500;
 }
 
@@ -1899,7 +1899,7 @@ onUnmounted(() => {
   min-height: 2rem;
   padding: 0 0.625rem;
   color: hsl(var(--foreground) / 0.82);
-  font-size: 0.75rem;
+  font-size: var(--app-text-secondary-size);
   font-weight: 650;
 }
 
@@ -1925,26 +1925,7 @@ onUnmounted(() => {
 }
 
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .animate-fade-in {
-    animation: none;
-  }
-
   .rss-entry-item {
     transition: none;
   }

@@ -48,7 +48,7 @@ defineEmits<{
 .rss-image-lightbox {
   position: fixed;
   inset: 0;
-  z-index: var(--z-sidebar, 60);
+  z-index: var(--z-dialog);
   display: flex;
   align-items: center;
   justify-content: center;

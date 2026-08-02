@@ -104,13 +104,13 @@ defineEmits<{
   height: auto;
   min-height: 3rem;
   padding: 0.375rem 0.5rem;
-  border: 1px solid hsl(var(--border) / 0.46);
-  background: hsl(var(--background) / 0.24);
+  border: 1px solid var(--app-field-border);
+  background: var(--app-field-bg);
   text-align: left;
 }
 
 .account-dropdown__trigger:hover {
-  border-color: hsl(var(--border) / 0.72);
+  border-color: var(--app-field-border-hover);
   background: var(--app-selection-bg-hover);
   color: hsl(var(--foreground));
 }

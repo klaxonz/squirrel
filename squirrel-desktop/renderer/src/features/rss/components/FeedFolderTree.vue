@@ -83,7 +83,7 @@
                 :aria-pressed="selectedFeedId === feed.id"
                 @click="$emit('selectFeed', feed.id)"
               >
-                <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
+                <SiteIcon :icon-url="feed.icon_url || null" :label="feed.title" size="xs" rounded="sm" class="shrink-0" />
                 <span class="flex-1 truncate">{{ feed.title }}</span>
               </button>
               <Button
@@ -151,7 +151,7 @@ defineEmits<{
   flex: 1 1 auto;
   flex-direction: column;
   overflow-y: auto;
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-4);
 }
 
 .feed-folder-tree__all,
@@ -173,7 +173,7 @@ defineEmits<{
 .feed-folder-tree__feed.is-selected {
   color: hsl(var(--foreground));
   font-weight: 650;
-  background: hsl(var(--foreground) / 0.045);
+  background: var(--app-selection-bg);
 }
 
 .feed-folder-tree__all-button,
@@ -218,7 +218,7 @@ defineEmits<{
 .feed-folder-tree__separator {
   height: 1px;
   margin: 0.75rem 0;
-  background: hsl(var(--border) / 0.22);
+  background: var(--app-hairline);
 }
 
 .feed-folder-tree__folders {
@@ -302,7 +302,7 @@ defineEmits<{
 
 .feed-folder-tree__feed:not(.is-selected):hover {
   color: hsl(var(--foreground));
-  background: hsl(var(--foreground) / 0.035);
+  background: var(--app-row-hover-bg);
 }
 
 .feed-folder-tree__remove {
