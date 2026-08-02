@@ -11,53 +11,53 @@
         </Alert>
       </Transition>
 
-      <div class="auth-field">
-        <label for="email" class="auth-field__label">邮箱</label>
-        <Input
-          fluid
-          id="email"
-          v-model="form.email"
-          type="email"
-          required
-          size="lg"
-          :disabled="loading"
-          autocomplete="email"
-          placeholder="you@example.com"
-          class="auth-field__input"
-        />
-      </div>
-
-      <div class="auth-field">
-        <label for="password" class="auth-field__label">密码</label>
-        <div class="auth-field__wrap">
+      <AppFormField id="email" label="邮箱" required class="auth-field">
+        <template #default="{ control }">
           <Input
+            v-bind="control"
             fluid
-            id="password"
-            v-model="form.password"
-            :type="showPassword ? 'text' : 'password'"
-            required
+            v-model="form.email"
+            type="email"
             size="lg"
             :disabled="loading"
-            autocomplete="current-password"
-            placeholder="输入密码"
-            class="auth-field__input auth-field__input--with-action"
+            autocomplete="email"
+            placeholder="you@example.com"
+            class="auth-field__input"
           />
-          <Button
-            type="button"
-            text
-            severity="secondary"
-            size="sm"
-            icon-only
-            class="auth-field__action"
-            :disabled="loading"
-            :title="showPassword ? '隐藏密码' : '显示密码'"
-            :aria-label="showPassword ? '隐藏密码' : '显示密码'"
-            @click="showPassword = !showPassword"
-          >
-            <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+        </template>
+      </AppFormField>
+
+      <AppFormField id="password" label="密码" required class="auth-field">
+        <template #default="{ control }">
+          <div class="auth-field__wrap">
+            <Input
+              v-bind="control"
+              fluid
+              v-model="form.password"
+              :type="showPassword ? 'text' : 'password'"
+              size="lg"
+              :disabled="loading"
+              autocomplete="current-password"
+              placeholder="输入密码"
+              class="auth-field__input auth-field__input--with-action"
+            />
+            <Button
+              type="button"
+              text
+              severity="secondary"
+              size="sm"
+              icon-only
+              class="auth-field__action"
+              :disabled="loading"
+              :title="showPassword ? '隐藏密码' : '显示密码'"
+              :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+              @click="showPassword = !showPassword"
+            >
+              <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
+            </Button>
+          </div>
+        </template>
+      </AppFormField>
 
       <label class="auth-checkbox" for="rememberMe">
         <Checkbox binary id="rememberMe" v-model="form.rememberMe" :disabled="loading" />
@@ -80,6 +80,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AuthEntryCard from '@/features/auth/components/AuthEntryCard.vue'
+import AppFormField from '@/shared/components/layout/AppFormField.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'

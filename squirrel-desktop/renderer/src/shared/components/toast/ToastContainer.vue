@@ -1,5 +1,11 @@
 <template>
-  <div class="app-toast" :class="[`app-toast--${toast.variant}`]" role="status">
+  <div
+    class="app-toast"
+    :class="[`app-toast--${toast.variant}`]"
+    :role="toast.variant === 'error' ? 'alert' : 'status'"
+    :aria-live="toast.variant === 'error' ? 'assertive' : 'polite'"
+    aria-atomic="true"
+  >
     <AppIcon :name="iconName" class="app-toast__icon" />
     <span class="app-toast__message">{{ toast.message }}</span>
   </div>
@@ -8,14 +14,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import type { AppIconName } from '@/shared/icons/app-icons'
 import type { ToastItem } from './useToast'
 
 const props = defineProps<{
   toast: ToastItem
 }>()
 
-// success/error carry an explicit icon; info stays neutral (no icon clutter).
-const iconName = computed(() => (props.toast.variant === 'error' ? 'warning' : 'statusSuccess'))
+const iconNames: Record<ToastItem['variant'], AppIconName> = {
+  error: 'warning',
+  info: 'info',
+  success: 'statusSuccess',
+}
+const iconName = computed(() => iconNames[props.toast.variant])
 </script>
 
 <style scoped>

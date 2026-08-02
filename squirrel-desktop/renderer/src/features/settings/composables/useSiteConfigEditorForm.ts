@@ -106,6 +106,15 @@ type LooseRecord = Record<string, any>
 
 const asString = (value: unknown): string => (typeof value === 'string' ? value : '')
 
+const isValidHttpUrl = (value: string): boolean => {
+  try {
+    const url = new URL(value.trim())
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 const buildFormFromSite = (site: LooseRecord | null | undefined, catalog: LooseRecord): SiteEditorForm => {
   const siteName = asString(site?.site_name || site?.name || site?.label || site?.slug)
   const slug = asString(site?.slug) || siteName.toLowerCase()
@@ -158,10 +167,18 @@ export interface UseSiteConfigEditorFormOptions {
   onSave: (payload: { slug: string; sitePayload: LooseRecord }) => void
 }
 
+export interface SiteEditorFieldErrors {
+  label: string
+  testUrl: string
+  rateLimitMin: string
+  rateLimitMax: string
+}
+
 export interface UseSiteConfigEditorFormReturn {
   siteEditorForm: Ref<SiteEditorForm>
   localError: Ref<string>
   resolvedError: ComputedRef<string>
+  fieldErrors: Ref<SiteEditorFieldErrors>
   setSiteEditorBooleanField: (key: keyof SiteEditorForm, value: unknown) => void
   handleSave: () => void
 }
@@ -173,6 +190,17 @@ export function useSiteConfigEditorForm(
 
   const siteEditorForm = ref<SiteEditorForm>(createEmptyForm())
   const localError = ref('')
+  const fieldErrors = ref<SiteEditorFieldErrors>({
+    label: '',
+    testUrl: '',
+    rateLimitMin: '',
+    rateLimitMax: '',
+  })
+
+  const clearErrors = () => {
+    localError.value = ''
+    fieldErrors.value = { label: '', testUrl: '', rateLimitMin: '', rateLimitMax: '' }
+  }
 
   const resolvedError = computed(() => localError.value || errorMessage.value)
 
@@ -184,28 +212,50 @@ export function useSiteConfigEditorForm(
   const hydrateForm = () => {
     if (!site.value) {
       siteEditorForm.value = createEmptyForm()
-      localError.value = ''
+      clearErrors()
       return
     }
     siteEditorForm.value = buildFormFromSite(site.value, catalog.value)
-    localError.value = ''
+    clearErrors()
   }
 
   const handleSave = () => {
-    localError.value = ''
-    const { slug, siteName } = siteEditorForm.value
+    clearErrors()
+    const form = siteEditorForm.value
+    const { slug } = form
     if (!slug) {
       localError.value = '站点标识不可为空'
       return
     }
 
-    const form = siteEditorForm.value
-    const aliases = parseListInput(form.aliasesText)
-    const label = form.label?.trim() || siteName || slug
-    const httpHeaders = parseHeadersText(form.httpHeadersText)
-    const loginHeaders = parseHeadersText(form.loginHeadersText)
     const rateLimitMin = toNumberOrUndefined(form.rateLimitMin)
     const rateLimitMax = toNumberOrUndefined(form.rateLimitMax)
+    const hasInvalidMin = form.rateLimitEnabled && (
+      rateLimitMin === undefined || !Number.isFinite(rateLimitMin) || rateLimitMin < 0
+    )
+    const hasInvalidMax = form.rateLimitEnabled && (
+      rateLimitMax === undefined || !Number.isFinite(rateLimitMax) || rateLimitMax < 0
+    )
+
+    fieldErrors.value = {
+      label: form.label.trim() ? '' : '请输入显示名称',
+      testUrl: form.testUrl.trim() && !isValidHttpUrl(form.testUrl) ? '请输入有效的 HTTP 或 HTTPS 地址' : '',
+      rateLimitMin: hasInvalidMin ? '最小间隔必须是 0 或更大的数字' : '',
+      rateLimitMax: hasInvalidMax
+        ? '最大间隔必须是 0 或更大的数字'
+        : (!hasInvalidMin && rateLimitMin !== undefined && rateLimitMax !== undefined && rateLimitMax < rateLimitMin
+            ? '最大间隔不能小于最小间隔'
+            : ''),
+    }
+    if (Object.values(fieldErrors.value).some(Boolean)) {
+      localError.value = '请修正表单中的错误'
+      return
+    }
+
+    const aliases = parseListInput(form.aliasesText)
+    const label = form.label.trim()
+    const httpHeaders = parseHeadersText(form.httpHeadersText)
+    const loginHeaders = parseHeadersText(form.loginHeadersText)
 
     const proxyPayload: LooseRecord = {}
     const proxyFields: Array<[string, string]> = [
@@ -270,7 +320,7 @@ export function useSiteConfigEditorForm(
     (isVisible) => {
       if (!isVisible) {
         siteEditorForm.value = createEmptyForm()
-        localError.value = ''
+        clearErrors()
         return
       }
       hydrateForm()
@@ -287,6 +337,7 @@ export function useSiteConfigEditorForm(
     siteEditorForm,
     localError,
     resolvedError,
+    fieldErrors,
     setSiteEditorBooleanField,
     handleSave,
   }

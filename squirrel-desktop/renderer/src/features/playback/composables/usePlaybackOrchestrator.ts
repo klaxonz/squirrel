@@ -1,10 +1,11 @@
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import useVideoDetail from '@/features/video/composables/useVideoDetail'
 import useRelatedVideos from '@/features/video/composables/useRelatedVideos'
 import useVideoOperations from '@/features/video/composables/useVideoOperations'
 import { usePlaybackSession } from './usePlaybackSession'
 import { Logger } from '@/shared/lib/logger'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import type { MediaSource } from '@/features/playback/components/video-player/core'
 import type { SubtitleTrack } from '@/features/playback/components/video-player/plugins/subtitles'
 import type { VideoId, VideoPageVideo, VideoProfile } from '@/features/playback/types/videoPlayback'
@@ -151,6 +152,40 @@ export default function usePlaybackOrchestrator() {
   // for these facts anymore.
   const playbackSource = computed(() => session.facts.source)
   const subtitleTracks = computed(() => session.facts.subtitles)
+  const loadingMetadata = ref(false)
+  const metadataError = ref<string | null>(null)
+  let metadataRequestSeq = 0
+
+  const loadMetadataById = async (videoId: VideoId) => {
+    const seq = ++metadataRequestSeq
+    loadingMetadata.value = true
+    metadataError.value = null
+    try {
+      return await fetchVideoDetails(videoId)
+    } catch (error) {
+      if (seq !== metadataRequestSeq) return null
+      metadataError.value = errorMessage(error, '视频信息加载失败，请重试')
+      Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', error)
+      return null
+    } finally {
+      if (seq === metadataRequestSeq) loadingMetadata.value = false
+    }
+  }
+
+  const retryMetadata = async () => {
+    const videoId = session.facts.videoId
+    if (!videoId || loadingMetadata.value) return null
+    const data = await loadMetadataById(videoId)
+    if (!data || String(session.facts.videoId) !== String(videoId)) return data
+
+    maybeInjectSubtitles(videoId).catch((error) =>
+      Logger.error('[usePlaybackOrchestrator] maybeInjectSubtitles error', error)
+    )
+    fetchRelatedVideos(videoId).catch((error) =>
+      Logger.error('[usePlaybackOrchestrator] fetchRelatedVideos error', error)
+    )
+    return data
+  }
   // Stale-closure guard for superseded fetches. Plain counter (not a ref): it
   // is never read reactively — only compared inside loadAndPlayById's async
   // branches. Matches the idiom in useRelatedVideos.
@@ -184,11 +219,8 @@ export default function usePlaybackOrchestrator() {
       setVideoSnapshot(null)
     }
 
-    const hasInitialData = !!session.facts.video && session.facts.video.id === videoId
-    const detailPromise = fetchVideoDetails(videoId).catch((e) => {
-      Logger.error('[usePlaybackOrchestrator] fetchVideoDetails error', e)
-      return null
-    })
+    const hasInitialData = !!session.facts.video && String(session.facts.video.id) === String(videoId)
+    const detailPromise = loadMetadataById(videoId)
     const playbackPromise = (async () => {
       const initialPlaybackVideo = (() => {
         if (initialVideoData && typeof initialVideoData.url === 'string') {
@@ -324,9 +356,12 @@ export default function usePlaybackOrchestrator() {
     startTime,
     relatedVideos,
     loadingRelated,
+    loadingMetadata,
+    metadataError,
     playbackSource,
     subtitleTracks,
     // actions
     loadAndPlayById,
+    retryMetadata,
   }
 }

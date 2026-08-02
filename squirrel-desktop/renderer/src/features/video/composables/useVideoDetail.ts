@@ -143,17 +143,32 @@ export default function useVideoDetail(session: PlaybackSession) {
     return isNearEnd ? 0 : lastPosition
   })
 
-  const fetchVideoDetails = async (videoId: VideoId) => {
+  const fetchVideoDetails = async (videoId: VideoId, timeoutMs = 15000) => {
     const seq = ++detailRequestSeq
+    let timeout: ReturnType<typeof setTimeout> | null = null
+
     try {
-      const data = await getVideoDetail(videoId) as VideoPageVideo | null
+      const data = await Promise.race([
+        getVideoDetail(videoId) as Promise<VideoPageVideo | null>,
+        new Promise<never>((_, reject) => {
+          timeout = setTimeout(() => {
+            reject(Object.assign(new Error('视频信息加载超时，请重试'), { code: 'METADATA_TIMEOUT' }))
+          }, timeoutMs)
+        }),
+      ])
+      if (!data) throw new Error('未找到视频信息')
       if (seq === detailRequestSeq) {
-        session.update({ video: data || null })
+        session.update({ video: data })
       }
-    } catch {
-      // silent — a failed detail fetch leaves the prior video in session
+      return data
+    } catch (error) {
+      // Invalidate the unresolved request after a timeout so a late response
+      // cannot overwrite a newer route or retry result.
+      if (seq === detailRequestSeq) detailRequestSeq += 1
+      throw error
+    } finally {
+      if (timeout) clearTimeout(timeout)
     }
-    return session.facts.video
   }
 
   const maybeInjectSubtitles = async (videoId: VideoId) => {

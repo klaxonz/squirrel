@@ -1,50 +1,63 @@
 // @vitest-environment jsdom
-/** Video cards activate playback directly without stealing nested actions. */
-import { createApp, h, nextTick } from 'vue'
+import { createApp, defineComponent, h, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import VideoItem from './VideoItem.vue'
-import type { VideoListItem } from '@/features/video/types/video'
+import type { VideoListItem, VideoProfile } from '@/features/video/types/video'
 
-const { prefetchDesktopPlaybackSourceMock } = vi.hoisted(() => ({
-  prefetchDesktopPlaybackSourceMock: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  prefetch: vi.fn(),
+  toggleLike: vi.fn().mockResolvedValue(undefined),
+  deleteInteraction: vi.fn().mockResolvedValue(undefined),
+  updateRead: vi.fn().mockResolvedValue(undefined),
+  toastError: vi.fn(),
 }))
 
 vi.mock('@/features/video/composables/useVideoOperations', () => ({
-  prefetchDesktopPlaybackSource: prefetchDesktopPlaybackSourceMock,
+  prefetchDesktopPlaybackSource: mocks.prefetch,
 }))
 vi.mock('@/shared/icons/AppIcon.vue', () => ({ default: { render: () => null } }))
-vi.mock('@/features/video/components/SubscriptionAvatar.vue', () => ({ default: { render: () => null } }))
-vi.mock('@/features/video/components/feed/VideoThumbnail.vue', () => ({ default: { render: () => null } }))
-vi.mock('./ContextMenu.vue', () => ({ default: { render: () => null } }))
-vi.mock('@/shared/api', () => ({ updateVideoReadState: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/features/video/components/SubscriptionAvatar.vue', () => ({
+  default: { props: ['src', 'name'], render: () => h('span', { 'data-avatar': '' }) },
+}))
+vi.mock('./VideoThumbnail.vue', () => ({
+  default: defineComponent({
+    props: ['src', 'alt', 'blur'],
+    render() {
+      return h('span', {
+        'data-thumbnail': '',
+        'data-src': this.$props.src,
+        'data-alt': this.$props.alt,
+        'data-blur': String(this.$props.blur),
+      })
+    },
+  }),
+}))
+vi.mock('./ContextMenu.vue', () => ({
+  default: { render: () => h('div', { 'data-context-menu': '' }) },
+}))
+vi.mock('@/shared/api', () => ({ updateVideoReadState: mocks.updateRead }))
 vi.mock('@/shared/composables/useSystemConfig', () => ({
-  useSystemConfig: () => ({ config: { value: { blur_nsfw_thumbnails: false } } }),
+  useSystemConfig: () => ({ config: { value: { blur_nsfw_thumbnails: true } } }),
 }))
 vi.mock('@/shared/components/toast/useToast', () => ({
-  useToast: () => ({ error: vi.fn() }),
+  useToast: () => ({ error: mocks.toastError }),
 }))
 vi.mock('@/features/video/composables/useVideoInteraction', () => ({
   default: () => ({
     INTERACTION_TYPE: { LIKE: 1, LATER: 3 },
-    toggleLike: vi.fn().mockResolvedValue(undefined),
-    deleteInteraction: vi.fn().mockResolvedValue(undefined),
+    toggleLike: mocks.toggleLike,
+    deleteInteraction: mocks.deleteInteraction,
   }),
 }))
 
 const mountedApps: Array<ReturnType<typeof createApp>> = []
 
-afterEach(() => {
-  mountedApps.splice(0).forEach((app) => app.unmount())
-  document.body.replaceChildren()
-  prefetchDesktopPlaybackSourceMock.mockReset()
-})
-
-function mountVideoItem(onOpen: (video: VideoListItem) => void, overrides: Partial<VideoListItem> = {}) {
-  const video: VideoListItem = {
+function makeVideo(overrides: Partial<VideoListItem> = {}): VideoListItem {
+  return {
     id: 42,
     title: '直接播放测试',
     url: 'https://example.test/video/42',
-    thumbnail: '',
+    thumbnail: 'https://example.test/thumb.jpg',
     duration: null,
     last_position: 0,
     uploaded_at: null,
@@ -55,63 +68,196 @@ function mountVideoItem(onOpen: (video: VideoListItem) => void, overrides: Parti
     interaction_type: null,
     ...overrides,
   }
+}
+
+type MountOptions = {
+  video?: VideoListItem
+  layout?: 'grid' | 'list'
+  appearance?: 'default' | 'workbench'
+  showAvatar?: boolean
+  thumbnailProgress?: boolean
+}
+
+function mountVideoItem(options: MountOptions = {}) {
+  const video = options.video ?? makeVideo()
+  const handlers = {
+    open: vi.fn(),
+    profile: vi.fn(),
+    subscription: vi.fn(),
+  }
   const host = document.createElement('div')
   document.body.append(host)
   const app = createApp({
-    render: () => h(VideoItem, { video, onOpenModal: onOpen }),
+    render: () => h(VideoItem, {
+      video,
+      layout: options.layout,
+      appearance: options.appearance,
+      showAvatar: options.showAvatar,
+      thumbnailProgress: options.thumbnailProgress,
+      onOpenModal: handlers.open,
+      onGoToProfile: handlers.profile,
+      onGoToSubscription: handlers.subscription,
+    }),
   })
   mountedApps.push(app)
   app.mount(host)
-  return { host, video }
+  return { host, video, handlers }
 }
 
+function nativeKeyboardActivate(button: HTMLButtonElement, key: 'Enter' | ' ') {
+  button.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+  button.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true, cancelable: true }))
+  // jsdom does not synthesize the native click generated by keyboard activation.
+  button.click()
+}
+
+function getButton(host: HTMLElement, selector: string) {
+  const button = host.querySelector<HTMLButtonElement>(selector)
+  expect(button).not.toBeNull()
+  return button!
+}
+
+afterEach(() => {
+  mountedApps.splice(0).forEach((app) => app.unmount())
+  document.body.replaceChildren()
+  vi.clearAllMocks()
+})
+
 describe('VideoItem playback activation', () => {
-  it('opens playback on click and Enter while nested quick actions stay independent', async () => {
-    const onOpen = vi.fn()
-    const { host, video } = mountVideoItem(onOpen)
-    const card = host.querySelector<HTMLElement>('.video-item')
-    expect(card).not.toBeNull()
+  it('uses a sibling native playback button for click, Enter, and Space', async () => {
+    const { host, video, handlers } = mountVideoItem()
+    const shell = host.querySelector<HTMLElement>('.video-item')!
+    const playback = getButton(host, '[data-playback-control]')
 
-    card?.click()
-    card?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    expect(shell.tagName).toBe('ARTICLE')
+    expect(shell.hasAttribute('role')).toBe(false)
+    expect(shell.hasAttribute('tabindex')).toBe(false)
+    expect(playback.closest('button')).toBe(playback)
+    expect(playback.querySelector('button')).toBeNull()
+
+    playback.click()
+    nativeKeyboardActivate(playback, 'Enter')
+    nativeKeyboardActivate(playback, ' ')
     await nextTick()
 
-    expect(onOpen).toHaveBeenCalledTimes(2)
-    expect(onOpen).toHaveBeenNthCalledWith(1, video)
-    expect(onOpen).toHaveBeenNthCalledWith(2, video)
-
-    host.querySelector<HTMLButtonElement>('.video-item__quick-btn')?.click()
-    await nextTick()
-    expect(onOpen).toHaveBeenCalledTimes(2)
+    expect(handlers.open).toHaveBeenCalledTimes(3)
+    expect(handlers.open).toHaveBeenCalledWith(video)
   })
 
-  it('keeps playback progress on the thumbnail without interaction badges', () => {
-    const { host } = mountVideoItem(vi.fn(), {
-      duration: 120,
-      last_position: 30,
-      is_read: true,
-      interaction_type: 1,
+  it('keeps source and every interaction action independent for pointer and keyboard', async () => {
+    const profile: VideoProfile = {
+      id: 9,
+      name: '测试来源',
+      url: 'https://example.test/channel/9',
+      profile_source: 'subscription',
+    }
+    const { host, handlers } = mountVideoItem({
+      layout: 'list',
+      showAvatar: true,
+      video: makeVideo({ subscriptions: [profile] }),
     })
 
-    expect(host.querySelector('.video-item__progress')).not.toBeNull()
-    expect(host.querySelector('.video-item__flags')).toBeNull()
-  })
-
-  it('prefetches desktop playback on hover and left pointerdown', async () => {
-    const { host, video } = mountVideoItem(vi.fn(), {
-      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    })
-    const card = host.querySelector<HTMLElement>('.video-item')
-    expect(card).not.toBeNull()
-
-    card?.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }))
-    card?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+    nativeKeyboardActivate(getButton(host, '[data-profile-action]'), 'Enter')
+    nativeKeyboardActivate(getButton(host, '[data-action="like"]'), 'Enter')
+    nativeKeyboardActivate(getButton(host, '[data-action="read"]'), ' ')
+    nativeKeyboardActivate(getButton(host, '[data-action="later"]'), 'Enter')
+    nativeKeyboardActivate(getButton(host, '[data-action="join"]'), ' ')
     await nextTick()
 
-    expect(prefetchDesktopPlaybackSourceMock).toHaveBeenCalledTimes(2)
-    expect(prefetchDesktopPlaybackSourceMock).toHaveBeenNthCalledWith(1, expect.objectContaining({
+    expect(handlers.open).not.toHaveBeenCalled()
+    expect(handlers.profile).toHaveBeenCalledWith(profile)
+    expect(handlers.subscription).toHaveBeenCalledWith(profile.id)
+    expect(mocks.toggleLike).toHaveBeenNthCalledWith(1, 42, 1)
+    expect(mocks.toggleLike).toHaveBeenNthCalledWith(2, 42, 3)
+    expect(mocks.deleteInteraction).toHaveBeenCalledWith(42)
+    expect(mocks.updateRead).toHaveBeenCalledWith(42, true)
+  })
+
+  it('updates interaction controls optimistically without opening playback', async () => {
+    const { host, handlers } = mountVideoItem({ layout: 'list' })
+    const like = getButton(host, '[data-action="like"]')
+    const read = getButton(host, '[data-action="read"]')
+    const later = getButton(host, '[data-action="later"]')
+
+    like.click()
+    await nextTick()
+    expect(like.getAttribute('aria-pressed')).toBe('true')
+    read.click()
+    await nextTick()
+    expect(read.getAttribute('aria-pressed')).toBe('true')
+    later.click()
+    await nextTick()
+
+    expect(later.getAttribute('aria-pressed')).toBe('true')
+    expect(like.getAttribute('aria-pressed')).toBe('false')
+    expect(handlers.open).not.toHaveBeenCalled()
+  })
+})
+
+describe('VideoItem presentation and supporting behavior', () => {
+  it.each([
+    { layout: 'grid' as const, appearance: 'default' as const, className: 'video-item--grid' },
+    { layout: 'list' as const, appearance: 'default' as const, className: 'video-item--card' },
+    { layout: 'list' as const, appearance: 'workbench' as const, className: 'video-item--row' },
+  ])('renders $className with one playback control', ({ layout, appearance, className }) => {
+    const { host } = mountVideoItem({ layout, appearance })
+    expect(host.querySelector('.video-item')?.classList.contains(className)).toBe(true)
+    expect(host.querySelectorAll('[data-playback-control]')).toHaveLength(1)
+  })
+
+  it('renders bounded progress and propagates NSFW blur to the thumbnail', () => {
+    const { host } = mountVideoItem({
+      video: makeVideo({
+        duration: 120,
+        last_position: 30,
+        subscriptions: [{ id: 2, name: 'NSFW', url: 'https://example.test/2', is_nsfw: true }],
+      }),
+    })
+    const progress = host.querySelector<HTMLElement>('[role="progressbar"]')!
+
+    expect(progress.getAttribute('aria-valuenow')).toBe('25')
+    expect(progress.getAttribute('aria-label')).toBe('已观看 25%')
+    expect(progress.querySelector<HTMLElement>('.video-item__progress-fill')?.style.width).toBe('25%')
+    expect(host.querySelector('[data-thumbnail]')?.getAttribute('data-blur')).toBe('true')
+  })
+
+  it('honors disabled thumbnail progress', () => {
+    const { host } = mountVideoItem({
+      thumbnailProgress: false,
+      video: makeVideo({ duration: 120, last_position: 30 }),
+    })
+    expect(host.querySelector('[role="progressbar"]')).toBeNull()
+  })
+
+  it('prefetches playback on hover and left pointerdown', async () => {
+    const { host, video } = mountVideoItem({
+      video: makeVideo({ url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }),
+    })
+    const shell = host.querySelector<HTMLElement>('.video-item')!
+
+    shell.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }))
+    shell.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+    await nextTick()
+
+    expect(mocks.prefetch).toHaveBeenCalledTimes(2)
+    expect(mocks.prefetch).toHaveBeenNthCalledWith(1, expect.objectContaining({
       id: video.id,
       url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     }))
+  })
+
+  it('opens the context menu from the noninteractive shell', async () => {
+    const { host, handlers } = mountVideoItem()
+    host.querySelector('.video-item')?.dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 18,
+      clientY: 24,
+    }))
+    await nextTick()
+    await nextTick()
+
+    expect(document.body.querySelector('[data-context-menu]')).not.toBeNull()
+    expect(handlers.open).not.toHaveBeenCalled()
   })
 })

@@ -2,6 +2,7 @@
   <AppPageShell class="channel-detail-page" variant="compact" surface="consume" width="media">
     <!-- Channel Header -->
     <ChannelHeader
+      ref="channelHeaderRef"
       :subscription-id="subscriptionId"
       :mode="channelDataMode"
       @update:mode="handleChannelModeChange"
@@ -56,10 +57,10 @@
     <div class="app-page-content app-page-content--media">
 
       <!-- Error -->
-      <div v-if="loadError">
-        <AppEmptyState variant="error" title="加载失败" :copy="loadError">
+      <div v-if="feedError">
+        <AppEmptyState variant="error" title="频道内容加载失败" :copy="feedError">
           <template #actions>
-            <Button severity="secondary" outlined size="sm" @click="refreshCurrentList">重试</Button>
+            <Button severity="secondary" outlined size="sm" @click="refreshContent">重试内容加载</Button>
           </template>
         </AppEmptyState>
       </div>
@@ -88,7 +89,8 @@
             @goToProfile="openProfile"
             @goToSubscription="openSubscription"
             @openModal="openVideo"
-            @error="loadError = String($event || '')"
+            @error="feedError = String($event || '')"
+            @loaded="feedError = null"
             @loading-change="isRefreshing = !!$event"
           />
         </keep-alive>
@@ -128,7 +130,8 @@ const { activeTab, nsfw, sortBy, special, timeRange, duration, contentType, filt
 
 const tabs = ref(VIDEO_TABS)
 const isRefreshing = ref(false)
-const loadError = ref<string | null>(null)
+const feedError = ref<string | null>(null)
+const channelHeaderRef = ref<{ refresh?: () => Promise<void> } | null>(null)
 // ponytail: child component (VideoTab via router-view) shares a refresh() surface.
 const videoChildRef = ref<{ refresh?: () => void } | null>(null)
 
@@ -166,13 +169,15 @@ const remoteChannelKey = computed(() => {
   return channel ? `${channel.site || ''}::${channel.url || ''}` : ''
 })
 
+const refreshContent = () => {
+  feedError.value = null
+  if (channelDataMode.value === 'remote') return fetchRemoteChannel(true)
+  return videoChildRef.value?.refresh?.()
+}
+
 const refreshCurrentList = () => {
-  loadError.value = null
-  if (channelDataMode.value === 'remote') {
-    fetchRemoteChannel(true)
-    return
-  }
-  videoChildRef.value?.refresh?.()
+  void channelHeaderRef.value?.refresh?.()
+  return refreshContent()
 }
 
 const handleChannelSynced = () => {

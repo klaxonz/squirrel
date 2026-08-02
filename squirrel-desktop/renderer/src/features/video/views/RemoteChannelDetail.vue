@@ -1,9 +1,9 @@
 <template>
   <AppPageShell variant="compact" surface="consume" width="media">
-    <div v-if="errorMessage" class="app-page-content app-page-content--media">
-        <AppEmptyState variant="error" title="加载失败" :copy="errorMessage">
+    <div v-if="pageError" class="app-page-content app-page-content--media">
+        <AppEmptyState variant="error" title="加载失败" :copy="pageError">
           <template #actions>
-            <Button severity="secondary" outlined size="sm" @click="refresh">重试</Button>
+            <Button v-if="!queryError" severity="secondary" outlined size="sm" @click="refresh">重试</Button>
           </template>
         </AppEmptyState>
     </div>
@@ -77,22 +77,26 @@
               {{ subscriptionButtonText }}
             </Button>
           </div>
+          <div class="remote-channel-subscription-feedback">
+            <p v-if="subscriptionError" role="alert" class="remote-channel-subscription-error">
+              {{ subscriptionError }}
+              <button type="button" class="remote-channel-inline-action" @click="retrySubscriptionAction">重试</button>
+            </p>
+            <p v-else role="status" aria-live="polite" class="remote-channel-subscription-status">
+              {{ subscriptionStatusText }}
+            </p>
+          </div>
         </div>
       </section>
 
       <div ref="root" class="app-page-content app-page-content--media">
 
       <div v-if="items.length > 0" class="remote-channel-grid app-video-grid app-video-grid--feed">
-        <!-- Native article card — shared Button defaults to h-9 and collapses media. -->
         <article
           v-for="item in items"
           :key="item.site + ':' + item.url"
           class="remote-channel-card group"
-          role="button"
-          tabindex="0"
-          @click="openResult(item)"
-          @keydown.enter.prevent="openResult(item)"
-          @keydown.space.prevent="openResult(item)"
+          :class="{ 'remote-channel-card--disabled': !canPlayRemoteResult(item) }"
         >
           <div class="remote-channel-thumb">
             <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" />
@@ -101,12 +105,37 @@
             </span>
           </div>
 
-          <div class="flex min-w-0 flex-col gap-1 px-0.5">
+          <div class="remote-channel-card__body">
             <h3 class="remote-channel-title">
               {{ item.title }}
             </h3>
             <div class="remote-channel-meta">
               {{ displayDate(item) }}
+            </div>
+            <button
+              v-if="canPlayRemoteResult(item)"
+              type="button"
+              class="remote-channel-primary-action"
+              :aria-label="`播放 ${item.title}`"
+              @click="openResult(item)"
+            >
+              <AppIcon name="play" class="h-3.5 w-3.5 fill-current" />
+              播放
+            </button>
+            <a
+              v-else-if="externalResultUrl(item)"
+              :href="externalResultUrl(item) || undefined"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="remote-channel-external-action"
+              :aria-label="`在源站打开 ${item.title}`"
+            >
+              <AppIcon name="externalLink" class="h-3.5 w-3.5" />
+              在源站打开
+            </a>
+            <div v-else class="remote-channel-unavailable">
+              <button type="button" disabled class="remote-channel-disabled-action">无法播放</button>
+              <span>该视频没有可用的播放或源站地址</span>
             </div>
           </div>
         </article>
@@ -116,8 +145,10 @@
         <VideoSkeleton v-for="i in skeletonCount" :key="i" :delay="(i - 1) * 50" />
       </div>
 
-      <div v-if="items.length > 0 && !allLoaded" class="remote-channel-load-more">
+      <div v-if="items.length > 0" class="remote-channel-pagination" role="status" aria-live="polite">
+        <span>{{ paginationStatusText }}</span>
         <Button
+          v-if="!allLoaded"
           type="button"
           severity="secondary" outlined
           :disabled="loading"
@@ -127,11 +158,11 @@
         </Button>
       </div>
 
-      <div v-if="!loading && !errorMessage && items.length === 0" class="app-page-empty app-page-empty--compact">
+      <div v-if="!loading && !pageError && items.length === 0" class="app-page-empty app-page-empty--compact">
         <AppEmptyState variant="plain" icon="inbox" title="暂无频道视频" />
       </div>
 
-      <div ref="loadMoreTrigger" class="h-20 w-full" />
+      <div v-if="items.length && !allLoaded" ref="loadMoreTrigger" class="h-20 w-full" aria-hidden="true" />
       </div>
     </template>
   </AppPageShell>
@@ -192,6 +223,7 @@ const REMOTE_PLAYABLE_SITE_PATTERNS: Record<string, RegExp> = {
   bilibili: /(?:bilibili\.com\/video\/|b23\.tv\/)/i,
   youtube: /(?:youtube\.com\/|youtu\.be\/)/i,
 }
+const SUPPORTED_REMOTE_CHANNEL_SITES = new Set(Object.keys(REMOTE_PLAYABLE_SITE_PATTERNS))
 
 const route = useRoute()
 const router = useRouter()
@@ -215,8 +247,12 @@ const isSubscriptionChecked = ref(false)
 const isSubscribed = ref(false)
 const isSubscribing = ref(false)
 const subscriptionId = ref<number | null>(null)
+const subscriptionError = ref('')
+const failedSubscriptionAction = ref<'status' | 'toggle' | null>(null)
 
 let requestToken = 0
+let subscriptionStatusToken = 0
+let subscriptionMutationToken = 0
 let observer: IntersectionObserver | null = null
 let scrollRoot: HTMLElement | null = null
 let loadedChannelKey = ''
@@ -235,8 +271,23 @@ const queryValue = (key: string) => {
   return Array.isArray(value) ? String(value[0] || '') : String(value || '')
 }
 
-const site = computed(() => queryValue('site'))
-const channelUrl = computed(() => queryValue('url'))
+const site = computed(() => queryValue('site').trim().toLowerCase())
+const channelUrl = computed(() => queryValue('url').trim())
+const isHttpUrl = (value: string) => {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+const queryError = computed(() => {
+  if (!site.value || !channelUrl.value) return '缺少远端频道站点或地址'
+  if (!SUPPORTED_REMOTE_CHANNEL_SITES.has(site.value)) return `不支持的远端频道站点：${site.value}`
+  if (!isHttpUrl(channelUrl.value)) return '远端频道地址必须是有效的 HTTP(S) 地址'
+  return ''
+})
+const pageError = computed(() => queryError.value || errorMessage.value)
 const siteLabel = computed(() => {
   const labels: Record<string, string> = {
     bilibili: 'Bilibili',
@@ -247,8 +298,19 @@ const siteLabel = computed(() => {
 
 const subscriptionButtonText = computed(() => {
   if (isCheckingSubscription.value) return '检查中'
-  if (isSubscribing.value) return '订阅中'
+  if (isSubscribing.value) return isSubscribed.value ? '取消中' : '订阅中'
   return isSubscriptionChecked.value && isSubscribed.value ? '取消订阅' : '订阅'
+})
+const subscriptionStatusText = computed(() => {
+  if (isCheckingSubscription.value) return '正在检查订阅状态'
+  if (isSubscribing.value) return isSubscribed.value ? '正在取消订阅' : '正在订阅'
+  if (!isSubscriptionChecked.value) return '订阅状态尚未确认'
+  return isSubscribed.value ? '已订阅此频道' : '尚未订阅此频道'
+})
+const paginationStatusText = computed(() => {
+  if (loading.value) return `正在加载第 ${currentPage.value + 1} 页，已显示 ${items.value.length} 个视频`
+  if (allLoaded.value) return `已加载全部 ${items.value.length} 个视频`
+  return `已显示 ${items.value.length} 个视频，第 ${currentPage.value} 页`
 })
 const localSubscriptionRoute = computed(() => {
   if (!isSubscriptionChecked.value || !isSubscribed.value || !subscriptionId.value) return null
@@ -302,13 +364,15 @@ const appendUniqueItems = (nextItems: RemoteSearchItem[]) => {
   items.value = items.value.concat(uniqueItems)
 }
 
+const replaceWithUniqueItems = (nextItems: RemoteSearchItem[]) => {
+  items.value = []
+  appendUniqueItems(nextItems)
+}
+
 const loadPage = async (page: number) => {
+  if (queryError.value) return
   if (!isDesktopEnv() || typeof window.desktopApp?.getRemoteChannel !== 'function') {
     errorMessage.value = '当前桌面端不支持远端频道'
-    return
-  }
-  if (!site.value || !channelUrl.value) {
-    errorMessage.value = '缺少远端频道地址'
     return
   }
 
@@ -335,7 +399,7 @@ const loadPage = async (page: number) => {
 
     profile.value = result.profile || routeProfile.value
     const nextItems = Array.isArray(result.items) ? result.items : []
-    if (page === 1) items.value = nextItems
+    if (page === 1) replaceWithUniqueItems(nextItems)
     else appendUniqueItems(nextItems)
     currentPage.value = page
     nextCursor.value = result.next_cursor || null
@@ -355,12 +419,15 @@ const loadPage = async (page: number) => {
 }
 
 const refresh = async () => {
+  requestToken += 1
   items.value = []
   profile.value = routeProfile.value
   currentPage.value = 1
   nextCursor.value = null
   allLoaded.value = false
+  errorMessage.value = ''
   loadedChannelKey = channelKey.value
+  if (queryError.value) return
   await loadPage(1)
 }
 
@@ -378,52 +445,74 @@ const checkNearBottom = () => {
 }
 
 const refreshSubscriptionStatus = async (url: string) => {
+  const currentToken = ++subscriptionStatusToken
   isSubscribed.value = false
   isSubscriptionChecked.value = false
   subscriptionId.value = null
-  if (!url) return
+  subscriptionError.value = ''
+  failedSubscriptionAction.value = null
+  if (!url || queryError.value) return
 
   isCheckingSubscription.value = true
   try {
     const data = await getSubscriptionStatus(url)
-    if (url !== channelUrl.value) return
+    if (currentToken !== subscriptionStatusToken || url !== channelUrl.value) return
     isSubscribed.value = data?.is_subscribed === true
     subscriptionId.value = data?.subscription_id ?? null
     isSubscriptionChecked.value = true
-  } catch {
-    if (url !== channelUrl.value) return
-    // silent — subscription status check failure just leaves it unchecked
+  } catch (error: unknown) {
+    if (currentToken !== subscriptionStatusToken || url !== channelUrl.value) return
+    subscriptionError.value = resolveError(error, '无法检查订阅状态')
+    failedSubscriptionAction.value = 'status'
   } finally {
-    isCheckingSubscription.value = false
+    if (currentToken === subscriptionStatusToken) isCheckingSubscription.value = false
   }
 }
 
 watch(channelUrl, async (url) => {
+  subscriptionMutationToken += 1
+  isSubscribing.value = false
   await refreshSubscriptionStatus(url)
 }, { immediate: true })
 
 const handleSubscribe = async () => {
   const url = channelUrl.value
-  if (!url || isSubscribing.value) return
+  if (!url || queryError.value || isSubscribing.value) return
 
+  const currentToken = ++subscriptionMutationToken
+  const wasSubscribed = isSubscribed.value
+  const currentSubscriptionId = subscriptionId.value
+  subscriptionError.value = ''
+  failedSubscriptionAction.value = null
   isSubscribing.value = true
   try {
-    const data = isSubscribed.value && subscriptionId.value
-      ? await unsubscribe(subscriptionId.value)
+    const data = wasSubscribed && currentSubscriptionId
+      ? await unsubscribe(currentSubscriptionId)
       : await subscribe(url)
+    if (currentToken !== subscriptionMutationToken || url !== channelUrl.value) return
 
-    if (!isSubscribed.value) {
+    if (!wasSubscribed) {
       isSubscribed.value = data?.is_subscribed === true
       subscriptionId.value = data?.subscription_id ?? null
       isSubscriptionChecked.value = true
     }
 
     await refreshSubscriptionStatus(url)
-  } catch {
-    // silent — a failed subscribe/unsubscribe leaves the toggle unchanged
+  } catch (error: unknown) {
+    if (currentToken !== subscriptionMutationToken || url !== channelUrl.value) return
+    subscriptionError.value = resolveError(error, wasSubscribed ? '取消订阅失败' : '订阅失败')
+    failedSubscriptionAction.value = 'toggle'
   } finally {
-    isSubscribing.value = false
+    if (currentToken === subscriptionMutationToken) isSubscribing.value = false
   }
+}
+
+const retrySubscriptionAction = async () => {
+  if (failedSubscriptionAction.value === 'toggle') {
+    await handleSubscribe()
+    return
+  }
+  await refreshSubscriptionStatus(channelUrl.value)
 }
 
 const openLocalChannel = async () => {
@@ -461,6 +550,11 @@ const buildRemoteVideoSeed = (item: RemoteSearchItem) => {
 const canPlayRemoteResult = (item: RemoteSearchItem) => {
   const pattern = REMOTE_PLAYABLE_SITE_PATTERNS[item.site]
   return !!pattern && pattern.test(String(item.url || ''))
+}
+
+const externalResultUrl = (item: RemoteSearchItem) => {
+  const url = String(item.url || '').trim()
+  return isHttpUrl(url) ? url : ''
 }
 
 const openResult = async (item: RemoteSearchItem) => {
@@ -613,6 +707,36 @@ onUnmounted(() => {
   gap: var(--space-2);
 }
 
+.remote-channel-subscription-feedback {
+  flex-basis: 100%;
+  min-height: 1.25rem;
+  text-align: right;
+}
+
+.remote-channel-subscription-status,
+.remote-channel-subscription-error {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.remote-channel-subscription-error {
+  color: hsl(var(--destructive));
+}
+
+.remote-channel-inline-action {
+  margin-left: 0.35rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
 .remote-channel-site-badge {
   flex: none;
   border: 1px solid var(--app-surface-border-subtle);
@@ -641,7 +765,6 @@ onUnmounted(() => {
 .remote-channel-card {
   display: flex;
   min-width: 0;
-  cursor: pointer;
   flex-direction: column;
   gap: 0.625rem;
   border: 0;
@@ -649,8 +772,9 @@ onUnmounted(() => {
   text-align: left;
 }
 
-.remote-channel-card:focus-visible {
-  outline: none;
+.remote-channel-card--disabled .remote-channel-thumb {
+  filter: saturate(0.55);
+  opacity: 0.72;
 }
 
 .remote-channel-thumb {
@@ -664,16 +788,24 @@ onUnmounted(() => {
   transition: box-shadow var(--duration-base) var(--ease-default);
 }
 
-.remote-channel-card:hover .remote-channel-thumb,
-.remote-channel-card:focus-visible .remote-channel-thumb {
+.remote-channel-card:hover .remote-channel-thumb {
   box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 
-.remote-channel-card:focus-visible .remote-channel-thumb {
+.remote-channel-card:has(:focus-visible) .remote-channel-thumb {
   box-shadow:
     0 0 0 2px hsl(var(--background)),
     0 0 0 4px hsl(var(--ring) / 0.45),
     inset 0 0 0 1px hsl(var(--foreground) / 0.16);
+}
+
+.remote-channel-card__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding-inline: 0.125rem;
 }
 
 .remote-channel-title {
@@ -694,15 +826,86 @@ onUnmounted(() => {
 }
 
 .remote-channel-meta {
+  min-height: 1rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 500;
 }
 
-.remote-channel-load-more {
-  display: flex;
+.remote-channel-primary-action,
+.remote-channel-external-action,
+.remote-channel-disabled-action {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
   justify-content: center;
-  padding: 0 1.5rem 2rem;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+  border: 1px solid hsl(var(--primary));
+  border-radius: var(--app-control-radius);
+  padding: 0.35rem 0.65rem;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.remote-channel-primary-action:focus-visible,
+.remote-channel-external-action:focus-visible,
+.remote-channel-inline-action:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.remote-channel-external-action {
+  border-color: var(--app-control-border);
+  background: var(--app-control-bg);
+  color: hsl(var(--foreground));
+}
+
+.remote-channel-unavailable {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  margin-top: 0.2rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  line-height: 1.4;
+}
+
+.remote-channel-disabled-action {
+  margin: 0;
+  border-color: var(--app-control-border);
+  background: hsl(var(--muted) / 0.65);
+  color: hsl(var(--muted-foreground));
+  cursor: not-allowed;
+}
+
+.remote-channel-pagination {
+  display: flex;
+  min-height: 4rem;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: 0 1.5rem 1rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .remote-channel-header__inner {
+    flex-wrap: wrap;
+  }
+
+  .remote-channel-header__actions,
+  .remote-channel-subscription-feedback {
+    justify-content: flex-start;
+    text-align: left;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

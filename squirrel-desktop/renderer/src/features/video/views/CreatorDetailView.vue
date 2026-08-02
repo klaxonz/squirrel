@@ -1,9 +1,9 @@
 <template>
   <AppPageShell class="creator-detail-page" variant="compact" surface="consume" width="media">
     <CreatorHeader
+      ref="creatorHeaderRef"
       :creator-id="creatorId"
       @loaded="creatorDetail = $event"
-      @error="loadError = $event"
     />
 
     <AppToolbarFrame sticky bordered variant="compact">
@@ -34,15 +34,15 @@
     </AppToolbarFrame>
 
     <div class="app-page-content app-page-content--media">
-      <div v-if="loadError">
-        <AppEmptyState variant="error" title="加载失败" :copy="loadError">
+      <div v-if="feedError">
+        <AppEmptyState variant="error" title="创作者内容加载失败" :copy="feedError">
           <template #actions>
-            <Button severity="secondary" outlined size="sm" @click="refreshCurrentList">重试</Button>
+            <Button severity="secondary" outlined size="sm" @click="refreshContent">重试内容加载</Button>
           </template>
         </AppEmptyState>
       </div>
 
-      <router-view v-else v-slot="{ Component, route: childRoute }">
+      <router-view v-slot="{ Component, route: childRoute }">
         <keep-alive :max="10">
           <component
             :is="Component"
@@ -54,7 +54,8 @@
             @goToProfile="openProfile"
             @goToSubscription="openSubscription"
             @openModal="openVideo"
-            @error="loadError = String($event || '')"
+            @error="feedError = String($event || '')"
+            @loaded="feedError = null"
             @loading-change="isRefreshing = !!$event"
           />
         </keep-alive>
@@ -92,15 +93,21 @@ const { activeTab, nsfw, sortBy, special, timeRange, duration, contentType, filt
 
 const tabs = ref(VIDEO_TABS)
 const isRefreshing = ref(false)
-const loadError = ref<string | null>(null)
+const feedError = ref<string | null>(null)
+const creatorHeaderRef = ref<{ refresh?: () => Promise<void> } | null>(null)
 const videoChildRef = ref<{ refresh?: () => void } | null>(null)
 const creatorDetail = ref<CreatorDetail | null>(null)
 
 const childFilters = computed(() => filters.value)
 
+const refreshContent = () => {
+  feedError.value = null
+  return videoChildRef.value?.refresh?.()
+}
+
 const refreshCurrentList = () => {
-  loadError.value = null
-  videoChildRef.value?.refresh?.()
+  void creatorHeaderRef.value?.refresh?.()
+  return refreshContent()
 }
 
 const setSpecialFilter = (value: string) => {

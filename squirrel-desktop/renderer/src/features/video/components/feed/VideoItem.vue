@@ -7,293 +7,42 @@
         : 'video-item--grid',
       `video-item--appearance-${appearance}`,
     ]"
-    role="button"
-    tabindex="0"
-    :aria-label="`播放：${video.title}`"
     @contextmenu.prevent="showContextMenu"
     @pointerenter="prefetchPlayback"
     @pointerdown.left="prefetchPlayback"
-    @click="handleOpen"
-    @keydown.enter.prevent="handleOpen"
-    @keydown.space.prevent="handleOpen"
   >
-    <!-- Workbench list: horizontal media row (fills wide canvas without giant 16:9). -->
-    <template v-if="layout === 'list' && appearance === 'workbench'">
-      <div
-        class="video-item__thumb video-item__thumb--row"
-      >
-        <VideoThumbnail
-          :src="thumbnailSrc"
-          :alt="video.title"
-          fit="cover"
-          interactive
-          :blur="shouldBlurThumbnail"
-        />
-        <span
-          v-if="video.duration && showDuration"
-          class="video-item__duration app-mono"
-          :class="{ 'video-item__duration--with-progress': progressRatio > 0 }"
-        >
-          {{ formatDuration(video.duration) }}
-        </span>
-        <div
-          v-if="showThumbnailProgress"
-          class="video-item__progress"
-          role="progressbar"
-          :aria-valuenow="Math.round(progressRatio * 100)"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          :aria-label="`已观看 ${Math.round(progressRatio * 100)}%`"
-        >
-          <div
-            class="video-item__progress-fill"
-            :style="{ width: `${progressRatio * 100}%` }"
-          />
-        </div>
-      </div>
-
-      <div class="video-item__row-body">
-        <header class="video-item__top video-item__top--row">
-          <div class="video-item__community">
-            <SubscriptionAvatar
-              v-if="showAvatar && displayAvatars.length"
-              class="video-item__avatar"
-              :src="displayAvatars[0].avatar"
-              :name="displayAvatars[0].name"
-              size="sm"
-              @click.stop="goToProfile(displayAvatars[0])"
-            />
-            <button
-              type="button"
-              class="video-item__source-name"
-              @click.stop="goToProfile(primaryProfile)"
-            >
-              {{ displayNames }}
-            </button>
-            <span v-if="displayDateText" class="video-item__date">{{ displayDateText }}</span>
-            <span v-if="video.site" class="video-item__site">{{ video.site }}</span>
-          </div>
-          <div class="video-item__top-actions" @click.stop>
-            <button
-              type="button"
-              class="video-item__join"
-              :class="{ 'is-on': isLater === 1 }"
-              :title="isLater === 1 ? '取消稍后看' : '稍后看'"
-              @click="toggleLater"
-            >
-              {{ isLater === 1 ? '已加' : '加入' }}
-            </button>
-          </div>
-        </header>
-
-        <h3 class="video-item__title video-item__title--row">
-          {{ video.title }}
-        </h3>
-
-        <footer class="video-item__bar video-item__bar--row" @click.stop>
-          <button
-            type="button"
-            class="video-item__bar-btn"
-            :class="{ 'is-on': isLiked === 1 }"
-            :title="isLiked === 1 ? '取消喜欢' : '喜欢'"
-            :aria-pressed="isLiked === 1"
-            @click="toggleLikeVideo"
-          >
-            <AppIcon name="heart" class="size-4" :class="{ 'fill-current': isLiked === 1 }" />
-            <span>{{ isLiked === 1 ? '已喜欢' : '喜欢' }}</span>
-          </button>
-          <button
-            type="button"
-            class="video-item__bar-btn"
-            :class="{ 'is-on': isRead }"
-            :title="isRead ? '标记未读' : '标记已读'"
-            :aria-pressed="isRead"
-            @click="toggleReadStatus(!isRead)"
-          >
-            <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-4" />
-            <span>{{ isRead ? '已读' : '标已读' }}</span>
-          </button>
-          <button
-            type="button"
-            class="video-item__bar-btn"
-            :class="{ 'is-on': isLater === 1 }"
-            :title="isLater === 1 ? '取消稍后看' : '稍后看'"
-            :aria-pressed="isLater === 1"
-            @click="toggleLater"
-          >
-            <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-4" />
-            <span>稍后看</span>
-          </button>
-        </footer>
-      </div>
-    </template>
-
-    <!-- Reddit card post: community meta on top (home feed). -->
-    <template v-else-if="layout === 'list'">
-      <header class="video-item__top">
-        <div class="video-item__community">
-          <SubscriptionAvatar
-            v-if="showAvatar && displayAvatars.length"
-            class="video-item__avatar"
-            :src="displayAvatars[0].avatar"
-            :name="displayAvatars[0].name"
-            size="sm"
-            @click.stop="goToProfile(displayAvatars[0])"
-          />
-          <button
-            type="button"
-            class="video-item__source-name"
-            @click.stop="goToProfile(primaryProfile)"
-          >
-            {{ displayNames }}
-          </button>
-          <span v-if="displayDateText" class="video-item__date">{{ displayDateText }}</span>
-          <span v-if="video.site" class="video-item__site">{{ video.site }}</span>
-        </div>
-        <div class="video-item__top-actions" @click.stop>
-          <button
-            type="button"
-            class="video-item__join"
-            :class="{ 'is-on': isLater === 1 }"
-            :title="isLater === 1 ? '取消稍后看' : '稍后看'"
-            @click="toggleLater"
-          >
-            {{ isLater === 1 ? '已加' : '加入' }}
-          </button>
-        </div>
-      </header>
-
-      <h3 class="video-item__title video-item__title--card">
-        {{ video.title }}
-      </h3>
-
-      <div class="video-item__thumb video-item__thumb--card">
-        <VideoThumbnail
-          :src="thumbnailSrc"
-          :alt="video.title"
-          fit="cover"
-          interactive
-          :blur="shouldBlurThumbnail"
-        />
-        <span
-          v-if="video.duration && showDuration"
-          class="video-item__duration app-mono"
-          :class="{ 'video-item__duration--with-progress': progressRatio > 0 }"
-        >
-          {{ formatDuration(video.duration) }}
-        </span>
-        <div
-          v-if="showThumbnailProgress"
-          class="video-item__progress"
-          role="progressbar"
-          :aria-valuenow="Math.round(progressRatio * 100)"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          :aria-label="`已观看 ${Math.round(progressRatio * 100)}%`"
-        >
-          <div
-            class="video-item__progress-fill"
-            :style="{ width: `${progressRatio * 100}%` }"
-          />
-        </div>
-      </div>
-
-      <footer class="video-item__bar" @click.stop>
-        <button
-          type="button"
-          class="video-item__bar-btn"
-          :class="{ 'is-on': isLiked === 1 }"
-          :title="isLiked === 1 ? '取消喜欢' : '喜欢'"
-          :aria-pressed="isLiked === 1"
-          @click="toggleLikeVideo"
-        >
-          <AppIcon name="heart" class="size-4" :class="{ 'fill-current': isLiked === 1 }" />
-          <span>{{ isLiked === 1 ? '已喜欢' : '喜欢' }}</span>
-        </button>
-        <button
-          type="button"
-          class="video-item__bar-btn"
-          :class="{ 'is-on': isRead }"
-          :title="isRead ? '标记未读' : '标记已读'"
-          :aria-pressed="isRead"
-          @click="toggleReadStatus(!isRead)"
-        >
-          <AppIcon :name="isRead ? 'statusSuccess' : 'check'" class="size-4" />
-          <span>{{ isRead ? '已读' : '标已读' }}</span>
-        </button>
-        <button
-          type="button"
-          class="video-item__bar-btn"
-          :class="{ 'is-on': isLater === 1 }"
-          :title="isLater === 1 ? '取消稍后看' : '稍后看'"
-          :aria-pressed="isLater === 1"
-          @click="toggleLater"
-        >
-          <AppIcon :name="isLater === 1 ? 'watchLaterActive' : 'watchLater'" class="size-4" />
-          <span>稍后看</span>
-        </button>
-      </footer>
-    </template>
-
-    <!-- Grid keeps compact meta under thumb -->
-    <template v-else>
-      <div class="video-item__thumb video-item__thumb--grid">
-        <VideoThumbnail
-          :src="thumbnailSrc"
-          :alt="video.title"
-          fit="cover"
-          interactive
-          :blur="shouldBlurThumbnail"
-        />
-        <span
-          v-if="video.duration && showDuration"
-          class="video-item__duration app-mono"
-          :class="{ 'video-item__duration--with-progress': progressRatio > 0 }"
-        >
-          {{ formatDuration(video.duration) }}
-        </span>
-        <div class="video-item__scrim" />
-        <div
-          v-if="showThumbnailProgress"
-          class="video-item__progress"
-          role="progressbar"
-          :aria-valuenow="Math.round(progressRatio * 100)"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          :aria-label="`已观看 ${Math.round(progressRatio * 100)}%`"
-        >
-          <div
-            class="video-item__progress-fill"
-            :style="{ width: `${progressRatio * 100}%` }"
-          />
-        </div>
-      </div>
-
-      <h3 class="video-item__title video-item__title--grid">
-        {{ video.title }}
-      </h3>
-
-      <div class="video-item__body">
-        <div class="video-item__meta">
-          <div v-if="showAvatar && displayAvatars.length" class="video-item__avatar">
-            <SubscriptionAvatar
-              :src="displayAvatars[0].avatar"
-              :name="displayAvatars[0].name"
-              size="md"
-              @click.stop="goToProfile(displayAvatars[0])"
-            />
-          </div>
-          <div class="video-item__meta-main">
-            <div class="video-item__meta-line">
-              <span class="video-item__source-name" @click.stop="goToProfile(primaryProfile)">
-                {{ displayNames }}
-              </span>
-              <span v-if="displayDateText" class="video-item__date">{{ displayDateText }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </template>
+    <VideoItemWorkbenchLayout
+      v-if="layout === 'list' && appearance === 'workbench'"
+      :video="video"
+      :thumbnail="thumbnailPresentation"
+      :profile="profilePresentation"
+      :actions="actionPresentation"
+      @activate="handleOpen"
+      @open-profile="goToProfile"
+      @toggle-like="toggleLikeVideo"
+      @toggle-read="toggleReadStatus"
+      @toggle-later="toggleLater"
+    />
+    <VideoItemFeedLayout
+      v-else-if="layout === 'list'"
+      :video="video"
+      :thumbnail="thumbnailPresentation"
+      :profile="profilePresentation"
+      :actions="actionPresentation"
+      @activate="handleOpen"
+      @open-profile="goToProfile"
+      @toggle-like="toggleLikeVideo"
+      @toggle-read="toggleReadStatus"
+      @toggle-later="toggleLater"
+    />
+    <VideoItemGridLayout
+      v-else
+      :video="video"
+      :thumbnail="thumbnailPresentation"
+      :profile="profilePresentation"
+      @activate="handleOpen"
+      @open-profile="goToProfile"
+    />
 
     <Teleport to="body">
       <ContextMenu
@@ -315,16 +64,16 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import AppIcon from '@/shared/icons/AppIcon.vue'
-import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import ContextMenu from './ContextMenu.vue'
-import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
+import VideoItemFeedLayout from './VideoItemFeedLayout.vue'
+import VideoItemGridLayout from './VideoItemGridLayout.vue'
+import VideoItemWorkbenchLayout from './VideoItemWorkbenchLayout.vue'
 import useVideoInteraction from '@/features/video/composables/useVideoInteraction'
 import { updateVideoReadState } from '@/shared/api'
 import { useSystemConfig } from '@/shared/composables/useSystemConfig'
 import { useToast } from '@/shared/components/toast/useToast'
 import { errorMessage } from '@/shared/lib/errorMessage'
-import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
+import { formatDate } from '@/shared/lib/dateFormat'
 import type { VideoListItem, VideoProfile } from '@/features/video/types/video'
 import {
   pickPrimaryProfile,
@@ -341,6 +90,7 @@ const props = withDefaults(defineProps<{
   thumbnailProgress?: boolean
   appearance?: 'default' | 'workbench'
 }>(), {
+  showAvatar: false,
   layout: 'grid',
   showDuration: true,
   thumbnailProgress: true,
@@ -387,7 +137,6 @@ const progressRatio = computed(() => {
   const d = Number(props.video?.duration || 0)
   return d > 0 ? Math.min(1, Number(props.video?.last_position || 0) / d) : 0
 })
-const showThumbnailProgress = computed(() => props.thumbnailProgress && progressRatio.value > 0)
 
 const displayDateText = computed(() => {
   const t = props.sortBy === 'created_at'
@@ -396,14 +145,32 @@ const displayDateText = computed(() => {
   return t ? formatDate(t) : ''
 })
 
-const displayAvatars = computed(() => {
-  const primary = pickPrimaryProfile(props.video)
-  return primary ? [primary] : []
-})
-
 const displayNames = computed(() => profileDisplayNames(props.video, '未知'))
 
 const primaryProfile = computed(() => pickPrimaryProfile(props.video))
+
+const thumbnailPresentation = computed(() => ({
+  src: thumbnailSrc.value,
+  title: props.video.title,
+  duration: props.showDuration ? props.video.duration : null,
+  progressRatio: progressRatio.value,
+  showProgress: props.thumbnailProgress,
+  blur: shouldBlurThumbnail.value,
+}))
+
+const profilePresentation = computed(() => ({
+  profile: primaryProfile.value,
+  names: displayNames.value,
+  dateText: displayDateText.value,
+  site: props.video.site,
+  showAvatar: props.showAvatar,
+}))
+
+const actionPresentation = computed(() => ({
+  isLiked: isLiked.value === 1,
+  isRead: isRead.value,
+  isLater: isLater.value === 1,
+}))
 
 const closeMenuOnExternalClose = () => { showMenu.value = false }
 
@@ -493,15 +260,62 @@ onMounted(() => document.addEventListener('closeAllContextMenus', closeMenuOnExt
 onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenuOnExternalClose))
 </script>
 
-<style scoped>
+<style>
 .video-item {
+  position: relative;
   display: flex;
-  cursor: pointer;
   border: 0;
   background: transparent;
   padding: 0;
   outline: none;
   transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.video-item__playback-control {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  padding: 0;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+}
+
+.video-item__playback-control:hover {
+  background: transparent;
+  filter: none;
+}
+
+.video-item__playback-control:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.7);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.video-item__playback-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.video-item__presentation {
+  pointer-events: none;
+}
+
+.video-item__controls {
+  position: relative;
+  z-index: 2;
+}
+
+.video-item__row-thumbnail {
+  display: flex;
+  flex: 0 0 clamp(11rem, 16vw, 16rem);
 }
 
 /* Reddit card post: white surface, full-width media, hairline border. */
@@ -625,6 +439,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item__join {
+  --sq-button-height: 1.75rem;
   height: 1.75rem;
   border: 0;
   border-radius: 999px;
@@ -701,7 +516,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   filter: brightness(0.985);
 }
 
-.video-item--card .video-item__thumb--card :deep(img) {
+.video-item--card .video-item__thumb--card img {
   transition: transform var(--duration-slow) var(--ease-out);
 }
 
@@ -791,6 +606,27 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   font-weight: 500;
 }
 
+.video-item__profile-action {
+  --sq-button-height: auto;
+  min-width: 0;
+  gap: 0.375rem;
+  border-radius: var(--radius-sm);
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  filter: none;
+}
+
+.video-item__profile-action:hover {
+  background: transparent;
+  color: inherit;
+  filter: none;
+}
+
+.video-item__profile-action--grid {
+  gap: 0.5rem;
+}
+
 .video-item__source-name {
   overflow: hidden;
   border: 0;
@@ -834,6 +670,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item__bar-btn {
+  --sq-button-height: 2rem;
   display: inline-flex;
   height: 2rem;
   align-items: center;
@@ -876,7 +713,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   .video-item__progress-fill,
   .video-item__source-name,
   .video-item--card,
-  .video-item--card .video-item__thumb--card :deep(img) {
+  .video-item--card .video-item__thumb--card img {
     transition: none;
   }
 

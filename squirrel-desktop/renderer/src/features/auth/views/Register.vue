@@ -11,72 +11,76 @@
         </Alert>
       </Transition>
 
-      <div class="auth-field">
-        <label for="nickname" class="auth-field__label">昵称</label>
-        <Input
-          fluid
-          id="nickname"
-          v-model="form.nickname"
-          type="text"
-          required
-          size="lg"
-          :disabled="loading"
-          autocomplete="nickname"
-          placeholder="怎么称呼你"
-          class="auth-field__input"
-        />
-      </div>
-
-      <div class="auth-field">
-        <label for="email" class="auth-field__label">邮箱</label>
-        <Input
-          fluid
-          id="email"
-          v-model="form.email"
-          type="email"
-          required
-          size="lg"
-          :disabled="loading"
-          autocomplete="email"
-          placeholder="you@example.com"
-          class="auth-field__input"
-        />
-      </div>
-
-      <div class="auth-field">
-        <label for="password" class="auth-field__label">密码</label>
-        <div class="auth-field__wrap">
+      <AppFormField id="nickname" label="昵称" required class="auth-field">
+        <template #default="{ control }">
           <Input
+            v-bind="control"
             fluid
-            id="password"
-            v-model="form.password"
-            :type="showPassword ? 'text' : 'password'"
-            required
-            minlength="8"
+            v-model="form.nickname"
+            type="text"
             size="lg"
             :disabled="loading"
-            autocomplete="new-password"
-            placeholder="至少 8 位"
-            aria-describedby="password-hint"
-            class="auth-field__input auth-field__input--with-action"
+            autocomplete="nickname"
+            placeholder="怎么称呼你"
+            class="auth-field__input"
           />
-          <Button
-            type="button"
-            text
-            severity="secondary"
-            size="sm"
-            icon-only
-            class="auth-field__action"
+        </template>
+      </AppFormField>
+
+      <AppFormField id="email" label="邮箱" required class="auth-field">
+        <template #default="{ control }">
+          <Input
+            v-bind="control"
+            fluid
+            v-model="form.email"
+            type="email"
+            size="lg"
             :disabled="loading"
-            :title="showPassword ? '隐藏密码' : '显示密码'"
-            :aria-label="showPassword ? '隐藏密码' : '显示密码'"
-            @click="showPassword = !showPassword"
-          >
-            <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
-          </Button>
-        </div>
-        <span id="password-hint" class="auth-field__hint">至少 8 个字符</span>
-      </div>
+            autocomplete="email"
+            placeholder="you@example.com"
+            class="auth-field__input"
+          />
+        </template>
+      </AppFormField>
+
+      <AppFormField
+        id="password"
+        label="密码"
+        description="至少 8 个字符"
+        required
+        class="auth-field"
+      >
+        <template #default="{ control }">
+          <div class="auth-field__wrap">
+            <Input
+              v-bind="control"
+              fluid
+              v-model="form.password"
+              :type="showPassword ? 'text' : 'password'"
+              minlength="8"
+              size="lg"
+              :disabled="loading"
+              autocomplete="new-password"
+              placeholder="至少 8 位"
+              class="auth-field__input auth-field__input--with-action"
+            />
+            <Button
+              type="button"
+              text
+              severity="secondary"
+              size="sm"
+              icon-only
+              class="auth-field__action"
+              :disabled="loading"
+              :title="showPassword ? '隐藏密码' : '显示密码'"
+              :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+              @click="showPassword = !showPassword"
+            >
+              <AppIcon :name="showPassword ? 'eyeOff' : 'eye'" class="h-4 w-4" />
+            </Button>
+          </div>
+        </template>
+      </AppFormField>
 
       <Button type="submit" size="lg" :loading="loading" class="auth-entry__submit">
         {{ loading ? '正在创建…' : '创建账户' }}
@@ -94,6 +98,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AuthEntryCard from '@/features/auth/components/AuthEntryCard.vue'
+import AppFormField from '@/shared/components/layout/AppFormField.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'

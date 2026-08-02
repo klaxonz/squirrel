@@ -1,6 +1,6 @@
 <template>
   <AppPageShell variant="compact" surface="organize" width="fluid" fill>
-    <AppTwoColumnLayout preset="playlist">
+    <AppTwoColumnLayout preset="playlist" responsive-mode="drawer" :default-sidebar-open="false">
       <template #sidebar>
         <AppSidebarHeader title="播放列表" :subtitle="`${playlists.length} 个列表`">
           <template #actions>
@@ -130,55 +130,58 @@
               <article
                 v-for="(item, index) in activePlaylistItems"
                 :key="item.id"
-                class="playlist-item group"
-                :class="{ 'is-current': currentVideoId && String(item.video_id) === String(currentVideoId) }"
-                role="button"
-                tabindex="0"
-                @click="playVideo(item)"
-                @keydown.enter.prevent="playVideo(item)"
-                @keydown.space.prevent="playVideo(item)"
+                class="playlist-item-shell"
               >
-                <div class="playlist-item-index">
-                  <span>{{ index + 1 }}</span>
-                  <AppIcon name="play" class="playlist-item-play h-4 w-4 fill-current" />
-                </div>
-
-                <div class="playlist-item-media">
-                  <div class="playlist-row-thumb">
-                    <VideoThumbnail v-if="item.video?.thumbnail" :src="item.video.thumbnail" fit="cover" />
-                    <div v-else class="app-media-thumb-fallback">
-                      <AppIcon name="film" class="h-5 w-5" />
-                    </div>
-                    <span v-if="item.video?.duration" class="app-media-duration-badge app-media-duration-badge--compact app-mono">
-                      {{ formatDuration(item.video.duration) }}
-                    </span>
-                  </div>
-                  <div class="playlist-item-copy">
-                    <div class="playlist-item-title">{{ item.video?.title }}</div>
-                    <div class="playlist-item-meta">
-                      <span>{{ item.video?.site }}</span>
-                      <span class="playlist-meta-dot" />
-                      <span>{{ formatDate(item.added_at) }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="playlist-item-site">{{ item.video?.site }}</div>
-                <div class="playlist-item-added">{{ formatDate(item.added_at) }}</div>
-                <div class="playlist-item-duration">
-                  {{ item.video?.duration ? formatDuration(item.video.duration) : '—' }}
-                </div>
-
-                <Button
-                  text severity="secondary"
-                  size="sm" icon-only
-                  class="playlist-item-remove"
-                  title="从播放列表移除"
-                  aria-label="从播放列表移除"
-                  @click.stop="handleRemoveVideo(item)"
+                <AppContentRow
+                  class="playlist-item group"
+                  :class="{ 'is-current': currentVideoId && String(item.video_id) === String(currentVideoId) }"
+                  :aria-label="`播放 ${item.video?.title || '视频'}`"
+                  @activate="playVideo(item)"
                 >
-                  <AppIcon name="close" class="h-4 w-4" />
-                </Button>
+                  <div class="playlist-item-index">
+                    <span>{{ index + 1 }}</span>
+                    <AppIcon name="play" class="playlist-item-play h-4 w-4 fill-current" />
+                  </div>
+
+                  <div class="playlist-item-media">
+                    <div class="playlist-row-thumb">
+                      <VideoThumbnail v-if="item.video?.thumbnail" :src="item.video.thumbnail" fit="cover" />
+                      <div v-else class="app-media-thumb-fallback">
+                        <AppIcon name="film" class="h-5 w-5" />
+                      </div>
+                      <span v-if="item.video?.duration" class="app-media-duration-badge app-media-duration-badge--compact app-mono">
+                        {{ formatDuration(item.video.duration) }}
+                      </span>
+                    </div>
+                    <div class="playlist-item-copy">
+                      <div class="playlist-item-title">{{ item.video?.title }}</div>
+                      <div class="playlist-item-meta">
+                        <span>{{ item.video?.site }}</span>
+                        <span class="playlist-meta-dot" />
+                        <span>{{ formatDate(item.added_at) }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="playlist-item-site">{{ item.video?.site }}</div>
+                  <div class="playlist-item-added">{{ formatDate(item.added_at) }}</div>
+                  <div class="playlist-item-duration">
+                    {{ item.video?.duration ? formatDuration(item.video.duration) : '—' }}
+                  </div>
+
+                  <template #actions>
+                    <Button
+                      text severity="secondary"
+                      size="sm" icon-only
+                      class="playlist-item-remove"
+                      title="从播放列表移除"
+                      aria-label="从播放列表移除"
+                      @click="handleRemoveVideo(item)"
+                    >
+                      <AppIcon name="close" class="h-4 w-4" />
+                    </Button>
+                  </template>
+                </AppContentRow>
               </article>
             </div>
           </section>
@@ -212,14 +215,12 @@
           <DialogTitle class="text-base font-semibold">{{ editingPlaylist ? '编辑列表' : '新建播放列表' }}</DialogTitle>
         </DialogHeader>
         <div class="space-y-4 p-4">
-          <div class="space-y-2">
-            <label for="name" class="text-sm font-medium">列表名称</label>
-            <Input fluid id="name" v-model="formName" placeholder="例如：我的最爱" @keyup.enter="handleSave" />
-          </div>
-          <div class="space-y-2">
-            <label for="description" class="text-sm font-medium">描述</label>
-            <Textarea fluid id="description" v-model="formDesc" placeholder="添加一些关于这个列表的说明" rows="3" />
-          </div>
+          <AppFormField v-slot="{ control }" id="playlist-editor-name" label="列表名称" required>
+            <Input v-bind="control" v-model="formName" fluid placeholder="例如：我的最爱" @keyup.enter="handleSave" />
+          </AppFormField>
+          <AppFormField v-slot="{ control }" id="playlist-editor-description" label="描述">
+            <Textarea v-bind="control" v-model="formDesc" fluid placeholder="添加一些关于这个列表的说明" rows="3" />
+          </AppFormField>
         </div>
         <DialogFooter class="gap-2 bg-muted/30 p-4">
           <Button severity="secondary" outlined @click="closeModal">取消</Button>
@@ -240,6 +241,8 @@ import AppSpinner from '@/shared/components/AppSpinner.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppActionMenu from '@/shared/components/AppActionMenu.vue'
+import AppContentRow from '@/shared/components/layout/AppContentRow.vue'
+import AppFormField from '@/shared/components/layout/AppFormField.vue'
 import AppListOption from '@/shared/components/layout/AppListOption.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppPaneHeader from '@/shared/components/layout/AppPaneHeader.vue'
@@ -551,14 +554,26 @@ onMounted(async () => {
     color var(--duration-fast) var(--ease-default);
 }
 
+.playlist-item :deep(.app-content-row__content) {
+  display: grid;
+  grid-column: 1 / 6;
+  grid-template-columns: 2.5rem minmax(20rem, 1fr) minmax(7rem, 10rem) minmax(7rem, 9rem) minmax(4rem, 5.5rem);
+  align-items: center;
+  column-gap: var(--space-4);
+}
+
+.playlist-item :deep(.app-content-row__actions) {
+  grid-column: 6;
+}
+
 .playlist-item:hover,
-.playlist-item:focus-visible {
+.playlist-item:has(.app-content-row__primary:focus-visible) {
   border-color: transparent;
   border-bottom-color: hsl(var(--border));
   background: var(--app-row-hover-bg);
 }
 
-.playlist-item:focus-visible {
+.playlist-item:has(.app-content-row__primary:focus-visible) {
   border-radius: var(--radius-md);
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.42);
 }
@@ -583,13 +598,13 @@ onMounted(async () => {
 }
 
 .playlist-item:hover .playlist-item-index span,
-.playlist-item:focus-visible .playlist-item-index span,
+.playlist-item:has(.app-content-row__primary:focus-visible) .playlist-item-index span,
 .playlist-item.is-current .playlist-item-index span {
   display: none;
 }
 
 .playlist-item:hover .playlist-item-play,
-.playlist-item:focus-visible .playlist-item-play,
+.playlist-item:has(.app-content-row__primary:focus-visible) .playlist-item-play,
 .playlist-item.is-current .playlist-item-play {
   display: block;
 }
@@ -703,6 +718,15 @@ onMounted(async () => {
   .playlist-table-head,
   .playlist-item {
     grid-template-columns: 2.75rem minmax(0, 1fr) 2rem;
+  }
+
+  .playlist-item :deep(.app-content-row__content) {
+    grid-column: 1 / 3;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+  }
+
+  .playlist-item :deep(.app-content-row__actions) {
+    grid-column: 3;
   }
 
   .playlist-item-site,

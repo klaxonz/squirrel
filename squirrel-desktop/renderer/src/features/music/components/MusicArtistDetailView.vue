@@ -47,16 +47,13 @@
     <section v-if="videos.length" class="music-detail-section">
       <h2 class="music-detail-section-title">MV</h2>
       <div class="app-video-grid">
-        <article
+        <button
           v-for="video in videos"
           :key="video.id"
+          type="button"
           class="music-artist-video-card"
-          role="button"
-          tabindex="0"
           :aria-label="`播放 MV：${video.name}`"
           @click="playVideo(video)"
-          @keydown.enter.prevent="playVideo(video)"
-          @keydown.space.prevent="playVideo(video)"
         >
           <div class="music-artist-video-card__thumb">
             <img :src="video.cover" :alt="video.name" loading="lazy" />
@@ -65,7 +62,7 @@
             <h3 class="music-artist-video-card__title" :title="video.name">{{ video.name }}</h3>
             <p class="music-artist-video-card__meta">{{ video.artist }}</p>
           </div>
-        </article>
+        </button>
       </div>
     </section>
 
@@ -162,6 +159,12 @@ function playVideo(video: MusicVideo) {
   min-width: 0;
   flex-direction: column;
   gap: 0.625rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   outline: none;
 }

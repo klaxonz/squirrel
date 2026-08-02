@@ -28,13 +28,15 @@
         <article
           v-for="item in items"
           :key="item.site + ':' + item.url"
-          class="remote-search-item group flex min-w-0 cursor-pointer flex-col gap-2.5 text-left"
-          role="button"
-          tabindex="0"
-          @click="openResult(item)"
-          @keydown.enter.prevent="openResult(item)"
-          @keydown.space.prevent="openResult(item)"
+          class="remote-search-item group relative flex min-w-0 flex-col gap-2.5 text-left"
         >
+          <button
+            type="button"
+            class="remote-search-item__open absolute inset-0 z-0 cursor-pointer rounded-[var(--app-card-radius)]"
+            :aria-label="`播放 ${item.title}`"
+            @click="openResult(item)"
+          />
+
           <div class="remote-search-thumb group-hover:brightness-110">
             <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" />
             <span v-if="item.duration" class="app-media-duration-badge app-mono">
@@ -441,6 +443,7 @@ defineExpose({ refresh })
 <style scoped>
 .remote-search-thumb {
   position: relative;
+  z-index: 1;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border: 0;
@@ -448,10 +451,32 @@ defineExpose({ refresh })
   background: var(--app-media-thumb-placeholder);
   isolation: isolate;
   transition: box-shadow var(--duration-base) var(--ease-default), filter var(--duration-fast) var(--ease-default);
+  pointer-events: none;
+}
+
+.remote-search-item__open {
+  border: 0;
+  background: transparent;
+}
+
+.remote-search-item__open:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.62);
+  outline-offset: 2px;
+}
+
+.remote-search-item__body {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.remote-search-source-button {
+  z-index: 2;
+  pointer-events: auto;
 }
 
 .group:hover .remote-search-thumb,
-.group:focus-visible .remote-search-thumb {
+.remote-search-item__open:focus-visible ~ .remote-search-thumb {
   box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 
@@ -494,7 +519,7 @@ defineExpose({ refresh })
 }
 
 .remote-search--workbench .group:hover .remote-search-thumb,
-.remote-search--workbench .group:focus-visible .remote-search-thumb {
+.remote-search--workbench .remote-search-item__open:focus-visible ~ .remote-search-thumb {
   box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 

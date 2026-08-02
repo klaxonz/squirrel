@@ -13,14 +13,16 @@
   >
     <div
       class="history-item__open"
-      role="button"
-      tabindex="0"
       @pointerenter="prefetchPlayback"
       @pointerdown.left="prefetchPlayback"
-      @click="emit('open', video)"
-      @keydown.enter.prevent="emit('open', video)"
-      @keydown.space.prevent="emit('open', video)"
     >
+      <button
+        type="button"
+        class="history-item__open-button"
+        :aria-label="`播放 ${video.title}`"
+        @click="emit('open', video)"
+      />
+
       <div class="history-item__thumb">
         <VideoThumbnail :src="video.thumbnail" :alt="video.title" fit="cover" interactive />
 
@@ -44,14 +46,11 @@
       <div class="history-item__main">
         <h3 class="history-item__title">{{ video.title }}</h3>
 
-        <div
+        <button
           v-if="displaySource"
+          type="button"
           class="history-item__source history-item__source--link"
-          role="button"
-          tabindex="0"
-          @click.stop="emit('openProfile', displaySource)"
-          @keydown.enter.prevent.stop="emit('openProfile', displaySource)"
-          @keydown.space.prevent.stop="emit('openProfile', displaySource)"
+          @click="emit('openProfile', displaySource)"
         >
           <SubscriptionAvatar
             :src="displaySource.avatar"
@@ -60,7 +59,7 @@
           />
           <span class="history-item__channel">{{ displayChannel }}</span>
           <span v-if="video.site" class="history-item__site">{{ video.site }}</span>
-        </div>
+        </button>
         <div v-else class="history-item__source">
           <span class="history-item__channel">{{ displayChannel }}</span>
           <span v-if="video.site" class="history-item__site">{{ video.site }}</span>
@@ -187,6 +186,7 @@ const prefetchPlayback = () => {
 
 /* Always three columns on desktop workbench widths. */
 .history-item__open {
+  position: relative;
   display: grid;
   width: 100%;
   min-width: 0;
@@ -194,13 +194,27 @@ const prefetchPlayback = () => {
   align-items: center;
   column-gap: 1rem;
   padding: 0.7rem 0;
-  cursor: pointer;
-  outline: none;
 }
 
-.history-item__open:focus-visible {
+.history-item__open-button {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border: 0;
   border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.history-item__open-button:focus-visible {
+  outline: none;
   box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.62);
+}
+
+.history-item__open > :not(.history-item__open-button) {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .history-item__thumb {
@@ -280,6 +294,14 @@ const prefetchPlayback = () => {
 }
 
 .history-item__source--link {
+  z-index: 2;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font: inherit;
+  text-align: left;
+  pointer-events: auto !important;
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: color var(--duration-fast) var(--ease-default);

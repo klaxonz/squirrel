@@ -42,65 +42,75 @@
           </div>
 
           <div class="app-settings-panel profile-form-panel">
-            <div class="profile-field">
-              <div class="profile-label-row">
-                <label for="profile-nickname">昵称</label>
-                <span>{{ form.nickname.length }}/50</span>
-              </div>
-              <div class="app-icon-field">
-                <AppIcon name="user" class="app-icon-field__icon" />
-                <Input fluid
-                  id="profile-nickname"
-                  v-model="form.nickname"
-                  placeholder="请输入昵称"
-                  class="app-form-input app-form-input--with-icon"
-                  maxlength="50"
-                />
-              </div>
-            </div>
+            <AppFormField id="profile-nickname" class="profile-field profile-field--counted">
+              <template #label>
+                <span>昵称</span>
+                <span class="profile-field__counter">{{ form.nickname.length }}/50</span>
+              </template>
+              <template #default="{ control }">
+                <div class="app-icon-field">
+                  <AppIcon name="user" class="app-icon-field__icon" />
+                  <Input
+                    v-bind="control"
+                    fluid
+                    v-model="form.nickname"
+                    placeholder="请输入昵称"
+                    class="app-form-input app-form-input--with-icon"
+                    maxlength="50"
+                  />
+                </div>
+              </template>
+            </AppFormField>
 
-            <div class="profile-field">
-              <label for="profile-avatar">头像图片链接</label>
-              <div class="app-icon-field">
-                <AppIcon name="link" class="app-icon-field__icon" />
-                <Input fluid
-                  id="profile-avatar"
-                  ref="avatarInput"
-                  v-model="form.avatar"
-                  placeholder="输入图片链接 (HTTPS)"
-                  class="app-form-input app-form-input--with-icon"
-                />
-              </div>
-            </div>
+            <AppFormField
+              id="profile-avatar"
+              label="头像图片链接"
+              :class="['profile-field', { 'profile-field--with-preview': form.avatar }]"
+            >
+              <template #default="{ control }">
+                <div class="app-icon-field">
+                  <AppIcon name="link" class="app-icon-field__icon" />
+                  <Input
+                    v-bind="control"
+                    fluid
+                    v-model="form.avatar"
+                    type="url"
+                    autocomplete="url"
+                    placeholder="输入图片链接 (HTTPS)"
+                    class="app-form-input app-form-input--with-icon"
+                  />
+                </div>
+              </template>
 
-            <div v-if="form.avatar" class="profile-avatar-preview">
-              <div class="profile-avatar-preview-image">
-                <img
-                  :src="form.avatar"
-                  :alt="form.nickname ? `${form.nickname}的头像` : '用户头像'"
-                  class="h-full w-full object-cover"
-                  @error="avatarError = true"
-                  @load="avatarError = false"
-                />
-              </div>
-              <div class="profile-avatar-preview-copy">
-                <p>头像实时预览</p>
-                <span
-                  v-if="avatarError"
-                  class="profile-status profile-status--error"
-                >
-                  <AppIcon name="warning" class="h-2.5 w-2.5" />
-                  图片加载失败，请检查链接
+              <template v-if="form.avatar" #description>
+                <span class="profile-avatar-preview-image">
+                  <img
+                    :src="form.avatar"
+                    :alt="form.nickname ? `${form.nickname}的头像` : '用户头像'"
+                    class="h-full w-full object-cover"
+                    @error="avatarError = true"
+                    @load="avatarError = false"
+                  />
                 </span>
-                <span
-                  v-else
-                  class="profile-status profile-status--success"
-                >
-                  <AppIcon name="check" class="h-2.5 w-2.5" />
-                  图片加载成功
+                <span class="profile-avatar-preview-copy">
+                  <span class="profile-avatar-preview-title">头像实时预览</span>
+                  <span
+                    v-if="avatarError"
+                    class="profile-status profile-status--error"
+                  >
+                    <AppIcon name="warning" class="h-2.5 w-2.5" />
+                    图片加载失败，请检查链接
+                  </span>
+                  <span
+                    v-else
+                    class="profile-status profile-status--success"
+                  >
+                    <AppIcon name="check" class="h-2.5 w-2.5" />
+                    图片加载成功
+                  </span>
                 </span>
-              </div>
-            </div>
+              </template>
+            </AppFormField>
 
             <div v-if="saveError" class="app-dialog-message is-error">
               <AppIcon name="warning" class="app-dialog-message__icon" />
@@ -152,6 +162,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Logger } from '@/shared/lib/logger'
+import AppFormField from '@/shared/components/layout/AppFormField.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import { Button } from '@/shared/ui/button'
@@ -167,7 +178,6 @@ const userStore = useUserStore()
 const { form, saving, saved, saveError, hasChanges, hydrate, handleSave } = useProfileEditForm({ userStore })
 
 const avatarError = ref(false)
-const avatarInput = ref<{ focus: () => void } | null>(null)
 
 const userInitial = computed(() => {
   const name = userStore.currentUser?.nickname || ''
@@ -194,7 +204,7 @@ onMounted(() => {
 })
 
 const focusAvatarInput = () => {
-  avatarInput.value?.focus()
+  document.getElementById('profile-avatar')?.focus()
 }
 
 const handleLogout = async () => {
@@ -304,33 +314,26 @@ const handleLogout = async () => {
   background: hsl(var(--card));
 }
 
-.profile-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.profile-field label,
-.profile-label-row label {
+.profile-field :deep(.app-form-field__label) {
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 500;
 }
 
-.profile-label-row {
+.profile-field--counted :deep(.app-form-field__label) {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
-.profile-label-row span {
+.profile-field__counter {
   color: hsl(var(--muted-foreground) / 0.72);
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
 }
 
-.profile-avatar-preview {
+.profile-field--with-preview :deep(.app-form-field__description) {
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -354,8 +357,9 @@ const handleLogout = async () => {
   min-width: 0;
 }
 
-.profile-avatar-preview-copy p {
-  margin: 0 0 0.25rem;
+.profile-avatar-preview-title {
+  display: block;
+  margin-bottom: 0.25rem;
   color: hsl(var(--foreground));
   font-size: 0.75rem;
   font-weight: 650;

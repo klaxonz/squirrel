@@ -5,13 +5,14 @@
       collapses via route meta). Source column is a quiet tree + one sync menu.
     -->
     <AppTwoColumnLayout
-      sidebar-always
+      v-model:sidebar-open="sourcePaneOpen"
+      responsive-mode="drawer"
+      :sidebar-toggle="false"
       preset="rss"
-      :sidebar-collapsed="sourcePaneCollapsed"
       :main-scroll="false"
       class="rss-workspace"
     >
-      <template #sidebar>
+      <template #sidebar="{ close }">
         <AppSidebarHeader
           title="订阅库"
         >
@@ -22,7 +23,7 @@
               class="rss-source-pane-toggle"
               title="收起订阅库"
               aria-label="收起订阅库"
-              @click="sourcePaneCollapsed = true"
+              @click="close"
             >
               <AppIcon name="panelClose" class="h-4 w-4" />
             </Button>
@@ -47,7 +48,7 @@
               :selected-provider="selectedAccount?.provider || ''"
               :open="showAccountDropdown"
               @toggle="showAccountDropdown = !showAccountDropdown"
-              @select="(id) => { selectAccount(id); showAccountDropdown = false }"
+              @select="(id) => { selectAccount(id); showAccountDropdown = false; close() }"
               @edit="(acc) => { openEditAccount(acc); showAccountDropdown = false }"
               @delete="(acc) => { confirmDeleteAccount(acc); showAccountDropdown = false }"
             />
@@ -107,7 +108,7 @@
           :can-manage-subscriptions="canManageSubscriptions"
           :loading="loadingFeeds"
           :error="accountsError || feedsError"
-          @select-all="selectedFeedId = null; loadEntries(true)"
+          @select-all="showAllEntries"
           @add-feed="showSubscribeModal = true"
           @toggle-folder="toggleFolder"
           @select-feed="selectFeedAndShowAll"
@@ -117,19 +118,20 @@
         />
       </template>
 
+      <RssPaneShell :active-pane="activeNarrowPane">
+        <template #entries>
       <!-- Middle: article list -->
       <section class="app-pane app-pane--list rss-entry-pane">
         <header class="app-pane__header rss-entry-header">
           <div class="app-pane__header-row">
             <div class="rss-entry-header__identity">
               <Button
-                v-if="sourcePaneCollapsed"
                 text severity="secondary"
                 size="sm" icon-only
                 class="rss-source-pane-toggle"
-                title="展开订阅库"
-                aria-label="展开订阅库"
-                @click="sourcePaneCollapsed = false"
+                title="打开订阅库"
+                aria-label="打开订阅库"
+                @click="sourcePaneOpen = true"
               >
                 <AppIcon name="panelOpen" class="h-4 w-4" />
               </Button>
@@ -302,7 +304,9 @@
           </div>
         </div>
       </section>
+        </template>
 
+        <template #reader>
       <!-- 3. Right Column: Permanent Article Content Reader -->
       <main class="app-pane app-pane--fluid rss-reader-pane">
         <!-- If an article is selected, render it -->
@@ -311,6 +315,16 @@
           <header class="app-pane__header rss-reader-toolbar">
             <div class="app-pane__header-row rss-reader-toolbar__row">
               <div class="rss-reader-toolbar__identity">
+                <Button
+                  text severity="secondary"
+                  size="sm" icon-only
+                  class="rss-reader-list-back"
+                  title="返回文章列表"
+                  aria-label="返回文章列表"
+                  @click="showEntriesPane"
+                >
+                  <AppIcon name="back" class="h-4 w-4" />
+                </Button>
                 <Button
                   text severity="secondary"
                   size="sm"
@@ -548,6 +562,8 @@
           />
         </div>
       </main>
+        </template>
+      </RssPaneShell>
     </AppTwoColumnLayout>
 
     <!-- 3. Add / Edit RSS Account Dialog -->
@@ -783,6 +799,7 @@ import ReaderSettingsPanel from '@/features/rss/components/ReaderSettingsPanel.v
 import AccountDropdown from '@/features/rss/components/AccountDropdown.vue'
 import FeedFolderTree from '@/features/rss/components/FeedFolderTree.vue'
 import RssEntrySkeleton from '@/features/rss/components/RssEntrySkeleton.vue'
+import RssPaneShell from '@/features/rss/components/RssPaneShell.vue'
 import AccountEditDialog from '@/features/rss/components/AccountEditDialog.vue'
 import DeleteAccountDialog from '@/features/rss/components/DeleteAccountDialog.vue'
 import RssImageLightbox from '@/features/rss/components/RssImageLightbox.vue'
@@ -818,7 +835,8 @@ import type { AppIconName } from '@/shared/icons/app-icons'
 
 // Cross-cutting UI state
 const loading = ref(false)
-const sourcePaneCollapsed = ref(false)
+const sourcePaneOpen = ref(false)
+const activeNarrowPane = ref<'entries' | 'reader'>('entries')
 const uiStore = useUIStore()
 const rssArticleSearch = computed(() => uiStore.getSearchQuery('rss'))
 const rssArticleSearchTrigger = computed(() => uiStore.getSearchTrigger('rss'))
@@ -856,6 +874,7 @@ const {
   showDeleteConfirmModal,
   accountToDelete,
   showAccountDropdown,
+  accountDropdownRef,
   saving,
   testing,
   deleting,
@@ -951,7 +970,6 @@ const {
   originalArticleUrl,
   activeLightboxImg,
   lightboxScale,
-  readerFontClass,
   readerContentClass,
   sanitizedArticleHtml,
   loadingArticleContent,
@@ -965,7 +983,6 @@ const {
   closeInAppBrowser,
   handleIframeLoad,
   entryPreviewText,
-  stripHtmlTags,
   formatRelativeTime,
 } = useRssReader({
   onStatus,
@@ -1000,7 +1017,7 @@ const {
   closeContextMenu: entriesCloseContextMenu,
   copyArticleLink,
   openInExternalBrowser,
-  goToFeedFromContextMenu,
+  goToFeedFromContextMenu: goToFeedFromContextMenuImpl,
   setDefaultEntryFilter,
   resetActiveFilterToDefault,
   initObserver,
@@ -1020,7 +1037,11 @@ const {
 // Alt+← 快捷键和页内"返回"按钮保持一致。
 const appNavigation = useNavigationHistory()
 
-const handleFeedBack = (): boolean => goBackFromFeed()
+const handleFeedBack = (): boolean => {
+  const handled = goBackFromFeed()
+  if (handled) showEntriesPane()
+  return handled
+}
 
 // Sync polling owns its request state and timer cleanup.
 const {
@@ -1080,7 +1101,19 @@ loadAllImpl = async () => {
 
 const loadAll = loadAllImpl
 
+const showEntriesPane = () => {
+  activeNarrowPane.value = 'entries'
+  sourcePaneOpen.value = false
+}
+
+const showAllEntries = () => {
+  selectedFeedId.value = null
+  showEntriesPane()
+  void loadEntries(true)
+}
+
 const selectFeedAndShowAll = async (feedId: number) => {
+  showEntriesPane()
   if (activeFilter.value === 'recent') {
     await selectFeed(feedId, false)
     activeFilter.value = 'all'
@@ -1108,12 +1141,16 @@ const openReader = (entry: RssEntry) => {
     toggleReadStatus(entry, false)
   }
   recordRecentlyViewed(entry)
+  activeNarrowPane.value = 'reader'
 
   if (method === 'app_browser') {
     void openInAppBrowser()
   }
 }
-
+const goToFeedFromContextMenu = async (entry: RssEntry) => {
+  showEntriesPane()
+  await goToFeedFromContextMenuImpl(entry)
+}
 
 const isTypingTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return false
@@ -1233,6 +1270,7 @@ const confirmUnsubscribeFeed = async () => {
 }
 
 const selectAccount = async (accountId: number) => {
+  showEntriesPane()
   if (selectedAccountId.value === accountId) return
   selectedAccountId.value = accountId
   await nextTick()
@@ -1249,7 +1287,7 @@ watch(selectedAccountId, (accountId, previousAccountId) => {
   stopSyncPolling()
   onStatus('')
   selectedFeedId.value = null
-  readingEntry.value = null
+  showEntriesPane()
   clearFeedNavStack()
   feedSearch.value = ''
   resetActiveFilterToDefault()
@@ -1294,8 +1332,15 @@ onUnmounted(() => {
 }
 
 .rss-source-pane-toggle {
+  display: none;
   flex: 0 0 auto;
   color: hsl(var(--muted-foreground));
+}
+
+@container workbench (max-width: 47.999rem) {
+  .rss-source-pane-toggle {
+    display: inline-flex;
+  }
 }
 
 .rss-source-pane-toggle:hover {
@@ -1438,6 +1483,17 @@ onUnmounted(() => {
   flex: 1;
   min-width: 0;
   padding-inline: 0.375rem;
+}
+
+.rss-reader-list-back {
+  display: none;
+  flex: 0 0 auto;
+}
+
+@container workbench (max-width: 47.999rem) {
+  .rss-reader-list-back {
+    display: inline-flex;
+  }
 }
 
 .rss-reader-toolbar {

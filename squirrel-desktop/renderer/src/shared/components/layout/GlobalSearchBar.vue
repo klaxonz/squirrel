@@ -21,11 +21,20 @@
       </div>
 
       <input
+        :id="inputId"
         ref="inputRef"
         v-model="inputValue"
         type="text"
         :placeholder="placeholder"
         class="global-search__input"
+        role="combobox"
+        :aria-label="placeholder || '搜索'"
+        aria-autocomplete="list"
+        aria-haspopup="listbox"
+        :aria-controls="listboxId"
+        :aria-expanded="showSuggestions"
+        :aria-activedescendant="activeDescendantId"
+        :aria-busy="isLoadingSuggestions || undefined"
         @input="handleInput"
         @compositionstart="isComposing = true"
         @compositionend="handleCompositionEnd"
@@ -36,7 +45,15 @@
       />
 
       <div class="global-search__actions">
-        <AppSpinner v-if="isTyping" size="sm" />
+        <div
+          v-if="isTyping || isLoadingSuggestions"
+          class="global-search__loading"
+          role="status"
+          aria-live="polite"
+        >
+          <AppSpinner size="sm" aria-hidden="true" />
+          <span class="sr-only">正在加载搜索建议</span>
+        </div>
 
         <Button
           v-if="inputValue"
@@ -66,37 +83,59 @@
       <div
         v-if="showSuggestions"
         class="global-search__suggestions"
-        role="listbox"
-        :aria-label="suggestionTitle"
       >
         <div class="global-search__suggestions-header">
           <span>{{ suggestionTitle }}</span>
-          <Button v-if="recentSearches.length" link size="sm" class="global-search__clear-recent" @click="clearRecentSearches">清空</Button>
-        </div>
-
-
-
-        <div v-for="(item, index) in suggestionItems" :key="item.id" class="global-search__suggestion-row">
           <Button
-            text severity="secondary"
-
-            class="global-search__suggestion"
-            :class="{ 'is-active': index === activeSuggestionIndex }"
-            @mouseenter="activeSuggestionIndex = index"
-            @click="selectSuggestion(item.value)"
-          >
-            <AppIcon :name="item.type === 'search' ? 'search' : 'history'" class="h-4 w-4 shrink-0 opacity-50" />
-            <div class="global-search__suggestion-copy">
-              <span class="global-search__suggestion-label">{{ item.label }}</span>
-              <span v-if="item.meta" class="global-search__suggestion-meta">{{ item.meta }}</span>
-            </div>
-          </Button>
-          <Button v-if="item.type === 'recent'" text severity="secondary" size="sm" icon-only class="global-search__remove" @click.stop="removeRecentSearch(item.value)">
-            <AppIcon name="close" class="w-3.5 h-3.5" />
-          </Button>
+            v-if="recentSearches.length"
+            link size="sm"
+            class="global-search__clear-recent"
+            @mousedown.prevent
+            @click="clearRecentSearches"
+          >清空</Button>
         </div>
 
-        <div v-if="!suggestionItems.length" class="global-search__empty">暂无搜索记录</div>
+        <div
+          :id="listboxId"
+          class="global-search__suggestions-list"
+          role="listbox"
+          :aria-label="suggestionTitle"
+          :aria-busy="isLoadingSuggestions || undefined"
+        >
+          <div v-for="(item, index) in suggestionItems" :key="item.id" class="global-search__suggestion-row" role="presentation">
+            <Button
+              :id="getOptionId(index)"
+              text severity="secondary"
+              class="global-search__suggestion"
+              :class="{ 'is-active': index === activeSuggestionIndex }"
+              role="option"
+              :aria-selected="index === activeSuggestionIndex"
+              tabindex="-1"
+              @mouseenter="activeSuggestionIndex = index"
+              @mousedown.prevent
+              @click="selectSuggestion(item.value)"
+            >
+              <AppIcon :name="item.type === 'search' ? 'search' : 'history'" class="h-4 w-4 shrink-0 opacity-50" />
+              <div class="global-search__suggestion-copy">
+                <span class="global-search__suggestion-label">{{ item.label }}</span>
+                <span v-if="item.meta" class="global-search__suggestion-meta">{{ item.meta }}</span>
+              </div>
+            </Button>
+            <Button
+              v-if="item.type === 'recent'"
+              text severity="secondary" size="sm" icon-only
+              class="global-search__remove"
+              :aria-label="`从最近搜索中移除 ${item.label}`"
+              :title="`从最近搜索中移除 ${item.label}`"
+              @mousedown.prevent
+              @click.stop="removeRecentSearchItem(item.value, index)"
+            >
+              <AppIcon name="close" class="w-3.5 h-3.5" />
+            </Button>
+          </div>
+
+          <div v-if="!suggestionItems.length" class="global-search__empty">暂无搜索记录</div>
+        </div>
       </div>
     </transition>
   </div>
@@ -141,6 +180,8 @@ type SeedSubscription = {
   avatar: string
 }
 
+let globalSearchInstanceCount = 0
+
 const props = defineProps<{
   searchScope: string
   placeholder?: string
@@ -159,12 +200,16 @@ const router = useRouter()
 const inputValue = ref(uiStore.getSearchQuery(props.searchScope))
 const isFocused = ref(false)
 const isTyping = ref(false)
+const isLoadingSuggestions = ref(false)
 const isComposing = ref(false)
 const isPanelOpen = ref(false)
 const activeSuggestionIndex = ref(-1)
 const remoteSuggestions = ref<SearchSuggestionItem[]>([])
 const rootRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
+const instanceId = `global-search-${++globalSearchInstanceCount}`
+const inputId = `${instanceId}-input`
+const listboxId = `${instanceId}-listbox`
 
 // ponytail: recent-search history (add/remove/clear + localStorage persistence,
 // capped at 10, most-recent-first, de-duped) lives in useSearchHistory.
@@ -177,6 +222,7 @@ const {
 
 let typingTimeout: ReturnType<typeof setTimeout> | undefined
 let suggestionTimeout: ReturnType<typeof setTimeout> | undefined
+let suggestionRequestId = 0
 
 const trimmedInputValue = computed(() => inputValue.value.trim())
 const showSuggestions = computed(() => props.suggestionsEnabled && isPanelOpen.value && isFocused.value)
@@ -185,6 +231,13 @@ const activeSearchModeLabel = computed(() => {
   return searchModesList.value.find((mode) => mode.value === props.activeSearchMode)?.label || ''
 })
 const selectableItems = computed<SuggestionItem[]>(() => [...suggestionItems.value])
+const getOptionId = (index: number) => `${instanceId}-option-${index}`
+const activeDescendantId = computed(() => {
+  if (!showSuggestions.value || activeSuggestionIndex.value < 0 || !selectableItems.value[activeSuggestionIndex.value]) {
+    return undefined
+  }
+  return getOptionId(activeSuggestionIndex.value)
+})
 
 watch(() => uiStore.getSearchQuery(props.searchScope), (newVal) => {
   if (newVal !== inputValue.value) inputValue.value = newVal
@@ -217,6 +270,9 @@ const matchedPlaybackProvider = computed(() => findDesktopPlaybackProvider(trimm
 const handleInput = () => {
   uiStore.setSearchQuery(props.searchScope, inputValue.value)
   activeSuggestionIndex.value = -1
+  suggestionRequestId += 1
+  isLoadingSuggestions.value = false
+  if (isComposing.value) return
   if (!props.suggestionsEnabled) {
     isPanelOpen.value = false
     isTyping.value = false
@@ -233,15 +289,20 @@ const handleInput = () => {
 }
 
 async function loadRemoteSuggestions() {
+  const requestId = ++suggestionRequestId
   if (!props.suggestionsEnabled || !trimmedInputValue.value) {
     remoteSuggestions.value = []
+    isLoadingSuggestions.value = false
     return
   }
+  isLoadingSuggestions.value = true
   try {
     const data = await getSearchSuggestions({ query: trimmedInputValue.value, scope: props.suggestionScope })
-    remoteSuggestions.value = data?.items || []
+    if (requestId === suggestionRequestId) remoteSuggestions.value = data?.items || []
   } catch {
-    remoteSuggestions.value = []
+    if (requestId === suggestionRequestId) remoteSuggestions.value = []
+  } finally {
+    if (requestId === suggestionRequestId) isLoadingSuggestions.value = false
   }
 }
 
@@ -249,7 +310,7 @@ function handleEnterKey() {
   if (isComposing.value) return
   if (activeSuggestionIndex.value >= 0) {
     const item = selectableItems.value[activeSuggestionIndex.value]
-      selectSuggestion(item.value)
+    if (item) selectSuggestion(item.value)
   } else {
     handleSearch()
   }
@@ -343,7 +404,11 @@ function toggleMode() {
 }
 
 function clearSearch() {
+  suggestionRequestId += 1
   inputValue.value = ''
+  remoteSuggestions.value = []
+  isLoadingSuggestions.value = false
+  activeSuggestionIndex.value = -1
   uiStore.setSearchQuery(props.searchScope, '')
   emit('clear')
   if (route.query.q) {
@@ -360,6 +425,12 @@ function clearSearch() {
 function handleCompositionEnd() {
   isComposing.value = false
   handleInput()
+}
+
+function removeRecentSearchItem(value: string, index: number) {
+  removeRecentSearch(value)
+  if (activeSuggestionIndex.value === index) activeSuggestionIndex.value = -1
+  else if (activeSuggestionIndex.value > index) activeSuggestionIndex.value -= 1
 }
 
 function handleFocusIn(e: FocusEvent) {
@@ -387,7 +458,6 @@ function moveActiveSuggestion(dir: number) {
 function handleEscape() {
   isPanelOpen.value = false
   activeSuggestionIndex.value = -1
-  inputRef.value?.blur()
 }
 
 const handleGlobalKeydown = (e: KeyboardEvent) => {
@@ -402,6 +472,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  clearTimeout(typingTimeout)
+  clearTimeout(suggestionTimeout)
+  suggestionRequestId += 1
   window.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
@@ -536,6 +609,11 @@ onUnmounted(() => {
   justify-content: flex-end;
 }
 
+.global-search__loading {
+  display: flex;
+  align-items: center;
+}
+
 .global-search__clear {
   width: 1.5rem;
   height: 1.5rem;
@@ -591,6 +669,12 @@ onUnmounted(() => {
   font-size: 0.6875rem;
   font-weight: 650;
   color: hsl(var(--destructive));
+}
+
+.global-search__suggestions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
 .global-search__suggestion-row {

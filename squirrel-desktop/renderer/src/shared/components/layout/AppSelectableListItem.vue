@@ -1,31 +1,43 @@
 <template>
-  <div
-    role="button"
-    tabindex="0"
+  <AppContentRow
+    v-bind="$attrs"
     :class="cn(
       'app-selectable-list-item',
       variant === 'flush' && 'app-selectable-list-item--flush',
       selected && 'is-selected',
       props.class,
     )"
+    :selected="selected"
+    selectable
+    :aria-label="ariaLabel"
+    @activate="emit('click', $event)"
   >
     <slot />
-  </div>
+  </AppContentRow>
 </template>
 
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
+import AppContentRow from './AppContentRow.vue'
 import { cn } from '@/shared/lib/utils'
+
+defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(defineProps<{
   selected?: boolean
   /** default: padded card rows; flush: continuous list. */
   variant?: 'default' | 'flush'
+  ariaLabel?: string
   class?: HTMLAttributes['class']
 }>(), {
   selected: false,
   variant: 'default',
+  ariaLabel: '',
 })
+
+const emit = defineEmits<{
+  click: [event: MouseEvent]
+}>()
 </script>
 
 <style scoped>
@@ -39,7 +51,6 @@ const props = withDefaults(defineProps<{
   overflow: hidden;
   border: 1px solid transparent;
   border-radius: var(--radius-lg);
-  padding: 0 0.625rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
   text-align: left;
@@ -50,12 +61,18 @@ const props = withDefaults(defineProps<{
     border-color var(--duration-fast) var(--ease-default);
 }
 
+.app-selectable-list-item :deep(.app-content-row__content) {
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0 0.625rem;
+}
+
 .app-selectable-list-item + .app-selectable-list-item {
   margin-top: 0.25rem;
 }
 
 .app-selectable-list-item:hover,
-.app-selectable-list-item:focus-visible {
+.app-selectable-list-item:focus-within {
   background: hsl(var(--accent) / 0.6);
   color: hsl(var(--foreground));
   outline: none;
@@ -79,12 +96,18 @@ const props = withDefaults(defineProps<{
   color: inherit;
 }
 
+.app-selectable-list-item--flush :deep(.app-content-row__content) {
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
 .app-selectable-list-item--flush + .app-selectable-list-item--flush {
   margin-top: 0;
 }
 
 .app-selectable-list-item--flush:hover,
-.app-selectable-list-item--flush:focus-visible {
+.app-selectable-list-item--flush:focus-within {
   background: hsl(var(--accent) / 0.32);
   color: inherit;
 }
@@ -97,10 +120,11 @@ const props = withDefaults(defineProps<{
   box-shadow: inset 3px 0 0 hsl(var(--foreground) / 0.72);
 }
 
-.app-selectable-list-item--flush:focus-visible {
+.app-selectable-list-item--flush :deep(.app-content-row__primary:focus-visible) {
   box-shadow:
     inset 3px 0 0 hsl(var(--foreground) / 0.72),
     inset 0 0 0 1px hsl(var(--ring) / 0.42);
+  outline: none;
 }
 
 :deep(.app-selectable-list-item__actions) {

@@ -73,17 +73,19 @@
             <div
               v-for="feed in folder.feeds"
               :key="feed.id"
-              role="button"
-              tabindex="0"
-              @click="$emit('selectFeed', feed.id)"
-              @keydown.enter.self.prevent="$emit('selectFeed', feed.id)"
-              @keydown.space.self.prevent="$emit('selectFeed', feed.id)"
               @contextmenu.prevent.stop="$emit('feedContextMenu', feed, $event)"
               class="feed-folder-tree__feed"
               :class="{ 'is-selected': selectedFeedId === feed.id }"
             >
-              <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
-              <span class="flex-1 truncate">{{ feed.title }}</span>
+              <button
+                type="button"
+                class="feed-folder-tree__feed-primary"
+                :aria-pressed="selectedFeedId === feed.id"
+                @click="$emit('selectFeed', feed.id)"
+              >
+                <SiteIcon :icon-url="feed.icon_url || null" size="xs" rounded="sm" class="shrink-0" />
+                <span class="flex-1 truncate">{{ feed.title }}</span>
+              </button>
               <Button
                 v-if="canManageSubscriptions"
                 text severity="secondary"
@@ -175,7 +177,7 @@ defineEmits<{
 }
 
 .feed-folder-tree__all-button,
-.feed-folder-tree__feed {
+.feed-folder-tree__feed-primary {
   text-align: left;
 }
 
@@ -272,11 +274,30 @@ defineEmits<{
 
 .feed-folder-tree__feed {
   position: relative;
-  gap: 0.625rem;
-  padding: 0 0.5rem 0 0.75rem;
+  gap: 0;
+  padding: 0 0.5rem 0 0;
   overflow: hidden;
   font-size: 0.8125rem;
+}
+
+.feed-folder-tree__feed-primary {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  align-self: stretch;
+  gap: 0.625rem;
+  padding: 0 0.5rem 0 0.75rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   cursor: pointer;
+  outline: none;
+}
+
+.feed-folder-tree__feed-primary:focus-visible {
+  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.5);
 }
 
 .feed-folder-tree__feed:not(.is-selected):hover {

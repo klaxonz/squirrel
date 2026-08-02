@@ -18,6 +18,43 @@
           />
         </div>
 
+        <div
+          v-if="metadataError"
+          class="video-play-alert video-play-alert--error"
+          role="alert"
+        >
+          <div>
+            <strong>视频信息加载失败</strong>
+            <span>{{ metadataError }}</span>
+          </div>
+          <Button type="button" text severity="secondary" size="sm" :disabled="loadingMetadata" @click="retryMetadata">
+            {{ loadingMetadata ? '重试中' : '重试' }}
+          </Button>
+        </div>
+
+        <div
+          v-if="persistenceStatus !== 'idle'"
+          class="video-play-alert"
+          :class="{ 'video-play-alert--error': persistenceStatus === 'failed' }"
+          :role="persistenceStatus === 'failed' ? 'alert' : 'status'"
+          :aria-live="persistenceStatus === 'failed' ? 'assertive' : 'polite'"
+        >
+          <div>
+            <strong>{{ persistenceStatus === 'saving' ? '正在保存远端视频' : '远端视频保存失败' }}</strong>
+            <span>{{ persistenceStatus === 'saving' ? '保存完成后即可同步互动与播放记录。' : persistenceError }}</span>
+          </div>
+          <Button
+            v-if="persistenceStatus === 'failed'"
+            type="button"
+            text
+            severity="secondary"
+            size="sm"
+            @click="ensureLocalVideo(video)"
+          >
+            重试
+          </Button>
+        </div>
+
         <div class="video-play-main" :class="{ 'is-widescreen': isWidescreen }">
           <div v-if="video" class="video-detail">
             <div class="video-detail__title-block">
@@ -37,21 +74,18 @@
 
             <div class="video-detail__bar">
               <div class="video-detail__channel-actions">
-                <div
+                <button
                   v-if="primarySubscription"
+                  type="button"
                   class="video-detail__channel"
-                  role="button"
-                  tabindex="0"
                   @click="openProfile(primarySubscription)"
-                  @keydown.enter.prevent="openProfile(primarySubscription)"
-                  @keydown.space.prevent="openProfile(primarySubscription)"
                 >
                   <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name || ''" size="xl" />
-                  <div class="video-detail__channel-copy">
+                  <span class="video-detail__channel-copy">
                     <span>{{ primarySubscription.name }}</span>
                     <small>{{ primarySubscription.total_videos || 0 }} 项视频</small>
-                  </div>
-                </div>
+                  </span>
+                </button>
                 <Button
                   v-if="primarySubscriptionUrl"
                   type="button"
@@ -142,6 +176,25 @@
                   </Transition>
                 </div>
               </div>
+
+              <div
+                v-if="subscriptionStatusError || subscriptionToggleError"
+                class="video-detail__subscription-error"
+                role="alert"
+              >
+                <span>{{ subscriptionToggleError || subscriptionStatusError }}</span>
+                <Button
+                  v-if="subscriptionStatusError"
+                  type="button"
+                  text
+                  severity="secondary"
+                  size="sm"
+                  :disabled="isCheckingSubscription"
+                  @click="refreshSubscriptionStatus"
+                >
+                  {{ isCheckingSubscription ? '重试中' : '重试' }}
+                </Button>
+              </div>
             </div>
 
             <div v-if="displayedVideoActors.length" class="video-detail__actors">
@@ -213,6 +266,33 @@
         class="video-play-aside"
         :class="{ 'is-widescreen': isWidescreen }"
       >
+        <section v-if="activePlaylist && currentIndex >= 0" class="video-play-queue" aria-labelledby="video-play-queue-title">
+          <div class="video-play-aside__header">
+            <div>
+              <span class="video-play-queue__eyebrow">播放列表</span>
+              <h2 id="video-play-queue-title">{{ activePlaylist.name }}</h2>
+            </div>
+            <span class="video-play-aside__count app-mono">
+              {{ currentIndex + 1 }} / {{ activePlaylistItems.length }}
+            </span>
+          </div>
+          <div class="video-play-queue__items custom-scrollbar">
+            <button
+              v-for="(item, index) in activePlaylistItems"
+              :key="item.id"
+              type="button"
+              class="video-play-queue__item"
+              :class="{ 'is-current': index === currentIndex }"
+              :aria-current="index === currentIndex ? 'true' : undefined"
+              @click="handlePlaylistSelect(index)"
+            >
+              <span class="video-play-queue__index app-mono">{{ index + 1 }}</span>
+              <span class="video-play-queue__title">{{ item.video?.title || `视频 ${item.video_id}` }}</span>
+              <AppIcon v-if="index === currentIndex" name="play" class="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        </section>
+
         <div class="video-play-aside__header">
           <h2>相关视频</h2>
           <span v-if="relatedVideos.length" class="video-play-aside__count app-mono">
@@ -232,16 +312,14 @@
             </div>
           </div>
           <div v-else-if="relatedVideos.length" class="video-related-list">
-            <article
+            <button
               v-for="related in relatedVideos"
               :key="related.id"
+              type="button"
               class="video-related-item"
-              role="button"
-              tabindex="0"
+              :disabled="related.id == null"
               :aria-label="`播放 ${related.title}`"
               @click="related.id != null && goToVideo(related.id, related)"
-              @keydown.enter.prevent="related.id != null && goToVideo(related.id, related)"
-              @keydown.space.prevent="related.id != null && goToVideo(related.id, related)"
             >
               <div class="video-related-item__thumb">
                 <VideoThumbnail v-if="related.thumbnail" :src="(related.thumbnail as string)" fit="cover" />
@@ -255,7 +333,7 @@
                   <small>{{ formatDate(related.uploaded_at) }}</small>
                 </div>
               </div>
-            </article>
+            </button>
           </div>
           <AppEmptyState v-else class="py-16" variant="plain" icon="film" title="暂无相关视频" />
         </div>
@@ -265,7 +343,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppSkeleton from '@/shared/components/AppSkeleton.vue'
@@ -330,12 +408,16 @@ const {
   video,
   relatedVideos,
   loadingRelated,
+  loadingMetadata,
+  metadataError,
   loadAndPlayById,
+  retryMetadata,
 } = usePlaybackOrchestrator()
 
 const { sendReport } = useVideoHistory()
 const { INTERACTION_TYPE, toggleLike, deleteInteraction } = useVideoInteraction()
 const {
+  activePlaylist,
   activePlaylistItems,
   currentIndex,
   hasPrev,
@@ -392,14 +474,24 @@ const handlePlaylistSelect = async (index: number) => {
   }
 }
 
+const toast = useToast()
 const remoteSaveByUrl = new Map<string, Promise<VideoPageVideo | null>>()
+const persistenceStatus = ref<'idle' | 'saving' | 'failed'>('idle')
+const persistenceError = ref<string | null>(null)
 
 const ensureLocalVideo = async (targetVideo: VideoPageVideo | null): Promise<VideoPageVideo | null> => {
   if (!targetVideo || targetVideo.source !== 'remote') return targetVideo
 
   const url = String(targetVideo.url || '').trim()
-  if (!url) return null
+  if (!url) {
+    persistenceStatus.value = 'failed'
+    persistenceError.value = '无法保存远端视频：缺少视频地址'
+    toast.error(persistenceError.value)
+    return null
+  }
 
+  persistenceStatus.value = 'saving'
+  persistenceError.value = null
   let savePromise = remoteSaveByUrl.get(url)
   if (!savePromise) {
     savePromise = saveRemoteVideo({
@@ -414,14 +506,26 @@ const ensureLocalVideo = async (targetVideo: VideoPageVideo | null): Promise<Vid
       subscriptions: Array.isArray(targetVideo.subscriptions) ? targetVideo.subscriptions : [],
       actors: Array.isArray(targetVideo.actors) ? targetVideo.actors : [],
     }).then((data) => {
-      if (!data?.id) return null
+      if (!data?.id) throw new Error('服务器未返回已保存的视频')
       return data
-    }).catch(() => null)
+    }).catch((error) => {
+      remoteSaveByUrl.delete(url)
+      throw error
+    })
     remoteSaveByUrl.set(url, savePromise)
   }
 
-  const savedVideo = await savePromise
+  let savedVideo: VideoPageVideo | null
+  try {
+    savedVideo = await savePromise
+  } catch (error) {
+    persistenceStatus.value = 'failed'
+    persistenceError.value = errorMessage(error, '远端视频保存失败，请重试')
+    toast.error(persistenceError.value)
+    return null
+  }
   if (!savedVideo?.id) return null
+  persistenceStatus.value = 'idle'
 
   const currentVideo = video.value
   if (currentVideo && String(currentVideo.url || '') === url) {
@@ -463,7 +567,6 @@ const { moreMenuOpen, moreMenuRef, handleShare } = useVideoShareMenu({
 })
 
 
-const toast = useToast()
 const { videoActions, videoOverflowActions, isInteractionUpdating, handleVideoAction } = useVideoActionBar({
   video,
   interactionTypeLike: INTERACTION_TYPE.LIKE,
@@ -556,7 +659,10 @@ const {
   isSubscribing,
   isSubscriptionChecked,
   isSubscribed,
+  subscriptionStatusError,
+  subscriptionToggleError,
   subscriptionButtonText,
+  refreshSubscriptionStatus,
   handleSubscribe,
 } = useVideoSubscription({ video })
 
@@ -675,6 +781,43 @@ const {
   min-width: 0;
 }
 
+.video-play-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: var(--radius-md);
+  background: hsl(var(--muted) / 0.3);
+}
+
+.video-play-alert > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.video-play-alert strong,
+.video-play-alert span {
+  font-size: var(--app-text-secondary-size);
+}
+
+.video-play-alert span {
+  color: hsl(var(--muted-foreground));
+}
+
+.video-play-alert--error {
+  border-color: hsl(var(--destructive) / 0.28);
+  background: hsl(var(--destructive) / 0.06);
+}
+
+.video-play-alert--error strong,
+.video-play-alert--error span {
+  color: hsl(var(--destructive));
+}
+
 .video-detail,
 .video-detail__skeleton {
   display: flex;
@@ -750,7 +893,12 @@ const {
   gap: var(--space-3);
   margin: -0.25rem;
   padding: 0.25rem;
+  border: 0;
   border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   outline: none;
 }
@@ -829,6 +977,20 @@ const {
 .video-detail__subscribe-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.video-detail__subscription-error {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: hsl(var(--destructive));
+  font-size: var(--app-text-secondary-size);
+}
+
+.video-detail__subscription-error > span {
+  min-width: 0;
 }
 
 /* Reddit vote-style action buttons: independent pills, no shared container. */
@@ -982,6 +1144,72 @@ const {
   gap: var(--space-3);
 }
 
+.video-play-queue {
+  overflow: hidden;
+  border: 1px solid var(--app-hairline);
+  border-radius: var(--radius-md);
+  background: hsl(var(--muted) / 0.14);
+}
+
+.video-play-queue .video-play-aside__header {
+  padding-inline: var(--space-3);
+}
+
+.video-play-queue__eyebrow {
+  display: block;
+  margin-bottom: 0.125rem;
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-badge-size);
+  font-weight: 600;
+}
+
+.video-play-queue__items {
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.video-play-queue__item {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1.5rem minmax(0, 1fr) 1rem;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.5rem;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-top: 1px solid var(--app-hairline);
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.video-play-queue__item:hover,
+.video-play-queue__item:focus-visible {
+  background: hsl(var(--muted) / 0.4);
+  color: hsl(var(--foreground));
+  outline: none;
+}
+
+.video-play-queue__item.is-current {
+  background: hsl(var(--primary) / 0.09);
+  color: hsl(var(--primary));
+}
+
+.video-play-queue__index {
+  font-size: var(--app-text-badge-size);
+  text-align: center;
+}
+
+.video-play-queue__title {
+  overflow: hidden;
+  font-size: var(--app-text-secondary-size);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .video-play-aside__header {
   display: flex;
   min-height: 2.75rem;
@@ -1016,13 +1244,19 @@ const {
 
 .video-related-item {
   display: grid;
+  width: calc(100% + var(--space-4));
   grid-template-columns: 8.25rem minmax(0, 1fr);
   align-items: center;
   gap: var(--space-3);
   margin-inline: calc(var(--space-2) * -1);
   padding: var(--space-2);
+  border: 0;
   border-top: 1px solid transparent;
   border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   outline: none;
   transition:

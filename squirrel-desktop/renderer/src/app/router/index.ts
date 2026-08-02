@@ -31,6 +31,7 @@ const SiteRuntimeManager = () => import('@/features/settings/views/SiteRuntimeMa
 const LogViewer = () => import('@/features/settings/views/LogViewer.vue')
 const ScheduledTasks = () => import('@/features/settings/views/ScheduledTasks.vue')
 const Profile = () => import('@/features/profile/views/Profile.vue')
+const NotFound = () => import('@/app/views/NotFound.vue')
 
 const baseSearchMeta = {
   showSearch: true,
@@ -83,7 +84,7 @@ const createVideoTabRoute = (
   meta: createSearchMeta(title, overrides),
 })
 
-const routes: RouteRecordRaw[] = [
+export const routes: RouteRecordRaw[] = [
   {
     path: '/home',
     name: 'HomeView',
@@ -454,6 +455,15 @@ const routes: RouteRecordRaw[] = [
     redirect: {
       name: SETTINGS_TABS.find((tab) => tab.key === DEFAULT_SETTINGS_TAB)?.routeName || 'SettingsAppearance',
     },
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: NotFound,
+    meta: createNoSearchMeta('页面未找到', {
+      sectionLabel: '未找到',
+      historyStrategy: 'push',
+    }),
   },
 ]
 

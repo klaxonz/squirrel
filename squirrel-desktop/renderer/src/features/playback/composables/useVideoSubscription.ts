@@ -1,5 +1,6 @@
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { getSubscriptionStatus, subscribe, unsubscribe } from '@/shared/api'
+import { errorMessage } from '@/shared/lib/errorMessage'
 import type { VideoPageVideo, VideoProfile } from '@/features/playback/types/videoPlayback'
 
 /**
@@ -27,9 +28,16 @@ export interface UseVideoSubscriptionReturn {
   isSubscribing: Ref<boolean>
   isSubscribed: Ref<boolean>
   isSubscriptionChecked: Ref<boolean>
+  subscriptionStatusError: Ref<string | null>
+  subscriptionToggleError: Ref<string | null>
   subscriptionButtonText: ComputedRef<string>
-  handleSubscribe: () => Promise<void>
+  refreshSubscriptionStatus: () => Promise<SubscriptionOperationResult>
+  handleSubscribe: () => Promise<SubscriptionOperationResult>
 }
+
+export type SubscriptionOperationResult =
+  | { ok: true }
+  | { ok: false; error: string }
 
 export function useVideoSubscription(options: UseVideoSubscriptionOptions): UseVideoSubscriptionReturn {
   const { video } = options
@@ -39,6 +47,8 @@ export function useVideoSubscription(options: UseVideoSubscriptionOptions): UseV
   const isSubscribed = ref(false)
   const isSubscribing = ref(false)
   const subscriptionId = ref<number | null>(null)
+  const subscriptionStatusError = ref<string | null>(null)
+  const subscriptionToggleError = ref<string | null>(null)
 
   const primarySubscription = computed<VideoProfile | null>(() => {
     const v = video.value
@@ -54,53 +64,65 @@ export function useVideoSubscription(options: UseVideoSubscriptionOptions): UseV
     return isSubscriptionChecked.value && isSubscribed.value ? '取消订阅' : '订阅'
   })
 
-  const refreshSubscriptionStatus = async (url: string) => {
+  const refreshSubscriptionStatusForUrl = async (url: string): Promise<SubscriptionOperationResult> => {
     isSubscribed.value = false
     isSubscriptionChecked.value = false
     subscriptionId.value = null
-    if (!url) return
+    subscriptionStatusError.value = null
+    if (!url) return { ok: true }
 
     isCheckingSubscription.value = true
     try {
       const data = await getSubscriptionStatus(url)
       // Guard against a stale response if the primary URL changed mid-flight.
-      if (url !== primarySubscriptionUrl.value) return
+      if (url !== primarySubscriptionUrl.value) return { ok: true }
       isSubscribed.value = data?.is_subscribed === true
       subscriptionId.value = data?.subscription_id ?? null
       isSubscriptionChecked.value = true
-    } catch {
-      if (url !== primarySubscriptionUrl.value) return
-      // silent — subscription status check failure just leaves it unchecked
+      return { ok: true }
+    } catch (error) {
+      if (url !== primarySubscriptionUrl.value) return { ok: true }
+      const message = errorMessage(error, '订阅状态检查失败，请重试')
+      subscriptionStatusError.value = message
+      return { ok: false, error: message }
     } finally {
-      isCheckingSubscription.value = false
+      if (url === primarySubscriptionUrl.value) isCheckingSubscription.value = false
     }
   }
 
+  const refreshSubscriptionStatus = () => refreshSubscriptionStatusForUrl(primarySubscriptionUrl.value)
+
   watch(primarySubscriptionUrl, async (url) => {
-    await refreshSubscriptionStatus(url)
+    subscriptionToggleError.value = null
+    await refreshSubscriptionStatusForUrl(url)
   }, { immediate: true })
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (): Promise<SubscriptionOperationResult> => {
     const url = primarySubscriptionUrl.value
-    if (!url || isSubscribing.value) return
+    if (!url) return { ok: false, error: '缺少可订阅的频道地址' }
+    if (isSubscribing.value) return { ok: false, error: '订阅操作正在进行' }
 
     isSubscribing.value = true
+    subscriptionToggleError.value = null
     try {
-      const data = isSubscribed.value && subscriptionId.value
+      const wasSubscribed = isSubscribed.value
+      const data = wasSubscribed && subscriptionId.value
         ? await unsubscribe(subscriptionId.value)
         : await subscribe(url)
 
-      // Optimistic update only on a fresh subscribe (unsubscribe is re-queried
-      // below via refreshSubscriptionStatus, which is the source of truth).
-      if (!isSubscribed.value) {
+      if (!wasSubscribed) {
         isSubscribed.value = data?.is_subscribed === true
         subscriptionId.value = data?.subscription_id ?? null
         isSubscriptionChecked.value = true
       }
 
-      await refreshSubscriptionStatus(url)
-    } catch {
-      // silent — a failed subscribe/unsubscribe leaves the toggle unchanged
+      const refreshResult = await refreshSubscriptionStatusForUrl(url)
+      if (!refreshResult.ok) return refreshResult
+      return { ok: true }
+    } catch (error) {
+      const message = errorMessage(error, isSubscribed.value ? '取消订阅失败，请重试' : '订阅失败，请重试')
+      subscriptionToggleError.value = message
+      return { ok: false, error: message }
     } finally {
       isSubscribing.value = false
     }
@@ -113,7 +135,10 @@ export function useVideoSubscription(options: UseVideoSubscriptionOptions): UseV
     isSubscribing,
     isSubscribed,
     isSubscriptionChecked,
+    subscriptionStatusError,
+    subscriptionToggleError,
     subscriptionButtonText,
+    refreshSubscriptionStatus,
     handleSubscribe,
   }
 }

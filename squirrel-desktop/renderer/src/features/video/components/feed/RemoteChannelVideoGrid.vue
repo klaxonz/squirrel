@@ -13,17 +13,12 @@
     </div>
 
     <div v-if="items.length" class="app-video-grid app-video-grid--feed">
-      <!-- Native article card — do not use shared Button here; its default h-9
-           collapses the media frame and makes remote thumbnails look missing. -->
-      <article
+      <button
         v-for="item in items"
         :key="item.site + ':' + item.url"
+        type="button"
         class="remote-channel-video-card group"
-        role="button"
-        tabindex="0"
         @click="$emit('open', item)"
-        @keydown.enter.prevent="$emit('open', item)"
-        @keydown.space.prevent="$emit('open', item)"
       >
         <div class="remote-channel-video-thumb">
           <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" />
@@ -40,7 +35,7 @@
             {{ displayDate(item) }}
           </div>
         </div>
-      </article>
+      </button>
     </div>
 
     <div v-if="loading" class="app-video-grid app-video-grid--feed">

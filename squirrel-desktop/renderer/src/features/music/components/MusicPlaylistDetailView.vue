@@ -1,35 +1,43 @@
 <template>
   <div class="music-playlist-detail">
-    <div class="music-playlist-topbar">
-      <div class="music-playlist-topbar-left">
-        <h1 class="music-playlist-topbar-title">{{ playlist.specialname || playlist.name }}</h1>
-        <span class="music-playlist-topbar-meta">{{ total }} 首</span>
-      </div>
-      <div class="music-playlist-topbar-actions">
+    <MusicDetailHeader
+      kicker="歌单"
+      :title="playlist.specialname || playlist.name || '未命名歌单'"
+      :cover="playlist.imgurl || playlist.cover"
+      :description="playlist.intro || ''"
+    >
+      <template #meta>
+        <span v-if="playlist.nickname || playlist.creator">
+          {{ playlist.nickname || playlist.creator }}
+        </span>
+        <span>{{ total }} 首歌</span>
+        <span v-if="playlist.play_count">{{ formatCount(playlist.play_count) }} 次播放</span>
+        <span v-if="collectCount">{{ formatCount(collectCount) }} 次收藏</span>
+      </template>
+      <template #actions>
+        <Button @click="playAll">
+          <AppIcon name="play" class="h-4 w-4" />
+          播放全部
+        </Button>
         <Button
-          text severity="secondary"
-          size="sm" icon-only
+          severity="secondary"
           :class="shuffle && 'app-selection-active'"
-          title="随机播放"
           @click="shuffleAll"
         >
           <AppIcon name="shuffle" class="h-4 w-4" />
+          随机
         </Button>
         <Button
           v-if="showCollect"
-          text severity="secondary"
-          size="sm" icon-only
+          severity="secondary"
           :class="collected && 'app-selection-active'"
-          title="收藏"
           @click="$emit('collect')"
         >
           <AppIcon name="heart" class="h-4 w-4" :class="{ 'fill-current': collected }" />
+          {{ collected ? '已收藏' : '收藏' }}
         </Button>
-        <Button size="sm" icon-only rounded title="播放全部" @click="playAll">
-          <AppIcon name="play" class="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
+      </template>
+    </MusicDetailHeader>
 
     <AppBlockLoader v-if="loading" text="加载中..." />
 
@@ -74,7 +82,9 @@ import { Button } from '@/shared/ui/button'
 import AppBlockLoader from '@/shared/components/AppBlockLoader.vue'
 import MusicTrackList from './MusicTrackList.vue'
 import MusicCard from './shared/MusicCard.vue'
+import MusicDetailHeader from './shared/MusicDetailHeader.vue'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
+import { formatCount } from '@/shared/lib/dateFormat'
 import type { MusicPlaylist, MusicTrack } from '@/shared/api/music'
 
 const props = defineProps<{
@@ -103,6 +113,7 @@ defineEmits<{
 
 const player = useMusicPlayerStore()
 const shuffle = computed(() => player.shuffle)
+const collectCount = computed(() => props.playlist.collectcount || props.playlist.collect_count || 0)
 
 function playAll() {
   player.shuffle = false
@@ -118,51 +129,6 @@ function shuffleAll() {
 <style scoped>
 .music-playlist-detail {
   width: 100%;
-}
-
-.music-playlist-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-3);
-  padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--app-hairline);
-}
-
-.music-playlist-topbar-left {
-  display: flex;
-  min-width: 0;
-  align-items: baseline;
-  gap: 0.75rem;
-}
-
-.music-playlist-topbar-title {
-  margin: 0;
-  overflow: hidden;
-  color: var(--app-heading-color);
-  font-family: var(--app-heading-font);
-  font-size: var(--app-h2-size);
-  font-weight: var(--app-h2-weight);
-  letter-spacing: var(--app-h2-tracking);
-  line-height: var(--app-h2-leading);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.music-playlist-topbar-meta {
-  flex-shrink: 0;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-
-.music-playlist-topbar-actions {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 0.375rem;
 }
 
 .music-playlist-tracks {
