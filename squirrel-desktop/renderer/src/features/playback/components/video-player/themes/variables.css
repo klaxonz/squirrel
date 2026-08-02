@@ -10,7 +10,7 @@
   --sp-primary: var(--sp-theme-primary, hsl(var(--primary)));
   --sp-primary-hover: var(--sp-theme-primary-hover, hsl(var(--primary) / 0.9));
   --sp-primary-active: var(--sp-theme-primary-active, hsl(var(--primary) / 0.8));
-  --sp-primary-rgb: var(--sp-theme-primary-rgb, 224, 90, 35);
+  --sp-primary-rgb: var(--sp-theme-primary-rgb, 255, 69, 0);
   
   /* Opaque media chrome; only the video itself should read as layered. */
   --sp-bg: #000;
@@ -70,10 +70,10 @@
   
   /* ========== 按钮 ========== */
   
-  --sp-btn-size: 38px;
+  --sp-btn-size: 36px;
   --sp-btn-size-sm: 30px;
   --sp-btn-size-lg: 52px;
-  --sp-btn-icon-size: 22px;
+  --sp-btn-icon-size: 20px;
   --sp-btn-icon-size-sm: 18px;
   --sp-btn-icon-size-lg: 32px;
   --sp-btn-hover-bg: var(--sp-bg-hover);
@@ -83,13 +83,13 @@
   
   --sp-menu-bg: rgba(18, 18, 18, 0.98);
   --sp-menu-border: rgba(255, 255, 255, 0.08);
-  --sp-menu-shadow: 0 12px 32px rgba(0, 0, 0, 0.58);
+  --sp-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   --sp-menu-width: 260px;
   --sp-menu-max-height: 420px;
-  --sp-menu-item-height: 44px;
-  --sp-menu-item-padding: 10px 16px;
+  --sp-menu-item-height: 36px;
+  --sp-menu-item-padding: 6px 10px;
   --sp-menu-item-hover-bg: var(--sp-bg-hover, rgba(255, 255, 255, 0.08));
-  --sp-menu-item-active-bg: var(--sp-bg-active, rgba(255, 255, 255, 0.14));
+  --sp-menu-item-active-bg: rgba(var(--sp-primary-rgb), 0.12);
   --sp-btn-toggled-bg: var(--sp-bg-active, rgba(255, 255, 255, 0.14));
   --sp-switch-bg: rgba(255, 255, 255, 0.15);
   --sp-switch-thumb: #fff;
@@ -140,17 +140,18 @@
   --sp-radius-xs: 1px;
   --sp-radius-sm: 2px;
   --sp-radius-md: 4px;
-  --sp-radius-lg: 8px;
-  --sp-radius-xl: 12px;
+  --sp-radius-lg: 4px;
+  --sp-radius-xl: 6px;
   --sp-radius-full: 9999px;
   
   /* ========== 阴影 ========== */
+  /* Hairline-first: panels carry a 1px border, shadows only add lift. */
   
-  --sp-shadow-sm: 0 0 10px rgba(255, 255, 255, 0.08);
-  --sp-shadow-md: 0 0 20px rgba(255, 255, 255, 0.12);
-  --sp-shadow-lg: 0 0 40px rgba(255, 255, 255, 0.16);
-  --sp-shadow-xl: 0 0 60px rgba(255, 255, 255, 0.2);
-  --sp-glow-primary: 0 0 15px rgba(255, 255, 255, 0.15);
+  --sp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sp-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.35);
+  --sp-shadow-lg: 0 4px 14px rgba(0, 0, 0, 0.4);
+  --sp-shadow-xl: 0 6px 20px rgba(0, 0, 0, 0.45);
+  --sp-glow-primary: 0 0 12px rgba(var(--sp-primary-rgb), 0.18);
   
   /* ========== 层级 (z-index) ========== */
   

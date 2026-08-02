@@ -5,19 +5,16 @@
       :class="{ 'is-widescreen': isWidescreen }"
     >
       <div
-        class="video-play-primary"
+        class="video-player-stage"
         :class="{ 'is-widescreen': isWidescreen }"
       >
         <div
-          class="video-player-stage"
-          :class="{ 'is-widescreen': isWidescreen }"
-        >
-          <div
-            ref="videoPlayerHostRef"
-            class="video-player-host"
-          />
-        </div>
+          ref="videoPlayerHostRef"
+          class="video-player-host"
+        />
+      </div>
 
+      <div class="video-play-alerts">
         <div
           v-if="metadataError"
           class="video-play-alert video-play-alert--error"
@@ -54,148 +51,146 @@
             重试
           </Button>
         </div>
+      </div>
 
-        <div class="video-play-main" :class="{ 'is-widescreen': isWidescreen }">
-          <div v-if="video" class="video-detail">
-            <div class="video-detail__title-block">
-              <h1 class="app-h2">
-                {{ video.title }}
-              </h1>
-              <div v-if="videoPublishedText || video.site" class="video-detail__meta">
-                <span v-if="videoPublishedText">{{ videoPublishedText }}</span>
-                <span
-                  v-if="videoPublishedText && video.site"
-                  class="video-detail__dot"
-                  aria-hidden="true"
-                >·</span>
-                <span v-if="video.site" class="video-detail__site">{{ video.site }}</span>
-              </div>
+      <div class="video-play-main" :class="{ 'is-widescreen': isWidescreen }">
+        <div v-if="video" class="video-detail">
+          <div class="video-detail__title-block">
+            <h1 class="app-h2">
+              {{ video.title }}
+            </h1>
+            <div v-if="videoPublishedText || video.site" class="video-detail__meta">
+              <span v-if="videoPublishedText">{{ videoPublishedText }}</span>
+              <span
+                v-if="videoPublishedText && video.site"
+                class="video-detail__dot"
+                aria-hidden="true"
+              >·</span>
+              <span v-if="video.site" class="video-detail__site">{{ video.site }}</span>
             </div>
+          </div>
 
-            <div class="video-detail__bar">
-              <div class="video-detail__channel-actions">
-                <button
-                  v-if="primarySubscription"
-                  type="button"
-                  class="video-detail__channel"
-                  @click="openProfile(primarySubscription)"
-                >
-                  <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name || ''" size="xl" />
-                  <span class="video-detail__channel-copy">
-                    <span>{{ primarySubscription.name }}</span>
-                    <small>{{ primarySubscription.total_videos || 0 }} 项视频</small>
-                  </span>
-                </button>
-                <Button
-                  v-if="primarySubscriptionUrl"
-                  type="button"
-
-                  size="sm"
-                  class="video-detail__subscribe-button"
-                  :class="{ 'is-subscribed': isSubscriptionChecked && isSubscribed }"
-                  :disabled="isCheckingSubscription || isSubscribing"
-                  @click="handleSubscribe"
-                >
-                  {{ subscriptionButtonText }}
-                </Button>
-              </div>
-
-              <div class="video-detail__actions">
-                <div class="video-detail__action-group">
-                  <Button
-                    v-for="action in primaryVisibleActions"
-                    :key="action.key"
-                    type="button"
-                    text severity="secondary"
-                    size="sm"
-                    class="video-detail__action-button"
-                    :class="{ 'is-active': action.active }"
-                    :aria-pressed="action.active"
-                    :aria-busy="isInteractionUpdating || undefined"
-                    :aria-label="action.label || action.key"
-                    :disabled="isInteractionUpdating"
-                    @click="handleVideoAction(action)"
-                  >
-                    <AppIcon :name="action.icon" class="w-4 h-4" :stroke-width="action.active ? 2.5 : 2" />
-                    <span v-if="action.label">{{ action.label }}</span>
-                  </Button>
-                </div>
-
-                <Button
-                  type="button"
-                  text severity="secondary"
-                  size="sm"
-                  class="video-detail__action-button video-detail__action-button--share"
-                  title="分享链接"
-                  aria-label="分享链接"
-                  @click="handleShare"
-                >
-                  <AppIcon name="share" class="w-4 h-4" />
-                  <span>分享</span>
-                </Button>
-                <div class="video-detail__more relative" ref="moreMenuRef">
-                  <Button
-                    type="button"
-                    text severity="secondary"
-                    size="sm" icon-only
-                    class="video-detail__icon-button"
-                    :aria-expanded="moreMenuOpen"
-                    aria-haspopup="menu"
-                    aria-label="更多操作"
-                    @click.stop="moreMenuOpen = !moreMenuOpen"
-                  >
-                    <AppIcon name="more" class="w-4 h-4" />
-                  </Button>
-                  <Transition name="fade">
-                    <AppFloatingList
-                      v-if="moreMenuOpen"
-                      class="video-detail__menu"
-                      max-height="16rem"
-                    >
-                      <AppListOption
-                        v-for="action in videoOverflowActions.filter(a => a.key !== 'source')"
-                        :key="action.key"
-                        role="menuitem"
-                        @click.stop="handleVideoAction(action); moreMenuOpen = false"
-                      >
-                        <AppIcon :name="action.icon" class="w-4 h-4 text-muted-foreground" />
-                        {{ action.label }}
-                      </AppListOption>
-                      <a
-                        v-if="video.url"
-                        :href="video.url"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="video-detail__menu-link"
-                        @click.stop="moreMenuOpen = false"
-                      >
-                        <AppIcon name="externalLink" class="w-4 h-4 text-muted-foreground" />
-                        原视频
-                      </a>
-                    </AppFloatingList>
-                  </Transition>
-                </div>
-              </div>
-
-              <div
-                v-if="subscriptionStatusError || subscriptionToggleError"
-                class="video-detail__subscription-error"
-                role="alert"
+          <!-- 操作行：like/dislike 成组（Reddit vote pill），later/share 同排，more 靠右 -->
+          <div class="video-detail__actions">
+            <div class="video-detail__action-group">
+              <button
+                v-for="action in primaryVisibleActions"
+                :key="action.key"
+                type="button"
+                class="video-detail__action-button"
+                :class="{ 'is-active': action.active }"
+                :aria-pressed="action.active"
+                :aria-busy="isInteractionUpdating || undefined"
+                :aria-label="action.label || action.key"
+                :disabled="isInteractionUpdating"
+                @click="handleVideoAction(action)"
               >
-                <span>{{ subscriptionToggleError || subscriptionStatusError }}</span>
-                <Button
-                  v-if="subscriptionStatusError"
-                  type="button"
-                  text
-                  severity="secondary"
-                  size="sm"
-                  :disabled="isCheckingSubscription"
-                  @click="refreshSubscriptionStatus"
-                >
-                  {{ isCheckingSubscription ? '重试中' : '重试' }}
-                </Button>
-              </div>
+                <AppIcon :name="action.icon" class="video-detail__action-icon" :stroke-width="action.active ? 2.5 : 2" />
+                <span v-if="action.label" class="video-detail__action-label">{{ action.label }}</span>
+              </button>
+
+              <button
+                type="button"
+                class="video-detail__action-button"
+                title="分享链接"
+                aria-label="分享链接"
+                @click="handleShare"
+              >
+                <AppIcon name="share" class="video-detail__action-icon" />
+                <span class="video-detail__action-label">分享</span>
+              </button>
             </div>
+
+            <div class="video-detail__more" ref="moreMenuRef">
+              <button
+                type="button"
+                class="video-detail__action-button video-detail__action-button--more"
+                :aria-expanded="moreMenuOpen"
+                aria-haspopup="menu"
+                aria-label="更多操作"
+                @click.stop="moreMenuOpen = !moreMenuOpen"
+              >
+                <AppIcon name="more" class="video-detail__action-icon" />
+                <span class="video-detail__action-label">更多</span>
+              </button>
+              <Transition name="fade">
+                <AppFloatingList
+                  v-if="moreMenuOpen"
+                  class="video-detail__menu"
+                  max-height="16rem"
+                >
+                  <AppListOption
+                    v-for="action in videoOverflowActions.filter(a => a.key !== 'source')"
+                    :key="action.key"
+                    role="menuitem"
+                    @click.stop="handleVideoAction(action); moreMenuOpen = false"
+                  >
+                    <AppIcon :name="action.icon" class="w-4 h-4 text-muted-foreground" />
+                    {{ action.label }}
+                  </AppListOption>
+                  <a
+                    v-if="video.url"
+                    :href="video.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="video-detail__menu-link"
+                    @click.stop="moreMenuOpen = false"
+                  >
+                    <AppIcon name="externalLink" class="w-4 h-4 text-muted-foreground" />
+                    原视频
+                  </a>
+                </AppFloatingList>
+              </Transition>
+            </div>
+          </div>
+
+          <div class="video-detail__bar">
+            <div class="video-detail__channel-actions">
+              <button
+                v-if="primarySubscription"
+                type="button"
+                class="video-detail__channel"
+                @click="openProfile(primarySubscription)"
+              >
+                <SubscriptionAvatar :src="primarySubscription.avatar" :name="primarySubscription.name || ''" size="xl" />
+                <span class="video-detail__channel-copy">
+                  <span>{{ primarySubscription.name }}</span>
+                  <small>{{ primarySubscription.total_videos || 0 }} 项视频</small>
+                </span>
+              </button>
+              <Button
+                v-if="primarySubscriptionUrl"
+                type="button"
+
+                size="sm"
+                class="video-detail__subscribe-button"
+                :class="{ 'is-subscribed': isSubscriptionChecked && isSubscribed }"
+                :disabled="isCheckingSubscription || isSubscribing"
+                @click="handleSubscribe"
+              >
+                {{ subscriptionButtonText }}
+              </Button>
+            </div>
+
+            <div
+              v-if="subscriptionStatusError || subscriptionToggleError"
+              class="video-detail__subscription-error"
+              role="alert"
+            >
+              <span>{{ subscriptionToggleError || subscriptionStatusError }}</span>
+              <Button
+                v-if="subscriptionStatusError"
+                type="button"
+                text
+                severity="secondary"
+                size="sm"
+                :disabled="isCheckingSubscription"
+                @click="refreshSubscriptionStatus"
+              >
+                {{ isCheckingSubscription ? '重试中' : '重试' }}
+              </Button>
+            </div>
+          </div>
 
             <div v-if="displayedVideoActors.length" class="video-detail__actors">
               <div class="video-detail__actor-list no-scrollbar">
@@ -260,7 +255,6 @@
             <AppSkeleton height="5rem" rounded="var(--radius-xl)" shimmer />
           </div>
         </div>
-      </div>
 
       <div
         class="video-play-aside"
@@ -724,13 +718,17 @@ const {
   background: hsl(var(--background));
 }
 
+/* ===== 布局 =====
+   默认（<1080px）单列堆叠；桌面 ≥1080px 两栏：
+   播放器全宽 + [详情 | 右侧栏]。
+   本页独有放宽：96rem（家页/列表仍用 --app-content-media-max）。 */
 .video-play-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: var(--space-6);
+  gap: var(--space-5) var(--space-6);
   width: 100%;
-  max-width: var(--app-content-media-max);
+  max-width: min(100%, 96rem);
   margin-inline: auto;
   padding: var(--space-5) var(--app-content-media-gutter) var(--space-8);
   transition:
@@ -738,36 +736,28 @@ const {
     padding var(--duration-base) var(--ease-out);
 }
 
+/* 宽屏语义：去掉 max-width，播放器与页面内容贴边（edge-to-edge） */
 .video-play-layout.is-widescreen {
   max-width: none;
   padding-top: var(--space-4);
-}
-
-.video-play-primary {
-  min-width: 0;
-}
-
-.video-play-primary:not(.is-widescreen) {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-}
-
-.video-play-primary.is-widescreen {
-  display: contents;
 }
 
 .video-player-stage {
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: black;
   box-shadow: 0 0 0 1px hsl(var(--border) / 0.32);
+  /* 视口适配：16:9 全宽在矮窗口/宽屏下会超出视口（底部控制条被遮挡）。
+     按剩余视口高度约束宽度，保证播放器完整可见；高窗口时 100% 优先（贴边）。 */
+  width: min(100%, calc((100vh - var(--app-player-chrome, 7rem)) * 16 / 9));
+  margin-inline: auto;
 }
 
-.video-player-stage.is-widescreen {
-  border-radius: var(--radius-md);
+/* 音乐播放时底部音乐条占用 4.5rem，追加到视口余量 */
+.app-layout__scroll--music-player .video-player-stage {
+  --app-player-chrome: 11.5rem;
 }
 
 .video-player-host {
@@ -777,8 +767,10 @@ const {
   border-radius: inherit;
 }
 
-.video-play-main {
-  min-width: 0;
+.video-play-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .video-play-alert {
@@ -818,6 +810,109 @@ const {
   color: hsl(var(--destructive));
 }
 
+/* ===== 操作行（Reddit vote pill）=====
+   标题下方横排：like/dislike 成组，later/share 同排，more 靠右。
+   独立 pill 按钮（无共享容器），选中态 primary 12% 底 + primary 图标/文字。 */
+.video-detail__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-block: var(--space-1);
+}
+
+.video-detail__action-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.video-detail__action-button {
+  display: inline-flex;
+  height: 2rem;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: 0.625rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 650;
+  cursor: pointer;
+  outline: none;
+  white-space: nowrap;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    opacity var(--duration-fast) var(--ease-default);
+}
+
+.video-detail__action-button:hover {
+  background: hsl(var(--muted) / 0.62);
+  color: hsl(var(--foreground));
+}
+
+.video-detail__action-button.is-active {
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+}
+
+.video-detail__action-button:focus-visible {
+  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.52);
+}
+
+.video-detail__action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.video-detail__action-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: 0 0 auto;
+}
+
+.video-detail__more {
+  position: relative;
+  margin-left: auto;
+}
+
+.video-detail__menu {
+  right: 0;
+  left: auto;
+  width: 11rem;
+}
+
+.video-detail__menu-link {
+  display: flex;
+  min-height: 2.25rem;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 0.25rem 0.5rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
+}
+
+.video-detail__menu-link:hover,
+.video-detail__menu-link:focus-visible {
+  background: hsl(var(--accent) / 0.48);
+  color: hsl(var(--foreground));
+  outline: none;
+}
+
+.video-play-main {
+  min-width: 0;
+}
+
 .video-detail,
 .video-detail__skeleton {
   display: flex;
@@ -836,7 +931,7 @@ const {
   max-width: 64rem;
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: clamp(1rem, 1.25vw, 1.125rem);
+  font-size: clamp(1.125rem, 1.4vw, 1.375rem);
   line-height: 1.35;
   letter-spacing: -0.01em;
 }
@@ -866,23 +961,15 @@ const {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  min-height: 3rem;
+  gap: var(--space-3);
   padding-block: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--app-hairline);
 }
 
-.video-detail__channel-actions,
-.video-detail__actions,
-.video-detail__action-group,
-.video-detail__more {
-  display: flex;
-  align-items: center;
-}
-
 .video-detail__channel-actions {
+  display: flex;
   min-width: 0;
+  align-items: center;
   gap: var(--space-4);
 }
 
@@ -936,28 +1023,22 @@ const {
   font-weight: 500;
 }
 
-.video-detail__subscribe-button,
-.video-detail__action-button,
-.video-detail__icon-button,
-.video-detail__actor {
+.video-detail__subscribe-button {
+  min-width: 4.25rem;
+  height: 2rem;
+  padding-inline: var(--space-3);
   border: 1px solid transparent;
+  border-radius: 999px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 0.75rem;
+  font-weight: 650;
   outline: none;
   transition:
     color var(--duration-fast) var(--ease-default),
     background-color var(--duration-fast) var(--ease-default),
     border-color var(--duration-fast) var(--ease-default),
     opacity var(--duration-fast) var(--ease-default);
-}
-
-.video-detail__subscribe-button {
-  min-width: 4.25rem;
-  height: 2rem;
-  padding-inline: var(--space-3);
-  border-radius: 999px;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  font-size: 0.75rem;
-  font-weight: 650;
 }
 
 .video-detail__subscribe-button:hover {
@@ -993,90 +1074,6 @@ const {
   min-width: 0;
 }
 
-/* Reddit vote-style action buttons: independent pills, no shared container. */
-.video-detail__actions {
-  gap: 0.25rem;
-}
-
-.video-detail__action-group {
-  gap: 0.25rem;
-}
-
-.video-detail__action-button {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  height: 1.75rem;
-  min-width: 1.75rem;
-  padding-inline: 0.5rem;
-  border-radius: 999px;
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 650;
-}
-
-.video-detail__action-button:hover {
-  background: hsl(var(--muted) / 0.48);
-  color: hsl(var(--foreground));
-}
-
-.video-detail__action-button.is-active {
-  background: hsl(var(--primary) / 0.12);
-  color: hsl(var(--primary));
-}
-
-.video-detail__action-button:focus-visible,
-.video-detail__icon-button:focus-visible {
-  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.52);
-}
-
-.video-detail__icon-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-}
-
-.video-detail__icon-button:hover {
-  background: hsl(var(--muted) / 0.48);
-  color: hsl(var(--foreground));
-}
-
-.video-detail__menu {
-  right: 0;
-  left: auto;
-  width: 11rem;
-}
-
-.video-detail__menu-link {
-  display: flex;
-  min-height: 2.25rem;
-  width: 100%;
-  align-items: center;
-  gap: 0.5rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  padding: 0.25rem 0.5rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 500;
-  transition:
-    color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default);
-}
-
-.video-detail__menu-link:hover,
-.video-detail__menu-link:focus-visible {
-  background: hsl(var(--accent) / 0.48);
-  color: hsl(var(--foreground));
-  outline: none;
-}
-
 .video-detail__actors {
   margin-top: calc(var(--space-1) * -1);
 }
@@ -1095,11 +1092,18 @@ const {
   gap: var(--space-2);
   height: 2rem;
   padding-inline: var(--space-2);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   background: hsl(var(--muted) / 0.32);
   color: hsl(var(--foreground) / 0.86);
   font-size: 0.75rem;
   font-weight: 650;
+  outline: none;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    opacity var(--duration-fast) var(--ease-default);
 }
 
 .video-detail__actor:hover {
@@ -1107,9 +1111,11 @@ const {
   color: hsl(var(--foreground));
 }
 
+/* 简介正文区：透明底（Reddit 正文区不承载 card 表面），仅顶部 hairline 分隔 */
 .video-detail__description {
-  max-width: 64rem;
-  padding-top: var(--space-1);
+  padding: var(--space-3) 0 0;
+  border-top: 1px solid var(--app-hairline);
+  background: transparent;
 }
 
 .video-detail__description p {
@@ -1195,6 +1201,12 @@ const {
 .video-play-queue__item.is-current {
   background: hsl(var(--primary) / 0.09);
   color: hsl(var(--primary));
+}
+
+/* Reddit queue: the row gets a quiet primary tint; the title stays
+   foreground while the index + play indicator carry the accent. */
+.video-play-queue__item.is-current .video-play-queue__title {
+  color: hsl(var(--foreground));
 }
 
 .video-play-queue__index {
@@ -1356,6 +1368,7 @@ const {
   font-weight: 500;
 }
 
+/* ===== 桌面两栏（≥1080px）===== */
 @media (min-width: 1080px) {
   .video-play-layout {
     grid-template-columns: minmax(0, 1fr) minmax(19rem, 22rem);
@@ -1365,28 +1378,30 @@ const {
     grid-template-columns: minmax(0, 1fr) minmax(20rem, 24rem);
   }
 
-  .video-player-stage.is-widescreen {
-    grid-column: span 2;
-  }
-
-  .video-play-main.is-widescreen {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .video-play-aside:not(.is-widescreen) {
-    position: sticky;
-    top: var(--space-4);
-    grid-column: 2;
+  .video-player-stage {
+    grid-column: 1 / -1;
     grid-row: 1;
   }
 
-  .video-play-aside.is-widescreen {
-    grid-column: 2;
+  .video-play-alerts {
+    grid-column: 1 / -1;
     grid-row: 2;
+  }
+
+  .video-play-main {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .video-play-aside {
+    position: sticky;
+    top: var(--space-4);
+    grid-column: 2;
+    grid-row: 3;
   }
 }
 
+/* 相关视频双列（720–1079） */
 @media (max-width: 1079px) and (min-width: 720px) {
   .video-related-list {
     display: grid;
@@ -1401,9 +1416,14 @@ const {
     padding: var(--space-3) var(--space-4) var(--space-7);
   }
 
-  .video-player-stage,
-  .video-player-stage.is-widescreen {
-    border-radius: var(--radius-md);
+  /* 操作行：不换行不挤压，超宽横向滚动（隐藏滚动条） */
+  .video-detail__actions {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .video-detail__actions::-webkit-scrollbar {
+    display: none;
   }
 
   .video-detail__bar {
@@ -1415,36 +1435,20 @@ const {
     justify-content: space-between;
   }
 
-  .video-detail__actions {
-    width: 100%;
-  }
-
-  .video-detail__action-group {
-    flex: 1 1 auto;
-  }
-
-  .video-detail__action-button {
-    flex: 1 1 auto;
-    justify-content: center;
-  }
-
-  .video-detail__action-button--share {
-    flex: 0 0 auto;
-  }
-
   .video-related-item {
     grid-template-columns: 7.5rem minmax(0, 1fr);
   }
 }
 
 @media (max-width: 479px) {
-  .video-detail__action-button span {
+  .video-detail__action-label {
     display: none;
   }
 
   .video-detail__action-button {
-    flex: 0 0 2.125rem;
+    width: 2.125rem;
     padding-inline: 0;
+    justify-content: center;
   }
 }
 
@@ -1463,8 +1467,6 @@ const {
   .video-detail__channel-copy span,
   .video-detail__subscribe-button,
   .video-detail__action-button,
-  .video-detail__icon-button,
-  .video-detail__actor,
   .video-detail__menu-link,
   .video-detail__description-toggle,
   .video-related-item,

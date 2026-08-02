@@ -1156,8 +1156,8 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 .sp-gradient-overlay {
   position: absolute;
   inset: auto 0 0 0;
-  height: 9rem;
-  background: linear-gradient(to top, rgb(0 0 0 / 0.9) 0%, rgb(0 0 0 / 0.52) 42%, transparent 100%);
+  height: 6rem;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.72) 0%, rgb(0 0 0 / 0.38) 46%, transparent 100%);
   pointer-events: none;
   z-index: 15;
 }
@@ -1197,7 +1197,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 
 .sp-progress-rail {
   width: 100%;
-  height: 3px;
+  height: 2px;
   background: rgba(255, 255, 255, 0.2);
   transition:
     height var(--duration-normal) var(--ease-default);
@@ -1207,7 +1207,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-progress-container:hover .sp-progress-rail {
-  height: 5px;
+  height: 4px;
 }
 
 .sp-progress-buffered {
@@ -1277,7 +1277,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   right: 0;
   height: 5px;
   transform: translateY(-50%);
-  border-radius: 999px;
+  border-radius: 2px;
   background: color-mix(in srgb, var(--marker-color, hsl(24 100% 50%)) 40%, transparent);
   transition:
     height var(--duration-fast) var(--ease-default),
@@ -1514,7 +1514,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 .sp-controls-right {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .sp-controls-left {
@@ -1525,32 +1525,30 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   justify-content: flex-end;
 }
 
-/* 质量标签 */
+/* 质量标签：扁平 mono 文本，无边框无底色，hover 变白 */
 .sp-quality-tag {
   appearance: none;
   font-family: var(--sp-font-mono);
   min-height: 1.75rem;
   padding: 0.25rem 0.5rem;
-  border: 1px solid rgb(255 255 255 / 0.13);
-  border-radius: 6px;
-  color: rgb(255 255 255 / 0.78);
+  border: 0;
+  border-radius: var(--sp-radius-md);
+  color: rgb(255 255 255 / 0.72);
+  background: transparent;
   font-size: var(--app-text-badge-size);
   font-weight: 650;
   cursor: pointer;
   transition:
     color var(--duration-normal) var(--ease-default),
-    border-color var(--duration-normal) var(--ease-default),
     background-color var(--duration-normal) var(--ease-default);
-  background: rgb(0 0 0 / 0.18);
   letter-spacing: 0;
-  margin-right: 6px;
+  margin-right: 0;
 }
 
 .sp-quality-tag:hover,
 .sp-quality-tag.is-active {
   color: #fff;
-  border-color: rgb(255 255 255 / 0.24);
-  background: rgb(255 255 255 / 0.1);
+  background: transparent;
 }
 
 /* 控制按钮 */
@@ -1559,10 +1557,10 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   border: none;
   color: rgb(255 255 255 / 0.78);
   cursor: pointer;
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  border-radius: 7px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: var(--sp-radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1596,14 +1594,13 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-btn--play {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
   margin-inline: 2px;
   border-radius: 999px;
   background: var(--sp-primary);
   color: #fff;
-  box-shadow: 0 4px 14px hsl(var(--primary) / 0.28);
 }
 
 .sp-btn--play:hover {
@@ -1612,8 +1609,8 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
 }
 
 .sp-btn--play :deep(svg) {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 
 /* 时间显示 */
@@ -1739,9 +1736,9 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   }
 
   .sp-btn--play {
-    width: 34px;
-    height: 34px;
-    min-width: 34px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
   }
 
   .sp-control--compact-hide,

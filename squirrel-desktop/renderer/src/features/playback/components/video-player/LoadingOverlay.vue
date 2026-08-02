@@ -44,7 +44,7 @@ defineProps<Props>()
   position: absolute;
   inset: 0;
   border: 2px solid rgba(255, 255, 255, 0.14);
-  border-top-color: rgba(255, 255, 255, 0.82);
+  border-top-color: var(--sp-primary);
   border-radius: 50%;
   animation: sp-loader-spin 0.8s linear infinite;
 }

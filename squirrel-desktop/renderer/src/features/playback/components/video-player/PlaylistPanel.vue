@@ -62,8 +62,8 @@ defineEmits(['close', 'select'])
   bottom: 0;
   width: 20rem;
   max-width: 48%;
-  background: rgb(14 14 14 / 0.98);
-  border-inline-start: 1px solid var(--sp-border, rgba(255, 255, 255, 0.08));
+  background: var(--sp-menu-bg);
+  border-inline-start: 1px solid var(--sp-menu-border, rgba(255, 255, 255, 0.08));
   z-index: 90;
   display: flex;
   flex-direction: column;
@@ -76,7 +76,7 @@ defineEmits(['close', 'select'])
   gap: 8px;
   min-height: 3.25rem;
   padding: 8px 10px 8px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--sp-border);
 }
 
 .sp-playlist-title {
@@ -112,6 +112,7 @@ defineEmits(['close', 'select'])
   cursor: pointer;
   transition: background var(--duration-fast);
   box-shadow: inset 0 0 0 1px transparent;
+  border-radius: var(--sp-radius-md);
 }
 
 .sp-playlist-item:hover {
@@ -126,7 +127,7 @@ defineEmits(['close', 'select'])
 
 .sp-playlist-item.is-active {
   box-shadow: inset 0 0 0 1px rgba(var(--sp-primary-rgb), 0.32);
-  background: rgba(var(--sp-primary-rgb), 0.08);
+  background: rgba(var(--sp-primary-rgb), 0.12);
 }
 
 .sp-playlist-item-index {

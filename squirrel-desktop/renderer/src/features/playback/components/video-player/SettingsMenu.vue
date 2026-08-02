@@ -388,8 +388,8 @@ function onOpacityPointerDown(e: PointerEvent) {
   max-height: calc(100% - 72px);
   background: var(--sp-menu-bg);
   border: 1px solid var(--sp-menu-border);
-  border-radius: 10px;
-  padding: 6px;
+  border-radius: var(--sp-radius-lg);
+  padding: 4px;
   z-index: 100;
   box-shadow: var(--sp-menu-shadow);
   overflow-x: hidden;
@@ -420,12 +420,12 @@ function onOpacityPointerDown(e: PointerEvent) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 2.5rem;
-  padding: 8px 12px;
+  min-height: 2.25rem;
+  padding: 6px 10px;
   color: var(--sp-text-secondary);
   font-size: 12px;
   font-family: var(--sp-font-family);
-  border-radius: 6px;
+  border-radius: var(--sp-radius-md);
   cursor: pointer;
   transition:
     color var(--duration-normal) var(--ease-default),
@@ -446,7 +446,7 @@ function onOpacityPointerDown(e: PointerEvent) {
   gap: 0.5rem;
   margin-bottom: 0.25rem;
   border-bottom: 1px solid var(--sp-menu-border);
-  border-radius: 6px 6px 2px 2px;
+  border-radius: var(--sp-radius-md);
   color: var(--sp-text-strong);
   font-weight: 650;
   opacity: 1 !important;

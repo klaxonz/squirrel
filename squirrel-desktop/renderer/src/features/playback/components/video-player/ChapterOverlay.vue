@@ -104,7 +104,7 @@ defineEmits<{
 }
 
 .sp-chapter-overlay-item.is-active {
-  background: rgba(var(--sp-primary-rgb), 0.16);
+  background: rgba(var(--sp-primary-rgb), 0.12);
 }
 
 .sp-chapter-overlay-item:focus-visible {
