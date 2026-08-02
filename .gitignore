@@ -98,3 +98,4 @@ squirrel-backend/scratch/
 .worktrees/
 .playwright-cli/
 .codex/
+.zcode/
