@@ -68,10 +68,10 @@
      --app-grid-min to control density (smaller min = more columns on wide
      screens; e.g. a 4K viewport with --app-grid-min:320px yields ~8 columns
      instead of the old 6-column cap). */
-  --app-video-grid-min: 16.5rem;
-  --app-video-grid-gap: 1rem;
-  --app-video-grid-gap-x: 1rem;
-  --app-video-grid-gap-y: 1.25rem;
+  --app-video-grid-min: 20rem;
+  --app-video-grid-gap: 1.25rem;
+  --app-video-grid-gap-x: 1.25rem;
+  --app-video-grid-gap-y: 1.75rem;
   --app-video-rail-card-width: 16.75rem;
   --app-video-rail-gap: 0.75rem;
   --app-music-grid-min: 180px;

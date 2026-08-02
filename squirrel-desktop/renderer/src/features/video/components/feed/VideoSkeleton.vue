@@ -76,13 +76,13 @@ withDefaults(defineProps<{
 .video-skeleton__grid-body {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0 0.125rem 0.25rem;
+  gap: 0.45rem;
+  padding: 0;
 }
 
 .video-skeleton__title {
   display: flex;
-  min-height: calc(2 * 0.875rem * 1.35);
+  min-height: calc(2 * 0.875rem * 1.32);
   flex-direction: column;
   justify-content: space-between;
 }
