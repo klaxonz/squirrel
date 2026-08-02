@@ -101,9 +101,23 @@
   --app-control-radius: var(--radius-md);
   --app-control-item-radius: var(--radius-sm);
   --app-control-border: hsl(var(--border) / 0.62);
-  --app-control-hover-bg: hsl(var(--accent));
   --app-control-active-bg: var(--app-selection-bg);
   --app-control-shadow: 0 0 0 1px var(--app-selection-border);
+
+  /* Hover wash spec — single declarative hover system (Reddit hairline
+     language: restrained ink/muted washes, NO filters, NO solid accent
+     blocks). Every hover in the app takes its background from exactly one
+     of these tokens:
+       --app-row-hover-bg     rows / list items / menu & popover options
+       --app-control-hover-bg icon buttons / small controls / chips
+       --app-selection-bg     selected state
+       --app-selection-bg-hover selected + hover
+     Buttons are solid controls and keep solid hovers (primary→primary/0.9,
+     secondary→accent, ghost/outline→foreground/0.06) — see components.css
+     .sq-button. All interactive elements transition background-color via
+     --duration-fast / --ease-default. */
+  --app-row-hover-bg: hsl(var(--foreground) / 0.04);
+  --app-control-hover-bg: hsl(var(--muted) / 0.5);
 
   /* Neutral chrome selection (filters, chips, list selected).
      Same language as sidebar active: ink wash + foreground — NEVER brand primary.
@@ -140,7 +154,6 @@
   --app-card-radius: var(--radius-md);
   --app-empty-copy-width: 22rem;
 
-  --app-row-hover-bg: hsl(var(--foreground) / 0.04);
   --app-surface-border: hsl(var(--border));
   --app-surface-border-subtle: hsl(var(--border) / 0.7);
   --app-surface-shadow: none;
@@ -743,7 +756,7 @@
 
 .app-toolbar-control:hover {
   border-color: hsl(var(--border));
-  background: hsl(var(--accent) / 0.58);
+  background: var(--app-control-hover-bg);
   color: hsl(var(--foreground));
 }
 
@@ -785,20 +798,6 @@ button.app-selection-active:hover {
   color: var(--app-selection-fg) !important;
 }
 
-.app-toolbar-icon-button {
-  position: relative;
-  width: 2rem;
-  height: 2rem;
-  flex: 0 0 auto;
-}
-
-/* Icon / filter controls: active = neutral ink selection (not brand, not health). */
-.app-toolbar-icon-button.is-active {
-  border-color: var(--app-selection-border);
-  background: var(--app-selection-bg);
-  color: var(--app-selection-fg);
-}
-
 /* Text+icon filter trigger shared by feed / subscription toolbars. */
 .app-filter-toolbar-button {
   gap: 0.375rem;
@@ -806,6 +805,10 @@ button.app-selection-active:hover {
   color: hsl(var(--muted-foreground) / 0.84);
   font-size: 0.75rem;
   font-weight: 550;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
 }
 
 .app-filter-toolbar-button.is-active {
@@ -1194,11 +1197,11 @@ button.app-selection-active:hover {
 }
 
 .app-settings-row--toggle:hover {
-  background: hsl(var(--foreground) / 0.025);
+  background: var(--app-row-hover-bg);
 }
 
 .app-settings-row--toggle:focus-within {
-  background: hsl(var(--foreground) / 0.03);
+  background: var(--app-row-hover-bg);
 }
 
 .app-settings-row--toggle.is-disabled {

@@ -61,7 +61,7 @@ const ariaChecked = computed(() =>
 
 .app-context-menu-item:hover,
 .app-context-menu-item:focus-visible {
-  background: hsl(var(--accent));
+  background: var(--app-row-hover-bg);
   outline: none;
 }
 

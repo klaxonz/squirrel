@@ -908,7 +908,7 @@ const {
 
 .video-detail__menu-link:hover,
 .video-detail__menu-link:focus-visible {
-  background: hsl(var(--accent) / 0.48);
+  background: var(--app-row-hover-bg);
   color: hsl(var(--foreground));
   outline: none;
 }

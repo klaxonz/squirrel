@@ -457,7 +457,6 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   letter-spacing: 0.01em;
   cursor: pointer;
   transition:
-    filter var(--duration-fast) var(--ease-default),
     background-color var(--duration-fast) var(--ease-default),
     color var(--duration-fast) var(--ease-default);
 }
@@ -469,12 +468,11 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item__join:hover {
-  filter: brightness(1.06);
+  background: hsl(var(--foreground) / 0.9);
 }
 
 .video-item__join.is-on:hover {
   background: hsl(var(--accent));
-  filter: none;
 }
 
 .video-item__title {
@@ -524,10 +522,6 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: 0;
-}
-
-.video-item--card:hover .video-item__thumb--card {
-  filter: brightness(0.985);
 }
 
 .video-item--card .video-item__thumb--card img {
@@ -706,7 +700,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item__bar-btn:hover {
-  background: hsl(var(--foreground) / 0.06);
+  background: var(--app-control-hover-bg);
   color: hsl(var(--foreground));
 }
 

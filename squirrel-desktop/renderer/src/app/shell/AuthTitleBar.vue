@@ -94,10 +94,13 @@ onUnmounted(() => {
   height: var(--app-titlebar-height);
   border-radius: 0;
   color: hsl(var(--muted-foreground));
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .auth-titlebar__control:hover {
-  background: hsl(var(--foreground) / 0.06);
+  background: var(--app-control-hover-bg);
   color: hsl(var(--foreground));
 }
 

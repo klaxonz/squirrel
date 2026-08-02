@@ -409,7 +409,7 @@ function handlePlaySong(track: MusicTrack) {
 }
 
 .music-search-song-row:hover {
-  background: hsl(var(--muted) / 0.3);
+  background: var(--app-row-hover-bg);
 }
 
 .music-search-col {
@@ -514,7 +514,7 @@ function handlePlaySong(track: MusicTrack) {
 }
 
 .music-search-artist-item:hover {
-  background: hsl(var(--muted) / 0.3);
+  background: var(--app-row-hover-bg);
 }
 
 .music-search-artist-avatar {
@@ -577,7 +577,7 @@ function handlePlaySong(track: MusicTrack) {
 }
 
 .music-search-album-item:hover {
-  background: hsl(var(--muted) / 0.3);
+  background: var(--app-row-hover-bg);
 }
 
 .music-search-album-cover {

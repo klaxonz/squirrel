@@ -106,7 +106,7 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
 }
 
 .sidebar-item:hover {
-  background: hsl(var(--foreground) / 0.05);
+  background: var(--app-row-hover-bg);
   color: hsl(var(--foreground));
 }
 
@@ -115,7 +115,7 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
 }
 
 .sidebar-item.is-active {
-  background: hsl(var(--foreground) / 0.08);
+  background: var(--app-selection-bg);
   color: hsl(var(--foreground));
   font-weight: 650;
   box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.04);

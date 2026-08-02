@@ -188,11 +188,14 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 .app-header__sidebar-toggle {
   border-radius: 999px;
   color: hsl(var(--muted-foreground));
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .app-header__sidebar-toggle:hover {
   color: hsl(var(--foreground));
-  background: hsl(var(--foreground) / 0.06);
+  background: var(--app-control-hover-bg);
 }
 
 /*
@@ -239,6 +242,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   border-radius: 999px;
   padding: 0 0.625rem 0 0.25rem;
   color: hsl(var(--foreground));
+  transition: background-color var(--duration-fast) var(--ease-default);
 }
 
 .app-header--desktop .app-header__user {
@@ -246,7 +250,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 }
 
 .app-header__user:hover {
-  background: hsl(var(--foreground) / 0.06);
+  background: var(--app-control-hover-bg);
 }
 
 .app-header__avatar {

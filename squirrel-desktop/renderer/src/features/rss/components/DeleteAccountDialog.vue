@@ -66,6 +66,7 @@ defineEmits<{
 .delete-account-dialog__button--danger {
   background: hsl(var(--destructive));
   color: hsl(var(--destructive-foreground));
+  transition: background-color var(--duration-fast) var(--ease-default);
 }
 
 .delete-account-dialog__button--danger:hover {

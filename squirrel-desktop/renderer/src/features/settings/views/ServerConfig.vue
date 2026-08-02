@@ -460,12 +460,16 @@ const handleConnect = async () => {
   color: inherit;
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-default);
 }
 
-.server-list__option:hover,
+.server-list__option:hover {
+  background: var(--app-row-hover-bg);
+}
+
 .server-list__option:focus-visible,
 .server-list__option.is-active {
-  background: hsl(var(--accent));
+  background: var(--app-selection-bg);
 }
 
 .server-list__option:focus-visible {

@@ -60,7 +60,7 @@ defineEmits<{
 }
 
 .music-rank-item:hover {
-  background: hsl(var(--muted) / 0.36);
+  background: var(--app-row-hover-bg);
 }
 
 .music-rank-item:focus-visible {

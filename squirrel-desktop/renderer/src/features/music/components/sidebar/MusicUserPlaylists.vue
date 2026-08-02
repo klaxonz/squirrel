@@ -87,7 +87,7 @@ function toggleExpand() {
 
 .music-user-playlist-item:hover {
   color: hsl(var(--foreground));
-  background: hsl(var(--muted) / 0.3);
+  background: var(--app-row-hover-bg);
 }
 
 .music-user-playlist-item--active {

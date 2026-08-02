@@ -107,7 +107,7 @@ function isPlaying(track: MusicTrack): boolean {
 }
 
 .music-recent-item:hover {
-  background: hsl(var(--muted) / 0.36);
+  background: var(--app-row-hover-bg);
 }
 
 .music-recent-item:focus-visible {

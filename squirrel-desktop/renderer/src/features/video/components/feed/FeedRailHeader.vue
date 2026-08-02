@@ -123,6 +123,7 @@ const showScrollControls = computed(
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 500;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .feed-rail-header__more:hover {

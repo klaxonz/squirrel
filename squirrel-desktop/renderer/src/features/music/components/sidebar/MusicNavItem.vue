@@ -47,10 +47,13 @@ defineEmits<{
   font-size: 0.8125rem;
   font-weight: 500;
   text-align: left;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
 }
 
 .music-nav-item:hover {
-  background: hsl(var(--foreground) / 0.055);
+  background: var(--app-row-hover-bg);
   color: var(--app-selection-fg);
 }
 

@@ -1904,7 +1904,7 @@ onUnmounted(() => {
 }
 
 .rss-subscribe-dialog__new-category:hover {
-  background: hsl(var(--accent) / 0.46);
+  background: var(--app-row-hover-bg);
   color: hsl(var(--foreground));
 }
 

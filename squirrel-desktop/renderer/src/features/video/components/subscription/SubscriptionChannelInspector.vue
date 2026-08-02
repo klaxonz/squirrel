@@ -367,11 +367,12 @@ const statusClass = computed(() => ({
   padding: 0.625rem;
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-default);
 }
 
 .subscription-inspector__recent-item:hover,
 .subscription-inspector__recent-item:focus-visible {
-  background: hsl(var(--muted) / 0.45);
+  background: var(--app-row-hover-bg);
   outline: none;
 }
 

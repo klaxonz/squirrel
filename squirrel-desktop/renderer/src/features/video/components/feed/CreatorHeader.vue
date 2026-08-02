@@ -211,6 +211,7 @@ defineExpose({ refresh: fetchDetail })
   min-width: 0;
   color: inherit;
   text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .creator-header__name-link:hover {
@@ -270,10 +271,11 @@ defineExpose({ refresh: fetchDetail })
 .creator-header__site-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.375rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-default);
 }
 
 .creator-header__site-link:hover {

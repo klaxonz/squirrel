@@ -510,7 +510,7 @@ defineExpose({ refresh })
 }
 
 .remote-search--workbench .remote-search-item:hover {
-  background: hsl(var(--accent) / 0.34);
+  background: var(--app-row-hover-bg);
 }
 
 .remote-search--workbench .remote-search-thumb {

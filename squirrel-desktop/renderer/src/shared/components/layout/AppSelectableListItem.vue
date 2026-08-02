@@ -73,7 +73,7 @@ const emit = defineEmits<{
 
 .app-selectable-list-item:hover,
 .app-selectable-list-item:focus-within {
-  background: hsl(var(--accent) / 0.6);
+  background: var(--app-row-hover-bg);
   color: hsl(var(--foreground));
   outline: none;
 }
@@ -108,14 +108,14 @@ const emit = defineEmits<{
 
 .app-selectable-list-item--flush:hover,
 .app-selectable-list-item--flush:focus-within {
-  background: hsl(var(--accent) / 0.32);
+  background: var(--app-row-hover-bg);
   color: inherit;
 }
 
 .app-selectable-list-item--flush.is-selected {
   border-color: transparent;
   border-bottom-color: hsl(var(--border) / 0.2);
-  background: hsl(var(--accent) / 0.58);
+  background: var(--app-selection-bg);
   color: inherit;
   box-shadow: inset 3px 0 0 hsl(var(--foreground) / 0.72);
 }

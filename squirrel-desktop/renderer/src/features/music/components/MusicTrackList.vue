@@ -305,7 +305,7 @@ const {
 }
 
 .music-track-row:hover {
-  background: hsl(var(--muted) / 0.35);
+  background: var(--app-row-hover-bg);
 }
 
 .music-track-row--playing {

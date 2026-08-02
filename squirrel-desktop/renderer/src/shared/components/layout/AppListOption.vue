@@ -75,12 +75,12 @@ const onKeydown = (event: KeyboardEvent) => {
 }
 
 .app-list-option:hover {
-  background: hsl(var(--accent) / 0.48);
+  background: var(--app-row-hover-bg);
   color: hsl(var(--foreground));
 }
 
 .app-list-option:focus-visible {
-  background: hsl(var(--accent) / 0.48);
+  background: var(--app-row-hover-bg);
   color: hsl(var(--foreground));
   outline: none;
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.45);
