@@ -366,7 +366,9 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: hsl(var(--background));
+  /* Content bearing surface — the canvas (--background) stays on the outer
+     shell (.app-layout) only. Reddit: white content, gray-blue at the gaps. */
+  background: hsl(var(--card));
   transition: left var(--duration-base) var(--ease-out);
   will-change: left;
 }

@@ -281,7 +281,7 @@ watch(() => route.query.special, (value) => {
 <style scoped>
 .videos-workbench {
   min-height: 100%;
-  background: hsl(var(--background));
+  background: hsl(var(--card));
 }
 
 /* Full-bleed sticky toolbar — opaque Reddit sort bar, not a frosted slab. */
@@ -318,7 +318,9 @@ watch(() => route.query.special, (value) => {
 }
 
 .videos-workbench__filters-band {
-  background: hsl(var(--background) / 0.88);
+  /* Sticky filter row is part of the content surface (the toolbar above it
+     is already card) — tint from the card, not the canvas. */
+  background: hsl(var(--card) / 0.88);
   border-bottom: 1px solid hsl(var(--border) / 0.55);
 }
 

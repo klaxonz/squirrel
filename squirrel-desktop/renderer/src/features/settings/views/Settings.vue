@@ -563,7 +563,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   flex-direction: column;
   overflow: auto;
   padding: var(--space-6) var(--space-6) var(--space-8);
-  background: hsl(var(--background));
+  background: hsl(var(--card));
 }
 
 .settings-loading,

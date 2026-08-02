@@ -304,7 +304,8 @@ defineExpose({ scrollEl, sidebarEl, isSidebarOpen, toggleSidebar, openSidebar, c
     display: flex;
     max-width: min(86cqi, var(--app-workbench-sidebar-width));
     box-shadow: var(--shadow-lg);
-    background: hsl(var(--background));
+    /* The drawer is the workbench sidebar — same card surface as the workbench. */
+    background: hsl(var(--card));
   }
 
   .app-two-column--mode-drawer.app-two-column--sidebar-open .app-two-column__scrim {

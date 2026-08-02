@@ -715,7 +715,11 @@ const {
 <style scoped>
 .video-play-page {
   min-height: 100%;
-  background: hsl(var(--background));
+  /* Content bearing surface — matches the workspace card so the player
+     page owns its surface explicitly (transparent would work today, but
+     an explicit card keeps the page self-contained if the workspace
+     background ever changes). */
+  background: hsl(var(--card));
 }
 
 /* ===== 布局 =====
