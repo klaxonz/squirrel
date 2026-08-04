@@ -8,7 +8,6 @@ import pytest
 os.environ.setdefault('ENV', 'dev')
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / 'squirrel-site-runtimes' / 'shared'))
 sys.path.insert(0, str(REPO_ROOT / 'squirrel-backend'))
 
 from infrastructure.database.base import Base

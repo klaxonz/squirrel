@@ -3,7 +3,7 @@ import logging
 import time
 from urllib.parse import urlparse
 
-from infrastructure.site_plugins.registry import get_site_plugin_registry
+from infrastructure.site_registry.registry import get_site_registry
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ def _normalize_registration_domain(domain: str) -> str:
 
 def _build_site_registration_index() -> dict[str, str]:
     index: dict[str, str] = {}
-    for site_name, info in get_site_plugin_registry().build_site_catalog().items():
+    for site_name, info in get_site_registry().build_site_catalog().items():
         for candidate in info.get('domains') or []:
             normalized = _normalize_registration_domain(candidate)
             if normalized:
@@ -145,7 +145,7 @@ def reset_site_lookup_cache() -> None:
 
 
 def get_site_from_url(url: str) -> str | None:
-    """Get site name from URL using plugin domains.
+    """Get site name from URL using configured site domains.
 
     :param url: Full URL string
     :return: Site name, or None if not found

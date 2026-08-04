@@ -3,42 +3,37 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from sites.crawl import ExtractionResult, VideoMeta
+
 import infrastructure.extraction.factory as factory_module
 from infrastructure.extraction.contracts import ExtractionTask
 from infrastructure.extraction.factory import ExtractorFactory
-from infrastructure.site_plugins.registry import SitePluginResult
 
 
-def test_plugin_extractor_adapter_extracts_via_site_plugin(monkeypatch):
+def test_site_extractor_adapter_extracts_via_site(monkeypatch):
     calls = []
+
+    class _FakeSite:
+        def extract_video(self, url):
+            calls.append(('extract_video', url))
+            return ExtractionResult.success_result(
+                VideoMeta(
+                    title='Test video',
+                    url='https://www.bilibili.com/video/BV1xx411c7mD',
+                    thumbnail='https://img.example.com/video.jpg',
+                    duration=120,
+                    publish_date=None,
+                    extra_data={'id': 'BV1xx411c7mD'},
+                )
+            )
 
     class _FakeRegistry:
         def has_capability(self, site_name, capability):
             return capability == 'extract_video' and site_name == 'bilibili'
 
-        def invoke(self, capability, payload=None, site_name=None, domain=None):
-            calls.append(
-                {
-                    'capability': capability,
-                    'payload': payload,
-                    'site_name': site_name,
-                    'domain': domain,
-                }
-            )
-            return SitePluginResult(
-                ok=True,
-                data={
-                    'success': True,
-                    'data': {
-                        'title': 'Test video',
-                        'url': 'https://www.bilibili.com/video/BV1xx411c7mD',
-                        'thumbnail': 'https://img.example.com/video.jpg',
-                        'duration': 120,
-                        'publish_date': None,
-                        'extra_data': {'id': 'BV1xx411c7mD'},
-                    },
-                },
-            )
+        def get_site_runtime(self, site_name):
+            calls.append(('load', site_name))
+            return _FakeSite()
 
     monkeypatch.setattr(
         'infrastructure.extraction.factory.SiteCatalog.is_site_enabled',
@@ -59,7 +54,7 @@ def test_plugin_extractor_adapter_extracts_via_site_plugin(monkeypatch):
         },
     )
 
-    factory = ExtractorFactory(plugin_registry=_FakeRegistry())
+    factory = ExtractorFactory(registry=_FakeRegistry())
     extractor = factory.create_extractor('https://www.bilibili.com/video/BV1xx411c7mD')
 
     assert extractor is not None
@@ -72,16 +67,9 @@ def test_plugin_extractor_adapter_extracts_via_site_plugin(monkeypatch):
         ),
     )
 
-    assert len(calls) == 1
-    assert calls[0]['capability'] == 'extract_video'
-    assert calls[0]['site_name'] == 'bilibili'
-    assert calls[0]['domain'] is None
-    assert calls[0]['payload']['url'] == 'https://www.bilibili.com/video/BV1xx411c7mD'
-    assert calls[0]['payload']['site_name'] == 'bilibili'
-    assert calls[0]['payload']['retry_count'] == 0
-    assert calls[0]['payload']['max_retries'] == 3
-    assert calls[0]['payload']['metadata'] == {'source': 'test'}
-    assert calls[0]['payload']['task_id']
+    assert len(calls) == 2
+    assert calls[0] == ('load', 'bilibili')
+    assert calls[1] == ('extract_video', 'https://www.bilibili.com/video/BV1xx411c7mD')
     assert result.success is True
     assert result.data is not None
     assert result.data.title == 'Test video'

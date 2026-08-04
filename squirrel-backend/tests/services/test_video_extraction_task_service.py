@@ -238,3 +238,49 @@ def test_enqueue_rejects_unfenced_sync_state_task(session_factory):
 
     with pytest.raises(CrawlTaskStateError, match='missing run_id fencing'):
         service.enqueue(params)
+
+
+def test_crawl_task_service_module_exposes_callable_session_factory():
+    """P0 regression: the crawl.tasks.service MODULE must export a callable
+    `session_factory` alongside the method aliases, because several modules
+    import the module under the name `crawl_task_service` (workers/scheduling/
+    executors/*, core/update/*, video task_service). Previously only the
+    singleton INSTANCE had `session_factory`, so any module-level access
+    raised AttributeError: module has no attribute 'session_factory'."""
+    import domains.subscription.application.services.crawl.tasks.service as crawl_task_service_mod
+
+    assert callable(crawl_task_service_mod.session_factory)
+    assert crawl_task_service_mod.session_factory is crawl_task_service_mod.crawl_task_service.session_factory
+
+
+def test_enqueue_with_default_singleton_wiring_does_not_raise_attribute_error(engine, session_factory, monkeypatch):
+    """P0 regression: VideoExtractionTaskService() built with DEFAULT wiring
+    (no injected crawl_tasks) must enqueue without raising the AttributeError
+    that previously aborted every subscription-sync extraction dispatch.
+    The module-level singleton's session_factory is pointed at the test
+    sqlite engine, mirroring tests/services/conftest.py's swap."""
+    import domains.subscription.application.services.crawl.tasks.service as crawl_task_service_mod
+
+    monkeypatch.setattr(crawl_task_service_mod.crawl_task_service, 'session_factory', session_factory)
+    service = VideoExtractionTaskService(
+        get_video_by_url=lambda url: None,
+        reserve_sync_progress=False,
+    )
+    params = VideoExtractDto(
+        url='https://www.youtube.com/watch?v=regression',
+        subscribed=True,
+        only_extract=True,
+        subscription_id=1,
+        sync_state_id=2,
+        run_id='run-p0',
+        trigger='scheduled',
+        is_manual=False,
+        is_extract_all=False,
+    )
+
+    assert service.enqueue(params) is True
+
+    with Session(engine, expire_on_commit=False) as session:
+        tasks = session.query(CrawlTask).all()
+    assert len(tasks) == 1
+    assert tasks[0].video_url == 'https://www.youtube.com/watch?v=regression'

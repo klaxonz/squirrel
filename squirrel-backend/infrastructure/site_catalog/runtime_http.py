@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from infrastructure.runtime.import_paths import install_runtime_import_paths
-
 _cloudflare_bypass_client: object | None = None
 
 
@@ -13,8 +11,7 @@ def set_cloudflare_bypass_client(client: object | None) -> None:
     if client is None:
         return
 
-    install_runtime_import_paths()
-    from crawl import configure_cloudflare_bypass_client
+    from sites.crawl import configure_cloudflare_bypass_client
 
     configure_cloudflare_bypass_client(client)
 
@@ -27,8 +24,7 @@ def set_cookie_file_resolver(resolver: Callable[[str], str | None] | None) -> No
     if resolver is None:
         return
 
-    install_runtime_import_paths()
-    from crawl import configure_cookie_file_resolver
+    from sites.crawl import configure_cookie_file_resolver
 
     configure_cookie_file_resolver(resolver)
 
@@ -37,8 +33,7 @@ def set_cookie_domain_resolver(resolver: Callable[[str], str] | None) -> None:
     if resolver is None:
         return
 
-    install_runtime_import_paths()
-    from crawl import configure_cookie_domain_resolver
+    from sites.crawl import configure_cookie_domain_resolver
 
     configure_cookie_domain_resolver(resolver)
 
@@ -47,9 +42,8 @@ def reset_runtime_http_state() -> None:
     global _cloudflare_bypass_client
     _cloudflare_bypass_client = None
 
-    install_runtime_import_paths()
-    from crawl import http as crawl_http
-    from crawl import utils as crawl_utils
+    from sites.crawl import http as crawl_http
+    from sites.crawl import utils as crawl_utils
 
     crawl_http._reset_http_module_state()
     crawl_utils._reset_utils_module_state()

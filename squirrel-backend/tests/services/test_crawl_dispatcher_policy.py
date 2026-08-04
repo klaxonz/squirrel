@@ -29,7 +29,7 @@ class _FakeSettings:
         self.crawl = crawl
 
 
-def test_default_policy_matches_serial_site_plugin_capacity():
+def test_default_policy_matches_default_site_concurrency():
     policy = CrawlDispatcherPolicy()
 
     assert policy.default_site_concurrency == 1

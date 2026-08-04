@@ -1,5 +1,5 @@
 class SubscriptionUpdateError(Exception):
-    """Classified site-plugin failure that survives the orchestrator boundary."""
+    """Classified site-integration failure that survives the orchestrator boundary."""
 
     def __init__(
         self,

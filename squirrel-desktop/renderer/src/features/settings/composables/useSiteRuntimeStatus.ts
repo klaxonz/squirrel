@@ -1,14 +1,18 @@
 /**
  * Pure presentation helpers for the SiteRuntimeManager view.
  *
- * Stateless formatters that map a runtime/enriched-runtime object (and a few
- * scalars) onto the badge text + Tailwind classes the template renders. Kept as
- * a composable so the view's script is free of half a dozen formulae interleaved
- * with the action handlers; each helper is a pure function of its argument.
+ * Stateless formatters that map an enriched site row (and a few scalars) onto
+ * the badge text + Tailwind classes the template renders. Kept as a composable
+ * so the view's script is free of half a dozen formulae interleaved with the
+ * action handlers; each helper is a pure function of its argument.
+ *
+ * Post site-plugin refactor: rows are `GET /api/sites` entries enriched with
+ * connectivity/login results. Plugin status fields (active_runtime/health) are
+ * gone — the network + account signals carry the real operational state.
  */
 
-/** A runtime/enriched-runtime row. Typed loosely — the backend shape is dynamic
- *  and the helpers read a handful of optional fields off it. */
+/** A site row. Typed loosely — the backend shape is dynamic and the helpers
+ *  read a handful of optional fields off it. */
 type RuntimeRow = Record<string, unknown>
 
 const CAPABILITY_LABELS: Record<string, string> = {
@@ -17,17 +21,12 @@ const CAPABILITY_LABELS: Record<string, string> = {
   resolve_subscription: '解析订阅',
   sync_subscription: '同步订阅',
   extract_video: '视频信息',
-  fetch_subtitles: '字幕',
-  resolve_proxy_config: '代理配置',
-  rewrite_proxy_playlist: '代理播放',
 }
 
 /** Visual tone for operational readiness — success ≠ brand primary (DESIGN §2). */
 export type SiteRuntimeTone = 'success' | 'muted' | 'critical'
 
 export interface UseSiteRuntimeStatusReturn {
-  getSiteRuntimeStatusText: (plugin: RuntimeRow) => string
-  getSiteRuntimeStatusVariant: (plugin: RuntimeRow) => SiteRuntimeTone
   getNetworkText: (plugin: RuntimeRow) => string
   getNetworkVariant: (plugin: RuntimeRow) => SiteRuntimeTone
   getLoginText: (plugin: RuntimeRow) => string
@@ -40,24 +39,6 @@ export interface UseSiteRuntimeStatusReturn {
 }
 
 export function useSiteRuntimeStatus(): UseSiteRuntimeStatusReturn {
-  const getSiteRuntimeStatusText = (plugin: RuntimeRow): string => {
-    if (!plugin.enabled) return '停用'
-    const state = (plugin.active_runtime as Record<string, unknown> | undefined)?.state
-    if (state === 'running') return '运行'
-    const health = plugin.health as { healthy?: boolean } | undefined
-    if (health?.healthy === false || state === 'failed') return '异常'
-    return '待检查'
-  }
-
-  const getSiteRuntimeStatusVariant = (plugin: RuntimeRow): SiteRuntimeTone => {
-    const state = (plugin.active_runtime as Record<string, unknown> | undefined)?.state
-    if (!plugin.enabled) return 'muted'
-    if (state === 'running') return 'success'
-    const health = plugin.health as { healthy?: boolean } | undefined
-    if (health?.healthy === false || state === 'failed') return 'critical'
-    return 'muted'
-  }
-
   const getNetworkVariant = (plugin: RuntimeRow): SiteRuntimeTone => {
     if (plugin.siteAccessible === true) return 'success'
     if (plugin.siteAccessible === false) return 'critical'
@@ -121,10 +102,6 @@ export function useSiteRuntimeStatus(): UseSiteRuntimeStatusReturn {
     if (!plugin.enabled) return false
     if (plugin.siteAccessible === false) return true
 
-    const health = plugin.health as { healthy?: boolean } | undefined
-    const state = (plugin.active_runtime as Record<string, unknown> | undefined)?.state
-    if (health?.healthy === false || state === 'failed') return true
-
     const loginStatus = plugin.siteLoginStatus as Record<string, unknown> | undefined
     if (!supportsLogin(plugin) || !loginStatus) return false
     return plugin.siteOAuthStatus !== 'authenticated'
@@ -133,8 +110,6 @@ export function useSiteRuntimeStatus(): UseSiteRuntimeStatusReturn {
   }
 
   return {
-    getSiteRuntimeStatusText,
-    getSiteRuntimeStatusVariant,
     getNetworkText,
     getNetworkVariant,
     getLoginText,

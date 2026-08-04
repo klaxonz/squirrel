@@ -2,16 +2,17 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from infrastructure.site_plugins.registry import SitePluginRegistry, get_site_plugin_registry
+from sites.crawl import SiteError
+from infrastructure.site_registry.registry import SiteRegistry, get_site_registry
 
 logger = logging.getLogger(__name__)
 
 
 class SiteLoginStatusService:
-    """Probes login status via first-party site plugins."""
+    """Probes login status via first-party site runtimes."""
 
-    def __init__(self, registry: SitePluginRegistry | None = None):
-        self._registry = registry or get_site_plugin_registry()
+    def __init__(self, registry: SiteRegistry | None = None):
+        self._registry = registry or get_site_registry()
 
     def get_supported_sites(self) -> set[str]:
         return self._registry.get_supported_sites('check_login_status')
@@ -27,26 +28,19 @@ class SiteLoginStatusService:
                 'checked_at': timestamp,
             }
 
-        result = self._registry.invoke('check_login_status', site_name=site_name)
-        if not result.ok or result.error is not None:
+        try:
+            result = self._registry.get_site_runtime(site_name).check_login_status()
+        except SiteError as exc:
             return {
                 'site_name': site_name,
                 'supported': True,
                 'logged_in': False,
-                'message': result.error.message if result.error else 'check failed',
+                'message': str(exc),
                 'checked_at': timestamp,
             }
 
-        payload_raw = result.data
-        if isinstance(payload_raw, dict):
-            payload = dict(payload_raw)
-            payload.setdefault('site_name', site_name)
-        else:
-            payload = {
-                'site_name': site_name,
-                'logged_in': bool(payload_raw),
-            }
-
+        payload = dict(result.to_dict())
+        payload.setdefault('site_name', site_name)
         payload.update(
             {
                 'site_name': payload.get('site_name', site_name),

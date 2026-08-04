@@ -5,6 +5,8 @@ import {
   normalizeTargetUrl,
   isBilibiliCookieTarget,
 } from './cookie-header.mjs'
+import { getConfiguredServerUrl } from './ipc-server-config.mjs'
+import { exportSiteCookiesToBackend } from './site-cookie-export.mjs'
 import {
   APP_ICON_PATH,
   APP_NAME,
@@ -27,6 +29,10 @@ const SITE_LOGIN_PROFILES = {
     allowedHosts: ['bilibili.com', 'passport.bilibili.com', 'geetest.com'],
     storageOrigins: ['https://www.bilibili.com', 'https://passport.bilibili.com', 'https://bilibili.com'],
     signedInCookieNames: ['SESSDATA'],
+    // Session cookies are exported to the backend after a successful login so
+    // backend-side check_login_status/import/sync can use them (the backend may
+    // be remote — cookies are pushed via POST /api/site-cookies/{site}).
+    exportCookiesToBackend: true,
   },
 }
 
@@ -206,6 +212,50 @@ const clearDesktopSiteStorage = async (profile) => {
   session.defaultSession.flushStorageData()
 }
 
+const sessionCookieFetchImpl = (url, options = {}) => session.defaultSession.fetch(url, options)
+
+/**
+ * Export a site's session cookies to the configured backend via its upload API.
+ * Exposed as `desktop:site-login-export-cookies` for a manual re-export.
+ */
+export const exportSiteCookiesForSite = async (siteName) => {
+  const profile = getSiteLoginProfile(siteName)
+  if (!profile) {
+    return { ok: false, reason: 'unsupported-site', message: '桌面端暂不支持该站点登录' }
+  }
+  if (!profile.exportCookiesToBackend) {
+    return { ok: false, reason: 'not-exportable', message: '该站点登录态不通过 Cookie 导出' }
+  }
+  const cookies = await getDesktopSiteCookies(profile)
+  return exportSiteCookiesToBackend({
+    siteName: profile.siteName,
+    cookies,
+    serverUrl: getConfiguredServerUrl(),
+    fetchImpl: sessionCookieFetchImpl,
+  })
+}
+
+const attachCookieExportResult = async (profile, status) => {
+  if (status?.logged_in !== true || !profile?.exportCookiesToBackend) {
+    return status
+  }
+  try {
+    const cookies = await getDesktopSiteCookies(profile)
+    const exportResult = await exportSiteCookiesToBackend({
+      siteName: profile.siteName,
+      cookies,
+      serverUrl: getConfiguredServerUrl(),
+      fetchImpl: sessionCookieFetchImpl,
+    })
+    return { ...status, cookie_export: exportResult }
+  } catch (error) {
+    return {
+      ...status,
+      cookie_export: { ok: false, reason: 'export-error', message: error?.message || String(error) },
+    }
+  }
+}
+
 export const clearDesktopSiteSession = async (siteName) => {
   const profile = getSiteLoginProfile(siteName)
   if (!profile) {
@@ -316,7 +366,9 @@ export const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
       if (profile.siteName === 'bilibili') {
         clearBilibiliPlaybackCache()
       }
-      resolve(status)
+      // Non-destructive: a failed cookie export must not break the login UX —
+      // the result is surfaced on the status as `cookie_export`.
+      Promise.resolve(attachCookieExportResult(profile, status)).then(resolve).catch(resolve)
     }
 
     const checkLoginStatus = () => {

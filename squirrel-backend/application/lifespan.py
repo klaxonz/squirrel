@@ -3,7 +3,7 @@
 This is the async lifespan bound to the FastAPI app in ``main.py``. It is the
 web-process counterpart to ``workers/bootstrap.py`` (sync, for worker processes):
 both initialize the same shared runtime (logging, db, site config, http,
-site plugins), but the web process runs inside FastAPI's lifespan protocol.
+site integrations), but the web process runs inside FastAPI's lifespan protocol.
 """
 
 import logging
@@ -22,7 +22,7 @@ from infrastructure.site_catalog.runtime_http import (
     set_cookie_domain_resolver,
     set_cookie_file_resolver,
 )
-from infrastructure.site_plugins.registry import get_site_plugin_registry
+from infrastructure.site_registry.registry import get_site_registry
 
 logger = logging.getLogger(__name__)
 
@@ -62,17 +62,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.exception('Startup: failed to configure cookie resolver')
         raise
 
-    # 3. Site plugins (hard dependency) — YouTube OAuth env must be set before plugin start
-    logger.info('Startup: starting site plugins')
+    # 3. Site integrations (hard dependency) — YouTube OAuth env must be set before runtime start
+    logger.info('Startup: starting site integrations')
     try:
         from infrastructure.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
 
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_file
-        get_site_plugin_registry().start_all()
+        get_site_registry().start_all()
     except Exception:
-        logger.exception('Startup: failed to start site plugins')
+        logger.exception('Startup: failed to start site integrations')
         raise
 
     # 4. Scheduled tasks (degraded-tolerant)
@@ -113,7 +113,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info('Shutdown: begin')
     try:
-        get_site_plugin_registry().stop_all()
+        get_site_registry().stop_all()
     except Exception as exc:  # cleanup during shutdown -- must not propagate
-        logger.warning('Shutdown: error stopping site plugins (ignored): %s', exc)
+        logger.warning('Shutdown: error stopping site integrations (ignored): %s', exc)
     logger.info('Shutdown: complete')

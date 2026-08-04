@@ -3,28 +3,28 @@
 import logging
 from urllib.parse import urlparse
 
+from sites.crawl import SiteError
 from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.site_catalog.catalog import SiteCatalog
-from infrastructure.site_plugins.registry import SitePluginRegistry, get_site_plugin_registry
+from infrastructure.site_registry.registry import SiteRegistry, get_site_registry
 
-from .contracts import ExtractionResult, ExtractionTask
-from .runtime_payloads import RuntimeVideoData
+from .contracts import ExtractionResult, ExtractionTask, site_result_to_extraction_result
 
 logger = logging.getLogger(__name__)
 
 
-class SitePluginExtractorAdapter:
-    """Adapter that exposes site plugin capabilities as Extractor protocol."""
+class SiteExtractorAdapter:
+    """Adapter that exposes site integrations as the Extractor protocol."""
 
     def __init__(
         self,
         site_name: str,
         supported_domains: list[str],
-        plugin_registry: SitePluginRegistry,
+        registry: SiteRegistry,
     ):
         self.site_name = site_name
         self.supported_domains = list(supported_domains)
-        self._plugin_registry = plugin_registry
+        self._registry = registry
 
     def can_handle(self, url: str) -> bool:
         try:
@@ -41,44 +41,28 @@ class SitePluginExtractorAdapter:
             return False
 
     def extract(self, task: ExtractionTask) -> ExtractionResult:
-        response = self._plugin_registry.invoke(
-            'extract_video',
-            site_name=self.site_name,
-            payload={
-                'url': task.url,
-                'site_name': task.site_name,
-                'task_id': task.task_id,
-                'retry_count': task.retry_count,
-                'max_retries': task.max_retries,
-                'metadata': dict(task.metadata or {}),
-            },
-        )
-        if not response.ok:
-            message = response.error.message if response.error else f'Extraction failed for site: {self.site_name}'
+        try:
+            result = self._registry.get_site_runtime(self.site_name).extract_video(task.url)
+        except SiteError as exc:
             return ExtractionResult(
                 success=False,
-                error=message,
-                retryable=response.error.retryable if response.error else False,
-                error_context=response.error.details if response.error else None,
+                error=str(exc),
+                retryable=exc.retryable,
+                error_context=dict(exc.context or {}),
             )
 
-        payload = response.data
-        if isinstance(payload, dict) and 'success' in payload:
-            return ExtractionResult.from_dict(payload)
-        if isinstance(payload, dict):
-            return ExtractionResult.success_result(RuntimeVideoData.from_dict(payload))
-        return ExtractionResult(success=False, error='Plugin extract_video returned an invalid payload')
+        return site_result_to_extraction_result(result)
 
 
 class ExtractorFactory:
-    """Resolve extractors from first-party site plugins."""
+    """Resolve extractors from first-party site integrations."""
 
-    def __init__(self, plugin_registry: SitePluginRegistry | None = None) -> None:
-        self._instances: dict[str, SitePluginExtractorAdapter] = {}
-        self._plugin_registry = plugin_registry or get_site_plugin_registry()
+    def __init__(self, registry: SiteRegistry | None = None) -> None:
+        self._instances: dict[str, SiteExtractorAdapter] = {}
+        self._registry = registry or get_site_registry()
 
-    def _create_adapter(self, site_name: str) -> SitePluginExtractorAdapter | None:
-        if not self._plugin_registry.has_capability(site_name, 'extract_video'):
+    def _create_adapter(self, site_name: str) -> SiteExtractorAdapter | None:
+        if not self._registry.has_capability(site_name, 'extract_video'):
             logger.info('No extract_video capability found for site: %s', site_name)
             return None
 
@@ -88,13 +72,13 @@ class ExtractorFactory:
             logger.warning('No site domains configured for extractor site: %s', site_name)
             return None
 
-        return SitePluginExtractorAdapter(
+        return SiteExtractorAdapter(
             site_name=site_name,
             supported_domains=domains,
-            plugin_registry=self._plugin_registry,
+            registry=self._registry,
         )
 
-    def create_extractor(self, url: str) -> SitePluginExtractorAdapter | None:
+    def create_extractor(self, url: str) -> SiteExtractorAdapter | None:
         try:
             domain = urlparse(url).netloc.lower().split(':')[0]
         except (ValueError, TypeError) as exc:

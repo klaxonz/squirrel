@@ -14,14 +14,14 @@ class ValidationStage(PipelineStage):
     """Validation stage
 
     Responsibilities:
-    - Convert plugin Video object to VideoDTO
+    - Convert site Video object to VideoDTO
     - Validate data integrity and format
     - Save to context.video_dto
     """
 
     def __init__(self, adapter: RuntimeDataAdapter):
         """Args:
-        adapter: Plugin data adapter
+        adapter: Site data adapter
 
         """
         self.adapter = adapter
@@ -33,9 +33,9 @@ class ValidationStage(PipelineStage):
     def execute(self, context: PipelineContext) -> PipelineContext:
         """Execute validation and conversion"""
         # Check preconditions
-        if context.plugin_video is None:
+        if context.site_video is None:
             raise ExtValidationError(
-                'No plugin video data found in context',
+                'No site video data found in context',
                 context={'task_id': context.task.task_id},
             )
 
@@ -43,7 +43,7 @@ class ValidationStage(PipelineStage):
         logger.info('Validating video data: url=%s', context.task.url)
 
         video_dto = self.adapter.adapt(
-            context.plugin_video,
+            context.site_video,
             context.task.site_name,
         )
 

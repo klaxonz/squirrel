@@ -15,7 +15,7 @@ def test_save_site_overrides_persists_override_only(tmp_path):
     with (
         patch.object(SiteCatalogService, '_config_path', return_value=config_path),
         patch(
-            'infrastructure.site_catalog.service.build_plugin_site_catalog',
+            'infrastructure.site_catalog.service.build_site_catalog',
             return_value={
                 'youtube': {
                     'label': 'YouTube',
@@ -28,7 +28,7 @@ def test_save_site_overrides_persists_override_only(tmp_path):
         patch('infrastructure.site_catalog.catalog.SiteCatalog.load_override_catalog', return_value={}),
         patch('infrastructure.site_catalog.catalog.SiteCatalog.set_override_catalog'),
         patch('infrastructure.site_catalog.service.apply_site_config_overrides'),
-        patch('infrastructure.site_catalog.service.get_site_plugin_registry') as get_registry,
+        patch('infrastructure.site_catalog.service.get_site_registry') as get_registry,
         patch(
             'infrastructure.site_catalog.service.get_effective_site_catalog',
             return_value={
@@ -61,7 +61,7 @@ def test_save_site_overrides_persists_override_only(tmp_path):
     get_registry.return_value.refresh_sites.assert_called_once_with({'youtube'})
 
 
-def test_save_site_overrides_merges_patch_and_prunes_values_equal_to_plugin_defaults(tmp_path):
+def test_save_site_overrides_merges_patch_and_prunes_values_equal_to_site_defaults(tmp_path):
     config_path = tmp_path / 'sites.json'
     config_path.write_text(
         json.dumps(
@@ -78,7 +78,7 @@ def test_save_site_overrides_merges_patch_and_prunes_values_equal_to_plugin_defa
     with (
         patch.object(SiteCatalogService, '_config_path', return_value=config_path),
         patch(
-            'infrastructure.site_catalog.service.build_plugin_site_catalog',
+            'infrastructure.site_catalog.service.build_site_catalog',
             return_value={
                 'youtube': {
                     'label': 'YouTube',
@@ -94,7 +94,7 @@ def test_save_site_overrides_merges_patch_and_prunes_values_equal_to_plugin_defa
         ),
         patch('infrastructure.site_catalog.catalog.SiteCatalog.set_override_catalog'),
         patch('infrastructure.site_catalog.service.apply_site_config_overrides'),
-        patch('infrastructure.site_catalog.service.get_site_plugin_registry'),
+        patch('infrastructure.site_catalog.service.get_site_registry'),
         patch(
             'infrastructure.site_catalog.service.get_effective_site_catalog',
             return_value={
@@ -128,7 +128,7 @@ def test_site_catalog_read_and_write_paths_share_the_repository_config_file():
     assert Path(SiteCatalog._config_path()) == expected
 
 
-def test_load_site_overrides_migrates_removed_plugin_icon_route(tmp_path):
+def test_load_site_overrides_migrates_removed_legacy_icon_route(tmp_path):
     config_path = tmp_path / 'sites.json'
     config_path.write_text(
         json.dumps(

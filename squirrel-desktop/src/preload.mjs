@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   getSiteLoginStatus: (siteName) => ipcRenderer.invoke('desktop:get-site-login-status', siteName),
   openSiteLogin: (siteName) => ipcRenderer.invoke('desktop:open-site-login', siteName),
   clearSiteSession: (siteName) => ipcRenderer.invoke('desktop:clear-site-session', siteName),
+  exportSiteCookies: (siteName) => ipcRenderer.invoke('desktop:site-login-export-cookies', siteName),
   getWindowState: () => ipcRenderer.invoke('desktop:get-window-state'),
   minimizeWindow: () => ipcRenderer.invoke('desktop:window-action', 'minimize'),
   toggleMaximizeWindow: () => ipcRenderer.invoke('desktop:window-action', 'toggle-maximize'),

@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from copy import copy
 from typing import Any
 
-from infrastructure.runtime.import_paths import install_runtime_import_paths
+logger = logging.getLogger(__name__)
 
-install_runtime_import_paths()
 
-# Runtime package roots must be installed before these imports resolve.
-from crawl import configure_rate_limit as configure_crawl_rate_limit  # noqa: E402
-from crawl import configure_rate_limit_enabled as configure_crawl_rate_limit_enabled  # noqa: E402
+from sites.crawl import configure_rate_limit as configure_crawl_rate_limit  # noqa: E402
+from sites.crawl import configure_rate_limit_enabled as configure_crawl_rate_limit_enabled  # noqa: E402
 
 from infrastructure.site_catalog.catalog import SiteCatalog  # noqa: E402
 from infrastructure.site_catalog.runtime_config import set_site_configs  # noqa: E402
@@ -28,13 +27,59 @@ def _deep_merge(base: dict, overrides: dict) -> dict:
     return result
 
 
-def build_plugin_site_catalog() -> dict[str, dict]:
-    return SiteCatalog.build_plugin_site_catalog()
+# Top-level keys a sites.json entry may carry. Everything else is a typo or a
+# stale key and is warned about at merge time (see _validate_override_keys).
+_SITE_CONFIG_KEYS = frozenset(
+    {
+        'label',
+        'domains',
+        'aliases',
+        'enabled',
+        'features',
+        'test_url',
+        'icon_url',
+        'http',
+        'proxy',
+        'login',
+        'rate_limit',
+        'cookie',
+        'metadata',
+    }
+)
+
+
+def _validate_override_keys(overrides: dict[str, dict]) -> None:
+    for slug, entry in (overrides or {}).items():
+        if not isinstance(entry, dict):
+            continue
+        unknown = sorted(set(entry) - _SITE_CONFIG_KEYS)
+        if unknown:
+            logger.warning(
+                'sites.json entry for %r contains unknown keys %s; they are ignored',
+                slug,
+                unknown,
+            )
+
+
+def _drop_unknown_override_keys(overrides: dict[str, dict]) -> dict[str, dict]:
+    filtered: dict[str, dict] = {}
+    for slug, entry in (overrides or {}).items():
+        if not isinstance(entry, dict):
+            filtered[slug] = entry
+            continue
+        filtered[slug] = {key: value for key, value in entry.items() if key in _SITE_CONFIG_KEYS}
+    return filtered
+
+
+def build_site_catalog() -> dict[str, dict]:
+    return SiteCatalog.build_site_catalog()
 
 
 def get_effective_site_catalog(stored_catalog: dict[str, dict] | None = None) -> dict[str, dict]:
     overrides = stored_catalog if stored_catalog is not None else (SiteCatalog.load_override_catalog() or {})
-    effective: dict[str, dict] = {slug: copy(defaults) for slug, defaults in build_plugin_site_catalog().items()}
+    _validate_override_keys(overrides)
+    overrides = _drop_unknown_override_keys(overrides)
+    effective: dict[str, dict] = {slug: copy(defaults) for slug, defaults in build_site_catalog().items()}
 
     for slug, override in (overrides or {}).items():
         if slug not in effective:
@@ -81,7 +126,7 @@ def _iter_rate_limit_entries(effective_catalog: dict[str, dict]):
 
 
 def apply_crawl_rate_limit_overrides(catalog: dict[str, dict] | None = None) -> None:
-    """Apply site rate limits to the shared runtime helpers used by plugin processes."""
+    """Apply site rate limits to the shared runtime helpers used by site processes."""
     effective_catalog = get_effective_site_catalog(catalog)
 
     for domain, rate_limit_enabled, min_value, max_value in _iter_rate_limit_entries(effective_catalog):

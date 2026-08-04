@@ -72,8 +72,8 @@ build/
 target/
 dist/
 *.egg-info/
-!squirrel-site-runtimes/youtube/src/squirrel_youtube/node/build/
-!squirrel-site-runtimes/youtube/src/squirrel_youtube/node/build/*.js
+!squirrel-backend/sites/squirrel_youtube/node/build/
+!squirrel-backend/sites/squirrel_youtube/node/build/*.js
 
 # Other common ignores
 *.log

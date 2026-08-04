@@ -6,14 +6,14 @@ from pathlib import Path
 
 from infrastructure.runtime.site_config_manager import (
     apply_site_config_overrides,
-    build_plugin_site_catalog,
+    build_site_catalog,
     get_effective_site_catalog,
 )
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.config_path import get_site_catalog_config_path
 from infrastructure.site_catalog.icons import build_site_icon_url, resolve_site_icon_path
 from infrastructure.site_catalog.overrides import compute_override_diff, deep_merge_dicts, normalize_override_entry
-from infrastructure.site_plugins.registry import get_site_plugin_registry
+from infrastructure.site_registry.registry import get_site_registry
 
 
 class SiteCatalogService:
@@ -122,7 +122,7 @@ class SiteCatalogService:
         if not isinstance(overrides, dict):
             raise ValueError('sites must be a dict')
 
-        plugin_catalog = build_plugin_site_catalog()
+        default_catalog = build_site_catalog()
         existing_overrides = SiteCatalog.load_override_catalog() or {}
         current_effective = get_effective_site_catalog(existing_overrides)
         catalog: dict[str, dict] = dict(existing_overrides)
@@ -131,14 +131,14 @@ class SiteCatalogService:
             slug = str(raw_slug or '').strip().lower()
             if not slug:
                 raise ValueError('site slug is required')
-            if slug not in plugin_catalog:
+            if slug not in default_catalog:
                 raise ValueError(f'unknown site: {slug}')
             normalized_patch = normalize_override_entry(slug, raw)
             desired_effective = deep_merge_dicts(
-                current_effective.get(slug, plugin_catalog[slug]),
+                current_effective.get(slug, default_catalog[slug]),
                 normalized_patch,
             )
-            normalized_entry = compute_override_diff(plugin_catalog[slug], desired_effective)
+            normalized_entry = compute_override_diff(default_catalog[slug], desired_effective)
             if normalized_entry:
                 catalog[slug] = normalized_entry
             else:
@@ -149,7 +149,7 @@ class SiteCatalogService:
         SiteCatalogService._write_catalog_atomically(config_path, catalog)
         SiteCatalog.set_override_catalog(catalog)
         apply_site_config_overrides(catalog)
-        get_site_plugin_registry().refresh_sites(changed_sites)
+        get_site_registry().refresh_sites(changed_sites)
         return get_effective_site_catalog(catalog)
 
     # --- private helpers ---

@@ -11,11 +11,13 @@ tests and read cleanly as the update flow's phases.
 import logging
 from urllib.parse import urlparse
 
+from sites.crawl import SiteError
 from domains.subscription.application.services.core.listing.service import get_subscription_detail
 from domains.subscription.application.services.core.runtime_models import SubscriptionSyncResult
 from infrastructure.config.settings import settings
 from infrastructure.site_catalog.catalog import SiteCatalog
-from infrastructure.site_plugins.registry import SitePluginRegistry, get_site_plugin_registry
+from infrastructure.site_registry.registry import SiteRegistry, get_site_registry
+from shared_kernel.infrastructure.deadline import DeadlineExceeded, run_with_deadline
 
 from ..errors import SubscriptionUpdateError
 from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode
@@ -23,12 +25,64 @@ from ..video_extraction_coordinator import enqueue_discovered_videos
 
 logger = logging.getLogger(__name__)
 
+# sync_subscription is the one crawl call that can genuinely wedge for the
+# full crawl window; run it behind a subprocess deadline (terminate -> kill).
+SYNC_DEADLINE_SECONDS = 120.0
+
+
+class _SiteSyncErrorPayload(Exception):
+    """Picklable carrier for a crawl SiteError raised inside the deadline child."""
+
+    def __init__(self, payload: dict):
+        super().__init__(str(payload.get('message')))
+        self.payload = payload
+        # Exception pickling reconstructs via cls(*args); keep the payload as
+        # the single arg so category/retryable survive the process boundary.
+        self.args = (payload,)
+
+
+def _invoke_site_sync(
+    site_name: str,
+    url: str,
+    mode: str,
+    cursor_payload: dict,
+    last_seen_video_url: str | None,
+    limit: int | None,
+) -> dict:
+    """Run one sync_subscription in the deadline-managed child process.
+
+    Runs in the child: loads the site runtime fresh and returns the sync
+    result dict. Crawl errors are carried back as a picklable payload so the
+    parent can map them to SubscriptionUpdateError with the real category.
+    """
+    from sites.crawl import SiteError as _SiteError
+
+    site = get_site_registry().get_site_runtime(site_name)
+    try:
+        result = site.sync_subscription(
+            url,
+            mode=mode,
+            cursor_payload=cursor_payload,
+            last_seen_video_url=last_seen_video_url,
+            limit=limit,
+        )
+    except _SiteError as exc:
+        raise _SiteSyncErrorPayload(
+            {
+                'message': str(exc),
+                'category': str(exc.category.value),
+                'retryable': bool(exc.retryable),
+                'retry_after': getattr(exc, 'retry_after', None),
+            }
+        ) from None
+    return result.to_dict()
+
 
 class DefaultUpdateStrategy:
     """Default update strategy (applicable to all sites)"""
 
-    def __init__(self, plugin_registry: SitePluginRegistry | None = None) -> None:
-        self._plugin_registry = plugin_registry or get_site_plugin_registry()
+    def __init__(self, registry: SiteRegistry | None = None) -> None:
+        self._registry = registry or get_site_registry()
 
     @property
     def site_name(self) -> str:
@@ -83,36 +137,37 @@ class DefaultUpdateStrategy:
             raise ValueError(f'No subscription route found for domain: {domain}')
 
         sync_mode = UpdateMode.FULL if request.mode == UpdateMode.FULL else UpdateMode.INCREMENTAL
-        response = self._plugin_registry.invoke(
-            'sync_subscription',
-            site_name=site_name,
-            domain=domain,
-            payload={
-                'url': request.url,
-                'mode': sync_mode.value,
-                'cursor_payload': request.cursor_payload or {},
-                'last_seen_video_url': request.last_seen_video_url,
-                'limit': None if sync_mode == UpdateMode.FULL else settings.CHANNEL_UPDATE_DEFAULT_SIZE,
-            },
-        )
-        if not response.ok:
-            message = response.error.message if response.error else f'Subscription sync failed for domain: {domain}'
-            details = response.error.details if response.error else {}
-            raise SubscriptionUpdateError(
-                message,
-                retryable=bool(response.error.retryable if response.error else response.retryable),
-                error_type=str(
-                    (response.error.code if response.error else None)
-                    or details.get('code')
-                    or details.get('error_category')
-                    or 'site_plugin_error'
+        try:
+            data = run_with_deadline(
+                _invoke_site_sync,
+                (
+                    site_name,
+                    request.url,
+                    sync_mode.value,
+                    request.cursor_payload or {},
+                    request.last_seen_video_url,
+                    None if sync_mode == UpdateMode.FULL else settings.CHANNEL_UPDATE_DEFAULT_SIZE,
                 ),
-                retry_after_seconds=details.get('retry_after_seconds'),
+                timeout_seconds=SYNC_DEADLINE_SECONDS,
             )
-        if not isinstance(response.data, dict):
+        except _SiteSyncErrorPayload as exc:
+            payload = exc.payload
+            raise SubscriptionUpdateError(
+                payload['message'],
+                retryable=bool(payload['retryable']),
+                error_type=str(payload['category']),
+                retry_after_seconds=payload.get('retry_after'),
+            ) from None
+        except DeadlineExceeded as exc:
+            raise SubscriptionUpdateError(
+                str(exc),
+                retryable=True,
+                error_type='deadline_exceeded',
+            ) from None
+        if not isinstance(data, dict):
             raise ValueError(f'Subscription sync payload must be an object for domain: {domain}')
 
-        sync_result = SubscriptionSyncResult.from_dict(response.data)
+        sync_result = SubscriptionSyncResult.from_dict(data)
 
         return sync_result
 

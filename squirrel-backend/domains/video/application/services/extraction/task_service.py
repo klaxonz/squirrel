@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from domains.subscription.application.services.core.sync.state._ownership import has_live_execution_token
-from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
+from domains.subscription.application.services.crawl.tasks.service import crawl_task_service
 from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskStateError
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
 from domains.video.application.services.crud import get_video_by_url as default_get_video_by_url

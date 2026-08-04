@@ -27,9 +27,6 @@ logger = logging.getLogger(__name__)
 base_dir = Path(__file__).parent.parent.parent
 
 # Each site runtime is hosted by one serial process. Dispatcher settings must
-# not admit more work for a site than that host can execute concurrently.
-SITE_PLUGIN_PROCESS_CAPACITY = 1
-
 
 def _env() -> str:
     """Current environment name (default 'prod')."""
@@ -105,7 +102,7 @@ class CrawlSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix='CRAWL_', env_file_encoding='utf-8', extra='ignore')
 
-    default_site_concurrency: int = SITE_PLUGIN_PROCESS_CAPACITY
+    default_site_concurrency: int = 1
     # Plain key→int mappings; loaded from JSON env vars by pydantic-settings
     # (e.g. CRAWL_TASK_TYPE_LIMITS='{"video_extract": 8}').
     site_concurrency_overrides: dict[str, int] = {}
@@ -123,29 +120,14 @@ class CrawlSettings(BaseSettings):
     # prefix, so grouping them under the CRAWL_ prefix would break existing
     # .env files.
 
-    @field_validator('default_site_concurrency')
-    @classmethod
-    def validate_default_site_concurrency(cls, value: int) -> int:
-        if value != SITE_PLUGIN_PROCESS_CAPACITY:
-            raise ValueError(
-                f'default_site_concurrency must be {SITE_PLUGIN_PROCESS_CAPACITY}; '
-                'the site plugin host is serial'
-            )
-        return value
-
     @field_validator('site_concurrency_overrides')
     @classmethod
-    def validate_site_concurrency_overrides(cls, value: dict[str, int]) -> dict[str, int]:
+    def normalize_site_concurrency_keys(cls, value: dict[str, int]) -> dict[str, int]:
         normalized: dict[str, int] = {}
         for raw_site, limit in value.items():
             site = str(raw_site or '').strip().lower()
             if not site:
                 raise ValueError('site_concurrency_overrides contains an empty site name')
-            if limit != SITE_PLUGIN_PROCESS_CAPACITY:
-                raise ValueError(
-                    f'site_concurrency_overrides[{site!r}] must be {SITE_PLUGIN_PROCESS_CAPACITY}; '
-                    'the site plugin host is serial'
-                )
             normalized[site] = limit
         return normalized
 

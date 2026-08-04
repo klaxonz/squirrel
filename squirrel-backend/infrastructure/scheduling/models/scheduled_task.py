@@ -13,7 +13,7 @@ class TaskType(StrEnum):
 
     SYSTEM = 'system'  # System built-in task
     USER = 'user'  # User-defined task
-    PLUGIN = 'plugin'  # Plugin extension task
+    SITE = 'site'  # Site extension task
 
 
 class TaskStatus(StrEnum):

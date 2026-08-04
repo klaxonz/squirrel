@@ -1,4 +1,4 @@
-"""ExtractionStage - extracts video data from plugin"""
+"""ExtractionStage - extracts video data from the site"""
 
 import logging
 
@@ -23,8 +23,8 @@ class ExtractionStage(PipelineStage):
 
     Responsibilities:
     - Get the appropriate extractor for the URL
-    - Invoke the plugin to extract video data
-    - Save the result to context.plugin_video
+    - Invoke the site to extract video data
+    - Save the result to context.site_video
     """
 
     def __init__(self, extractor_factory):
@@ -77,7 +77,7 @@ class ExtractionStage(PipelineStage):
                 context=error_context,
             )
 
-        context.plugin_video = extraction_result.data
+        context.site_video = extraction_result.data
 
         logger.info(
             'Extraction completed: url=%s, title=%s', context.task.url, getattr(extraction_result.data, 'title', 'N/A')

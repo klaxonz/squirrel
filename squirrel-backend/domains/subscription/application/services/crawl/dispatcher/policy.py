@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from infrastructure.config.settings import SITE_PLUGIN_PROCESS_CAPACITY, settings
+from infrastructure.config.settings import settings
 
 
 class CrawlDispatcherPolicy:
     def __init__(
         self,
         *,
-        default_site_concurrency: int = SITE_PLUGIN_PROCESS_CAPACITY,
+        default_site_concurrency: int = 1,
         site_concurrency_overrides: dict[str, int] | None = None,
         task_type_limits: dict[str, int] | None = None,
     ):

@@ -24,7 +24,7 @@ def build_site_icon_url(site_name: str | None) -> str | None:
 
 
 def normalize_site_icon_url(site_name: str | None, icon_url: object) -> str | None:
-    """Preserve custom icons while migrating the removed plugin-icon route."""
+    """Preserve custom icons while migrating the removed legacy icon route."""
     value = str(icon_url or '').strip()
     if not value:
         return None
@@ -42,19 +42,17 @@ def resolve_site_icon_path(site_name: str | None) -> Path | None:
         return None
 
     # icons.py lives at squirrel-backend/infrastructure/site_catalog/icons.py
-    # parents[2] = squirrel-backend, parents[3] = monorepo root (where
-    # squirrel-site-runtimes actually lives). Prefer repo root; fall back to
-    # backend-local layout for alternate packaging.
+    # parents[2] = squirrel-backend, where the in-tree site packages live
+    # (squirrel-backend/sites/squirrel_<slug>/assets).
     here = Path(__file__).resolve()
     candidates = (
-        here.parents[3] / 'squirrel-site-runtimes',
-        here.parents[2] / 'squirrel-site-runtimes',
+        here.parents[2] / 'sites',
     )
 
     for base_runtimes in candidates:
         if not base_runtimes.is_dir():
             continue
-        assets_dir = (base_runtimes / slug / 'assets').resolve()
+        assets_dir = (base_runtimes / f'squirrel_{slug}' / 'assets').resolve()
         try:
             if not assets_dir.is_relative_to(base_runtimes.resolve()):
                 continue

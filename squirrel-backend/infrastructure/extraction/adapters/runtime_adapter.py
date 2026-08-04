@@ -1,4 +1,4 @@
-"""Plugin data adapter - converts plugin Video objects to VideoDTO
+"""Site data adapter - converts site Video objects to VideoDTO
 
 Core improvements:
 1. Actively fetches all required data (including lazy-loaded actors)
@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 
 
 class RuntimeDataAdapter:
-    """Plugin data adapter
+    """Site data adapter
 
     Responsibilities:
-    - Converts plugin Video objects to VideoDTO
+    - Converts site Video objects to VideoDTO
     - Actively triggers lazy-loaded properties (e.g. actors)
     - Unifies data format
     - Error handling and logging
@@ -33,10 +33,10 @@ class RuntimeDataAdapter:
         self.logger = logger
 
     def adapt(self, video: RuntimeVideoData, site_name: str) -> VideoDTO:
-        """Convert plugin Video object to VideoDTO
+        """Convert site Video object to VideoDTO
 
         Args:
-            video: Video object returned by the plugin
+            video: Video object returned by the site
             site_name: Site name
 
         Returns:

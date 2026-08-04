@@ -41,11 +41,9 @@ def import_classes_from_package(
     if package_path is None:
         return discovered_classes
 
-    for _importer, modname, _ispkg in pkgutil.walk_packages(package_path):
-        full_module_name = f'{package}.{modname}'
-
+    for _importer, modname, _ispkg in pkgutil.walk_packages(package_path, prefix=f'{package}.'):
         try:
-            module = importlib.import_module(full_module_name)
+            module = importlib.import_module(modname)
         except ImportError:
             continue
 

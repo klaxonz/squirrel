@@ -41,7 +41,7 @@ class DataTransformError(ExtractionError):
     """Data transformation error
 
     Scenarios:
-    - Plugin Video object to VideoDTO conversion failure
+    - Site Video object to VideoDTO conversion failure
     - Data format does not meet expectations
     """
 

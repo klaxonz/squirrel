@@ -31,7 +31,7 @@ def get_supported_sites(
         List of supported sites
 
     """
-    supported_sites = import_svc.get_plugin_supported_sites('import_subscriptions')
+    supported_sites = import_svc.get_supported_import_sites('import_subscriptions')
     enabled_sites = get_enabled_import_sites(supported_sites)
 
     return response.success(
@@ -57,7 +57,7 @@ def preview_subscriptions(
         Preview result
 
     """
-    supported_sites = import_svc.get_plugin_supported_sites('import_subscriptions')
+    supported_sites = import_svc.get_supported_import_sites('import_subscriptions')
     supported_site_set = get_supported_site_set(supported_sites)
     normalized_site = normalize_site_name(site)
     enabled_sites = get_enabled_import_sites(supported_sites)
@@ -110,7 +110,7 @@ def import_subscriptions(
         Import result statistics
 
     """
-    supported_sites = import_svc.get_plugin_supported_sites('import_subscriptions')
+    supported_sites = import_svc.get_supported_import_sites('import_subscriptions')
     supported_site_set = get_supported_site_set(supported_sites)
     normalized_site = normalize_site_name(site)
     enabled_sites = get_enabled_import_sites(supported_sites)

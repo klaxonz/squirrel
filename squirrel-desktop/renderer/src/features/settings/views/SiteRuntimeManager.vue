@@ -51,19 +51,6 @@
             <AppIcon v-else name="diagnostics" class="h-4 w-4" />
             {{ testingAll ? '检测中…' : (hasCachedProbe ? '重新检测全部' : '检测全部') }}
           </Button>
-
-          <Button
-            text severity="secondary"
-            size="sm" icon-only
-            class="site-runtime-refresh"
-            :disabled="reloading || loading"
-            title="重新加载站点"
-            aria-label="重新加载站点"
-            @click="handleReload"
-          >
-            <AppSpinner v-if="reloading" size="sm" />
-            <AppIcon v-else name="refresh" class="h-4 w-4" />
-          </Button>
         </template>
       </AppOperatePageHeader>
 
@@ -78,13 +65,12 @@
       </div>
 
       <SiteRuntimeGrid
-        :runtimes="displaySiteRuntimes"
-        :all-runtimes="enrichedSiteRuntimes"
+        :runtimes="displaySites"
+        :all-runtimes="enrichedSites"
         :loading="isInitialLoading"
         :actioning="actioning"
         :filtered="Boolean(searchQuery.trim()) || statusFilter !== 'all'"
         :last-tested-at="lastTestedAt"
-        :discovery-errors="discoveryErrors"
         :load-error="loadError"
         @enable="handleEnable"
         @disable="handleDisable"
@@ -94,8 +80,8 @@
         @clear-desktop-session="handleClearDesktopSiteSession"
         @start-oauth="handleStartYouTubeOAuth"
         @revoke-oauth="handleRevokeYouTubeOAuth"
-        @edit-site="openSiteEditorByRuntime"
-        @retry="fetchSiteRuntimes"
+        @edit-site="openSiteEditorBySite"
+        @retry="fetchSites"
         @clear-filters="clearRuntimeFilters"
       />
     </main>
@@ -141,24 +127,19 @@ import { useSiteDesktopLogin } from '@/features/settings/composables/useSiteDesk
 import { useSiteRuntimeStatus } from '@/features/settings/composables/useSiteRuntimeStatus'
 import { useUIStore } from '@/shared/stores/ui'
 import {
-  disableSiteRuntime,
-  enableSiteRuntime,
-  getSiteRuntimes,
+  getSites,
   getSupportedSites,
   importAllSiteCookies,
-  reloadSiteRuntimes,
   testAllSitesConnectivity,
   testSiteConnectivity,
   testSiteLoginStatus,
 } from '@/shared/api'
 
 const loading = ref(false)
-const reloading = ref(false)
-const siteRuntimes = ref([])
-const discoveryErrors = ref([])
+const sites = ref([])
 const loadError = ref('')
 const actioning = ref(null)
-const isInitialLoading = computed(() => loading.value && !siteRuntimes.value.length)
+const isInitialLoading = computed(() => loading.value && !sites.value.length)
 
 const testingAll = ref(false)
 const supportedSites = ref([])
@@ -212,7 +193,7 @@ const siteCatalogMap = computed(() => siteCatalog.value || {})
 const searchQuery = computed(() => uiStore.getSearchQuery('site-runtimes'))
 const { needsAttention: runtimeNeedsAttention } = useSiteRuntimeStatus()
 
-const enrichedSiteRuntimes = computed(() => {
+const enrichedSites = computed(() => {
   const resultsMap = new Map()
   if (connectivityResults.value.length > 0 && connectivityResults.value[0]?.results) {
     connectivityResults.value[0].results.forEach(result => {
@@ -222,45 +203,42 @@ const enrichedSiteRuntimes = computed(() => {
   const loginResultMap = loginStatusResults.value || {}
   const loginTestingMap = loginStatusTesting.value || {}
 
-  return (siteRuntimes.value || []).map((runtime) => {
-    const primarySite = runtime.sites?.[0] || null
-    const siteName = primarySite?.site_name || primarySite?.name || ''
+  return (sites.value || []).map((site) => {
+    const siteName = site.site_name || site.name || ''
     const siteResult = resultsMap.get(siteName) || {}
     const loginStatus = loginResultMap[siteName]
 
     return {
-      ...runtime,
-      capabilities: Array.isArray(runtime.capabilities) ? runtime.capabilities : [],
-      sites: Array.isArray(runtime.sites) ? runtime.sites : [],
-      primarySite,
+      ...site,
+      slug: siteName,
       siteName,
+      features: Array.isArray(site.features) ? site.features : [],
       siteAccessible: siteResult.accessible,
       siteTesting: !!siteResult.testing,
       siteLoginStatus: loginStatus,
       siteOAuthStatus: loginStatus?.oauth_status || null,
       siteOAuthAccount: loginStatus?.oauth_account || null,
       siteLoginTesting: !!loginTestingMap[siteName],
-      siteSupportsLogin: primarySite?.supports_login_status ?? false,
+      siteSupportsLogin: site.supports_login_status ?? false,
       siteDesktopLoginSupported: supportsDesktopLoginSite(siteName),
     }
   })
 })
 
-const displaySiteRuntimes = computed(() => {
-  let list = enrichedSiteRuntimes.value
+const displaySites = computed(() => {
+  let list = enrichedSites.value
 
   if (searchQuery.value.trim()) {
     const keyword = searchQuery.value.trim().toLowerCase()
-    list = list.filter(runtime =>
-      runtime.display_name?.toLowerCase().includes(keyword) ||
-      runtime.runtime_id?.toLowerCase().includes(keyword) ||
-      runtime.description?.toLowerCase().includes(keyword) ||
-      runtime.siteName?.toLowerCase().includes(keyword)
+    list = list.filter(site =>
+      site.label?.toLowerCase().includes(keyword) ||
+      site.siteName?.toLowerCase().includes(keyword) ||
+      (Array.isArray(site.domains) ? site.domains.join(' ').toLowerCase() : '').includes(keyword)
     )
   }
 
   if (statusFilter.value === 'enabled') {
-    list = list.filter(runtime => runtime.enabled)
+    list = list.filter(site => site.enabled)
   } else if (statusFilter.value === 'attention') {
     list = list.filter(runtimeNeedsAttention)
   }
@@ -269,16 +247,16 @@ const displaySiteRuntimes = computed(() => {
 })
 
 const enabledRuntimeCount = computed(
-  () => enrichedSiteRuntimes.value.filter(runtime => runtime.enabled).length,
+  () => enrichedSites.value.filter(site => site.enabled).length,
 )
 const attentionRuntimeCount = computed(
-  () => enrichedSiteRuntimes.value.filter(runtimeNeedsAttention).length,
+  () => enrichedSites.value.filter(runtimeNeedsAttention).length,
 )
 const runtimeSummary = computed(
-  () => `${enrichedSiteRuntimes.value.length} 个来源`,
+  () => `${enrichedSites.value.length} 个来源`,
 )
 const statusFilterOptions = computed(() => [
-  { value: 'all', label: '全部', badge: enrichedSiteRuntimes.value.length },
+  { value: 'all', label: '全部', badge: enrichedSites.value.length },
   { value: 'enabled', label: '已启用', badge: enabledRuntimeCount.value },
   { value: 'attention', label: '需处理', badge: attentionRuntimeCount.value },
 ])
@@ -315,23 +293,13 @@ const handleImportAllCookies = async () => {
   }
 }
 
-const handleReload = async () => {
-  reloading.value = true
+const handleEnable = async (site) => {
+  const slug = site?.slug || site?.siteName
+  if (!slug) return
+  actioning.value = slug
   try {
-    await reloadSiteRuntimes()
-    await fetchSiteRuntimes()
-  } catch {
-    // silent — reload failure just leaves the list as-is
-  } finally {
-    reloading.value = false
-  }
-}
-
-const handleEnable = async (plugin) => {
-  actioning.value = plugin.runtime_id
-  try {
-    await enableSiteRuntime(plugin.runtime_id)
-    await fetchSiteRuntimes()
+    await saveCatalog({ [slug.toLowerCase()]: { enabled: true } })
+    await fetchSites()
   } catch {
     // silent — enable failure leaves the row as-is
   } finally {
@@ -339,11 +307,13 @@ const handleEnable = async (plugin) => {
   }
 }
 
-const handleDisable = async (plugin) => {
-  actioning.value = plugin.runtime_id
+const handleDisable = async (site) => {
+  const slug = site?.slug || site?.siteName
+  if (!slug) return
+  actioning.value = slug
   try {
-    await disableSiteRuntime(plugin.runtime_id)
-    await fetchSiteRuntimes()
+    await saveCatalog({ [slug.toLowerCase()]: { enabled: false } })
+    await fetchSites()
   } catch {
     // silent — disable failure leaves the row as-is
   } finally {
@@ -442,13 +412,13 @@ const handleTestLoginBySite = async (siteName) => {
   }
 }
 
-const openSiteEditorByRuntime = (plugin) => {
-  const siteName = plugin.siteName
+const openSiteEditorBySite = (site) => {
+  const siteName = site?.siteName
   if (!siteName) return
   const catalogInfo = siteCatalogMap.value[siteName?.toLowerCase()] || {}
   editingSite.value = {
     slug: siteName,
-    label: catalogInfo.label || plugin.display_name || siteName,
+    label: catalogInfo.label || site.label || siteName,
     enabled: catalogInfo.enabled !== false,
     test_url: catalogInfo.test_url || '',
     domains: catalogInfo.domains || [],
@@ -479,18 +449,17 @@ const clearRuntimeFilters = () => {
   uiStore.triggerSearch('site-runtimes', '')
 }
 
-const fetchSiteRuntimes = async () => {
+const fetchSites = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const data = await getSiteRuntimes()
-    siteRuntimes.value = data?.items || []
-    discoveryErrors.value = data?.discovery_errors || []
+    const data = await getSites()
+    sites.value = data?.sites || []
     loadError.value = ''
   } catch (error) {
-    Logger.error('Failed to load site runtimes', error)
-    if (!siteRuntimes.value.length) {
-      loadError.value = errorMessage(error, '无法加载站点运行时，请检查后端连接后重试。')
+    Logger.error('Failed to load sites', error)
+    if (!sites.value.length) {
+      loadError.value = errorMessage(error, '无法加载站点，请检查后端连接后重试。')
     }
   } finally {
     loading.value = false
@@ -525,7 +494,7 @@ const openExternalUrl = async (targetUrl) => {
 // ponytail: YouTube TV-code OAuth flow (start/revoke, verification-code prompt,
 // 3s status poll) lives in useYouTubeOAuth. The login-status upsert, runtime
 // refresh, and URL opening are injected so the composable doesn't reach into
-// the other clusters. Declared after upsertLoginStatus/fetchSiteRuntimes/
+// the other clusters. Declared after upsertLoginStatus/fetchSites/
 // openExternalUrl so all three consts are past their TDZ at call time.
 const {
   youtubeOAuthPrompt,
@@ -535,7 +504,7 @@ const {
   handleRevokeYouTubeOAuth,
 } = useYouTubeOAuth({
   upsertLoginStatus,
-  refreshSiteRuntimes: fetchSiteRuntimes,
+  refreshSiteRuntimes: fetchSites,
   openExternalUrl,
 })
 
@@ -565,7 +534,7 @@ onMounted(() => {
   loadResultsFromCache()
   void (async () => {
     await Promise.all([
-      fetchSiteRuntimes(),
+      fetchSites(),
       loadCatalog(),
       fetchSupportedSites(),
     ])

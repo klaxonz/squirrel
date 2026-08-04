@@ -42,7 +42,6 @@ from infrastructure.site_catalog.routes.connectivity_batch import router as conn
 from infrastructure.site_catalog.routes.site_cookies_bulk_import import router as site_cookies_router
 from infrastructure.site_catalog.routes.site_cookies_cookiecloud import router as site_cookiecloud_router
 from infrastructure.site_catalog.routes.site_cookies_single_upload import router as site_cookie_upload_router
-from infrastructure.site_catalog.routes.site_plugins import router as site_plugins_router
 from infrastructure.site_catalog.routes.sites_catalog import router as sites_router
 from infrastructure.site_catalog.routes.sites_connectivity_all import router as sites_connectivity_all_router
 from infrastructure.site_catalog.routes.sites_connectivity_batch import router as sites_connectivity_batch_router
@@ -174,7 +173,6 @@ _ROUTERS: tuple[APIRouter, ...] = (
     playlist_router,
     rss_router,
     system_config_router,
-    site_plugins_router,
     sites_router,
     site_operations_router,
     site_cookie_operations_router,

@@ -1,13 +1,5 @@
 <template>
   <div class="site-runtime-content">
-    <Alert v-if="discoveryErrors.length" variant="error" class="mb-5">
-      <AppIcon name="error" class="size-4" />
-      <h5 class="mb-1 font-medium leading-none tracking-tight">发现 {{ discoveryErrors.length }} 个站点失败</h5>
-      <p class="truncate text-xs">
-        {{ discoveryErrors[0].metadata_path }} · {{ discoveryErrors[0].reason }}
-      </p>
-    </Alert>
-
     <div v-if="loading" class="site-runtime-loading" aria-label="正在加载站点">
       <AppSkeleton v-for="i in 6" :key="i" height="3.75rem" rounded="var(--radius-md)" shimmer />
     </div>
@@ -53,15 +45,15 @@
 
         <article
           v-for="runtime in runtimes"
-          :key="runtime.runtime_id"
+          :key="runtime.slug"
           class="site-runtime-row site-runtime-columns"
         >
           <div class="site-runtime-row__identity">
             <SiteIcon
-              v-if="runtime.primarySite"
-              :icon-url="runtime.primarySite.icon_url"
+              v-if="runtime.icon_url || runtime.siteName"
+              :icon-url="runtime.icon_url"
               :site="runtime.siteName"
-              :label="runtime.primarySite.site_name || runtime.display_name"
+              :label="runtime.siteName || runtime.label"
               size="lg"
               class="site-runtime-row__icon"
             />
@@ -70,7 +62,7 @@
             </div>
 
             <div class="site-runtime-row__copy">
-              <h3>{{ runtime.display_name }}</h3>
+              <h3>{{ runtime.label }}</h3>
               <p>{{ runtimeSubtitle(runtime) }}</p>
             </div>
           </div>
@@ -102,17 +94,17 @@
 
           <div class="site-runtime-row__capability-cell">
             <span class="site-runtime-row__cell-label">支持能力</span>
-            <div v-if="runtime.capabilities.length" class="site-runtime-row__capabilities">
+            <div v-if="runtime.features.length" class="site-runtime-row__capabilities">
               <span
-                v-for="cap in runtime.capabilities.slice(0, 2)"
-                :key="cap.name"
+                v-for="cap in runtime.features.slice(0, 2)"
+                :key="cap"
                 class="site-runtime-row__capability"
-                :title="cap.name"
+                :title="cap"
               >
-                {{ getCapabilityLabel(cap.name) }}
+                {{ getCapabilityLabel(cap) }}
               </span>
-              <span v-if="runtime.capabilities.length > 2" class="site-runtime-row__capability-more">
-                +{{ runtime.capabilities.length - 2 }}
+              <span v-if="runtime.features.length > 2" class="site-runtime-row__capability-more">
+                +{{ runtime.features.length - 2 }}
               </span>
             </div>
             <span v-else class="site-runtime-row__capability-empty">未声明</span>
@@ -125,8 +117,8 @@
               size="sm"
               class="site-runtime-row__test"
               :disabled="!runtime.siteName || runtime.siteTesting || runtime.siteLoginTesting"
-              :title="runtime.siteTesting || runtime.siteLoginTesting ? '正在检测' : `检测 ${runtime.display_name}`"
-              :aria-label="runtime.siteTesting || runtime.siteLoginTesting ? `正在检测 ${runtime.display_name}` : `检测 ${runtime.display_name}`"
+              :title="runtime.siteTesting || runtime.siteLoginTesting ? '正在检测' : `检测 ${runtime.label}`"
+              :aria-label="runtime.siteTesting || runtime.siteLoginTesting ? `正在检测 ${runtime.label}` : `检测 ${runtime.label}`"
               @click="$emit('test-runtime', runtime)"
             >
               <AppSpinner v-if="runtime.siteTesting || runtime.siteLoginTesting" size="sm" />
@@ -136,19 +128,19 @@
 
             <div class="site-runtime-row__enable">
               <span>{{ runtime.enabled ? '已启用' : '已停用' }}</span>
-              <AppSpinner v-if="actioning === runtime.runtime_id" size="sm" />
+              <AppSpinner v-if="actioning === runtime.slug" size="sm" />
               <Switch
                 v-else
                 :model-value="runtime.enabled"
-                :disabled="actioning === runtime.runtime_id"
-                :aria-label="runtime.enabled ? `停用 ${runtime.display_name}` : `启用 ${runtime.display_name}`"
+                :disabled="actioning === runtime.slug"
+                :aria-label="runtime.enabled ? `停用 ${runtime.label}` : `启用 ${runtime.label}`"
                 @update:model-value="(enabled) => $emit(enabled ? 'enable' : 'disable', runtime)"
               />
             </div>
 
             <AppActionMenu
               :items="runtimeActionItems(runtime)"
-              :trigger-label="`${runtime.display_name} 管理操作`"
+              :trigger-label="`${runtime.label} 管理操作`"
               button-class="site-runtime-row__menu"
             />
           </div>
@@ -168,7 +160,6 @@ import AppActionMenu from '@/shared/components/AppActionMenu.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { Switch } from '@/shared/ui/switch'
-import { Alert } from '@/shared/ui/alert'
 import { useSiteRuntimeStatus } from '@/features/settings/composables/useSiteRuntimeStatus'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
 
@@ -179,7 +170,6 @@ const props = defineProps({
   actioning: { type: [String, null], default: null },
   filtered: { type: Boolean, default: false },
   lastTestedAt: { type: [String, null], default: null },
-  discoveryErrors: { type: Array, default: () => [] },
   loadError: { type: String, default: '' },
 })
 
@@ -227,9 +217,9 @@ const overview = computed(() => {
 })
 
 const runtimeSubtitle = runtime => (
-  runtime.primarySite?.domains?.[0]
-  || runtime.description
-  || runtime.runtime_id
+  runtime.domains?.[0]
+  || runtime.siteName
+  || runtime.label
 )
 
 const runtimeActionItems = runtime => {

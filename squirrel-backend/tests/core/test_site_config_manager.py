@@ -108,10 +108,10 @@ def test_apply_site_config_overrides_updates_shared_rate_limiter(monkeypatch):
     ]
 
 
-def test_get_effective_site_catalog_merges_plugin_defaults_with_overrides(monkeypatch):
+def test_get_effective_site_catalog_merges_site_defaults_with_overrides(monkeypatch):
     monkeypatch.setattr(
         site_config_manager,
-        'build_plugin_site_catalog',
+        'build_site_catalog',
         lambda: {
             'bilibili': {
                 'label': 'Bilibili',
@@ -135,3 +135,35 @@ def test_get_effective_site_catalog_merges_plugin_defaults_with_overrides(monkey
     assert catalog['bilibili']['enabled'] is False
     assert catalog['bilibili']['proxy']['read_timeout'] == 240.0
     assert catalog['bilibili']['domains'] == ['bilibili.com']
+
+
+def test_get_effective_site_catalog_warns_on_unknown_override_keys(monkeypatch, caplog):
+    import logging
+
+    monkeypatch.setattr(
+        site_config_manager,
+        'build_site_catalog',
+        lambda: {
+            'youtube': {
+                'label': 'YouTube',
+                'domains': ['youtube.com'],
+                'enabled': True,
+            },
+        },
+        raising=False,
+    )
+
+    with caplog.at_level(logging.WARNING, logger='infrastructure.runtime.site_config_manager'):
+        catalog = site_config_manager.get_effective_site_catalog(
+            {
+                'youtube': {
+                    'enabled': False,
+                    'rate_limt': {'enabled': True},  # typo of rate_limit
+                },
+            }
+        )
+
+    assert catalog['youtube']['enabled'] is False
+    assert 'rate_limt' in caplog.text
+    assert 'youtube' in caplog.text
+    assert catalog['youtube'].get('rate_limt') is None

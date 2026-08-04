@@ -24,8 +24,8 @@ class VideoDTO(BaseModel):
     - Serializable, cacheable
     - Unified data format
 
-    Difference from plugin Video object:
-    - Video object: lazy-loaded attributes, may trigger HTTP requests
+    Difference from the site Video object:
+    - Site Video object: lazy-loaded attributes, may trigger HTTP requests
     - VideoDTO: pure data, all fields immediately available, no side effects
     """
 

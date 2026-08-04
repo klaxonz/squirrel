@@ -1,17 +1,35 @@
 """Backend-owned extraction contracts.
 
-These types are used by the host extraction pipeline and should not depend on
-Shared runtime extractor/task abstractions.
+The extraction task/result wrappers are canonical in ``sites.crawl.core`` (the
+site boundary contract — deliberately dependency-free, stdlib only). The
+backend pipeline re-exports them here and adds pipeline-only concerns:
+``TaskStatus`` (scheduling enum) and the ``Extractor`` protocol.
+
+The one thing the pipeline adds on top of the site result is its data payload:
+sites carry a minimal ``VideoMeta``, the pipeline persists ``RuntimeVideoData``.
+``site_result_to_extraction_result`` is the single explicit conversion for that
+step — no dict round-trips.
 """
 
 from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum, StrEnum
+from enum import StrEnum
 from typing import Any, Protocol, runtime_checkable
 
+from sites.crawl import ExtractionResult, ExtractionTask, TaskPriority, VideoMeta
+
 from .runtime_payloads import RuntimeVideoData
+
+__all__ = [
+    'TaskStatus',
+    'TaskPriority',
+    'ExtractionResult',
+    'ExtractionTask',
+    'Extractor',
+    'site_result_to_extraction_result',
+]
 
 
 class TaskStatus(StrEnum):
@@ -22,60 +40,6 @@ class TaskStatus(StrEnum):
     COMPLETED = 'completed'
     FAILED = 'failed'
     CANCELLED = 'cancelled'
-
-
-class TaskPriority(int, Enum):
-    """Priority of a task; larger values are more important."""
-
-    NORMAL = 2
-    HIGH = 3
-
-
-@dataclass
-class ExtractionResult:
-    """Outcome of an extraction task."""
-
-    success: bool
-    data: Any | None = None
-    error: str | None = None
-    error_category: str | None = None
-    retryable: bool = False
-    error_context: dict[str, Any] | None = None
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ExtractionResult:
-        data_payload = data.get('data')
-        if data_payload and isinstance(data_payload, dict):
-            data_payload = RuntimeVideoData.from_dict(data_payload)
-
-        return cls(
-            success=bool(data.get('success', False)),
-            data=data_payload,
-            error=data.get('error'),
-            error_category=data.get('error_category'),
-            retryable=bool(data.get('retryable', False)),
-            error_context=data.get('error_context'),
-        )
-
-    @classmethod
-    def success_result(cls, data: Any) -> ExtractionResult:
-        return cls(success=True, data=data)
-
-
-@dataclass
-class ExtractionTask:
-    """A unit of work for extraction."""
-
-    url: str
-    site_name: str
-    task_id: str = field(init=False)
-    priority: TaskPriority = TaskPriority.NORMAL
-    retry_count: int = 0
-    max_retries: int = 3
-    metadata: dict[str, Any] | None = None
-
-    def __post_init__(self) -> None:
-        self.task_id = uuid.uuid5(uuid.NAMESPACE_URL, f'{self.site_name}:{self.url}').hex
 
 
 @runtime_checkable
@@ -90,3 +54,34 @@ class Extractor(Protocol):
     def extract(self, task: ExtractionTask) -> ExtractionResult: ...
 
     def validate_url(self, url: str) -> bool: ...
+
+
+def site_result_to_extraction_result(result: ExtractionResult) -> ExtractionResult:
+    """Convert a site runtime extraction result into a pipeline result.
+
+    Both layers share the ``ExtractionResult`` wrapper; this converts the data
+    payload (site ``VideoMeta`` -> pipeline ``RuntimeVideoData``) losslessly
+    and copies failure fields (``error``, ``error_category``, ``retryable``,
+    ``error_context``) exactly.
+
+    Raises:
+        TypeError: success result whose data is not a VideoMeta.
+    """
+    if not result.success:
+        return ExtractionResult(
+            success=False,
+            error=result.error,
+            error_category=result.error_category,
+            retryable=result.retryable,
+            error_context=dict(result.error_context) if result.error_context else None,
+        )
+
+    if not isinstance(result.data, VideoMeta):
+        raise TypeError(
+            f'Site extraction success result must carry VideoMeta, got '
+            f'{type(result.data).__name__ if result.data is not None else "None"}'
+        )
+    return ExtractionResult(
+        success=True,
+        data=RuntimeVideoData.from_dict(result.data.to_dict()),
+    )

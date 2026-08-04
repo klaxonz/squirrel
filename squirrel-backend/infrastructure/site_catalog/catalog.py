@@ -3,7 +3,7 @@ import os
 
 from infrastructure.site_catalog.config_path import get_site_catalog_config_path
 from infrastructure.site_catalog.icons import build_site_icon_url, normalize_site_icon_url, resolve_site_icon_path
-from infrastructure.site_plugins.registry import get_site_plugin_registry
+from infrastructure.site_registry.registry import get_site_registry
 
 
 class SiteCatalog:
@@ -101,8 +101,8 @@ class SiteCatalog:
         return None
 
     @classmethod
-    def build_plugin_site_catalog(cls) -> dict[str, dict]:
-        catalog = get_site_plugin_registry().build_site_catalog()
+    def build_site_catalog(cls) -> dict[str, dict]:
+        catalog = get_site_registry().build_site_catalog()
         for slug, item in catalog.items():
             if not item.get('icon_url') and resolve_site_icon_path(slug):
                 item['icon_url'] = build_site_icon_url(slug)

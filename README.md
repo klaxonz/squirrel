@@ -12,7 +12,7 @@
 
 ## 能力概览
 
-- **多站订阅与同步** — 频道订阅、导入、定时/手动同步。站点插件见 `squirrel-site-runtimes/`，开关与参数在 `config/sites.json`（含 YouTube、Bilibili 等）。
+- **多站订阅与同步** — 频道订阅、导入、定时/手动同步。站点实现在 `squirrel-backend/sites/`（in-tree 模块），开关与参数在 `config/sites.json`（含 YouTube、Bilibili 等）。
 - **内容库** — 首页推荐、视频库（全部 / 未读 / 已读 / 稍后看 / 喜欢）、历史、播放列表。
 - **播放** — 应用内播放；桌面端可按站点会话解析地址与字幕。
 - **桌面增强** — 站点登录与 cookie、远端搜索、远端频道浏览。
@@ -22,10 +22,9 @@
 ## 仓库结构
 
 ```
-squirrel-backend/       API、同步与抽取、调度
+squirrel-backend/       API、同步与抽取、调度；站点实现在 sites/ 下（crawl + squirrel_youtube + squirrel_bilibili）
 squirrel-desktop/       Electron 桌面端（main + renderer UI）
 squirrel-extension/     浏览器扩展
-squirrel-site-runtimes/ 站点插件
 squirrel-cf-bypass/     Cloudflare bypass sidecar
 config/                 站点与运行配置（部署时挂载）
 ```
@@ -139,16 +138,16 @@ npm run dist          # 安装包
 2. 「加载已解压的扩展程序」，选择仓库中的 `squirrel-extension/`。
 3. 在扩展选项里配置 Squirrel 服务地址后，在支持的站点页加订。
 
-## 站点插件
+## 站点集成
 
-插件为 monorepo 内 first-party 代码，后端进程内调用，不接受上传安装包。
+站点集成为 backend 内的 first-party 模块，进程内直接调用，不接受上传安装包。
 
-- 源码：`squirrel-site-runtimes/<site>/`
-- 共用抓取逻辑：`squirrel-site-runtimes/shared/`
-- 启用与域名等：`config/sites.json`
-- 能力包括：`extract_video`、`sync_subscription`、`import_subscriptions`、`check_login_status` 等
+- 站点源码：`squirrel-backend/sites/squirrel_youtube/`、`squirrel-backend/sites/squirrel_bilibili/`
+- 共用接口层：`squirrel-backend/sites/crawl/`（协议、HTTP、异常、抓取基类）
+- 启用与域名等：`config/sites.json`（合并站点默认元数据）
+- 能力（每个站点对象上的类型化方法）：`extract_video`、`sync_subscription`、`import_subscriptions`、`resolve_subscription`、`check_login_status`
 
-开发说明见 `squirrel-backend/README.md` 与各插件目录。
+开发说明见 `squirrel-backend/README.md` 与 `sites/` 目录。
 
 ## 备份
 

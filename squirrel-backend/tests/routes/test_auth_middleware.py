@@ -35,7 +35,7 @@ def test_health_prefix_rejects_prefix_bypass():
     assert is_public_api_path('/health_extra') is False
 
 
-def test_site_icon_route_is_public_without_exposing_other_plugin_site_routes():
+def test_site_icon_route_is_public_without_exposing_other_legacy_site_routes():
     assert is_public_api_path('/api/sites/youtube/icon') is True
     assert is_public_api_path('/api/sites/bilibili/icon') is True
     assert is_public_api_path('/api/sites') is False

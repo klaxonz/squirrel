@@ -1,4 +1,4 @@
-"""Backend-local payload models for plugin extraction responses."""
+"""Backend-local payload models for site extraction responses."""
 
 from __future__ import annotations
 

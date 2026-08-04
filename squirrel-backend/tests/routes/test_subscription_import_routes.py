@@ -21,7 +21,7 @@ def _build_client(monkeypatch, import_service=None):
         app.dependency_overrides[get_subscription_import_service] = lambda: type(
             'ImportService',
             (),
-            {'get_plugin_supported_sites': staticmethod(lambda _cap: ['youtube'])},
+            {'get_supported_import_sites': staticmethod(lambda _cap: ['youtube'])},
         )()
     # All supported sites are enabled — avoids depending on the runtime provider
     # snapshot being populated by the autouse fixture.
@@ -37,7 +37,7 @@ def test_preview_import_route_forwards_cursor_and_limit(monkeypatch):
 
     class FakeImportService:
         @staticmethod
-        def get_plugin_supported_sites(_cap):
+        def get_supported_import_sites(_cap):
             return ['youtube']
 
         @staticmethod
@@ -119,7 +119,7 @@ def test_get_import_sites_filters_disabled_sites_in_original_order(monkeypatch):
 
     class FakeImportService:
         @staticmethod
-        def get_plugin_supported_sites(_cap):
+        def get_supported_import_sites(_cap):
             return [' YOUTUBE ', 'bilibili', 'youtube']
 
     client = _build_client(monkeypatch, FakeImportService())

@@ -17,7 +17,6 @@ from domains.subscription.application.services.core.update.strategies.default_st
     DefaultUpdateStrategy,
 )
 from infrastructure.config.settings import settings
-from infrastructure.site_plugins.registry import SitePluginResult
 
 
 def test_should_schedule_total_video_backfill_when_full_never_succeeded():
@@ -139,31 +138,36 @@ def test_inline_video_extraction_does_not_schedule_total_video_backfill():
         SubscriptionSyncLifecycle().request_total_video_backfill_if_needed(request, result)
 
 
-def test_fetch_videos_uses_site_plugin_sync_subscription():
+def test_fetch_videos_uses_site_sync_subscription():
     calls = []
 
-    class _FakeRegistry:
-        def invoke(self, capability, payload=None, site_name=None, domain=None):
-            calls.append(
-                {
-                    'capability': capability,
-                    'payload': payload,
-                    'site_name': site_name,
-                    'domain': domain,
-                }
-            )
-            return SitePluginResult(
-                ok=True,
-                data={
+    class _FakeSite:
+        def sync_subscription(self, url, **kwargs):
+            calls.append(('sync', url, kwargs))
+            return SimpleNamespace(
+                to_dict=lambda: {
                     'video_urls': ['https://www.bilibili.com/video/BV1xx411c7mD'],
                     'latest_video_url': 'https://www.bilibili.com/video/BV1xx411c7mD',
                     'cursor_payload': {'latest_video_url': 'https://www.bilibili.com/video/BV1xx411c7mD'},
                     'stop_reason': 'source_exhausted',
                     'total_available': 1,
-                },
+                }
             )
 
+    class _FakeRegistry:
+        def get_site_runtime(self, site_name):
+            calls.append(('load', site_name))
+            return _FakeSite()
+
     with patch(
+        'domains.subscription.application.services.core.update.strategies.default_strategy.get_site_registry',
+        return_value=_FakeRegistry(),
+    ), patch(
+        'domains.subscription.application.services.core.update.strategies.default_strategy.run_with_deadline',
+        side_effect=lambda target, args, timeout_seconds: (
+            calls.append(('deadline', timeout_seconds)) or target(*args)
+        ),
+    ), patch(
         'domains.subscription.application.services.core.update.strategies.default_strategy.SiteCatalog.find_site_by_domain',
         return_value=('bilibili', {'domains': ['bilibili.com']}),
     ):
@@ -176,22 +180,20 @@ def test_fetch_videos_uses_site_plugin_sync_subscription():
             last_seen_video_url='https://www.bilibili.com/video/OLD',
         )
 
-        result = DefaultUpdateStrategy(plugin_registry=_FakeRegistry()).fetch_videos(request)
+        result = DefaultUpdateStrategy(registry=_FakeRegistry()).fetch_videos(request)
 
-    assert calls == [
-        {
-            'capability': 'sync_subscription',
-            'payload': {
-                'url': 'https://space.bilibili.com/42',
-                'mode': 'incremental',
-                'cursor_payload': {'cursor': '1'},
-                'last_seen_video_url': 'https://www.bilibili.com/video/OLD',
-                'limit': settings.CHANNEL_UPDATE_DEFAULT_SIZE,
-            },
-            'site_name': 'bilibili',
-            'domain': 'space.bilibili.com',
-        }
-    ]
+    assert ('deadline', 120.0) in calls
+    assert ('load', 'bilibili') in calls
+    sync_calls = [call for call in calls if call[0] == 'sync']
+    assert len(sync_calls) == 1
+    _tag, url, kwargs = sync_calls[0]
+    assert url == 'https://space.bilibili.com/42'
+    assert kwargs == {
+        'mode': 'incremental',
+        'cursor_payload': {'cursor': '1'},
+        'last_seen_video_url': 'https://www.bilibili.com/video/OLD',
+        'limit': settings.CHANNEL_UPDATE_DEFAULT_SIZE,
+    }
     assert result.video_urls == ['https://www.bilibili.com/video/BV1xx411c7mD']
     assert result.latest_video_url == 'https://www.bilibili.com/video/BV1xx411c7mD'
     assert result.total_available == 1

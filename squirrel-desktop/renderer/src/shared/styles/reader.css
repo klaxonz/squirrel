@@ -14,7 +14,7 @@
 
   width: 100%;
   max-width: none;
-  color: hsl(var(--foreground) / 0.9);
+  color: hsl(var(--foreground) / 0.82);
   font-family: var(--reader-font, var(--reader-font-sans));
   font-size: inherit;
   font-weight: 400;
@@ -238,7 +238,7 @@
   border: 1px solid hsl(var(--border) / 0.35);
   border-radius: var(--radius-md, 0.5rem);
   background: hsl(var(--muted) / 0.42);
-  color: hsl(var(--foreground) / 0.9);
+  color: hsl(var(--foreground) / 0.82);
   font-family: var(--font-mono);
   font-size: 0.86em;
   line-height: 1.65;

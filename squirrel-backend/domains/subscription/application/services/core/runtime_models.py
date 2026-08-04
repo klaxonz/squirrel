@@ -1,4 +1,4 @@
-"""Backend-local runtime payload models for subscription-related plugin responses."""
+"""Backend-local runtime payload models for subscription-related site responses."""
 
 from __future__ import annotations
 

@@ -68,17 +68,17 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # ========================================
 FROM build-base AS youtube-node-builder
 
-WORKDIR /app/squirrel-site-runtimes/youtube/src/squirrel_youtube/node
+WORKDIR /app/squirrel-backend/sites/squirrel_youtube/node
 
-COPY squirrel-site-runtimes/youtube/src/squirrel_youtube/node/package.json squirrel-site-runtimes/youtube/src/squirrel_youtube/node/package-lock.json ./
+COPY squirrel-backend/sites/squirrel_youtube/node/package.json squirrel-backend/sites/squirrel_youtube/node/package-lock.json ./
 
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     npm ci --omit=dev
 
-COPY squirrel-site-runtimes/youtube/src/squirrel_youtube/node/ ./
+COPY squirrel-backend/sites/squirrel_youtube/node/ ./
 
 # ========================================
-# python-builder: 安装 Python 依赖 + 构建插件 wheels
+# python-builder: 安装 Python 依赖
 # ========================================
 FROM build-base AS python-builder
 
@@ -88,20 +88,6 @@ COPY squirrel-backend/Pipfile squirrel-backend/Pipfile.lock /app/squirrel-backen
 
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     cd /app/squirrel-backend && pipenv install --deploy --system
-
-COPY squirrel-site-runtimes /app/squirrel-site-runtimes
-
-RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
-    set -eux; \
-    export PYTHONPATH="/app/squirrel-site-runtimes/shared:${PYTHONPATH:-}"; \
-    mkdir -p /tmp/wheels; \
-    find /app/squirrel-site-runtimes -mindepth 2 -maxdepth 2 -name pyproject.toml -print0 | while IFS= read -r -d '' pyproject; do \
-        plugin_dir="$(dirname "${pyproject}")"; \
-        echo "Building plugin wheel: ${plugin_dir}"; \
-        python -m build "${plugin_dir}" --wheel --outdir /tmp/wheels; \
-    done; \
-    pip install --no-cache-dir /tmp/wheels/*.whl; \
-    rm -rf /tmp/wheels
 
 # ========================================
 # final: 运行时镜像（不含编译工具，基于 runtime-base）
@@ -113,16 +99,15 @@ WORKDIR /app/squirrel-backend
 COPY --from=python-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
 COPY squirrel-backend ./
-COPY squirrel-site-runtimes /app/squirrel-site-runtimes
 
 # UI ships in squirrel-desktop (Electron); backend image is API-only.
-COPY --from=youtube-node-builder /app/squirrel-site-runtimes/youtube/src/squirrel_youtube/node /app/squirrel-site-runtimes/youtube/src/squirrel_youtube/node
+COPY --from=youtube-node-builder /app/squirrel-backend/sites/squirrel_youtube/node /app/squirrel-backend/sites/squirrel_youtube/node
 
 RUN mkdir -p /app/config /app/logs /downloads /thumbnails \
     && chmod -R 755 /app \
     && echo "Squirrel Docker Image Built at $(date)" > /app/BUILD_INFO
 
-ENV PYTHONPATH=/app/squirrel-backend:/app/squirrel-site-runtimes/shared:$PYTHONPATH \
+ENV PYTHONPATH=/app/squirrel-backend:$PYTHONPATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     NODE_PATH=/usr/lib/node_modules \

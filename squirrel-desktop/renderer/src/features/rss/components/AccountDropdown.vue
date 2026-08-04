@@ -149,7 +149,7 @@ defineEmits<{
 
 .account-dropdown__name {
   overflow: hidden;
-  color: hsl(var(--foreground) / 0.92);
+  color: hsl(var(--foreground) / 0.82);
   font-size: 0.75rem;
   font-weight: 650;
   text-overflow: ellipsis;

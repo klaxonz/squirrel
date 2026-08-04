@@ -1,5 +1,10 @@
 import { BrowserWindow, ipcMain } from 'electron'
-import { buildDesktopSiteLoginStatus, openDesktopSiteLoginWindow, clearDesktopSiteSession } from './site-login.mjs'
+import {
+  buildDesktopSiteLoginStatus,
+  openDesktopSiteLoginWindow,
+  clearDesktopSiteSession,
+  exportSiteCookiesForSite,
+} from './site-login.mjs'
 
 export const installSiteLoginHandlers = () => {
   ipcMain.removeHandler('desktop:get-site-login-status')
@@ -15,5 +20,10 @@ export const installSiteLoginHandlers = () => {
   ipcMain.removeHandler('desktop:clear-site-session')
   ipcMain.handle('desktop:clear-site-session', async (_event, siteName) => {
     return clearDesktopSiteSession(siteName)
+  })
+
+  ipcMain.removeHandler('desktop:site-login-export-cookies')
+  ipcMain.handle('desktop:site-login-export-cookies', async (_event, siteName) => {
+    return exportSiteCookiesForSite(siteName)
   })
 }

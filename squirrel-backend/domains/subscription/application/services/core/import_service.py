@@ -14,10 +14,11 @@ from domains.subscription.application.services.core.runtime_models import (
 from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.domain.models.subscription import Subscription, build_subscription_canonical_key
+from sites.crawl import SiteError
 from infrastructure.database.session import get_session
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
-from infrastructure.site_plugins.registry import SitePluginRegistry, SitePluginResult, get_site_plugin_registry
+from infrastructure.site_registry.registry import SiteRegistry, get_site_registry
 from shared_kernel.domain.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -27,13 +28,13 @@ class SubscriptionImportService:
     def __init__(
         self,
         *,
-        registry: SitePluginRegistry | None = None,
+        registry: SiteRegistry | None = None,
         session_factory=get_session,
         crud_service=None,
         manage_service=None,
         crawl_tasks=None,
     ):
-        self._registry = registry or get_site_plugin_registry()
+        self._registry = registry or get_site_registry()
         self.session_factory = session_factory
         self.crud_service = crud_service or SubscriptionCrudService(session_factory)
         self.manage_service = manage_service or SubscriptionManageService(
@@ -44,40 +45,20 @@ class SubscriptionImportService:
         self._crawl_tasks = crawl_tasks or crawl_task_service
 
     @staticmethod
-    def _classified_plugin_error(
-        response: SitePluginResult,
-        *,
-        fallback_message: str,
-    ) -> SubscriptionImportError:
-        error = response.error
-        details = error.details if error else {}
-        return SubscriptionImportError(
-            error.message if error else fallback_message,
-            retryable=bool(error.retryable if error else response.retryable),
-            error_type=str(
-                (error.code if error else None)
-                or details.get('code')
-                or details.get('error_category')
-                or 'site_plugin_error'
-            ),
-            retry_after_seconds=details.get('retry_after_seconds'),
-        )
-
-    @staticmethod
-    def get_plugin_supported_sites(
+    def get_supported_import_sites(
         capability: str,
     ) -> list[str]:
-        return sorted(get_site_plugin_registry().get_supported_sites(capability))
+        return sorted(get_site_registry().get_supported_sites(capability))
 
     @staticmethod
-    def get_enabled_plugin_import_sites() -> list[str]:
+    def get_enabled_import_sites() -> list[str]:
         return [
             site
-            for site in SubscriptionImportService.get_plugin_supported_sites('import_subscriptions')
+            for site in SubscriptionImportService.get_supported_import_sites('import_subscriptions')
             if SiteCatalog.is_site_enabled(site=site)
         ]
 
-    def _load_plugin_subscription_meta(
+    def _load_site_subscription_meta(
         self,
         url: str,
     ) -> SubscriptionMeta:
@@ -85,21 +66,15 @@ class SubscriptionImportService:
 
         domain = extract_top_level_domain(url)
         parsed_url = urlparse(url)
-        payload = {
-            'url': url,
-            'domain': domain or parsed_url.netloc.lower().split(':')[0],
-        }
-        response = self._registry.invoke('resolve_subscription', payload=payload, domain=domain or None)
-        if not response.ok:
-            raise self._classified_plugin_error(
-                response,
-                fallback_message=f'Plugin subscription resolution failed for url: {url}',
-            )
+        slug = self._registry.find_site_by_domain(domain or None)
+        if not slug:
+            raise ValidationError(f'No subscription route found for url: {url}')
+        try:
+            meta = self._registry.get_site_runtime(slug).resolve_subscription(url, domain=domain or None)
+        except SiteError as exc:
+            raise self._site_error_to_import_error(exc) from exc
 
-        if not isinstance(response.data, dict):
-            raise ValidationError(f'Plugin resolve_subscription payload must be an object for url: {url}')
-
-        return SubscriptionMeta.from_dict(response.data)
+        return SubscriptionMeta.from_dict(meta.to_dict())
 
     @staticmethod
     def _dedupe_import_items(subscriptions: list[SubscriptionImportItem]) -> list[SubscriptionImportItem]:
@@ -112,40 +87,40 @@ class SubscriptionImportService:
             result.append(sub)
         return result
 
-    def _load_plugin_import_batch(
+    def _load_site_import_batch(
         self,
         site_name: str,
         *,
         cursor_payload: dict[str, Any] | None = None,
         limit: int | None = None,
     ) -> SubscriptionImportBatchResult:
-        payload: dict[str, Any] = {}
-        if cursor_payload:
-            payload['cursor_payload'] = dict(cursor_payload)
-        if limit is not None:
-            payload['limit'] = limit
-
-        response = self._registry.invoke('import_subscriptions', payload=payload or None, site_name=site_name)
-        if not response.ok:
-            raise self._classified_plugin_error(
-                response,
-                fallback_message=f'Plugin import failed for site: {site_name}',
+        try:
+            batch = self._registry.get_site_runtime(site_name).import_subscriptions(
+                cursor_payload=cursor_payload,
+                limit=limit,
             )
+        except SiteError as exc:
+            raise self._site_error_to_import_error(exc) from exc
 
-        payload = response.data
-        if not isinstance(payload, dict):
-            raise ValidationError(f'Plugin import payload must be an object for site: {site_name}')
+        domain_batch = SubscriptionImportBatchResult.from_dict(batch.to_dict())
+        domain_batch.items = SubscriptionImportService._dedupe_import_items(domain_batch.items)
+        return domain_batch
 
-        batch = SubscriptionImportBatchResult.from_dict(payload)
-        batch.items = SubscriptionImportService._dedupe_import_items(batch.items)
-        return batch
+    @staticmethod
+    def _site_error_to_import_error(exc: SiteError) -> SubscriptionImportError:
+        return SubscriptionImportError(
+            str(exc),
+            retryable=bool(exc.retryable),
+            error_type=str(exc.category.value),
+            retry_after_seconds=getattr(exc, 'retry_after', None),
+        )
 
-    def _load_plugin_import_items(self, site_name: str) -> list[SubscriptionImportItem]:
+    def _load_site_import_items(self, site_name: str) -> list[SubscriptionImportItem]:
         items: list[SubscriptionImportItem] = []
         cursor_payload: dict[str, Any] | None = None
 
         while True:
-            batch = self._load_plugin_import_batch(
+            batch = self._load_site_import_batch(
                 site_name,
                 cursor_payload=cursor_payload,
             )
@@ -167,7 +142,7 @@ class SubscriptionImportService:
         if existing_subscription:
             return existing_subscription
 
-        subscribe_info = self._load_plugin_subscription_meta(url)
+        subscribe_info = self._load_site_subscription_meta(url)
 
         subscription = self.crud_service.get_subscription_by_url(url)
 
@@ -195,7 +170,7 @@ class SubscriptionImportService:
         limit: int | None = None,
     ) -> dict[str, Any]:
         try:
-            import_batch = self._load_plugin_import_batch(
+            import_batch = self._load_site_import_batch(
                 site_name,
                 cursor_payload=cursor_payload,
                 limit=limit,
@@ -348,7 +323,7 @@ class SubscriptionImportService:
                 )
                 found_total = None
             else:
-                subscriptions = self._load_plugin_import_items(site_name)
+                subscriptions = self._load_site_import_items(site_name)
                 found_total = len(subscriptions)
                 logger.info('Found %s subscriptions from %s', found_total, site_name)
             selected_total = len(subscriptions)
@@ -391,7 +366,7 @@ class SubscriptionImportService:
         site_names: list[str] | None = None,
     ) -> dict[str, Any]:
         resolved_user_ids = list(dict.fromkeys(user_ids or self.manage_service.list_user_ids()))
-        resolved_site_names = list(dict.fromkeys(site_names or self.get_enabled_plugin_import_sites()))
+        resolved_site_names = list(dict.fromkeys(site_names or self.get_enabled_import_sites()))
 
         summary = {
             'users': len(resolved_user_ids),
@@ -442,8 +417,8 @@ class SubscriptionImportService:
 
 
 subscription_import_service = SubscriptionImportService()
-get_plugin_supported_sites = subscription_import_service.get_plugin_supported_sites
-get_enabled_plugin_import_sites = subscription_import_service.get_enabled_plugin_import_sites
+get_supported_import_sites = subscription_import_service.get_supported_import_sites
+get_enabled_import_sites = subscription_import_service.get_enabled_import_sites
 handle_subscribe_request = subscription_import_service.handle_subscribe_request
 preview_user_subscriptions = subscription_import_service.preview_user_subscriptions
 import_user_subscriptions = subscription_import_service.import_user_subscriptions

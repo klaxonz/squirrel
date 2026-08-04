@@ -21,7 +21,7 @@ class PipelineContext:
     task: ExtractionTask
 
     # ========== Intermediate data (filled by Stages) ==========
-    plugin_video: RuntimeVideoData | None = None  # ExtractionStage fills this payload
+    site_video: RuntimeVideoData | None = None  # ExtractionStage fills this payload
     video_dto: VideoDTO | None = None  # Filled by ValidationStage
     video_model: Any | None = None  # Filled by PersistenceStage (VideoModel)
 

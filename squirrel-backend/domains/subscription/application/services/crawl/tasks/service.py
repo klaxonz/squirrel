@@ -405,6 +405,14 @@ class CrawlTaskService:
 
 
 crawl_task_service = CrawlTaskService()
+# Live module-level alias: tests swap ``crawl_task_service.session_factory``
+# to a test session (see tests/services/conftest.py), so a static binding
+# here would diverge from the instance and break identity checks.
+def __getattr__(name):
+    if name == 'session_factory':
+        return crawl_task_service.session_factory
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
+
 create_job = crawl_task_service.create_job
 create_task = crawl_task_service.create_task
 create_job_with_task = crawl_task_service.create_job_with_task

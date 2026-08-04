@@ -3,7 +3,7 @@
 Used by standalone worker/scheduler processes (``workers/messaging/process.py``,
 ``workers/scheduling/process.py``). This is the sync counterpart to the FastAPI
 lifespan in ``main.py`` — both initialize the same shared runtime (logging, db,
-site config, http, site plugins), but worker processes are plain Python scripts
+site config, http, site integrations), but worker processes are plain Python scripts
 without a FastAPI app, so they use a sync context manager instead.
 """
 
@@ -12,10 +12,8 @@ import os
 import signal
 import threading
 from contextlib import contextmanager
-
-from infrastructure.runtime.import_paths import install_runtime_import_paths
-
-install_runtime_import_paths()
+import logging
+import os
 
 # Runtime package roots must be installed before these imports resolve.
 from infrastructure.config.settings import settings  # noqa: E402
@@ -30,7 +28,7 @@ from infrastructure.site_catalog.runtime_http import (  # noqa: E402
     set_cookie_domain_resolver,
     set_cookie_file_resolver,
 )
-from infrastructure.site_plugins.registry import get_site_plugin_registry  # noqa: E402
+from infrastructure.site_registry.registry import get_site_registry  # noqa: E402
 from shared_kernel.infrastructure.log import init_logging  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -80,9 +78,9 @@ def bootstrap_runtime(component: str):
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_file
-        get_site_plugin_registry().start_all()
+        get_site_registry().start_all()
     except Exception:
-        logger.exception('[%s] Site plugin bootstrap failed', component)
+        logger.exception('[%s] Site integration bootstrap failed', component)
         raise
 
     # Wire the Meilisearch indexer to the `video.saved` domain event so the
@@ -101,9 +99,9 @@ def bootstrap_runtime(component: str):
         yield
     finally:
         try:
-            get_site_plugin_registry().stop_all()
+            get_site_registry().stop_all()
         except Exception:
-            logger.warning('[%s] Site plugin shutdown failed', component, exc_info=True)
+            logger.warning('[%s] Site integration shutdown failed', component, exc_info=True)
 
 
 def create_shutdown_event(component: str) -> threading.Event:

@@ -2,9 +2,8 @@ import logging
 
 import uvicorn
 
-from infrastructure.config.settings import settings
+from infrastructure.config.settings import settings  # noqa: E402
 from infrastructure.database.migrations import upgrade_database
-from infrastructure.runtime.import_paths import install_runtime_import_paths
 from shared_kernel.infrastructure.log import init_logging
 
 logger = logging.getLogger(__name__)
@@ -12,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Application main entry point."""
-    install_runtime_import_paths()
     upgrade_database()
     init_logging()
 
