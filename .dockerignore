@@ -88,6 +88,5 @@ downloads/
 config/
 
 # Scripts (build scripts not needed in container)
-build.sh
 build_plugins.sh
 build_plugins.ps1

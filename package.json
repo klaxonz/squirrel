@@ -9,11 +9,7 @@
   ],
   "scripts": {
     "dev:desktop": "npm -w squirrel-desktop run dev",
-    "dev:renderer": "npm -w squirrel-desktop run dev:renderer",
-    "build:desktop": "npm -w squirrel-desktop run build",
     "build:renderer": "npm -w squirrel-desktop run build:renderer",
-    "typecheck": "npm -w squirrel-desktop run typecheck",
-    "test": "npm -w squirrel-desktop run test:renderer",
-    "test:desktop": "npm -w squirrel-desktop run test"
+    "typecheck": "npm -w squirrel-desktop run typecheck"
   }
 }
