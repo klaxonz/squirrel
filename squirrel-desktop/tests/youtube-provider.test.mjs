@@ -103,7 +103,7 @@ test('renderer youtube SABR uses googlevideo + Shaka with DASH fallback', async 
   assert.match(shakaSource, /bufferingGoal:\s*source\.sabr \? 12 : 60/)
   assert.match(shakaSource, /bufferBehind:\s*source\.sabr \? 30 : 120/)
   assert.match(shakaSource, /rebufferingGoal:\s*0\.02/)
-  assert.match(shakaSource, /restrictToElementSize:\s*true/)
+  assert.match(shakaSource, /restrictToElementSize:\s*false/)
   // FreeTube pins ~720p after first load (ABR off during load, then re-enabled).
   assert.match(shakaSource, /applyStartupQuality/)
   assert.match(shakaSource, /restoreAbrAfterStartupPin/)

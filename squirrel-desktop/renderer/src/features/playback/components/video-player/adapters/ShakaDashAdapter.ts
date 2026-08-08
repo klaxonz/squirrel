@@ -226,8 +226,12 @@ export class ShakaDashAdapter implements StreamAdapter {
         // init+media before we can pin, which is the dominant "slow start" after
         // resolve is already warm.
         enabled: false,
-        // Only affects auto quality — manual selection still free.
-        restrictToElementSize: true,
+        // Quality must NOT depend on the video element's rendered size —
+        // a small window/player then caps ABR at 480p/240p/144p. The official
+        // players select by bandwidth only; element size never touches the
+        // ladder (verified: 640x360 element pinned active track to 480p with
+        // this on, 1080p with it off on the same manifest).
+        restrictToElementSize: false,
         // Seed ~1080p-class so the first AbrManager sample after re-enable is
         // not Shaka's 500 kbps default.
         defaultBandwidthEstimate: 6_000_000,

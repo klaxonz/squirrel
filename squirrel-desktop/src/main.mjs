@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, session } from 'electron'
 import { prewarmPlaybackProviders, PREWARM_KEEP_WARM_INTERVAL_MS } from './playback/providers/index.mjs'
 import { installDesktopBridgeHandlers } from './ipc-handlers.mjs'
 import { installDesktopMediaHeaders, installDesktopSessionUserAgent } from './media-headers.mjs'
@@ -92,6 +92,13 @@ if (!hasSingleInstanceLock) {
     installDesktopSessionUserAgent()
     const cleanupMediaHeaders = installDesktopMediaHeaders()
     app.on('will-quit', cleanupMediaHeaders)
+    // Purge heuristic-cached media ranges from previous sessions (CDN sends
+    // last-modified without cache-control, so Chromium cached signed segments;
+    // stale entries would keep zeroing player throughput measurements until
+    // their heuristic expiry).
+    session.defaultSession.clearCache().catch((error) => {
+      console.debug('[squirrel-desktop] clearCache failed', error)
+    })
     // Prewarm before createMainWindow so BotGuard + WEB session start while
     // the renderer boots — first click more often hits a warm minter.
     prewarmDesktopPlaybackProviders()
