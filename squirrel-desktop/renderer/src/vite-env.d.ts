@@ -43,6 +43,7 @@ interface DesktopAppBridge {
   hideInAppWebView?: () => Promise<boolean>
   resolveBilibiliPlayback?: DesktopPlaybackResolver
   resolveYouTubePlayback?: DesktopPlaybackResolver
+  mintYouTubePoToken?: (videoId: string, options?: Record<string, unknown>) => Promise<{ po_token?: string }>
   resolveYouTubeSubtitles?: DesktopSubtitleResolver
   resolveBilibiliSubtitles?: DesktopSubtitleResolver
   searchRemoteVideos?: DesktopRemoteSearchResolver

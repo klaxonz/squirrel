@@ -487,7 +487,10 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     }
     expect(sabrAdapter.attach).toHaveBeenCalledWith(player)
     expect(sabrAdapter.setStreamingURL).toHaveBeenCalled()
-    expect(sabrAdapter.dispose).toHaveBeenCalled()
+    // The SABR adapter stays attached: its request interceptor converts the
+    // fallback DASH segment requests into UMP requests carrying the
+    // content-bound poToken — plain POST+range+alr without it 1001s.
+    expect(sabrAdapter.dispose).not.toHaveBeenCalled()
     expect(sink.error).not.toHaveBeenCalled()
     adapter.destroy()
   })
@@ -542,6 +545,7 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     }
     const sabrSource = 'data:application/dash+xml;charset=UTF-8,SABR'
     const fallbackSource = 'data:application/dash+xml;charset=UTF-8,DASH'
+    const refreshedFallbackSource = 'data:application/dash+xml;charset=UTF-8,DASH-REFRESHED'
     const refreshedSession = {
       serverAbrUrl: 'https://example.googlevideo.com/videoplayback?sabr=2',
       ustreamerConfig: 'cmVmcmVzaGVk',
@@ -560,6 +564,7 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
         osVersion: '10',
       },
       poToken: 'refreshed-token',
+      fallbackSrc: refreshedFallbackSource,
     }
     const refresh = vi.fn(async () => refreshedSession)
     const sabrConfig = {
@@ -628,7 +633,7 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     // Attempt 2 (4xx recurs): degrade to bundled DASH at the seek target.
     const secondAction = await adapter.handleProviderRecovery(err, contextPayload)
     expect(secondAction).toBe('handled')
-    expect(player.load).toHaveBeenNthCalledWith(2, fallbackSource, 123, 'application/dash+xml')
+    expect(player.load).toHaveBeenNthCalledWith(2, refreshedFallbackSource, 123, 'application/dash+xml')
     expect(video.play).toHaveBeenCalled()
 
     // Already degraded — subsequent 4xx must NOT re-degrade or re-refresh.
@@ -741,6 +746,7 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     }
     const sabrSource = 'data:application/dash+xml;charset=UTF-8,SABR'
     const fallbackSource = 'data:application/dash+xml;charset=UTF-8,DASH'
+    const refreshedFallbackSource = 'data:application/dash+xml;charset=UTF-8,DASH-REFRESHED'
     const refreshedSession = {
       serverAbrUrl: 'https://example.googlevideo.com/videoplayback?sabr=2',
       ustreamerConfig: 'cmVmcmVzaGVk',
@@ -759,6 +765,7 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
         osVersion: '10',
       },
       poToken: 'refreshed-token',
+      fallbackSrc: refreshedFallbackSource,
     }
     const refresh = vi.fn(async () => refreshedSession)
     const sabrConfig = {
@@ -822,9 +829,12 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     expect(player.load).not.toHaveBeenCalledWith(fallbackSource, expect.anything(), 'application/dash+xml')
 
     // Attempt 2 (invalidation recurs): degrade to bundled DASH at the playhead.
+    // The refreshed session carries its own fallbackSrc (freshly signed URLs) —
+    // the original fallback belongs to the dead player response.
     const secondAction = await adapter.handleProviderRecovery(err, contextPayload)
     expect(secondAction).toBe('handled')
-    expect(player.load).toHaveBeenNthCalledWith(2, fallbackSource, 55, 'application/dash+xml')
+    expect(player.load).toHaveBeenNthCalledWith(2, refreshedFallbackSource, 55, 'application/dash+xml')
+    expect(player.load).not.toHaveBeenCalledWith(fallbackSource, expect.anything(), 'application/dash+xml')
     expect(video.play).toHaveBeenCalled()
 
     // Already degraded — subsequent errors must NOT re-degrade or re-refresh.

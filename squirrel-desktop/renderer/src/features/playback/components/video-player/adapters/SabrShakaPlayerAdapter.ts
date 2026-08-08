@@ -320,6 +320,10 @@ export class SabrShakaPlayerAdapter implements SabrPlayerAdapter {
         metadata.streamInfo?.redirect
         || metadata.streamInfo?.sabrContextUpdate
         || metadata.streamInfo?.reloadPlaybackContext
+        // nextRequestPolicy (backoff/playbackCookie) arrives at stream end:
+        // the server is pausing the feed, not killing the session. The
+        // official players treat this as "request again after the backoff".
+        || metadata.streamInfo?.nextRequestPolicy
       )
     )
 
@@ -341,7 +345,14 @@ export class SabrShakaPlayerAdapter implements SabrPlayerAdapter {
     while (!controller.signal.aborted) {
       const { value, done } = await reader.read()
       if (done) {
-        if (mayReturnEmpty()) {
+        // A UMP stream that produced media data then ended is a NORMAL server
+        // end (SABR's server-side buffering closes idle audio/video streams;
+        // the official players treat it as "enough buffered, request later").
+        // Only a stream that produced NOTHING is suspicious. Returning empty
+        // lets Shaka keep playing from buffered media and re-request when it
+        // needs more — throwing here reset the player and started the
+        // quality-fallback spiral on perfectly healthy sessions.
+        if (loaded > 0 || mayReturnEmpty()) {
           return this.createShakaResponse(response, uri, request, requestType)
         }
         throw createNetworkError('Empty SABR response without redirect information', metadata)

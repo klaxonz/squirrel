@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   resolveBilibiliPlayback: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-bilibili-playback', targetUrl, options),
   resolveBilibiliSubtitles: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-bilibili-subtitles', targetUrl, options),
   resolveYouTubePlayback: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-youtube-playback', targetUrl, options),
+  mintYouTubePoToken: (videoId, options) => ipcRenderer.invoke('desktop:mint-youtube-po-token', videoId, options),
   resolveYouTubeSubtitles: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-youtube-subtitles', targetUrl, options),
   searchRemoteVideos: (options) => ipcRenderer.invoke('desktop:search-remote-videos', options),
   getRemoteChannel: (options) => ipcRenderer.invoke('desktop:get-remote-channel', options),

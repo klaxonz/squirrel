@@ -27,6 +27,7 @@ export type VideoUrlInfo = {
     formats: SabrPlaybackSession['formats']
     client_info: SabrPlaybackSession['clientInfo']
     po_token: string
+    fallback_mpd_content?: string | null
   } | null
   video_url?: string | null
   audio_url?: string | null
@@ -80,6 +81,12 @@ const normalizeSabrSession = (value: VideoUrlInfo['sabr']): SabrPlaybackSession 
     formats: value.formats,
     clientInfo: value.client_info,
     poToken: value.po_token,
+    // The refreshed session's bundled DASH fallback: the original fallback is
+    // signed with the dead session's URLs and cannot rescue a mid-play SABR
+    // invalidation. Carry the new MPD so degrade-to-DASH keeps working.
+    ...(typeof value.fallback_mpd_content === 'string' && value.fallback_mpd_content.trim()
+      ? { fallbackSrc: toDashDataUrl(value.fallback_mpd_content.trim()) }
+      : {}),
   }
 }
 

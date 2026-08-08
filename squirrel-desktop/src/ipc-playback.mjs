@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { resolveBilibiliPlayback, resolveBilibiliSubtitles } from './playback/providers/bilibili/index.mjs'
-import { resolveYouTubePlayback, resolveYouTubeSubtitles } from './playback/providers/youtube/index.mjs'
+import { resolveYouTubePlayback, resolveYouTubeSubtitles, mintYouTubePoToken } from './playback/providers/youtube/index.mjs'
 import { createSessionFetch } from './document-loader.mjs'
 import { normalizeTargetUrl } from './cookie-header.mjs'
 import { buildCookieHeaderForUrl } from './site-login.mjs'
@@ -16,6 +16,20 @@ export const installPlaybackHandlers = () => {
     return resolveYouTubePlayback(normalizedUrl, {
       forceRefresh: options?.forceRefresh === true,
     })
+  })
+
+  ipcMain.removeHandler('desktop:mint-youtube-po-token')
+  ipcMain.handle('desktop:mint-youtube-po-token', async (_event, videoId, options = {}) => {
+    const normalizedId = String(videoId || '').trim()
+    if (!normalizedId) {
+      throw new Error('Invalid YouTube video id')
+    }
+
+    const token = await mintYouTubePoToken(normalizedId)
+    if (!token) {
+      throw new Error('YouTube poToken minting unavailable')
+    }
+    return { po_token: token }
   })
 
   ipcMain.removeHandler('desktop:resolve-youtube-subtitles')

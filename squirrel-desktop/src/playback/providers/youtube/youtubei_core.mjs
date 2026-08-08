@@ -1195,6 +1195,18 @@ export async function prewarmYoutubeiRuntime(cookie = '') {
   };
 }
 
+/**
+ * Mint a fresh content-bound poToken for a video using the warm playback
+ * runtime. The token minted during resolve expires after a few minutes;
+ * SABR's UMP requests must carry a live token, so the renderer re-mints on
+ * every request instead of reusing the resolve-time one (which is what made
+ * mid-play sessions die and quality fall back).
+ */
+export async function mintYouTubePoToken(videoId, cookie = '') {
+  const runtime = await getPlaybackRuntime(cookie);
+  return buildPoToken(String(videoId || ''), runtime, []);
+}
+
 async function resolveOAuthSetup() {
   const stateFile = getOAuthStateFilePath();
   if (!stateFile) {

@@ -123,6 +123,12 @@ export interface SabrPlaybackSession {
     osVersion: string
   }
   poToken: string
+  /**
+   * Bundled regular-DASH manifest (data: URL) from the same player response.
+   * Refreshed sessions must carry their own fallback — the original one is
+   * signed with the dead session's URLs and fails once SABR is invalidated.
+   */
+  fallbackSrc?: string
 }
 
 export interface SabrPlaybackConfig extends SabrPlaybackSession {

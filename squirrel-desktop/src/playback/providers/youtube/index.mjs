@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
 import { youtubeOAuthStateFilePath } from '../../../constants.mjs'
-import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.mjs'
+import { prewarmYoutubeiRuntime, resolveYoutubeiPayload, mintYouTubePoToken as mintYoutubePoToken } from './youtubei_core.mjs'
 import { createPlaybackCache } from '../shared/playback-cache.mjs'
 
 // Bump whenever the media authorization / quality-menu / SABR ladder contract
@@ -422,6 +422,11 @@ export async function resolveYouTubeSubtitles(targetUrl, { cookie = '', lang = '
 
 export const prewarmYouTubePlayback = (cookie = '') => {
   return prewarmYoutubeiRuntime(cookie)
+}
+
+/** Mint a fresh content-bound poToken for SABR UMP requests. */
+export const mintYouTubePoToken = (videoId, cookie = '') => {
+  return mintYoutubePoToken(videoId, cookie)
 }
 
 const resolveFreshYouTubePlayback = async ({ videoId, cookie, cacheKey }) => {

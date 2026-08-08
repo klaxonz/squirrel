@@ -130,6 +130,8 @@ export class ShakaDashAdapter implements StreamAdapter {
   private activeCodecFamily: string | null = null
   private hasInstalledPolyfills = false
   private loadRequestSeq = 0
+  /** YouTube video id of the current source — the content bound to minted poTokens. */
+  private currentVideoId = ''
   private isSelectingQuality = false
   /** Whether ABR should come back on after the FreeTube-style startup pin. */
   private wantAutoQualityAfterStartupPin = true
@@ -163,6 +165,7 @@ export class ShakaDashAdapter implements StreamAdapter {
     this.lastSeekAt = 0
     this.sabrRefreshAttemptedSinceSeek = false
     this.degradedToDashFallback = false
+    this.currentVideoId = String(source.progressKey || source.key || '').trim()
 
     const isDash = source.type === 'dash' || (source.type === 'auto' && /\.mpd($|\?)/i.test(source.src))
     const wantsShaka = source.playbackEngine === 'shaka'
@@ -237,11 +240,13 @@ export class ShakaDashAdapter implements StreamAdapter {
         defaultBandwidthEstimate: 6_000_000,
       },
       streaming: {
-        // SABR already has server-side buffer control. Asking Shaka for three
-        // minutes causes an unnecessary UMP request storm; a shorter forward
-        // window is enough for smooth playback and keeps startup responsive.
-        // 12s ≈ a couple of media segments — far less than FreeTube's 180s DASH
-        // goal, and tighter than our previous 30s SABR window.
+        // SABR already has server-side buffer control. The UMP session stays
+        // alive only while the client keeps requesting: with a large local
+        // buffering goal Shaka stops asking for segments, the server ends the
+        // stream, and the next request finds a dead session (empty UMP
+        // response → quality-fallback spiral). A tight forward window keeps
+        // the request cadence up so the session survives — the official
+        // players run the same keep-requesting model.
         bufferingGoal: source.sabr ? 12 : 60,
         rebufferingGoal: 0.02,
         bufferBehind: source.sabr ? 30 : 120,
@@ -340,7 +345,28 @@ export class ShakaDashAdapter implements StreamAdapter {
       maxCacheAgeSeconds: 300,
     })
 
-    adapter.onMintPoToken(async () => this.sabrSession?.poToken ?? '')
+    // The resolve-time poToken expires after a few minutes; SABR's UMP
+    // requests must carry a LIVE content-bound token or the server ends the
+    // session mid-play (empty UMP response → quality-fallback spiral). Mint a
+    // fresh one per request through the main process (sub-ms once the
+    // BotGuard minter is warm), falling back to the resolve-time token when
+    // minting is unavailable.
+    let mintInFlight: Promise<string> | null = null
+    adapter.onMintPoToken(async () => {
+      const videoId = this.currentVideoId
+      const fallback = this.sabrSession?.poToken ?? ''
+      const bridge = typeof window !== 'undefined'
+        ? (window as unknown as { desktopApp?: { mintYouTubePoToken?: (id: string) => Promise<{ po_token?: string } | undefined> } }).desktopApp
+        : null
+      if (!videoId || !bridge?.mintYouTubePoToken) return fallback
+      if (!mintInFlight) {
+        mintInFlight = bridge.mintYouTubePoToken(videoId)
+          .then((result) => result?.po_token || fallback)
+          .catch(() => fallback)
+          .finally(() => { mintInFlight = null })
+      }
+      return mintInFlight
+    })
     adapter.onReloadPlayerResponse(async () => {
       const refreshed = await config.refresh?.()
       if (!refreshed) {
@@ -359,7 +385,7 @@ export class ShakaDashAdapter implements StreamAdapter {
     this.sabrAdapter = adapter
   }
 
-  /** Push a fresh SABR session (serverAbrUrl / ustreamer / formats) onto the adapter. */
+  /** Push a fresh SABR session (serverAbrUrl / ustreamer / formats / fallback) onto the adapter. */
   private applySabrSession(session: SabrPlaybackSession): void {
     this.sabrSession = session
     this.sabrAdapter?.setStreamingURL(session.serverAbrUrl)
@@ -377,18 +403,22 @@ export class ShakaDashAdapter implements StreamAdapter {
   /**
    * Switch a live Shaka player from SABR to the bundled regular DASH manifest
    * from the same player response. Shared by the SABR start-failure path
-   * (loadSource) and seek-4xx degradation: dispose the SABR adapter, install
-   * the YouTube networking filters (POST + range= + alr=yes) once, then load
-   * the fallback MPD — optionally at a resume time so a mid-play degrade does
-   * not rewind the playhead to 0.
+   * (loadSource) and mid-play degradation: load the fallback MPD — optionally
+   * at a resume time so a mid-play degrade does not rewind the playhead to 0.
+   *
+   * The SABR adapter is deliberately NOT disposed here: its request
+   * interceptor rewrites every googlevideo segment request (plain DASH
+   * included) into a UMP request carrying the content-bound poToken
+   * (ump=1&srfvp=1&alr=yes&pot=…). YouTube no longer serves segments for
+   * plain POST+range+alr requests without that token — the old networking
+   * filters 1001 on load. Keeping the adapter attached is what makes the
+   * fallback playable.
    */
   private async loadBundledDashFallback(
     player: shaka.Player,
     fallbackSrc: string,
     startTime: number | null,
   ): Promise<void> {
-    this.disposeSabrAdapter()
-    this.installYouTubeNetworkingFilters(player)
     this.currentSource = fallbackSrc
     await player.load(fallbackSrc, startTime, 'application/dash+xml')
   }
@@ -436,7 +466,15 @@ export class ShakaDashAdapter implements StreamAdapter {
   private isSabrSessionInvalidated(error: PlayerError): boolean {
     const code = String(error?.code || '')
     if (code !== 'SHAKA_1002') return false
-    return /empty sabr response/i.test(String(error?.message || ''))
+    // Shaka's surface message is just "Shaka Error 1002"; the SABR detail
+    // ("Empty SABR response without redirect information") lives in
+    // details.data[0] (see SabrShakaPlayerAdapter.createNetworkError).
+    const detail = error?.details as { data?: unknown[] } | undefined
+    const detailText = Array.isArray(detail?.data)
+      ? detail.data.map((item) => String(item || '')).join(' ')
+      : ''
+    return /empty sabr response/i.test(detailText)
+      || /empty sabr response/i.test(String(error?.message || ''))
   }
 
   /**
@@ -472,10 +510,13 @@ export class ShakaDashAdapter implements StreamAdapter {
     const target = Number.isFinite(context.currentTime)
       ? context.currentTime
       : (this.context.videoElement()?.currentTime ?? 0)
+    // Prefer the refreshed session's bundled DASH (freshly signed URLs) — the
+    // original fallback came from the dead player response and 1001s on load.
+    const fallbackSrc = this.sabrSession?.fallbackSrc || sabrConfig.fallbackSrc
     this.degradedToDashFallback = true
     this.context.logger.warn('[ShakaDashAdapter] SABR recovery exhausted: degrading to bundled DASH at', target)
     try {
-      await this.loadBundledDashFallback(player, sabrConfig.fallbackSrc, target > 0 ? target : null)
+      await this.loadBundledDashFallback(player, fallbackSrc, target > 0 ? target : null)
       this.updateActiveCodecFamily()
       this.updateQualities()
       this.syncBufferingToSink()
@@ -486,7 +527,8 @@ export class ShakaDashAdapter implements StreamAdapter {
         })
       }
     } catch (e) {
-      this.context.logger.warn('[ShakaDashAdapter] DASH degrade failed', e)
+      const err = e as { message?: string; code?: unknown; details?: unknown }
+      this.context.logger.warn('[ShakaDashAdapter] DASH degrade failed', e, JSON.stringify({ msg: err?.message, code: err?.code, details: err?.details }))
       return null
     }
     return 'handled'
@@ -736,6 +778,15 @@ export class ShakaDashAdapter implements StreamAdapter {
     if (!this.player) return
     if (this.wantAutoQualityAfterStartupPin === false) return
     if (this.options.enableAutoQuality === false) return
+    // SABR is server-driven ABR: the UMP client reports the currently selected
+    // track height as stickyResolution + Shaka's estimatedBandwidth, and the
+    // server decides what to send. Re-enabling Shaka's LOCAL AbrManager here
+    // makes Shaka pick a lower track from its own (UMP-distorted) throughput
+    // estimate, which then gets reported back to the server as a manual
+    // downshift — the official players keep local ABR off for SABR, so the
+    // ladder never falls on its own. Only the bundled DASH fallback (no
+    // server-side ABR) re-enables it.
+    if (this.sabrAdapter) return
     try {
       this.player.configure({ abr: { enabled: true } })
     } catch (error) {
@@ -905,6 +956,11 @@ export class ShakaDashAdapter implements StreamAdapter {
 
   private isAutoQuality(): boolean {
     if (!this.player) return true
+    // SABR is server-driven ABR: the local AbrManager stays off (see
+    // restoreAbrAfterStartupPin) but the ladder is still automatic — the
+    // server adapts from bandwidthEstimate/stickyResolution. Report auto so
+    // the UI does not show a manual pick that never happened.
+    if (this.sabrAdapter) return true
     return this.player.getConfiguration().abr.enabled !== false
   }
 
@@ -939,7 +995,12 @@ export class ShakaDashAdapter implements StreamAdapter {
 
     const qualityText = String(quality).toLowerCase()
     if (quality === 'auto' || quality === -1 || qualityText === '自动') {
-      this.player.configure({ abr: { enabled: true } })
+      // SABR: "auto" is the server's ABR — Shaka's local AbrManager must stay
+      // off (its UMP-distorted estimate would pick a lower track, which is
+      // then reported as stickyResolution and forces the server down).
+      if (!this.sabrAdapter) {
+        this.player.configure({ abr: { enabled: true } })
+      }
       return
     }
 

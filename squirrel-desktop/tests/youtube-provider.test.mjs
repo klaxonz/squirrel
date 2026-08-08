@@ -207,13 +207,15 @@ test('desktop youtube provider exposes runtime prewarm', async () => {
   const source = await readFile(providerPath, 'utf8')
   const coreSource = await readFile(corePath, 'utf8')
 
-  assert.match(source, /import \{ prewarmYoutubeiRuntime, resolveYoutubeiPayload \}/)
+  assert.match(source, /import \{ prewarmYoutubeiRuntime, resolveYoutubeiPayload, mintYouTubePoToken as mintYoutubePoToken \}/)
   assert.match(source, /export const prewarmYouTubePlayback = \(cookie = ''\) => \{[\s\S]*?return prewarmYoutubeiRuntime\(cookie\)/)
+  assert.match(source, /export const mintYouTubePoToken = \(videoId, cookie = ''\) => \{[\s\S]*?return mintYoutubePoToken\(videoId, cookie\)/)
   assert.match(coreSource, /const PLAYBACK_RUNTIME_IN_FLIGHT = new Map\(\)/)
   assert.match(coreSource, /const PO_TOKEN_MINTER_WARMUPS = new WeakMap\(\)/)
   assert.match(coreSource, /function warmPoTokenMinter\(runtime\)/)
   assert.match(coreSource, /export async function prewarmYoutubeiRuntime[\s\S]*?await warmPoTokenMinter\(runtime\)/)
   assert.match(coreSource, /async function buildPoToken[\s\S]*?await warmPoTokenMinter\(runtime\)/)
+  assert.match(coreSource, /export async function mintYouTubePoToken[\s\S]*?return buildPoToken\(String\(videoId \|\| ''\), runtime, \[\]\)/)
 })
 
 test('desktop youtube provider exposes tv oauth actions', async () => {

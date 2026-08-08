@@ -45,6 +45,11 @@ export const useDesktopBridge = () => {
     return b?.resolveBilibiliSubtitles?.(url, opts)
   }
 
+  const mintYouTubePoToken = (videoId: string) => {
+    const b = getDesktopBridge()
+    return b?.mintYouTubePoToken?.(videoId)
+  }
+
   const openExternal = (url: string) => {
     const b = getDesktopBridge()
     return b?.openExternal?.(url)
@@ -60,6 +65,7 @@ export const useDesktopBridge = () => {
     getRemoteChannel,
     resolveYouTubeSubtitles,
     resolveBilibiliSubtitles,
+    mintYouTubePoToken,
     openExternal,
     getDesktopBridge,
   }
