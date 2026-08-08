@@ -713,4 +713,125 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     expect(aborted).toBeNull()
     adapter.destroy()
   })
+
+  it('refreshes the SABR session on a mid-play empty UMP response (no seek), then degrades to DASH', async () => {
+    const video = {
+      currentTime: 0,
+      paused: false,
+      ended: false,
+      playbackRate: 1,
+      defaultPlaybackRate: 1,
+      play: vi.fn(async () => {}),
+    } as unknown as HTMLVideoElement
+    const context: StreamContext = {
+      videoElement: () => video,
+      getState: () => ({ quality: null } as PlayerState),
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+    }
+    const sink: StreamSink = {
+      qualitiesResolved: vi.fn(),
+      qualityChanged: vi.fn(),
+      loadingStateChanged: vi.fn(),
+      error: vi.fn(),
+    }
+    const sabrSource = 'data:application/dash+xml;charset=UTF-8,SABR'
+    const fallbackSource = 'data:application/dash+xml;charset=UTF-8,DASH'
+    const refreshedSession = {
+      serverAbrUrl: 'https://example.googlevideo.com/videoplayback?sabr=2',
+      ustreamerConfig: 'cmVmcmVzaGVk',
+      formats: [{
+        itag: 137,
+        lastModified: '2',
+        bitrate: 2_000_000,
+        approxDurationMs: 60_000,
+        width: 1920,
+        height: 1080,
+      }],
+      clientInfo: {
+        clientName: 1,
+        clientVersion: '1.0',
+        osName: 'Windows',
+        osVersion: '10',
+      },
+      poToken: 'refreshed-token',
+    }
+    const refresh = vi.fn(async () => refreshedSession)
+    const sabrConfig = {
+      serverAbrUrl: 'https://example.googlevideo.com/videoplayback?sabr=1',
+      ustreamerConfig: 'dGVzdA==',
+      formats: [{
+        itag: 137,
+        lastModified: '1',
+        bitrate: 2_000_000,
+        approxDurationMs: 60_000,
+        width: 1920,
+        height: 1080,
+      }],
+      clientInfo: {
+        clientName: 1,
+        clientVersion: '1.0',
+        osName: 'Windows',
+        osVersion: '10',
+      },
+      poToken: 'token',
+      fallbackSrc: fallbackSource,
+      refresh,
+    }
+    const source = {
+      src: sabrSource,
+      type: 'dash' as const,
+      playbackEngine: 'shaka' as const,
+      sabr: sabrConfig,
+    }
+
+    const adapter = new ShakaDashAdapter(context)
+    adapter.onSourceChange(source, sink)
+    await flushPromises()
+    const player = shakaMockState.latestPlayer as MockShakaPlayer
+
+    // Mid-play SABR invalidation: empty UMP response (Shaka 1002) WITHOUT any
+    // preceding seek. The old generic chain classified this as a network
+    // failure and stepped quality down 1080p→720p→480p; it must instead
+    // refresh the session first (keeps the current rung), then degrade to the
+    // bundled DASH ladder at the live playhead.
+    const err: PlayerError = {
+      code: 'SHAKA_1002',
+      message: 'Empty SABR response without redirect information',
+      fatal: false,
+      details: { data: ['Empty SABR response without redirect information', { format: { itag: 251 } }] },
+    }
+    const contextPayload = {
+      retryCount: 0,
+      maxRetries: 3,
+      retryDelay: 10,
+      source,
+      currentTime: 55,
+      wasPlaying: true,
+    }
+
+    // Attempt 1: refresh the SABR session, keep playing on the same rung.
+    const firstAction = await adapter.handleProviderRecovery(err, contextPayload)
+    expect(firstAction).toBe('handled')
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(player.retryStreaming).toHaveBeenCalledWith(0.1)
+    expect(player.load).not.toHaveBeenCalledWith(fallbackSource, expect.anything(), 'application/dash+xml')
+
+    // Attempt 2 (invalidation recurs): degrade to bundled DASH at the playhead.
+    const secondAction = await adapter.handleProviderRecovery(err, contextPayload)
+    expect(secondAction).toBe('handled')
+    expect(player.load).toHaveBeenNthCalledWith(2, fallbackSource, 55, 'application/dash+xml')
+    expect(video.play).toHaveBeenCalled()
+
+    // Already degraded — subsequent errors must NOT re-degrade or re-refresh.
+    refresh.mockClear()
+    const thirdAction = await adapter.handleProviderRecovery(err, contextPayload)
+    expect(thirdAction).toBeNull()
+    expect(refresh).not.toHaveBeenCalled()
+    adapter.destroy()
+  })
 })

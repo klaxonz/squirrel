@@ -411,7 +411,11 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
       }
 
       const strategy = determineRecoveryStrategy(error)
-      deps.logger.debug(`[ErrorRecovery] Strategy: ${strategy}, Error`, error)
+      deps.logger.debug(
+        `[ErrorRecovery] Strategy: ${strategy}, Error`,
+        error,
+        JSON.stringify({ code: error?.code, message: error?.message, fatal: error?.fatal, details: error?.details }),
+      )
 
       if (strategy === 'retry') {
         return await executeRetry(error)

@@ -425,20 +425,38 @@ export class ShakaDashAdapter implements StreamAdapter {
   }
 
   /**
+   * SABR session invalidated mid-play: the UMP response came back empty
+   * ("Empty SABR response without redirect information", Shaka 1002) — the
+   * signed serverAbrUrl/poToken binding is dead, not the network or the
+   * bandwidth. Unlike a plain network error this is NOT a quality problem:
+   * the generic chain steps 1080p→720p→480p on it and the session stays
+   * broken. Refresh the session instead (or degrade to the bundled DASH,
+   * which keeps the full ladder at the current playhead).
+   */
+  private isSabrSessionInvalidated(error: PlayerError): boolean {
+    const code = String(error?.code || '')
+    if (code !== 'SHAKA_1002') return false
+    return /empty sabr response/i.test(String(error?.message || ''))
+  }
+
+  /**
    * Early recovery hook (StreamAdapter.handleProviderRecovery). Returns
-   * 'handled' only when this adapter took over a seek-triggered HTTP 4xx on a
-   * SABR session; anything else returns null so the generic chain is
-   * untouched (zero impact on normal SABR playback and legacy DASH).
+   * 'handled' only when this adapter took over a seek-triggered HTTP 4xx or a
+   * mid-play SABR session invalidation on a SABR session; anything else
+   * returns null so the generic chain is untouched (zero impact on normal
+   * SABR playback and legacy DASH).
    */
   async handleProviderRecovery(error: PlayerError, context: PlaybackRecoveryContext): Promise<PlaybackRecoveryAction | null> {
-    if (!this.isSeekContextHttp4xx(error)) return null
+    const isSeek4xx = this.isSeekContextHttp4xx(error)
+    const isSessionInvalidated = this.isSabrSessionInvalidated(error)
+    if (!isSeek4xx && !isSessionInvalidated) return null
     const sabrConfig = context.source?.sabr
     if (!sabrConfig || this.degradedToDashFallback) return null
 
     if (!this.sabrRefreshAttemptedSinceSeek) {
       this.sabrRefreshAttemptedSinceSeek = true
       if (await this.tryRefreshSabrSession(sabrConfig)) {
-        this.context.logger.warn('[ShakaDashAdapter] Seek HTTP 4xx: refreshed SABR session, retrying segment pipeline')
+        this.context.logger.warn('[ShakaDashAdapter] SABR session invalidated: refreshed session, retrying segment pipeline')
         try {
           this.player?.retryStreaming?.(0.1)
         } catch (e) {
@@ -455,7 +473,7 @@ export class ShakaDashAdapter implements StreamAdapter {
       ? context.currentTime
       : (this.context.videoElement()?.currentTime ?? 0)
     this.degradedToDashFallback = true
-    this.context.logger.warn('[ShakaDashAdapter] Seek HTTP 4xx: degrading to bundled DASH at', target)
+    this.context.logger.warn('[ShakaDashAdapter] SABR recovery exhausted: degrading to bundled DASH at', target)
     try {
       await this.loadBundledDashFallback(player, sabrConfig.fallbackSrc, target > 0 ? target : null)
       this.updateActiveCodecFamily()
