@@ -45,6 +45,9 @@ type ShakaVariantTrack = shaka.extern.Track
 const HTTP_IN_HEX = 0x68747470
 const RequestType = shaka.net.NetworkingEngine.RequestType
 const POST_SEEK_FRAME_CHECK_DELAY_MS = 3000
+// Segment requests for a seek target typically fire within seconds of the
+// scrub. A 4xx arriving later is treated as a mid-play failure (generic chain).
+const SEEK_4XX_WINDOW_MS = 15_000
 // FreeTube remaps settings "auto" → 720 until auto is fixed. Match that
 // opening rung so first frame is watchable; ABR may still climb afterward.
 const STARTUP_QUALITY_HEIGHT = 720
@@ -132,6 +135,14 @@ export class ShakaDashAdapter implements StreamAdapter {
   private postSeekFrameCallbackId: number | null = null
   private postSeekFrameCallbackVideo: HTMLVideoElement | null = null
   private postSeekCompletion: ((visuallyReady: boolean) => void) | null = null
+  /** Latest SABR session (poToken/serverAbrUrl/formats); shared by poToken minting, server-driven reloads and seek-4xx refresh. */
+  private sabrSession: SabrPlaybackSession | null = null
+  /** Wall-clock of the most recent seek(); used to scope seek-triggered HTTP 4xx recovery. */
+  private lastSeekAt = 0
+  /** One SABR-session refresh is attempted per seek before degrading to DASH. */
+  private sabrRefreshAttemptedSinceSeek = false
+  /** True once this source degraded SABR → bundled DASH; prevents repeated degrade loops. */
+  private degradedToDashFallback = false
 
   constructor(context: StreamContext, options?: ShakaDashAdapterOptions) {
     this.context = context
@@ -146,6 +157,9 @@ export class ShakaDashAdapter implements StreamAdapter {
     this.cancelPostSeekVideoWatchdog()
     this.sink = sink
     this.sourceQualityHints = Array.isArray(source.qualities) ? source.qualities : []
+    this.lastSeekAt = 0
+    this.sabrRefreshAttemptedSinceSeek = false
+    this.degradedToDashFallback = false
 
     const isDash = source.type === 'dash' || (source.type === 'auto' && /\.mpd($|\?)/i.test(source.src))
     const wantsShaka = source.playbackEngine === 'shaka'
@@ -281,10 +295,7 @@ export class ShakaDashAdapter implements StreamAdapter {
         // DASH manifest from the same player response so this retry adds no
         // resolver round trip and preserves a reliable playback path.
         this.context.logger.warn('[ShakaDashAdapter] SABR load failed; falling back to DASH', sabrError)
-        this.disposeSabrAdapter()
-        this.installYouTubeNetworkingFilters(player)
-        this.currentSource = source.sabr.fallbackSrc
-        await player.load(source.sabr.fallbackSrc, /* startTime */ null, 'application/dash+xml')
+        await this.loadBundledDashFallback(player, source.sabr.fallbackSrc, null)
       }
       if (requestSeq !== this.loadRequestSeq || this.player !== player) {
         await player.destroy().catch((e) => {
@@ -313,41 +324,160 @@ export class ShakaDashAdapter implements StreamAdapter {
   }
 
   private installSabrPlayback(player: shaka.Player, config: SabrPlaybackConfig): void {
-    let activeSession: SabrPlaybackSession = config
+    this.sabrSession = config
     const adapter = new SabrStreamingAdapter({
       playerAdapter: new SabrShakaPlayerAdapter(),
-      clientInfo: activeSession.clientInfo,
+      clientInfo: config.clientInfo,
       enableCaching: true,
       maxCacheSizeMB: 8,
       maxCacheAgeSeconds: 300,
     })
 
-    adapter.onMintPoToken(async () => activeSession.poToken)
+    adapter.onMintPoToken(async () => this.sabrSession?.poToken ?? '')
     adapter.onReloadPlayerResponse(async () => {
       const refreshed = await config.refresh?.()
       if (!refreshed) {
         throw new Error('YouTube SABR session refresh returned no playable payload')
       }
-      activeSession = refreshed
-      adapter.setStreamingURL(refreshed.serverAbrUrl)
-      adapter.setUstreamerConfig(refreshed.ustreamerConfig)
-      adapter.setServerAbrFormats(refreshed.formats)
+      this.applySabrSession(refreshed)
     })
     adapter.onSnackbarMessage((message) => {
       this.context.logger.debug('[ShakaDashAdapter] YouTube SABR message', message)
     })
 
     adapter.attach(player)
-    adapter.setStreamingURL(activeSession.serverAbrUrl)
-    adapter.setUstreamerConfig(activeSession.ustreamerConfig)
-    adapter.setServerAbrFormats(activeSession.formats)
+    adapter.setStreamingURL(config.serverAbrUrl)
+    adapter.setUstreamerConfig(config.ustreamerConfig)
+    adapter.setServerAbrFormats(config.formats)
     this.sabrAdapter = adapter
+  }
+
+  /** Push a fresh SABR session (serverAbrUrl / ustreamer / formats) onto the adapter. */
+  private applySabrSession(session: SabrPlaybackSession): void {
+    this.sabrSession = session
+    this.sabrAdapter?.setStreamingURL(session.serverAbrUrl)
+    this.sabrAdapter?.setUstreamerConfig(session.ustreamerConfig)
+    this.sabrAdapter?.setServerAbrFormats(session.formats)
   }
 
   private disposeSabrAdapter(): void {
     if (!this.sabrAdapter) return
     this.sabrAdapter.dispose()
     this.sabrAdapter = null
+    this.sabrSession = null
+  }
+
+  /**
+   * Switch a live Shaka player from SABR to the bundled regular DASH manifest
+   * from the same player response. Shared by the SABR start-failure path
+   * (loadSource) and seek-4xx degradation: dispose the SABR adapter, install
+   * the YouTube networking filters (POST + range= + alr=yes) once, then load
+   * the fallback MPD — optionally at a resume time so a mid-play degrade does
+   * not rewind the playhead to 0.
+   */
+  private async loadBundledDashFallback(
+    player: shaka.Player,
+    fallbackSrc: string,
+    startTime: number | null,
+  ): Promise<void> {
+    this.disposeSabrAdapter()
+    this.installYouTubeNetworkingFilters(player)
+    this.currentSource = fallbackSrc
+    await player.load(fallbackSrc, startTime, 'application/dash+xml')
+  }
+
+  // --- YouTube SABR seek-triggered HTTP 4xx recovery ---
+  //
+  // googlevideo byte-range segment fetches can 400/403 in the wake of a large
+  // seek (the session/poToken binding is not valid for the requested range).
+  // The generic retry chain would re-request the SAME range forever, so this
+  // early hook (consulted by error-recovery BEFORE retry/quality-fallback):
+  //   1. refreshes the SABR session (new poToken / serverAbrUrl) and nudges
+  //      the segment pipeline — once per seek;
+  //   2. if refresh is unavailable or the 4xx recurs, degrades to the bundled
+  //      regular DASH manifest and seeks straight to the target time.
+  // Transient single-segment aborts (no HTTP status) and mid-play 4xx outside
+  // the seek window keep the exact pre-existing generic chain.
+
+  /** HTTP status captured from a Shaka error detail (BAD_HTTP_STATUS data[1]). */
+  private extractHttpStatus(error: PlayerError): number | null {
+    const detail = error?.details as { data?: unknown[] } | undefined
+    const data = Array.isArray(detail?.data) ? detail.data : []
+    const status = Number(data[1])
+    if (Number.isInteger(status) && status >= 400 && status < 600) return status
+
+    const message = String(error?.message || '')
+    const match = message.match(/(?:^|[\s,])(4\d{2})(?:[\s,]|$)/)
+    return match ? Number(match[1]) : null
+  }
+
+  private isSeekContextHttp4xx(error: PlayerError): boolean {
+    if (Date.now() - this.lastSeekAt > SEEK_4XX_WINDOW_MS) return false
+    const status = this.extractHttpStatus(error)
+    return status === 400 || status === 403
+  }
+
+  /**
+   * Early recovery hook (StreamAdapter.handleProviderRecovery). Returns
+   * 'handled' only when this adapter took over a seek-triggered HTTP 4xx on a
+   * SABR session; anything else returns null so the generic chain is
+   * untouched (zero impact on normal SABR playback and legacy DASH).
+   */
+  async handleProviderRecovery(error: PlayerError, context: PlaybackRecoveryContext): Promise<PlaybackRecoveryAction | null> {
+    if (!this.isSeekContextHttp4xx(error)) return null
+    const sabrConfig = context.source?.sabr
+    if (!sabrConfig || this.degradedToDashFallback) return null
+
+    if (!this.sabrRefreshAttemptedSinceSeek) {
+      this.sabrRefreshAttemptedSinceSeek = true
+      if (await this.tryRefreshSabrSession(sabrConfig)) {
+        this.context.logger.warn('[ShakaDashAdapter] Seek HTTP 4xx: refreshed SABR session, retrying segment pipeline')
+        try {
+          this.player?.retryStreaming?.(0.1)
+        } catch (e) {
+          this.context.logger.warn('[ShakaDashAdapter] retryStreaming after SABR refresh failed', e)
+        }
+        return 'handled'
+      }
+    }
+
+    if (!sabrConfig.fallbackSrc || !this.player) return null
+
+    const player = this.player
+    const target = Number.isFinite(context.currentTime)
+      ? context.currentTime
+      : (this.context.videoElement()?.currentTime ?? 0)
+    this.degradedToDashFallback = true
+    this.context.logger.warn('[ShakaDashAdapter] Seek HTTP 4xx: degrading to bundled DASH at', target)
+    try {
+      await this.loadBundledDashFallback(player, sabrConfig.fallbackSrc, target > 0 ? target : null)
+      this.updateActiveCodecFamily()
+      this.updateQualities()
+      this.syncBufferingToSink()
+      const video = this.context.videoElement()
+      if (video && !video.paused && !video.ended) {
+        void video.play().catch((e) => {
+          this.context.logger.warn('[ShakaDashAdapter] Play after DASH degrade failed', e)
+        })
+      }
+    } catch (e) {
+      this.context.logger.warn('[ShakaDashAdapter] DASH degrade failed', e)
+      return null
+    }
+    return 'handled'
+  }
+
+  private async tryRefreshSabrSession(config: SabrPlaybackConfig): Promise<boolean> {
+    if (typeof config.refresh !== 'function' || !this.sabrAdapter) return false
+    try {
+      const refreshed = await config.refresh()
+      if (!refreshed) return false
+      this.applySabrSession(refreshed)
+      return true
+    } catch (e) {
+      this.context.logger.warn('[ShakaDashAdapter] SABR session refresh failed', e)
+      return false
+    }
   }
 
   /**
@@ -867,6 +997,10 @@ export class ShakaDashAdapter implements StreamAdapter {
     const target = Number(time)
     if (!Number.isFinite(target)) return Promise.resolve()
     const clamped = Math.max(0, target)
+    // Seek-triggered HTTP 4xx recovery window starts here; each new seek may
+    // retry one SABR-session refresh before degrading to the DASH fallback.
+    this.lastSeekAt = Date.now()
+    this.sabrRefreshAttemptedSinceSeek = false
     const video = this.context.videoElement()
     if (!video) return Promise.resolve()
     const seekPlayer = this.player

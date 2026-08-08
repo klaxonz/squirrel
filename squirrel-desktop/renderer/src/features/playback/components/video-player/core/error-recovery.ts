@@ -375,6 +375,22 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
 
     isRecovering = true
     try {
+      // Provider-specific early recovery runs BEFORE the generic
+      // retry/quality chain so a session-bound failure (e.g. YouTube SABR
+      // seek 4xx) is not burned on same-range retries that cannot succeed.
+      // Adapters without the hook keep the exact pre-existing strategy path.
+      const controller = getStreamController()
+      if (controller?.handleProviderRecovery) {
+        const providerAction = await controller.handleProviderRecovery(error, buildRecoveryContext())
+        if (providerAction === 'handled') {
+          if (deps.getLoading()) {
+            suppressWaitingRecovery(Math.max(deps.getRetryDelay(), 2000))
+            scheduleWaitingRecovery()
+          }
+          return true
+        }
+      }
+
       const strategy = determineRecoveryStrategy(error)
       deps.logger.debug(`[ErrorRecovery] Strategy: ${strategy}, Error`, error)
 

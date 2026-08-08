@@ -3,6 +3,7 @@ import { createErrorRecovery, detectSourceType } from './error-recovery'
 import { EventEmitter } from './EventEmitter'
 import type { IPlayerAdapter } from './PlayerAdapter'
 import type { PlayerLogger } from './logger'
+import type { StreamAdapter } from './StreamAdapter'
 import type { MediaSource, PlayerError, QualityLevel } from './types'
 
 describe('detectSourceType', () => {
@@ -29,6 +30,7 @@ function createHarness(opts?: {
   enableQualityFallback?: boolean
   maxRetries?: number
   playIntent?: boolean
+  streamAdapter?: StreamAdapter | null
 }) {
   const qualities = opts?.qualities ?? [
     { id: '1440', label: '1440p', height: 1440 },
@@ -103,7 +105,7 @@ function createHarness(opts?: {
     getRetryDelay: () => 10,
     getEnableQualityFallback: () => opts?.enableQualityFallback ?? true,
     events: new EventEmitter(),
-    getStreamAdapter: () => null,
+    getStreamAdapter: () => opts?.streamAdapter ?? null,
     logger,
     adapter,
     onError,
@@ -231,5 +233,83 @@ describe('error recovery stall handling', () => {
 
     expect(firstResult).toBe(true)
     expect(second).toBe(true)
+  })
+})
+
+describe('provider recovery hook (seek-triggered 4xx early interception)', () => {
+  it('lets the provider take over before the generic quality-fallback chain', async () => {
+    const providerRecovery = vi.fn(async () => 'handled' as const)
+    const streamAdapter = {
+      handleProviderRecovery: providerRecovery,
+    } as unknown as StreamAdapter
+    const { recovery, setQuality } = createHarness({
+      paused: false,
+      maxRetries: 3,
+      streamAdapter,
+    })
+    const err: PlayerError = {
+      code: 'SHAKA_1008',
+      message: 'Bad HTTP status code: 400',
+      fatal: false,
+      details: { data: ['https://googlevideo.example/seg', 400, {}, 1, 'https://googlevideo.example/seg'] },
+    }
+
+    const recovered = await recovery.handleRecoveryError(err)
+
+    expect(recovered).toBe(true)
+    expect(providerRecovery).toHaveBeenCalledTimes(1)
+    expect(providerRecovery).toHaveBeenCalledWith(
+      err,
+      expect.objectContaining({
+        retryCount: 0,
+        source: expect.objectContaining({ src: 'blob:dash' }),
+      }),
+    )
+    // 'handled' must bypass the generic retry/quality chain.
+    expect(setQuality).not.toHaveBeenCalled()
+  })
+
+  it('falls through to the generic chain when the provider declines', async () => {
+    const providerRecovery = vi.fn(async () => null)
+    const streamAdapter = {
+      handleProviderRecovery: providerRecovery,
+    } as unknown as StreamAdapter
+    const { recovery, setQuality } = createHarness({
+      paused: false,
+      maxRetries: 0,
+      streamAdapter,
+    })
+    const err: PlayerError = {
+      code: 'SHAKA_1008',
+      message: 'Bad HTTP status code: 400',
+      fatal: false,
+      details: { data: ['https://googlevideo.example/seg', 400, {}, 1, 'https://googlevideo.example/seg'] },
+    }
+
+    const recovered = await recovery.handleRecoveryError(err)
+
+    expect(recovered).toBe(true)
+    expect(providerRecovery).toHaveBeenCalledTimes(1)
+    // Generic chain still runs when the provider hook returns null.
+    expect(setQuality).toHaveBeenCalled()
+  })
+
+  it('ignores the hook for adapters that do not implement it', async () => {
+    const { recovery, setQuality } = createHarness({
+      paused: false,
+      maxRetries: 0,
+      streamAdapter: {} as StreamAdapter,
+    })
+    const err: PlayerError = {
+      code: 'SHAKA_1008',
+      message: 'Bad HTTP status code: 400',
+      fatal: false,
+      details: { data: ['https://googlevideo.example/seg', 400, {}, 1, 'https://googlevideo.example/seg'] },
+    }
+
+    const recovered = await recovery.handleRecoveryError(err)
+
+    expect(recovered).toBe(true)
+    expect(setQuality).toHaveBeenCalled()
   })
 })

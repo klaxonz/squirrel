@@ -55,6 +55,16 @@ export interface StreamAdapter {
   setQuality(quality: QualitySelectionRequest): void
   /** Recovery strategy for a playback error (HLS level fallback, DASH track switch, etc.). */
   recoverPlayback(error: PlayerError, context: PlaybackRecoveryContext): PlaybackRecoveryAction | Promise<PlaybackRecoveryAction>
+
+  /**
+   * Optional EARLY recovery hook, consulted by error-recovery BEFORE the generic
+   * retry/quality chain. Provider adapters use it for errors the generic chain
+   * cannot fix (e.g. a seek-triggered HTTP 400/403 on a session-bound SABR
+   * stream: refresh the session, then degrade to the bundled DASH fallback).
+   * Return 'handled' to take over; return null (or any other value) to fall
+   * through to the generic strategy untouched.
+   */
+  handleProviderRecovery?(error: PlayerError, context: PlaybackRecoveryContext): PlaybackRecoveryAction | Promise<PlaybackRecoveryAction | null> | null
   /** Release the underlying library instance (hls.js / dashjs / shaka). */
   destroy(): void
 

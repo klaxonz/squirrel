@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StreamContext } from '../core/StreamAdapter'
 import type { StreamSink } from '../core/StreamSink'
-import type { PlayerState } from '../core/types'
+import type { PlayerError, PlayerState } from '../core/types'
 
 const shakaMockState = vi.hoisted(() => {
   const lowTrack = {
@@ -509,5 +509,204 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
 
     releaseSecond()
     releaseThird()
+  })
+
+  it('refreshes the SABR session, then degrades to bundled DASH on a seek-triggered HTTP 4xx', async () => {
+    const video = {
+      currentTime: 0,
+      paused: false,
+      ended: false,
+      playbackRate: 1,
+      defaultPlaybackRate: 1,
+      play: vi.fn(async () => {}),
+    } as unknown as HTMLVideoElement
+    const context: StreamContext = {
+      videoElement: () => video,
+      getState: () => ({ quality: null } as PlayerState),
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+    }
+    const sink: StreamSink = {
+      qualitiesResolved: vi.fn(),
+      qualityChanged: vi.fn(),
+      loadingStateChanged: vi.fn(),
+      error: vi.fn(),
+    }
+    const sabrSource = 'data:application/dash+xml;charset=UTF-8,SABR'
+    const fallbackSource = 'data:application/dash+xml;charset=UTF-8,DASH'
+    const refreshedSession = {
+      serverAbrUrl: 'https://example.googlevideo.com/videoplayback?sabr=2',
+      ustreamerConfig: 'cmVmcmVzaGVk',
+      formats: [{
+        itag: 137,
+        lastModified: '2',
+        bitrate: 2_000_000,
+        approxDurationMs: 60_000,
+        width: 1920,
+        height: 1080,
+      }],
+      clientInfo: {
+        clientName: 1,
+        clientVersion: '1.0',
+        osName: 'Windows',
+        osVersion: '10',
+      },
+      poToken: 'refreshed-token',
+    }
+    const refresh = vi.fn(async () => refreshedSession)
+    const sabrConfig = {
+      serverAbrUrl: 'https://example.googlevideo.com/videoplayback?sabr=1',
+      ustreamerConfig: 'dGVzdA==',
+      formats: [{
+        itag: 137,
+        lastModified: '1',
+        bitrate: 2_000_000,
+        approxDurationMs: 60_000,
+        width: 1920,
+        height: 1080,
+      }],
+      clientInfo: {
+        clientName: 1,
+        clientVersion: '1.0',
+        osName: 'Windows',
+        osVersion: '10',
+      },
+      poToken: 'token',
+      fallbackSrc: fallbackSource,
+      refresh,
+    }
+    const source = {
+      src: sabrSource,
+      type: 'dash' as const,
+      playbackEngine: 'shaka' as const,
+      sabr: sabrConfig,
+    }
+
+    const adapter = new ShakaDashAdapter(context)
+    adapter.onSourceChange(source, sink)
+    await flushPromises()
+    const player = shakaMockState.latestPlayer as MockShakaPlayer
+    expect(player.load).toHaveBeenNthCalledWith(1, sabrSource, null, 'application/dash+xml')
+
+    // Seek now so the recovery window is open.
+    void adapter.seek(120)
+    const err: PlayerError = {
+      code: 'SHAKA_1008',
+      message: 'Bad HTTP status code: 400',
+      fatal: false,
+      details: { data: ['https://googlevideo.example/seg', 400, {}, 1, 'https://googlevideo.example/seg'] },
+    }
+    const contextPayload = {
+      retryCount: 0,
+      maxRetries: 3,
+      retryDelay: 10,
+      source,
+      currentTime: 123,
+      wasPlaying: true,
+    }
+
+    // Attempt 1: refresh the SABR session and nudge the pipeline, no manifest reload.
+    const firstAction = await adapter.handleProviderRecovery(err, contextPayload)
+    expect(firstAction).toBe('handled')
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(player.retryStreaming).toHaveBeenCalledWith(0.1)
+    expect(player.load).not.toHaveBeenCalledWith(fallbackSource, expect.anything(), 'application/dash+xml')
+    const sabrAdapter = sabrMockState.latestAdapter as {
+      setStreamingURL: ReturnType<typeof vi.fn>
+      dispose: ReturnType<typeof vi.fn>
+    }
+    expect(sabrAdapter.setStreamingURL).toHaveBeenLastCalledWith(refreshedSession.serverAbrUrl)
+
+    // Attempt 2 (4xx recurs): degrade to bundled DASH at the seek target.
+    const secondAction = await adapter.handleProviderRecovery(err, contextPayload)
+    expect(secondAction).toBe('handled')
+    expect(player.load).toHaveBeenNthCalledWith(2, fallbackSource, 123, 'application/dash+xml')
+    expect(video.play).toHaveBeenCalled()
+
+    // Already degraded — subsequent 4xx must NOT re-degrade or re-refresh.
+    refresh.mockClear()
+    const thirdAction = await adapter.handleProviderRecovery(err, contextPayload)
+    expect(thirdAction).toBeNull()
+    expect(refresh).not.toHaveBeenCalled()
+    adapter.destroy()
+  })
+
+  it('leaves non-seek and non-4xx errors to the generic chain', async () => {
+    const video = {
+      currentTime: 0,
+      paused: false,
+      ended: false,
+      playbackRate: 1,
+      defaultPlaybackRate: 1,
+    } as unknown as HTMLVideoElement
+    const context: StreamContext = {
+      videoElement: () => video,
+      getState: () => ({ quality: null } as PlayerState),
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+    }
+    const sink: StreamSink = {
+      qualitiesResolved: vi.fn(),
+      qualityChanged: vi.fn(),
+      loadingStateChanged: vi.fn(),
+      error: vi.fn(),
+    }
+    const adapter = new ShakaDashAdapter(context)
+    adapter.onSourceChange({
+      src: 'data:application/dash+xml;charset=UTF-8,SABR',
+      type: 'dash',
+      playbackEngine: 'shaka',
+      sabr: {
+        serverAbrUrl: 'https://example.googlevideo.com/videoplayback?sabr=1',
+        ustreamerConfig: 'dGVzdA==',
+        formats: [],
+        clientInfo: { clientName: 1, clientVersion: '1.0', osName: 'Windows', osVersion: '10' },
+        poToken: 'token',
+        fallbackSrc: 'data:application/dash+xml;charset=UTF-8,DASH',
+      },
+    }, sink)
+    await flushPromises()
+
+    // No seek happened: lastSeekAt = 0 → the 4xx must NOT be intercepted.
+    const noSeek = await adapter.handleProviderRecovery({
+      code: 'SHAKA_1008',
+      message: 'Bad HTTP status code: 400',
+      fatal: false,
+      details: { data: ['https://googlevideo.example/seg', 400, {}, 1, 'https://googlevideo.example/seg'] },
+    }, {
+      retryCount: 0,
+      maxRetries: 3,
+      retryDelay: 10,
+      source: null,
+      currentTime: 0,
+      wasPlaying: true,
+    })
+    expect(noSeek).toBeNull()
+
+    // Seek happened, but the error is a plain abort (no HTTP status) — not a 4xx.
+    void adapter.seek(120)
+    const aborted = await adapter.handleProviderRecovery({
+      code: 'SHAKA_1009',
+      message: 'The operation was aborted',
+      fatal: false,
+      details: { data: ['OPERATION_ABORTED'] },
+    }, {
+      retryCount: 0,
+      maxRetries: 3,
+      retryDelay: 10,
+      source: null,
+      currentTime: 120,
+      wasPlaying: true,
+    })
+    expect(aborted).toBeNull()
+    adapter.destroy()
   })
 })
