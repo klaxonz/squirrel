@@ -225,11 +225,18 @@ watch(() => homeInboxRef.value?.activeFilter, () => resetNewContent())
 }
 
 .home-feed__sort {
+  /* Opaque pinned sort bar, matching the workbench toolbar — the feed keeps
+     its sort context while scrolling. */
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
   display: flex;
   min-height: 2.25rem;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border) / 0.55);
   padding: 0.1rem 0.1rem 0;
 }
 

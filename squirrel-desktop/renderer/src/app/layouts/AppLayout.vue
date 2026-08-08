@@ -397,17 +397,28 @@ onUnmounted(() => {
 }
 
 /*
-  Stage is a fixed-height flex host equal to the scrollport. Document-style
-  pages (fill=false) still outer-scroll because their content overflows the
-  stage box. Workbench pages (AppPageShell fill) consume the full host and
-  own their own scroll regions — see :has(.app-page-shell--fill) below.
+  Stage is a content-sized flex host at least as tall as the scrollport.
+  Document-style pages (fill=false) grow the stage with their content so
+  sticky toolbars keep pinning for the entire scroll — a fixed height here
+  shrinks the page section (flex-shrink) and truncates its sticky range to
+  one viewport. Workbench pages (AppPageShell fill) consume the full host
+  and own their own scroll regions — see :has(.app-page-shell--fill) below.
 */
 .app-layout__stage {
   position: relative;
   display: flex;
-  height: 100%;
   min-height: 100%;
   flex-direction: column;
+}
+
+/*
+  Document-style pages (fill=false): grow with content (shrink disabled —
+  a compressed page box truncates sticky toolbar range to one viewport) and
+  stretch to fill the viewport when content is short. Fill pages are exempt:
+  they must stay contained by the fixed host below.
+*/
+.app-layout__stage > :deep(*:not(.app-page-shell--fill)) {
+  flex: 1 0 auto;
 }
 
 /*

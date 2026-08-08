@@ -26,7 +26,27 @@
           @update:duration="duration = $event"
           @update:contentType="contentType = $event"
           @update:special="setSpecialFilter"
-        />
+        >
+          <!-- Active filters live inside the toolbar row (no separate band →
+               zero layout shift when they appear/disappear). -->
+          <template v-if="activeFilterTokens.length" #after-tabs>
+            <div class="videos-workbench__filters no-scrollbar" aria-label="已启用筛选">
+              <button
+                v-for="token in activeFilterTokens"
+                :key="token.key"
+                type="button"
+                class="videos-workbench__chip"
+                :aria-label="`移除筛选：${token.dim ? `${token.dim} ` : ''}${token.label}`"
+                @click="clearFilter(token.key)"
+              >
+                <span v-if="token.dim" class="videos-workbench__chip-dim">{{ token.dim }}</span>
+                {{ token.label }}
+                <AppIcon name="close" class="size-3" />
+              </button>
+              <button type="button" class="videos-workbench__clear" @click="clearAllPageFilters">清除全部</button>
+            </div>
+          </template>
+        </FeedToolbar>
 
         <div v-else class="videos-workbench__remote-tools">
           <span>远端结果</span>
@@ -48,20 +68,6 @@
         </div>
       </div>
     </header>
-
-    <div v-if="activeFilterTokens.length" class="videos-workbench__filters-band">
-      <div
-        class="videos-workbench__filters"
-        aria-label="已启用筛选"
-      >
-        <span>已筛选</span>
-        <button v-for="token in activeFilterTokens" :key="token.key" type="button" @click="clearFilter(token.key)">
-          {{ token.label }}
-          <AppIcon name="close" class="size-3" />
-        </button>
-        <button type="button" class="videos-workbench__clear" @click="clearAllPageFilters">清除全部</button>
-      </div>
-    </div>
 
     <div class="videos-workbench__body">
       <main class="videos-workbench__canvas" aria-label="视频内容">
@@ -191,17 +197,18 @@ const optionLabel = (options: readonly { value: string; label: string }[], value
 )
 
 const activeFilterTokens = computed(() => {
-  const tokens: Array<{ key: FilterTokenKey; label: string }> = []
+  const tokens: Array<{ key: FilterTokenKey; label: string; dim?: string }> = []
   if (site.value) {
     tokens.push({
       key: 'site',
+      dim: '来源',
       label: siteOptions.value?.find((option) => option.value === site.value)?.label || site.value,
     })
   }
-  if (timeRange.value !== 'all') tokens.push({ key: 'timeRange', label: optionLabel(TIME_RANGE_OPTIONS, timeRange.value) })
-  if (duration.value !== 'all') tokens.push({ key: 'duration', label: optionLabel(DURATION_OPTIONS, duration.value) })
-  if (contentType.value !== 'all') tokens.push({ key: 'contentType', label: optionLabel(CONTENT_TYPE_OPTIONS, contentType.value) })
-  if (nsfw.value !== 'all') tokens.push({ key: 'nsfw', label: optionLabel(NSFW_OPTIONS, nsfw.value) })
+  if (timeRange.value !== 'all') tokens.push({ key: 'timeRange', dim: '时间', label: optionLabel(TIME_RANGE_OPTIONS, timeRange.value) })
+  if (duration.value !== 'all') tokens.push({ key: 'duration', dim: '时长', label: optionLabel(DURATION_OPTIONS, duration.value) })
+  if (contentType.value !== 'all') tokens.push({ key: 'contentType', dim: '类型', label: optionLabel(CONTENT_TYPE_OPTIONS, contentType.value) })
+  if (nsfw.value !== 'all') tokens.push({ key: 'nsfw', dim: '分级', label: optionLabel(NSFW_OPTIONS, nsfw.value) })
   if (special.value === 'yes') tokens.push({ key: 'special', label: '特别关注' })
   return tokens
 })
@@ -367,36 +374,21 @@ watch(() => route.query.special, (value) => {
   gap: 0.5rem;
 }
 
-.videos-workbench__filters-band {
-  /* Sticky filter row is part of the content surface (the toolbar above it
-     is already card) — tint from the card, not the canvas. */
-  background: hsl(var(--card) / 0.88);
-  border-bottom: 1px solid hsl(var(--border) / 0.55);
-}
-
+/* Active-filter chips live inside the toolbar row (after-tabs slot):
+   no extra row, so the page never shifts when filters change. */
 .videos-workbench__filters {
   display: flex;
-  width: 100%;
-  max-width: none;
-  min-height: 2.55rem;
-  margin-inline: 0;
-  padding-inline: var(--app-content-media-gutter);
+  min-width: 0;
+  flex: 1 1 auto;
   align-items: center;
   gap: 0.4rem;
-}
-
-.videos-workbench__filters > span {
-  margin-right: 0.25rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  overflow-x: auto;
 }
 
 .videos-workbench__filters button {
   display: inline-flex;
   min-height: 1.7rem;
+  flex: 0 0 auto;
   align-items: center;
   gap: 0.3rem;
   border: 1px solid hsl(var(--border));
@@ -407,6 +399,7 @@ watch(() => route.query.special, (value) => {
   box-shadow: var(--shadow-xs);
   font-size: 0.6875rem;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background-color var(--duration-fast) var(--ease-default),
@@ -419,12 +412,25 @@ watch(() => route.query.special, (value) => {
   background: var(--app-control-hover-bg);
 }
 
+/* Dimension prefix disambiguates bare values ("本周" → 时间 · 本周). */
+.videos-workbench__filters .videos-workbench__chip-dim {
+  color: hsl(var(--muted-foreground) / 0.9);
+  font-weight: 550;
+}
+
+/* Clear-all is a quiet secondary action, not the loudest element in the row. */
 .videos-workbench__filters .videos-workbench__clear {
   margin-left: auto;
   border-color: transparent;
   background: transparent;
   box-shadow: none;
-  color: hsl(var(--info));
+  color: hsl(var(--muted-foreground));
+}
+
+.videos-workbench__filters .videos-workbench__clear:hover {
+  border-color: transparent;
+  background: hsl(var(--muted) / 0.6);
+  color: hsl(var(--foreground));
 }
 
 .videos-workbench__body {
