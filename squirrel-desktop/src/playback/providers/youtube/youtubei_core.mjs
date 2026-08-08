@@ -1796,6 +1796,20 @@ function attemptLooksLikePermanentUnavailability(attempt) {
 }
 
 function buildPlaybackFailureError(attempts, hasAuth) {
+  // Every failed resolve logs the per-client attempts so a "无法播放" report
+  // carries the actual gate (LOGIN_REQUIRED / playability / format_score 0).
+  console.debug(
+    '[squirrel-desktop] youtubei_core: playback resolve failed; attempts=',
+    JSON.stringify((attempts || []).map((item) => ({
+      client: item?.client || null,
+      format_score: Number.isFinite(Number(item?.format_score)) ? Number(item?.format_score) : null,
+      playability_status: item?.playability_status || null,
+      reason: item?.playability_reason || item?.playability_subreason || null,
+      error: item?.error ? String(item.error).slice(0, 160) : null,
+      po_token_error: item?.po_token_error ? String(item.po_token_error).slice(0, 160) : null,
+      formats: Number.isFinite(Number(item?.formats)) ? Number(item?.formats) : null,
+    }))),
+  )
   const authGated = (attempts || []).some((attempt) => attemptLooksLikeAuthGate(attempt));
   if (authGated && !hasAuth) {
     return {

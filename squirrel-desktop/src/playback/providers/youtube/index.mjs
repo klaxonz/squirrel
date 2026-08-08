@@ -5,7 +5,6 @@ import { youtubeOAuthStateFilePath } from '../../../constants.mjs'
 import { prewarmYoutubeiRuntime, resolveYoutubeiPayload } from './youtubei_core.mjs'
 import { createPlaybackCache } from '../shared/playback-cache.mjs'
 
-const RESOLVE_RETRY_DELAY_MS = 500
 // Bump whenever the media authorization / quality-menu / SABR ladder contract
 // changes. v2 restored fallback_mpd_content; v3 aligned menu rows with SABR
 // formats; v4 stops global VP9-only filtering that collapsed mixed ladders.
@@ -428,7 +427,12 @@ export const prewarmYouTubePlayback = (cookie = '') => {
 const resolveFreshYouTubePlayback = async ({ videoId, cookie, cacheKey }) => {
   let bestPayload = null
   let lastError = null
-  const maxAttempts = 2
+  // YouTube intermittently rate-limits programmatic sessions (observed as
+  // multi-minute windows where every client returns LOGIN_REQUIRED / empty
+  // streaming_data). Back off between attempts so short gates clear inside
+  // a single click instead of failing on the second immediate retry.
+  const maxAttempts = 3
+  const retryWaitsMs = [0, 3000, 8000]
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       const response = await resolveYoutubeiPayload({
@@ -454,9 +458,11 @@ const resolveFreshYouTubePlayback = async ({ videoId, cookie, cacheKey }) => {
       lastError = error
     }
 
-    if (attempt + 1 < maxAttempts && scoreMappedPayload(bestPayload) < 2000) {
-      await wait(RESOLVE_RETRY_DELAY_MS)
+    const waitMs = retryWaitsMs[attempt + 1]
+    if (waitMs === undefined || scoreMappedPayload(bestPayload) >= 2000) {
+      break
     }
+    await wait(waitMs)
   }
 
   if (bestPayload) {
