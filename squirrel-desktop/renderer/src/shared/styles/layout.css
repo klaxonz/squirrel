@@ -136,9 +136,13 @@
 
   /* Segmented controls — Reddit chip track */
   --app-filter-track-bg: hsl(var(--secondary));
-  --app-filter-raised-bg: hsl(var(--card));
+  /* Dark raised segment must sit clearly ABOVE the track: card (#1A1A1B)
+     is darker than the secondary track (#222223), which inverted the
+     selection. A lifted neutral (#383839) plus a foreground hairline makes
+     the active chip unmistakable on both popover and toolbar surfaces. */
+  --app-filter-raised-bg: hsl(240 3% 22%);
   --app-filter-raised-fg: hsl(var(--foreground));
-  --app-filter-raised-shadow: none;
+  --app-filter-raised-shadow: 0 0 0 1px hsl(var(--foreground) / 0.3);
   --app-dense-toolbar-gap: 0.75rem;
 
   /* Soft structural lines — strong enough to read, weak enough not to

@@ -101,7 +101,7 @@ const selectOption = (value: string | number) => {
 .app-segmented-control__item.is-active {
   color: var(--app-filter-raised-fg);
   background: var(--app-filter-raised-bg);
-  box-shadow: none;
+  box-shadow: var(--app-filter-raised-shadow);
   font-weight: 700;
 }
 

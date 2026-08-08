@@ -597,7 +597,9 @@ onUnmounted(() => {
 }
 
 .global-search__input::placeholder {
-  color: hsl(var(--muted-foreground) / 0.5);
+  /* Full muted, not /0.5: the half-alpha blend measured ~2:1 on dark and
+     read as invisible against the input surface. */
+  color: hsl(var(--muted-foreground));
   font-weight: 400;
 }
 

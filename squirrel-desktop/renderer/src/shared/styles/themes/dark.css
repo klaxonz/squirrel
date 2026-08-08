@@ -20,7 +20,7 @@
   --secondary-foreground: 210 6% 85%;
 
   --muted: 240 2% 13%;
-  --muted-foreground: 210 3% 51%;      /* #818384 */
+  --muted-foreground: 210 3% 58%;      /* #96989A — lifted from Reddit's #818384: 11px labels + alpha blends fell below 4.5:1 on card */
 
   --accent: 240 2% 16%;
   --accent-foreground: 210 6% 90%;

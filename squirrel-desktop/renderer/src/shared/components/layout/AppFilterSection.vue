@@ -28,9 +28,9 @@ withDefaults(defineProps<{
 <style scoped>
 .app-filter-section {
   display: grid;
-  gap: 0.4375rem;
+  gap: 0.5rem;
   min-width: 0;
-  padding: 0.25rem 0.125rem;
+  padding: 0.375rem 0.125rem;
 }
 
 .app-filter-section--divided {
@@ -48,14 +48,14 @@ withDefaults(defineProps<{
 
 .app-filter-section--row .app-filter-section__label {
   padding-inline: 0;
-  color: hsl(var(--muted-foreground) / 0.78);
+  color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 600;
 }
 
 .app-filter-section__label {
   padding-inline: 0.125rem;
-  color: hsl(var(--muted-foreground) / 0.76);
+  color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
   font-weight: 620;
   letter-spacing: 0.01em;

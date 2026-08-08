@@ -76,7 +76,7 @@ defineEmits<{
 }
 
 .app-filter-panel__status {
-  color: hsl(var(--muted-foreground) / 0.72);
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-badge-size);
   font-weight: 550;
   line-height: 1.25;
@@ -87,7 +87,7 @@ defineEmits<{
   border-radius: var(--radius-sm);
   background: transparent;
   padding: 0.25rem 0.375rem;
-  color: hsl(var(--muted-foreground) / 0.82);
+  color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 550;
   line-height: 1.2;

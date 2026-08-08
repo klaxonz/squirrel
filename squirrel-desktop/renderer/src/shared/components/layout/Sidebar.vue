@@ -199,8 +199,8 @@ const showSidebarMusicPlayer = computed(() =>
   margin: 0 0 0.3rem;
   padding: 0.125rem 0.8rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 650;
   letter-spacing: 0.01em;
   line-height: 1.4;
   white-space: nowrap;
