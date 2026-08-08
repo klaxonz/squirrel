@@ -7,7 +7,7 @@ import { rememberVideoPlaybackSeed } from './videoPlaybackSeed'
 import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import type { VideoId, VideoPageVideo } from '@/features/playback/types/videoPlayback'
 
-type RouteLike = Pick<RouteLocationNormalizedLoaded, 'params'>
+type RouteLike = Pick<RouteLocationNormalizedLoaded, 'params' | 'name'>
 
 type GoToAdjacentVideo = () => VideoPageVideo | null | undefined
 type OnVideoEnded = () => void | Promise<void>
@@ -53,6 +53,10 @@ export default function useVideoPageNavigation({
 
   const goToVideo: NavigateToVideo = async (id, videoData = null) => {
     if (id == null) return
+
+    // 只在播放页内允许切换视频。用户已离开播放页（返回视频库 / 跳到其它
+    // 页面）时，迟到的相关视频 / 随机 / 自动连播导航不得把人拽回播放页。
+    if (route.name !== 'VideoPlay') return
 
     const targetId = String(id)
     if (String(video.value?.id ?? '') === targetId) return
@@ -137,8 +141,15 @@ export default function useVideoPageNavigation({
   }
 
   const handleAutoplayNext = async (event?: { autoplay?: boolean; autoplayNext?: boolean; loop?: boolean }) => {
+    // 结束时记录当前视频；上报等待期间用户可能已切换视频或离开播放页，
+    // 此时自动连播链随即作废，不得覆盖用户的选择。
+    const endedVideoId = String(video.value?.id ?? route.params.videoId ?? '')
     try {
       await onVideoEnded()
+
+      if (route.name !== 'VideoPlay' || String(route.params.videoId ?? '') !== endedVideoId) {
+        return
+      }
 
       const autoplayEnabled = event?.autoplay ?? true
       const autoplayNextEnabled = event?.autoplayNext ?? true

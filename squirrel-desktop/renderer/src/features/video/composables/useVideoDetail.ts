@@ -4,6 +4,7 @@ import { getVideoDetail } from '@/shared/api'
 import type { VideoId, VideoPageVideo, VideoSubtitle } from '@/features/playback/types/videoPlayback'
 import { Logger } from '@/shared/lib/logger'
 import { useDesktopBridge } from '@/shared/composables/useDesktopBridge'
+import { consumePendingPosition } from '@/features/playback/composables/playbackPositionBuffer'
 import type { PlaybackSession } from '@/features/playback/composables/usePlaybackSession'
 
 type SubtitleCandidate = {
@@ -158,7 +159,21 @@ export default function useVideoDetail(session: PlaybackSession) {
       ])
       if (!data) throw new Error('未找到视频信息')
       if (seq === detailRequestSeq) {
-        session.update({ video: data })
+        // 卸载时 flush 的上报可能还没落地：合并本地乐观位置，避免"返回后
+        // 立即重开"续播到旧进度。合并值只可能比服务器值新（本地观测时间
+        // 更晚），服务器随后落地时也是同一数值。
+        const pendingPosition = consumePendingPosition(String(data.id))
+        const merged = pendingPosition != null
+          ? { ...data, last_position: Math.max(Number(data.last_position) || 0, pendingPosition) }
+          : data
+
+        // 会话可能已在请求期间被释放（用户返回视频库 / 切换到其它视频）——
+        // 迟到响应不得把旧视频写回已清空的全局会话。videoId 匹配本身由
+        // detailRequestSeq 守卫，但 release() 不清 seq，这里必须显式复核。
+        if (String(session.facts.videoId || '') === String(videoId)) {
+          session.update({ video: merged })
+        }
+        return merged
       }
       return data
     } catch (error) {

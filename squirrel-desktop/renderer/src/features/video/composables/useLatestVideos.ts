@@ -48,8 +48,9 @@ type VideoListParams = {
 const PAGE_SIZE = 50
 
 const normalizeVideoListItem = (video: ApiVideoListItem): VideoListItem => ({
+  // 服务端列表（page_loader）会返回 is_read / last_position / interaction_type，
+  // 必须原样保留——播放后返回列表时这些字段是"已读"状态的唯一来源。
   ...video,
-  is_read: false,
   isPlaying: false,
   video_url: null,
 })

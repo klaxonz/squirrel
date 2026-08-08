@@ -411,8 +411,8 @@ export const routes: RouteRecordRaw[] = [
       searchPersistKey: 'VideosView',
       scrollable: true,
       hideScrollbar: true,
-      // Watch immersion — no global search header, app rail collapsed.
-      sidebar: SidebarMode.fixed,
+      // 播放页不再折叠侧边栏：进出播放页时工作区宽度不变，返回视频库
+      // 不会有整页横向重排（沉浸式折叠只保留给 RSS / 音乐等常驻页面）。
       transitionKey: 'video',
       historyStrategy: 'push',
     }),
@@ -523,6 +523,40 @@ export function suppressNextStackUpdate() {
   suppressStackUpdate += 1
 }
 
+type StackStrategyContext = {
+  currentFullPath: string | null | undefined
+  toFullPath: string
+  toName: string | symbol | null | undefined
+  fromName: string | symbol | null | undefined
+  toStrategy: string
+  fromStrategy: string
+}
+
+/**
+ * 决定应用层历史栈对一次路由切换是 replace 还是 push。与浏览器 history
+ * 语义对齐：
+ *   - 同路径重入（F5 / 深链恢复）→ replace，保留原 entry；
+ *   - meta.historyStrategy === 'replace'（Tab 切换等）→ replace；
+ *   - 同名前缀 replace 策略路由的切换 → replace；
+ *   - 播放页内换片（相关视频 / 队列 / 随机 / 自动连播都走 router.replace，
+ *     见 useVideoPageNavigation.goToVideo）→ replace。否则每换一个视频就
+ *     压一条 entry，"返回"要跨过所有看过/跳过的视频才能回库。
+ */
+export function shouldReplaceStackEntry({
+  currentFullPath,
+  toFullPath,
+  toName,
+  fromName,
+  toStrategy,
+  fromStrategy,
+}: StackStrategyContext): boolean {
+  if (currentFullPath != null && currentFullPath === toFullPath) return true
+  if (toStrategy === 'replace') return true
+  if (fromStrategy === 'replace' && toName === fromName) return true
+  if (toName === 'VideoPlay' && toName === fromName) return true
+  return false
+}
+
 router.afterEach((to, from) => {
   // 同步窗口标题。Electron 的 page-title-updated 监听器会把新 title 推到 BrowserWindow。
   const pageTitle = String(to.meta?.title ?? APP_TITLE)
@@ -549,46 +583,35 @@ router.afterEach((to, from) => {
   const existingEntry = currentEntry()
   const reenteringSamePath = existingEntry?.fullPath === to.fullPath
 
-  if (reenteringSamePath) {
+  if (shouldReplaceStackEntry({
+    currentFullPath: existingEntry?.fullPath,
+    toFullPath: to.fullPath,
+    toName: to.name,
+    fromName: from.name,
+    toStrategy: strategy,
+    fromStrategy,
+  })) {
     replaceEntryReactive({
       fullPath: to.fullPath,
       name: to.name as string | symbol | null | undefined,
       title: pageTitle,
       breadcrumbs: [],
       sectionLabel: String(to.meta?.sectionLabel ?? ''),
-      scrollY: existingEntry?.scrollY ?? 0,
+      // 同路径重入保留原滚动位置；其余 replace 语义（tab 切换、播放页内
+      // 换片）重置为 0。
+      scrollY: reenteringSamePath ? (existingEntry?.scrollY ?? 0) : 0,
     })
     return
   }
 
-  if (strategy === 'replace') {
-    replaceEntryReactive({
-      fullPath: to.fullPath,
-      name: to.name as string | symbol | null | undefined,
-      title: pageTitle,
-      breadcrumbs: [],
-      sectionLabel: String(to.meta?.sectionLabel ?? ''),
-      scrollY: 0,
-    })
-  } else if (fromStrategy === 'replace' && to.name === from.name) {
-    replaceEntryReactive({
-      fullPath: to.fullPath,
-      name: to.name as string | symbol | null | undefined,
-      title: pageTitle,
-      breadcrumbs: [],
-      sectionLabel: String(to.meta?.sectionLabel ?? ''),
-      scrollY: 0,
-    })
-  } else {
-    pushEntryReactive({
-      fullPath: to.fullPath,
-      name: to.name as string | symbol | null | undefined,
-      title: pageTitle,
-      breadcrumbs: [],
-      sectionLabel: String(to.meta?.sectionLabel ?? ''),
-      scrollY: 0,
-    })
-  }
+  pushEntryReactive({
+    fullPath: to.fullPath,
+    name: to.name as string | symbol | null | undefined,
+    title: pageTitle,
+    breadcrumbs: [],
+    sectionLabel: String(to.meta?.sectionLabel ?? ''),
+    scrollY: 0,
+  })
 })
 
 // 登录前清空栈（防止登录后从 /login 跳回首页时栈里残留 /login）

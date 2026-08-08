@@ -70,6 +70,15 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
     return
   }
 
+  // Re-clicking the section the user is already on must be a no-op: a plain
+  // RouterLink push would add a duplicate browser-history entry that the app
+  // stack cannot pop (reenteringSamePath replaces in place), silently breaking
+  // Back until the page reloads.
+  if (route.fullPath === targetPath.value) {
+    event.preventDefault()
+    return
+  }
+
   void navigate(event)
 }
 </script>

@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 import type { VideoId } from '@/features/playback/types/videoPlayback'
 import { Logger } from '@/shared/lib/logger'
+import { rememberPendingPosition } from './playbackPositionBuffer'
 
 type PlaybackReportVideo = {
   id?: VideoId
@@ -131,6 +132,12 @@ export default function usePlaybackReporting(videoRef: Ref<PlaybackReportVideo |
 
     syncLocalPlaybackPosition(nextTime)
     lastReportedTime = Math.max(lastReportedTime, Math.floor(nextTime))
+    // 上报是 fire-and-forget：把本地观测位置记入乐观缓冲，供"返回后立即重开
+    // 同一视频"时合并进详情响应，避免读到服务器尚未落地的旧进度。
+    const videoId = videoRef.value?.id
+    if (videoId != null && nextTime > 0) {
+      rememberPendingPosition(videoId, nextTime)
+    }
     return queueReport(nextTime, { force: true, ...options })
   }
 

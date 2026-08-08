@@ -5,6 +5,7 @@
     :class="{
       'app-layout--desktop': isDesktop,
       'app-layout--immersive': isImmersiveSurface,
+      'app-layout--no-sidebar-anim': suppressSidebarTransition,
     }"
     :style="{ '--workspace-offset': sidebarWidth }"
     @scroll.capture.passive="handleRouteScroll"
@@ -111,6 +112,10 @@ const sidebarWidth = computed(() => (
   isSidebarOpen.value ? 'var(--sidebar-expanded-width)' : 'var(--sidebar-collapsed-width)'
 ))
 
+// 退出沉浸式路由（RSS / 音乐）恢复用户侧边栏偏好时，跳过宽度过渡动画：
+// 否则返回列表页的瞬间会看到整页横向重排（--workspace-offset 变化）。
+const suppressSidebarTransition = ref(false)
+
 /**
  * Every ordinary authenticated surface keeps the same 44px desktop header and
  * account entry. Routes without a search task render the header's balanced
@@ -139,7 +144,14 @@ watch(
       return
     }
     if (typeof previous === 'boolean') {
+      suppressSidebarTransition.value = true
       uiStore.restorePersistedSidebarOpen()
+      // 宽度变化在无过渡的帧里落地后再恢复过渡（双重 rAF，等一帧渲染）。
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          suppressSidebarTransition.value = false
+        })
+      })
     }
   },
   { immediate: true },
@@ -371,6 +383,12 @@ onUnmounted(() => {
   background: hsl(var(--card));
   transition: left var(--duration-base) var(--ease-out);
   will-change: left;
+}
+
+/* 退出沉浸式路由时跳过侧边栏宽度过渡（见 suppressSidebarTransition）。 */
+.app-layout--no-sidebar-anim .app-layout__sidebar,
+.app-layout--no-sidebar-anim .app-layout__workspace {
+  transition: none;
 }
 
 .app-layout__titlebar {

@@ -7,7 +7,7 @@
         if leave aborts (render throw, keep-alive edge), enter never starts
         and the user is stuck on a blank workspace until full reload.
       -->
-      <Transition :name="transitionName" @enter="handleEnter">
+      <Transition :name="transitionName" @enter="handleEnter" @after-enter="handleAfterEnter">
         <keep-alive :include="keepAliveIncludes" :max="10">
           <component
             :is="Component"
@@ -86,11 +86,17 @@ function cacheKey(r: typeof route): string {
 function handleEnter() {
   nextTick(() => {
     isInitialMount.value = false
-    if (nav.direction.value !== 'replace') {
-      // 注意：nav.direction 是个 ref，不能直接清空；通过替换 entry 让它自然变化。
-      // 实际上我们这里只是在下一次 push/replace 时由 router 自己覆盖。
-    }
   })
+}
+
+/**
+ * 消费方向信号：direction 只在 goBack/goForward/jumpTo 时被写入，普通
+ * push/replace 不会重置它。若不消费，一次后退之后的所有前进导航都会沿用
+ * 'back' 动画。@after-enter 在转场结束后触发，此时切换动画名不影响
+ * 正在播放的转场；下一次导航会以 'replace'（fade）为默认方向。
+ */
+function handleAfterEnter() {
+  nav.direction.value = 'replace'
 }
 </script>
 
@@ -143,24 +149,20 @@ html, body {
   z-index: 0;
 }
 
-/* Forward: old page slides left & fades, new page enters from the right. */
+/* Forward / Back: keep only the crossfade — no horizontal slide, so a
+   library → play → library round trip never reads as "the page moved". */
 .page-forward-leave-to {
   opacity: 0;
-  transform: translateX(-2rem);
 }
 .page-forward-enter-from {
   opacity: 0;
-  transform: translateX(2rem);
 }
 
-/* Back: old page slides right & fades, new page enters from the left. */
 .page-back-leave-to {
   opacity: 0;
-  transform: translateX(2rem);
 }
 .page-back-enter-from {
   opacity: 0;
-  transform: translateX(-2rem);
 }
 
 /* Same-level: pure fade. */
