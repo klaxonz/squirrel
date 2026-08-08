@@ -51,6 +51,7 @@ export interface UsePlayerErrorReturn {
 const AUTH_REQUIRED_CODES: Record<string, true> = {
   YOUTUBE_LOGIN_REQUIRED: true,
   YOUTUBE_AUTH_EXPIRED: true,
+  BILIBILI_LOGIN_REQUIRED: true,
 }
 
 const isAuthRequiredError = (code: string, message: string): boolean => {

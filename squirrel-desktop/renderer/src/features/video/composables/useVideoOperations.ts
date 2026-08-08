@@ -35,6 +35,8 @@ export type VideoUrlInfo = {
   uploader_name?: string | null
   uploader_url?: string | null
   uploader_avatar?: string | null
+  /** Provider-detected anonymous quality collapse（bilibili 未登录 → 480p）。 */
+  login_required?: boolean
   default_quality_id?: string | null
   supports_manual_quality?: boolean
   metadata?: Record<string, unknown>
@@ -205,6 +207,15 @@ export default function useVideoOperations() {
     if (!data) {
         throw Object.assign(new Error('桌面端播放解析不可用'), { code: 'DESKTOP_PLAYBACK_UNAVAILABLE' })
       }
+
+    // bilibili 未登录时 playurl 会把清晰度塌缩到 480p/720p。不静默低清起播：
+    // 提示登录，用户完成站点登录后重试。
+    if (data?.login_required) {
+      throw Object.assign(
+        new Error('bilibili 未登录，只能播放低清晰度。请先在「站点」完成 bilibili 登录后重试。'),
+        { code: 'BILIBILI_LOGIN_REQUIRED' },
+      )
+    }
 
       const mpdUrl = data?.mpd_url
       const mpdContent = data?.mpd_content

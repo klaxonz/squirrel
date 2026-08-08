@@ -324,6 +324,24 @@ const summarizeUnplayablePayload = (playData) => {
   ].filter(Boolean).join('; ')
 }
 
+/**
+ * Anonymous bilibili sessions are granted a capped playurl quality (observed
+ * quality=64 / dash capped at 480p while support_formats advertises 1080P+).
+ * Native-low videos grant their own top format, so a granted value below the
+ * advertised top reliably means "logging in unlocks higher quality".
+ */
+export const isBilibiliLoginGated = (playData) => {
+  const granted = safeInt(playData?.quality)
+  const supportFormats = Array.isArray(playData?.support_formats) ? playData.support_formats : []
+  const topFormatQn = supportFormats.reduce((max, format) => Math.max(max, safeInt(format?.quality)), 0)
+  if (granted <= 0 || topFormatQn <= granted) {
+    return false
+  }
+  // Login-gated range: 1080P (80/112/116) and above are the classic unlock.
+  // VIP-only tiers (120/125/126 4K) still flag — the message covers both.
+  return topFormatQn >= 80
+}
+
 const mapPlaybackPayload = ({ playData, context, info: videoInfo }) => {
   const dashData = playData?.dash
   const localDashManifest = dashData ? buildLocalDashManifest(dashData) : null
@@ -335,7 +353,14 @@ const mapPlaybackPayload = ({ playData, context, info: videoInfo }) => {
   const uploaderAvatar = String(owner?.face || '').trim() || null
   const uploaderId = String(owner?.mid || '').trim() || null
   const uploaderUrl = uploaderId ? `https://space.bilibili.com/${uploaderId}` : null
-  const basePayload = { title, thumbnail, uploader_name: uploaderName, uploader_url: uploaderUrl, uploader_avatar: uploaderAvatar }
+  const basePayload = {
+    title,
+    thumbnail,
+    uploader_name: uploaderName,
+    uploader_url: uploaderUrl,
+    uploader_avatar: uploaderAvatar,
+    login_required: isBilibiliLoginGated(playData),
+  }
 
   if (localDashManifest) {
     return {
