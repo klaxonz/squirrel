@@ -78,6 +78,7 @@ const enUS: LocaleConfig = {
     errorPlaybackStalled: 'Playback stalled. Retry or lower quality.',
     errorUnknown: 'Unknown Error',
     retry: 'Retry',
+    auth: 'Go to Sign-in',
     dismiss: 'Dismiss',
 
     volumePercent: '{percent}%',

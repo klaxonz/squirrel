@@ -36,4 +36,32 @@ describe('usePlayerError', () => {
     expect(state.errorState.value.show).toBe(false)
     expect(onRetry).toHaveBeenCalledOnce()
   })
+
+  it('keeps the provider login message and flags auth-required for YOUTUBE_LOGIN_REQUIRED', () => {
+    const onAuthRequired = vi.fn()
+    const state = usePlayerError({ t, onAuthRequired })
+
+    state.reportError('YOUTUBE_LOGIN_REQUIRED', 'YouTube 要求登录后才能播放（机器人验证/登录门禁）。请在设置中完成 YouTube TV 授权后重试。')
+
+    // 自定义登录提示不能被 authorization 分类的通用文案吞掉。
+    expect(state.errorState.value).toMatchObject({
+      show: true,
+      code: 'YOUTUBE_LOGIN_REQUIRED',
+      message: 'YouTube 要求登录后才能播放（机器人验证/登录门禁）。请在设置中完成 YouTube TV 授权后重试。',
+      requiresAuth: true,
+    })
+
+    state.handleAuthRequired()
+    expect(state.errorState.value.show).toBe(false)
+    expect(onAuthRequired).toHaveBeenCalledOnce()
+  })
+
+  it('treats a generic authorization failure as a stream problem, not a login prompt', () => {
+    const state = usePlayerError({ t })
+
+    state.reportError('HTTP_403', 'googlevideo rejected the range request')
+
+    expect(state.errorState.value.requiresAuth).toBe(false)
+    expect(state.errorState.value.message).toBe('translated:errorStreamUnavailable')
+  })
 })

@@ -94,6 +94,7 @@ export interface LocaleMessages {
   errorPlaybackStalled: string
   errorUnknown: string
   retry: string
+  auth: string
   dismiss: string
   
   // 提示

@@ -21,11 +21,14 @@ export interface PlayerErrorState {
   message: string
   code: string
   canRetry: boolean
+  /** Auth-gated failure (YouTube 登录/授权)：overlay 提供「去登录」动作。 */
+  requiresAuth: boolean
 }
 
 export interface UsePlayerErrorOptions {
   t: (key: string, params?: Record<string, string | number>) => string
   onRetry?: () => void
+  onAuthRequired?: () => void
 }
 
 export interface UsePlayerErrorReturn {
@@ -40,10 +43,23 @@ export interface UsePlayerErrorReturn {
   clearEngineError: () => void
   /** Hide the overlay and bubble a retry request to the parent. */
   handleRetry: () => void
+  /** Hide the overlay and bubble a login request to the parent. */
+  handleAuthRequired: () => void
+}
+
+/** Provider resolve errors that mean "your login state is the problem". */
+const AUTH_REQUIRED_CODES: Record<string, true> = {
+  YOUTUBE_LOGIN_REQUIRED: true,
+  YOUTUBE_AUTH_EXPIRED: true,
+}
+
+const isAuthRequiredError = (code: string, message: string): boolean => {
+  if (AUTH_REQUIRED_CODES[code]) return true
+  return /登录|授权|login|auth/i.test(message)
 }
 
 export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorReturn {
-  const { t, onRetry } = options
+  const { t, onRetry, onAuthRequired } = options
 
   const errorState = ref<PlayerErrorState>({
     show: false,
@@ -51,12 +67,16 @@ export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorRe
     message: '',
     code: '',
     canRetry: true,
+    requiresAuth: false,
   })
 
   // 按 code 把引擎/适配器产生的英文错误信息映射为中文。这些 message 来自
   // core/error-recovery.ts、createPlayerEngine.ts、adapters/{Hls,Dash,ShakaDash}Adapter.ts，
   // 在源头改会侵入多个适配器并丢失原始信息，故在 UI 层统一翻译。
   const resolveErrorMessage = (code: string, fallback: string): string => {
+    // 提供方已给出可操作的登录提示（如「请在设置中完成 YouTube TV 授权」），
+    // 不能被 authorization 分类的通用文案吞掉。
+    if (isAuthRequiredError(code, fallback)) return fallback
     const kind = classifyPlaybackError({ code, message: fallback })
     if (kind === 'network') return t('errorNetwork')
     if (kind === 'authorization' || kind === 'source') return t('errorStreamUnavailable')
@@ -74,6 +94,7 @@ export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorRe
       message: resolveErrorMessage(code, rawMessage),
       code,
       canRetry: true,
+      requiresAuth: isAuthRequiredError(code, rawMessage),
     }
   }
 
@@ -88,6 +109,11 @@ export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorRe
     onRetry?.()
   }
 
+  const handleAuthRequired = () => {
+    clear()
+    onAuthRequired?.()
+  }
+
   return {
     errorState,
     resolveErrorMessage,
@@ -95,5 +121,6 @@ export function usePlayerError(options: UsePlayerErrorOptions): UsePlayerErrorRe
     clear,
     clearEngineError,
     handleRetry,
+    handleAuthRequired,
   }
 }

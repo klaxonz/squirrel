@@ -92,6 +92,7 @@ const zhCN: LocaleConfig = {
     errorPlaybackStalled: '播放卡顿，请重试或降低清晰度',
     errorUnknown: '未知错误',
     retry: '重试',
+    auth: '去登录',
     dismiss: '关闭',
     
     // 提示

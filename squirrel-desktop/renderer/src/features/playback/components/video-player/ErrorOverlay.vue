@@ -8,6 +8,16 @@
         <div class="sp-error-title">{{ title || fallbackTitle }}</div>
         <div class="sp-error-message">{{ message }}</div>
         <div class="sp-error-actions">
+          <Button
+            v-if="requiresAuth"
+            size="sm"
+            severity="secondary"
+            outlined
+            class="sp-error-auth-btn"
+            @click.stop="$emit('auth')"
+          >
+            {{ authLabel }}
+          </Button>
           <Button v-if="canRetry" size="sm" class="sp-error-retry-btn" @click.stop="$emit('retry')">
             {{ retryLabel }}
           </Button>
@@ -26,12 +36,14 @@ interface Props {
   title?: string
   message?: string
   canRetry?: boolean
+  requiresAuth?: boolean
   fallbackTitle: string
   retryLabel: string
+  authLabel: string
 }
 
 defineProps<Props>()
-defineEmits<{ retry: [] }>()
+defineEmits<{ retry: []; auth: [] }>()
 </script>
 
 <style scoped>
@@ -93,7 +105,15 @@ defineEmits<{ retry: [] }>()
 }
 
 .sp-error-actions {
+  display: flex;
   margin-top: 6px;
+  gap: 8px;
+}
+
+.sp-error-auth-btn {
+  min-width: 92px;
+  border-radius: var(--sp-radius-md);
+  box-shadow: none;
 }
 
 .sp-error-retry-btn {

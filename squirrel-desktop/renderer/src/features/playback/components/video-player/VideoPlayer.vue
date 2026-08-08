@@ -82,9 +82,12 @@
       :title="errorState.title"
       :message="errorState.message"
       :can-retry="errorState.canRetry"
+      :requires-auth="errorState.requiresAuth"
       :fallback-title="t('errorTitle')"
       :retry-label="t('retry')"
+      :auth-label="t('auth')"
       @retry="handleRetry"
+      @auth="handleAuthRequired"
     />
 
     <!-- Stats overlay -->
@@ -421,6 +424,7 @@ const emit = defineEmits([
   'error',
   'fullscreenChange',
   'retry',
+  'auth',
   'widescreenChange',
   'enterpictureinpicture',
   'leavepictureinpicture',
@@ -465,8 +469,9 @@ const {
 const playerError = usePlayerError({
   t: t as (key: string, params?: Record<string, string | number>) => string,
   onRetry: () => emit('retry'),
+  onAuthRequired: () => emit('auth'),
 })
-const { errorState, handleRetry } = playerError
+const { errorState, handleRetry, handleAuthRequired } = playerError
 
 const playlistEntries = computed(() => props.playlistEntries || [])
 const playlistIndex = computed(() => props.playlistIndex ?? -1)

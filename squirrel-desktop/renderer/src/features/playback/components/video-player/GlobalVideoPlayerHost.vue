@@ -18,6 +18,7 @@
       @next="handleNext"
       @widescreenChange="handleWidescreenChange"
       @retry="handleRetry"
+      @auth="handleAuthRequired"
       @clipmarkerselect="handleClipMarkerSelect"
       @clipmarkersupdated="handleClipMarkersUpdated"
       @playlistSelect="handlePlaylistSelect"
@@ -79,6 +80,7 @@ const handlePrev = () => playerStore.handlers.onPrev?.()
 const handleNext = () => playerStore.handlers.onNext?.()
 const handleWidescreenChange = (v: boolean) => playerStore.handlers.onWidescreenChange?.(v)
 const handleRetry = () => playerStore.handlers.onRetry?.()
+const handleAuthRequired = () => playerStore.handlers.onAuthRequired?.()
 const handleClipMarkerSelect = (t: number) => playerStore.handlers.onClipMarkerSelect?.(t)
 const handleClipMarkersUpdated = (m: VideoClipMarker[]) => playerStore.handlers.onClipMarkersUpdated?.(m)
 const handlePlaylistSelect = (index: number) => playerStore.handlers.onPlaylistSelect?.(index)

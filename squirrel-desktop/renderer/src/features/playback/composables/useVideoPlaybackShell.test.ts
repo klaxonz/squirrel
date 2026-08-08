@@ -55,6 +55,7 @@ describe('useVideoPlaybackShell queue projection', () => {
           handlePrevVideoFromPlaylist: vi.fn(),
           handleNextVideoFromPlaylist: vi.fn(),
           handlePlayerRetry: vi.fn(),
+          handleAuthRequired: vi.fn(),
           handleClipMarkerSeek: vi.fn(),
           handleClipMarkersUpdated: vi.fn(),
           handlePlaylistSelect,

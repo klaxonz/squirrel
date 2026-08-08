@@ -25,6 +25,8 @@ export type PlayerHandlers = {
   onPrev?: (() => void | Promise<void>) | null
   onNext?: (() => void | Promise<void>) | null
   onRetry?: (() => void | Promise<void>) | null
+  /** Auth-gated playback failure：跳转登录/授权流程。 */
+  onAuthRequired?: (() => void | Promise<void>) | null
   onWidescreenChange?: ((enabled: boolean) => void) | null
   onClipMarkerSelect?: ((time: number) => void | Promise<void>) | null
   onClipMarkersUpdated?: ((markers: ClipMarker[]) => void) | null

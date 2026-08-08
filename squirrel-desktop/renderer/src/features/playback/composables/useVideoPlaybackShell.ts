@@ -45,6 +45,7 @@ export default function useVideoPlaybackShell({
   handlePrevVideoFromPlaylist,
   handleNextVideoFromPlaylist,
   handlePlayerRetry,
+  handleAuthRequired,
   handleClipMarkerSeek,
   handleClipMarkersUpdated,
   handlePlaylistSelect,
@@ -69,6 +70,7 @@ export default function useVideoPlaybackShell({
   handlePrevVideoFromPlaylist: () => void | Promise<void>
   handleNextVideoFromPlaylist: () => void | Promise<void>
   handlePlayerRetry: () => void | Promise<void>
+  handleAuthRequired: () => void | Promise<void>
   handleClipMarkerSeek: (time: number) => void | Promise<void>
   handleClipMarkersUpdated: (markers: ClipMarker[]) => void
   handlePlaylistSelect: (index: number) => void | Promise<void>
@@ -123,6 +125,7 @@ export default function useVideoPlaybackShell({
     onPrev: hasPrev.value ? handlePrevVideoFromPlaylist : null,
     onNext: hasNext.value ? handleNextVideoFromPlaylist : null,
     onRetry: handlePlayerRetry,
+    onAuthRequired: handleAuthRequired,
     onWidescreenChange: toggleWidescreen,
     onClipMarkerSelect: handleClipMarkerSeek,
     onClipMarkersUpdated: handleClipMarkersUpdated,

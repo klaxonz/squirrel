@@ -701,6 +701,10 @@ const {
     const videoId = video.value?.id ?? String(route.params.videoId || '')
     if (videoId) void loadAndPlayById(videoId, video.value, { forceRefresh: true })
   },
+  handleAuthRequired: () => {
+    // 登录态失效：跳到站点管理页完成登录/授权，回来后手动重试播放。
+    void router.push({ name: 'SiteRuntimes' })
+  },
   handleClipMarkerSeek,
   handleClipMarkersUpdated,
   handlePlaylistSelect,
