@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow } from 'electron'
-import { prewarmPlaybackProviders } from './playback/providers/index.mjs'
+import { prewarmPlaybackProviders, PREWARM_KEEP_WARM_INTERVAL_MS } from './playback/providers/index.mjs'
 import { installDesktopBridgeHandlers } from './ipc-handlers.mjs'
 import { installDesktopMediaHeaders, installDesktopSessionUserAgent } from './media-headers.mjs'
 import { createMainWindow, ensureRendererLoaded, setRendererOrigin } from './window.mjs'
@@ -46,7 +46,15 @@ const prewarmDesktopPlaybackProviders = () => {
   // Start as soon as the main process is ready. The previous 1s delay left the
   // first click cold for remote WEB session + BotGuard minter (~1–6s), which
   // dominated YouTube start latency.
-  prewarmPlaybackProviders()
+  void prewarmPlaybackProviders()
+
+  // Keep the runtime warm for the whole session: sessions/poToken minters
+  // expire server-side, and a resolve that lands on a cold session costs
+  // 2–16s inside the click path. The refresh is a no-op when everything is
+  // still fresh (session cache hit + fresh minter short-circuit).
+  setInterval(() => {
+    void prewarmPlaybackProviders()
+  }, PREWARM_KEEP_WARM_INTERVAL_MS)
 }
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock()

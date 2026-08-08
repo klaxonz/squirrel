@@ -1832,6 +1832,8 @@ function buildPlaybackFailureError(attempts, hasAuth) {
   return {
     type: 'PlaybackResolverError',
     code: 'YOUTUBE_NO_FORMAT_SET',
-    message: '无法获取可播放的 YouTube 流（所有客户端均未返回完整格式）。',
+    message: hasAuth
+      ? '无法获取可播放的 YouTube 流（所有客户端均未返回完整格式），请稍后重试。'
+      : '无法获取可播放的 YouTube 流。YouTube 可能暂时限制了匿名访问，请先在「站点」中登录 YouTube 后重试。',
   };
 }
