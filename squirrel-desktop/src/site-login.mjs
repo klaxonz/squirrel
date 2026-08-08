@@ -1,6 +1,7 @@
 import { BrowserWindow, session } from 'electron'
 import { clearBilibiliPlaybackCache } from './playback/providers/bilibili/index.mjs'
 import { resolveYouTubeOAuthRevoke, resolveYouTubeOAuthSetup, resolveYouTubeOAuthStatus } from './playback/providers/youtube/index.mjs'
+import { mergeBilibiliFileCookieFallback } from './bilibili-cookie-file.mjs'
 import {
   normalizeTargetUrl,
   isBilibiliCookieTarget,
@@ -104,7 +105,16 @@ export const buildCookieHeaderForUrl = async (targetUrl) => {
     return ''
   }
 
-  return buildSessionCookieHeaderForUrl(normalizedUrl)
+  const sessionHeader = await buildSessionCookieHeaderForUrl(normalizedUrl)
+  if (!isBilibiliCookieTarget(normalizedUrl)) {
+    return sessionHeader
+  }
+
+  // Bilibili requests (playurl/API via ipc-playback, media segments via
+  // media-headers attachCookies, subtitles, search) share one merged cookie
+  // set: session SESSDATA wins; without it fall back to the backend-synced
+  // cookie file so desktop playback resolves HD instead of 480p/360p.
+  return mergeBilibiliFileCookieFallback(sessionHeader)
 }
 
 const buildYouTubeDesktopLoginStatusFromOAuth = (profile, oauthState) => {

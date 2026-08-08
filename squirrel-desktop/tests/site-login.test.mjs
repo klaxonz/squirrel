@@ -36,6 +36,12 @@ test('desktop bilibili/youtube login profiles remain wired', async () => {
   assert.match(siteLogin, /youtube:\s*\{[\s\S]*?signedInCookieNames:/)
   assert.match(siteLogin, /'bilibili\.com': 'bilibili'/)
   assert.match(siteLogin, /'youtube\.com': 'youtube'/)
+  // Anonymous desktop session must fall back to the backend-synced cookie file
+  // (config/site_cookies/bilibili.txt) so playback resolves HD, not 480p/360p.
+  assert.match(siteLogin, /mergeBilibiliFileCookieFallback/)
+  assert.match(siteLogin, /import \{ mergeBilibiliFileCookieFallback \} from '\.\/bilibili-cookie-file\.mjs'/)
+  assert.match(siteLogin, /return mergeBilibiliFileCookieFallback\(sessionHeader\)/)
+  assert.match(constants, /bilibiliCookieFilePath = path\.join\(repoRoot, 'config', 'site_cookies', 'bilibili\.txt'\)/)
   assert.match(cookieHeader, /const isBilibiliCookieTarget =/)
   assert.doesNotMatch(cookieHeader, /isJavdbCookieTarget|isPornhubCookieTarget|isYouPornCookieTarget|isMissavDocumentTarget/)
   assert.doesNotMatch(siteLogin, /javdb:|pornhub:|youporn:/)

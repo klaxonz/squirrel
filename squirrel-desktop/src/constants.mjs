@@ -41,6 +41,15 @@ export const stripElectronFromUserAgent = (userAgent, productName = APP_NAME) =>
 
 export const youtubeOAuthStateFilePath = path.join(repoRoot, 'config', 'youtube_oauth.json')
 
+/**
+ * Backend-synced bilibili cookies (Netscape cookies.txt format, written by the
+ * backend's CookieCloud import at config/site_cookies/bilibili.txt). The
+ * desktop reads this file as a fallback when the Electron session has no
+ * bilibili SESSDATA, so playurl/media requests resolve with the browser login.
+ * Overridable at runtime via the BILIBILI_COOKIE_FILE env var.
+ */
+export const bilibiliCookieFilePath = path.join(repoRoot, 'config', 'site_cookies', 'bilibili.txt')
+
 export const SITE_SESSION_STORAGE_TYPES = [
   'cookies',
   'filesystem',
