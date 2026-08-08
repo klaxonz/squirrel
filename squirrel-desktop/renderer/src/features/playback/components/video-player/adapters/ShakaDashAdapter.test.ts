@@ -307,7 +307,7 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     adapter.destroy()
   })
 
-  it('pins FreeTube-style 720p startup quality without disabling ABR', async () => {
+  it('pins 1080p startup quality without disabling ABR', async () => {
     const video = {
       currentTime: 0,
       paused: true,
@@ -342,16 +342,17 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
 
     const player = shakaMockState.latestPlayer as MockShakaPlayer
     // Load starts with ABR off so a warm bandwidth estimate cannot fetch
-    // 1080p/4K before the pin; defaultBandwidthEstimate still seeds ~720p.
+    // 4K before the pin; defaultBandwidthEstimate still seeds ~1080p.
     expect(player.configure).toHaveBeenCalledWith(expect.objectContaining({
       abr: expect.objectContaining({
         enabled: false,
-        defaultBandwidthEstimate: 2_000_000,
+        defaultBandwidthEstimate: 6_000_000,
       }),
     }))
-    // Opening track was 144p; pin exact 720p without clearing buffer.
+    // Opening track was 144p; pin the 1080p rung (official-style start) without
+    // clearing buffer.
     expect(player.selectVariantTrack).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 247, height: 720 }),
+      expect.objectContaining({ id: 248, height: 1080 }),
       false,
       0,
     )
@@ -360,8 +361,9 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     adapter.destroy()
   })
 
-  it('downshifts a warm 1080p active track to 720p before first media', async () => {
-    // Warm ABR case: prior throughput left 1080p as the active opening track.
+  it('keeps a warm 1080p active track at the startup rung before first media', async () => {
+    // Warm ABR case: prior throughput left 1080p as the active opening track —
+    // already the startup target, so no downshift and no buffer clear.
     shakaMockState.lowTrack.active = false
     shakaMockState.midTrack.active = false
     shakaMockState.highTrack.active = true
@@ -404,7 +406,9 @@ describe('ShakaDashAdapter post-seek video recovery', () => {
     await flushPromises()
 
     const player = shakaMockState.latestPlayer as MockShakaPlayer
-    expect(player.selectVariantTrack).toHaveBeenCalledWith(
+    // 1080p is already active and is the startup target — pin is a no-op,
+    // buffer kept, ABR still re-enabled after load.
+    expect(player.selectVariantTrack).not.toHaveBeenCalledWith(
       expect.objectContaining({ id: 247, height: 720 }),
       true,
       0,

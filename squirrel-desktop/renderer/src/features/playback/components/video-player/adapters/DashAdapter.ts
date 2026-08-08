@@ -176,15 +176,18 @@ export class DashAdapter implements StreamAdapter {
       ...otherCustomSettings
     } = customSettings as any
 
-    // Official-style fast start: modest initial bitrate + short buffer so first
-    // frame appears quickly; ABR climbs once throughput is known (YouTube-like).
-    // Previous 20Mbps + ratio=1 forced 1440p/2160p before play → multi-second spin.
+    // Official bilibili player starts at the selected/top quality (observed:
+    // 1080P60 stream 30216 on first segment fetch), NOT bandwidth-ABR from a
+    // low rung. Start at ~1080p-class (8Mbps covers 1080P60 rungs, stays under
+    // 4K), then let ABR refine. Previous 20Mbps forced 1440p/2160p before play
+    // → multi-second spin; 2Mbps started at 720p and read as "player can't
+    // hold quality" when ABR drifted down.
     const settings: Partial<MediaPlayerSettingClass> = {
       streaming: {
         abr: {
           autoSwitchBitrate: { video: this.options.enableAutoQuality !== false },
-          // ~1.5–2.5 Mbps ≈ 720p class; dash.js probes up from here.
-          initialBitrate: { video: 2000 },
+          // ~8 Mbps ≈ 1080P60 class top rung for most videos.
+          initialBitrate: { video: 8000 },
           maxBitrate: { video: -1 },
           bandwidthSafetyFactor: 0.9,
           usePixelRatioInLimitBitrateByPortal: false,

@@ -48,9 +48,12 @@ const POST_SEEK_FRAME_CHECK_DELAY_MS = 3000
 // Segment requests for a seek target typically fire within seconds of the
 // scrub. A 4xx arriving later is treated as a mid-play failure (generic chain).
 const SEEK_4XX_WINDOW_MS = 15_000
-// FreeTube remaps settings "auto" → 720 until auto is fixed. Match that
-// opening rung so first frame is watchable; ABR may still climb afterward.
-const STARTUP_QUALITY_HEIGHT = 720
+// FreeTube remaps settings "auto" → 720 until auto is fixed. The official
+// YouTube player opens at the selected/top quality; pinning 720p read as the
+// app being unable to hold quality. Open on the 1080p rung (highest class the
+// vast majority of streams offer without VP9/AV1 4K penalties); ABR may climb
+// or step down afterward.
+const STARTUP_QUALITY_HEIGHT = 1080
 
 const trackPrimaryDimension = (track: ShakaVariantTrack): number => {
   const width = Number(track.width || 0)
@@ -70,7 +73,7 @@ const isApplicationAllowedTrack = (track: ShakaVariantTrack): boolean => {
 
 /**
  * Pick the best opening variant for auto quality.
- * Prefer an exact 720p-class match; otherwise the highest rung at or below
+ * Prefer an exact target-height match; otherwise the highest rung at or below
  * target; finally the lowest available (never jump straight to 4K on open).
  */
 const pickStartupVariantTrack = (
@@ -128,7 +131,7 @@ export class ShakaDashAdapter implements StreamAdapter {
   private hasInstalledPolyfills = false
   private loadRequestSeq = 0
   private isSelectingQuality = false
-  /** Whether ABR should come back on after the FreeTube-style 720p pin. */
+  /** Whether ABR should come back on after the FreeTube-style startup pin. */
   private wantAutoQualityAfterStartupPin = true
   private postSeekWatchdogSeq = 0
   private postSeekWatchdogTimer: number | null = null
@@ -210,10 +213,10 @@ export class ShakaDashAdapter implements StreamAdapter {
     // spinner waits on SegmentBase index seeks; rebufferingGoal 0.02 matches
     // official FreeTube and resumes as soon as a few frames are buffered.
     //
-    // FreeTube remaps settings "auto" → fixed 720p and leaves abr.enabled false
+    // ABR stays off during load (FreeTube pattern) so a warm bandwidth
     // for the opening selection (pure ABR often opens on a tiny rung, or on a
     // prior-session high estimate that jumps straight to 1080p/4K and stalls
-    // first frame). We pin ~720p after load, then re-enable ABR so quality can
+    // estimate cannot fetch 4K init+media first; pin after load, then
     // still climb — see applyStartupQuality.
     const wantAutoQuality = this.options.enableAutoQuality !== false
     player.configure({
@@ -225,9 +228,9 @@ export class ShakaDashAdapter implements StreamAdapter {
         enabled: false,
         // Only affects auto quality — manual selection still free.
         restrictToElementSize: true,
-        // Seed ~720p-class so the first AbrManager sample after re-enable is
+        // Seed ~1080p-class so the first AbrManager sample after re-enable is
         // not Shaka's 500 kbps default.
-        defaultBandwidthEstimate: 2_000_000,
+        defaultBandwidthEstimate: 6_000_000,
       },
       streaming: {
         // SABR already has server-side buffer control. Asking Shaka for three
@@ -304,8 +307,8 @@ export class ShakaDashAdapter implements StreamAdapter {
         return
       }
       this.selectOriginalAudioTrack()
-      // FreeTube: after first load, setDashQuality(defaultQuality||720). Pin a
-      // concrete mid ladder before the first segment so AbrManager cannot open
+      // Pin a concrete mid-high ladder before the first segment so AbrManager
+      // cannot open on 144p/240p; ABR stays enabled and may still climb afterward.
       // on 144p/240p; ABR stays enabled and may still climb afterward.
       this.applyStartupQuality()
       this.updateActiveCodecFamily()
@@ -653,12 +656,12 @@ export class ShakaDashAdapter implements StreamAdapter {
   }
 
   /**
-   * FreeTube pins defaultQuality (or 720 when settings say "auto") after the
+   * Pin the startup rung (1080p-class) after the manifest loads
    * first load, with abr disabled for that selection. Without an explicit pin:
    *   - cold AbrManager opens on 144p/240p (undersized layout / 500kbps default)
    *   - warm AbrManager opens on 1080p/4K from the previous video's throughput
    * Both feel like "slow start": either mushy first frame or a multi-MB first
-   * segment. Always force the ~720p rung, then re-enable ABR so quality climbs.
+   * segment. ABR stays off during load, then re-enables so quality climbs.
    */
   private applyStartupQuality(): void {
     if (!this.player) return
@@ -677,7 +680,7 @@ export class ShakaDashAdapter implements StreamAdapter {
 
     try {
       this.isSelectingQuality = true
-      // ABR stays off (configured at load). Always pin ~720 even when the active
+      // ABR stays off (configured at load). Always pin the startup rung even when
       // track is already higher — that warm AbrManager path is the slow start.
       const active = tracks.find((track) => track.active) || null
       const activeDimension = active ? trackPrimaryDimension(active) : 0
