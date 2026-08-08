@@ -14,6 +14,12 @@ const BILIBILI_MEDIA_HEADERS = {
   Origin: 'https://www.bilibili.com',
   'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
   'User-Agent': desktopChromeUserAgent,
+  // CDN responses carry last-modified without cache-control, so Chromium
+  // heuristic-caches signed media ranges; dash.js then measures ~0 network
+  // time and ABR collapses to the lowest rung. Media URLs are ephemeral —
+  // never cache them.
+  'Cache-Control': 'no-cache',
+  Pragma: 'no-cache',
 }
 
 /**
@@ -29,6 +35,8 @@ const YOUTUBE_MEDIA_HEADERS = {
   Referer: 'https://www.youtube.com/',
   Origin: 'https://www.youtube.com',
   'User-Agent': desktopChromeUserAgent,
+  'Cache-Control': 'no-cache',
+  Pragma: 'no-cache',
 }
 
 const MEDIA_HEADER_RULES = [

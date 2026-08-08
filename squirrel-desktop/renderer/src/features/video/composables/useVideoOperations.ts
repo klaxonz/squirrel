@@ -291,9 +291,12 @@ export default function useVideoOperations() {
       if (resolvedMpdUrl) return {
         src: resolvedMpdUrl,
         type: toPlayerSourceType(streamType),
-        // Both YouTube SABR and its DASH fallback require Shaka. dash.js has no
-        // UMP/SABR transport and lacks the legacy POST/alr rewrite path.
-        ...(isYouTubeOfficialDash ? { playbackEngine: 'shaka' as const } : {}),
+        // Shaka for YouTube (SABR/UMP transport) AND bilibili: dash.js 4.7's
+        // throughput estimate collapses on zero-time cached 206 responses
+        // (1-2kbps) and walks quality down to 480p even with ABR disabled;
+        // Shaka's estimator is stable and keeps the top rung (verified in a
+        // real playback probe: 1080p constant, 30s buffer).
+        ...(streamType === 'dash' || streamType === 'sabr' ? { playbackEngine: 'shaka' as const } : {}),
         ...(isYouTubeSabr && sabrSession ? {
           sabr: {
             ...sabrSession,

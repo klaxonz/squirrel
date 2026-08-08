@@ -177,22 +177,22 @@ export class DashAdapter implements StreamAdapter {
     } = customSettings as any
 
     // Official bilibili player starts at the selected/top quality (observed:
-    // 1080P60 stream 30216 on first segment fetch), NOT bandwidth-ABR from a
-    // low rung. Start at ~1080p-class (8Mbps covers 1080P60 rungs, stays under
-    // 4K), then let ABR refine. Previous 20Mbps forced 1440p/2160p before play
-    // → multi-second spin; 2Mbps started at 720p and read as "player can't
-    // hold quality" when ABR drifted down.
+    // 1080P60 stream 30216 on first segment fetch) and plays it FIXED — no
+    // throughput-ABR oscillation. dash.js's throughput estimate is unusable
+    // here (zero-time cached responses collapse it to 1-2kbps and ABR walks
+    // straight down to 480p). Play the initialBitrate-chosen top rung fixed;
+    // the engine's stall recovery steps down one rung on real stalls.
     const settings: Partial<MediaPlayerSettingClass> = {
       streaming: {
         abr: {
-          autoSwitchBitrate: { video: this.options.enableAutoQuality !== false },
+          // Fixed top rung (official-style): manual picks and recovery both
+          // drive setQualityFor directly, so this only disables ABR drift.
+          autoSwitchBitrate: { video: false },
           // ~8 Mbps ≈ 1080P60 class top rung for most videos.
           initialBitrate: { video: 8000 },
           maxBitrate: { video: -1 },
           bandwidthSafetyFactor: 0.9,
           usePixelRatioInLimitBitrateByPortal: false,
-          // Allow ABR to leave the start rung promptly once bandwidth is known.
-          abrThroughputSafetyFactor: 1.0,
         } as any,
         buffer: {
           // Short stable buffer = earlier canplay / fewer "缓冲中" on open.

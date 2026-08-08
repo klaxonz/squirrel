@@ -107,7 +107,7 @@ test('renderer youtube SABR uses googlevideo + Shaka with DASH fallback', async 
   // FreeTube pins ~720p after first load (ABR off during load, then re-enabled).
   assert.match(shakaSource, /applyStartupQuality/)
   assert.match(shakaSource, /restoreAbrAfterStartupPin/)
-  assert.match(shakaSource, /STARTUP_QUALITY_HEIGHT = 720/)
+  assert.match(shakaSource, /STARTUP_QUALITY_HEIGHT = 1080/)
   assert.match(shakaSource, /pickStartupVariantTrack/)
   assert.match(shakaSource, /enabled: false/)
   // SABR menu rows must come from the playable SABR format ladder.
