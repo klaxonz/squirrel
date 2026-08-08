@@ -845,6 +845,10 @@ export class ShakaDashAdapter implements StreamAdapter {
     }
   }
 
+  getActiveQuality(): QualityLevel | null {
+    return this.getCurrentQualityTrack()
+  }
+
   private getSourceQualityHint(quality: QualitySelectionRequest): QualityLevel | null {
     const targetId = String(quality)
     return this.sourceQualityHints.find((hint) => String(hint.id) === targetId) || null

@@ -164,6 +164,61 @@ describe('error recovery stall handling', () => {
     expect(String(getRegisteredQualityId())).toBe('1080')
   })
 
+  it('steps one rung below the active quality when the selection id is unknown', async () => {
+    // Auto (ABR) mode: registered id is null; the adapter reports the rung it
+    // actually renders. Recovery must step 1080 -> 720, never jump to 480.
+    const { recovery, setQuality } = createHarness({
+      paused: false,
+      maxRetries: 0,
+      registeredQualityId: null,
+      qualities: [
+        { id: '2160', label: '2160p', height: 2160 },
+        { id: '1080', label: '1080p', height: 1080 },
+        { id: '720', label: '720p', height: 720 },
+        { id: '480', label: '480p', height: 480 },
+      ],
+      streamAdapter: {
+        getActiveQuality: () => ({ id: 'video-avc-1080-x', label: '1080p AVC', height: 1080 }),
+      } as unknown as StreamAdapter,
+    })
+    const err: PlayerError = {
+      code: 'STALL_DETECTED',
+      message: 'Playback stalled while waiting for media',
+      fatal: false,
+    }
+
+    const recovered = await recovery.handleRecoveryError(err)
+
+    expect(recovered).toBe(true)
+    expect(setQuality).toHaveBeenCalledWith('720')
+  })
+
+  it('does not fall back to the lowest rung when no active quality is known', async () => {
+    const { recovery, setQuality } = createHarness({
+      paused: false,
+      maxRetries: 0,
+      registeredQualityId: 'unknown-id',
+      qualities: [
+        { id: '2160', label: '2160p', height: 2160 },
+        { id: '1080', label: '1080p', height: 1080 },
+        { id: '720', label: '720p', height: 720 },
+        { id: '480', label: '480p', height: 480 },
+      ],
+    })
+    const err: PlayerError = {
+      code: 'STALL_DETECTED',
+      message: 'Playback stalled while waiting for media',
+      fatal: false,
+    }
+
+    const recovered = await recovery.handleRecoveryError(err)
+
+    // Unknown position: no blind lowest-rung jump; the failure surfaces
+    // instead of silently pinning the worst quality.
+    expect(recovered).toBe(false)
+    expect(setQuality).not.toHaveBeenCalled()
+  })
+
   it('resumes via play() when stall happens while paused', async () => {
     const { recovery, play, setQuality } = createHarness({ paused: true })
     const err: PlayerError = {

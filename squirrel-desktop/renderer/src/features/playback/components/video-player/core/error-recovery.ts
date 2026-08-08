@@ -145,14 +145,33 @@ export function createErrorRecovery(deps: ErrorRecoveryDeps) {
   }
 
   const getNextLowerQuality = (): QualityLevel | null => {
-    const sorted = [...deps.getQualities()].sort((a, b) => (b.height || 0) - (a.height || 0))
+    const sorted = [...deps.getQualities()].sort(
+      (a, b) => (b.height || 0) - (a.height || 0) || (b.bitrate || 0) - (a.bitrate || 0),
+    )
+    if (sorted.length < 2) return null
+
     const currentId = deps.getRegisteredQualityId()
     const currentInSorted = sorted.findIndex(q => q.id === currentId)
     if (currentInSorted >= 0 && currentInSorted < sorted.length - 1) {
       return sorted[currentInSorted + 1]
     }
-    if (currentInSorted === -1 && sorted.length > 1) {
-      return sorted[sorted.length - 1]
+
+    // Id unknown (auto mode, or the adapter reported a runtime level id that
+    // does not match the provider ladder). Ask the adapter which rung is
+    // actually being rendered, then step ONE rung below it. Falling back to
+    // the lowest quality on an unknown position turned a 1080p stall into a
+    // 480p finish — never jump the ladder.
+    const active = deps.getStreamAdapter()?.getActiveQuality?.()
+    if (active) {
+      const activeHeight = active.height || 0
+      const byHeight = sorted.findIndex(q => q.height === activeHeight)
+      if (byHeight >= 0 && byHeight < sorted.length - 1) {
+        return sorted[byHeight + 1]
+      }
+      const byId = sorted.findIndex(q => q.id === active.id)
+      if (byId >= 0 && byId < sorted.length - 1) {
+        return sorted[byId + 1]
+      }
     }
     return null
   }

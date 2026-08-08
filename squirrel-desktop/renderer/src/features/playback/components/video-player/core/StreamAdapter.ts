@@ -22,6 +22,7 @@ import type {
   PlayerState,
   PlaybackRecoveryAction,
   PlaybackRecoveryContext,
+  QualityLevel,
   QualitySelectionRequest,
 } from './types'
 
@@ -65,6 +66,14 @@ export interface StreamAdapter {
    * through to the generic strategy untouched.
    */
   handleProviderRecovery?(error: PlayerError, context: PlaybackRecoveryContext): PlaybackRecoveryAction | Promise<PlaybackRecoveryAction | null> | null
+
+  /**
+   * The quality rung actually being played/rendered (ABR may have moved away
+   * from the engine's last registered selection). Used by error recovery to
+   * step down ONE rung from the real position instead of guessing from a
+   * stale or auto-mode (null) selection id.
+   */
+  getActiveQuality?(): QualityLevel | null
   /** Release the underlying library instance (hls.js / dashjs / shaka). */
   destroy(): void
 

@@ -796,6 +796,11 @@ export class DashAdapter implements StreamAdapter {
     return null
   }
 
+  /** StreamAdapter contract: the rung actually being rendered (ABR position). */
+  getActiveQuality(): QualityLevel | null {
+    return this.getCurrentPlaybackQuality()
+  }
+
   /**
    * 销毁播放器实例
    */
