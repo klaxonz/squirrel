@@ -92,22 +92,18 @@
             </div>
           </div>
 
-          <div class="site-runtime-row__capability-cell">
-            <span class="site-runtime-row__cell-label">支持能力</span>
-            <div v-if="runtime.features.length" class="site-runtime-row__capabilities">
-              <span
-                v-for="cap in runtime.features.slice(0, 2)"
-                :key="cap"
-                class="site-runtime-row__capability"
-                :title="cap"
-              >
-                {{ getCapabilityLabel(cap) }}
-              </span>
-              <span v-if="runtime.features.length > 2" class="site-runtime-row__capability-more">
-                +{{ runtime.features.length - 2 }}
-              </span>
-            </div>
-            <span v-else class="site-runtime-row__capability-empty">未声明</span>
+          <!-- Same dot + label + value pattern as the network/login signals so
+               the three metric columns share one visual format. -->
+          <div class="site-runtime-signal site-runtime-signal--capability" data-tone="muted">
+            <span class="site-runtime-signal__dot" aria-hidden="true" />
+            <span>支持能力</span>
+            <strong
+              v-if="runtime.features.length"
+              :title="runtime.features.map((cap) => getCapabilityLabel(cap)).join('、')"
+            >
+              {{ getCapabilityLabel(runtime.features[0]) }}{{ runtime.features.length > 1 ? ` +${runtime.features.length - 1}` : '' }}
+            </strong>
+            <strong v-else>未声明</strong>
           </div>
 
           <div class="site-runtime-row__actions">
@@ -461,37 +457,6 @@ const runtimeActionItems = runtime => {
   white-space: nowrap;
 }
 
-.site-runtime-row__capability-cell {
-  display: grid;
-  min-width: 0;
-  gap: 0.3rem;
-}
-
-.site-runtime-row__cell-label {
-  color: hsl(var(--muted-foreground) / 0.68);
-  font-size: 0.625rem;
-  font-weight: 550;
-}
-
-.site-runtime-row__capability,
-.site-runtime-row__capability-empty {
-  color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
-}
-
-.site-runtime-row__capability:not(:last-child)::after {
-  margin-left: 0.45rem;
-  color: hsl(var(--muted-foreground) / 0.38);
-  content: '·';
-}
-
-.site-runtime-row__capability-more {
-  color: hsl(var(--foreground) / 0.62);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
 .site-runtime-row__actions {
   display: flex;
   align-items: center;
@@ -523,7 +488,7 @@ const runtimeActionItems = runtime => {
     grid-template-columns: minmax(14rem, 1.1fr) minmax(14rem, 1fr) auto;
   }
 
-  .site-runtime-row__capability-cell {
+  .site-runtime-signal--capability {
     display: none;
   }
 }

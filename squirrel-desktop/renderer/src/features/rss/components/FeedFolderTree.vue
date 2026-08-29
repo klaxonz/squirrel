@@ -320,6 +320,8 @@ defineEmits<{
 }
 
 .feed-folder-tree__empty {
+  /* Center in the leftover column height, matching the reading-pane empty state. */
+  margin-block: auto;
   padding: 2.5rem 0.75rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.75rem;

@@ -1436,6 +1436,12 @@ onUnmounted(() => {
   padding: 0;
 }
 
+/* Full-page empty/error states stretch with the list so their copy centers
+   vertically like the reading pane, instead of anchoring to the top. */
+.rss-entry-list__inner > .app-page-empty {
+  flex: 1;
+}
+
 .rss-entry-header {
   gap: var(--space-2);
   background: transparent;

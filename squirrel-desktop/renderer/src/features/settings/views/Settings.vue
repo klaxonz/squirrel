@@ -47,13 +47,9 @@
         </AppEmptyState>
       </div>
 
-      <!-- Section intro + row descriptions keep the settings stack scannable. -->
+      <!-- Each section carries its own title + description (the tab label and
+           description would only duplicate them), so sections lead directly. -->
       <div v-else class="settings-sections">
-        <header class="settings-page-intro">
-          <h1>{{ activeTab.label }}</h1>
-          <p>{{ settingsTabDescriptions[currentTab] }}</p>
-        </header>
-
         <section v-if="currentTab === 'appearance'" class="app-settings-section">
           <div class="app-settings-section-title">
             <h2>外观</h2>
@@ -288,14 +284,6 @@ const router = useRouter()
 
 const defaultSettingsTab = SETTINGS_TABS.find((tab) => tab.key === DEFAULT_SETTINGS_TAB) ?? SETTINGS_TABS[0]
 const settingsTabs = SETTINGS_TABS
-const settingsTabDescriptions: Record<SettingsTabKey, string> = {
-  appearance: '控制桌面端配色与对比。',
-  content: '过滤与封面展示策略。',
-  playback: '视频自动播放与续播行为。',
-  security: '密码与已登录设备。',
-  system: '后台调度与异步任务服务。',
-  server: '桌面端连接的后端服务器。',
-}
 
 /**
  * Resolve the active settings tab from the leaf route name.
@@ -574,20 +562,6 @@ const onSystemToggle = async (key: string, value: boolean) => {
   flex-direction: column;
   align-self: center;
   gap: var(--space-6);
-}
-
-.settings-page-intro h1 {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: 1.125rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.settings-page-intro p {
-  margin: var(--space-2) 0 0;
-  color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
 }
 
 /* Multi-line settings rows stay scannable (title + description + control). */
