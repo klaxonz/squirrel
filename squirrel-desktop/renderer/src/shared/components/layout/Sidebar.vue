@@ -4,7 +4,6 @@
     :class="{ 'has-player': showSidebarMusicPlayer, 'is-collapsed': collapsed }"
     aria-label="应用侧边栏"
   >
-    <!-- Brand lives only here (current Reddit desktop). Titlebar has no logo. -->
     <div class="sidebar-brand" :class="{ 'is-collapsed': collapsed }">
       <RouterLink
         to="/home"
@@ -95,13 +94,7 @@ const showSidebarMusicPlayer = computed(() =>
 </script>
 
 <style scoped>
-/*
-  Current Reddit desktop rail:
-  - brand wordmark at top of rail (orange)
-  - home + nav rows with soft gray active wash
-  - muted group labels
-  - single right border; no double brand with titlebar
-*/
+/* Persistent navigation rail with grouped destinations and a compact brand row. */
 .sidebar-rail {
   display: flex;
   width: 100%;
@@ -230,4 +223,15 @@ const showSidebarMusicPlayer = computed(() =>
     transition: none;
   }
 }
-</style>
+.sidebar-rail { border-right-color: hsl(var(--border)); background: hsl(var(--sidebar)); }
+.sidebar-brand { min-height: 3.5rem; border-bottom-color: hsl(var(--border)); padding-inline: 1.125rem; }
+.sidebar-brand__mark { color: hsl(var(--primary)); }
+.sidebar-brand__name { color: hsl(var(--foreground)); letter-spacing: 0; }
+.sidebar-top-nav, .sidebar-footer { padding-inline: 0.75rem; }
+.sidebar-group + .sidebar-group { border-top-color: hsl(var(--border) / 0.7); }
+.sidebar-group__label { color: hsl(var(--muted-foreground)); font-size: var(--app-text-xs); letter-spacing: 0.08em; text-transform: uppercase; }
+.sidebar-footer { border-top-color: hsl(var(--border)); }
+@media (max-width: 640px) {
+  .sidebar-brand { padding-inline: 0.75rem; }
+}
+ </style>

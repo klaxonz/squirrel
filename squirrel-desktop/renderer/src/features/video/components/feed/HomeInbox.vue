@@ -287,4 +287,10 @@ defineExpose({
     justify-content: space-between;
   }
 }
-</style>
+.home-inbox { gap: var(--space-5); }
+.home-inbox__header { min-height: 2.75rem; border-bottom: 1px solid hsl(var(--border)); padding: 0 0 var(--space-3); }
+.home-inbox__header h2 { font-size: var(--app-text-xl); letter-spacing: 0; }
+.home-inbox__group { gap: var(--space-3); }
+.home-inbox__group-header { padding: 0; }
+.home-inbox__posts { gap: var(--space-3); }
+ </style>

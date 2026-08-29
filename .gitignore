@@ -99,3 +99,5 @@ squirrel-backend/scratch/
 .playwright-cli/
 .codex/
 .zcode/
+squirrel-desktop/test-results/
+squirrel-desktop/visual-review-results/

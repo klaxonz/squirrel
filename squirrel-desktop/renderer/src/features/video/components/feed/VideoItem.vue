@@ -318,7 +318,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   flex: 0 0 clamp(11rem, 16vw, 16rem);
 }
 
-/* Reddit card post: white surface, full-width media, hairline border. */
+/* Feed list card: media leads, metadata remains readable at a glance. */
 .video-item--card {
   position: relative;
   flex-direction: column;
@@ -732,4 +732,9 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
     transform: none;
   }
 }
-</style>
+.video-item--card { border-color: hsl(var(--border)); border-radius: var(--radius-md); background: hsl(var(--card)); box-shadow: none; }
+.video-item--card:hover { border-color: hsl(var(--foreground) / 0.28); background: hsl(var(--card)); }
+.video-item--row { border-color: hsl(var(--border)); border-radius: var(--radius-md); background: hsl(var(--card)); }
+.video-item--row:hover { border-color: hsl(var(--foreground) / 0.28); }
+.video-item--grid { border-radius: var(--radius-md); }
+ </style>

@@ -349,11 +349,7 @@ onUnmounted(() => {
   background: hsl(var(--background));
 }
 
-/*
-  Current Reddit shell geometry:
-  - left rail is full viewport height (brand sits at the top of the rail)
-  - titlebar only spans the workspace column, not over the rail
-*/
+/* Persistent rail and workspace geometry keep navigation independent from the scroll stage. */
 .app-layout__frame {
   flex: 1 1 auto;
   min-height: 0;
@@ -378,9 +374,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* Content bearing surface — the canvas (--background) stays on the outer
-     shell (.app-layout) only. Reddit: white content, gray-blue at the gaps. */
-  background: hsl(var(--card));
+  /* The workspace is a quiet canvas; content surfaces establish hierarchy. */
+  background: hsl(var(--background));
   transition: left var(--duration-base) var(--ease-out);
   will-change: left;
 }
@@ -464,4 +459,4 @@ onUnmounted(() => {
   }
 }
 
-</style>
+ </style>

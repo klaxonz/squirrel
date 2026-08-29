@@ -13,6 +13,47 @@ import sys
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.testclient import TestClient
+
+
+def test_cors_allows_packaged_electron_null_origin_and_rejects_unknown_origin():
+    from infrastructure.config.settings import Settings
+
+    settings = Settings(
+        JWT_SECRET_KEY='test-secret',
+        CORS_ALLOW_ORIGINS='http://localhost:5174,http://127.0.0.1:5174,null',
+    )
+    app = FastAPI()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_allow_origins,
+        allow_credentials=True,
+        allow_methods=['*'],
+        allow_headers=['*', 'Authorization', 'X-Trace-Id'],
+    )
+
+    @app.post('/api/users/login')
+    def login():
+        return {'code': 1, 'msg': '邮箱或密码错误', 'data': None}
+
+    client = TestClient(app)
+    preflight_headers = {
+        'Origin': 'null',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type,x-trace-id',
+    }
+    allowed = client.options('/api/users/login', headers=preflight_headers)
+    assert allowed.status_code == 200
+    assert allowed.headers['access-control-allow-origin'] == 'null'
+    assert allowed.headers['access-control-allow-credentials'] == 'true'
+
+    rejected = client.options(
+        '/api/users/login',
+        headers={**preflight_headers, 'Origin': 'https://untrusted.example'},
+    )
+    assert rejected.status_code == 400
 
 
 @pytest.fixture

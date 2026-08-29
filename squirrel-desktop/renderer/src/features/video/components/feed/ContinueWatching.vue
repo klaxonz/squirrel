@@ -374,4 +374,11 @@ defineExpose({ refresh: load })
     transform: none;
   }
 }
-</style>
+.continue-rail { border: 0; border-top: 1px solid hsl(var(--border)); border-radius: 0; background: transparent; padding: var(--space-4) 0 0; }
+.continue-rail__header { margin-bottom: var(--space-4); }
+.continue-rail__header h2 { font-size: var(--app-text-lg); }
+.continue-rail__track { gap: var(--space-4); grid-auto-columns: minmax(12rem, 1fr); }
+.continue-rail__visual { border-radius: var(--radius-md); }
+.continue-rail__title { font-size: var(--app-text-base); }
+.continue-rail__progress > span { background: hsl(var(--primary)); }
+ </style>
