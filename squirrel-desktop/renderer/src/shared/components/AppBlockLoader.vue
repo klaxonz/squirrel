@@ -6,7 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import AppSpinner from './AppSpinner.vue'
+import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 
 /**
  * Centered spinner + optional caption for a loading region. Replaces the six
