@@ -3,6 +3,8 @@
     <AppTwoColumnLayout preset="music">
       <template #header>
         <div class="music-nav-header">
+          <h1 class="music-nav-header__title">音乐库</h1>
+          <span class="music-nav-header__divider" aria-hidden="true" />
           <AppSectionNav
             class="app-section-nav--optical"
             :model-value="musicActiveMode"
@@ -838,6 +840,23 @@ async function handleLogout() {
   align-items: center;
   justify-content: flex-start;
   gap: var(--space-3);
+}
+
+/* Page identity beside the mode tabs, mirroring the 订阅库 pane header. */
+.music-nav-header__title {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.music-nav-header__divider {
+  width: 1px;
+  height: 1rem;
+  flex: none;
+  background: var(--app-hairline);
 }
 
 .music-detail-navigation {

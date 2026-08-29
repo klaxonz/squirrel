@@ -10,23 +10,12 @@
               aria-label="订阅工作区"
             />
             <span class="subscription-toolbar__divider" aria-hidden="true" />
-            <AppSegmentedControl
+            <AppSectionNav
               :model-value="activeScope"
               :options="scopeOptions"
               aria-label="订阅范围"
-              size="sm"
-              @update:model-value="handleScopeChange"
-            >
-              <template #option="{ option }">
-                <span>{{ option.label }}</span>
-                <span
-                  v-if="option.value === 'issues' && issueCount > 0"
-                  class="subscription-toolbar__scope-count app-mono"
-                >
-                  {{ issueCount > 999 ? '999+' : issueCount }}
-                </span>
-              </template>
-            </AppSegmentedControl>
+              @change="handleScopeChange"
+            />
           </div>
 
           <section class="subscription-toolbar__actions" aria-label="订阅筛选和操作">
@@ -490,7 +479,7 @@ const scopeOptions = computed(() => (
       ]
     : [
         { value: 'all', label: '全部' },
-        { value: 'issues', label: '需处理' },
+        { value: 'issues', label: '需处理', badge: issueCount.value > 0 ? (issueCount.value > 999 ? '999+' : issueCount.value) : null },
         { value: 'special', label: '特别关注' },
       ]
 ))
@@ -1118,12 +1107,6 @@ onUnmounted(() => {
   background: var(--app-hairline);
 }
 
-.subscription-toolbar__scope-count {
-  margin-left: 0.25rem;
-  color: hsl(var(--destructive));
-  font-size: var(--app-text-badge-size);
-}
-
 .subscription-toolbar__icon-action {
   color: hsl(var(--muted-foreground));
 }
@@ -1165,7 +1148,9 @@ onUnmounted(() => {
   min-height: 0;
   flex: 1 1 auto;
   overflow-y: auto;
-  scrollbar-gutter: stable;
+  /* Reserve the gutter on both edges so centered feed columns keep the same
+     horizontal edges as the toolbar, which centers outside this scrollbox. */
+  scrollbar-gutter: stable both-edges;
 }
 
 .subscription-inspector-backdrop {

@@ -206,11 +206,13 @@ function handlePlayTrack(track: MusicTrack) {
   padding-bottom: var(--space-7);
 }
 
+/* Two equal boards — the rank column reads as a peer of recommendations,
+   not a narrow sidebar. */
 .music-home-board {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(17rem, 20rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
-  gap: clamp(var(--space-4), 2vw, var(--space-6));
+  gap: clamp(var(--space-5), 2.5vw, var(--space-7));
   margin-bottom: var(--space-6);
 }
 
@@ -218,11 +220,17 @@ function handlePlayTrack(track: MusicTrack) {
   margin-bottom: 0;
 }
 
+/* Each board is a half column now — stack the feature card above the list
+   instead of squeezing them side by side. */
 .music-home-recommendation-layout {
-  display: grid;
-  grid-template-columns: minmax(13rem, 16rem) minmax(0, 1fr);
-  align-items: start;
-  gap: clamp(var(--space-4), 1.6vw, var(--space-6));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(var(--space-3), 1.4vw, var(--space-5));
+}
+
+.music-home-recommendation-layout > :deep(.music-card--feature) {
+  width: min(100%, 18rem);
 }
 
 .music-home-playlist-list,
@@ -248,14 +256,6 @@ function handlePlayTrack(track: MusicTrack) {
 }
 
 @media (max-width: 780px) {
-  .music-home-recommendation-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .music-home-recommendation-layout > :deep(.music-card--feature) {
-    width: min(100%, 18rem);
-  }
-
   .music-home-playlist-list,
   .music-home-album-list {
     grid-template-columns: minmax(0, 1fr);

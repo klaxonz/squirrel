@@ -1,7 +1,6 @@
 <template>
   <AppPageShell class="videos-workbench" variant="compact" surface="consume" width="fluid">
-    <header class="videos-workbench__toolbar">
-      <div class="videos-workbench__toolbar-inner">
+    <AppToolbarFrame bordered sticky boundary="media" divider="content">
         <FeedToolbar
           v-if="searchMode !== 'remote'"
           variant="workbench"
@@ -66,8 +65,7 @@
             <AppIcon v-else name="refresh" class="size-4" />
           </Button>
         </div>
-      </div>
-    </header>
+    </AppToolbarFrame>
 
     <div class="videos-workbench__body">
       <main class="videos-workbench__canvas" aria-label="视频内容">
@@ -138,6 +136,7 @@ import NewContentBar from '@/shared/components/layout/NewContentBar.vue'
 import { useNewContentDetector, prependPreservingScroll } from '@/shared/composables/useNewContentDetector'
 import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppSpinner from '@/shared/components/AppSpinner.vue'
 import type { VideoListItem } from '@/features/video/types/video'
@@ -341,25 +340,8 @@ watch(() => route.query.special, (value) => {
   background: hsl(var(--card));
 }
 
-/* Full-bleed sticky toolbar — opaque Reddit sort bar, not a frosted slab. */
-.videos-workbench__toolbar {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-sticky);
-  background: hsl(var(--card));
-  border-bottom: 1px solid hsl(var(--border) / 0.72);
-}
-
-.videos-workbench__toolbar-inner {
-  display: flex;
-  width: 100%;
-  max-width: none;
-  min-height: 3rem;
-  margin-inline: 0;
-  padding-inline: var(--app-content-media-gutter);
-  align-items: center;
-}
-
+/* Toolbar chrome (sticky band, divider, reading boundary) is shared with the
+   subscribed/history pages via AppToolbarFrame — no page-local chrome here. */
 .videos-workbench__remote-tools > span {
   color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
@@ -439,12 +421,12 @@ watch(() => route.query.special, (value) => {
   align-items: start;
 }
 
-/* Full workspace width; list cards hug the left, grid fills. */
+/* Same centered reading boundary as subscribed/history (.app-media-content-frame):
+   toolbar pills, filter chips and cards share one horizontal edge. */
 .videos-workbench__canvas {
   min-width: 0;
-  width: 100%;
-  max-width: none;
-  margin-inline: 0;
+  width: min(100%, var(--app-content-media-max));
+  margin-inline: auto;
   padding-inline: var(--app-content-media-gutter);
   padding-block: 1.05rem 3rem;
 }
@@ -459,11 +441,5 @@ watch(() => route.query.special, (value) => {
 
 .videos-workbench__empty {
   min-height: 28rem;
-}
-
-@media (max-width: 1180px) {
-  .videos-workbench__toolbar-inner {
-    padding-block: 0.5rem;
-  }
 }
 </style>
