@@ -329,8 +329,15 @@ const summarizeUnplayablePayload = (playData) => {
  * quality=64 / dash capped at 480p while support_formats advertises 1080P+).
  * Native-low videos grant their own top format, so a granted value below the
  * advertised top reliably means "logging in unlocks higher quality".
+ *
+ * Logged-in sessions (nav.isLogin from the same cookie as playurl) must not
+ * be flagged: a gap to 4K/HDR is a VIP limit, not a missing login. Blocking
+ * those with "未登录" contradicts the desktop login detector.
  */
-export const isBilibiliLoginGated = (playData) => {
+export const isBilibiliLoginGated = (playData, { loggedIn = false } = {}) => {
+  if (loggedIn) {
+    return false
+  }
   const granted = safeInt(playData?.quality)
   const supportFormats = Array.isArray(playData?.support_formats) ? playData.support_formats : []
   const topFormatQn = supportFormats.reduce((max, format) => Math.max(max, safeInt(format?.quality)), 0)
@@ -338,11 +345,10 @@ export const isBilibiliLoginGated = (playData) => {
     return false
   }
   // Login-gated range: 1080P (80/112/116) and above are the classic unlock.
-  // VIP-only tiers (120/125/126 4K) still flag — the message covers both.
   return topFormatQn >= 80
 }
 
-const mapPlaybackPayload = ({ playData, context, info: videoInfo }) => {
+const mapPlaybackPayload = ({ playData, context, info: videoInfo, loggedIn = false }) => {
   const dashData = playData?.dash
   const localDashManifest = dashData ? buildLocalDashManifest(dashData) : null
   const qualities = buildQualities(dashData)
@@ -359,7 +365,7 @@ const mapPlaybackPayload = ({ playData, context, info: videoInfo }) => {
     uploader_name: uploaderName,
     uploader_url: uploaderUrl,
     uploader_avatar: uploaderAvatar,
-    login_required: isBilibiliLoginGated(playData),
+    login_required: isBilibiliLoginGated(playData, { loggedIn }),
   }
 
   if (localDashManifest) {

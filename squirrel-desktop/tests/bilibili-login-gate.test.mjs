@@ -36,7 +36,18 @@ test('native-low video granting its own top format is not flagged', () => {
   assert.equal(isBilibiliLoginGated(playData), false)
 })
 
-test('VIP-only tiers above the grant still flag (message covers VIP)', () => {
+test('logged-in session is not flagged for VIP-only tiers above the grant', () => {
+  const playData = {
+    quality: 116,
+    support_formats: [
+      { quality: 126, new_description: '4K' },
+      { quality: 116, new_description: '1080P 60帧' },
+    ],
+  }
+  assert.equal(isBilibiliLoginGated(playData, { loggedIn: true }), false)
+})
+
+test('anonymous session with VIP-only tiers above the grant is still flagged', () => {
   const playData = {
     quality: 116,
     support_formats: [

@@ -170,5 +170,6 @@ export async function resolveBilibiliApiPayload(targetUrl, { cookie = '', fetchI
       cid,
     },
     playData,
+    loggedIn: Boolean(nav?.isLogin),
   }
 }

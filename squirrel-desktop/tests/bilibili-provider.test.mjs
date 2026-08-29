@@ -274,6 +274,7 @@ test('desktop bilibili request runtime accepts injected fetch implementations', 
 
   assert.equal(payload.context.cid, 37789109465)
   assert.equal(payload.playData?.quality, 80)
+  assert.equal(payload.loggedIn, true)
   assert.equal(calls.length, 3)
   assert.match(calls[0], /\/x\/web-interface\/view/)
   assert.match(calls[1], /\/x\/web-interface\/nav/)
@@ -485,6 +486,122 @@ test('desktop bilibili provider does not reuse anonymous cache after login cooki
   assert.equal(playurlCalls.length, 2)
   assert.equal(playurlCalls[1].cookie.includes('SESSDATA=demo'), true)
 
+  clearBilibiliPlaybackCache()
+})
+
+const wbiImg = {
+  img_url: 'https://i0.hdslb.com/bfs/wbi/abcdefghijklmnopqrstuvwxyz123456.png',
+  sub_url: 'https://i0.hdslb.com/bfs/wbi/123456abcdefghijklmnopqrstuvwxyz7890.png',
+}
+
+const dashAtQuality = (quality, height) => ({
+  duration: 76,
+  video: [
+    {
+      id: quality,
+      codecid: 7,
+      codecs: 'avc1.640033',
+      width: height === 1080 ? 1920 : 1280,
+      height,
+      bandwidth: 456306,
+      baseUrl: 'https://cdn.example.test/video.m4s',
+    },
+  ],
+  audio: [
+    {
+      id: 30280,
+      codecs: 'mp4a.40.2',
+      bandwidth: 84522,
+      baseUrl: 'https://cdn.example.test/audio.m4s',
+    },
+  ],
+})
+
+const makeBilibiliFetchImpl = ({ isLogin, quality, supportFormats }) => {
+  return async (input) => {
+    const url = new URL(String(input))
+    if (url.pathname === '/x/web-interface/view') {
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              bvid: 'BV1LoginGate01',
+              aid: 50001,
+              pages: [{ cid: 60002 }],
+            },
+          })
+        },
+      }
+    }
+    if (url.pathname === '/x/web-interface/nav') {
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            code: isLogin ? 0 : -101,
+            data: { isLogin, wbi_img: wbiImg },
+          })
+        },
+      }
+    }
+    if (url.pathname === '/x/player/wbi/playurl') {
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              quality,
+              support_formats: supportFormats,
+              dash: dashAtQuality(quality, quality >= 80 ? 1080 : 720),
+            },
+          })
+        },
+      }
+    }
+    throw new Error(`Unexpected injected fetch: ${url.toString()}`)
+  }
+}
+
+test('logged-in playback with VIP quality gap does not set login_required', async () => {
+  clearBilibiliPlaybackCache()
+  const payload = await resolveBilibiliPlayback('https://www.bilibili.com/video/BV1LoginGate01', {
+    cookie: 'SESSDATA=demo',
+    forceRefresh: true,
+    fetchImpl: makeBilibiliFetchImpl({
+      isLogin: true,
+      quality: 80,
+      supportFormats: [
+        { quality: 126, new_description: '4K' },
+        { quality: 80, new_description: '1080P 高清' },
+      ],
+    }),
+  })
+  assert.equal(payload.login_required, false)
+  clearBilibiliPlaybackCache()
+})
+
+test('anonymous playback capped below advertised HD sets login_required', async () => {
+  clearBilibiliPlaybackCache()
+  const payload = await resolveBilibiliPlayback('https://www.bilibili.com/video/BV1LoginGate01', {
+    cookie: 'buvid3=guest',
+    forceRefresh: true,
+    fetchImpl: makeBilibiliFetchImpl({
+      isLogin: false,
+      quality: 64,
+      supportFormats: [
+        { quality: 116, new_description: '1080P 60帧' },
+        { quality: 80, new_description: '1080P 高清' },
+        { quality: 64, new_description: '720P 准高清' },
+      ],
+    }),
+  })
+  assert.equal(payload.login_required, true)
   clearBilibiliPlaybackCache()
 })
 
