@@ -484,7 +484,7 @@ defineExpose({ refresh })
   display: -webkit-box;
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 600;
   line-height: 1.3;
   transition: color var(--duration-fast) var(--ease-default);

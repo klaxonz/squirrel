@@ -240,7 +240,7 @@ const prefetchPlayback = () => {
   border-radius: var(--radius-sm);
   background: var(--app-media-badge-bg);
   color: hsl(var(--app-media-on-image));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
@@ -274,7 +274,7 @@ const prefetchPlayback = () => {
   overflow: hidden;
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: 0.95rem;
+  font-size: var(--app-text-lg);
   font-weight: 650;
   letter-spacing: -0.01em;
   line-height: 1.35;
@@ -289,7 +289,7 @@ const prefetchPlayback = () => {
   align-items: center;
   gap: 0.4rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.3;
 }
 
@@ -327,7 +327,7 @@ const prefetchPlayback = () => {
   max-width: 5.5rem;
   overflow: hidden;
   color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -347,7 +347,7 @@ const prefetchPlayback = () => {
   justify-content: center;
   gap: 0.3rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-variant-numeric: tabular-nums;
   line-height: 1.35;
   text-align: right;

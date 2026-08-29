@@ -50,7 +50,7 @@ const ariaChecked = computed(() =>
   padding: 0 0.625rem;
   border-radius: var(--radius-md);
   color: hsl(var(--foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
   text-align: left;
   cursor: pointer;

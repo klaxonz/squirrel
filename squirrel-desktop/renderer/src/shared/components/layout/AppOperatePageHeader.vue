@@ -49,21 +49,21 @@ defineProps<{
   margin: 0;
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
-  font-size: 1.125rem;
+  font-size: var(--app-text-xl);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
 .app-operate-page-header__title span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 550;
 }
 
 .app-operate-page-header__copy p {
   margin: 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   line-height: 1.5;
 }
 

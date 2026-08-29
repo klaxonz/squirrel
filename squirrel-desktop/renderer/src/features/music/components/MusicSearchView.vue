@@ -253,7 +253,7 @@ function handlePlaySong(track: MusicTrack) {
 }
 
 .music-search-section-title {
-  font-size: 0.9375rem;
+  font-size: var(--app-h3-size);
   font-weight: 600;
   color: hsl(var(--foreground));
 }
@@ -279,7 +279,7 @@ function handlePlaySong(track: MusicTrack) {
 
 .music-hot-index {
   width: 1.5rem;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 600;
   color: hsl(var(--muted-foreground));
   text-align: center;
@@ -291,7 +291,7 @@ function handlePlaySong(track: MusicTrack) {
 
 .music-hot-keyword {
   flex: 1;
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   color: hsl(var(--foreground));
   overflow: hidden;
   text-overflow: ellipsis;
@@ -299,7 +299,7 @@ function handlePlaySong(track: MusicTrack) {
 }
 
 .music-hot-score {
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   color: hsl(var(--muted-foreground));
 }
 
@@ -325,14 +325,14 @@ function handlePlaySong(track: MusicTrack) {
 
 .music-search-summary-label {
   display: block;
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
   color: hsl(var(--muted-foreground));
 }
 
 .music-search-summary-title {
   margin-top: 0.25rem;
-  font-size: 1.125rem;
+  font-size: var(--app-text-xl);
   font-weight: 650;
   color: hsl(var(--foreground));
 }
@@ -341,7 +341,7 @@ function handlePlaySong(track: MusicTrack) {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   color: hsl(var(--muted-foreground));
   white-space: nowrap;
 }
@@ -372,13 +372,13 @@ function handlePlaySong(track: MusicTrack) {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 600;
   color: hsl(var(--foreground));
 }
 
 .music-search-group-title span {
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 600;
   color: hsl(var(--muted-foreground));
 }
@@ -394,7 +394,7 @@ function handlePlaySong(track: MusicTrack) {
 .music-search-table-head {
   height: 2rem;
   padding: 0 0.625rem;
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 600;
   color: hsl(var(--muted-foreground));
   border-bottom: 1px solid hsl(var(--border) / 0.6);
@@ -422,12 +422,12 @@ function handlePlaySong(track: MusicTrack) {
 }
 
 .music-search-col--duration {
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   color: hsl(var(--muted-foreground));
 }
 
 .music-search-song-index {
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   color: hsl(var(--muted-foreground));
 }
 
@@ -451,7 +451,7 @@ function handlePlaySong(track: MusicTrack) {
 
 .music-search-song-title {
   display: block;
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 600;
   color: hsl(var(--foreground));
   overflow: hidden;
@@ -466,7 +466,7 @@ function handlePlaySong(track: MusicTrack) {
   max-width: 100%;
   margin-top: 0.125rem;
   padding: 0;
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   color: hsl(var(--muted-foreground));
   text-align: left;
 }
@@ -482,7 +482,7 @@ function handlePlaySong(track: MusicTrack) {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: left;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   color: hsl(var(--muted-foreground));
   padding: 0;
 }
@@ -541,7 +541,7 @@ function handlePlaySong(track: MusicTrack) {
 
 .music-search-artist-name {
   display: block;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 600;
   color: hsl(var(--foreground));
   max-width: 100%;
@@ -553,7 +553,7 @@ function handlePlaySong(track: MusicTrack) {
 .music-search-artist-meta {
   display: block;
   margin-top: 0.125rem;
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   color: hsl(var(--muted-foreground));
   overflow: hidden;
   text-overflow: ellipsis;
@@ -602,7 +602,7 @@ function handlePlaySong(track: MusicTrack) {
 
 .music-search-album-name {
   display: block;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 600;
   color: hsl(var(--foreground));
   overflow: hidden;
@@ -612,7 +612,7 @@ function handlePlaySong(track: MusicTrack) {
 
 .music-search-album-artist {
   display: block;
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   color: hsl(var(--muted-foreground));
   margin-top: 0.125rem;
   overflow: hidden;

@@ -89,7 +89,7 @@ watch(
   height: 100%;
   gap: 0.75rem;
   color: hsl(var(--foreground) / 0.45);
-  font-size: 1rem;
+  font-size: var(--app-text-lg);
 }
 
 .music-lyrics-scrollable {
@@ -107,7 +107,7 @@ watch(
 }
 
 .music-lyric-line {
-  font-size: 1.25rem;
+  font-size: var(--app-text-2xl);
   font-weight: 600;
   line-height: 1.6;
   color: hsl(var(--foreground) / 0.35);
@@ -125,7 +125,7 @@ watch(
 
 .music-lyric-line--active {
   color: hsl(var(--foreground)) !important;
-  font-size: 1.5rem;
+  font-size: var(--app-text-3xl);
   font-weight: 700;
 }
 </style>

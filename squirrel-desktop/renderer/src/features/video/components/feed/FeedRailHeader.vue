@@ -105,7 +105,7 @@ const showScrollControls = computed(
 .feed-rail-header__title-text {
   display: block;
   font-family: var(--font-sans);
-  font-size: 1rem;
+  font-size: var(--app-text-lg);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.15;
@@ -121,7 +121,7 @@ const showScrollControls = computed(
   margin-left: 0.125rem;
   padding-inline: 0.25rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
   transition: color var(--duration-fast) var(--ease-default);
 }

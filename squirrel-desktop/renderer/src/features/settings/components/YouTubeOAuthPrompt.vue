@@ -106,14 +106,14 @@ defineEmits<{
   align-items: center;
   gap: var(--space-2);
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 650;
 }
 
 .oauth-prompt__description,
 .oauth-prompt__status {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .oauth-prompt__description {
@@ -132,7 +132,7 @@ defineEmits<{
   padding: var(--space-2) var(--space-3);
   color: hsl(var(--foreground));
   font-family: var(--font-mono);
-  font-size: 1.125rem;
+  font-size: var(--app-text-xl);
   font-weight: 700;
 }
 

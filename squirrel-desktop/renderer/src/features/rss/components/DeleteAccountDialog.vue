@@ -59,7 +59,7 @@ defineEmits<{
 }
 
 .delete-account-dialog__description {
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   line-height: 1.55;
 }
 

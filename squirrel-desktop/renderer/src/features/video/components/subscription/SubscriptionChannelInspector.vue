@@ -211,7 +211,7 @@ const statusClass = computed(() => ({
 .subscription-inspector__identity h2 {
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 650;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -221,7 +221,7 @@ const statusClass = computed(() => ({
 .subscription-inspector__identity p {
   margin-top: 0.2rem;
   color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
 }
 
@@ -278,7 +278,7 @@ const statusClass = computed(() => ({
 .subscription-inspector__metrics dd {
   margin-top: 0.25rem;
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 650;
 }
 
@@ -290,7 +290,7 @@ const statusClass = computed(() => ({
 .subscription-inspector__section > h3,
 .subscription-inspector__section-heading h3 {
   color: hsl(var(--foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
 }
 
@@ -330,7 +330,7 @@ const statusClass = computed(() => ({
 
 .subscription-inspector__details dd {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
   text-align: right;
 }
@@ -342,14 +342,14 @@ const statusClass = computed(() => ({
   background: hsl(var(--destructive) / 0.06);
   padding: var(--space-3);
   color: hsl(var(--destructive));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   line-height: 1.5;
 }
 
 .subscription-inspector__description {
   margin-top: var(--space-3);
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.6;
 }
 
@@ -379,7 +379,7 @@ const statusClass = computed(() => ({
 .subscription-inspector__recent-item span {
   overflow: hidden;
   color: hsl(var(--foreground) / 0.86);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 550;
   line-height: 1.4;
   text-overflow: ellipsis;

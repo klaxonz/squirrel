@@ -205,7 +205,7 @@ function playVideo(video: MusicVideo) {
   overflow: hidden;
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 600;
   line-height: 1.3;
   text-overflow: ellipsis;
@@ -217,7 +217,7 @@ function playVideo(video: MusicVideo) {
   overflow: hidden;
   margin: 0.25rem 0 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;

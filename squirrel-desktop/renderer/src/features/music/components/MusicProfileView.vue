@@ -455,7 +455,7 @@ watch(activeTab, (tab) => {
   flex-wrap: wrap;
   gap: 0.625rem;
   margin-top: 0.5rem;
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   color: hsl(var(--muted-foreground));
 }
 
@@ -472,17 +472,17 @@ watch(activeTab, (tab) => {
   border-radius: var(--radius-sm);
   background: var(--app-muted-surface);
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
 }
 
 .music-reg-date {
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 
 .music-profile-warning {
   color: hsl(var(--destructive));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 
 .music-profile-logout {
@@ -522,13 +522,13 @@ watch(activeTab, (tab) => {
 
 .music-profile-vip-kicker {
   color: hsl(var(--primary));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 700;
 }
 
 .music-profile-vip-copy strong {
   color: hsl(var(--foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   line-height: 1.2;
 }
 
@@ -536,7 +536,7 @@ watch(activeTab, (tab) => {
   max-width: 12rem;
   overflow: visible;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   line-height: 1.25;
   white-space: normal;
 }
@@ -570,14 +570,14 @@ watch(activeTab, (tab) => {
 }
 
 .music-profile-stat-num {
-  font-size: 1rem;
+  font-size: var(--app-text-lg);
   font-weight: 700;
   color: hsl(var(--foreground));
   line-height: 1.2;
 }
 
 .music-profile-stat-name {
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   color: hsl(var(--muted-foreground));
 }
 
@@ -617,7 +617,7 @@ watch(activeTab, (tab) => {
 .music-profile-tab-btn {
   padding: 0.25rem 0.75rem;
   min-height: 1.75rem;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 500;
   color: hsl(var(--muted-foreground));
   background: transparent;
@@ -681,7 +681,7 @@ watch(activeTab, (tab) => {
 
 .music-profile-section-title {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 600;
   color: hsl(var(--foreground));
 }
@@ -709,7 +709,7 @@ watch(activeTab, (tab) => {
 
 .music-profile-pagination__meta {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
 }
 

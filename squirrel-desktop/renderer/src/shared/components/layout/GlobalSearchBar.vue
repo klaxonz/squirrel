@@ -543,7 +543,7 @@ onUnmounted(() => {
   border-color: transparent;
   background: transparent;
   color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
   letter-spacing: 0.01em;
 }
@@ -583,7 +583,7 @@ onUnmounted(() => {
   border: 0;
   background: transparent;
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 400;
   outline: none;
   box-shadow: none;
@@ -661,14 +661,14 @@ onUnmounted(() => {
   margin-bottom: 0.25rem;
   padding: 0.375rem 0.5rem;
   color: hsl(var(--muted-foreground) / 0.68);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 650;
 }
 
 .global-search__clear-recent {
   height: auto;
   padding: 0;
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 650;
   color: hsl(var(--destructive));
 }
@@ -718,13 +718,13 @@ onUnmounted(() => {
 }
 
 .global-search__suggestion-label {
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 500;
 }
 
 .global-search__suggestion-meta {
   color: hsl(var(--muted-foreground) / 0.6);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 
 .global-search__remove {
@@ -743,7 +743,7 @@ onUnmounted(() => {
 .global-search__empty {
   padding: 2rem;
   color: hsl(var(--muted-foreground) / 0.52);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
   text-align: center;
 }

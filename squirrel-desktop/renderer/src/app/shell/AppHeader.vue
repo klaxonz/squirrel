@@ -262,7 +262,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 700;
   color: hsl(var(--primary-foreground));
   flex: 0 0 auto;
@@ -301,7 +301,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 
 .app-header__user-name {
   overflow: hidden;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;

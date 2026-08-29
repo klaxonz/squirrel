@@ -85,7 +85,7 @@ const selectOption = (value: string | number) => {
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 600;
   white-space: nowrap;
   transition:
@@ -113,7 +113,7 @@ const selectOption = (value: string | number) => {
 
 .app-segmented-control--sm .app-segmented-control__item {
   padding: 0.125rem 0.5rem;
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   height: auto;
 }
 

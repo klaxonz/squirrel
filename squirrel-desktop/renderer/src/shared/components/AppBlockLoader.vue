@@ -49,6 +49,6 @@ withDefaults(defineProps<{
 }
 
 .app-block-loader--sm .app-block-loader__text {
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
 }
 </style>

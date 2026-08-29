@@ -18,7 +18,7 @@ defineProps<{
   max-width: 6rem;
   overflow: hidden;
   color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
   line-height: 1.2;
   text-overflow: ellipsis;

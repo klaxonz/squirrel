@@ -139,7 +139,7 @@ function selectDefaultFilter(filter: RssEntryFilter) {
 .reader-settings-label {
   display: block;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 650;
 }
 
@@ -159,7 +159,7 @@ function selectDefaultFilter(filter: RssEntryFilter) {
   border-radius: var(--radius-sm);
   height: auto;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
 }
 
@@ -189,7 +189,7 @@ function selectDefaultFilter(filter: RssEntryFilter) {
 
 .reader-settings-value {
   color: hsl(var(--foreground) / 0.82);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-variant-numeric: tabular-nums;
   font-weight: 650;
 }

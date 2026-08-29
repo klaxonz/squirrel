@@ -189,13 +189,13 @@ defineEmits<{
   min-width: 0;
   padding: 0 0.625rem 0 0.75rem;
   overflow: hidden;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
 }
 
 .feed-folder-tree__total {
   margin-left: auto;
   color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .feed-folder-tree__add,
@@ -238,7 +238,7 @@ defineEmits<{
   width: 100%;
   min-height: 2rem;
   padding: 0.25rem 0.625rem;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 600;
   color: hsl(var(--muted-foreground) / 0.9);
 }
@@ -260,7 +260,7 @@ defineEmits<{
   flex: 0 0 auto;
   min-width: 1.25rem;
   color: hsl(var(--muted-foreground) / 0.8);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.1;
   text-align: right;
 }
@@ -277,7 +277,7 @@ defineEmits<{
   gap: 0;
   padding: 0 0.5rem 0 0;
   overflow: hidden;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
 }
 
 .feed-folder-tree__feed-primary {
@@ -324,7 +324,7 @@ defineEmits<{
   margin-block: auto;
   padding: 2.5rem 0.75rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   text-align: center;
 }
 

@@ -61,7 +61,7 @@ defineEmits<{
 .music-section-description {
   margin: 0.2rem 0 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.35;
 }
 

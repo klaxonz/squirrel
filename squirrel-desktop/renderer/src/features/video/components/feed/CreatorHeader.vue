@@ -179,7 +179,7 @@ defineExpose({ refresh: fetchDetail })
 .creator-header__identity--error p {
   margin: 0.125rem 0 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
 }
 
 .creator-header__avatar {
@@ -225,7 +225,7 @@ defineExpose({ refresh: fetchDetail })
   border-radius: var(--radius-sm);
   padding: 0.125rem 0.375rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 650;
 }
 
@@ -234,7 +234,7 @@ defineExpose({ refresh: fetchDetail })
   overflow: hidden;
   margin: 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   line-height: 1.45;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -254,18 +254,18 @@ defineExpose({ refresh: fetchDetail })
 
 .creator-header__stat-label {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .creator-header__stat-value {
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
 .creator-header__stat-value--text {
   font-family: inherit;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
 }
 
 .creator-header__site-link {
@@ -273,7 +273,7 @@ defineExpose({ refresh: fetchDetail })
   align-items: center;
   gap: 0.375rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   text-decoration: none;
   transition: color var(--duration-fast) var(--ease-default);
 }
@@ -285,7 +285,7 @@ defineExpose({ refresh: fetchDetail })
 .creator-header__refreshing {
   flex: none;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .creator-header__refresh-error {
@@ -297,6 +297,6 @@ defineExpose({ refresh: fetchDetail })
   padding: 0.5rem var(--app-page-gutter);
   border-top: 1px solid hsl(var(--destructive) / 0.2);
   color: hsl(var(--destructive));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
 }
 </style>

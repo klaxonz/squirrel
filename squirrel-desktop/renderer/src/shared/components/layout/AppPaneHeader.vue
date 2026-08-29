@@ -83,7 +83,7 @@ const titleClass = computed(() => {
 .app-pane-header__subtitle {
   margin: 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.35;
   text-wrap: pretty;
 }

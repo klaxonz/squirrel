@@ -302,7 +302,7 @@ onMounted(() => {
 
 .channel-remote-toolbar__label {
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 500;
 }
 </style>

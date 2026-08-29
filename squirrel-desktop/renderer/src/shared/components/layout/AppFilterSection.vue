@@ -49,14 +49,14 @@ withDefaults(defineProps<{
 .app-filter-section--row .app-filter-section__label {
   padding-inline: 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 600;
 }
 
 .app-filter-section__label {
   padding-inline: 0.125rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 620;
   letter-spacing: 0.01em;
   line-height: 1.2;

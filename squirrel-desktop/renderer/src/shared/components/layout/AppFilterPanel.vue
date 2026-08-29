@@ -69,7 +69,7 @@ defineEmits<{
 
 .app-filter-panel__title {
   color: hsl(var(--foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 650;
   letter-spacing: -0.01em;
   line-height: 1.25;
@@ -88,7 +88,7 @@ defineEmits<{
   background: transparent;
   padding: 0.25rem 0.375rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 550;
   line-height: 1.2;
   cursor: pointer;

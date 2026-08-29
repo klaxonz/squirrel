@@ -407,7 +407,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 
 .video-item__title--row {
   padding: 0;
-  font-size: 0.9375rem;
+  font-size: var(--app-h3-size);
   font-weight: 700;
   letter-spacing: -0.01em;
   -webkit-line-clamp: 2;
@@ -436,7 +436,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   align-items: center;
   gap: 0.375rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
 }
 
@@ -452,7 +452,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   padding: 0 0.8rem;
   background: hsl(var(--foreground));
   color: hsl(var(--background));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 700;
   letter-spacing: 0.01em;
   cursor: pointer;
@@ -488,7 +488,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 
 .video-item__title--card {
   padding: 0.2rem 0.95rem 0.7rem;
-  font-size: 1.125rem;
+  font-size: var(--app-text-xl);
   letter-spacing: -0.02em;
   line-height: 1.28;
   text-wrap: pretty;
@@ -498,7 +498,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 .video-item__title--grid {
   min-height: calc(2 * 0.875rem * 1.32);
   padding-inline: 0;
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 700;
   line-height: 1.32;
   letter-spacing: -0.01em;
@@ -544,7 +544,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   border-radius: var(--radius-sm);
   background: var(--app-media-badge-bg);
   color: hsl(var(--app-media-on-image));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
@@ -594,7 +594,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   align-items: center;
   gap: 0.45rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.2;
 }
 
@@ -613,7 +613,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   align-items: center;
   gap: 0.35rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
 }
 
@@ -691,7 +691,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   padding: 0 0.75rem;
   background: transparent;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 700;
   cursor: pointer;
   transition:

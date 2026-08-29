@@ -84,7 +84,7 @@ function isPlaying(track: MusicTrack): boolean {
 .music-recent-description {
   margin: 0.2rem 0 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .music-recent-list {
@@ -151,7 +151,7 @@ function isPlaying(track: MusicTrack): boolean {
 }
 
 .music-recent-name {
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
 }
 
@@ -162,7 +162,7 @@ function isPlaying(track: MusicTrack): boolean {
 .music-recent-artist {
   margin-top: 0.125rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 
 .music-recent-play {

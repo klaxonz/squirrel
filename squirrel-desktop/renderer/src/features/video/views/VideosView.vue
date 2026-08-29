@@ -344,7 +344,7 @@ watch(() => route.query.special, (value) => {
    subscribed/history pages via AppToolbarFrame — no page-local chrome here. */
 .videos-workbench__remote-tools > span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -379,7 +379,7 @@ watch(() => route.query.special, (value) => {
   background: hsl(var(--card));
   color: hsl(var(--foreground));
   box-shadow: var(--shadow-xs);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;

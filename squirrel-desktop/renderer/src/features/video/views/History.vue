@@ -446,7 +446,7 @@ onMounted(() => {
   margin: 0;
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
-  font-size: 0.9rem;
+  font-size: var(--app-text-base);
   font-weight: 700;
   line-height: 1.25;
   letter-spacing: -0.015em;
@@ -455,7 +455,7 @@ onMounted(() => {
 .history-day__detail {
   overflow: hidden;
   color: hsl(var(--muted-foreground) / 0.9);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;

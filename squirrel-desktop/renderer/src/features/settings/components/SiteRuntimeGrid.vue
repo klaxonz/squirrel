@@ -305,7 +305,7 @@ const runtimeActionItems = runtime => {
 .site-runtime-list__heading h2 {
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 650;
 }
 
@@ -316,7 +316,7 @@ const runtimeActionItems = runtime => {
   gap: 0.25rem 0.5rem;
   margin: 0;
   color: hsl(var(--muted-foreground) / 0.82);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 
 .site-runtime-list__heading p span + span::before {
@@ -332,7 +332,7 @@ const runtimeActionItems = runtime => {
 .site-runtime-list__time {
   flex: none;
   color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -390,13 +390,13 @@ const runtimeActionItems = runtime => {
 
 .site-runtime-row__copy h3 {
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 620;
 }
 
 .site-runtime-row__copy p {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   line-height: 1.35;
 }
 
@@ -424,13 +424,13 @@ const runtimeActionItems = runtime => {
 
 .site-runtime-signal > span:not(.site-runtime-signal__dot) {
   color: hsl(var(--muted-foreground) / 0.76);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 
 .site-runtime-signal strong {
   overflow: hidden;
   color: hsl(var(--foreground) / 0.78);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -474,13 +474,13 @@ const runtimeActionItems = runtime => {
 
 .site-runtime-row__enable > span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 550;
 }
 
 .site-runtime-row__test {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 @media (max-width: 1050px) {

@@ -124,14 +124,14 @@ defineEmits<{
 }
 
 .music-login-title {
-  font-size: 1.125rem;
+  font-size: var(--app-text-xl);
   font-weight: 700;
   margin-bottom: 0.75rem;
   color: hsl(var(--foreground));
 }
 
 .music-login-subtitle {
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   color: hsl(var(--muted-foreground));
   line-height: 1.6;
   margin-bottom: 1.5rem;
@@ -157,7 +157,7 @@ defineEmits<{
 }
 
 .music-login-qr-title {
-  font-size: 1rem;
+  font-size: var(--app-text-lg);
   font-weight: 600;
   line-height: 1.4;
   color: hsl(var(--foreground));
@@ -200,7 +200,7 @@ defineEmits<{
 }
 
 .music-qr-expired-title {
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 600;
   color: hsl(var(--foreground));
 }

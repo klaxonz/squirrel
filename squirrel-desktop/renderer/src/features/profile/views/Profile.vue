@@ -269,7 +269,7 @@ const handleLogout = async () => {
   align-items: center;
   justify-content: center;
   color: hsl(var(--primary));
-  font-size: 1.25rem;
+  font-size: var(--app-text-2xl);
   font-weight: 700;
 }
 
@@ -301,7 +301,7 @@ const handleLogout = async () => {
   align-items: center;
   gap: 0.25rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .profile-form-panel {
@@ -316,7 +316,7 @@ const handleLogout = async () => {
 
 .profile-field :deep(.app-form-field__label) {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
 }
 
@@ -329,7 +329,7 @@ const handleLogout = async () => {
 
 .profile-field__counter {
   color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -361,7 +361,7 @@ const handleLogout = async () => {
   display: block;
   margin-bottom: 0.25rem;
   color: hsl(var(--foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
 }
 
@@ -372,7 +372,7 @@ const handleLogout = async () => {
   padding: 0.125rem 0.375rem;
   border: 1px solid;
   border-radius: var(--radius-sm);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
 }
 
@@ -400,7 +400,7 @@ const handleLogout = async () => {
   align-items: center;
   gap: 0.25rem;
   color: hsl(var(--success));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
 }
 

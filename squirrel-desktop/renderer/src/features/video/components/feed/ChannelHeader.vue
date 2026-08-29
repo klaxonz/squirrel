@@ -356,7 +356,7 @@ defineExpose({ refresh: fetchDetail })
 .channel-header__identity--error p {
   margin: 0.125rem 0 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
 }
 
 .channel-header__avatar {
@@ -403,7 +403,7 @@ defineExpose({ refresh: fetchDetail })
   background: hsl(var(--muted) / 0.4);
   padding: 0.125rem 0.375rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 650;
 }
 
@@ -411,7 +411,7 @@ defineExpose({ refresh: fetchDetail })
   margin: 0;
   max-width: 42rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -428,7 +428,7 @@ defineExpose({ refresh: fetchDetail })
 
 .channel-header__sync-status {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.4;
 }
 
@@ -456,14 +456,14 @@ defineExpose({ refresh: fetchDetail })
 
 .channel-header__stat-label {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
 }
 
 .channel-header__stat-value {
   color: hsl(var(--foreground));
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -479,7 +479,7 @@ defineExpose({ refresh: fetchDetail })
 
 .channel-header__refreshing {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .channel-header__action-error {
@@ -491,7 +491,7 @@ defineExpose({ refresh: fetchDetail })
   padding: 0.5rem var(--app-page-gutter);
   border-top: 1px solid hsl(var(--destructive) / 0.2);
   color: hsl(var(--destructive));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
 }
 
 .channel-header__action-error span {
@@ -502,7 +502,7 @@ defineExpose({ refresh: fetchDetail })
   max-width: 10rem;
   overflow: hidden;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;

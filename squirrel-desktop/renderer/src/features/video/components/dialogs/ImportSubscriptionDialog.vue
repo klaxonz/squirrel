@@ -352,7 +352,7 @@ watch(() => props.show, (visible) => {
 }
 
 .import-dialog__site-name {
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 600;
   color: hsl(var(--foreground));
 }
@@ -372,7 +372,7 @@ watch(() => props.show, (visible) => {
 .import-dialog__loaded-count {
   margin: 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-variant-numeric: tabular-nums;
 }
 
@@ -441,14 +441,14 @@ watch(() => props.show, (visible) => {
 .import-dialog__item-title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 600;
 }
 
 .import-dialog__item-url {
   margin: 0.125rem 0 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .import-dialog__load-more {
@@ -471,13 +471,13 @@ watch(() => props.show, (visible) => {
 
 .import-dialog__result-copy p {
   margin-top: var(--space-2);
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   line-height: 1.5;
 }
 
 .import-dialog__result-detail {
   margin-top: var(--space-3);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-variant-numeric: tabular-nums;
 }
 

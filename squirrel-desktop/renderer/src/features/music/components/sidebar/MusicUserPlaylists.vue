@@ -81,7 +81,7 @@ function toggleExpand() {
   margin: 0.0625rem 0.5rem;
   width: calc(100% - 1rem);
   color: hsl(var(--foreground) / 0.6);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   text-align: left;
 }
 
@@ -107,7 +107,7 @@ function toggleExpand() {
   width: calc(100% - 1rem);
   margin: 0.25rem 0.5rem;
   padding: 0.375rem 1.25rem;
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   color: hsl(var(--muted-foreground));
   justify-content: flex-start;
   text-align: left;

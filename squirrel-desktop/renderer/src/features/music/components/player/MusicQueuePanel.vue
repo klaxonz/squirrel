@@ -155,7 +155,7 @@ onUnmounted(() => {
 }
 
 .music-queue-count {
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   color: hsl(var(--muted-foreground));
   margin-left: 0.625rem;
   font-weight: 500;
@@ -169,7 +169,7 @@ onUnmounted(() => {
   justify-content: center;
   gap: 0.625rem;
   color: hsl(var(--muted-foreground) / 0.4);
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   padding: 2.5rem;
 }
 
@@ -198,7 +198,7 @@ onUnmounted(() => {
 
 .music-queue-item-index {
   width: 1.75rem;
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   color: hsl(var(--muted-foreground));
   text-align: center;
   flex-shrink: 0;
@@ -227,7 +227,7 @@ onUnmounted(() => {
 }
 
 .music-queue-item-title {
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 600;
   color: hsl(var(--foreground));
   overflow: hidden;
@@ -236,7 +236,7 @@ onUnmounted(() => {
 }
 
 .music-queue-item-artist {
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   color: hsl(var(--muted-foreground));
   overflow: hidden;
   text-overflow: ellipsis;

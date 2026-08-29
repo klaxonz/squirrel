@@ -655,7 +655,7 @@ onUnmounted(() => {
   margin: 0;
   max-width: 42rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -677,12 +677,12 @@ onUnmounted(() => {
 
 .remote-channel-header__stat-label {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .remote-channel-header__stat-value {
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
@@ -694,7 +694,7 @@ onUnmounted(() => {
   background: hsl(var(--muted) / 0.4);
   padding: 0.125rem 0.375rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 650;
 }
 
@@ -717,7 +717,7 @@ onUnmounted(() => {
 .remote-channel-subscription-error {
   margin: 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.4;
 }
 
@@ -744,7 +744,7 @@ onUnmounted(() => {
   background: hsl(var(--muted) / 0.4);
   padding: 0.125rem 0.375rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 650;
 }
 
@@ -812,7 +812,7 @@ onUnmounted(() => {
   display: -webkit-box;
   overflow: hidden;
   color: hsl(var(--foreground) / 0.92);
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 650;
   line-height: 1.35;
   transition: color 0.15s ease;
@@ -828,7 +828,7 @@ onUnmounted(() => {
 .remote-channel-meta {
   min-height: 1rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
 }
 
@@ -846,7 +846,7 @@ onUnmounted(() => {
   padding: 0.35rem 0.65rem;
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
   line-height: 1;
   text-decoration: none;
@@ -873,7 +873,7 @@ onUnmounted(() => {
   gap: 0.4rem 0.6rem;
   margin-top: 0.2rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   line-height: 1.4;
 }
 
@@ -893,7 +893,7 @@ onUnmounted(() => {
   gap: var(--space-4);
   padding: 0 1.5rem 1rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 @media (max-width: 640px) {

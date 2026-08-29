@@ -73,7 +73,7 @@ defineEmits<{
 .music-rank-index {
   color: hsl(var(--muted-foreground) / 0.62);
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 650;
 }
 
@@ -109,14 +109,14 @@ defineEmits<{
 }
 
 .music-rank-name {
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
 }
 
 .music-rank-meta {
   margin-top: 0.2rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 
 .music-rank-arrow {

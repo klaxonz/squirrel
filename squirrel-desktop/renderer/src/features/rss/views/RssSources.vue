@@ -1650,7 +1650,7 @@ onUnmounted(() => {
 .rss-entry-item__summary {
   margin: 0.375rem 0 0;
   color: hsl(var(--muted-foreground) / 0.82);
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   line-height: 1.5;
   transition: color var(--duration-fast) var(--ease-default);
   overflow: hidden;

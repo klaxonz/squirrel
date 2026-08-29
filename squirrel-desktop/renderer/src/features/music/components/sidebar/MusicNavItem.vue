@@ -44,7 +44,7 @@ defineEmits<{
   border: 0;
   border-radius: var(--radius-md);
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 500;
   text-align: left;
   transition:

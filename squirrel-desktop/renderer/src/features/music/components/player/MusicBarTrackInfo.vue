@@ -118,7 +118,7 @@ const onErrorAction = () => {
 
 .music-bar-title {
   display: block;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 650;
   color: hsl(var(--foreground));
   overflow: hidden;
@@ -137,7 +137,7 @@ const onErrorAction = () => {
 .music-bar-artist {
   min-width: 0;
   overflow: hidden;
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   color: hsl(var(--muted-foreground));
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -149,7 +149,7 @@ const onErrorAction = () => {
   align-items: center;
   gap: 0.2rem;
   color: hsl(var(--destructive));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   white-space: nowrap;
 }
 

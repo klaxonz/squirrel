@@ -601,7 +601,7 @@ function removeQueueItem(index: number) {
 
 .music-mini-title {
   display: block;
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
   color: hsl(var(--foreground));
 }

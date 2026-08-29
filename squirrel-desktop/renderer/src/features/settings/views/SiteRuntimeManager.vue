@@ -570,7 +570,7 @@ onMounted(() => {
 
 .site-runtime-filterbar > span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;

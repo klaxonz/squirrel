@@ -80,7 +80,7 @@ defineEmits<{
   height: 100%;
   gap: 0.75rem;
   color: hsl(var(--foreground) / 0.45);
-  font-size: 1rem;
+  font-size: var(--app-text-lg);
 }
 
 .music-comments-scrollable {
@@ -127,7 +127,7 @@ defineEmits<{
 }
 
 .music-comment-user {
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
   color: hsl(var(--foreground) / 0.8);
 }
@@ -138,7 +138,7 @@ defineEmits<{
 }
 
 .music-comment-text {
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.5;
   color: hsl(var(--foreground) / 0.65);
   word-break: break-word;

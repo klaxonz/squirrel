@@ -51,14 +51,14 @@ defineEmits<{
 }
 
 .music-rank-heading {
-  font-size: 1rem;
+  font-size: var(--app-text-lg);
   font-weight: 800;
   color: hsl(var(--foreground));
 }
 
 .music-rank-subtitle {
   margin-top: 0.25rem;
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   color: hsl(var(--muted-foreground));
 }
 

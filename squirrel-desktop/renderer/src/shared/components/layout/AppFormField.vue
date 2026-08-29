@@ -82,7 +82,7 @@ const controlAttrs = computed<AppFormFieldControlAttrs>(() => ({
 
 .app-form-field__label {
   color: hsl(var(--foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 600;
   line-height: 1.25rem;
 }
@@ -103,7 +103,7 @@ const controlAttrs = computed<AppFormFieldControlAttrs>(() => ({
 .app-form-field__description,
 .app-form-field__error {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.125rem;
 }
 

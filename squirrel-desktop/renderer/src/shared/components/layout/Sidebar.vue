@@ -147,7 +147,7 @@ const showSidebarMusicPlayer = computed(() =>
 .sidebar-brand__name {
   overflow: hidden;
   font-family: var(--font-sans);
-  font-size: 1.125rem;
+  font-size: var(--app-text-xl);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -199,7 +199,7 @@ const showSidebarMusicPlayer = computed(() =>
   margin: 0 0 0.3rem;
   padding: 0.125rem 0.8rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
   letter-spacing: 0.01em;
   line-height: 1.4;

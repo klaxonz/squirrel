@@ -240,7 +240,7 @@ const handleTest = async () => {
 
 .server-status-trigger__label {
   color: inherit;
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -298,7 +298,7 @@ const handleTest = async () => {
 
 .server-status-popover__eyebrow {
   font-family: var(--font-sans);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 600;
   color: hsl(var(--muted-foreground));
 }
@@ -307,7 +307,7 @@ const handleTest = async () => {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 600;
 }
 
@@ -337,14 +337,14 @@ const handleTest = async () => {
 }
 
 .server-status-popover__url-label {
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
   color: hsl(var(--muted-foreground));
 }
 
 .server-status-popover__url-value {
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 500;
   color: hsl(var(--foreground));
   word-break: break-all;
@@ -376,7 +376,7 @@ const handleTest = async () => {
   margin: 0;
   padding: 0.4375rem 0.625rem;
   border-radius: var(--radius-md);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
   line-height: 1.4;
 }

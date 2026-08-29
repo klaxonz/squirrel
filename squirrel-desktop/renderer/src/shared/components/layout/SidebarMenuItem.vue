@@ -103,7 +103,7 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
   padding: 0 0.9rem 0 0.65rem;
   background: transparent;
   color: hsl(var(--foreground) / 0.86);
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 500;
   line-height: 1;
   text-decoration: none;

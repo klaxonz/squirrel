@@ -209,7 +209,7 @@ const openVideo = () => {
   display: -webkit-box;
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: 0.9375rem;
+  font-size: var(--app-h3-size);
   font-weight: 600;
   line-height: 1.45;
   text-align: left;
@@ -242,7 +242,7 @@ const openVideo = () => {
   align-items: center;
   gap: 0.375rem;
   color: hsl(var(--muted-foreground) / 0.74);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
 }
 

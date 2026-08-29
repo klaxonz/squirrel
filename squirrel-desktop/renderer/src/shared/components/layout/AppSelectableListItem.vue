@@ -52,7 +52,7 @@ const emit = defineEmits<{
   border: 1px solid transparent;
   border-radius: var(--radius-lg);
   color: hsl(var(--muted-foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   text-align: left;
   cursor: pointer;
   transition:

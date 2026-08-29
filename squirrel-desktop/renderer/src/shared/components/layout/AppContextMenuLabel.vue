@@ -14,7 +14,7 @@ defineProps<{
 .app-context-menu-label {
   padding: 0.25rem 0.625rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 650;
 }
 </style>

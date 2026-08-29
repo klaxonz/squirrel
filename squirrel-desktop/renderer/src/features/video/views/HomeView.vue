@@ -253,7 +253,7 @@ watch(() => homeInboxRef.value?.activeFilter, () => resetNewContent())
   padding: 0 0.125rem;
   background: transparent;
   color: hsl(var(--muted-foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 600;
   cursor: pointer;
   transition: color var(--duration-fast) var(--ease-default);
@@ -298,7 +298,7 @@ watch(() => homeInboxRef.value?.activeFilter, () => resetNewContent())
 
 .home-feed__widget-head h2 {
   margin: 0 0 0.55rem;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
@@ -354,14 +354,14 @@ watch(() => homeInboxRef.value?.activeFilter, () => resetNewContent())
 }
 
 .home-feed__widget-copy strong {
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 700;
   line-height: 1.2;
 }
 
 .home-feed__widget-copy small {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
   line-height: 1.3;
 }
@@ -380,7 +380,7 @@ watch(() => homeInboxRef.value?.activeFilter, () => resetNewContent())
   padding: 0;
   list-style: none;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.45;
 }
 
@@ -401,7 +401,7 @@ watch(() => homeInboxRef.value?.activeFilter, () => resetNewContent())
   border-radius: 999px;
   background: hsl(var(--foreground) / 0.06);
   color: hsl(var(--foreground) / 0.72);
-  font-size: 0.625rem;
+  font-size: var(--app-text-2xs);
   font-weight: 700;
   line-height: 1;
 }

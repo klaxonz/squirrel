@@ -460,7 +460,7 @@ watch(searchQueryDebounced, () => {
 
 .scheduled-tasks-filterbar > span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -491,7 +491,7 @@ watch(searchQueryDebounced, () => {
 .scheduled-task-list__heading h2 {
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 700;
 }
 
@@ -502,7 +502,7 @@ watch(searchQueryDebounced, () => {
   gap: 0.25rem 0.5rem;
   margin: 0;
   color: hsl(var(--muted-foreground) / 0.82);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 
 .scheduled-task-list__heading p span + span::before {
@@ -579,13 +579,13 @@ watch(searchQueryDebounced, () => {
 
 .scheduled-task-row__copy h3 {
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 620;
 }
 
 .scheduled-task-row__copy p {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   line-height: 1.35;
 }
 
@@ -612,12 +612,12 @@ watch(searchQueryDebounced, () => {
 
 .scheduled-task-row__status span:not(.scheduled-task-row__status-dot) {
   color: hsl(var(--muted-foreground) / 0.76);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 
 .scheduled-task-row__status strong {
   color: hsl(var(--foreground) / 0.78);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 600;
 }
 
@@ -645,20 +645,20 @@ watch(searchQueryDebounced, () => {
 
 .scheduled-task-row__cell-label {
   color: hsl(var(--muted-foreground) / 0.68);
-  font-size: 0.625rem;
+  font-size: var(--app-text-2xs);
   font-weight: 550;
 }
 
 .scheduled-task-row__schedule strong {
   color: hsl(var(--foreground) / 0.78);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 600;
 }
 
 .scheduled-task-row__schedule > span:last-child {
   overflow: hidden;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -673,7 +673,7 @@ watch(searchQueryDebounced, () => {
 
 .scheduled-task-row__action {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .scheduled-task-list__pager {
@@ -688,7 +688,7 @@ watch(searchQueryDebounced, () => {
 
 .scheduled-task-list__pager > span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
 }
 

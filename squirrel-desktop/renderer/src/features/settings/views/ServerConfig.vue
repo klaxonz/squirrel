@@ -377,7 +377,7 @@ const handleConnect = async () => {
 .server-list__option-copy strong {
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -389,7 +389,7 @@ const handleConnect = async () => {
   margin: 0;
   overflow: hidden;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -399,7 +399,7 @@ const handleConnect = async () => {
 .server-list__option-kind {
   flex: none;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 650;
 }
 
@@ -409,7 +409,7 @@ const handleConnect = async () => {
   gap: var(--space-2);
   margin: 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .server-target__message.is-success {
@@ -431,7 +431,7 @@ const handleConnect = async () => {
 .server-list__header h2 {
   margin: 0 0 0.2rem;
   color: hsl(var(--foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 700;
 }
 

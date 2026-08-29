@@ -845,7 +845,7 @@ const {
   border-radius: 999px;
   background: transparent;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
   cursor: pointer;
   outline: none;
@@ -903,7 +903,7 @@ const {
   border-radius: var(--radius-md);
   padding: 0.25rem 0.5rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
   transition:
     color var(--duration-fast) var(--ease-default),
@@ -1039,7 +1039,7 @@ const {
   border-radius: 999px;
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
   outline: none;
   transition:
@@ -1104,7 +1104,7 @@ const {
   border-radius: var(--radius-md);
   background: hsl(var(--muted) / 0.32);
   color: hsl(var(--foreground) / 0.86);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
   outline: none;
   transition:
@@ -1128,7 +1128,7 @@ const {
 
 .video-detail__description p {
   color: hsl(var(--foreground) / 0.72);
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   line-height: 1.8;
 }
 
@@ -1140,7 +1140,7 @@ const {
   padding: 0.125rem 0.25rem;
   border-radius: var(--radius-sm);
   color: hsl(var(--foreground) / 0.72);
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 650;
   outline: none;
   transition: color 0.16s ease;
@@ -1316,7 +1316,7 @@ const {
   border-radius: var(--radius-sm);
   background: var(--app-media-badge-bg);
   color: hsl(var(--app-media-on-image));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
   font-weight: 650;
 }
@@ -1334,7 +1334,7 @@ const {
   margin: 0;
   overflow: hidden;
   color: hsl(var(--foreground) / 0.9);
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 650;
   line-height: 1.35;
   -webkit-box-orient: vertical;
@@ -1352,7 +1352,7 @@ const {
   align-items: center;
   gap: var(--space-1);
   color: hsl(var(--muted-foreground) / 0.62);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 
 .video-related-item__meta p,

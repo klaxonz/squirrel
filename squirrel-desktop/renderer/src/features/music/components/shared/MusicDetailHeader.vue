@@ -96,7 +96,7 @@ withDefaults(defineProps<{
 
 .music-detail-kicker {
   color: var(--app-heading-color-muted);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
   line-height: 1.25;
   letter-spacing: 0;
@@ -119,7 +119,7 @@ withDefaults(defineProps<{
   align-items: center;
   gap: 0.625rem 0.875rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 500;
 }
 
@@ -127,7 +127,7 @@ withDefaults(defineProps<{
   margin: 0.25rem 0 0;
   max-width: 42rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   line-height: 1.55;
   display: -webkit-box;
   -webkit-line-clamp: 3;

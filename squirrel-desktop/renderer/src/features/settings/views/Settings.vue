@@ -483,7 +483,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   margin: 0;
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
-  font-size: 1.125rem;
+  font-size: var(--app-text-xl);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
@@ -508,7 +508,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   padding: 0 0.75rem;
   background: transparent;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 500;
   text-align: left;
   cursor: pointer;
@@ -540,7 +540,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   align-items: center;
   gap: var(--space-1);
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 600;
 }
 
@@ -603,7 +603,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   margin-top: var(--space-2);
   color: hsl(var(--muted-foreground));
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
@@ -617,7 +617,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   border: 1px solid hsl(var(--border) / 0.6);
   border-radius: var(--radius-md);
   padding: 0 var(--space-2);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 600;
 }
 
@@ -642,7 +642,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   display: block;
   margin-bottom: var(--space-2);
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 600;
 }
 
@@ -664,7 +664,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
 .settings-server-notice {
   margin: 0;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   line-height: 1.5;
 }
 

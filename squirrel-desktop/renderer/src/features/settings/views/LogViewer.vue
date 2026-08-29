@@ -442,14 +442,14 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   align-items: center;
   gap: var(--space-2);
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 600;
   cursor: pointer;
 }
 
 .log-filterbar__clear {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .log-feed {
@@ -484,7 +484,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 .log-feed__heading h2 {
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 700;
 }
 
@@ -495,7 +495,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   gap: 0.25rem 0.5rem;
   margin: 0;
   color: hsl(var(--muted-foreground) / 0.82);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 
 .log-feed__heading p span + span::before {
@@ -507,7 +507,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 .log-feed__updated {
   flex: none;
   color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -525,7 +525,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   background: hsl(var(--muted) / 0.14);
   padding: 0.4375rem 0.75rem;
   color: hsl(var(--muted-foreground) / 0.7);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 650;
 }
 
@@ -561,7 +561,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 .log-time {
   padding-top: 0.125rem;
   color: hsl(var(--muted-foreground) / 0.7);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -578,7 +578,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   background: hsl(var(--foreground) / 0.035);
   padding: 0 0.375rem;
   color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 650;
   line-height: 1;
 }
@@ -616,7 +616,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   align-items: baseline;
   padding-top: 0.0625rem;
   color: hsl(var(--muted-foreground) / 0.64);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .log-source__name {
@@ -636,7 +636,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   align-items: flex-start;
   gap: var(--space-2);
   color: hsl(var(--foreground) / 0.86);
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   line-height: 1.5;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -695,7 +695,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   gap: var(--space-2);
   color: hsl(var(--muted-foreground));
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
 }
 
 .log-empty-state {

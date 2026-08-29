@@ -68,7 +68,7 @@ const selectOption = (value: string | number) => {
   border-radius: 999px;
   padding: 0 0.75rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;

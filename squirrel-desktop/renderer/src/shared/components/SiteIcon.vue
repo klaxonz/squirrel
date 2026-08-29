@@ -172,6 +172,6 @@ const iconClass = computed(() => {
 }
 
 .site-icon--lg .site-icon__mono {
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 </style>

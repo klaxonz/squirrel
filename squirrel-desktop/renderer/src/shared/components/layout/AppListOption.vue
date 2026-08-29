@@ -56,7 +56,7 @@ const onKeydown = (event: KeyboardEvent) => {
   border-radius: var(--radius-md);
   padding: 0.375rem 0.5rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 500;
   text-align: left;
   cursor: pointer;
@@ -71,7 +71,7 @@ const onKeydown = (event: KeyboardEvent) => {
   min-height: 2rem;
   gap: 0.5rem;
   padding: 0.25rem 0.625rem;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
 }
 
 .app-list-option:hover {

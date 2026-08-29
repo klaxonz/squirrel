@@ -574,7 +574,7 @@ onMounted(async () => {
   min-width: 0;
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 700;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -596,7 +596,7 @@ onMounted(async () => {
 
 .playlist-nav-meta {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
   line-height: 1.2;
 }
@@ -637,7 +637,7 @@ onMounted(async () => {
   min-height: 2rem;
   border-bottom: 1px solid hsl(var(--border));
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -690,7 +690,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -738,7 +738,7 @@ onMounted(async () => {
 .playlist-item-title {
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 650;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -752,7 +752,7 @@ onMounted(async () => {
   gap: 0.45rem;
   margin-top: 0.375rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
   line-height: 1.3;
 }
@@ -762,7 +762,7 @@ onMounted(async () => {
 .playlist-item-duration {
   overflow: hidden;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 500;
   line-height: 1.35;
   text-overflow: ellipsis;

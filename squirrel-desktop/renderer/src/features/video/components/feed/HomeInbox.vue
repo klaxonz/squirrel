@@ -210,7 +210,7 @@ defineExpose({
 
 .home-inbox__header h2 {
   font-family: var(--font-sans);
-  font-size: 0.95rem;
+  font-size: var(--app-text-lg);
   font-weight: 700;
   letter-spacing: -0.015em;
 }
@@ -240,7 +240,7 @@ defineExpose({
 
 .home-inbox__group-header h3 {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -255,7 +255,7 @@ defineExpose({
   border-radius: 999px;
   background: hsl(var(--foreground) / 0.06);
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   padding-inline: 0.35rem;

@@ -216,7 +216,7 @@ const cardTitle = computed(() => {
   min-width: 0;
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 600;
   line-height: 1.3;
   text-overflow: ellipsis;
@@ -234,7 +234,7 @@ const cardTitle = computed(() => {
 .subscription-row__site {
   overflow: hidden;
   color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -244,7 +244,7 @@ const cardTitle = computed(() => {
 .subscription-row__metric {
   justify-self: end;
   color: hsl(var(--muted-foreground) / 0.88);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 550;
   white-space: nowrap;
 }
@@ -255,7 +255,7 @@ const cardTitle = computed(() => {
 
 .subscription-row__updated {
   color: hsl(var(--muted-foreground) / 0.78);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -266,7 +266,7 @@ const cardTitle = computed(() => {
   align-items: center;
   gap: 0.3rem;
   color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 550;
   white-space: nowrap;
 }

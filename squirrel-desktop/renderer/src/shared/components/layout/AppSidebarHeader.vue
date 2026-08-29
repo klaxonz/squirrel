@@ -40,7 +40,7 @@ const props = defineProps<{
 .app-sidebar-header__copy p {
   margin-top: 0.125rem;
   color: hsl(var(--muted-foreground) / 0.72);
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   font-weight: 500;
   line-height: 1.25;
 }

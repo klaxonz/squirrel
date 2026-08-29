@@ -74,6 +74,6 @@ defineSlots<{
 
 .app-media-item__meta {
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 </style>

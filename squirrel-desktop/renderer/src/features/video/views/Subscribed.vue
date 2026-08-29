@@ -1218,7 +1218,7 @@ onUnmounted(() => {
   margin: 0;
   color: hsl(var(--muted-foreground));
   font-family: var(--font-sans);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1.35;
@@ -1227,7 +1227,7 @@ onUnmounted(() => {
 
 .subscription-feed-day__header span {
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }

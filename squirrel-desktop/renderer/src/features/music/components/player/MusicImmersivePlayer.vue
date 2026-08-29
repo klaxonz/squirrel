@@ -280,7 +280,7 @@ const handleTabChange = (value: string | number) => {
 }
 
 .immersive-header-title {
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 600;
   line-height: 1.2;
   color: hsl(var(--muted-foreground));
@@ -351,7 +351,7 @@ const handleTabChange = (value: string | number) => {
 }
 
 .immersive-title {
-  font-size: 1.125rem;
+  font-size: var(--app-text-xl);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.3;
@@ -361,7 +361,7 @@ const handleTabChange = (value: string | number) => {
 }
 
 .immersive-artist {
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 500;
   color: hsl(var(--muted-foreground));
   margin-top: 0.25rem;
@@ -374,14 +374,14 @@ const handleTabChange = (value: string | number) => {
   margin-top: 0.25rem;
   overflow: hidden;
   color: hsl(var(--destructive));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .immersive-album {
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   color: hsl(var(--foreground) / 0.45);
   margin-top: 0.125rem;
   white-space: nowrap;
@@ -401,7 +401,7 @@ const handleTabChange = (value: string | number) => {
 }
 
 .immersive-time {
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-family: monospace;
   color: hsl(var(--foreground) / 0.45);
   min-width: 2.5rem;

@@ -262,7 +262,7 @@ const {
 }
 
 .music-batch-count {
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   color: hsl(var(--muted-foreground));
   font-weight: 500;
 }
@@ -280,7 +280,7 @@ const {
   align-items: center;
   padding: 0.625rem 1rem;
   border-bottom: 1px solid hsl(var(--border) / 0.3);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 600;
   color: hsl(var(--muted-foreground) / 0.7);
 }
@@ -340,7 +340,7 @@ const {
 .music-track-col--num {
   text-align: center;
   color: hsl(var(--muted-foreground));
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 500;
 }
 
@@ -410,7 +410,7 @@ const {
 }
 
 .music-track-title {
-  font-size: 0.9375rem;
+  font-size: var(--app-h3-size);
   font-weight: 600;
   color: hsl(var(--foreground));
   overflow: hidden;
@@ -424,7 +424,7 @@ const {
   height: auto;
   max-width: 100%;
   margin-top: 0.25rem;
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   color: hsl(var(--muted-foreground));
   padding: 0;
   text-align: left;
@@ -445,7 +445,7 @@ const {
 .music-track-col--album {
   justify-content: flex-start;
   height: auto;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   color: hsl(var(--muted-foreground));
   padding: 0;
   background: none;
@@ -465,7 +465,7 @@ const {
 }
 
 .music-track-col--duration {
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   color: hsl(var(--muted-foreground) / 0.7);
   text-align: right;
   font-variant-numeric: tabular-nums;

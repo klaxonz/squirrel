@@ -16,7 +16,7 @@ const props = defineProps<{
 .app-list-empty {
   padding: 1rem 0.5rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
   text-align: center;
 }
 </style>

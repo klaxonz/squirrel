@@ -847,7 +847,7 @@ async function handleLogout() {
   margin: 0;
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
-  font-size: 0.95rem;
+  font-size: var(--app-text-lg);
   font-weight: 700;
   letter-spacing: -0.01em;
 }

@@ -325,7 +325,7 @@ function handleCoverError() {
 }
 
 .music-card-title {
-  font-size: 0.8125rem;
+  font-size: var(--app-text-md);
   font-weight: 650;
   line-height: 1.3;
 }
@@ -333,27 +333,27 @@ function handleCoverError() {
 .music-card--feature .music-card-title {
   display: -webkit-box;
   overflow: hidden;
-  font-size: 0.9375rem;
+  font-size: var(--app-h3-size);
   line-height: 1.4;
   white-space: normal;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-.music-card--xs .music-card-title { font-size: 0.75rem; }
-.music-card--lg .music-card-title { font-size: 0.875rem; }
-.music-card--xl .music-card-title { font-size: 0.9375rem; }
+.music-card--xs .music-card-title { font-size: var(--app-text-sm); }
+.music-card--lg .music-card-title { font-size: var(--app-text-base); }
+.music-card--xl .music-card-title { font-size: var(--app-h3-size); }
 
 .music-card-subtitle {
   margin-top: 0.2rem;
   color: hsl(var(--muted-foreground));
-  font-size: 0.75rem;
+  font-size: var(--app-text-sm);
 }
 
 .music-card-meta {
   margin-top: 0.25rem;
   color: hsl(var(--muted-foreground) / 0.76);
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
 }
 
 @media (prefers-reduced-motion: reduce) {

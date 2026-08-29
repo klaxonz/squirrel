@@ -167,7 +167,7 @@ defineExpose({ refresh: load })
 .continue-rail__header h2 {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 0.875rem;
+  font-size: var(--app-text-base);
   font-weight: 700;
   letter-spacing: -0.015em;
 }
@@ -181,7 +181,7 @@ defineExpose({ refresh: load })
   border-radius: 999px;
   background: hsl(var(--foreground) / 0.07);
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   padding-inline: 0.35rem;
@@ -263,7 +263,7 @@ defineExpose({ refresh: load })
   padding: 0 0.45rem 0 0.35rem;
   background: hsl(var(--overlay) / 0.72);
   color: hsl(var(--app-media-on-image));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-weight: 700;
   opacity: 0;
   transform: translateY(0.15rem);
@@ -299,7 +299,7 @@ defineExpose({ refresh: load })
   display: -webkit-box;
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: 0.78rem;
+  font-size: var(--app-text-sm);
   font-weight: 650;
   line-height: 1.3;
   -webkit-box-orient: vertical;
@@ -313,7 +313,7 @@ defineExpose({ refresh: load })
   gap: 0.35rem;
   overflow: hidden;
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
+  font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
