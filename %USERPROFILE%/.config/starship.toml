@@ -1,0 +1,2 @@
+[git_status]
+format = "[$(git_status)]($style)"
