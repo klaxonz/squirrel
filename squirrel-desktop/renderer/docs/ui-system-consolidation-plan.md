@@ -1,6 +1,6 @@
 # UI 体系收口计划（UI System Consolidation Plan）
 
-> 状态：待执行　|　分支基线：`redesign/impeccable-layout-overhaul`　|　创建：2026-08-29
+> 状态：已执行完毕（2026-08-29，commit 6f0a397a…9cdd614a）　|　分支基线：`redesign/impeccable-layout-overhaul`
 >
 > 背景：renderer 已有 shadcn-vue + reka-ui 路线的 `shared/ui` 组件库和三层设计 token
 > （语义色 / 间距·层级·动效 / app chrome）。本计划的目标不是重建体系，而是收口最后 20%
