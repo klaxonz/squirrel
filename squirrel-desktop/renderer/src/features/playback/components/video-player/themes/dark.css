@@ -1,10 +1,8 @@
+/* Dark player theme — player-scoped overrides only. Must not reference
+   app semantic tokens directly; extend the --sp-theme-* bridge in
+   variables.css instead. */
 .sp-player.sp-theme-dark,
 .sp-player[data-sp-theme="dark"] {
-  --sp-theme-primary: hsl(var(--primary));
-  --sp-theme-primary-hover: hsl(var(--primary) / 0.9);
-  --sp-theme-primary-active: hsl(var(--primary) / 0.8);
-  --sp-theme-primary-rgb: 255, 69, 0;
-
   --sp-bg-elevated: rgba(18, 18, 18, 0.85);
   --sp-bg-overlay: rgba(0, 0, 0, 0.65);
   --sp-surface: rgba(30, 30, 30, 0.6);

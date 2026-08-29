@@ -1,16 +1,30 @@
 /**
- * Video Player - CSS 变量系统
- * 所有主题相关的 CSS 变量定义
+ * Video Player — player-scoped sub-theme (--sp-*).
+ *
+ * Declared sub-theme of the app design system (docs/ui-system-consolidation-plan.md
+ * Phase 4 / ADR-0004). The player needs opaque, always-dark media chrome, so it
+ * keeps its own token namespace instead of consuming app chrome tokens directly.
+ *
+ * Bridge contract: `hsl(var(--…))` references to the app's semantic tokens are
+ * allowed ONLY in the --sp-theme-* block below. Every other --sp-* token must
+ * consume --sp-theme-* / --sp-* values. dark.css / light.css may override
+ * --sp-theme-* and any --sp-* value, but must not read app tokens directly.
  */
 
 .sp-player {
   /* ========== 颜色系统 ========== */
-  
-  /* Playback state uses the same orange signal as the surrounding app. */
-  --sp-primary: var(--sp-theme-primary, hsl(var(--primary)));
-  --sp-primary-hover: var(--sp-theme-primary-hover, hsl(var(--primary) / 0.9));
-  --sp-primary-active: var(--sp-theme-primary-active, hsl(var(--primary) / 0.8));
-  --sp-primary-rgb: var(--sp-theme-primary-rgb, 255, 69, 0);
+
+  /* ---- Bridge to app semantic tokens (single point) ----
+     Playback state uses the same orange signal as the surrounding app. */
+  --sp-theme-primary: hsl(var(--primary));
+  --sp-theme-primary-hover: hsl(var(--primary) / 0.9);
+  --sp-theme-primary-active: hsl(var(--primary) / 0.8);
+  --sp-theme-primary-rgb: 255, 69, 0;
+
+  --sp-primary: var(--sp-theme-primary);
+  --sp-primary-hover: var(--sp-theme-primary-hover);
+  --sp-primary-active: var(--sp-theme-primary-active);
+  --sp-primary-rgb: var(--sp-theme-primary-rgb);
   
   /* Opaque media chrome; only the video itself should read as layered. */
   --sp-bg: #000;
