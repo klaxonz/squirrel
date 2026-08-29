@@ -60,7 +60,7 @@
             aria-label="远端搜索站点"
             @update:model-value="updateRemoteSite"
           />
-          <Button text severity="secondary" size="sm" icon-only title="刷新远端结果" aria-label="刷新远端结果" @click="refreshCurrentList">
+          <Button text variant="secondary" size="sm" icon-only title="刷新远端结果" aria-label="刷新远端结果" @click="refreshCurrentList">
             <AppSpinner v-if="isRefreshing" size="sm" />
             <AppIcon v-else name="refresh" class="size-4" />
           </Button>
@@ -80,7 +80,7 @@
         <div v-if="loadError" class="videos-workbench__error">
           <AppEmptyState variant="error" title="加载失败" :copy="loadError">
             <template #actions>
-              <Button severity="secondary" outlined size="sm" @click="refreshCurrentList">重试</Button>
+              <Button variant="secondary" outlined size="sm" @click="refreshCurrentList">重试</Button>
             </template>
           </AppEmptyState>
         </div>

@@ -17,7 +17,7 @@
 
           <Button
             type="button"
-            severity="secondary" outlined
+            variant="secondary" outlined
             size="sm"
             class="site-runtime-file-button"
             :class="{ 'is-active': selectedCookiesFile }"
@@ -30,7 +30,7 @@
 
           <Button
             v-if="selectedCookiesFile"
-            severity="secondary" outlined
+            variant="secondary" outlined
             size="sm"
             :disabled="importingCookies"
             @click="handleImportAllCookies"

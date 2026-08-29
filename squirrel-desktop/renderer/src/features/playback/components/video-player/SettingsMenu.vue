@@ -122,9 +122,9 @@
           <div class="sp-menu-item sp-menu-item--offset">
             <span>{{ offsetLabel }}</span>
             <div class="sp-offset-controls">
-              <Button text severity="secondary" size="sm" class="sp-offset-btn" @click.stop="$emit('offsetChange', -0.5)">-0.5s</Button>
+              <Button text variant="secondary" size="sm" class="sp-offset-btn" @click.stop="$emit('offsetChange', -0.5)">-0.5s</Button>
               <span class="sp-offset-value">{{ subtitleOffset > 0 ? '+' : '' }}{{ subtitleOffset.toFixed(1) }}s</span>
-              <Button text severity="secondary" size="sm" class="sp-offset-btn" @click.stop="$emit('offsetChange', 0.5)">+0.5s</Button>
+              <Button text variant="secondary" size="sm" class="sp-offset-btn" @click.stop="$emit('offsetChange', 0.5)">+0.5s</Button>
             </div>
           </div>
         </div>

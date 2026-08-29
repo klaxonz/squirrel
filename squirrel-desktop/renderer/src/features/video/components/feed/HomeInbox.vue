@@ -14,7 +14,7 @@
           aria-label="首页内容范围"
           @update:model-value="setFilter"
         />
-        <Button text severity="secondary" size="sm" @click="emit('viewMore')">
+        <Button text variant="secondary" size="sm" @click="emit('viewMore')">
           全部
           <AppIcon name="chevronRight" class="size-3.5" />
         </Button>

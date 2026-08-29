@@ -8,7 +8,7 @@
       <Button
         type="button"
         text
-        severity="secondary"
+        variant="secondary"
         size="sm"
         icon-only
         class="titlebar__icon-btn"
@@ -23,7 +23,7 @@
       <Button
         type="button"
         text
-        severity="secondary"
+        variant="secondary"
         size="sm"
         icon-only
         class="titlebar__icon-btn"
@@ -38,7 +38,7 @@
       <Button
         type="button"
         text
-        severity="secondary"
+        variant="secondary"
         size="sm"
         icon-only
         class="titlebar__icon-btn"
@@ -62,7 +62,7 @@
         :key="btn.label"
         type="button"
         text
-        severity="secondary"
+        variant="secondary"
         size="sm"
         icon-only
         class="titlebar__control"

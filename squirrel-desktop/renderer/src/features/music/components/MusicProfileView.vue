@@ -84,7 +84,7 @@
         </div>
 
         <Button
-          text severity="secondary"
+          text variant="secondary"
           size="sm"
           class="music-profile-logout"
           :loading="logoutLoading"
@@ -195,10 +195,10 @@
               第 {{ historyPage }} / {{ historyTotalPages }} 页 · 共 {{ history.length }} 首
             </span>
             <div class="music-profile-pagination__actions">
-              <Button severity="secondary" size="sm" :disabled="historyPage === 1" @click="historyPage -= 1">
+              <Button variant="secondary" size="sm" :disabled="historyPage === 1" @click="historyPage -= 1">
                 上一页
               </Button>
-              <Button severity="secondary" size="sm" :disabled="historyPage === historyTotalPages" @click="historyPage += 1">
+              <Button variant="secondary" size="sm" :disabled="historyPage === historyTotalPages" @click="historyPage += 1">
                 下一页
               </Button>
             </div>
@@ -224,10 +224,10 @@
               第 {{ rankPage }} / {{ rankTotalPages }} 页 · 共 {{ listenRank.length }} 首
             </span>
             <div class="music-profile-pagination__actions">
-              <Button severity="secondary" size="sm" :disabled="rankPage === 1" @click="rankPage -= 1">
+              <Button variant="secondary" size="sm" :disabled="rankPage === 1" @click="rankPage -= 1">
                 上一页
               </Button>
-              <Button severity="secondary" size="sm" :disabled="rankPage === rankTotalPages" @click="rankPage += 1">
+              <Button variant="secondary" size="sm" :disabled="rankPage === rankTotalPages" @click="rankPage += 1">
                 下一页
               </Button>
             </div>

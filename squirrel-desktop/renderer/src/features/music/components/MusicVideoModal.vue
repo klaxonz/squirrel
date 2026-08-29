@@ -5,7 +5,7 @@
         <DialogTitle class="app-dialog-form-title music-video-title">
           {{ title }}
         </DialogTitle>
-        <Button text severity="secondary" size="sm" icon-only aria-label="关闭" @click="$emit('close')">
+        <Button text variant="secondary" size="sm" icon-only aria-label="关闭" @click="$emit('close')">
           <AppIcon name="close" class="h-5 w-5" />
         </Button>
       </DialogHeader>

@@ -3,7 +3,7 @@
     <div v-if="error" class="app-page-empty app-page-empty--compact">
       <AppEmptyState variant="error" title="加载失败" :copy="error">
         <template #actions>
-          <Button severity="secondary" outlined size="sm" :disabled="loading" @click="$emit('retry')">重试</Button>
+          <Button variant="secondary" outlined size="sm" :disabled="loading" @click="$emit('retry')">重试</Button>
         </template>
       </AppEmptyState>
     </div>
@@ -43,7 +43,7 @@
     </div>
 
     <div v-if="items.length && !allLoaded" class="app-page-actions">
-      <Button severity="secondary" outlined :disabled="loading" @click="$emit('loadMore')">
+      <Button variant="secondary" outlined :disabled="loading" @click="$emit('loadMore')">
         {{ loading ? '加载中' : '加载更多' }}
       </Button>
     </div>

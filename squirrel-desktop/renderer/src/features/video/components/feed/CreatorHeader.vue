@@ -51,11 +51,11 @@
           <strong>创作者信息加载失败</strong>
           <p>{{ detailError }}</p>
         </div>
-        <Button type="button" severity="secondary" outlined size="sm" :disabled="loading" @click="fetchDetail">重试</Button>
+        <Button type="button" variant="secondary" outlined size="sm" :disabled="loading" @click="fetchDetail">重试</Button>
       </div>
 
       <span v-if="loading && detail" class="creator-header__refreshing" role="status">正在更新创作者信息</span>
-      <Button v-if="detail && detailError" type="button" severity="secondary" outlined size="sm" @click="fetchDetail">重试信息加载</Button>
+      <Button v-if="detail && detailError" type="button" variant="secondary" outlined size="sm" @click="fetchDetail">重试信息加载</Button>
     </div>
 
     <div v-if="detail && detailError" class="creator-header__refresh-error" role="alert">

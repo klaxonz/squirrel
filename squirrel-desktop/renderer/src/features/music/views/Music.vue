@@ -17,7 +17,7 @@
 
       <div class="app-workbench__content music-content">
         <div v-if="isDetailView" class="music-detail-navigation">
-          <Button text severity="secondary" size="sm" @click="goBackInMusic">
+          <Button text variant="secondary" size="sm" @click="goBackInMusic">
             <AppIcon name="chevronLeft" class="h-4 w-4" />
             {{ detailBackLabel }}
           </Button>

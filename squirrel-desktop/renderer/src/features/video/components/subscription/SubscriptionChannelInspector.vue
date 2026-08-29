@@ -13,7 +13,7 @@
       </div>
       <Button
         type="button"
-        text severity="secondary"
+        text variant="secondary"
         size="sm" icon-only
         title="关闭频道详情"
         aria-label="关闭频道详情"
@@ -26,7 +26,7 @@
     <div class="subscription-inspector__body custom-scrollbar">
       <div class="subscription-inspector__actions">
         <Button
-          severity="secondary" outlined
+          variant="secondary" outlined
           size="sm"
           @click="$emit('open-detail')"
         >
@@ -34,7 +34,7 @@
         </Button>
         <Button
           type="button"
-          severity="secondary" outlined
+          variant="secondary" outlined
           size="sm"
           :loading="refreshing"
           @click="$emit('refresh')"
@@ -45,7 +45,7 @@
         <Button
           v-if="canOpenRemote"
           type="button"
-          text severity="secondary"
+          text variant="secondary"
           size="sm"
           @click="$emit('open-remote')"
         >
@@ -56,7 +56,7 @@
 
       <Button
         type="button"
-        text severity="secondary"
+        text variant="secondary"
         size="sm"
         class="subscription-inspector__special"
         :class="{ 'is-active': channel.is_special_followed }"

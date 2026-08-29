@@ -10,7 +10,7 @@
       <Button
         type="button"
         text
-        severity="secondary"
+        variant="secondary"
         size="sm"
         icon-only
         class="app-header__sidebar-toggle"
@@ -47,7 +47,7 @@
       <Button
         type="button"
         text
-        severity="secondary"
+        variant="secondary"
         size="sm"
         class="app-header__user"
         :title="`${userDisplayName} - 个人资料`"

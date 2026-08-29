@@ -146,7 +146,7 @@
                 <div class="app-settings-row__title">退出当前账号</div>
                 <div class="app-settings-row__desc">清除本机会话并返回登录页。</div>
               </div>
-              <Button severity="secondary" outlined class="profile-logout-button" @click="handleLogout">
+              <Button variant="secondary" outlined class="profile-logout-button" @click="handleLogout">
                 <AppIcon name="logout" class="h-3.5 w-3.5" />
                 退出登录
               </Button>

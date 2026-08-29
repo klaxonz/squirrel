@@ -41,7 +41,7 @@ withDefaults(defineProps<{
     <DropdownMenuTrigger as-child>
       <Button
         type="button"
-        text severity="secondary"
+        text variant="secondary"
         size="sm" icon-only
         :class="buttonClass"
         :disabled="disabled"

@@ -38,7 +38,7 @@
             />
             <Button
               type="button"
-              severity="secondary"
+              variant="secondary"
               outlined
               size="lg"
               :disabled="!targetServerUrl || busy"
@@ -89,7 +89,7 @@
             v-if="recentServerUrls.length"
             type="button"
             text
-            severity="secondary"
+            variant="secondary"
             size="sm"
             :disabled="busy"
             @click="handleClearRecent"

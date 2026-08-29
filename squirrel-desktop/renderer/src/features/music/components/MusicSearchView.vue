@@ -4,7 +4,7 @@
       <section v-if="history.length" class="music-search-section">
         <div class="music-search-section-header">
           <h3 class="music-search-section-title">搜索历史</h3>
-          <Button text severity="secondary" size="sm" @click="clearHistory">
+          <Button text variant="secondary" size="sm" @click="clearHistory">
             <AppIcon name="trash" class="h-4 w-4" />
             清空
           </Button>
@@ -13,7 +13,7 @@
           <Button
             v-for="(item, index) in history"
             :key="index"
-            severity="secondary"
+            variant="secondary"
             size="sm"
             @click="searchByKeyword(item)"
           >
@@ -29,7 +29,7 @@
           <Button
             v-for="(item, index) in hotSearches.slice(0, 20)"
             :key="item.keyword"
-            text severity="secondary"
+            text variant="secondary"
             size="sm"
             class="music-hot-item"
             @click="searchByKeyword(item.keyword)"
@@ -47,7 +47,7 @@
 
       <AppEmptyState v-else-if="error" variant="error" title="搜索失败" :copy="error || '请稍后重试'">
         <template #actions>
-          <Button severity="secondary" outlined size="sm" @click="emit('retry')">重试</Button>
+          <Button variant="secondary" outlined size="sm" @click="emit('retry')">重试</Button>
         </template>
       </AppEmptyState>
 

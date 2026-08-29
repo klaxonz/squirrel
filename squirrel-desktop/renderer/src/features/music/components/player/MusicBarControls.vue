@@ -2,7 +2,7 @@
   <div class="music-bar-controls">
     <div class="music-bar-buttons">
       <Button
-        text severity="secondary"
+        text variant="secondary"
         size="sm" icon-only
         class="music-bar-mode-button"
         :class="{ 'app-selection-active': shuffle }"
@@ -15,7 +15,7 @@
       </Button>
 
       <Button
-        text severity="secondary"
+        text variant="secondary"
         size="sm" icon-only
         class="music-bar-step-button"
         :disabled="!canStep"
@@ -42,7 +42,7 @@
       </Button>
 
       <Button
-        text severity="secondary"
+        text variant="secondary"
         size="sm" icon-only
         class="music-bar-step-button"
         :disabled="!canStep"
@@ -54,7 +54,7 @@
       </Button>
 
       <Button
-        text severity="secondary"
+        text variant="secondary"
         size="sm" icon-only
         class="music-bar-mode-button"
         :class="{ 'app-selection-active': repeat !== 'none' }"

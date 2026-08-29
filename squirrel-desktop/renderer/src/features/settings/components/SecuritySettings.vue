@@ -44,7 +44,7 @@
                 <Button
                   type="button"
                   text
-                  severity="secondary"
+                  variant="secondary"
                   size="sm"
                   icon-only
                   class="security-password-toggle"
@@ -80,7 +80,7 @@
             <div class="app-settings-row__desc">撤销所有其他设备的登录状态；当前设备保持登录。</div>
           </div>
           <Button
-            severity="secondary"
+            variant="secondary"
             outlined
             class="security-revoke-button"
             :loading="sessionSubmitting"

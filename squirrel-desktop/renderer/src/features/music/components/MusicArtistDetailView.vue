@@ -18,7 +18,7 @@
           播放热门
         </Button>
         <Button
-          severity="secondary"
+          variant="secondary"
           :loading="followLoading"
           :class="followed && 'app-selection-active'"
           @click="handleFollow"
@@ -77,7 +77,7 @@
         @play-mv="$emit('play-mv', $event)"
       />
       <div v-if="hasMore" class="music-detail-load-more">
-        <Button severity="secondary" outlined :loading="loadingMore" @click="$emit('load-more')">
+        <Button variant="secondary" outlined :loading="loadingMore" @click="$emit('load-more')">
           加载更多
         </Button>
       </div>

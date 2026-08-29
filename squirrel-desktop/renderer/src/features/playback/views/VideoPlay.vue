@@ -24,7 +24,7 @@
             <strong>视频信息加载失败</strong>
             <span>{{ metadataError }}</span>
           </div>
-          <Button type="button" text severity="secondary" size="sm" :disabled="loadingMetadata" @click="retryMetadata">
+          <Button type="button" text variant="secondary" size="sm" :disabled="loadingMetadata" @click="retryMetadata">
             {{ loadingMetadata ? '重试中' : '重试' }}
           </Button>
         </div>
@@ -44,7 +44,7 @@
             v-if="persistenceStatus === 'failed'"
             type="button"
             text
-            severity="secondary"
+            variant="secondary"
             size="sm"
             @click="ensureLocalVideo(video)"
           >
@@ -182,7 +182,7 @@
                 v-if="subscriptionStatusError"
                 type="button"
                 text
-                severity="secondary"
+                variant="secondary"
                 size="sm"
                 :disabled="isCheckingSubscription"
                 @click="refreshSubscriptionStatus"
@@ -198,7 +198,7 @@
                   v-for="actor in displayedVideoActors"
                   :key="actor.url || actor.name"
                   type="button"
-                  severity="secondary"
+                  variant="secondary"
                   size="sm"
                   class="video-detail__actor"
                   @click="openProfile(actor)"
@@ -222,7 +222,7 @@
               <Button
                 v-if="hasLongDescription"
                 type="button"
-                text severity="secondary"
+                text variant="secondary"
                 size="sm"
                 class="video-detail__description-toggle"
                 :aria-expanded="descriptionExpanded"

@@ -21,8 +21,7 @@ vi.mock('@/features/video/components/feed/VideoThumbnail.vue', () => ({
 vi.mock('@/shared/ui/button', () => ({
   Button: defineComponent({
     props: {
-      text: Boolean,
-      severity: String,
+      variant: String,
       size: String,
     },
     setup(_, { attrs, slots }) {

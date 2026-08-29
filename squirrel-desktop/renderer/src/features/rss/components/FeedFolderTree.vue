@@ -2,7 +2,7 @@
   <div class="feed-folder-tree custom-scrollbar" :aria-busy="loading">
     <div class="feed-folder-tree__all" :class="{ 'is-selected': !selectedFeedId }">
       <Button
-        text severity="secondary"
+        text variant="secondary"
         size="sm"
         :disabled="loading"
         @click="$emit('selectAll')"
@@ -23,7 +23,7 @@
       </Button>
       <Button
         v-if="hasAccount && canManageSubscriptions"
-        text severity="secondary"
+        text variant="secondary"
         size="sm" icon-only
         @click="$emit('addFeed')"
         class="feed-folder-tree__add"
@@ -45,7 +45,7 @@
       class="feed-folder-tree__error"
     >
       <template #actions>
-        <Button severity="secondary" outlined size="sm" @click="$emit('retry')">重试</Button>
+        <Button variant="secondary" outlined size="sm" @click="$emit('retry')">重试</Button>
       </template>
     </AppEmptyState>
 
@@ -53,7 +53,7 @@
       <div class="feed-folder-tree__folders">
         <div v-for="folder in folders" :key="folder.name" class="feed-folder-tree__folder">
           <Button
-            text severity="secondary"
+            text variant="secondary"
             size="sm"
             @click="$emit('toggleFolder', folder.name)"
             class="feed-folder-tree__folder-button"
@@ -88,7 +88,7 @@
               </button>
               <Button
                 v-if="canManageSubscriptions"
-                text severity="secondary"
+                text variant="secondary"
                 size="sm" icon-only
                 @click.stop="$emit('unsubscribeFeed', feed)"
                 class="feed-folder-tree__remove"

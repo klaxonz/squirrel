@@ -9,16 +9,12 @@ defineOptions({ inheritAttrs: false })
 const props = withDefaults(defineProps<{
   type?: ButtonHTMLAttributes['type']
   variant?: ButtonVariant
-  severity?: 'secondary' | 'danger' | 'contrast' | 'help' | 'info' | 'success' | 'warn'
   size?: ButtonSize
   class?: HTMLAttributes['class']
   loading?: boolean
   disabled?: boolean
   iconOnly?: boolean
   rounded?: boolean
-  text?: boolean
-  outlined?: boolean
-  link?: boolean
   fluid?: boolean
 }>(), {
   type: 'button',
@@ -28,25 +24,12 @@ const props = withDefaults(defineProps<{
   disabled: false,
   iconOnly: false,
   rounded: false,
-  text: false,
-  outlined: false,
-  link: false,
   fluid: false,
-})
-
-const resolvedVariant = computed<ButtonVariant>(() => {
-  if (props.link) return 'link'
-  if (props.text) return 'ghost'
-  if (props.outlined) return 'outline'
-  if (props.severity === 'danger') return 'destructive'
-  if (props.severity === 'secondary') return 'secondary'
-  if (props.severity === 'contrast') return 'contrast'
-  return props.variant
 })
 
 const classes = computed(() => cn(
   'sq-button',
-  `sq-button--${resolvedVariant.value}`,
+  `sq-button--${props.variant}`,
   `sq-button--${props.size}`,
   props.iconOnly && 'sq-button--icon-only',
   props.rounded && 'sq-button--rounded',

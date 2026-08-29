@@ -1,5 +1,5 @@
 <template>
-  <Button severity="secondary" size="sm" @click="openDialog">
+  <Button variant="secondary" size="sm" @click="openDialog">
     <AppIcon name="plus" class="h-3.5 w-3.5" />
     创建歌单
   </Button>
@@ -27,7 +27,7 @@
       </div>
 
       <DialogFooter>
-        <Button severity="secondary" outlined :disabled="creating" @click="closeDialog">
+        <Button variant="secondary" outlined :disabled="creating" @click="closeDialog">
           取消
         </Button>
         <Button

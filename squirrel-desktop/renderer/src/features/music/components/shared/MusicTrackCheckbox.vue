@@ -1,6 +1,6 @@
 <template>
   <Button
-    text severity="secondary"
+    text variant="secondary"
     size="sm" icon-only
     :class="checked && 'app-selection-active'"
     :aria-label="checked ? '取消选择' : '选择歌曲'"

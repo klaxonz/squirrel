@@ -41,7 +41,7 @@
         <span class="channel-remote-toolbar__label">远端内容</span>
         <Button
           type="button"
-          text severity="secondary"
+          text variant="secondary"
           size="sm"
           :disabled="isRefreshing"
           @click="refreshCurrentList"
@@ -68,7 +68,7 @@
       <div v-if="feedError">
         <AppEmptyState variant="error" title="频道内容加载失败" :copy="feedError">
           <template #actions>
-            <Button severity="secondary" outlined size="sm" @click="refreshContent">重试内容加载</Button>
+            <Button variant="secondary" outlined size="sm" @click="refreshContent">重试内容加载</Button>
           </template>
         </AppEmptyState>
       </div>

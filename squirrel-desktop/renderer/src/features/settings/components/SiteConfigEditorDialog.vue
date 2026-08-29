@@ -14,7 +14,7 @@
             <DialogDescription class="app-dialog-form-description">{{ siteEditorForm.slug }}</DialogDescription>
           </div>
         </div>
-        <Button text severity="secondary" size="sm" icon-only class="text-muted-foreground" aria-label="关闭" @click="$emit('close')">
+        <Button text variant="secondary" size="sm" icon-only class="text-muted-foreground" aria-label="关闭" @click="$emit('close')">
           <AppIcon name="close" class="h-3.5 w-3.5" />
         </Button>
       </DialogHeader>
@@ -164,7 +164,7 @@
       </form>
 
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
-        <Button size="sm" text severity="secondary" @click="$emit('close')">
+        <Button size="sm" text variant="secondary" @click="$emit('close')">
           取消
         </Button>
         <Button type="submit" form="site-editor-form" size="sm" :loading="saving">

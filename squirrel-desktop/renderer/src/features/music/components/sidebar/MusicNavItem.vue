@@ -1,6 +1,6 @@
 <template>
   <Button
-    text severity="secondary"
+    text variant="secondary"
     class="music-nav-item"
     :class="{ 'is-active': active }"
     :aria-current="active ? 'page' : undefined"

@@ -20,7 +20,7 @@
           播放全部
         </Button>
         <Button
-          severity="secondary"
+          variant="secondary"
           :class="shuffle && 'app-selection-active'"
           @click="shuffleAll"
         >
@@ -29,7 +29,7 @@
         </Button>
         <Button
           v-if="showCollect"
-          severity="secondary"
+          variant="secondary"
           :class="collected && 'app-selection-active'"
           @click="$emit('collect')"
         >
@@ -53,7 +53,7 @@
     </div>
 
     <div v-if="hasMore" class="music-playlist-load-more">
-      <Button severity="secondary" outlined :loading="loadingMore" @click="$emit('load-more')">
+      <Button variant="secondary" outlined :loading="loadingMore" @click="$emit('load-more')">
         加载更多
       </Button>
     </div>

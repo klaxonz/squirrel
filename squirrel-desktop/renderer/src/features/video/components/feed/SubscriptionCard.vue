@@ -72,7 +72,7 @@
 
     <Button
       type="button"
-      text severity="secondary"
+      text variant="secondary"
       size="sm" icon-only
       class="subscription-row__star"
       :class="{ 'is-active': subscription.is_special_followed }"

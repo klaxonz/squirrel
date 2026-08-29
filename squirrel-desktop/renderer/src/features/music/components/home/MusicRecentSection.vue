@@ -5,7 +5,7 @@
         <h2 class="music-recent-title">最近播放</h2>
         <p class="music-recent-description">继续刚才的收听</p>
       </div>
-      <Button text severity="secondary" size="sm" @click="$emit('view-all')">
+      <Button text variant="secondary" size="sm" @click="$emit('view-all')">
         查看全部
         <AppIcon name="chevronRight" class="h-3.5 w-3.5" />
       </Button>

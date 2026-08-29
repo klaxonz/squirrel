@@ -8,7 +8,7 @@
         :key="btn.label"
         type="button"
         text
-        severity="secondary"
+        variant="secondary"
         size="sm"
         icon-only
         class="auth-titlebar__control"

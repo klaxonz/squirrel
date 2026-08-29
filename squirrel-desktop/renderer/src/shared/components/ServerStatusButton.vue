@@ -4,7 +4,7 @@
     <Button
       type="button"
       text
-      severity="secondary"
+      variant="secondary"
       :icon-only="mode === 'floating'"
       :class="[
         'server-status-trigger',
@@ -50,7 +50,7 @@
       <div class="server-status-popover__actions">
         <Button
           type="button"
-          severity="secondary"
+          variant="secondary"
           outlined
           size="sm"
           class="server-status-popover__action"
@@ -64,7 +64,7 @@
 
         <Button
           type="button"
-          severity="secondary"
+          variant="secondary"
           outlined
           size="sm"
           class="server-status-popover__action"

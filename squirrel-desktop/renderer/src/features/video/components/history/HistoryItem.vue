@@ -79,7 +79,7 @@
 
     <Button
       text
-      severity="secondary"
+      variant="secondary"
       size="sm"
       icon-only
       class="history-item__delete"

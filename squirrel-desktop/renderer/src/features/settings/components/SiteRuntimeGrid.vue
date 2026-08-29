@@ -20,7 +20,7 @@
         :copy="filtered ? '调整搜索或状态筛选后再试。' : '本地站点发现后会显示在这里。'"
       >
         <template v-if="filtered" #actions>
-          <Button size="sm" severity="secondary" @click="$emit('clear-filters')">清空筛选</Button>
+          <Button size="sm" variant="secondary" @click="$emit('clear-filters')">清空筛选</Button>
         </template>
       </AppEmptyState>
     </div>
@@ -109,7 +109,7 @@
           <div class="site-runtime-row__actions">
             <Button
               type="button"
-              text severity="secondary"
+              text variant="secondary"
               size="sm"
               class="site-runtime-row__test"
               :disabled="!runtime.siteName || runtime.siteTesting || runtime.siteLoginTesting"
