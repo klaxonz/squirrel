@@ -13,7 +13,7 @@
             {{ isEditing ? '更新调度频率、运行选项和任务参数。' : '选择执行逻辑并配置任务的调度规则。' }}
           </DialogDescription>
         </div>
-        <Button text variant="secondary" size="sm" icon-only aria-label="关闭任务对话框" @click="$emit('close')">
+        <Button variant="secondary" size="sm" icon-only aria-label="关闭任务对话框" @click="$emit('close')">
           <AppIcon name="close" class="h-4 w-4" />
         </Button>
       </DialogHeader>
@@ -176,7 +176,7 @@
       </div>
 
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end task-dialog__footer">
-        <Button variant="secondary" outlined @click="$emit('close')">取消</Button>
+        <Button variant="outline" @click="$emit('close')">取消</Button>
         <Button type="submit" form="task-dialog-form" variant="contrast" :loading="loading">
           {{ isEditing ? '保存' : '创建' }}
         </Button>

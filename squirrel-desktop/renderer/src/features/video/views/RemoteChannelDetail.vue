@@ -3,7 +3,7 @@
     <div v-if="pageError" class="app-page-content app-page-content--media">
         <AppEmptyState variant="error" title="加载失败" :copy="pageError">
           <template #actions>
-            <Button v-if="!queryError" variant="secondary" outlined size="sm" @click="refresh">重试</Button>
+            <Button v-if="!queryError" variant="outline" size="sm" @click="refresh">重试</Button>
           </template>
         </AppEmptyState>
     </div>
@@ -57,7 +57,7 @@
 
           <div class="remote-channel-header__actions">
             <div v-if="localSubscriptionRoute" class="remote-channel-switch">
-              <Button type="button" text variant="secondary" size="sm" @click="openLocalChannel">
+              <Button type="button" variant="secondary" size="sm" @click="openLocalChannel">
                 <AppIcon name="library" class="h-3.5 w-3.5" />
                 本地
               </Button>
@@ -150,7 +150,7 @@
         <Button
           v-if="!allLoaded"
           type="button"
-          variant="secondary" outlined
+          variant="outline"
           :disabled="loading"
           @click="loadMore"
         >

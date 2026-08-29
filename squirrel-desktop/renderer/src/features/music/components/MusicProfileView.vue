@@ -84,7 +84,7 @@
         </div>
 
         <Button
-          text variant="secondary"
+          variant="secondary"
           size="sm"
           class="music-profile-logout"
           :loading="logoutLoading"

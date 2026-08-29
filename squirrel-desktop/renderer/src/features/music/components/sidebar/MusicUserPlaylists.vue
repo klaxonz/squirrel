@@ -8,7 +8,7 @@
       <Button
         v-for="playlist in visiblePlaylists"
         :key="playlist.listid"
-        text variant="secondary"
+        variant="secondary"
         size="sm"
         class="music-user-playlist-item"
         :class="{ 'music-user-playlist-item--active': selectedId === String(playlist.listid || '') }"

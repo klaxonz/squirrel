@@ -208,7 +208,7 @@
                 />
                 <Button
                   type="button"
-                  variant="secondary" outlined
+                  variant="outline"
                   :loading="serverTesting"
                   :disabled="serverSaving || !serverForm.url.trim()"
                   @click="handleTestServer"

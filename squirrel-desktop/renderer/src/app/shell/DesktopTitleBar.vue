@@ -7,7 +7,7 @@
     <div class="titlebar__nav no-drag">
       <Button
         type="button"
-        text
+       
         variant="secondary"
         size="sm"
         icon-only
@@ -22,7 +22,7 @@
 
       <Button
         type="button"
-        text
+       
         variant="secondary"
         size="sm"
         icon-only
@@ -37,7 +37,7 @@
 
       <Button
         type="button"
-        text
+       
         variant="secondary"
         size="sm"
         icon-only
@@ -61,7 +61,7 @@
         v-for="btn in controls"
         :key="btn.label"
         type="button"
-        text
+       
         variant="secondary"
         size="sm"
         icon-only

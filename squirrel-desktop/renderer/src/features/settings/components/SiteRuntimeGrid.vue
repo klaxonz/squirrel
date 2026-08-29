@@ -109,7 +109,7 @@
           <div class="site-runtime-row__actions">
             <Button
               type="button"
-              text variant="secondary"
+              variant="secondary"
               size="sm"
               class="site-runtime-row__test"
               :disabled="!runtime.siteName || runtime.siteTesting || runtime.siteLoginTesting"

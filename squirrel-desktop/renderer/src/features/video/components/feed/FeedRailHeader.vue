@@ -6,7 +6,7 @@
         <Button
           v-if="viewMore"
           type="button"
-          text variant="secondary"
+          variant="secondary"
           size="sm"
           class="feed-rail-header__more"
           :aria-label="viewMoreLabel"
@@ -27,7 +27,7 @@
     >
       <Button
         type="button"
-        text variant="secondary"
+        variant="secondary"
         size="sm" icon-only
         class="feed-rail-header__icon-btn"
         :disabled="!canScrollLeft"
@@ -38,7 +38,7 @@
       </Button>
       <Button
         type="button"
-        text variant="secondary"
+        variant="secondary"
         size="sm" icon-only
         class="feed-rail-header__icon-btn"
         :disabled="!canScrollRight"

@@ -2,7 +2,7 @@
   <div :class="grid ? 'video-item__meta' : 'video-item__community'">
     <Button
       v-if="profile"
-      text
+      variant="ghost"
       class="video-item__profile-action"
       :class="{ 'video-item__profile-action--grid': grid }"
       :aria-label="`查看来源：${names}`"

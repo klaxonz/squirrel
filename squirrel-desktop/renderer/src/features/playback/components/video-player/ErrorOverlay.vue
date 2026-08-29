@@ -11,8 +11,8 @@
           <Button
             v-if="requiresAuth"
             size="sm"
-            variant="secondary"
-            outlined
+           
+            variant="outline"
             class="sp-error-auth-btn"
             @click.stop="$emit('auth')"
           >

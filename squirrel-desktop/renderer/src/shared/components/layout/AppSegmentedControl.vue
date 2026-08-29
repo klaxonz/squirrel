@@ -11,7 +11,7 @@
     <Button
       v-for="option in options"
       :key="option.value"
-      text variant="secondary"
+      variant="secondary"
       :size="buttonSize"
       :icon-only="size === 'icon'"
       type="button"

@@ -11,7 +11,7 @@
         </DialogDescription>
       </DialogHeader>
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
-        <Button variant="secondary" outlined size="sm" @click="$emit('update:open', false)">取消</Button>
+        <Button variant="outline" size="sm" @click="$emit('update:open', false)">取消</Button>
         <Button variant="destructive" size="sm" :loading="deleting" :disabled="deleting" @click="$emit('confirm')">确认删除</Button>
       </DialogFooter>
     </DialogContent>

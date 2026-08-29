@@ -42,7 +42,7 @@
       />
     </div>
     <div class="app-page-actions mt-6" v-if="hasMore">
-      <Button variant="secondary" outlined size="sm" :loading="loading" @click="$emit('load-more')">
+      <Button variant="outline" size="sm" :loading="loading" @click="$emit('load-more')">
         加载更多歌单
       </Button>
     </div>

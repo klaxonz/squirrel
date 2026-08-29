@@ -10,7 +10,7 @@
       <template #meta>
         <Button
           v-if="album.artist_id"
-          link
+          variant="link"
           size="sm"
           class="music-meta-link"
           @click="$emit('select-artist')"
@@ -48,7 +48,7 @@
     />
 
     <div v-if="hasMore" class="music-detail-load-more">
-      <Button variant="secondary" outlined :loading="loadingMore" @click="$emit('load-more')">
+      <Button variant="outline" :loading="loadingMore" @click="$emit('load-more')">
         加载更多
       </Button>
     </div>

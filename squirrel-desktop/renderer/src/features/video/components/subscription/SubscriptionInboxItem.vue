@@ -62,7 +62,7 @@
     <div class="subscription-inbox-item__actions">
       <Button
         type="button"
-        text variant="secondary"
+        variant="secondary"
         size="sm"
         icon-only
         class="subscription-inbox-item__read-action"

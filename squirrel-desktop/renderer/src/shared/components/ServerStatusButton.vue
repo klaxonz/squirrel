@@ -3,7 +3,7 @@
     <PopoverTrigger as-child>
     <Button
       type="button"
-      text
+     
       variant="secondary"
       :icon-only="mode === 'floating'"
       :class="[
@@ -50,8 +50,8 @@
       <div class="server-status-popover__actions">
         <Button
           type="button"
-          variant="secondary"
-          outlined
+         
+          variant="outline"
           size="sm"
           class="server-status-popover__action"
           :disabled="!currentServerUrl || testing"
@@ -64,8 +64,8 @@
 
         <Button
           type="button"
-          variant="secondary"
-          outlined
+         
+          variant="outline"
           size="sm"
           class="server-status-popover__action"
           @click="goToServerConfig"

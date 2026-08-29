@@ -45,11 +45,11 @@
       </div>
 
       <nav class="music-home-controls__shortcuts" aria-label="音乐快捷入口">
-        <Button text variant="secondary" size="sm" @click="$emit('everyday')">
+        <Button variant="secondary" size="sm" @click="$emit('everyday')">
           <AppIcon name="time" class="size-3.5" />
           每日推荐
         </Button>
-        <Button text variant="secondary" size="sm" @click="$emit('new-songs')">
+        <Button variant="secondary" size="sm" @click="$emit('new-songs')">
           <AppIcon name="playlistMusic" class="size-3.5" />
           新歌速递
         </Button>

@@ -1,6 +1,6 @@
 <template>
   <Button
-    text
+    variant="ghost"
     class="video-item__playback-control"
     :aria-label="`播放：${title}`"
     data-playback-control

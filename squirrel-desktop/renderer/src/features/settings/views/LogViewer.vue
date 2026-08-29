@@ -10,7 +10,7 @@
           <template #actions>
             <Button
               type="button"
-              variant="secondary" outlined
+              variant="outline"
               size="sm"
               :class="{ 'is-active': allCopied }"
               :disabled="logs.length === 0"
@@ -71,7 +71,7 @@
               v-if="hasActiveFilters"
               type="button"
               size="sm"
-              text variant="secondary"
+              variant="secondary"
               class="log-filterbar__clear"
               title="清空筛选"
               @click="clearFilters"
@@ -188,7 +188,7 @@
 
                     <Button
                       size="sm" icon-only
-                      text variant="secondary"
+                      variant="secondary"
                       class="log-row-copy"
                       title="复制这条日志"
                       aria-label="复制这条日志"

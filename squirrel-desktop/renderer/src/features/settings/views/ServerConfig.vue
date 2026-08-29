@@ -38,8 +38,8 @@
             />
             <Button
               type="button"
-              variant="secondary"
-              outlined
+             
+              variant="outline"
               size="lg"
               :disabled="!targetServerUrl || busy"
               :loading="testing"
@@ -88,7 +88,7 @@
           <Button
             v-if="recentServerUrls.length"
             type="button"
-            text
+           
             variant="secondary"
             size="sm"
             :disabled="busy"

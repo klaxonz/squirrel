@@ -30,7 +30,7 @@
       </div>
 
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
-        <Button size="sm" text variant="secondary" :disabled="loading" @click="emit('close')">取消</Button>
+        <Button size="sm" variant="secondary" :disabled="loading" @click="emit('close')">取消</Button>
         <Button size="sm" :loading="loading" :disabled="!channelUrl" @click="handleSubmit">
           确认添加
         </Button>

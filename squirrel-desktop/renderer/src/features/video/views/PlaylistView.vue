@@ -98,7 +98,7 @@
                 <AppIcon name="plus" class="h-4 w-4" />
                 新建播放列表
               </Button>
-              <Button v-else variant="secondary" outlined @click="reloadPlaylists">重试</Button>
+              <Button v-else variant="outline" @click="reloadPlaylists">重试</Button>
             </template>
           </AppEmptyState>
         </div>
@@ -184,7 +184,7 @@
 
                   <template #actions>
                     <Button
-                      text variant="secondary"
+                      variant="secondary"
                       size="sm" icon-only
                       class="playlist-item-remove"
                       title="从播放列表移除"
@@ -236,7 +236,7 @@
           </AppFormField>
         </div>
         <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
-          <Button variant="secondary" outlined @click="closeModal">取消</Button>
+          <Button variant="outline" @click="closeModal">取消</Button>
           <Button :disabled="!formName.trim()" @click="handleSave">
             {{ editingPlaylist ? '保存' : '创建' }}
           </Button>

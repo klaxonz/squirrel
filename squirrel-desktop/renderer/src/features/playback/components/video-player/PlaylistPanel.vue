@@ -4,7 +4,7 @@
       <div class="sp-playlist-header">
         <span class="sp-playlist-title">{{ title }}</span>
         <span class="sp-playlist-count">{{ entries.length }} 项</span>
-        <Button text variant="secondary" size="sm" icon-only class="sp-icon-btn" @click="$emit('close')" title="关闭" aria-label="关闭播放列表">
+        <Button variant="secondary" size="sm" icon-only class="sp-icon-btn" @click="$emit('close')" title="关闭" aria-label="关闭播放列表">
           <AppIcon name="close" />
         </Button>
       </div>

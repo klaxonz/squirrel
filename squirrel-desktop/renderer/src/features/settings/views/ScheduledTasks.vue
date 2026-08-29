@@ -16,7 +16,7 @@
           </Button>
           <Button
             type="button"
-            text variant="secondary"
+            variant="secondary"
             size="sm" icon-only
             class="scheduled-tasks-refresh"
             :disabled="loading"
@@ -128,7 +128,7 @@
 
             <div class="scheduled-task-row__actions">
               <Button
-                text variant="secondary"
+                variant="secondary"
                 size="sm"
                 class="scheduled-task-row__action"
                 title="立即执行"
@@ -138,7 +138,7 @@
                 执行
               </Button>
               <Button
-                text variant="secondary"
+                variant="secondary"
                 size="sm"
                 class="scheduled-task-row__action"
                 title="编辑任务"
@@ -159,7 +159,7 @@
           <span>第 {{ currentPage }} / {{ totalPages }} 页</span>
           <div>
             <Button
-              variant="secondary" outlined
+              variant="outline"
               size="sm"
               :disabled="currentPage <= 1"
               @click="goToPage(currentPage - 1)"
@@ -167,7 +167,7 @@
               上一页
             </Button>
             <Button
-              variant="secondary" outlined
+              variant="outline"
               size="sm"
               :disabled="currentPage >= totalPages"
               @click="goToPage(currentPage + 1)"

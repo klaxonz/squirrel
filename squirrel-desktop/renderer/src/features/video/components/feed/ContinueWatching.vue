@@ -5,7 +5,7 @@
         <h2>继续观看</h2>
         <span v-if="historyItems.length" class="continue-rail__count">{{ historyItems.length }}</span>
       </div>
-      <Button text variant="secondary" size="sm" class="continue-rail__more" @click="$emit('viewMore')">
+      <Button variant="secondary" size="sm" class="continue-rail__more" @click="$emit('viewMore')">
         全部
         <AppIcon name="chevronRight" class="size-3.5" />
       </Button>

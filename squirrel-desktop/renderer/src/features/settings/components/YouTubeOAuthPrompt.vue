@@ -12,7 +12,7 @@
           </div>
           <p class="oauth-prompt__description">在授权页输入此代码</p>
         </div>
-        <Button text variant="secondary" size="sm" icon-only class="text-muted-foreground" title="关闭" @click="$emit('dismiss')">
+        <Button variant="secondary" size="sm" icon-only class="text-muted-foreground" title="关闭" @click="$emit('dismiss')">
           <AppIcon name="close" class="h-4 w-4" />
         </Button>
       </div>
@@ -21,14 +21,14 @@
         <div class="app-surface app-surface--subtle oauth-prompt__code">
           {{ prompt.userCode }}
         </div>
-        <Button variant="secondary" outlined size="sm" icon-only title="复制授权码" @click="$emit('copy')">
+        <Button variant="outline" size="sm" icon-only title="复制授权码" @click="$emit('copy')">
           <AppIcon name="clipboard" class="h-4 w-4" />
         </Button>
       </div>
 
       <div class="oauth-prompt__footer">
         <span class="oauth-prompt__status">{{ prompt.copied ? '已复制' : '等待授权完成' }}</span>
-        <Button variant="secondary" outlined size="sm" @click="$emit('open', prompt.verificationUrl)">
+        <Button variant="outline" size="sm" @click="$emit('open', prompt.verificationUrl)">
           <AppIcon name="externalLink" class="h-3.5 w-3.5" />
           打开授权页
         </Button>

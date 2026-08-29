@@ -88,7 +88,7 @@
 
         <div v-if="isCompactSidebarPlayer" class="music-mini music-mini--compact">
           <Button
-            text variant="secondary"
+            variant="secondary"
             size="sm" icon-only
             class="music-mini-compact-toggle"
             :disabled="store.resolvingUrl || isBuffering"
@@ -111,7 +111,7 @@
 
         <div v-else class="music-mini">
           <Button
-            text variant="secondary"
+            variant="secondary"
             class="music-mini-track"
             :title="needsRelogin ? '重新登录音乐账号' : '打开沉浸播放'"
             @click="handleMiniTrackClick"
@@ -136,7 +136,7 @@
 
           <div class="music-mini-controls">
             <Button
-              text variant="secondary" size="sm" icon-only
+              variant="secondary" size="sm" icon-only
               class="music-mini-control"
               :disabled="!canStep"
               title="上一首"
@@ -159,7 +159,7 @@
               <AppIcon v-else name="play" class="h-3.5 w-3.5" />
             </Button>
             <Button
-              text variant="secondary" size="sm" icon-only
+              variant="secondary" size="sm" icon-only
               class="music-mini-control"
               :disabled="!canStep"
               title="下一首"
@@ -170,7 +170,7 @@
             </Button>
             <PopoverTrigger as-child>
               <Button
-                text variant="secondary" size="sm" icon-only
+                variant="secondary" size="sm" icon-only
                 class="music-mini-control"
                 title="播放队列"
                 aria-label="播放队列"

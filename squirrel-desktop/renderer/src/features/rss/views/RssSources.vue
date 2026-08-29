@@ -18,7 +18,7 @@
         >
           <template #actions>
             <Button
-              text variant="secondary"
+              variant="secondary"
               size="sm" icon-only
               class="rss-source-pane-toggle"
               title="收起订阅库"
@@ -66,7 +66,7 @@
             </span>
             <div class="rss-sync-status__menu" role="group" aria-label="同步">
               <Button
-                text variant="secondary"
+                variant="secondary"
                 size="sm" icon-only
                 class="rss-sync-status__menu-btn"
                 :disabled="syncing"
@@ -77,7 +77,7 @@
                 <AppIcon name="refresh" class="h-3.5 w-3.5" />
               </Button>
               <Button
-                text variant="secondary"
+                variant="secondary"
                 size="sm" icon-only
                 class="rss-sync-status__menu-btn"
                 :disabled="syncing"
@@ -124,7 +124,7 @@
           <div class="app-pane__header-row">
             <div class="rss-entry-header__identity">
               <Button
-                text variant="secondary"
+                variant="secondary"
                 size="sm" icon-only
                 class="rss-source-pane-toggle"
                 title="打开订阅库"
@@ -141,7 +141,7 @@
                 >
                   <Button
                     v-if="hasFeedNavStack"
-                    text variant="secondary"
+                    variant="secondary"
                     size="sm" icon-only
                     class="rss-back-button"
                     title="返回之前的列表"
@@ -162,7 +162,7 @@
 
             <div class="app-pane__header-actions">
               <Button
-                text variant="secondary"
+                variant="secondary"
                 size="sm" icon-only
                 :disabled="loading"
                 title="刷新文章"
@@ -211,7 +211,7 @@
                 :copy="entriesError"
               >
                 <template #actions>
-                  <Button variant="secondary" outlined size="sm" @click="loadEntries(true)">重试</Button>
+                  <Button variant="outline" size="sm" @click="loadEntries(true)">重试</Button>
                 </template>
               </AppEmptyState>
             </div>
@@ -243,7 +243,7 @@
               >
                 <div class="rss-entry-item__meta-row">
                   <Button
-                    text variant="secondary"
+                    variant="secondary"
                     size="sm"
                     type="button"
                     class="rss-entry-item__source"
@@ -315,7 +315,7 @@
             <div class="app-pane__header-row rss-reader-toolbar__row">
               <div class="rss-reader-toolbar__identity">
                 <Button
-                  text variant="secondary"
+                  variant="secondary"
                   size="sm" icon-only
                   class="rss-reader-list-back"
                   title="返回文章列表"
@@ -325,7 +325,7 @@
                   <AppIcon name="back" class="h-4 w-4" />
                 </Button>
                 <Button
-                  text variant="secondary"
+                  variant="secondary"
                   size="sm"
                   @click="pushFeedNavStack(); selectFeedAndShowAll(readingEntry.feed_id)"
                   class="rss-reader-source-button"
@@ -348,7 +348,7 @@
               <div class="app-pane__header-actions rss-reader-actions">
               <!-- 应用内预览原文 -->
               <Button
-                text variant="secondary"
+                variant="secondary"
                 size="sm" icon-only
                 title="在应用内打开原文"
                 aria-label="在应用内打开原文"
@@ -361,7 +361,7 @@
               <Button
                 title="在系统浏览器打开"
                 aria-label="在系统浏览器打开"
-                text
+               
                 variant="secondary"
                 size="sm"
                 icon-only
@@ -372,7 +372,7 @@
 
               <!-- 收藏 / 取消收藏 -->
               <Button
-                text variant="secondary"
+                variant="secondary"
                 size="sm" icon-only
                 :class="readingEntry.is_starred ? 'text-warning' : ''"
                 :title="readingEntry.is_starred ? '取消收藏' : '收藏文章'"
@@ -386,7 +386,7 @@
               <!-- 取消订阅该源 -->
               <Button
                 v-if="canManageSubscriptions"
-                text variant="secondary"
+                variant="secondary"
                 size="sm" icon-only
                 class="hover:bg-destructive/10 hover:text-destructive"
                 title="取消订阅该源"
@@ -399,7 +399,7 @@
               <!-- Reader Settings -->
               <div class="relative" ref="readerSettingsRef">
                 <Button
-                  text variant="secondary"
+                  variant="secondary"
                   size="sm" icon-only
                   :aria-expanded="showReaderSettings"
                   title="阅读个性化设置"
@@ -483,7 +483,7 @@
             <header class="rss-browser-toolbar">
               <div class="flex items-center gap-3 min-w-0">
                 <Button
-                  text variant="secondary"
+                  variant="secondary"
                   size="sm" icon-only
                   @click="closeInAppBrowser"
                   class="rss-browser-toolbar__button"
@@ -507,7 +507,7 @@
 
               <div class="flex items-center gap-2 shrink-0">
                 <Button
-                  text variant="secondary"
+                  variant="secondary"
                   size="sm" icon-only
                   @click="refreshIframe"
                   class="rss-browser-toolbar__button"
@@ -521,7 +521,7 @@
                 <Button
                   title="在系统浏览器打开"
                   aria-label="在系统浏览器打开"
-                  text
+                 
                   variant="secondary"
                   size="sm"
                   icon-only
@@ -635,7 +635,7 @@
           <div class="app-dialog-form-field" ref="categoryDropdownRef">
             <label class="app-dialog-form-label">分类</label>
             <Button
-              variant="secondary" outlined
+              variant="outline"
               size="sm"
               @click="showCategoryDropdown = !showCategoryDropdown"
               class="rss-subscribe-dialog__category-button app-toolbar-control"
@@ -675,7 +675,7 @@
               <AppListSeparator />
               <div v-if="!showCustomCategoryInput" class="p-1">
                 <Button
-                  text variant="secondary"
+                  variant="secondary"
                   size="sm"
                   @click="showCustomCategoryInput = true"
                   class="rss-subscribe-dialog__new-category"
@@ -694,7 +694,7 @@
                     ref="customCategoryInputRef"
                   />
                   <Button
-                    text variant="secondary"
+                    variant="secondary"
                     size="sm" icon-only
                     @click="confirmCustomCategory"
                     class="rss-subscribe-dialog__confirm-category"
@@ -724,7 +724,7 @@
         <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
           <Button
             type="button"
-            variant="secondary" outlined
+            variant="outline"
             size="sm"
             @click="closeSubscribeModal"
           >

@@ -9,7 +9,7 @@
     >
       <Button
         type="button"
-        text
+       
         variant="secondary"
         size="sm"
         icon-only
@@ -46,7 +46,7 @@
     <div class="app-header__actions">
       <Button
         type="button"
-        text
+       
         variant="secondary"
         size="sm"
         class="app-header__user"

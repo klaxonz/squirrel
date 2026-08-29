@@ -23,7 +23,7 @@
             <AppIcon name="addToPlaylist" class="h-4 w-4" />
             加入歌单
           </Button>
-          <Button text variant="secondary" size="sm" icon-only aria-label="退出多选" @click="exitSelectionMode">
+          <Button variant="secondary" size="sm" icon-only aria-label="退出多选" @click="exitSelectionMode">
             <AppIcon name="close" class="h-4 w-4" />
           </Button>
         </div>
@@ -86,7 +86,7 @@
           <Badge v-if="isPlaying(track)" class="shrink-0">正在播放</Badge>
         </div>
         <Button
-          link
+          variant="link"
           size="sm"
           class="music-track-artist"
           :disabled="!track.artist_id"
@@ -97,7 +97,7 @@
       </div>
 
       <Button
-        link
+        variant="link"
         size="sm"
         class="music-track-col music-track-col--album"
         :disabled="!track.album_id"

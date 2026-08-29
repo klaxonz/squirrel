@@ -43,7 +43,7 @@
                 />
                 <Button
                   type="button"
-                  text
+                 
                   variant="secondary"
                   size="sm"
                   icon-only
@@ -80,8 +80,8 @@
             <div class="app-settings-row__desc">撤销所有其他设备的登录状态；当前设备保持登录。</div>
           </div>
           <Button
-            variant="secondary"
-            outlined
+           
+            variant="outline"
             class="security-revoke-button"
             :loading="sessionSubmitting"
             @click="showRevokeDialog = true"

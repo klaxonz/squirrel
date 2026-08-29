@@ -7,7 +7,7 @@
       <span class="reader-settings-label">排版字体</span>
       <div class="reader-settings-grid">
         <Button
-          text variant="secondary"
+          variant="secondary"
           size="sm"
           @click="select('sans')"
           class="reader-settings-option"
@@ -15,7 +15,7 @@
           title="现代无衬线（推荐）"
         >无衬线</Button>
         <Button
-          text variant="secondary"
+          variant="secondary"
           size="sm"
           @click="select('serif')"
           class="reader-settings-option font-serif"
@@ -32,14 +32,14 @@
       </div>
       <div class="reader-settings-size-controls">
         <Button
-          text variant="secondary"
+          variant="secondary"
           size="sm"
           @click="changeSize(-1)"
           class="reader-settings-size-button"
           :disabled="fontSize <= 14"
         >A-</Button>
         <Button
-          text variant="secondary"
+          variant="secondary"
           size="sm"
           @click="changeSize(1)"
           class="reader-settings-size-button"
@@ -54,7 +54,7 @@
         <Button
           v-for="option in filterOptions"
           :key="option.value"
-          text variant="secondary"
+          variant="secondary"
           size="sm"
           class="reader-settings-option"
           :class="{ 'is-selected': defaultEntryFilter === option.value }"

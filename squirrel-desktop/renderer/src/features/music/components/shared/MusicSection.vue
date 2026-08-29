@@ -5,7 +5,7 @@
         <h2 class="music-section-title">{{ title }}</h2>
         <p v-if="description" class="music-section-description">{{ description }}</p>
       </div>
-      <Button v-if="moreAction" text variant="secondary" size="sm" @click="$emit('more')">
+      <Button v-if="moreAction" variant="secondary" size="sm" @click="$emit('more')">
         查看全部
         <AppIcon name="chevronRight" class="h-3.5 w-3.5" />
       </Button>

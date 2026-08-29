@@ -1,7 +1,7 @@
 <template>
   <div class="music-bar-actions">
     <div class="music-bar-volume">
-      <Button text variant="secondary" size="sm" icon-only title="音量" aria-label="静音/取消静音" @click="$emit('toggle-mute')">
+      <Button variant="secondary" size="sm" icon-only title="音量" aria-label="静音/取消静音" @click="$emit('toggle-mute')">
         <AppIcon :name="volumeIcon" class="h-4 w-4" />
       </Button>
       <input
@@ -18,7 +18,7 @@
     </div>
 
     <PopoverTrigger as-child>
-      <Button class="music-bar-queue" text variant="secondary" size="sm" title="播放队列" aria-label="播放队列">
+      <Button class="music-bar-queue" variant="secondary" size="sm" title="播放队列" aria-label="播放队列">
         <AppIcon name="playlistMusic" class="h-4 w-4" />
         <span v-if="queueCount" class="music-bar-queue-count" aria-hidden="true">
           {{ queueCount > 99 ? '99+' : queueCount }}

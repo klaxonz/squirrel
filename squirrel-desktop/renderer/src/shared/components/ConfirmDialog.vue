@@ -14,7 +14,7 @@
         </DialogDescription>
       </DialogHeader>
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
-        <Button variant="secondary" outlined size="sm" :disabled="confirming" @click="open = false">{{ cancelLabel }}</Button>
+        <Button variant="outline" size="sm" :disabled="confirming" @click="open = false">{{ cancelLabel }}</Button>
         <Button size="sm" :variant="confirmVariant" :loading="confirming" :disabled="confirming" @click="$emit('confirm')">{{ confirmLabel }}</Button>
       </DialogFooter>
     </DialogContent>

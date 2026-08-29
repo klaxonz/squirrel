@@ -17,7 +17,7 @@
           <PopoverTrigger as-child>
           <Button
             type="button"
-            text variant="secondary"
+            variant="secondary"
             size="sm"
             class="app-filter-toolbar-button"
             :class="{ 'is-active': activeFilterCount > 0 }"

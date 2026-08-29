@@ -9,7 +9,7 @@
         copy="地址可能已失效，或页面已经移动。你可以返回上一页，或回到首页继续浏览。"
       >
         <template #actions>
-          <Button v-if="navigation.canGoBack.value" variant="secondary" outlined @click="goBack">
+          <Button v-if="navigation.canGoBack.value" variant="outline" @click="goBack">
             <AppIcon name="chevronLeft" class="size-4" />
             返回上一页
           </Button>

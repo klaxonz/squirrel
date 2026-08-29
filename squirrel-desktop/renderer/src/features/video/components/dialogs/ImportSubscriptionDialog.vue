@@ -15,7 +15,7 @@
               v-for="site in supportedSites"
               :key="site"
               type="button"
-              text variant="secondary"
+              variant="secondary"
               :class="[
                 'import-dialog__site-card app-surface app-surface--subtle',
                 selectedSite === site && 'import-dialog__site-card--active',
@@ -47,7 +47,7 @@
             <div class="import-dialog__toolbar">
               <div class="import-dialog__toolbar-actions">
                 <Button size="sm" variant="secondary" @click="selectAllNotImported">全选已加载未导入</Button>
-                <Button size="sm" text variant="secondary" @click="clearSelection">清空</Button>
+                <Button size="sm" variant="secondary" @click="clearSelection">清空</Button>
               </div>
               <p class="import-dialog__loaded-count app-mono">
                 已加载 {{ loadedCount }} / {{ previewData.total ?? '未知' }}
@@ -99,7 +99,7 @@
             </div>
 
             <div v-if="previewData.has_more" class="import-dialog__load-more">
-              <Button size="sm" variant="secondary" outlined :loading="loadingMorePreview" @click="loadMorePreview">
+              <Button size="sm" variant="outline" :loading="loadingMorePreview" @click="loadMorePreview">
                 {{ loadingMorePreview ? '加载中...' : '加载更多' }}
               </Button>
             </div>
@@ -132,12 +132,12 @@
       </div>
 
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--end">
-        <Button v-if="step === 1" size="sm" text variant="secondary" :disabled="loadingPreview" @click="handleClose">取消</Button>
+        <Button v-if="step === 1" size="sm" variant="secondary" :disabled="loadingPreview" @click="handleClose">取消</Button>
         <Button v-if="step === 1" size="sm" :loading="loadingPreview" :disabled="!selectedSite" @click="handlePreview">
           预览订阅
         </Button>
 
-        <Button v-if="step === 2" size="sm" text variant="secondary" :disabled="importing" @click="step = 1">返回</Button>
+        <Button v-if="step === 2" size="sm" variant="secondary" :disabled="importing" @click="step = 1">返回</Button>
         <Button
           v-if="step === 2"
           size="sm"

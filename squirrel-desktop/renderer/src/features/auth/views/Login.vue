@@ -43,7 +43,7 @@
             />
             <Button
               type="button"
-              text
+             
               variant="secondary"
               size="sm"
               icon-only

@@ -22,7 +22,7 @@
               v-for="prov in providers"
               :key="prov.value"
               type="button"
-              text variant="secondary"
+              variant="secondary"
               size="sm"
               @click="form.provider = prov.value"
               class="account-dialog__provider"
@@ -168,7 +168,7 @@
       <DialogFooter class="app-dialog-form-footer app-dialog-form-footer--between">
         <Button
           type="button"
-          variant="secondary" outlined
+          variant="outline"
           size="sm"
           :disabled="!canTestForm"
           :loading="testing"
@@ -180,7 +180,7 @@
         <div class="app-dialog-actions">
           <Button
             type="button"
-            variant="secondary" outlined
+            variant="outline"
             size="sm"
             @click="open = false"
           >
@@ -188,7 +188,7 @@
           </Button>
           <Button
             type="button"
-            variant="secondary" outlined
+            variant="outline"
             size="sm"
             class="account-dialog__confirm"
             :disabled="!canSaveForm"

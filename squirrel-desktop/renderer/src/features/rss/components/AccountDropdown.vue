@@ -1,7 +1,7 @@
 <template>
   <div ref="dropdownRef" class="account-dropdown">
     <Button
-      text variant="secondary"
+      variant="secondary"
       size="sm"
       @click="$emit('toggle')"
       class="account-dropdown__trigger"
@@ -44,7 +44,7 @@
           </span>
           <div class="app-selectable-list-item__actions account-dropdown__actions">
             <Button
-              text variant="secondary"
+              variant="secondary"
               size="sm" icon-only
               @click.stop="$emit('edit', acc)"
               class="account-dropdown__icon-button"
@@ -53,7 +53,7 @@
               <AppIcon name="pencil" class="h-3.5 w-3.5" />
             </Button>
             <Button
-              text variant="secondary"
+              variant="secondary"
               size="sm" icon-only
               @click.stop="$emit('delete', acc)"
               class="account-dropdown__icon-button account-dropdown__icon-button--danger"

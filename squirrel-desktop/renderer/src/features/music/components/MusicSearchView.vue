@@ -4,7 +4,7 @@
       <section v-if="history.length" class="music-search-section">
         <div class="music-search-section-header">
           <h3 class="music-search-section-title">搜索历史</h3>
-          <Button text variant="secondary" size="sm" @click="clearHistory">
+          <Button variant="secondary" size="sm" @click="clearHistory">
             <AppIcon name="trash" class="h-4 w-4" />
             清空
           </Button>
@@ -29,7 +29,7 @@
           <Button
             v-for="(item, index) in hotSearches.slice(0, 20)"
             :key="item.keyword"
-            text variant="secondary"
+            variant="secondary"
             size="sm"
             class="music-hot-item"
             @click="searchByKeyword(item.keyword)"
@@ -47,7 +47,7 @@
 
       <AppEmptyState v-else-if="error" variant="error" title="搜索失败" :copy="error || '请稍后重试'">
         <template #actions>
-          <Button variant="secondary" outlined size="sm" @click="emit('retry')">重试</Button>
+          <Button variant="outline" size="sm" @click="emit('retry')">重试</Button>
         </template>
       </AppEmptyState>
 
@@ -88,7 +88,7 @@
                 <div class="music-search-col music-search-col--title music-search-song-title-cell">
                   <span class="music-search-song-title">{{ track.title || '未知歌曲' }}</span>
                   <Button
-                    link
+                    variant="link"
                     size="sm"
                     class="music-search-song-artist"
                     :disabled="!track.artist_id"
@@ -98,7 +98,7 @@
                   </Button>
                 </div>
                 <Button
-                  link
+                  variant="link"
                   size="sm"
                   class="music-search-col music-search-col--album music-search-song-album"
                   :disabled="!track.album_id"

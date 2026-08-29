@@ -184,18 +184,18 @@
           <!-- 控制栏主行 -->
           <div class="sp-controls-main">
             <div class="sp-controls-left">
-              <Button v-if="props.hasPrev" text variant="secondary" size="sm" icon-only class="sp-icon-btn" @click="emit('prev')" :title="t('prev')" :aria-label="t('prev')">
+              <Button v-if="props.hasPrev" variant="secondary" size="sm" icon-only class="sp-icon-btn" @click="emit('prev')" :title="t('prev')" :aria-label="t('prev')">
                 <PlayerIcon name="prev" />
               </Button>
-              <Button text variant="secondary" size="sm" icon-only class="sp-icon-btn sp-btn--play" @click="togglePlay" :title="isPlaying ? t('pause') : t('play')" :aria-label="isPlaying ? t('pause') : t('play')">
+              <Button variant="secondary" size="sm" icon-only class="sp-icon-btn sp-btn--play" @click="togglePlay" :title="isPlaying ? t('pause') : t('play')" :aria-label="isPlaying ? t('pause') : t('play')">
                 <PlayerIcon :name="isPlaying ? 'pause' : 'play'" />
               </Button>
-              <Button v-if="props.hasNext" text variant="secondary" size="sm" icon-only class="sp-icon-btn" @click="emit('next')" :title="t('next')" :aria-label="t('next')">
+              <Button v-if="props.hasNext" variant="secondary" size="sm" icon-only class="sp-icon-btn" @click="emit('next')" :title="t('next')" :aria-label="t('next')">
                 <PlayerIcon name="next" />
               </Button>
 
               <div class="sp-volume-group" :class="{ 'is-active': isVolumeScrubbing }" @pointerenter="isVolumeHovered = true" @pointerleave="isVolumeHovered = false">
-                <Button text variant="secondary" size="sm" icon-only class="sp-icon-btn" @click="toggleMute" :title="t('mute')" :aria-label="isMuted ? t('unmute') : t('mute')">
+                <Button variant="secondary" size="sm" icon-only class="sp-icon-btn" @click="toggleMute" :title="t('mute')" :aria-label="isMuted ? t('unmute') : t('mute')">
                   <PlayerIcon :name="volumeIconName" />
                 </Button>
                 <div ref="volumeRailRef"
@@ -230,35 +230,35 @@
               >
                 {{ qualityTagLabel || qualityMenuLabel }}
               </button>
-              <Button v-if="subtitleTracks.length > 0" text variant="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')" :aria-label="t('subtitles')">
+              <Button v-if="subtitleTracks.length > 0" variant="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="toggleSubtitlesQuick" :title="t('subtitles')" :aria-label="t('subtitles')">
                 <PlayerIcon :name="store.subtitlesEnabled ? 'subtitles' : 'subtitlesOff'" />
               </Button>
-              <Button text variant="secondary" size="sm" icon-only class="sp-icon-btn sp-control--optional" :title="hasPendingSegment ? `保存片段` : t('markClip')" :aria-label="hasPendingSegment ? `保存片段` : t('markClip')" :disabled="isSavingMarker" @click.stop="hasPendingSegment ? finishSegmentCapture() : markCurrentPoint()">
+              <Button variant="secondary" size="sm" icon-only class="sp-icon-btn sp-control--optional" :title="hasPendingSegment ? `保存片段` : t('markClip')" :aria-label="hasPendingSegment ? `保存片段` : t('markClip')" :disabled="isSavingMarker" @click.stop="hasPendingSegment ? finishSegmentCapture() : markCurrentPoint()">
                 <PlayerIcon name="markClip" />
                 <span v-if="hasPendingSegment" class="sp-marker-count sp-marker-count--capturing">●</span>
               </Button>
-              <Button v-if="hasPlaylist" text variant="secondary" size="sm" icon-only class="sp-icon-btn sp-control--optional" @click.stop="showPlaylist = !showPlaylist" title="播放列表" aria-label="播放列表">
+              <Button v-if="hasPlaylist" variant="secondary" size="sm" icon-only class="sp-icon-btn sp-control--optional" @click.stop="showPlaylist = !showPlaylist" title="播放列表" aria-label="播放列表">
                 <PlayerIcon name="playlist" />
               </Button>
-              <Button v-if="isFullscreen" text variant="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="captureScreenshot" :title="t('screenshot')" :aria-label="t('screenshot')">
+              <Button v-if="isFullscreen" variant="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="captureScreenshot" :title="t('screenshot')" :aria-label="t('screenshot')">
                 <PlayerIcon name="screenshot" />
               </Button>
-              <Button v-if="isFullscreen" text variant="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="settingsView = 'sleepTimer'; showSettingsMenu = true" :title="t('sleepTimer')" :aria-label="t('sleepTimer')">
+              <Button v-if="isFullscreen" variant="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="settingsView = 'sleepTimer'; showSettingsMenu = true" :title="t('sleepTimer')" :aria-label="t('sleepTimer')">
                 <PlayerIcon name="sleepTimer" />
               </Button>
-              <Button v-if="isFullscreen" text variant="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="handleLoopABToggle" :title="store.abLoopActive ? t('loopClearAB') : (store.loopAPoint !== null ? t('loopSetB') : t('loopSetA'))" :aria-label="store.abLoopActive ? t('loopClearAB') : (store.loopAPoint !== null ? t('loopSetB') : t('loopSetA'))">
+              <Button v-if="isFullscreen" variant="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="handleLoopABToggle" :title="store.abLoopActive ? t('loopClearAB') : (store.loopAPoint !== null ? t('loopSetB') : t('loopSetA'))" :aria-label="store.abLoopActive ? t('loopClearAB') : (store.loopAPoint !== null ? t('loopSetB') : t('loopSetA'))">
                 <PlayerIcon name="loopAB" :style="{ opacity: store.loopAPoint !== null ? 1 : 0.5 }" />
               </Button>
-              <Button text variant="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="toggleSettingsMenu" :title="t('settings')" aria-haspopup="true" :aria-expanded="showSettingsMenu" :aria-label="t('settings')">
+              <Button variant="secondary" size="sm" icon-only class="sp-icon-btn" @click.stop="toggleSettingsMenu" :title="t('settings')" aria-haspopup="true" :aria-expanded="showSettingsMenu" :aria-label="t('settings')">
                 <PlayerIcon name="settings" />
               </Button>
-              <Button text variant="secondary" size="sm" icon-only class="sp-icon-btn sp-control--optional" @click="toggleWidescreen" :title="props.widescreen ? t('exitWidescreen') : t('widescreen')">
+              <Button variant="secondary" size="sm" icon-only class="sp-icon-btn sp-control--optional" @click="toggleWidescreen" :title="props.widescreen ? t('exitWidescreen') : t('widescreen')">
                 <PlayerIcon :name="props.widescreen ? 'widescreenExit' : 'widescreen'" />
               </Button>
-              <Button text variant="secondary" size="sm" icon-only class="sp-icon-btn sp-control--compact-hide" @click="togglePictureInPicture" :title="store.pictureInPicture ? t('exitPictureInPicture') : t('pictureInPicture')">
+              <Button variant="secondary" size="sm" icon-only class="sp-icon-btn sp-control--compact-hide" @click="togglePictureInPicture" :title="store.pictureInPicture ? t('exitPictureInPicture') : t('pictureInPicture')">
                 <PlayerIcon :name="store.pictureInPicture ? 'pipExit' : 'pip'" />
               </Button>
-              <Button text variant="secondary" size="sm" icon-only class="sp-icon-btn" @click="toggleFullscreen" :title="isFullscreen ? t('exitFullscreen') : t('fullscreen')">
+              <Button variant="secondary" size="sm" icon-only class="sp-icon-btn" @click="toggleFullscreen" :title="isFullscreen ? t('exitFullscreen') : t('fullscreen')">
                 <PlayerIcon :name="isFullscreen ? 'fullscreenExit' : 'fullscreen'" />
               </Button>
             </div>

@@ -78,7 +78,7 @@
     </div>
 
     <Button
-      text
+     
       variant="secondary"
       size="sm"
       icon-only

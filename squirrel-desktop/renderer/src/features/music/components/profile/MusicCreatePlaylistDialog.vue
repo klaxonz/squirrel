@@ -27,7 +27,7 @@
       </div>
 
       <DialogFooter>
-        <Button variant="secondary" outlined :disabled="creating" @click="closeDialog">
+        <Button variant="outline" :disabled="creating" @click="closeDialog">
           取消
         </Button>
         <Button

@@ -61,7 +61,7 @@
             <strong>频道信息加载失败</strong>
             <p>{{ detailError }}</p>
           </div>
-          <Button type="button" variant="secondary" outlined size="sm" :disabled="loading" @click="fetchDetail">重试</Button>
+          <Button type="button" variant="outline" size="sm" :disabled="loading" @click="fetchDetail">重试</Button>
         </div>
 
         <div class="channel-header__actions">
@@ -78,7 +78,7 @@
 
           <Button
             type="button"
-            text variant="secondary"
+            variant="secondary"
             size="sm" icon-only
             :class="detail?.is_special_followed ? 'text-warning' : ''"
             :disabled="!detail || isTogglingSpecial"
@@ -92,7 +92,7 @@
           <div v-if="syncMessage" class="channel-header__sync-msg" :class="syncError ? 'is-error' : ''">{{ syncMessage }}</div>
 
           <div class="channel-sync-group">
-            <Button type="button" text variant="secondary" size="sm" :disabled="isSyncing" @click="handleDirectSync('incremental')">
+            <Button type="button" variant="secondary" size="sm" :disabled="isSyncing" @click="handleDirectSync('incremental')">
               <AppSpinner v-if="isSyncing" size="sm" />
               <AppIcon v-else name="refresh" class="h-3.5 w-3.5" />
               {{ isSyncing ? '同步中' : '同步' }}
@@ -109,7 +109,7 @@
       <div v-if="actionError" class="channel-header__action-error" role="alert">
         <AppIcon name="warning" class="h-4 w-4" />
         <span>{{ actionError }}</span>
-        <Button type="button" text variant="secondary" size="sm" aria-label="关闭操作错误" @click="actionError = ''">
+        <Button type="button" variant="secondary" size="sm" aria-label="关闭操作错误" @click="actionError = ''">
           <AppIcon name="close" class="h-3.5 w-3.5" />
         </Button>
       </div>

@@ -27,7 +27,7 @@
       <template v-else>
         <div class="music-login-qr-inline">
           <div class="music-login-qr-header">
-            <Button text variant="secondary" size="sm" icon-only title="返回" @click="$emit('close')">
+            <Button variant="secondary" size="sm" icon-only title="返回" @click="$emit('close')">
               <AppIcon name="chevronLeft" class="h-4 w-4" />
             </Button>
 
@@ -39,7 +39,7 @@
               </p>
             </div>
 
-            <Button text variant="secondary" size="sm" icon-only :loading="qrLoading" title="刷新二维码" @click="$emit('refresh')">
+            <Button variant="secondary" size="sm" icon-only :loading="qrLoading" title="刷新二维码" @click="$emit('refresh')">
               <AppIcon v-if="!qrLoading" name="refresh" class="h-4 w-4" />
             </Button>
           </div>

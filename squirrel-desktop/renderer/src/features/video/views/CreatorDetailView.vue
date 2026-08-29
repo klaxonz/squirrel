@@ -42,7 +42,7 @@
       <div v-if="feedError">
         <AppEmptyState variant="error" title="创作者内容加载失败" :copy="feedError">
           <template #actions>
-            <Button variant="secondary" outlined size="sm" @click="refreshContent">重试内容加载</Button>
+            <Button variant="outline" size="sm" @click="refreshContent">重试内容加载</Button>
           </template>
         </AppEmptyState>
       </div>

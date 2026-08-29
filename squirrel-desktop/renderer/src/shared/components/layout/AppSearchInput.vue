@@ -11,7 +11,7 @@
     <Button
       v-if="modelValue"
       type="button"
-      text variant="secondary"
+      variant="secondary"
       size="sm" icon-only
       class="app-search-input__clear"
       :aria-label="clearLabel"

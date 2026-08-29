@@ -6,7 +6,7 @@
       <div v-if="searchModesList.length > 0" class="global-search__mode-wrap">
         <Button
           type="button"
-          text variant="secondary"
+          variant="secondary"
           size="sm"
           class="global-search__mode"
           :class="{ 'is-remote': activeSearchMode === 'remote' }"
@@ -57,7 +57,7 @@
 
         <Button
           v-if="inputValue"
-          text
+         
           variant="secondary"
           size="sm"
           icon-only
@@ -88,7 +88,7 @@
           <span>{{ suggestionTitle }}</span>
           <Button
             v-if="recentSearches.length"
-            link size="sm"
+            variant="link" size="sm"
             class="global-search__clear-recent"
             @mousedown.prevent
             @click="clearRecentSearches"
@@ -105,7 +105,7 @@
           <div v-for="(item, index) in suggestionItems" :key="item.id" class="global-search__suggestion-row" role="presentation">
             <Button
               :id="getOptionId(index)"
-              text variant="secondary"
+              variant="secondary"
               class="global-search__suggestion"
               :class="{ 'is-active': index === activeSuggestionIndex }"
               role="option"
@@ -123,7 +123,7 @@
             </Button>
             <Button
               v-if="item.type === 'recent'"
-              text variant="secondary" size="sm" icon-only
+              variant="secondary" size="sm" icon-only
               class="global-search__remove"
               :aria-label="`从最近搜索中移除 ${item.label}`"
               :title="`从最近搜索中移除 ${item.label}`"

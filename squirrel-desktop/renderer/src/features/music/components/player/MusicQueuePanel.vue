@@ -2,12 +2,12 @@
   <header class="music-queue-header">
       <h3>播放队列</h3>
       <span class="music-queue-count">{{ queue.length }} 首</span>
-      <Button v-if="queue.length" text variant="secondary" size="sm" class="ml-auto text-muted-foreground hover:text-destructive" title="清空队列" @click="$emit('clear')">
+      <Button v-if="queue.length" variant="secondary" size="sm" class="ml-auto text-muted-foreground hover:text-destructive" title="清空队列" @click="$emit('clear')">
         <AppIcon name="trash" class="h-3.5 w-3.5" />
         清空
       </Button>
       <PopoverClose as-child>
-        <Button text variant="secondary" size="sm" icon-only class="ml-2" aria-label="关闭播放队列">
+        <Button variant="secondary" size="sm" icon-only class="ml-2" aria-label="关闭播放队列">
           <AppIcon name="close" class="h-4 w-4" />
         </Button>
       </PopoverClose>
@@ -43,7 +43,7 @@
             <p class="music-queue-item-artist">{{ track.artist || '未知歌手' }}</p>
           </div>
           <Button
-            text variant="secondary"
+            variant="secondary"
             size="sm" icon-only
             class="opacity-0 text-muted-foreground hover:text-destructive group-hover:opacity-100"
             title="从队列移除"
