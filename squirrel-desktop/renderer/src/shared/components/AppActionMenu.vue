@@ -9,7 +9,7 @@ import {
 } from 'reka-ui'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import type { AppIconName } from '@/shared/icons/app-icons'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 import { Button } from '@/shared/ui/button'
 
 export interface AppActionMenuItem {

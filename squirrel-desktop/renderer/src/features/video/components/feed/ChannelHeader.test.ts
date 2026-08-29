@@ -20,8 +20,10 @@ vi.mock('@/shared/api', () => ({
 vi.mock('@/shared/lib/subscriptionEvents', () => ({ notifySubscriptionRemoved: mocks.notifyRemoved }))
 vi.mock('@/shared/composables/useDesktopBridge', () => ({ useDesktopBridge: () => ({ isDesktop: () => false }) }))
 vi.mock('@/shared/icons/AppIcon.vue', () => ({ default: defineComponent({ render: () => h('i') }) }))
-vi.mock('@/shared/components/AppSpinner.vue', () => ({ default: defineComponent({ render: () => h('i') }) }))
-vi.mock('@/shared/components/AppSkeleton.vue', () => ({ default: defineComponent({ render: () => h('span', { 'data-skeleton': '' }) }) }))
+vi.mock('@/shared/ui/skeleton', () => ({
+  Spinner: defineComponent({ render: () => h('i') }),
+  Skeleton: defineComponent({ render: () => h('span', { 'data-skeleton': '' }) }),
+}))
 vi.mock('@/shared/components/AppActionMenu.vue', () => ({ default: defineComponent({ render: () => null }) }))
 vi.mock('@/shared/components/layout/AppSegmentedControl.vue', () => ({ default: defineComponent({ render: () => null }) }))
 vi.mock('@/features/video/components/SubscriptionAvatar.vue', () => ({ default: defineComponent({ render: () => h('span') }) }))

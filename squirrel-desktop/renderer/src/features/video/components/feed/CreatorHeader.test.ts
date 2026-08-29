@@ -6,7 +6,7 @@ import CreatorHeader from './CreatorHeader.vue'
 const mocks = vi.hoisted(() => ({ getDetail: vi.fn() }))
 vi.mock('@/shared/api', () => ({ getCreatorDetail: mocks.getDetail }))
 vi.mock('@/shared/icons/AppIcon.vue', () => ({ default: defineComponent({ render: () => h('i') }) }))
-vi.mock('@/shared/components/AppSkeleton.vue', () => ({ default: defineComponent({ render: () => h('span', { 'data-skeleton': '' }) }) }))
+vi.mock('@/shared/ui/skeleton', () => ({ Skeleton: defineComponent({ render: () => h('span', { 'data-skeleton': '' }) }) }))
 vi.mock('@/features/video/components/SubscriptionAvatar.vue', () => ({ default: defineComponent({ render: () => h('span') }) }))
 vi.mock('@/shared/ui/button', () => ({
   Button: defineComponent({

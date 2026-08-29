@@ -68,7 +68,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import type { MusicQrLogin } from '@/shared/api/music'

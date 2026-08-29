@@ -138,7 +138,7 @@ import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 import type { VideoListItem } from '@/features/video/types/video'
 import { VIDEO_LIBRARY_TABS, VIDEO_TABS } from '@/features/video/constants/videos'
 import {

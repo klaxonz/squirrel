@@ -1,31 +1,19 @@
 <template>
-  <Transition
-    enter-active-class="transition-[transform,opacity] duration-200 ease-out"
-    leave-active-class="transition-[transform,opacity] duration-150 ease-in"
-    enter-from-class="opacity-0 translate-y-2"
-    leave-to-class="opacity-0 translate-y-2"
-  >
-    <div
-      v-if="visible"
-      ref="panelRef"
-      class="music-queue-panel"
-      role="dialog"
-      aria-label="播放队列"
-      tabindex="-1"
-    >
-      <header class="music-queue-header">
-        <h3>播放队列</h3>
-        <span class="music-queue-count">{{ queue.length }} 首</span>
-        <Button v-if="queue.length" text severity="secondary" size="sm" class="ml-auto text-muted-foreground hover:text-destructive" title="清空队列" @click="$emit('clear')">
-          <AppIcon name="trash" class="h-3.5 w-3.5" />
-          清空
-        </Button>
-        <Button text severity="secondary" size="sm" icon-only class="ml-2" aria-label="关闭播放队列" @click="$emit('close')">
+  <header class="music-queue-header">
+      <h3>播放队列</h3>
+      <span class="music-queue-count">{{ queue.length }} 首</span>
+      <Button v-if="queue.length" text severity="secondary" size="sm" class="ml-auto text-muted-foreground hover:text-destructive" title="清空队列" @click="$emit('clear')">
+        <AppIcon name="trash" class="h-3.5 w-3.5" />
+        清空
+      </Button>
+      <PopoverClose as-child>
+        <Button text severity="secondary" size="sm" icon-only class="ml-2" aria-label="关闭播放队列">
           <AppIcon name="close" class="h-4 w-4" />
         </Button>
-      </header>
+      </PopoverClose>
+    </header>
 
-      <div v-if="queue.length === 0" class="music-queue-empty">
+    <div v-if="queue.length === 0" class="music-queue-empty">
         <AppIcon name="playlistMusic" class="h-8 w-8" />
         <p>播放队列为空</p>
       </div>
@@ -66,78 +54,37 @@
           </Button>
         </article>
       </div>
-    </div>
-  </Transition>
 </template>
 
 <script setup lang="ts">
-import { onUnmounted, ref, watch } from 'vue'
+/**
+ * Queue list content for the player-bar popover. Positioning, open state,
+ * Esc / outside-click dismissal and focus are owned by the enclosing
+ * PopoverRoot/PopoverContent in GlobalMusicPlayerBar — this component renders
+ * the header + list only.
+ */
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import MusicPlayingIndicator from '../shared/MusicPlayingIndicator.vue'
 import { Button } from '@/shared/ui/button'
+import { PopoverClose } from 'reka-ui'
 import type { MusicTrack } from '@/shared/api/music'
 
-const props = defineProps<{
-  visible: boolean
+defineProps<{
   queue: MusicTrack[]
   currentIndex: number
   playing: boolean
 }>()
 
-const emit = defineEmits<{
-  close: []
+defineEmits<{
   clear: []
   play: [index: number]
   remove: [index: number]
   'drag-start': [index: number, event: DragEvent]
   'drop': [index: number, event: DragEvent]
 }>()
-
-const panelRef = ref<HTMLElement | null>(null)
-
-function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    emit('close')
-  }
-}
-
-watch(
-  () => props.visible,
-  (visible) => {
-    if (visible) {
-      window.addEventListener('keydown', onKeydown)
-      queueMicrotask(() => panelRef.value?.focus())
-      return
-    }
-    window.removeEventListener('keydown', onKeydown)
-  },
-  { immediate: true },
-)
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', onKeydown)
-})
 </script>
 
 <style scoped>
-.music-queue-panel {
-  position: fixed;
-  outline: none;
-  bottom: calc(var(--app-music-player-height) + var(--space-2));
-  right: 1.5rem;
-  width: 24rem;
-  max-height: 28rem;
-  background: hsl(var(--popover));
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: var(--app-surface-radius);
-  box-shadow: var(--app-floating-shadow);
-  display: flex;
-  flex-direction: column;
-  z-index: var(--z-popover);
-  overflow: hidden;
-}
-
 .music-queue-header {
   display: flex;
   align-items: center;

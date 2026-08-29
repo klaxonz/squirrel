@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import AppSkeleton from '@/shared/components/AppSkeleton.vue'
+import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 </script>
 
 <style scoped>

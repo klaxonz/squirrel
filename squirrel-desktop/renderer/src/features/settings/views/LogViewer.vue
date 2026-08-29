@@ -211,7 +211,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'

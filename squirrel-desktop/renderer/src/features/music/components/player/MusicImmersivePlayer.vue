@@ -135,7 +135,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'

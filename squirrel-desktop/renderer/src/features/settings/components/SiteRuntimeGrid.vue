@@ -149,8 +149,8 @@
 <script setup>
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
-import AppSkeleton from '@/shared/components/AppSkeleton.vue'
+import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
+import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppActionMenu from '@/shared/components/AppActionMenu.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'

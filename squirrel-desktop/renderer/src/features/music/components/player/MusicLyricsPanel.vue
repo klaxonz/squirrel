@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import type { MusicLyricLine } from '@/shared/api/music'
 

@@ -110,7 +110,7 @@
 
 <script setup lang="ts">
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSkeleton from '@/shared/components/AppSkeleton.vue'
+import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'

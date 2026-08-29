@@ -28,6 +28,10 @@
         @playing="isBuffering = false"
       />
 
+      <!-- Queue popover: one root, two mutually exclusive triggers (wide bar
+           via MusicBarActions, mini bar via the queue button below). reka's
+           provide/inject reaches PopoverTrigger inside both child branches. -->
+      <PopoverRoot :open="showQueue" @update:open="showQueue = $event">
       <template v-if="isMusicPage">
         <div class="music-bar-progress-frame">
           <MusicProgressBar
@@ -71,7 +75,6 @@
             :queue-count="store.queue.length"
             @toggle-mute="toggleMute"
             @volume="store.setVolume"
-            @queue="showQueue = !showQueue"
           />
         </div>
       </template>
@@ -165,31 +168,39 @@
             >
               <AppIcon name="next" class="h-3.5 w-3.5" />
             </Button>
-            <Button
-              text severity="secondary" size="sm" icon-only
-              class="music-mini-control"
-              title="播放队列"
-              aria-label="播放队列"
-              @click="showQueue = !showQueue"
-            >
-              <AppIcon name="playlistMusic" class="h-3.5 w-3.5" />
-            </Button>
+            <PopoverTrigger as-child>
+              <Button
+                text severity="secondary" size="sm" icon-only
+                class="music-mini-control"
+                title="播放队列"
+                aria-label="播放队列"
+              >
+                <AppIcon name="playlistMusic" class="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
           </div>
         </div>
       </template>
 
-      <MusicQueuePanel
-        :visible="showQueue"
-        :queue="store.queue"
-        :current-index="store.queueIndex"
-        :playing="store.playing"
-        @close="showQueue = false"
-        @clear="store.clearQueue()"
-        @play="playQueueItem"
-        @remove="removeQueueItem"
-        @drag-start="onDragStart"
-        @drop="onDrop"
-      />
+      <PopoverContent
+        side="top"
+        align="end"
+        :side-offset="8"
+        class="music-queue-panel"
+        aria-label="播放队列"
+      >
+        <MusicQueuePanel
+          :queue="store.queue"
+          :current-index="store.queueIndex"
+          :playing="store.playing"
+          @clear="store.clearQueue()"
+          @play="playQueueItem"
+          @remove="removeQueueItem"
+          @drag-start="onDragStart"
+          @drop="onDrop"
+        />
+      </PopoverContent>
+      </PopoverRoot>
     </div>
   </Transition>
 
@@ -229,10 +240,12 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { PopoverRoot, PopoverTrigger } from 'reka-ui'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 import { Button } from '@/shared/ui/button'
+import { PopoverContent } from '@/shared/ui/popover'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { formatPlaybackTime as formatDuration } from '@/features/music/lib/musicFormatters'
 import MusicProgressBar from './player/MusicProgressBar.vue'
@@ -373,6 +386,17 @@ function removeQueueItem(index: number) {
 </script>
 
 <style scoped>
+/* Queue popover container — lives on shared PopoverContent (sq-popover);
+   padding 0 keeps the panel header flush like the old fixed panel. */
+.music-queue-panel {
+  width: 24rem;
+  max-height: 28rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .music-bar {
   position: fixed;
   right: 0;

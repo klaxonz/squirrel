@@ -229,8 +229,8 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
-import AppSkeleton from '@/shared/components/AppSkeleton.vue'
+import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
+import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'

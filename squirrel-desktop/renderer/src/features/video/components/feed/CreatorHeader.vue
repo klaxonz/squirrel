@@ -68,7 +68,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSkeleton from '@/shared/components/AppSkeleton.vue'
+import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import { Button } from '@/shared/ui/button'
 import { getCreatorDetail } from '@/shared/api'

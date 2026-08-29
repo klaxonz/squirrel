@@ -13,8 +13,8 @@ vi.mock('@/shared/icons/AppIcon.vue', () => ({
   default: { template: '<span aria-hidden="true" />' },
 }))
 
-vi.mock('@/shared/components/AppSpinner.vue', () => ({
-  default: { template: '<span class="test-spinner" />' },
+vi.mock('@/shared/ui/skeleton', () => ({
+  Spinner: { template: '<span class="test-spinner" />' },
 }))
 
 vi.mock('@/shared/api/search', () => ({

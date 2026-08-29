@@ -157,7 +157,7 @@
 <script setup>
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 import {
   importSubscriptions,
 } from '@/shared/api'

@@ -1,6 +1,6 @@
 <template>
   <div class="app-skeleton-text">
-    <AppSkeleton
+    <Skeleton
       v-for="i in count"
       :key="i"
       :width="widthFor(i)"
@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import AppSkeleton from './AppSkeleton.vue'
+import Skeleton from './Skeleton.vue'
 
 /**
  * A vertical stack of placeholder text lines. Pass `widths` for full control,

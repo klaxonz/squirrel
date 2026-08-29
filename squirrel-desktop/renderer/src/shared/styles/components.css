@@ -357,8 +357,74 @@
 .sq-menu__item--danger { color: hsl(var(--destructive)); }
 .sq-menu__separator { height: 1px; margin: 0.375rem 0.25rem; background: hsl(var(--border) / 0.62); }
 
+/* ─── Tooltip ──────────────────────────────────────────────────────────────
+   Inverted ink chip (foreground bg) — the tooltip is an annotation, not a
+   surface; inverting keeps it readable over any chrome without elevation. */
+.sq-tooltip {
+  z-index: var(--z-popover);
+  border-radius: var(--radius-md);
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  padding: 0.25rem 0.5rem;
+  font-size: var(--app-text-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  box-shadow: var(--app-floating-shadow);
+}
+
+/* ─── Tabs ────────────────────────────────────────────────────────────────
+   Segmented pill rail. Follows the neutral chrome selection language:
+   ink wash + foreground for active — NEVER brand primary. */
+.sq-tabs__list {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: 999px;
+  background: hsl(var(--secondary) / 0.6);
+  padding: 0.25rem;
+}
+.sq-tabs__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  height: 1.875rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0 0.875rem;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font: inherit;
+  font-size: var(--app-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
+}
+.sq-tabs__trigger:hover:not([data-state='active']):not(:disabled) {
+  background: var(--app-control-hover-bg);
+  color: hsl(var(--foreground));
+}
+.sq-tabs__trigger[data-state='active'] {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.08);
+}
+.sq-tabs__trigger:focus-visible {
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.55);
+}
+.sq-tabs__trigger:disabled { opacity: 0.42; cursor: not-allowed; }
+.sq-tabs__content { outline: none; }
+.sq-tabs__content:focus-visible { box-shadow: 0 0 0 2px hsl(var(--ring) / 0.55); border-radius: var(--radius-md); }
+
 @media (prefers-reduced-motion: reduce) {
   .sq-button, .sq-input, .sq-select, .sq-select__chevron, .sq-switch, .sq-switch__thumb { transition: none; }
   .sq-select__content { animation: none; }
   .sq-button__spinner { animation: none; }
+  .sq-tabs__trigger { transition: none; }
 }

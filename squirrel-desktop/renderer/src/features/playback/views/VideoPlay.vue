@@ -340,7 +340,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSkeleton from '@/shared/components/AppSkeleton.vue'
+import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppFloatingList from '@/shared/components/layout/AppFloatingList.vue'
 import AppListOption from '@/shared/components/layout/AppListOption.vue'

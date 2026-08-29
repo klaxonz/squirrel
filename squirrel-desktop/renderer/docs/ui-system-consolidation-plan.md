@@ -54,12 +54,13 @@ token 使用基线：`var(--…)` 共约 2950 处（--app-*×611、语义色 --m
    - `Tabs`（reka-ui TabsRoot；收编 AppSectionNav 的样式 token）
    - `IconButton`（独立组件或 Button 专属形态，统一现有手写 icon button 的 36×36/圆形/hover token）
    - `Skeleton`：将 `shared/components/AppSkeleton`、`AppSkeletonText`、`AppSpinner`、`AppBounceDots` 迁入 `shared/ui/`，旧路径 re-export 一个版本后删除
-2. **收编自制浮层**（每处独立 PR，可逐个验视觉）：
-   - `YouTubeOAuthPrompt`、`RssImageLightbox` → `shared/ui/dialog`
-   - `MusicQueuePanel`、`MusicImmersivePlayer` 的 fixed 弹层 → Dialog/Popover
-   - `ServerStatusButton` 菜单 → Popover/DropdownMenu
-   - `GlobalVideoPlayerHost`、`ChapterOverlay`、ToastProvider、AppContextMenu、`VideoItem` 悬浮预览 **保留** Teleport —— 前者是全屏媒体宿主与 toast 基础设施，属合理的体系内实现；在文档中声明为白名单
-3. **防回潮**：CI gate —— `src/features/**` 禁止新增 `Teleport` 与 `position:\s*fixed`（白名单文件列表固化在脚本里）。
+2. **收编自制浮层**（实施时按代码实况修订 —— 2026-08-29）：
+   - `MusicQueuePanel` → 已迁移到 `shared/ui/popover`（PopoverRoot 收敛进 GlobalMusicPlayerBar，宽条/迷你条两个触发点共用一个 PopoverTrigger 注入上下文；Esc/外点关闭由 reka 托管，原手写 keydown/outside 监听删除）
+   - `ServerStatusButton` → 核实后**无需迁移**：弹层本就用 shared/ui/popover，fixed 只是触发按钮自身的停靠定位（chrome 布局）
+   - `YouTubeOAuthPrompt` → 核实后**维持非模态浮层**：它是有意放在 z-toast 层的非模态横幅，迁入模态 Dialog 会改变交互；列入白名单
+   - `RssImageLightbox` / `MusicImmersivePlayer` / `GlobalVideoPlayerHost` / `ChapterOverlay` / `VideoItem` 预览 → 全屏媒体表面，非 Dialog 语义；列入白名单
+   - `ToastProvider` / `AppContextMenu` → 体系内基础设施本体；白名单
+   - 防回潮 gate：`scripts/check-raw-overlays.mjs`，feature 代码出现裸 `Teleport` / `position:fixed` 即失败，白名单逐条带理由固化在脚本内（`npm run check:overlays`，与 `npm run check` 聚合）
 
 **验收**：白名单外 grep 为 0；抽查各弹层层级符合 `--z-*` 表（dialog 1300 / toast 1400 / player-overlay 1500）。
 

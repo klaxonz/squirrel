@@ -250,7 +250,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSkeleton from '@/shared/components/AppSkeleton.vue'
+import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppActionMenu from '@/shared/components/AppActionMenu.vue'
 import AppContentRow from '@/shared/components/layout/AppContentRow.vue'

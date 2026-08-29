@@ -17,17 +17,20 @@
       />
     </div>
 
-    <Button class="music-bar-queue" text severity="secondary" size="sm" title="播放队列" aria-label="播放队列" @click="$emit('queue')">
-      <AppIcon name="playlistMusic" class="h-4 w-4" />
-      <span v-if="queueCount" class="music-bar-queue-count" aria-hidden="true">
-        {{ queueCount > 99 ? '99+' : queueCount }}
-      </span>
-    </Button>
+    <PopoverTrigger as-child>
+      <Button class="music-bar-queue" text severity="secondary" size="sm" title="播放队列" aria-label="播放队列">
+        <AppIcon name="playlistMusic" class="h-4 w-4" />
+        <span v-if="queueCount" class="music-bar-queue-count" aria-hidden="true">
+          {{ queueCount > 99 ? '99+' : queueCount }}
+        </span>
+      </Button>
+    </PopoverTrigger>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { PopoverTrigger } from 'reka-ui'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 
@@ -42,7 +45,6 @@ const props = withDefaults(defineProps<{
 defineEmits<{
   'toggle-mute': []
   volume: [value: number]
-  queue: []
 }>()
 
 const volumeIcon = computed(() => {

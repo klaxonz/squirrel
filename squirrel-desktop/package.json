@@ -18,7 +18,9 @@
     "postinstall": "npm run rebuild:electron-native",
     "rebuild:electron-native": "node ./scripts/rebuild-electron-native.mjs",
     "check:font-size": "node renderer/scripts/check-raw-font-size.mjs",
-    "lint": "eslint renderer/src --config renderer/eslint.config.js"
+    "lint": "eslint renderer/src --config renderer/eslint.config.js",
+    "check:overlays": "node renderer/scripts/check-raw-overlays.mjs",
+    "check": "npm run check:font-size && npm run check:overlays"
   },
   "build": {
     "appId": "com.klaxon.squirrel.desktop",

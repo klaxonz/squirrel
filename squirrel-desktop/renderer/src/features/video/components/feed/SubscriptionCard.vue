@@ -94,7 +94,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import AppSpinner from '@/shared/components/AppSpinner.vue'
+import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 import { Button } from '@/shared/ui/button'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import { formatDate } from '@/shared/lib/dateFormat'
