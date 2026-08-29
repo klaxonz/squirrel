@@ -470,6 +470,20 @@ export const routes: RouteRecordRaw[] = [
   },
 ]
 
+// Dev-only component gallery: verified forms for every shared/ui primitive.
+// Not part of production navigation.
+if (import.meta.env.DEV) {
+  routes.push({
+    path: '/dev/ui',
+    name: 'DevUiGallery',
+    component: () => import('@/app/dev/UiGallery.vue'),
+    meta: createNoSearchMeta('UI 组件画廊', {
+      sectionLabel: '开发',
+      historyStrategy: 'push',
+    }),
+  })
+}
+
 // Hash history is required for packaged Electron loads (`file://…/index.html`).
 // HTML5 history breaks under the file protocol even with Vite `base: './'`.
 const router = createRouter({
