@@ -374,13 +374,16 @@ export const routes: RouteRecordRaw[] = [
     path: '/playlists',
     name: 'Playlists',
     component: PlaylistView,
-    meta: createNoSearchMeta('播放列表', {
+    meta: createSearchMeta('播放列表', {
       navKey: 'playlists',
       sectionLabel: '播放列表',
       keepAlive: true,
       keepAliveComponent: 'PlaylistView',
       transitionKey: 'playlists',
       historyStrategy: 'push',
+      search: 'playlists',
+      searchPlaceholder: '搜索播放列表',
+      searchSuggestions: false,
     }),
   },
   {

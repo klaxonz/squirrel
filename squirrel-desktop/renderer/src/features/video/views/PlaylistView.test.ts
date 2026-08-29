@@ -18,6 +18,12 @@ vi.mock('vue-router', () => ({
 vi.mock('@/features/video/composables/usePlaylist', () => ({
   usePlaylist: () => mocks.playlistStore,
 }))
+vi.mock('@/shared/stores/ui', () => ({
+  useUIStore: () => ({
+    getSearchQuery: () => '',
+    getSearchTrigger: () => 0,
+  }),
+}))
 vi.mock('@/features/video/composables/videoPlaybackSeed', () => ({
   rememberVideoPlaybackSeed: mocks.rememberPlaybackSeed,
 }))

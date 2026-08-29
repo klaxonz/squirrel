@@ -22,7 +22,7 @@
 
         <nav class="app-workbench__nav custom-scrollbar" aria-label="播放列表">
           <AppListOption
-            v-for="playlist in playlists"
+            v-for="playlist in visiblePlaylists"
             :key="playlist.id"
             class="playlist-nav-item"
             :selected="String(activePlaylist?.id) === String(playlist.id)"
@@ -50,9 +50,12 @@
       </template>
 
       <template #header>
+        <!-- Sidebar already carries the "播放列表 / N 个列表" title; the main
+             pane header only appears once a playlist provides its own context. -->
         <AppPaneHeader
-          :title="activePlaylist?.name || '播放列表'"
-          :subtitle="activePlaylist ? `${activePlaylistItems.length} 个视频 · ${activePlaylistDurationLabel}` : `${playlists.length} 个列表`"
+          v-if="activePlaylist"
+          :title="activePlaylist.name"
+          :subtitle="`${activePlaylistItems.length} 个视频 · ${activePlaylistDurationLabel}`"
         >
           <template #actions>
             <Button v-if="activePlaylistItems.length" size="sm" @click="playAll">
@@ -98,6 +101,15 @@
               <Button v-else severity="secondary" outlined @click="reloadPlaylists">重试</Button>
             </template>
           </AppEmptyState>
+        </div>
+
+        <div v-else-if="!visiblePlaylists.length" class="app-page-empty app-page-empty--compact">
+          <AppEmptyState
+            variant="plain"
+            icon="playlistVideo"
+            title="没有匹配的播放列表"
+            copy="调整搜索词后再试。"
+          />
         </div>
 
         <div v-else-if="activePlaylist" class="playlist-workspace">
@@ -270,6 +282,7 @@ import { usePlaylistEditor } from '@/features/video/composables/usePlaylistEdito
 import { usePlaylistDeleteConfirm } from '@/features/video/composables/usePlaylistDeleteConfirm'
 import { usePlaylistThumbnails } from '@/features/video/composables/usePlaylistThumbnails'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
+import { useUIStore } from '@/shared/stores/ui'
 import type { PlaylistItem } from '@/features/video/types/playlist'
 
 defineOptions({ name: 'PlaylistView' })
@@ -346,6 +359,25 @@ const {
 
 // Switching playlists rebuilds the list — pending detection is stale then.
 watch(() => activePlaylist.value?.id, () => resetNewContent())
+
+// Top-bar search filters the sidebar list by name (client-side; the playlist
+// set is fully loaded, so no server round-trip is needed).
+const uiStore = useUIStore()
+const playlistSearchQuery = computed(() => uiStore.getSearchQuery('playlists'))
+const searchTrigger = computed(() => uiStore.getSearchTrigger('playlists'))
+const visiblePlaylists = computed(() => {
+  const keyword = playlistSearchQuery.value.trim().toLowerCase()
+  if (!keyword) return playlists.value
+  return playlists.value.filter((playlist) => (playlist.name || '').toLowerCase().includes(keyword))
+})
+watch(searchTrigger, () => {
+  const keyword = playlistSearchQuery.value.trim().toLowerCase()
+  if (keyword && activePlaylist.value && !visiblePlaylists.value.some((p) => p.id === activePlaylist.value?.id)) {
+    // Keep a valid selection when the active playlist is filtered out.
+    const first = visiblePlaylists.value[0]
+    if (first) selectPlaylist(first.id)
+  }
+})
 
 const playlistActionItems = computed(() => [
   { label: '编辑列表', appIcon: 'pencil' as const, command: openEditModal },
@@ -481,9 +513,17 @@ onMounted(async () => {
 
 <style scoped>
 .playlist-workbench-content {
+  display: flex;
+  flex-direction: column;
   max-width: none;
   min-height: 100%;
   padding: var(--space-4) var(--space-5) var(--app-content-padding-bottom);
+}
+
+/* Full-page empty states stretch with the pane so the copy centers vertically
+   instead of anchoring to a fixed 28rem block at the top. */
+.playlist-workbench-content > .app-page-empty {
+  flex: 1;
 }
 
 .playlist-workbench-content__new-content {
