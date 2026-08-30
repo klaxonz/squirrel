@@ -42,6 +42,23 @@ Node `youtubei` worker daemon runs as its own process, spawned by
 There is no HTTP gateway or bridge server and no discovery layer:
 registration is the hardcoded slug -> module mapping in the registry module.
 
+Service composition
+-------------------
+
+The web process composes application services in `application.app.create_app`
+and exposes them to HTTP dependencies through `app.state`. Worker processes
+compose an independent `SubscriptionService` graph. Shared dependencies such
+as `CrawlTaskService` and `UserConfigService` are created once per graph and
+passed explicitly to consumers; leaf service modules must not export mutable
+process-wide service instances or method aliases bound to those instances.
+
+Process-wide instances are reserved for resources whose identity is the
+lifecycle boundary itself: the managed-thread registry, scheduler task manager,
+and site runtime registry. Site runtimes are started during process bootstrap
+and stopped during shutdown. Stateless helpers and database-backed services
+remain classes or functions and are constructed by their owning composition
+root.
+
 Development setup
 -----------------
 

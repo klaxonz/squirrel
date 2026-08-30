@@ -33,7 +33,10 @@ def _make_service():
             SubscriptionSyncState.__table__,
         ],
     )
-    return SubscriptionListService(session_factory=lambda: Session(engine, expire_on_commit=False))
+    return SubscriptionListService(
+        session_factory=lambda: Session(engine, expire_on_commit=False),
+        get_user_config=lambda _user_id: {'showNsfw': False},
+    )
 
 
 def test_get_subscription_detail_returns_dto_with_sync_state_and_counts():

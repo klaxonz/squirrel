@@ -9,8 +9,10 @@ import logging
 from sqlalchemy import select
 
 import infrastructure.site_catalog.url as url_helper
+from domains.subscription.application.services.core.listing.service import SubscriptionListService
 from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
+from domains.user.application.services.config import UserConfigService
 from infrastructure.database.session import get_session
 from infrastructure.site_catalog.catalog import SiteCatalog
 from shared_kernel.domain.exceptions import DomainError
@@ -38,7 +40,14 @@ class SubscriptionOrchestrator:
         strategy: DefaultUpdateStrategy | None = None,
     ):
         self.session_factory = session_factory or get_session
-        self.default_strategy = strategy or DefaultUpdateStrategy(session_factory=self.session_factory)
+        if strategy is None:
+            user_config = UserConfigService(session_factory=self.session_factory)
+            listing_service = SubscriptionListService(
+                session_factory=self.session_factory,
+                get_user_config=user_config.get_config,
+            )
+            strategy = DefaultUpdateStrategy(listing_service=listing_service)
+        self.default_strategy = strategy
         self.lifecycle = lifecycle or SubscriptionSyncLifecycle(session_factory=self.session_factory)
         self.lifecycle.bind_orchestrator(self)
 

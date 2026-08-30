@@ -19,6 +19,7 @@ from domains.subscription.application.services.crawl.executors.subscription_sync
 from domains.subscription.application.services.crawl.executors.video_extract_executor import (
     CrawlExecutorService as VideoExtractExecutor,
 )
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.video.application.services.extraction.progress_service import VideoExtractionProgressService
 from infrastructure.config.settings import settings
 from workers.scheduling.executors.leases import CrawlWorkerLeaseTracker
@@ -37,6 +38,7 @@ class CrawlWorkerRuntime:
         retry_delay_seconds: int = 30,
         poll_interval_seconds: float = 1.0,
         max_concurrency: int | None = None,
+        crawl_tasks: CrawlTaskService,
         subscription_task_progress: SubscriptionSyncTaskProgressService,
         video_extraction_progress: VideoExtractionProgressService,
         subscription_sync_executor: SubscriptionSyncExecutor,
@@ -52,13 +54,18 @@ class CrawlWorkerRuntime:
         self.task_runner = CrawlWorkerTaskRunner(
             worker_id=self.worker_id,
             retry_delay_seconds=self.retry_delay_seconds,
+            crawl_tasks=crawl_tasks,
             subscription_task_progress=subscription_task_progress,
             video_extraction_progress=video_extraction_progress,
             subscription_sync_executor=subscription_sync_executor,
             video_extract_executor=video_extract_executor,
             subscription_import_executor=subscription_import_executor,
         )
-        self._lease_tracker = CrawlWorkerLeaseTracker(worker_id=self.worker_id, lease_seconds=self.lease_seconds)
+        self._lease_tracker = CrawlWorkerLeaseTracker(
+            worker_id=self.worker_id,
+            lease_seconds=self.lease_seconds,
+            crawl_tasks=crawl_tasks,
+        )
 
     def run_once(self) -> bool:
         now = datetime.now()
@@ -78,7 +85,7 @@ class CrawlWorkerRuntime:
             while not stop_event.is_set():
                 try:
                     claimed_count = self._run_dispatch_cycle(executor)
-                except Exception:  # scheduler-loop boundary; transient storage failures must not kill the worker
+                except Exception:
                     logger.exception('Crawl worker dispatch cycle failed; retrying')
                     stop_event.wait(self.poll_interval_seconds)
                     continue

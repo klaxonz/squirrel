@@ -26,8 +26,8 @@ from domains.subscription.application.services.core.update.models import (
     UpdateTrigger,
 )
 from domains.subscription.application.services.core.update.queueing import SubscriptionSyncQueuePlanner
-from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.application.services.crawl.tasks.errors import CrawlExecutionError, CrawlTaskStateError
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.subscription.application.services.crawl.tasks.task_types import resolve_subscription_sync_task_type
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
@@ -97,7 +97,7 @@ class SubscriptionSyncLifecycle:
         self,
         session_factory=None,
         sync_state_service=None,
-        crawl_tasks=None,
+        crawl_tasks: CrawlTaskService | None = None,
         event_publisher: SubscriptionSyncCommandEventPublisher | None = None,
         crud_service: SubscriptionCrudService | None = None,
         run_service: SubscriptionSyncRunService | None = None,
@@ -106,7 +106,7 @@ class SubscriptionSyncLifecycle:
         self._sync_state_service = sync_state_service or SubscriptionSyncStateService(
             session_factory=self.session_factory,
         )
-        self._crawl_tasks = crawl_tasks or crawl_task_service
+        self._crawl_tasks = crawl_tasks or CrawlTaskService(session_factory=self.session_factory)
         self._crud_service = crud_service or SubscriptionCrudService(session_factory=self.session_factory)
         self._run_service = run_service or SubscriptionSyncRunService(self.session_factory)
         self._event_publisher = event_publisher or SubscriptionSyncCommandEventPublisher(self._run_service)

@@ -6,15 +6,28 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskOwnershipError
+from domains.subscription.application.services.crawl.tasks.errors import (
+    CrawlTaskNotFoundError,
+    CrawlTaskOwnershipError,
+)
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from workers.scheduling.executors.leases import ActiveTaskLease
 from workers.scheduling.executors.runtime import CrawlWorkerRuntime
 
 
 def _noop_runtime(**kwargs):
+    kwargs.setdefault('crawl_tasks', SimpleNamespace(
+        recover_expired_tasks=lambda **kwargs: [],
+        start_task=lambda **kwargs: None,
+        retry_task=lambda **kwargs: None,
+        complete_task=lambda **kwargs: None,
+        cancel_task=lambda **kwargs: None,
+        renew_task_lease=lambda **kwargs: None,
+    ))
     kwargs.setdefault(
         'subscription_task_progress',
         SimpleNamespace(record_retry_transition=lambda *args, **kwargs: None),
@@ -62,19 +75,10 @@ def test_run_once_executes_video_extract_task(monkeypatch):
         retry_delay_seconds=30,
     )
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda now=None, retry_delay_seconds=30: [],
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
-        lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)) or task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda now=None, retry_delay_seconds=30: [])
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'start_task', lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)) or task)
     monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', lambda current_task: calls.append(('video', current_task.id)))
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.complete_task',
-        lambda task_id, worker_id, now=None: calls.append(('complete', task_id, worker_id)) or task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'complete_task', lambda task_id, worker_id, now=None: calls.append(('complete', task_id, worker_id)) or task)
 
     ran = runtime.run_once()
 
@@ -106,19 +110,10 @@ def test_video_extract_success_records_terminal_progress(monkeypatch):
         record_terminal=lambda params, **kwargs: terminal_calls.append((params.sync_state_id, kwargs)),
     )
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda now=None, retry_delay_seconds=30: [],
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
-        lambda task_id, worker_id, now=None: task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda now=None, retry_delay_seconds=30: [])
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'start_task', lambda task_id, worker_id, now=None: task)
     monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', lambda current_task: None)
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.complete_task',
-        lambda task_id, worker_id, now=None: completed_task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'complete_task', lambda task_id, worker_id, now=None: completed_task)
 
     assert runtime.run_once() is True
     assert terminal_calls == [(2, {'succeeded': True})]
@@ -152,23 +147,14 @@ def test_run_once_executes_legacy_subscription_sync_task_type(monkeypatch):
         retry_delay_seconds=30,
     )
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda now=None, retry_delay_seconds=30: [],
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
-        lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)) or task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda now=None, retry_delay_seconds=30: [])
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'start_task', lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)) or task)
     monkeypatch.setattr(
         runtime.task_runner.subscription_sync_executor,
         'execute_subscription_sync_task',
         lambda current_task: calls.append(('sync', current_task.id, current_task.task_type)),
     )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.complete_task',
-        lambda task_id, worker_id, now=None: calls.append(('complete', task_id, worker_id)) or task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'complete_task', lambda task_id, worker_id, now=None: calls.append(('complete', task_id, worker_id)) or task)
 
     ran = runtime.run_once()
 
@@ -190,23 +176,14 @@ def test_run_once_executes_full_subscription_sync_task(monkeypatch):
         retry_delay_seconds=30,
     )
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda now=None, retry_delay_seconds=30: [],
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
-        lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)) or task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda now=None, retry_delay_seconds=30: [])
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'start_task', lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)) or task)
     monkeypatch.setattr(
         runtime.task_runner.subscription_sync_executor,
         'execute_subscription_sync_task',
         lambda current_task: calls.append(('sync', current_task.id, current_task.task_type)),
     )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.complete_task',
-        lambda task_id, worker_id, now=None: calls.append(('complete', task_id, worker_id)) or task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'complete_task', lambda task_id, worker_id, now=None: calls.append(('complete', task_id, worker_id)) or task)
 
     ran = runtime.run_once()
 
@@ -232,28 +209,19 @@ def test_run_once_retries_task_on_failure(monkeypatch):
         ),
     )
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda now=None, retry_delay_seconds=30: [],
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
-        lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)) or task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda now=None, retry_delay_seconds=30: [])
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'start_task', lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)) or task)
 
     def _raise(_task):
         raise RuntimeError('boom')
 
     monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', _raise)
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.retry_task',
-        lambda task_id, worker_id, error_message, error_type, now=None, delay_seconds=30: (
-            calls.append(
-                ('retry', task_id, worker_id, error_type, delay_seconds),
-            )
-            or task
-        ),
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'retry_task', lambda task_id, worker_id, error_message, error_type, now=None, delay_seconds=30: (
+        calls.append(
+            ('retry', task_id, worker_id, error_type, delay_seconds),
+        )
+        or task
+    ))
 
     ran = runtime.run_once()
 
@@ -282,21 +250,15 @@ def test_run_once_marks_validation_failures_non_retryable(monkeypatch):
         retry_delay_seconds=45,
     )
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda now=None, retry_delay_seconds=30: [],
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
-        lambda task_id, worker_id, now=None: task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda now=None, retry_delay_seconds=30: [])
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'start_task', lambda task_id, worker_id, now=None: task)
     monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', lambda current_task: (_ for _ in ()).throw(ValueError('invalid payload')))
 
     def _retry_task(**kwargs):
         captured.update(kwargs)
         return dead_task
 
-    monkeypatch.setattr('workers.scheduling.executors.tasks.crawl_task_service.retry_task', _retry_task)
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'retry_task', _retry_task)
 
     assert runtime.run_once() is True
     assert captured['retryable'] is False
@@ -322,19 +284,10 @@ def test_video_extract_retry_wait_does_not_record_terminal_progress(monkeypatch)
         record_terminal=lambda params, **kwargs: terminal_calls.append((params.sync_state_id, kwargs)),
     )
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda now=None, retry_delay_seconds=30: [],
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
-        lambda task_id, worker_id, now=None: task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda now=None, retry_delay_seconds=30: [])
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'start_task', lambda task_id, worker_id, now=None: task)
     monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', lambda current_task: (_ for _ in ()).throw(RuntimeError('boom')))
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.retry_task',
-        lambda **kwargs: retry_task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'retry_task', lambda **kwargs: retry_task)
 
     assert runtime.run_once() is True
     assert terminal_calls == []
@@ -360,19 +313,10 @@ def test_video_extract_dead_records_terminal_progress(monkeypatch):
         record_terminal=lambda params, **kwargs: terminal_calls.append((params.sync_state_id, kwargs)),
     )
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda now=None, retry_delay_seconds=30: [],
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
-        lambda task_id, worker_id, now=None: task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda now=None, retry_delay_seconds=30: [])
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'start_task', lambda task_id, worker_id, now=None: task)
     monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', lambda current_task: (_ for _ in ()).throw(RuntimeError('boom')))
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.retry_task',
-        lambda **kwargs: dead_task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'retry_task', lambda **kwargs: dead_task)
 
     assert runtime.run_once() is True
     assert terminal_calls == [(2, {'succeeded': False})]
@@ -394,10 +338,7 @@ def test_video_extract_cancelled_records_terminal_progress(monkeypatch):
         record_terminal=lambda params, **kwargs: terminal_calls.append((params.sync_state_id, kwargs)),
     )
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.cancel_task',
-        lambda task_id, now=None, reason='cancelled': cancelled_task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'cancel_task', lambda task_id, now=None, reason='cancelled': cancelled_task)
 
     runtime.task_runner.cancel_task(task, reason='manual_cancel', now=datetime(2026, 4, 2, 13, 0, 0))
 
@@ -410,10 +351,7 @@ def test_run_once_returns_false_when_no_task_is_claimed(monkeypatch):
         worker_id='worker-1',
     )
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda now=None, retry_delay_seconds=30: [],
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda now=None, retry_delay_seconds=30: [])
 
     assert runtime.run_once() is False
 
@@ -438,10 +376,7 @@ def test_recover_expired_tasks_records_domain_progress(monkeypatch):
     )
     now = datetime(2026, 4, 2, 13, 0, 0)
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda **kwargs: [recovered_task],
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda **kwargs: [recovered_task])
 
     recovered_count = runtime._recover_expired_tasks(now=now)
 
@@ -464,10 +399,7 @@ def test_recover_expired_dead_video_task_records_terminal_progress(monkeypatch):
     runtime.task_runner.video_extraction_progress = SimpleNamespace(
         record_terminal=lambda params, **kwargs: terminal_calls.append((params.sync_state_id, kwargs)),
     )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda **kwargs: [recovered_task],
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda **kwargs: [recovered_task])
 
     assert runtime._recover_expired_tasks(now=datetime(2026, 4, 2, 13, 0, 0)) == 1
     assert terminal_calls == [(2, {'succeeded': False})]
@@ -491,30 +423,21 @@ def test_run_loop_fills_multiple_slots_with_concurrent_tasks(monkeypatch):
         max_concurrency=2,
     )
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda now=None, retry_delay_seconds=30: [],
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
-        lambda task_id, worker_id, now=None: (
-            started.append((task_id, worker_id))
-            or next(
-                task
-                for task in [
-                    *tasks,
-                    CrawlTask(id=task_id, job_id=1, task_type='video_extract', site='youtube.com', payload={}),
-                ]
-                if task.id == task_id
-            )
-        ),
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.complete_task',
-        lambda task_id, worker_id, now=None: CrawlTask(
-            id=task_id, job_id=1, task_type='video_extract', site='youtube.com', payload={}
-        ),
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda now=None, retry_delay_seconds=30: [])
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'start_task', lambda task_id, worker_id, now=None: (
+        started.append((task_id, worker_id))
+        or next(
+            task
+            for task in [
+                *tasks,
+                CrawlTask(id=task_id, job_id=1, task_type='video_extract', site='youtube.com', payload={}),
+            ]
+            if task.id == task_id
+        )
+    ))
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'complete_task', lambda task_id, worker_id, now=None: CrawlTask(
+        id=task_id, job_id=1, task_type='video_extract', site='youtube.com', payload={}
+    ))
 
     def _execute(current_task):
         execute_gate.wait(timeout=1)
@@ -554,10 +477,7 @@ def test_run_loop_recovers_from_transient_dispatch_failure(monkeypatch):
         poll_interval_seconds=0.001,
         max_concurrency=1,
     )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda **kwargs: [],
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda **kwargs: [])
 
     runtime.run_loop(stop_event)
 
@@ -578,22 +498,10 @@ def test_run_loop_renews_lease_for_running_tasks(monkeypatch):
         max_concurrency=1,
     )
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.recover_expired_tasks',
-        lambda now=None, retry_delay_seconds=30: [],
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
-        lambda task_id, worker_id, now=None: task,
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.leases.crawl_task_service.renew_task_lease',
-        lambda task_id, worker_id, now=None, lease_seconds=60: renew_calls.append((task_id, worker_id)),
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.complete_task',
-        lambda task_id, worker_id, now=None: task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'recover_expired_tasks', lambda now=None, retry_delay_seconds=30: [])
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'start_task', lambda task_id, worker_id, now=None: task)
+    monkeypatch.setattr(runtime._lease_tracker._crawl_tasks, 'renew_task_lease', lambda task_id, worker_id, now=None, lease_seconds=60: renew_calls.append((task_id, worker_id)))
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'complete_task', lambda task_id, worker_id, now=None: task)
 
     def _execute(_task):
         release_event.wait(timeout=1)
@@ -616,7 +524,8 @@ def test_run_loop_renews_lease_for_running_tasks(monkeypatch):
     assert all(call == (21, 'worker-1') for call in renew_calls)
 
 
-def test_renew_active_leases_ignores_lost_task_ownership(monkeypatch):
+@pytest.mark.parametrize('error_type', [CrawlTaskNotFoundError, CrawlTaskOwnershipError])
+def test_renew_active_leases_stops_for_unavailable_task(monkeypatch, error_type):
     runtime = _noop_runtime(worker_id='worker-1', lease_seconds=1)
     future = Future()
     runtime._lease_tracker.futures = {future}
@@ -625,8 +534,9 @@ def test_renew_active_leases_ignores_lost_task_ownership(monkeypatch):
     runtime._lease_tracker.active_leases[future] = ActiveTaskLease(task_id=99, last_renewed_at=last_renewed_at)
 
     monkeypatch.setattr(
-        'workers.scheduling.executors.leases.crawl_task_service.renew_task_lease',
-        lambda **kwargs: (_ for _ in ()).throw(CrawlTaskOwnershipError('lost ownership')),
+        runtime._lease_tracker._crawl_tasks,
+        'renew_task_lease',
+        lambda **kwargs: (_ for _ in ()).throw(error_type('lease unavailable')),
     )
 
     runtime._lease_tracker.renew_active_leases(now=last_renewed_at + timedelta(seconds=1))
@@ -678,19 +588,10 @@ def test_run_task_does_not_retry_when_task_ownership_is_lost_on_complete(monkeyp
     runtime = _noop_runtime(worker_id='worker-1', retry_delay_seconds=45)
     retry_calls = []
 
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.start_task',
-        lambda task_id, worker_id, now=None: task,
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'start_task', lambda task_id, worker_id, now=None: task)
     monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', lambda current_task: None)
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.complete_task',
-        lambda task_id, worker_id, now=None: (_ for _ in ()).throw(CrawlTaskOwnershipError('lost ownership')),
-    )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.crawl_task_service.retry_task',
-        lambda **kwargs: retry_calls.append(kwargs),
-    )
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'complete_task', lambda task_id, worker_id, now=None: (_ for _ in ()).throw(CrawlTaskOwnershipError('lost ownership')))
+    monkeypatch.setattr(runtime.task_runner._crawl_tasks, 'retry_task', lambda **kwargs: retry_calls.append(kwargs))
 
     runtime.task_runner.run_task(task, claimed_at=datetime(2026, 4, 2, 13, 0, 0))
 

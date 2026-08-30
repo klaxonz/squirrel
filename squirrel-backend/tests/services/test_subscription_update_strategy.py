@@ -182,7 +182,10 @@ def test_fetch_videos_uses_site_sync_subscription():
             last_seen_video_url='https://www.bilibili.com/video/OLD',
         )
 
-        result = DefaultUpdateStrategy(registry=_FakeRegistry()).fetch_videos(request)
+        result = DefaultUpdateStrategy(
+            registry=_FakeRegistry(),
+            listing_service=MagicMock(),
+        ).fetch_videos(request)
 
     assert ('deadline', 120.0) in calls
     assert ('load', 'bilibili') in calls
@@ -213,7 +216,10 @@ def test_enqueue_extraction_delegates_to_video_extraction_coordinator():
 
     video_coordinator = MagicMock()
     video_coordinator.enqueue_discovered_videos.return_value = 1
-    enqueued = DefaultUpdateStrategy(video_coordinator=video_coordinator).enqueue_extraction(fetch_result, request)
+    enqueued = DefaultUpdateStrategy(
+        video_coordinator=video_coordinator,
+        listing_service=MagicMock(),
+    ).enqueue_extraction(fetch_result, request)
 
     assert enqueued == 1
     video_coordinator.enqueue_discovered_videos.assert_called_once_with(fetch_result, request)

@@ -14,6 +14,7 @@ from domains.subscription.application.services.core.update.models import (
 )
 from domains.subscription.application.services.core.update.scheduler import SubscriptionScheduler
 from domains.subscription.application.services.crawl.executors.subscription_sync_executor import CrawlExecutorService
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatchScope
 from domains.subscription.domain.models.crawl_job import CrawlJob
@@ -61,9 +62,6 @@ def _patch_postgres(session_factory):
 
 
 def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sched):
-    import domains.subscription.application.services.core.sync.state.service as ssss
-    from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
-    from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
     sched.lifecycle._crawl_tasks = injected_cts
@@ -71,19 +69,7 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
     with (
         patch('infrastructure.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True),
         patch.object(SubscriptionSyncLifecycle, '_has_active_subscribers', return_value=True),
-        patch.object(ssss, 'build_queue_token', return_value='queue-token-1'),
-        patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task),
-        patch.object(crawl_task_service_mod, 'create_job_with_task_in_session', injected_cts.create_job_with_task_in_session),
-        patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job),
-        patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task),
-        patch.object(crawl_task_service_mod, 'recover_expired_tasks', injected_cts.recover_expired_tasks),
-        patch.object(crawl_task_service_mod, 'claim_next_task', injected_cts.claim_next_task),
-        patch.object(crawl_task_service_mod, 'start_task', injected_cts.start_task),
-        patch.object(crawl_task_service_mod, 'complete_task', injected_cts.complete_task),
-        patch.object(crawl_task_service_mod, 'cancel_task', injected_cts.cancel_task),
-        patch.object(crawl_task_service_mod, 'replay_dead_task', injected_cts.replay_dead_task),
-        patch.object(crawl_task_service_mod, 'retry_task', injected_cts.retry_task),
-        patch.object(crawl_task_service_mod, 'renew_task_lease', injected_cts.renew_task_lease),
+        patch.object(sched.lifecycle._sync_state_service, 'build_queue_token', return_value='queue-token-1'),
     ):
         result = sched.schedule_one(
             subscription_id=7,
@@ -117,9 +103,6 @@ def test_schedule_one_creates_full_sync_crawl_task(engine, session_factory, sche
 
 
 def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factory, sched):
-    import domains.subscription.application.services.core.sync.state.service as ssss
-    from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
-    from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
     injected_cts = CrawlTaskService(session_factory=session_factory)
     sched.lifecycle._crawl_tasks = injected_cts
@@ -127,19 +110,7 @@ def test_schedule_one_creates_incremental_sync_crawl_task(engine, session_factor
     with (
         patch('infrastructure.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True),
         patch.object(SubscriptionSyncLifecycle, '_has_active_subscribers', return_value=True),
-        patch.object(ssss, 'build_queue_token', return_value='queue-token-2'),
-        patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task),
-        patch.object(crawl_task_service_mod, 'create_job_with_task_in_session', injected_cts.create_job_with_task_in_session),
-        patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job),
-        patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task),
-        patch.object(crawl_task_service_mod, 'recover_expired_tasks', injected_cts.recover_expired_tasks),
-        patch.object(crawl_task_service_mod, 'claim_next_task', injected_cts.claim_next_task),
-        patch.object(crawl_task_service_mod, 'start_task', injected_cts.start_task),
-        patch.object(crawl_task_service_mod, 'complete_task', injected_cts.complete_task),
-        patch.object(crawl_task_service_mod, 'cancel_task', injected_cts.cancel_task),
-        patch.object(crawl_task_service_mod, 'replay_dead_task', injected_cts.replay_dead_task),
-        patch.object(crawl_task_service_mod, 'retry_task', injected_cts.retry_task),
-        patch.object(crawl_task_service_mod, 'renew_task_lease', injected_cts.renew_task_lease),
+        patch.object(sched.lifecycle._sync_state_service, 'build_queue_token', return_value='queue-token-2'),
     ):
         result = sched.schedule_one(
             subscription_id=8,
@@ -219,14 +190,13 @@ def test_full_sync_budget_is_reserved_in_same_transaction_as_enqueue(engine, ses
 def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(engine, session_factory, sched):
     payloads = []
 
-    import domains.subscription.application.services.core.sync.state.service as ssss
 
     with (
         patch('infrastructure.site_catalog.catalog.SiteCatalog.is_site_enabled', return_value=True),
         patch.object(SubscriptionSyncLifecycle, '_has_active_subscribers', return_value=True),
         patch.object(
-            ssss,
-                'prepare_sync_state_for_enqueue_in_session',
+            sched.lifecycle._sync_state_service,
+            'prepare_sync_state_for_enqueue_in_session',
                 return_value=(
                     SimpleNamespace(
                         id=21,
@@ -389,10 +359,9 @@ def test_enqueue_all_active_counts_failed_results(engine, session_factory, sched
         )
         session.commit()
 
-    import domains.subscription.application.services.core.sync.state.service as ssss
 
     with (
-        patch.object(ssss, 'get_sync_state', lambda subscription_id, mode: None),
+        patch.object(sched.lifecycle._sync_state_service, 'get_sync_state', return_value=None),
         patch.object(
             SubscriptionScheduler,
             'schedule_one',
@@ -412,64 +381,44 @@ def test_enqueue_all_active_counts_failed_results(engine, session_factory, sched
 def test_enqueue_due_states_creates_crawl_tasks_from_sync_state_store(engine, session_factory, sched):
     now = datetime(2026, 4, 4, 12, 0, 0)
 
-    from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
-    from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
-
-    injected_cts = CrawlTaskService(session_factory=session_factory)
-    sched.lifecycle._crawl_tasks = injected_cts
-
-    with (
-        patch.object(crawl_task_service_mod, 'create_job_with_task', injected_cts.create_job_with_task),
-        patch.object(crawl_task_service_mod, 'create_job_with_task_in_session', injected_cts.create_job_with_task_in_session),
-        patch.object(crawl_task_service_mod, 'create_job', injected_cts.create_job),
-        patch.object(crawl_task_service_mod, 'create_task', injected_cts.create_task),
-        patch.object(crawl_task_service_mod, 'recover_expired_tasks', injected_cts.recover_expired_tasks),
-        patch.object(crawl_task_service_mod, 'claim_next_task', injected_cts.claim_next_task),
-        patch.object(crawl_task_service_mod, 'start_task', injected_cts.start_task),
-        patch.object(crawl_task_service_mod, 'complete_task', injected_cts.complete_task),
-        patch.object(crawl_task_service_mod, 'cancel_task', injected_cts.cancel_task),
-        patch.object(crawl_task_service_mod, 'replay_dead_task', injected_cts.replay_dead_task),
-        patch.object(crawl_task_service_mod, 'retry_task', injected_cts.retry_task),
-        patch.object(crawl_task_service_mod, 'renew_task_lease', injected_cts.renew_task_lease),
-    ):
-        with Session(engine, expire_on_commit=False) as session:
-            session.add_all(
-                [
-                    Subscription(
-                        id=1, type='CHANNEL', name='due-1', url='https://space.bilibili.com/1', is_deleted=False
-                    ),
-                    Subscription(
-                        id=2, type='CHANNEL', name='due-2', url='https://space.bilibili.com/2', is_deleted=False
-                    ),
-                ],
-            )
-            session.add_all(
-                [
-                    UserSubscription(user_id=100, subscription_id=1, is_deleted=False, is_nsfw=False),
-                    UserSubscription(user_id=100, subscription_id=2, is_deleted=False, is_nsfw=False),
-                ],
-            )
-            session.add_all(
-                [
-                    SubscriptionSyncState(
-                        id=11,
-                        subscription_id=1,
-                        site='bilibili.com',
-                        sync_mode='incremental',
-                        sync_status='success',
-                        next_sync_at=now - timedelta(minutes=1),
-                    ),
-                    SubscriptionSyncState(
-                        id=12,
-                        subscription_id=2,
-                        site='bilibili.com',
-                        sync_mode='incremental',
-                        sync_status='success',
-                        next_sync_at=now - timedelta(minutes=2),
-                    ),
-                ],
-            )
-            session.commit()
+    with Session(engine, expire_on_commit=False) as session:
+        session.add_all(
+            [
+                Subscription(
+                    id=1, type='CHANNEL', name='due-1', url='https://space.bilibili.com/1', is_deleted=False
+                ),
+                Subscription(
+                    id=2, type='CHANNEL', name='due-2', url='https://space.bilibili.com/2', is_deleted=False
+                ),
+            ],
+        )
+        session.add_all(
+            [
+                UserSubscription(user_id=100, subscription_id=1, is_deleted=False, is_nsfw=False),
+                UserSubscription(user_id=100, subscription_id=2, is_deleted=False, is_nsfw=False),
+            ],
+        )
+        session.add_all(
+            [
+                SubscriptionSyncState(
+                    id=11,
+                    subscription_id=1,
+                    site='bilibili.com',
+                    sync_mode='incremental',
+                    sync_status='success',
+                    next_sync_at=now - timedelta(minutes=1),
+                ),
+                SubscriptionSyncState(
+                    id=12,
+                    subscription_id=2,
+                    site='bilibili.com',
+                    sync_mode='incremental',
+                    sync_status='success',
+                    next_sync_at=now - timedelta(minutes=2),
+                ),
+            ],
+        )
+        session.commit()
 
         success, failed = sched.enqueue_due_states(
             trigger=UpdateTrigger.SCHEDULED,

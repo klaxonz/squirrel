@@ -14,7 +14,6 @@ from urllib.parse import urlparse
 from domains.subscription.application.services.core.listing.service import SubscriptionListService
 from domains.subscription.application.services.core.runtime_models import SubscriptionSyncResult
 from infrastructure.config.settings import settings
-from infrastructure.database.session import get_session
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_registry.registry import SiteRegistry, get_site_registry
 from shared_kernel.infrastructure.deadline import DeadlineExceeded, run_with_deadline
@@ -83,16 +82,14 @@ class DefaultUpdateStrategy:
 
     def __init__(
         self,
+        *,
+        listing_service: SubscriptionListService,
         registry: SiteRegistry | None = None,
         video_coordinator: VideoExtractionCoordinator | None = None,
-        session_factory=None,
-        listing_service: SubscriptionListService | None = None,
     ) -> None:
         self._registry = registry or get_site_registry()
         self._video_coordinator = video_coordinator or VideoExtractionCoordinator()
-        self._listing_service = listing_service or SubscriptionListService(
-            session_factory=session_factory or get_session,
-        )
+        self._listing_service = listing_service
     @property
     def site_name(self) -> str:
         return 'default'

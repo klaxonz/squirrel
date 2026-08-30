@@ -36,6 +36,7 @@ def _create_runtime(*, worker_id: str) -> tuple[CrawlWorkerRuntime, Subscription
         worker_id=worker_id,
         max_concurrency=max(1, int(settings.crawl.slots_per_process)),
         poll_interval_seconds=settings.crawl.worker_poll_interval_ms / 1000.0,
+        crawl_tasks=services.crawl_tasks,
         subscription_task_progress=SubscriptionSyncTaskProgressService(services.lifecycle),
         video_extraction_progress=VideoExtractionProgressService(services.lifecycle),
         subscription_sync_executor=SubscriptionSyncExecutor(

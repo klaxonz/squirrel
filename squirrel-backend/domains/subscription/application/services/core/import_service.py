@@ -12,7 +12,7 @@ from domains.subscription.application.services.core.runtime_models import (
     SubscriptionMeta,
 )
 from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
-from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.subscription.domain.models.subscription import Subscription, build_subscription_canonical_key
 from infrastructure.database.session import get_session
 from infrastructure.site_catalog.catalog import SiteCatalog
@@ -33,18 +33,19 @@ class SubscriptionImportService:
         crud_service=None,
         manage_service=None,
         lifecycle: SubscriptionSyncLifecycle | None = None,
-        crawl_tasks=None,
+        crawl_tasks: CrawlTaskService | None = None,
     ):
         self._registry = registry or get_site_registry()
         self.session_factory = session_factory
         self.crud_service = crud_service or SubscriptionCrudService(session_factory)
-        sync_lifecycle = lifecycle or SubscriptionSyncLifecycle(session_factory=session_factory)
+        sync_lifecycle = lifecycle or SubscriptionSyncLifecycle(session_factory=session_factory, crawl_tasks=crawl_tasks)
         self.manage_service = manage_service or SubscriptionManageService(
             session_factory=session_factory,
             crud_service=self.crud_service,
             lifecycle=sync_lifecycle,
+            crawl_tasks=crawl_tasks,
         )
-        self._crawl_tasks = crawl_tasks or crawl_task_service
+        self._crawl_tasks = crawl_tasks or CrawlTaskService(session_factory=session_factory)
 
     @staticmethod
     def get_supported_import_sites(

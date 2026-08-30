@@ -48,12 +48,6 @@ class SubscriptionSyncStateService:
         return lambda *args, **kwargs: self._call(name, *args, **kwargs)
 
 
-_default_service = SubscriptionSyncStateService()
-subscription_sync_state_service = _default_service
-
-
-def __getattr__(name):
-    return getattr(_default_service, name)
 
 
 __all__ = ['SYNC_BATCH_SIZE', 'SubscriptionSyncStateService']

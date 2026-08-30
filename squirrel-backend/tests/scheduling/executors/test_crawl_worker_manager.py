@@ -63,9 +63,9 @@ def test_create_runtime_injects_import_executor_from_composition_root(monkeypatc
         lifecycle = object()
         orchestrator = object()
         crud = object()
+        crawl_tasks = object()
         import_service = object()
         video_service = type('VideoService', (), {'extraction': object()})()
-
         def close(self):
             pass
 

@@ -90,6 +90,19 @@ class BlockedVideoService:
             return None
 
 
-blocked_video_service = BlockedVideoService()
-is_blocked_video = blocked_video_service.is_blocked_video
-record_blocked_video = blocked_video_service.record_blocked_video
+is_blocked_video = BlockedVideoService.is_blocked_video
+
+
+def record_blocked_video(
+    *,
+    url: str,
+    reason_code: str,
+    error_message: str | None = None,
+    error_type: str | None = None,
+) -> BlockedVideoRecord | None:
+    return BlockedVideoService().record_blocked_video(
+        url=url,
+        reason_code=reason_code,
+        error_message=error_message,
+        error_type=error_type,
+    )

@@ -15,9 +15,9 @@ from domains.subscription.application.services.crawl.executors.subscription_sync
 from domains.subscription.application.services.crawl.executors.video_extract_executor import (
     CrawlExecutorService as VideoExtractExecutor,
 )
-from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError
 from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.subscription.application.services.crawl.tasks.task_types import is_subscription_sync_task_type
 from domains.video.application.services.extraction.progress_service import VideoExtractionProgressService
 from domains.video.interfaces.dto.video_dto import VideoExtractDto
@@ -32,6 +32,7 @@ class CrawlWorkerTaskRunner:
         *,
         worker_id: str,
         retry_delay_seconds: int,
+        crawl_tasks: CrawlTaskService,
         subscription_task_progress: SubscriptionSyncTaskProgressService,
         video_extraction_progress: VideoExtractionProgressService,
         subscription_sync_executor: SubscriptionSyncExecutor,
@@ -40,6 +41,7 @@ class CrawlWorkerTaskRunner:
     ) -> None:
         self.worker_id = worker_id
         self.retry_delay_seconds = retry_delay_seconds
+        self._crawl_tasks = crawl_tasks
         self.subscription_task_progress = subscription_task_progress
         self.video_extraction_progress = video_extraction_progress
         self.subscription_sync_executor = subscription_sync_executor
@@ -48,15 +50,10 @@ class CrawlWorkerTaskRunner:
 
     def run_task(self, task, claimed_at: datetime) -> None:
         try:
-            ownership = {
-                'task_id': task.id,
-                'worker_id': self.worker_id,
-            }
+            ownership = {'task_id': task.id, 'worker_id': self.worker_id}
             if task.lease_token:
                 ownership['lease_token'] = task.lease_token
-            crawl_task_service.start_task(
-                **ownership,
-            )
+            self._crawl_tasks.start_task(**ownership)
         except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
             logger.warning(
                 'Skip crawl task start because lease is no longer owned: task_id=%s worker_id=%s',
@@ -67,7 +64,7 @@ class CrawlWorkerTaskRunner:
 
         try:
             self.execute_task(task)
-        except Exception as exc:  # task boundary -- prevent single failure from crashing scheduler
+        except Exception as exc:
             logger.exception('Crawl worker execution failed task_id=%s task_type=%s', task.id, task.task_type)
             self._retry_task(task, exc)
             return
@@ -78,7 +75,7 @@ class CrawlWorkerTaskRunner:
         recovery_kwargs = {'retry_delay_seconds': self.retry_delay_seconds}
         if now is not None:
             recovery_kwargs['now'] = now
-        recovered_tasks = crawl_task_service.recover_expired_tasks(**recovery_kwargs)
+        recovered_tasks = self._crawl_tasks.recover_expired_tasks(**recovery_kwargs)
         for recovered in recovered_tasks:
             task = getattr(recovered, 'task', recovered)
             execution_token = getattr(recovered, 'execution_token', task.lease_token)
@@ -120,9 +117,7 @@ class CrawlWorkerTaskRunner:
                 retry_kwargs['lease_token'] = task.lease_token
             if not retryable:
                 retry_kwargs['retryable'] = False
-            retried_task = crawl_task_service.retry_task(
-                **retry_kwargs,
-            )
+            retried_task = self._crawl_tasks.retry_task(**retry_kwargs)
             progress_kwargs = {'now': retry_now, 'error_message': str(exc)}
             if execution_token is not None:
                 progress_kwargs['execution_token'] = execution_token
@@ -137,15 +132,10 @@ class CrawlWorkerTaskRunner:
 
     def _complete_task(self, task) -> None:
         try:
-            complete_kwargs = {
-                'task_id': task.id,
-                'worker_id': self.worker_id,
-            }
+            complete_kwargs = {'task_id': task.id, 'worker_id': self.worker_id}
             if task.lease_token:
                 complete_kwargs['lease_token'] = task.lease_token
-            completed_task = crawl_task_service.complete_task(
-                **complete_kwargs,
-            )
+            completed_task = self._crawl_tasks.complete_task(**complete_kwargs)
             self._record_video_extract_terminal_if_needed(completed_task)
         except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
             logger.warning(
@@ -156,7 +146,11 @@ class CrawlWorkerTaskRunner:
 
     def cancel_task(self, task, *, reason: str = 'cancelled', now: datetime | None = None) -> None:
         try:
-            cancelled_task = crawl_task_service.cancel_task(task_id=task.id, now=now or datetime.now(), reason=reason)
+            cancelled_task = self._crawl_tasks.cancel_task(
+                task_id=task.id,
+                now=now or datetime.now(),
+                reason=reason,
+            )
             self._record_video_extract_terminal_if_needed(cancelled_task)
         except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
             logger.warning(

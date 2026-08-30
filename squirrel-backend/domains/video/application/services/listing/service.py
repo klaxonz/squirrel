@@ -6,7 +6,6 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-import domains.user.application.services.config as user_config_service
 from domains.video.application.services.engagement.clip_marker import VideoClipMarkerService
 from domains.video.application.services.listing.detail_loader import VideoDetailLoader
 from domains.video.application.services.listing.page_loader import VideoListPageLoader
@@ -64,9 +63,9 @@ class VideoListService:
     def __init__(
         self,
         session_factory: SessionFactory | None = None,
-        get_user_config=None,
         serialize_marker=None,
         *,
+        get_user_config,
         thumbnail_downloader,
         page_loader=None,
         detail_loader=None,
@@ -74,7 +73,7 @@ class VideoListService:
         meili_indexer: MeiliVideoIndexer | None = None,
     ):
         self._session_factory = session_factory or _default_get_session
-        self._get_user_config = get_user_config or user_config_service.get_config
+        self._get_user_config = get_user_config
         self._serialize_marker = serialize_marker or VideoClipMarkerService.serialize_marker
         self._thumbnail_downloader = thumbnail_downloader
         self._page_loader = page_loader or VideoListPageLoader(self._thumbnail_downloader)

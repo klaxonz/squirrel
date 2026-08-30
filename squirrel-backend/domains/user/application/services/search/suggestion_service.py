@@ -3,7 +3,6 @@ from time import monotonic
 
 from sqlalchemy import select
 
-import domains.user.application.services.config as user_config_service
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.user.application.services.search.suggestions.formatting import dedupe_pool_items
 from domains.user.application.services.search.suggestions.pools import (
@@ -24,7 +23,7 @@ SUGGESTION_RESULT_TTL_SECONDS = 30
 
 
 class SearchSuggestionService:
-    def __init__(self, session_factory=get_session, get_user_config=user_config_service.get_config):
+    def __init__(self, *, session_factory=get_session, get_user_config):
         self._session_factory = session_factory
         self._get_user_config = get_user_config
         self._suggestion_pool_cache_lock = Lock()
@@ -129,10 +128,3 @@ class SearchSuggestionService:
         result = [item[2] for item in ranked_items[:normalized_limit]]
         self._suggestion_result_cache[result_cache_key] = (now + SUGGESTION_RESULT_TTL_SECONDS, result)
         return result
-
-
-search_suggestion_service = SearchSuggestionService()
-
-list_search_suggestions = search_suggestion_service.list_search_suggestions
-invalidate_user = search_suggestion_service.invalidate_user
-invalidate_users_for_subscription = search_suggestion_service.invalidate_users_for_subscription

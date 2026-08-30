@@ -7,7 +7,7 @@ from domains.subscription.application.services.core.crud import SubscriptionCrud
 from domains.subscription.application.services.core.listing.service import resolve_subscription_nsfw
 from domains.subscription.application.services.core.runtime_models import SubscriptionMeta
 from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
-from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.crawl_task import CrawlTask
 from domains.subscription.domain.models.subscription import ContentType, Subscription, build_subscription_canonical_key
@@ -24,13 +24,16 @@ class SubscriptionManageService:
         session_factory=get_session,
         crud_service: SubscriptionCrudService | None = None,
         lifecycle: SubscriptionSyncLifecycle | None = None,
+        crawl_tasks: CrawlTaskService | None = None,
     ):
         self.session_factory = session_factory
         self.crud_service = crud_service or SubscriptionCrudService(session_factory=session_factory)
         self.lifecycle = lifecycle or SubscriptionSyncLifecycle(
             session_factory=session_factory,
             crud_service=self.crud_service,
+            crawl_tasks=crawl_tasks,
         )
+        self._crawl_tasks = crawl_tasks or CrawlTaskService(session_factory=session_factory)
 
     @staticmethod
     def _detect_subscription_type(url: str) -> str:
@@ -322,7 +325,7 @@ class SubscriptionManageService:
             f'{payload["expected_intent_version"]}'
         )
         try:
-            _, task = crawl_task_service.create_job_with_task(
+            _, task = self._crawl_tasks.create_job_with_task(
                 job_type='subscription_import',
                 source_type='manual',
                 site=site,

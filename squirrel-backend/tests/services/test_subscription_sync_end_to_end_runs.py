@@ -5,9 +5,9 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
-import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 from domains.subscription.application.services.core.crud import SubscriptionCrudService
 from domains.subscription.application.services.core.sync.run_service import SubscriptionSyncRunService
+from domains.subscription.application.services.core.sync.state.service import SubscriptionSyncStateService
 from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskStateError
 from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.subscription.domain.models.crawl_job import CrawlJob
@@ -26,11 +26,7 @@ def engine(engine):
 
 @pytest.fixture
 def sss_session_patch(session_factory):
-    """Redirect module-level services to use test session_factory."""
-    from infrastructure.database import session as database
-
-    with patch.object(database, 'get_session', session_factory):
-        yield
+    return SubscriptionSyncStateService(session_factory=session_factory)
 
 
 def _setup_state_env(engine):
@@ -48,7 +44,7 @@ def _setup_state_env(engine):
 
 def test_mark_sync_success_stays_running_until_pending_videos_are_drained(engine, session_factory, sss_session_patch):
     engine = _setup_state_env(engine)
-    sss_svc = subscription_sync_state_service
+    sss_svc = sss_session_patch
 
     now = datetime(2026, 4, 2, 12, 0, 0)
     with Session(engine, expire_on_commit=False) as session:
@@ -150,7 +146,7 @@ def test_record_gap_observation_returns_full_backfill_request_when_score_crosses
     sss_session_patch,
 ):
     engine = _setup_state_env(engine)
-    sss_svc = subscription_sync_state_service
+    sss_svc = sss_session_patch
 
     now = datetime(2026, 4, 4, 12, 0, 0)
     with Session(engine, expire_on_commit=False) as session:
@@ -238,7 +234,7 @@ def test_stale_run_cannot_overwrite_newer_sync_state(engine, session_factory, ss
         )
         session.commit()
 
-    result = subscription_sync_state_service.mark_sync_success(
+    result = sss_session_patch.mark_sync_success(
         31,
         cursor_payload={'cursor': 'stale'},
         latest_video_url='https://example.com/stale',
@@ -289,7 +285,7 @@ def test_retry_claim_self_heals_running_projection_when_progress_update_was_inte
         )
         session.commit()
 
-    claimed = subscription_sync_state_service.claim_sync_state(
+    claimed = sss_session_patch.claim_sync_state(
         32,
         'retry-token',
         run_id='retry-run',
@@ -369,7 +365,7 @@ def test_stale_running_recovery_preserves_retry_wait_task(engine, session_factor
         )
         session.commit()
 
-    result = subscription_sync_state_service.recover_stale_running_sync_states(timeout=timedelta(minutes=30))
+    result = sss_session_patch.recover_stale_running_sync_states(timeout=timedelta(minutes=30))
 
     assert result['recovered'] == 0
     with Session(engine, expire_on_commit=False) as session:
@@ -423,7 +419,7 @@ def test_enqueue_preflight_does_not_recover_run_with_live_renewed_lease(
         )
         session.commit()
 
-    state, status = subscription_sync_state_service.prepare_sync_state_for_enqueue(
+    state, status = sss_session_patch.prepare_sync_state_for_enqueue(
         4,
         'https://www.youtube.com/channel/demo',
         'incremental',
@@ -646,7 +642,7 @@ def test_expired_feed_execution_cannot_write_before_or_after_task_reclaim(
         )
         session.commit()
 
-    stale_completion = subscription_sync_state_service.mark_sync_success(
+    stale_completion = sss_session_patch.mark_sync_success(
         41,
         cursor_payload={'cursor': 'stale-before-reclaim'},
         latest_video_url='https://example.com/stale-before-reclaim',
@@ -654,7 +650,7 @@ def test_expired_feed_execution_cannot_write_before_or_after_task_reclaim(
         queue_token='queue-41',
         execution_token=old_execution_token,
     )
-    stale_gap = subscription_sync_state_service.record_gap_observation(
+    stale_gap = sss_session_patch.record_gap_observation(
         41,
         head_sample_urls=['https://example.com/stale'],
         anchor_found=False,
@@ -672,7 +668,7 @@ def test_expired_feed_execution_cannot_write_before_or_after_task_reclaim(
     recovered = crawl_tasks.recover_expired_tasks(now=now, retry_delay_seconds=0)
     assert len(recovered) == 1
     assert recovered[0].execution_token == old_execution_token
-    subscription_sync_state_service.reconcile_task_retry_state(
+    sss_session_patch.reconcile_task_retry_state(
         41,
         'queue-41',
         now=now,
@@ -685,14 +681,14 @@ def test_expired_feed_execution_cannot_write_before_or_after_task_reclaim(
     new_task = crawl_tasks.claim_next_task(worker_id='worker-l2', now=now, lease_seconds=60)
     assert new_task is not None
     assert new_task.lease_token != old_execution_token
-    assert subscription_sync_state_service.claim_sync_state(
+    assert sss_session_patch.claim_sync_state(
         41,
         'queue-41',
         run_id='run-41',
         execution_token=new_task.lease_token,
     ) is not None
 
-    assert subscription_sync_state_service.mark_sync_success(
+    assert sss_session_patch.mark_sync_success(
         41,
         cursor_payload={'cursor': 'stale-after-reclaim'},
         latest_video_url='https://example.com/stale-after-reclaim',
@@ -700,7 +696,7 @@ def test_expired_feed_execution_cannot_write_before_or_after_task_reclaim(
         queue_token='queue-41',
         execution_token=old_execution_token,
     ) is None
-    assert subscription_sync_state_service.record_gap_observation(
+    assert sss_session_patch.record_gap_observation(
         41,
         head_sample_urls=['https://example.com/stale-again'],
         anchor_found=False,

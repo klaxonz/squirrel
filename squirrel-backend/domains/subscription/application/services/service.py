@@ -11,6 +11,8 @@ from domains.subscription.application.services.core.update.strategies.default_st
 from domains.subscription.application.services.core.update.video_extraction_coordinator import (
     VideoExtractionCoordinator,
 )
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
+from domains.user.application.services.config import UserConfigService
 from domains.video.application.services.service import VideoService
 from infrastructure.database.session import get_session
 
@@ -18,14 +20,32 @@ from infrastructure.database.session import get_session
 class SubscriptionService:
     """Composition root for subscription application services."""
 
-    def __init__(self, session_factory=get_session, video_service: VideoService | None = None):
+    def __init__(
+        self,
+        session_factory=get_session,
+        video_service: VideoService | None = None,
+        crawl_tasks: CrawlTaskService | None = None,
+        user_config: UserConfigService | None = None,
+        invalidate_search_suggestions=None,
+    ):
+        crawl_tasks = crawl_tasks or CrawlTaskService(session_factory=session_factory)
+        user_config = user_config or UserConfigService(session_factory=session_factory)
         owns_video_service = video_service is None
-        video_service = video_service or VideoService(session_factory=session_factory)
+        video_service = video_service or VideoService(
+            session_factory=session_factory,
+            crawl_tasks=crawl_tasks,
+            user_config=user_config,
+        )
         self.video_service = video_service
-        self.crud = SubscriptionCrudService(session_factory=session_factory)
+        self.crawl_tasks = crawl_tasks
+        self.crud = SubscriptionCrudService(
+            session_factory=session_factory,
+            invalidate_subscription=invalidate_search_suggestions,
+        )
         self.lifecycle = SubscriptionSyncLifecycle(
             session_factory=session_factory,
             crud_service=self.crud,
+            crawl_tasks=crawl_tasks,
         )
         video_coordinator = VideoExtractionCoordinator(
             lifecycle=self.lifecycle,
@@ -39,14 +59,17 @@ class SubscriptionService:
             session_factory=session_factory,
             crud_service=self.crud,
             lifecycle=self.lifecycle,
+            crawl_tasks=crawl_tasks,
         )
-        self.list = SubscriptionListService(session_factory=session_factory)
+        self.list = SubscriptionListService(
+            session_factory=session_factory,
+            get_user_config=user_config.get_config,
+        )
         self.orchestrator = SubscriptionOrchestrator(
             session_factory=session_factory,
             lifecycle=self.lifecycle,
             strategy=DefaultUpdateStrategy(
                 video_coordinator=video_coordinator,
-                session_factory=session_factory,
                 listing_service=self.list,
             ),
         )
@@ -55,6 +78,7 @@ class SubscriptionService:
             crud_service=self.crud,
             manage_service=self.manage,
             lifecycle=self.lifecycle,
+            crawl_tasks=crawl_tasks,
         )
         self.scheduler = SubscriptionScheduler(
             session_factory=session_factory,

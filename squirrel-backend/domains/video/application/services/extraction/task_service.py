@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from domains.subscription.application.services.core.sync.state._ownership import has_live_execution_token
-from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_module
 from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskStateError
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
 from domains.video.application.services.crud import VideoCrudService
 from domains.video.interfaces.dto.video_dto import VideoExtractDto
@@ -21,7 +21,7 @@ class VideoExtractionTaskService:
     def __init__(
         self,
         get_video_by_url=None,
-        crawl_tasks=None,
+        crawl_tasks: CrawlTaskService | None = None,
         *,
         reserve_sync_progress: bool = True,
         session_factory=None,
@@ -30,7 +30,7 @@ class VideoExtractionTaskService:
         self._get_video_by_url = get_video_by_url or VideoCrudService(
             session_factory=self._session_factory,
         ).get_video_by_url
-        self._crawl_tasks = crawl_tasks or crawl_task_service_module.crawl_task_service
+        self._crawl_tasks = crawl_tasks or CrawlTaskService(session_factory=self._session_factory)
         self._reserve_sync_progress = reserve_sync_progress
 
     def enqueue(self, params: VideoExtractDto) -> bool:

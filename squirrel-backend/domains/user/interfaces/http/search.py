@@ -1,18 +1,15 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 
 from domains.user.application.services.auth import get_current_user
-from domains.user.application.services.search.suggestion_service import (
-    SearchSuggestionService,
-    search_suggestion_service,
-)
+from domains.user.application.services.search.suggestion_service import SearchSuggestionService
 from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from infrastructure.http import response
 
 router = APIRouter(prefix='/api/search', tags=['搜索建议接口'])
 
 
-def get_search_suggestion_service() -> SearchSuggestionService:
-    return search_suggestion_service
+def get_search_suggestion_service(request: Request) -> SearchSuggestionService:
+    return request.app.state.search_suggestion_service
 
 
 class SearchSuggestionQuery:

@@ -5,7 +5,6 @@ from fastapi_pagination import Params
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import and_, case, false, func, literal, or_, select
 
-import domains.user.application.services.config as user_config_service
 from domains.subscription.application.services.core.listing.enrichment import (
     load_recent_videos,
     load_subscription_extract_counts,
@@ -29,9 +28,9 @@ logger = logging.getLogger(__name__)
 
 
 class SubscriptionListService:
-    def __init__(self, session_factory=get_session, get_user_config=None):
+    def __init__(self, *, session_factory=get_session, get_user_config):
         self.session_factory = session_factory
-        self.get_user_config = get_user_config or user_config_service.get_config
+        self.get_user_config = get_user_config
 
     def list_subscriptions(
         self,

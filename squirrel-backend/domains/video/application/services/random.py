@@ -4,7 +4,6 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-import domains.user.application.services.config as user_config_service
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
 from domains.video.application.services.listing.query_filters import (
@@ -22,12 +21,13 @@ class VideoRandomService:
     def __init__(
         self,
         session_factory: SessionFactory | None = None,
-        get_user_config=None,
         category_predicate=None,
         meili_indexer=None,
+        *,
+        get_user_config,
     ):
         self._session_factory = session_factory or _default_get_session
-        self._get_user_config = get_user_config or user_config_service.get_config
+        self._get_user_config = get_user_config
         self._category_predicate = category_predicate or _default_category_predicate
         self._meili_indexer = meili_indexer
 

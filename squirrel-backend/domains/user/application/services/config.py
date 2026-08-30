@@ -76,8 +76,3 @@ class UserConfigService:
                 self._config_cache.pop(user_id, None)
 
             return config.settings
-
-
-user_config_service = UserConfigService()
-get_config = user_config_service.get_config
-update_config = user_config_service.update_config

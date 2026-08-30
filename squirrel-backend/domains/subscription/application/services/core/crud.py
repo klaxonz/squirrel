@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -8,8 +9,9 @@ from infrastructure.database.session import get_session
 
 
 class SubscriptionCrudService:
-    def __init__(self, session_factory=get_session):
+    def __init__(self, session_factory=get_session, invalidate_subscription: Callable[[int], None] | None = None):
         self.session_factory = session_factory
+        self._invalidate_subscription = invalidate_subscription
 
     def get_subscription_by_id(self, subscription_id: int) -> Subscription:
         with self.session_factory() as session:
@@ -175,14 +177,9 @@ class SubscriptionCrudService:
 
             session.add(subscription)
             session.commit()
-            updated = True
-
-        from domains.user.application.services.search.suggestion_service import (
-            invalidate_users_for_subscription,
-        )
-
-        invalidate_users_for_subscription(subscription_id)
-        return updated
+        if self._invalidate_subscription is not None:
+            self._invalidate_subscription(subscription_id)
+        return True
 
     def toggle_status(self, subscription_id: int, status: bool, field: str) -> bool:
         with self.session_factory() as session:

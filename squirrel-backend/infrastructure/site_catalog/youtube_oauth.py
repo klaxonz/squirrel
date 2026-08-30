@@ -125,10 +125,25 @@ class YouTubeOauthService:
         return YouTubeOAuthState(status=status)
 
 
-youtube_oauth_service = YouTubeOauthService()
-get_oauth_credentials_for_daemon = youtube_oauth_service.get_oauth_credentials_for_daemon
-get_oauth_cache_scope = youtube_oauth_service.get_oauth_cache_scope
-get_oauth_state = youtube_oauth_service.get_oauth_state
-setup_oauth_via_daemon = youtube_oauth_service.setup_oauth_via_daemon
-poll_oauth_status_via_daemon = youtube_oauth_service.poll_oauth_status_via_daemon
-revoke_oauth_via_daemon = youtube_oauth_service.revoke_oauth_via_daemon
+def get_oauth_credentials_for_daemon() -> str:
+    return YouTubeOauthService().get_oauth_credentials_for_daemon()
+
+
+def get_oauth_cache_scope() -> str:
+    return YouTubeOauthService().get_oauth_cache_scope()
+
+
+def get_oauth_state(timeout_seconds: float = 5.0) -> YouTubeOAuthState:
+    return YouTubeOauthService().get_oauth_state(timeout_seconds=timeout_seconds)
+
+
+def setup_oauth_via_daemon(timeout_seconds: float = 10.0) -> YouTubeOAuthState:
+    return YouTubeOauthService().setup_oauth_via_daemon(timeout_seconds=timeout_seconds)
+
+
+def poll_oauth_status_via_daemon(timeout_seconds: float = 10.0) -> YouTubeOAuthState:
+    return YouTubeOauthService().poll_oauth_status_via_daemon(timeout_seconds=timeout_seconds)
+
+
+def revoke_oauth_via_daemon(timeout_seconds: float = 30.0) -> bool:
+    return YouTubeOauthService().revoke_oauth_via_daemon(timeout_seconds=timeout_seconds)

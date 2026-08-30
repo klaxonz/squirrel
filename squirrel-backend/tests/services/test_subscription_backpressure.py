@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy.orm import Session
 
-import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.crawl_task import CrawlTask
@@ -46,7 +45,7 @@ def _seed_job(engine, *, site: str = 'youtube.com') -> int:
 
 
 def test_reconcile_pending_video_counts_uses_task_store(engine, session_factory, svc, sss_session):
-    sss_svc = subscription_sync_state_service
+    sss_svc = sss_session
 
     with Session(engine, expire_on_commit=False) as session:
         job_id = _seed_job(engine)
@@ -122,7 +121,7 @@ def test_recover_stale_queued_sync_states_uses_task_store(engine, session_factor
         )
         session.commit()
 
-    sss_svc = subscription_sync_state_service
+    sss_svc = sss_session
     result = sss_svc.recover_stale_queued_sync_states()
 
     assert result['recovered'] == 0
@@ -134,7 +133,7 @@ def test_recover_stale_queued_sync_states_uses_task_store(engine, session_factor
 def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_phase(
     engine, session_factory, svc, sss_session
 ):
-    sss_svc = subscription_sync_state_service
+    sss_svc = sss_session
 
     with Session(engine, expire_on_commit=False) as session:
         session.add(
@@ -169,7 +168,7 @@ def test_reconcile_terminal_drained_sync_states_auto_completes_running_extract_p
 def test_reconcile_terminal_drained_sync_states_auto_fails_when_extract_tasks_are_dead(
     engine, session_factory, svc, sss_session
 ):
-    sss_svc = subscription_sync_state_service
+    sss_svc = sss_session
 
     with Session(engine, expire_on_commit=False) as session:
         job_id = _seed_job(engine)
@@ -214,7 +213,7 @@ def test_reconcile_terminal_drained_sync_states_auto_fails_when_extract_tasks_ar
 
 
 def test_reconcile_terminal_drained_sync_states_can_target_one_state(engine, session_factory, svc, sss_session):
-    sss_svc = subscription_sync_state_service
+    sss_svc = sss_session
 
     with Session(engine, expire_on_commit=False) as session:
         job_id = _seed_job(engine)

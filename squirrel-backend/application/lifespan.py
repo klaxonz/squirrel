@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info('Startup: begin')
     startup_issues = StartupHealth()
     app.state.startup_health = startup_issues
+    site_registry = get_site_registry()
 
     for notice in settings.optional_feature_warnings():
         logger.warning('Startup: %s', notice)
@@ -70,7 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_file
-        get_site_registry().start_all()
+        site_registry.start_all()
     except Exception:
         logger.exception('Startup: failed to start site integrations')
         raise
@@ -118,4 +119,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             video_service.close()
     except Exception as exc:
         logger.warning('Shutdown: error closing video services (ignored): %s', exc)
+    finally:
+        site_registry.stop_all()
     logger.info('Shutdown: complete')

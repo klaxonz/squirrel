@@ -365,8 +365,7 @@ class CrawlTaskService:
             tasks = lease.list_expired_leased_tasks(session, now=now)
 
             recovered = [
-                RecoveredTaskLease(task=task, execution_token=task.lease_token, recovered_at=now)
-                for task in tasks
+                RecoveredTaskLease(task=task, execution_token=task.lease_token, recovered_at=now) for task in tasks
             ]
             touched_job_ids: set[int] = set()
             for task in tasks:
@@ -390,43 +389,20 @@ class CrawlTaskService:
 
     def has_task_with_dedupe_key(self, dedupe_key: str) -> bool:
         with self.session_factory() as session:
-            return session.execute(
-                select(CrawlTask.id).where(CrawlTask.dedupe_key == dedupe_key).limit(1),
-            ).first() is not None
+            return (
+                session.execute(
+                    select(CrawlTask.id).where(CrawlTask.dedupe_key == dedupe_key).limit(1),
+                ).first()
+                is not None
+            )
 
     def count_pending_video_tasks_by_sync_state(self) -> dict[int, int]:
         return task_summary.count_pending_video_tasks_by_sync_state(self.session_factory)
 
-    def summarize_video_task_states_by_sync_state(self, sync_state_id: int | None = None) -> dict[int, dict[str, object]]:
+    def summarize_video_task_states_by_sync_state(
+        self, sync_state_id: int | None = None
+    ) -> dict[int, dict[str, object]]:
         return task_summary.summarize_video_task_states_by_sync_state(self.session_factory, sync_state_id)
 
     def list_active_subscription_sync_state_ids(self) -> set[int]:
         return task_summary.list_active_subscription_sync_state_ids(self.session_factory)
-
-
-crawl_task_service = CrawlTaskService()
-# Live module-level alias: tests swap ``crawl_task_service.session_factory``
-# to a test session (see tests/services/conftest.py), so a static binding
-# here would diverge from the instance and break identity checks.
-def __getattr__(name):
-    if name == 'session_factory':
-        return crawl_task_service.session_factory
-    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
-
-create_job = crawl_task_service.create_job
-create_task = crawl_task_service.create_task
-create_job_with_task = crawl_task_service.create_job_with_task
-create_job_with_task_in_session = crawl_task_service.create_job_with_task_in_session
-claim_next_task = crawl_task_service.claim_next_task
-renew_task_lease = crawl_task_service.renew_task_lease
-start_task = crawl_task_service.start_task
-complete_task = crawl_task_service.complete_task
-retry_task = crawl_task_service.retry_task
-cancel_task = crawl_task_service.cancel_task
-replay_dead_task = crawl_task_service.replay_dead_task
-has_task_with_dedupe_key = crawl_task_service.has_task_with_dedupe_key
-recover_expired_tasks = crawl_task_service.recover_expired_tasks
-count_pending_video_tasks_for_subscription = crawl_task_service.count_pending_video_tasks_for_subscription
-count_pending_video_tasks_by_sync_state = crawl_task_service.count_pending_video_tasks_by_sync_state
-summarize_video_task_states_by_sync_state = crawl_task_service.summarize_video_task_states_by_sync_state
-list_active_subscription_sync_state_ids = crawl_task_service.list_active_subscription_sync_state_ids

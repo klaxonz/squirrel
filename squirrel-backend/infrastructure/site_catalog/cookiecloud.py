@@ -243,7 +243,6 @@ class CookieCloudService:
         }
 
 
-cookiecloud_service = CookieCloudService()
-is_cookiecloud_configured = cookiecloud_service.is_cookiecloud_configured
-fetch_cookiecloud_cookie_data = cookiecloud_service.fetch_cookiecloud_cookie_data
-sync_cookiecloud_to_site_files = cookiecloud_service.sync_cookiecloud_to_site_files
+is_cookiecloud_configured = CookieCloudService.is_cookiecloud_configured
+fetch_cookiecloud_cookie_data = CookieCloudService.fetch_cookiecloud_cookie_data
+sync_cookiecloud_to_site_files = CookieCloudService.sync_cookiecloud_to_site_files

@@ -5,8 +5,11 @@ from concurrent.futures import Future
 from dataclasses import dataclass
 from datetime import datetime
 
-from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
-from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError
+from domains.subscription.application.services.crawl.tasks.errors import (
+    CrawlTaskNotFoundError,
+    CrawlTaskOwnershipError,
+)
+from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
 
 logger = logging.getLogger(__name__)
 
@@ -19,12 +22,12 @@ class ActiveTaskLease:
 
 
 class CrawlWorkerLeaseTracker:
-    def __init__(self, *, worker_id: str, lease_seconds: int) -> None:
+    def __init__(self, *, worker_id: str, lease_seconds: int, crawl_tasks: CrawlTaskService) -> None:
         self.worker_id = worker_id
         self.lease_seconds = lease_seconds
+        self._crawl_tasks = crawl_tasks
         self.futures: set[Future] = set()
         self.active_leases: dict[Future, ActiveTaskLease] = {}
-
     @property
     def active_count(self) -> int:
         return len(self.futures)
@@ -66,10 +69,10 @@ class CrawlWorkerLeaseTracker:
                 }
                 if lease.lease_token:
                     renew_kwargs['lease_token'] = lease.lease_token
-                crawl_task_service.renew_task_lease(**renew_kwargs)
-            except (CrawlTaskOwnershipError, CrawlTaskNotFoundError):
+                self._crawl_tasks.renew_task_lease(**renew_kwargs)
+            except (CrawlTaskNotFoundError, CrawlTaskOwnershipError):
                 logger.warning(
-                    'Stop renewing crawl task lease because ownership is lost: task_id=%s worker_id=%s',
+                    'Stop renewing unavailable crawl task lease: task_id=%s worker_id=%s',
                     lease.task_id,
                     self.worker_id,
                 )

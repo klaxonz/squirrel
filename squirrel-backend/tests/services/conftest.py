@@ -38,11 +38,6 @@ def suppress_postgres(monkeypatch):
 
 @pytest.fixture
 def sss_session(session_factory):
-    """Redirect module-level services to use test session_factory via direct attribute assignment."""
-    from infrastructure.database import session as database
+    from domains.subscription.application.services.core.sync.state.service import SubscriptionSyncStateService
 
-    database.get_session = session_factory
-
-    from domains.subscription.application.services.crawl.tasks import service as crawl_task_service_mod
-
-    crawl_task_service_mod.crawl_task_service.session_factory = session_factory
+    return SubscriptionSyncStateService(session_factory=session_factory)
