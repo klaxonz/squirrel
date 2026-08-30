@@ -3,10 +3,10 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from domains.subscription.application.services.core.crud import subscription_crud_service
+from domains.subscription.application.services.core.crud import SubscriptionCrudService
 from domains.subscription.application.services.core.listing.service import resolve_subscription_nsfw
 from domains.subscription.application.services.core.runtime_models import SubscriptionMeta
-from domains.subscription.application.services.core.sync.lifecycle import subscription_sync_lifecycle
+from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.crawl_task import CrawlTask
@@ -19,10 +19,18 @@ from infrastructure.site_catalog.url import resolve_site
 
 
 class SubscriptionManageService:
-    def __init__(self, session_factory=get_session, crud_service=None, lifecycle=None):
+    def __init__(
+        self,
+        session_factory=get_session,
+        crud_service: SubscriptionCrudService | None = None,
+        lifecycle: SubscriptionSyncLifecycle | None = None,
+    ):
         self.session_factory = session_factory
-        self.crud_service = crud_service or subscription_crud_service
-        self.lifecycle = lifecycle or subscription_sync_lifecycle
+        self.crud_service = crud_service or SubscriptionCrudService(session_factory=session_factory)
+        self.lifecycle = lifecycle or SubscriptionSyncLifecycle(
+            session_factory=session_factory,
+            crud_service=self.crud_service,
+        )
 
     @staticmethod
     def _detect_subscription_type(url: str) -> str:
