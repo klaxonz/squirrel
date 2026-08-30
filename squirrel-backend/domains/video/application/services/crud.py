@@ -128,11 +128,3 @@ class VideoCrudService:
             session.commit()
             session.refresh(video)
             return video
-
-
-video_crud_service = VideoCrudService()
-get_video_by_url = video_crud_service.get_video_by_url
-get_videos_by_urls = video_crud_service.get_videos_by_urls
-get_video_by_id = video_crud_service.get_video_by_id
-create_video = video_crud_service.create_video
-save_remote_video = video_crud_service.save_remote_video

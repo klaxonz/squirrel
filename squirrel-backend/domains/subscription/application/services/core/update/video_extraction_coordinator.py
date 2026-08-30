@@ -34,6 +34,7 @@ class VideoExtractionCoordinator:
         self._extraction = extraction_service or VideoExtractionService()
         self._extraction_tasks = extraction_task_service or VideoExtractionTaskService(
             get_video_by_url=self._crud.get_video_by_url,
+            session_factory=session_factory,
         )
         self._session_factory = session_factory or get_session
     def enqueue_discovered_videos(

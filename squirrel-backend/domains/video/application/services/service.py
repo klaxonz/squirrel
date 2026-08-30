@@ -27,7 +27,10 @@ class VideoService:
         self.clip_marker = VideoClipMarkerService(session_factory=session_factory)
         self.persistence = VideoPersistenceService(session_factory=session_factory)
         self.crud = VideoCrudService(session_factory=session_factory)
-        self.extraction_tasks = VideoExtractionTaskService(get_video_by_url=self.crud.get_video_by_url)
+        self.extraction_tasks = VideoExtractionTaskService(
+            get_video_by_url=self.crud.get_video_by_url,
+            session_factory=session_factory,
+        )
         self.extraction = VideoExtractionService(
             handler=VideoExtractionHandler(
                 persistence_service=self.persistence,
