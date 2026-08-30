@@ -21,6 +21,7 @@ class SubscriptionService:
     def __init__(self, session_factory=get_session, video_service: VideoService | None = None):
         owns_video_service = video_service is None
         video_service = video_service or VideoService(session_factory=session_factory)
+        self.video_service = video_service
         self.crud = SubscriptionCrudService(session_factory=session_factory)
         self.lifecycle = SubscriptionSyncLifecycle(
             session_factory=session_factory,
