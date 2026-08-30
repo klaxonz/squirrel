@@ -1,4 +1,4 @@
-import type { SubscriptionListItem } from '@/features/video/types/subscription'
+import type { SubscriptionListItem } from '@/shared/types/subscription'
 
 /** Sync statuses that should surface as operational failure on the desk. */
 export function isSubscriptionSyncFailed(item: Pick<SubscriptionListItem, 'sync_status' | 'last_error'>): boolean {

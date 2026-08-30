@@ -121,11 +121,7 @@ const handleSubmit = async () => {
   loading.value = true
   errorMessage.value = ''
   try {
-    const result = await userStore.register(form.value)
-    if (result.error) {
-      errorMessage.value = result.error instanceof Error ? result.error.message : '注册失败'
-      return
-    }
+    await userStore.register(form.value)
 
     await router.push('/login')
   } catch (error) {

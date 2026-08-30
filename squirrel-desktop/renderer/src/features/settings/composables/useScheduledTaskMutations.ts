@@ -40,8 +40,8 @@ export interface UseScheduledTaskMutationsReturn {
   handleCreateTask: (taskData: Record<string, unknown>) => Promise<void>
   handleUpdateTask: (task: ScheduledTask, taskData: Record<string, unknown>) => Promise<void>
   doDeleteTask: (task: ScheduledTask) => Promise<void>
-  enableTask: (id: string | number) => void
-  disableTask: (id: string | number) => void
+  enableTask: (id: string | number) => Promise<void>
+  disableTask: (id: string | number) => Promise<void>
   executeTask: (task: ScheduledTask) => Promise<void>
 }
 
@@ -61,9 +61,7 @@ export function useScheduledTaskMutations(
   })
 
   const handleCreateTask = async (taskData: Record<string, unknown>) => {
-    await createMutation.mutateAsync(taskData).catch(() => {
-      /* toast handled by MutationCache */
-    })
+    await createMutation.mutateAsync(taskData)
   }
 
   const updateMutation = useMutation({
@@ -77,7 +75,7 @@ export function useScheduledTaskMutations(
   })
 
   const handleUpdateTask = async (task: ScheduledTask, taskData: Record<string, unknown>) => {
-    await updateMutation.mutateAsync({ task, taskData }).catch(() => {})
+    await updateMutation.mutateAsync({ task, taskData })
   }
 
   const deleteMutation = useMutation({
@@ -89,7 +87,7 @@ export function useScheduledTaskMutations(
   })
 
   const doDeleteTask = async (task: ScheduledTask) => {
-    await deleteMutation.mutateAsync(task).catch(() => {})
+    await deleteMutation.mutateAsync(task)
   }
 
   const enableMutation = useMutation({
@@ -108,12 +106,12 @@ export function useScheduledTaskMutations(
     },
   })
 
-  const enableTask = (id: string | number) => {
-    void enableMutation.mutateAsync(id).catch(() => {})
+  const enableTask = async (id: string | number) => {
+    await enableMutation.mutateAsync(id)
   }
 
-  const disableTask = (id: string | number) => {
-    void disableMutation.mutateAsync(id).catch(() => {})
+  const disableTask = async (id: string | number) => {
+    await disableMutation.mutateAsync(id)
   }
 
   const executeMutation = useMutation({
@@ -125,7 +123,7 @@ export function useScheduledTaskMutations(
   })
 
   const executeTask = async (task: ScheduledTask) => {
-    await executeMutation.mutateAsync(task).catch(() => {})
+    await executeMutation.mutateAsync(task)
   }
 
   return {

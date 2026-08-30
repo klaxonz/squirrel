@@ -790,8 +790,8 @@
 </template>
 
 <script setup lang="ts">
-import { nextEntryIndex } from '@/features/rss/composables/rssEntryNav'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRssReaderWorkspace } from '@/features/rss/composables/useRssReaderWorkspace'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 import { BounceDots as AppBounceDots } from '@/shared/ui/skeleton'
@@ -1088,6 +1088,34 @@ const {
   contextMenuEntry,
   findFeedByEntry,
 })
+const {
+  openReader,
+  handleWorkspaceKeyDown,
+} = useRssReaderWorkspace({
+  reader: {
+    readingEntry,
+    showReaderSettings,
+    showInAppBrowser,
+    handleKeyDown,
+    closeInAppBrowser,
+    openInAppBrowser,
+  },
+  filteredEntries,
+  entriesContainer,
+  findFeedByEntry,
+  recordRecentlyViewed,
+  toggleReadStatus,
+  toggleStarStatus,
+  onShowReaderPane: () => {
+    activeNarrowPane.value = 'reader'
+    sourcePaneOpen.value = false
+  },
+})
+
+const goToFeedFromContextMenu = async (entry: RssEntry) => {
+  showEntriesPane()
+  await goToFeedFromContextMenuImpl(entry)
+}
 
 loadAllImpl = async () => {
   loading.value = true
@@ -1125,118 +1153,7 @@ const selectFeedAndShowAll = async (feedId: number) => {
   await selectFeed(feedId)
 }
 
-const openReader = (entry: RssEntry) => {
-  readingEntry.value = entry
 
-  const feed = findFeedByEntry(entry.feed_id)
-  const method = feed?.open_method
-
-  if (method === 'external_browser') {
-    void openExternalUrl(entry.canonical_url)
-    if (!entry.is_read) {
-      toggleReadStatus(entry, false)
-    }
-    recordRecentlyViewed(entry)
-    return
-  }
-
-  if (!entry.is_read) {
-    toggleReadStatus(entry, false)
-  }
-  recordRecentlyViewed(entry)
-  activeNarrowPane.value = 'reader'
-
-  if (method === 'app_browser') {
-    void openInAppBrowser()
-  }
-}
-const goToFeedFromContextMenu = async (entry: RssEntry) => {
-  showEntriesPane()
-  await goToFeedFromContextMenuImpl(entry)
-}
-
-const isTypingTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement)) return false
-  const tag = target.tagName
-  return target.isContentEditable
-    || tag === 'INPUT'
-    || tag === 'TEXTAREA'
-    || tag === 'SELECT'
-    || target.closest('[contenteditable="true"], [role="textbox"]') != null
-}
-
-const scrollEntryIntoView = (entryId: string | number) => {
-  const root = entriesContainer.value
-  if (!root) return
-  const el = root.querySelector(`[data-entry-id="${String(entryId)}"]`)
-  if (el instanceof HTMLElement) {
-    el.scrollIntoView({ block: 'nearest' })
-  }
-}
-
-const stepReadingEntry = (delta: number) => {
-  const list = filteredEntries.value
-  if (!list.length) return
-  const currentId = readingEntry.value ? String(readingEntry.value.id) : null
-  const index = currentId
-    ? list.findIndex((entry) => String(entry.id) === currentId)
-    : -1
-  const nextIndex = nextEntryIndex(list.length, index, delta)
-  if (nextIndex < 0) return
-  const next = list[nextIndex]
-  if (!next) return
-  if (currentId && String(next.id) === currentId) return
-  openReader(next)
-  nextTick(() => scrollEntryIntoView(next.id))
-}
-
-const handleWorkspaceKeyDown = (event: KeyboardEvent) => {
-  // Lightbox and other reader chrome first.
-  handleKeyDown(event)
-  if (event.defaultPrevented || event.isComposing || isTypingTarget(event.target)) return
-
-  if (event.key === 'Escape') {
-    if (showReaderSettings.value) {
-      event.preventDefault()
-      showReaderSettings.value = false
-      return
-    }
-    if (showInAppBrowser.value) {
-      event.preventDefault()
-      closeInAppBrowser()
-      return
-    }
-    if (readingEntry.value) {
-      event.preventDefault()
-      readingEntry.value = null
-      return
-    }
-  }
-
-  // Entry list keyboard navigation (j/k and arrows).
-  if (event.key === 'j' || event.key === 'J' || event.key === 'ArrowDown') {
-    event.preventDefault()
-    stepReadingEntry(1)
-    return
-  }
-  if (event.key === 'k' || event.key === 'K' || event.key === 'ArrowUp') {
-    event.preventDefault()
-    stepReadingEntry(-1)
-    return
-  }
-
-  if (!readingEntry.value) return
-
-  if (event.key === 's' || event.key === 'S') {
-    event.preventDefault()
-    void toggleStarStatus(readingEntry.value)
-    return
-  }
-  if (event.key === 'm' || event.key === 'M') {
-    event.preventDefault()
-    void toggleReadStatus(readingEntry.value)
-  }
-}
 
 const showUnsubscribeConfirm = ref(false)
 const feedToUnsubscribe = ref<RssFeed | null>(null)

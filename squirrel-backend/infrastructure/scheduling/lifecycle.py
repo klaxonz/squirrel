@@ -79,34 +79,42 @@ def _heartbeat_worker() -> None:
 def scheduler_start() -> None:
     global _scheduler, _scheduler_running, _heartbeat_thread, _heartbeat_running
     with _scheduler_lock:
-        if _scheduler_running:
+        if _scheduler_running or (_scheduler is not None and _scheduler_is_alive(_scheduler)):
             logger.info('[scheduler] already running, skip start()')
             return
 
         logger.info('[scheduler] starting...')
         scheduler = Scheduler()
+        try:
+            dynamic_task_manager.initialize(scheduler)
+            ensure_system_tasks()
+            _task_synchronizer.seed_task_fingerprints()
+            dynamic_task_manager.load_and_register_tasks()
+            scheduler.start()
+        except Exception:
+            try:
+                scheduler.stop()
+            except Exception:
+                logger.warning('[scheduler] failed to clean up after startup failure', exc_info=True)
+            raise
 
-        dynamic_task_manager.initialize(scheduler)
-        ensure_system_tasks()
-        _task_synchronizer.seed_task_fingerprints()
-
-        dynamic_task_manager.load_and_register_tasks()
-
-        scheduler.start()
         _scheduler = scheduler
         _scheduler_running = True
-
         job_count = len(scheduler.jobs) if hasattr(scheduler, 'jobs') else 0
-
         _update_scheduler_status(is_running=True, job_count=job_count)
-
         _heartbeat_running = True
         _heartbeat_thread = Thread(target=_heartbeat_worker, name='scheduler-heartbeat', daemon=True)
         _heartbeat_thread.start()
         thread_manager.register(_heartbeat_thread)
-
         logger.info('[scheduler] started with %s jobs', job_count)
 
+
+def _scheduler_is_alive(scheduler: Scheduler) -> bool:
+    running = getattr(scheduler, 'running', None)
+    if running is not None:
+        return bool(running)
+    thread = getattr(scheduler, '_thread', None)
+    return bool(thread is not None and thread.is_alive())
 
 def scheduler_stop() -> None:
     global _scheduler, _scheduler_running, _heartbeat_running, _heartbeat_thread
@@ -115,26 +123,24 @@ def scheduler_stop() -> None:
             logger.info('[scheduler] not running, skip stop()')
             return
         logger.info('[scheduler] stopping...')
+        scheduler = _scheduler
         try:
-            # Signal both loops to stop, then give them a bounded chance to
-            # finish in-flight work before the process tears down.
             _heartbeat_running = False
-            if _scheduler:
-                _scheduler.stop()
-
+            if scheduler:
+                scheduler.stop()
             if _heartbeat_thread:
                 _heartbeat_thread.join(timeout=2)
-
-            # Let the scheduler run-loop (registered in thread_manager) observe
-            # the stop event and exit its current wait(). The actual join of
-            # all managed threads happens at process shutdown via
-            # thread_manager.shutdown_all(), invoked by the worker bootstrap.
         finally:
-            _scheduler = None
-            _scheduler_running = False
-            _heartbeat_thread = None
-            _update_scheduler_status(is_running=False, job_count=0)
-            logger.info('[scheduler] stopped')
+            scheduler_alive = scheduler is not None and _scheduler_is_alive(scheduler)
+
+        if scheduler_alive:
+            logger.warning('[scheduler] stop requested; scheduler thread still running')
+            return
+        _scheduler = None
+        _scheduler_running = False
+        _heartbeat_thread = None
+        _update_scheduler_status(is_running=False, job_count=0)
+        logger.info('[scheduler] stopped')
 
 
 def scheduler_status() -> dict:

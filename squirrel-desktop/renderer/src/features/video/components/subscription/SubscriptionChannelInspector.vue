@@ -141,7 +141,7 @@ import {
   isSubscriptionSyncBusy,
   isSubscriptionSyncFailed,
 } from '@/features/video/lib/subscriptionPresenters'
-import type { SubscriptionListItem } from '@/features/video/types/subscription'
+import type { SubscriptionListItem } from '@/shared/types/subscription'
 
 const props = defineProps<{
   channel: SubscriptionListItem

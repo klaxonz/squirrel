@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import type { RemoteVideoItem, RemoteChannelProfile } from '@/features/video/composables/useRemoteChannel'
-import type { SubscriptionListItem } from '@/features/video/types/subscription'
+import type { SubscriptionListItem } from '@/shared/types/subscription'
 
 /**
  * Remote-video → playback-seed mapping + playability gating.

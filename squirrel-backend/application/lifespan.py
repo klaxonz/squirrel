@@ -65,14 +65,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 3. Site integrations (hard dependency) — YouTube OAuth env must be set before runtime start
     logger.info('Startup: starting site integrations')
+    site_integrations_started = False
     try:
         from infrastructure.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
 
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_file
+        site_integrations_started = True
         site_registry.start_all()
     except Exception:
+        if site_integrations_started:
+            site_registry.stop_all()
         logger.exception('Startup: failed to start site integrations')
         raise
 
@@ -103,6 +107,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             # code never imports the indexer directly (decoupled via events).
             register_meili_video_event_listener()
         except Exception:
+            if site_integrations_started:
+                site_registry.stop_all()
             logger.exception('Startup: failed to ensure Meilisearch index')
             raise
     else:

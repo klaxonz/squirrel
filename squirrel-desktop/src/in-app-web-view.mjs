@@ -60,8 +60,9 @@ export const createInAppWebViewController = ({
 
   const detach = (entry = active) => {
     if (!entry) return
-    const { view, parentWindow } = entry
+    const { view, parentWindow, parentClosedHandler } = entry
     try {
+      parentWindow?.removeListener?.('closed', parentClosedHandler)
       parentWindow?.contentView?.removeChildView?.(view)
     } catch {
       // Parent may already be destroyed.
@@ -108,14 +109,16 @@ export const createInAppWebViewController = ({
       return denyWindowOpen
     })
 
-    parentWindow.contentView.addChildView(view)
-    parentWindow.once?.('closed', () => {
+    const parentClosedHandler = () => {
       if (active?.parentWindow === parentWindow) detach()
-    })
+    }
+    parentWindow.contentView.addChildView(view)
+    parentWindow.once?.('closed', parentClosedHandler)
 
     active = {
       view,
       parentWindow,
+      parentClosedHandler,
       ownerId: parentWindow.id,
       url: null,
     }

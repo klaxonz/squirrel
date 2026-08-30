@@ -58,7 +58,7 @@ class FakeParentWindow {
   constructor() {
     this.id = 7
     this.destroyed = false
-    this.closedListener = null
+    this.closedListeners = []
     this.contentView = {
       children: [],
       addChildView(view) {
@@ -71,7 +71,13 @@ class FakeParentWindow {
   }
 
   once(eventName, listener) {
-    if (eventName === 'closed') this.closedListener = listener
+    if (eventName === 'closed') this.closedListeners.push(listener)
+  }
+
+  removeListener(eventName, listener) {
+    if (eventName === 'closed') {
+      this.closedListeners = this.closedListeners.filter((candidate) => candidate !== listener)
+    }
   }
 
   isDestroyed() {
@@ -173,9 +179,20 @@ test('in-app web view reuses one view, reloads, and hides cleanly', async () => 
   assert.deepEqual(created[0].bounds, { x: 20, y: 30, width: 500, height: 400 })
 
   assert.equal(await controller.reload(parentWindow), true)
+  assert.equal(parentWindow.closedListeners.length, 1)
   assert.equal(created[0].webContents.reloadCount, 1)
 
   assert.equal(controller.hide(parentWindow), true)
   assert.equal(parentWindow.contentView.children.length, 0)
+  assert.equal(parentWindow.closedListeners.length, 0)
   assert.equal(created[0].webContents.destroyed, true)
+  assert.equal(controller.hide(parentWindow), true)
+
+  assert.equal(await controller.open(parentWindow, 'https://example.com/c', {
+    x: 10, y: 10, width: 400, height: 300,
+  }), true)
+  assert.equal(parentWindow.closedListeners.length, 1)
+  assert.equal(controller.hide(parentWindow), true)
+  assert.equal(parentWindow.closedListeners.length, 0)
+  assert.equal(controller.hide(parentWindow), true)
 })

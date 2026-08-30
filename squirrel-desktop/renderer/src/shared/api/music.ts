@@ -1,23 +1,24 @@
 import { get, post, request } from '@/shared/lib/request'
+import type { MusicOperation, MusicOperationPayloads } from '@/shared/types/desktopBridge'
 
-const desktopMusic = <T>(operation: string, payload?: unknown): Promise<T> | null => {
+const desktopMusic = <T>(operation: MusicOperation, payload: MusicOperationPayloads[MusicOperation]): Promise<T> | null => {
   const bridge = window.desktopApp
   if (bridge?.isDesktop === true && typeof bridge.callMusic === 'function') {
-    return bridge.callMusic<T>(operation, payload)
+    return bridge.callMusic(operation, payload) as Promise<T>
   }
   return null
 }
 
-const musicGet = <T>(operation: string, url: string, params?: unknown) => {
-  return desktopMusic<T>(operation, params) ?? get<T>(url, params)
+const musicGet = <T>(operation: MusicOperation, url: string, params?: MusicOperationPayloads[MusicOperation]) => {
+  return desktopMusic<T>(operation, params as MusicOperationPayloads[MusicOperation]) ?? get<T>(url, params)
 }
 
-const musicPost = <T>(operation: string, url: string, data?: unknown) => {
-  return desktopMusic<T>(operation, data) ?? post<T>(url, data)
+const musicPost = <T>(operation: MusicOperation, url: string, data?: MusicOperationPayloads[MusicOperation]) => {
+  return desktopMusic<T>(operation, data as MusicOperationPayloads[MusicOperation]) ?? post<T>(url, data)
 }
 
-const musicDelete = <T>(operation: string, url: string, params?: unknown) => {
-  return desktopMusic<T>(operation, params) ?? request<T>({ url, method: 'delete', params })
+const musicDelete = <T>(operation: MusicOperation, url: string, params?: MusicOperationPayloads[MusicOperation]) => {
+  return desktopMusic<T>(operation, params as MusicOperationPayloads[MusicOperation]) ?? request<T>({ url, method: 'delete', params })
 }
 
 export type MusicTrack = {

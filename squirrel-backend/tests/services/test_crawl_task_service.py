@@ -560,6 +560,67 @@ def test_stale_lease_token_cannot_complete_reclaimed_task(engine, svc):
             now=now + timedelta(seconds=3),
         )
 
+def test_stale_lease_token_cannot_renew_reclaimed_task(engine, svc):
+    job_id = _create_job(engine)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            CrawlTask(
+                job_id=job_id,
+                task_type='video_extract',
+                site='youtube',
+                status='pending',
+                next_run_at=now,
+            ),
+        )
+        session.commit()
+
+    first = svc.claim_next_task(worker_id='worker-1', now=now, lease_seconds=1)
+    first_token = first.lease_token
+    svc.recover_expired_tasks(now=now + timedelta(seconds=2), retry_delay_seconds=0)
+    second = svc.claim_next_task(worker_id='worker-2', now=now + timedelta(seconds=2), lease_seconds=30)
+
+    assert second.lease_generation == first.lease_generation + 1
+    with pytest.raises(CrawlTaskOwnershipError, match='lease token is stale'):
+        svc.renew_task_lease(
+            task_id=second.id,
+            worker_id='worker-2',
+            lease_token=first_token,
+            now=now + timedelta(seconds=3),
+        )
+
+
+def test_stale_lease_token_cannot_retry_reclaimed_task(engine, svc):
+    job_id = _create_job(engine)
+    now = datetime(2026, 4, 1, 12, 0, 0)
+    with Session(engine, expire_on_commit=False) as session:
+        session.add(
+            CrawlTask(
+                job_id=job_id,
+                task_type='video_extract',
+                site='youtube',
+                status='pending',
+                next_run_at=now,
+            ),
+        )
+        session.commit()
+
+    first = svc.claim_next_task(worker_id='worker-1', now=now, lease_seconds=1)
+    first_token = first.lease_token
+    svc.recover_expired_tasks(now=now + timedelta(seconds=2), retry_delay_seconds=0)
+    second = svc.claim_next_task(worker_id='worker-2', now=now + timedelta(seconds=2), lease_seconds=30)
+
+    assert second.lease_generation == first.lease_generation + 1
+    with pytest.raises(CrawlTaskOwnershipError, match='lease token is stale'):
+        svc.retry_task(
+            task_id=second.id,
+            worker_id='worker-2',
+            lease_token=first_token,
+            error_message='stale worker failure',
+            error_type='worker_error',
+            now=now + timedelta(seconds=3),
+        )
+
 
 def test_expired_lease_cannot_complete_before_reaper_runs(engine, svc):
     job_id = _create_job(engine)

@@ -312,17 +312,34 @@ export const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
     },
   })
 
-  if (profile.userAgent) {
-    loginWindow.webContents.setUserAgent(profile.userAgent)
+  let loginDebuggerAttached = false
+  const detachLoginDebugger = () => {
+    if (!loginDebuggerAttached) return
+    try {
+      loginWindow.webContents.debugger.detach()
+    } catch {
+      // Best-effort cleanup.
+    }
+    loginDebuggerAttached = false
   }
-  if (profile.userAgentMetadata) {
-    loginWindow.webContents.debugger.attach('1.3')
-    await loginWindow.webContents.debugger.sendCommand('Network.setUserAgentOverride', {
-      userAgent: profile.userAgent,
-      acceptLanguage: profile.acceptLanguage,
-      platform: profile.platform,
-      userAgentMetadata: profile.userAgentMetadata,
-    })
+  try {
+    if (profile.userAgent) {
+      loginWindow.webContents.setUserAgent(profile.userAgent)
+    }
+    if (profile.userAgentMetadata) {
+      loginWindow.webContents.debugger.attach('1.3')
+      loginDebuggerAttached = true
+      await loginWindow.webContents.debugger.sendCommand('Network.setUserAgentOverride', {
+        userAgent: profile.userAgent,
+        acceptLanguage: profile.acceptLanguage,
+        platform: profile.platform,
+        userAgentMetadata: profile.userAgentMetadata,
+      })
+    }
+  } catch (error) {
+    detachLoginDebugger()
+    if (!loginWindow.isDestroyed()) loginWindow.close()
+    throw error
   }
 
   loginWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -353,8 +370,14 @@ export const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
     }
   })
 
-  await loginWindow.loadURL(profile.loginUrl, profile.userAgent ? { userAgent: profile.userAgent } : undefined)
-  loginWindow.show()
+  try {
+    await loginWindow.loadURL(profile.loginUrl, profile.userAgent ? { userAgent: profile.userAgent } : undefined)
+    loginWindow.show()
+  } catch (error) {
+    detachLoginDebugger()
+    if (!loginWindow.isDestroyed()) loginWindow.close()
+    throw error
+  }
 
   return new Promise((resolve, reject) => {
     const canAutoConfirmLogin = profile.signedInCookieNames.length > 0
@@ -367,17 +390,14 @@ export const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
         loginCheckTimer = null
       }
       session.defaultSession.cookies.removeListener('changed', handleCookieChanged)
+      detachLoginDebugger()
     }
 
     const resolveWithStatus = (status) => {
       if (settled) return
       settled = true
       clearLoginWatchers()
-      if (profile.siteName === 'bilibili') {
-        clearBilibiliPlaybackCache()
-      }
-      // Non-destructive: a failed cookie export must not break the login UX —
-      // the result is surfaced on the status as `cookie_export`.
+      if (profile.siteName === 'bilibili') clearBilibiliPlaybackCache()
       Promise.resolve(attachCookieExportResult(profile, status)).then(resolve).catch(resolve)
     }
 
@@ -385,18 +405,17 @@ export const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
       buildDesktopSiteLoginStatus(profile.siteName)
         .then((status) => {
           if (!status.logged_in) return
-          if (!loginWindow.isDestroyed()) {
-            loginWindow.close()
-          }
+          if (!loginWindow.isDestroyed()) loginWindow.close()
           resolveWithStatus(status)
         })
-        .catch(reject)
+        .catch((error) => {
+          clearLoginWatchers()
+          reject(error)
+        })
     }
 
     function handleCookieChanged(_event, cookie) {
-      if (hostMatchesLoginProfile(cookie?.domain, profile.cookieHosts)) {
-        checkLoginStatus()
-      }
+      if (hostMatchesLoginProfile(cookie?.domain, profile.cookieHosts)) checkLoginStatus()
     }
 
     if (canAutoConfirmLogin) {
@@ -409,7 +428,10 @@ export const openDesktopSiteLoginWindow = async (siteName, parentWindow) => {
       if (settled) return
       buildDesktopSiteLoginStatus(profile.siteName)
         .then(resolveWithStatus)
-        .catch(reject)
+        .catch((error) => {
+          clearLoginWatchers()
+          reject(error)
+        })
     })
   })
 }

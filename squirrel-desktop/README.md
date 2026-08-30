@@ -27,6 +27,8 @@ npm run dist             # UI + 安装包
 npm run typecheck
 npm run test             # main-process tests
 npm run test:renderer    # Vue/vitest
+npm run test:electron    # Electron smoke tests via WebdriverIO
+npm run check            # typography, overlay, and other static gates
 ```
 
 ## 加载方式
@@ -65,6 +67,6 @@ VISUAL_REVIEW_OUT=visual-review-results npm run test:electron -- --spec tests/el
 
 `visual:review` validates the fixed manifest (scenario, viewport, Electron/OS, locale, theme, fixture, prompt version), checks contrast, raw styles, overflow, accessible names, console errors, and task evidence. The Electron collector uses the existing WebdriverIO Electron service and captures only renderer content; OS-native windows/dialogs are excluded from pixel baselines. If chromedriver/Electron cannot start, the deterministic fixture remains available and the Electron result must be reported as blocked, never as a passed business screenshot.
 
-The daily checks (`npm run check`) enforce existing typography/overlay rules plus the offline harness. `test:electron` is a real Electron runtime smoke boundary; `visual:review` is deterministic evidence generation; computer-use/manual review is outside npm automation and must consume the generated prompts/artifacts.
+`npm run check` enforces the fast typography/overlay rules. The deterministic `visual:review` harness and real Electron smoke are separate boundaries: `visual:review` generates offline evidence, while `test:electron` exercises the real Electron runtime. Computer-use/manual review is outside npm automation and must consume the generated prompts/artifacts.
 
 重要：默认 `visual:review` 的 deterministic fixture 仅是 smoke-only，业务视觉 verdict 固定为 `blocked` 并以非零退出；它不能代表 renderer-app 或业务页面通过。只有 `visual-review.spec.mjs` 在真实 Electron renderer 成功采集、且 manifest provenance 为 `mode: electron` / `target: business` 时，才可对业务证据运行通过/失败门禁。当前仓库未声称已覆盖真实业务视觉 baseline；缺少 baseline、runtime 或 AI review 均保持 blocked。

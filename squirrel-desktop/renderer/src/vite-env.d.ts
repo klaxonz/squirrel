@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 
+
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
   const component: DefineComponent<{}, {}, any>
@@ -48,7 +49,7 @@ interface DesktopAppBridge {
   resolveBilibiliSubtitles?: DesktopSubtitleResolver
   searchRemoteVideos?: DesktopRemoteSearchResolver
   getRemoteChannel?: DesktopRemoteChannelResolver
-  callMusic?: <T = unknown>(operation: string, payload?: unknown) => Promise<T>
+  callMusic?: <O extends DesktopBridgeContract.MusicOperation>(operation: O, payload: DesktopBridgeContract.MusicOperationPayloads[O]) => Promise<unknown>
   getSiteLoginStatus?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   openSiteLogin?: (siteName: string) => Promise<DesktopSiteLoginStatus>
   clearSiteSession?: (siteName: string) => Promise<DesktopSiteLoginStatus>

@@ -280,12 +280,9 @@ import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 import { useUIStore } from '@/shared/stores/ui'
 import {
   useMusicNavigation,
-  getMusicDetailIdentity,
-  isMusicDetailView,
-  type MusicDetailView,
   type MusicView,
 } from '@/features/music/composables/useMusicNavigation'
-import { useMusicRouteRestoration, type MusicDetailRoute } from '@/features/music/composables/useMusicRouteRestoration'
+import { useMusicDetailRouteController } from '@/features/music/composables/useMusicDetailRouteController'
 import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 import { useMusicHome } from '@/features/music/composables/useMusicHome'
 import { useMusicDetail } from '@/features/music/composables/useMusicDetail'
@@ -293,11 +290,6 @@ import { useMusicAuth } from '@/features/music/composables/useMusicAuth'
 import { useMusicFm } from '@/features/music/composables/useMusicFm'
 import {
   collectMusicPlaylist,
-  getMusicAlbumDetail,
-  getMusicArtistDetail,
-  getMusicRankDetail,
-  getMusicPlaylists,
-  getMusicUserPlaylists,
   type MusicTrack,
   type MusicPlaylist,
   type MusicArtist,
@@ -404,111 +396,20 @@ const {
   addToPlaylist,
 } = useMusicAuth()
 
-const detailRoute = computed<MusicDetailRoute | null>(() => {
-  if (!isMusicDetailView(activeView.value)) return null
-  return {
-    view: activeView.value,
-    identity: getMusicDetailIdentity(route.query),
-  }
-})
-
 const detailBackLabels: Record<MusicView, string> = {
-  home: '返回首页',
-  search: '返回搜索',
-  fm: '返回首页',
-  ranks: '返回榜单',
-  playlists: '返回歌单',
-  'playlist-detail': '返回歌单',
-  'user-playlist-detail': '返回我的',
-  'artist-detail': '返回搜索',
-  'album-detail': '返回专辑',
-  profile: '返回我的',
-  'new-songs': '返回首页',
-  'new-albums': '返回专辑',
-  'ai-recommend': '返回首页',
-  'everyday-recommend': '返回首页',
-  favorites: '返回我的',
+  home: '返回首页', search: '返回搜索', fm: '返回首页', ranks: '返回榜单', playlists: '返回歌单',
+  'playlist-detail': '返回歌单', 'user-playlist-detail': '返回我的', 'artist-detail': '返回搜索',
+  'album-detail': '返回专辑', profile: '返回我的', 'new-songs': '返回首页', 'new-albums': '返回专辑',
+  'ai-recommend': '返回首页', 'everyday-recommend': '返回首页', favorites: '返回我的',
 }
 const detailBackLabel = computed(() => detailBackLabels[detailParent.value || 'home'])
 
-function playlistIdentity(playlist: MusicPlaylist) {
+function playlistIdentity(playlist: MusicPlaylist | null) {
   return {
-    id: String(playlist.specialid || playlist.global_collection_id || playlist.id || ''),
-    kind: playlist.kind,
+    id: String(playlist?.specialid || playlist?.global_collection_id || playlist?.id || ''),
+    kind: playlist?.kind,
   }
 }
-
-async function restoreDetail(request: MusicDetailRoute): Promise<boolean> {
-  const identity = request.identity
-  if (!identity?.id) return false
-
-  if (request.view === 'artist-detail') {
-    if (selectedArtist.value?.id === identity.id) return true
-    const artist = await getMusicArtistDetail(identity.id)
-    if (!artist) return false
-    await selectArtistDetail(artist)
-    return selectedArtist.value?.id === identity.id
-  }
-
-  if (request.view === 'album-detail') {
-    if (selectedAlbum.value?.id === identity.id) return true
-    const album = await getMusicAlbumDetail(identity.id)
-    if (!album) return false
-    await selectAlbum(album)
-    return selectedAlbum.value?.id === identity.id
-  }
-
-  if (request.view === 'user-playlist-detail') {
-    if (String(selectedUserPlaylist.value?.listid || '') === identity.id) return true
-    const known = userPlaylists.value.find(item => String(item.listid || '') === identity.id)
-    const playlist = known || (await getMusicUserPlaylists())?.items.find(
-      item => String(item.listid || '') === identity.id,
-    )
-    if (!playlist) return false
-    await selectUserPlaylist(playlist)
-    targetUserPlaylistId.value = identity.id
-    return String(selectedUserPlaylist.value?.listid || '') === identity.id
-  }
-
-  if (identity.kind === 'rank') {
-    if (selectedRank.value?.id === identity.id && selectedPlaylist.value) return true
-    const rank = await getMusicRankDetail(identity.id)
-    if (!rank) return false
-    await selectRankAsPlaylist({
-      ...rank,
-      rank_cid: identity.rankCid || '',
-      play_count: 0,
-    })
-    return selectedRank.value?.id === identity.id && Boolean(selectedPlaylist.value)
-  }
-
-  if (playlistIdentity(selectedPlaylist.value || {}).id === identity.id && !selectedRank.value) return true
-  let playlist = homePlaylists.value.find(item => playlistIdentity(item).id === identity.id)
-  if (!playlist) {
-    const data = await getMusicPlaylists({ page: 1, page_size: 100 })
-    playlist = data?.items.find(item => playlistIdentity(item).id === identity.id)
-  }
-  if (!playlist) return false
-  await selectPlaylist(playlist)
-  return playlistIdentity(selectedPlaylist.value || {}).id === identity.id
-}
-
-function fallbackDetail(request: MusicDetailRoute) {
-  const labels: Record<MusicDetailView, string> = {
-    'playlist-detail': '该歌单无法从链接恢复，已返回歌单列表',
-    'user-playlist-detail': '该个人歌单不可用，已返回我的音乐',
-    'artist-detail': '该歌手详情不可用，已返回搜索',
-    'album-detail': '该专辑详情不可用，已返回专辑列表',
-  }
-  toast.info(labels[request.view])
-  navigateTo(detailParent.value || 'home')
-}
-
-const { restoring: restoringDetail } = useMusicRouteRestoration({
-  route: detailRoute,
-  restore: restoreDetail,
-  fallback: fallbackDetail,
-})
 
 const fm = useMusicFm()
 const fmTrack = computed(() => fm.batch.value[fm.batchIndex.value] || null)
@@ -516,6 +417,27 @@ const fmActive = computed(() => Boolean(
   playerStore.currentTrack?.hash && fm.batch.value.some(track => track.hash === playerStore.currentTrack?.hash),
 ))
 const fmPlaying = computed(() => fmActive.value && playerStore.playing)
+
+const { restoring: restoringDetail } = useMusicDetailRouteController({
+  activeView,
+  routeQuery: computed(() => route.query as Record<string, unknown>),
+  detailParent,
+  selectedPlaylist,
+  selectedUserPlaylist,
+  selectedArtist,
+  selectedAlbum,
+  selectedRank,
+  userPlaylists,
+  homePlaylists,
+  targetUserPlaylistId,
+  selectPlaylist,
+  selectUserPlaylist,
+  selectArtistDetail,
+  selectAlbum,
+  selectRankAsPlaylist,
+  navigateTo: (view) => navigateTo(view),
+  toastInfo: toast.info,
+})
 
 // ponytail: complex-search state + execute/reset live in useMusicSearch. The
 // error-string mapping + empty-query reset policy are owned there; the view

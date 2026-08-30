@@ -105,15 +105,11 @@ const handleSubmit = async () => {
   loading.value = true
   errorMessage.value = ''
   try {
-    const result = await userStore.login({
+    await userStore.login({
       email: form.value.email,
       password: form.value.password,
       remember_me: form.value.rememberMe,
     })
-    if (result.error) {
-      errorMessage.value = result.error instanceof Error ? result.error.message : '登录失败'
-      return
-    }
 
     resetNavigationHistory()
     await router.push('/')

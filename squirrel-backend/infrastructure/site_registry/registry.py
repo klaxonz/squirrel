@@ -9,16 +9,19 @@ domain/capability queries the rest of the backend still asks for.
 from __future__ import annotations
 
 import threading
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from contextlib import suppress
-from importlib import import_module
 from pathlib import Path
 from typing import Any
 
-# slug -> importable module exposing get_site_runtime()
-_SITE_DEFINITIONS = {
-    'bilibili': 'sites.squirrel_bilibili.runtime',
-    'youtube': 'sites.squirrel_youtube.runtime',
+from sites.squirrel_bilibili.runtime import get_site_runtime as get_bilibili_site_runtime
+from sites.squirrel_youtube.runtime import get_site_runtime as get_youtube_site_runtime
+
+# Typed factories are registered explicitly so runtime loading does not use a
+# string-based dynamic import boundary.
+_SITE_DEFINITIONS: dict[str, Callable[[], Any]] = {
+    'bilibili': get_bilibili_site_runtime,
+    'youtube': get_youtube_site_runtime,
 }
 
 # The five typed methods every site runtime exposes (in registration order).
@@ -46,8 +49,7 @@ class SiteRegistry:
                 return runtime
             if slug not in _SITE_DEFINITIONS:
                 raise ValueError(f'Unknown site: {slug!r}')
-            module = import_module(_SITE_DEFINITIONS[slug])
-            runtime = module.get_site_runtime()
+            runtime = _SITE_DEFINITIONS[slug]()
             self._runtimes[slug] = runtime
             return runtime
 

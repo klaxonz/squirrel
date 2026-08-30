@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 
@@ -61,7 +61,7 @@ def refresh_subscription(
             'inProgress': schedule_result.status == 'in_progress',
             'subscriptionId': subscription_id,
             'requestId': schedule_result.request_id,
-            'queuedAt': datetime.utcnow().isoformat() if schedule_result.status == 'queued' else None,
+            'queuedAt': datetime.now(UTC).isoformat() if schedule_result.status == 'queued' else None,
         }
     )
 

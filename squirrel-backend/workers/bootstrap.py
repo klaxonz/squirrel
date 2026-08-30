@@ -70,14 +70,18 @@ def bootstrap_runtime(component: str):
         logger.exception('[%s] Failed to configure cookie resolver', component)
         raise
 
+    site_integrations_started = False
     try:
         from infrastructure.site_catalog.youtube_oauth import get_oauth_credentials_for_daemon
 
         oauth_file = get_oauth_credentials_for_daemon()
         if oauth_file:
             os.environ['YOUTUBE_OAUTH_STATE_FILE'] = oauth_file
+        site_integrations_started = True
         get_site_registry().start_all()
     except Exception:
+        if site_integrations_started:
+            get_site_registry().stop_all()
         logger.exception('[%s] Site integration bootstrap failed', component)
         raise
 

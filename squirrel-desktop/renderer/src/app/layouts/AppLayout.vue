@@ -53,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import DesktopTitleBar from '@/app/shell/DesktopTitleBar.vue'
 import AppSidebar from '@/app/shell/AppSidebar.vue'
@@ -68,12 +68,8 @@ import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
 import { useUIStore } from '@/shared/stores/ui'
 import { MAIN_SCROLL_ID } from '@/shared/composables/useMainScrollRoot'
 import { useModalEscapeApi } from '@/shared/composables/useModalEscape'
-import {
-  MAIN_ROUTE_SCROLL_KEY,
-  applyRouteScrollPositions,
-  collectRouteScrollPositions,
-  type RouteScrollPositions,
-} from '@/shared/lib/routeScrollRestoration'
+import { useAppRouteScrollRestoration } from '@/app/composables/useAppRouteScrollRestoration'
+import { MAIN_ROUTE_SCROLL_KEY } from '@/shared/lib/routeScrollRestoration'
 import {
   createNativeNavigationDeduper,
   navigationDirectionForMouseButton,
@@ -159,89 +155,13 @@ watch(
 
 const layoutRef = ref<HTMLElement | null>(null)
 const mainScrollRef = ref<HTMLElement | null>(null)
-let scrollSaveTimer: ReturnType<typeof setTimeout> | null = null
-// The outer scroll element survives route changes. Keep an explicit owner so a
-// delayed save can never write the previous page's offset into the new entry.
-let scrollOwnerEntryId: string | null = nav.current.value?.id ?? null
-let scrollRestoreTimer: ReturnType<typeof setTimeout> | null = null
-let scrollRestoreToken = 0
-let isRestoringScroll = false
+const { handleRouteScroll, cancelScrollRestoration } = useAppRouteScrollRestoration({
+  layoutRef,
+  mainScrollRef,
+  navigation: nav,
+})
 let detachDesktopNavListener: (() => void) | null = null
 const shouldHandleNativeNavigation = createNativeNavigationDeduper()
-
-function flushScrollPosition() {
-  if (scrollSaveTimer) {
-    clearTimeout(scrollSaveTimer)
-    scrollSaveTimer = null
-  }
-  const layoutEl = layoutRef.value
-  if (!layoutEl || !scrollOwnerEntryId) return
-  nav.saveScrollPositions(collectRouteScrollPositions(layoutEl), scrollOwnerEntryId)
-}
-
-function handleRouteScroll(event: Event) {
-  if (isRestoringScroll) return
-  const target = event.target
-  if (!(target instanceof HTMLElement) || !target.dataset.routeScroll) return
-  if (scrollSaveTimer) clearTimeout(scrollSaveTimer)
-  scrollSaveTimer = setTimeout(() => {
-    scrollSaveTimer = null
-    flushScrollPosition()
-  }, 120)
-}
-
-function cancelScrollRestoration() {
-  scrollRestoreToken += 1
-  isRestoringScroll = false
-  if (scrollRestoreTimer) {
-    clearTimeout(scrollRestoreTimer)
-    scrollRestoreTimer = null
-  }
-}
-
-function restoreScrollPositions(positions: RouteScrollPositions) {
-  cancelScrollRestoration()
-  const layoutEl = layoutRef.value
-  if (!layoutEl) return
-
-  const token = scrollRestoreToken
-  const deadline = Date.now() + 5_000
-  // Keep applying through the page crossfade. During the first frame the
-  // leaving page can temporarily provide enough scroll height and make a
-  // premature restore look successful; that height disappears ~180ms later.
-  const settleUntil = Date.now() + 300
-  isRestoringScroll = true
-
-  const apply = () => {
-    if (token !== scrollRestoreToken) return
-    const complete = applyRouteScrollPositions(layoutEl, positions)
-    if ((complete && Date.now() >= settleUntil) || Date.now() >= deadline) {
-      isRestoringScroll = false
-      scrollRestoreTimer = null
-      return
-    }
-    scrollRestoreTimer = setTimeout(apply, 50)
-  }
-  apply()
-}
-
-watch(() => route.fullPath, async () => {
-  // afterEach has already selected the destination history entry when this
-  // watcher runs. Flush against the captured owner before restoring the new
-  // page, otherwise a quick card click loses the list position.
-  flushScrollPosition()
-  await nextTick()
-  const scrollEl = mainScrollRef.value
-  if (!scrollEl) return
-  // 用 entry 里记录的 scrollY 恢复滚动位置 —— 取代旧的 "按 history.position
-  // 比较前后大小估算" 的脆弱方案。
-  const entry = nav.current.value
-  scrollOwnerEntryId = entry?.id ?? null
-  restoreScrollPositions({
-    [MAIN_ROUTE_SCROLL_KEY]: entry?.scrollY ?? 0,
-    ...entry?.scrollPositions,
-  })
-})
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -316,7 +236,6 @@ function handleNativeMouseNavigation(event: MouseEvent) {
 
 onMounted(() => {
   themeStore.init()
-  scrollOwnerEntryId = nav.current.value?.id ?? null
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('mouseup', handleNativeMouseNavigation, true)
   window.addEventListener('auxclick', handleNativeMouseNavigation, true)
@@ -332,8 +251,6 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('mouseup', handleNativeMouseNavigation, true)
   window.removeEventListener('auxclick', handleNativeMouseNavigation, true)
-  flushScrollPosition()
-  cancelScrollRestoration()
   detachDesktopNavListener?.()
   detachDesktopNavListener = null
 })
@@ -365,7 +282,6 @@ onUnmounted(() => {
   z-index: var(--z-sidebar);
   transition: width var(--duration-base) var(--ease-out);
 }
-
 .app-layout__workspace {
   position: absolute;
   inset: 0 0 0 var(--workspace-offset);

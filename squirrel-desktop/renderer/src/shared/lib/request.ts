@@ -9,7 +9,8 @@ export { ApiError, ErrorTypes }
 export type { ErrorType } from './apiError'
 export { isApiError, getErrorTypeByStatus, getErrorTypeByCode } from './apiError'
 
-type ApiEnvelope<T = unknown> = {
+/** Backend's JSON response envelope. JSON requests use this shape by default. */
+export type ApiEnvelope<T = unknown> = {
   code: number
   msg?: string
   data?: T
@@ -20,21 +21,20 @@ const isApiEnvelope = (data: unknown): data is ApiEnvelope => {
 }
 
 /**
- * Unwrap the backend `{ code, msg, data }` envelope.
+ * Resolve the response according to its declared response mode.
  *
- * The contract: HTTP success (2xx) with `code === 0` means the body's `data`
- * field is the payload; any other `code` is a business-level failure. We THROW
- * an `ApiError` on failure rather than returning `{ data, error }` — this is the
- * vue-query error model (useMutation/useQuery catch thrown errors). The old
- * `handleRequest` that swallowed exceptions into a Result tuple is gone; query's
- * `MutationCache.onError` is now the single global error-feedback channel.
+ * JSON requests expect the backend `{ code, msg, data }` envelope: `code === 0`
+ * returns `data`, and every other code throws an `ApiError`. Non-JSON requests
+ * (for example `responseType: 'text'`) are raw responses and bypass envelope
+ * detection entirely, even when the raw value happens to contain `code`.
  *
  * Transport failures (network/timeout/5xx) never reach here — the axios
  * response interceptor in `axios.ts` converts those into `ApiError` rejections
- * first. So by the time `response` resolves, only envelope logic remains.
+ * first.
  */
-const unwrap = <T>(response: { data: unknown; status: number }): T => {
+const unwrap = <T>(response: { data: unknown; status: number; responseType?: AxiosRequestConfig['responseType'] }): T => {
   const body = response.data
+  if (response.responseType && response.responseType !== 'json') return body as T
   if (isApiEnvelope(body)) {
     if (body.code === 0) {
       return (body.data ?? null) as T
@@ -51,7 +51,7 @@ const unwrap = <T>(response: { data: unknown; status: number }): T => {
 
 export const request = async <T = unknown>(config: AxiosRequestConfig): Promise<T> => {
   const response = await axios.request<T>(config)
-  return unwrap<T>({ data: response.data, status: response.status })
+  return unwrap<T>({ data: response.data, status: response.status, responseType: config.responseType })
 }
 
 export const get = <T = unknown>(url: string, params?: unknown, config: AxiosRequestConfig = {}) =>

@@ -129,7 +129,7 @@ import { useVideoCardNavigation } from '@/features/video/composables/useVideoCar
 import { onSubscriptionRemoved } from '@/shared/lib/subscriptionEvents'
 import { useRemoteChannel } from '@/features/video/composables/useRemoteChannel'
 import { useRemoteVideoMapping } from '@/features/video/composables/useRemoteVideoMapping'
-import type { SubscriptionListItem } from '@/features/video/types/subscription'
+import type { SubscriptionListItem } from '@/shared/types/subscription'
 
 defineOptions({ name: 'ChannelDetailView' })
 

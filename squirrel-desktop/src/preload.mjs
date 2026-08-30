@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+/** @typedef {import('../renderer/src/shared/types/desktopBridge').MusicOperation} MusicOperation */
+/** @typedef {import('../renderer/src/shared/types/desktopBridge').MusicOperationPayloads} MusicOperationPayloads */
+
+/** @type {<O extends MusicOperation>(operation: O, payload: MusicOperationPayloads[O]) => Promise<unknown>} */
+const callMusic = (operation, payload) => ipcRenderer.invoke('desktop:music', operation, payload)
 const createUnidirectionalListener = (channel) => {
   return (listener) => {
     if (typeof listener !== 'function') return () => {}
@@ -31,8 +36,7 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   mintYouTubePoToken: (videoId, options) => ipcRenderer.invoke('desktop:mint-youtube-po-token', videoId, options),
   resolveYouTubeSubtitles: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-youtube-subtitles', targetUrl, options),
   searchRemoteVideos: (options) => ipcRenderer.invoke('desktop:search-remote-videos', options),
-  getRemoteChannel: (options) => ipcRenderer.invoke('desktop:get-remote-channel', options),
-  callMusic: (operation, payload) => ipcRenderer.invoke('desktop:music', operation, payload),
+  callMusic,
   getSiteLoginStatus: (siteName) => ipcRenderer.invoke('desktop:get-site-login-status', siteName),
   openSiteLogin: (siteName) => ipcRenderer.invoke('desktop:open-site-login', siteName),
   clearSiteSession: (siteName) => ipcRenderer.invoke('desktop:clear-site-session', siteName),

@@ -1,3 +1,4 @@
+import importlib
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -28,6 +29,17 @@ def test_registry_loads_real_site_runtime_in_process():
         assert callable(getattr(runtime, method))
     # cached: same object on second load
     assert registry.get_site_runtime('youtube') is runtime
+
+def test_registry_runtime_loading_does_not_use_dynamic_import(monkeypatch):
+    def fail_dynamic_import(*args, **kwargs):
+        raise AssertionError('site runtime loading must use registered factories')
+
+    monkeypatch.setattr(importlib, 'import_module', fail_dynamic_import)
+
+    registry = SiteRegistry(repo_root=Path('.'))
+    runtime = registry.get_site_runtime('youtube')
+
+    assert runtime.site_descriptor()['site_name'] == 'youtube'
 
 
 def test_registry_unknown_site_raises_value_error():

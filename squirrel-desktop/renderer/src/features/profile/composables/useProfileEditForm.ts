@@ -22,9 +22,6 @@ interface ProfileForm {
   avatar: string
 }
 
-interface UpdateProfileResult {
-  error?: unknown
-}
 
 export interface UseProfileEditFormOptions {
   userStore: ReturnType<typeof useUserStore>
@@ -53,7 +50,10 @@ export function useProfileEditForm(options: UseProfileEditFormOptions): UseProfi
   let savedTimer: ReturnType<typeof setTimeout> | null = null
 
   onUnmounted(() => {
-    if (savedTimer) clearTimeout(savedTimer)
+    if (savedTimer !== null) {
+      clearTimeout(savedTimer)
+      savedTimer = null
+    }
   })
 
   const hasChanges = computed(() => {
@@ -90,16 +90,17 @@ export function useProfileEditForm(options: UseProfileEditFormOptions): UseProfi
       return
     }
 
-    const result = (await userStore.updateProfile(payload)) as UpdateProfileResult
-    saving.value = false
-    if (result.error) {
-      saveError.value = errorMessage(result.error, '保存失败')
-    } else {
+    try {
+      await userStore.updateProfile(payload)
       saved.value = true
-      if (savedTimer) clearTimeout(savedTimer)
+      if (savedTimer !== null) clearTimeout(savedTimer)
       savedTimer = setTimeout(() => {
         saved.value = false
       }, SAVED_BANNER_MS)
+    } catch (error) {
+      saveError.value = errorMessage(error, '保存失败')
+    } finally {
+      saving.value = false
     }
   }
 

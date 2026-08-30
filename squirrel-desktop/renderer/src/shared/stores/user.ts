@@ -9,13 +9,8 @@ import type { User } from '@/shared/types/user'
 
 export type { User }
 
-// ponytail: the store still owns client-side auth state (currentUser /
-// isAuthenticated / hasResolvedAuth) + the logout side-effect (clears cookies,
-// redirects). API errors now surface as thrown ApiError — the load/login/register
-// actions re-shape them into the legacy `{ data, error }` return tuple so the
-// existing callers (Login/Register/Profile, which render inline field errors) keep
-// working without a broader rewrite. The error here is `ApiError | null`.
-type ResultTuple<T> = { data: T | null; error: unknown | null }
+// The store owns client-side auth state and logout/invalidation side effects.
+// API failures remain ApiError exceptions so callers can render them inline.
 
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref<User | null>(null)
@@ -36,50 +31,45 @@ export const useUserStore = defineStore('user', () => {
   const unsubscribeAuthInvalidation = subscribeToAuthInvalidation(clearState)
   onScopeDispose(unsubscribeAuthInvalidation)
 
-  const fetchCurrentUser = async (): Promise<ResultTuple<User>> => {
+  const fetchCurrentUser = async (): Promise<User | null> => {
     loading.value = true
     try {
       const data = await getUserMe() as User | null
       currentUser.value = data || null
       isAuthenticated.value = !!data
       hasResolvedAuth.value = true
-      return { data, error: null }
+      return data
     } catch (error) {
       // 401 means the session is gone — clear local auth so the router redirects
-      // to login. Other errors just leave the user unresolved-but-not-logged-out.
+      // to login. Other errors still resolve auth initialization before bubbling.
       if (isApiError(error) && error.type === 'UNAUTHORIZED') {
         clearState()
       } else {
         hasResolvedAuth.value = true
       }
-      return { data: null, error }
+      throw error
     } finally {
       loading.value = false
     }
   }
 
-  const login = async (credentials: Record<string, unknown>): Promise<ResultTuple<User>> => {
+  const login = async (credentials: Record<string, unknown>): Promise<User | null> => {
     loading.value = true
     try {
       const data = await loginUser(credentials) as User | null
       currentUser.value = data || null
       isAuthenticated.value = true
       hasResolvedAuth.value = true
-      return { data, error: null }
-    } catch (error) {
-      return { data: null, error }
+      return data
     } finally {
       loading.value = false
     }
   }
 
-  const register = async (payload: Record<string, unknown>): Promise<ResultTuple<unknown>> => {
+  const register = async (payload: Record<string, unknown>): Promise<unknown> => {
     loading.value = true
     try {
-      const data = await registerUser(payload)
-      return { data, error: null }
-    } catch (error) {
-      return { data: null, error }
+      return await registerUser(payload)
     } finally {
       loading.value = false
     }
@@ -96,14 +86,12 @@ export const useUserStore = defineStore('user', () => {
     resetNavigationHistory()
   }
 
-  const updateProfile = async (profile: Record<string, unknown>): Promise<ResultTuple<User>> => {
+  const updateProfile = async (profile: Record<string, unknown>): Promise<User | null> => {
     loading.value = true
     try {
       const data = await updateUserMe(profile) as User | null
       currentUser.value = data || null
-      return { data, error: null }
-    } catch (error) {
-      return { data: null, error }
+      return data
     } finally {
       loading.value = false
     }

@@ -60,6 +60,9 @@ def _run_runtime(runtime: CrawlWorkerRuntime, services: SubscriptionService, sto
 def crawl_worker_start() -> None:
     global _worker_threads, _workers_running, _stop_event
     with _workers_lock:
+        live_threads = [thread for thread in _worker_threads if _thread_is_alive(thread)]
+        _worker_threads = live_threads
+        _workers_running = bool(live_threads)
         if _workers_running:
             _logger.info('[crawl-worker] already running, skip start()')
             return
@@ -76,7 +79,6 @@ def crawl_worker_start() -> None:
         )
         thread.start()
         thread_manager.register(thread)
-
         _worker_threads = [thread]
         _workers_running = True
         _logger.info('[crawl-worker] started %d worker threads', len(_worker_threads))
@@ -88,16 +90,31 @@ def crawl_worker_stop() -> None:
         if not _workers_running:
             _logger.info('[crawl-worker] not running, skip stop()')
             return
-        # Signal the run loop to exit; the actual thread join happens at
-        # process shutdown via thread_manager.shutdown_all() so in-flight
-        # tasks get a bounded chance to finish instead of being killed.
         if _stop_event is not None:
             _stop_event.set()
-        _worker_threads = []
-        _stop_event = None
-        _workers_running = False
-        _logger.info('[crawl-worker] stopped')
+        threads = list(_worker_threads)
+        for thread in threads:
+            thread.join(timeout=2)
+
+        alive_threads = [thread for thread in threads if _thread_is_alive(thread)]
+        _worker_threads = alive_threads
+        _workers_running = bool(alive_threads)
+        if not alive_threads:
+            _stop_event = None
+            _logger.info('[crawl-worker] stopped')
+        else:
+            _logger.warning('[crawl-worker] stop requested; %d thread(s) still running', len(alive_threads))
+
+
+def _thread_is_alive(thread: threading.Thread) -> bool:
+    is_alive = getattr(thread, 'is_alive', None)
+    return bool(is_alive()) if is_alive is not None else True
 
 
 def crawl_worker_status() -> dict:
-    return {'running': _workers_running, 'count': len(_worker_threads)}
+    global _worker_threads, _workers_running
+    with _workers_lock:
+        alive_threads = [thread for thread in _worker_threads if _thread_is_alive(thread)]
+        _worker_threads = alive_threads
+        _workers_running = bool(alive_threads)
+        return {'running': _workers_running, 'count': len(alive_threads)}

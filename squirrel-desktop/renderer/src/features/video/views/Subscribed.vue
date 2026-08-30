@@ -348,7 +348,7 @@ import {
 import type {
   SubscriptionDetail,
   SubscriptionListItem,
-} from '@/features/video/types/subscription'
+} from '@/shared/types/subscription'
 import type {
   VideoListItem,
   VideoProfile,

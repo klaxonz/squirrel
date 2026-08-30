@@ -1,4 +1,4 @@
-import type { SubscriptionListItem } from '@/features/video/types/subscription'
+import type { SubscriptionListItem } from '@/shared/types/subscription'
 
 /**
  * Canonical subscription-list sort: special-followed channels first, then by

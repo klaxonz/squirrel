@@ -5,7 +5,7 @@ import type {
   SubscriptionDetail,
   SubscriptionOption,
   SubscriptionToggleResult,
-} from '@/features/video/types/subscription'
+} from '@/shared/types/subscription'
 
 export const getSubscriptions = async (params: Record<string, unknown> = {}, config: AxiosRequestConfig = {}) => {
   return get<SubscriptionListResponse>('/api/subscription/list', params, config)
