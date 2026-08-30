@@ -73,9 +73,3 @@ class SubscriptionVideoService:
                     SubscriptionVideo.video_id == video_id,
                 )
             ).first(), False
-
-
-subscription_video_service = SubscriptionVideoService()
-get_subscription_video_by_video_id = subscription_video_service.get_subscription_video_by_video_id
-get_subscription_video = subscription_video_service.get_subscription_video
-create_subscription_video = subscription_video_service.create_subscription_video

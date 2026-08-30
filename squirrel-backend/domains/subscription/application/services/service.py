@@ -19,6 +19,7 @@ class SubscriptionService:
     """Composition root for subscription application services."""
 
     def __init__(self, session_factory=get_session, video_service: VideoService | None = None):
+        owns_video_service = video_service is None
         video_service = video_service or VideoService(session_factory=session_factory)
         self.crud = SubscriptionCrudService(session_factory=session_factory)
         self.lifecycle = SubscriptionSyncLifecycle(
@@ -59,7 +60,7 @@ class SubscriptionService:
             lifecycle=self.lifecycle,
             orchestrator=self.orchestrator,
         )
-        self.video_service = video_service
+        self._owns_video_service = owns_video_service
 
     @property
     def crud_service(self) -> SubscriptionCrudService:
@@ -85,4 +86,5 @@ class SubscriptionService:
     def orchestrator_service(self) -> SubscriptionOrchestrator:
         return self.orchestrator
     def close(self) -> None:
-        self.video_service.close()
+        if self._owns_video_service:
+            self.video_service.close()
