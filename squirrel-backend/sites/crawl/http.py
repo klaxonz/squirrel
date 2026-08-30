@@ -242,7 +242,7 @@ def request(method: str, url: str, **kwargs):
         elif use_cloudflare_bypass == "mirror":
             return _resolve_maybe_async_result(_cloudflare_bypass_client.mirror(url=url, headers=headers))  # type: ignore
         else:
-            raise ValueError(f"无效的 Cloudflare bypass 类型: {use_cloudflare_bypass}，应为 'html' 或 'mirror'")
+            raise ValueError(f"无效的 Cloudflare bypass 类型: {use_cloudflare_bypass}, 应为 'html' 或 'mirror'")
     else:
         session = get_http_session()
         return session.request(method, url, **kwargs)
@@ -272,7 +272,7 @@ def request_without_limit(method: str, url: str, **kwargs):
         elif bypass_mode == "mirror":
             return _resolve_maybe_async_result(_cloudflare_bypass_client.mirror(url=url, headers=headers))  # type: ignore
         else:
-            raise ValueError(f"无效的 Cloudflare bypass 类型: {bypass_mode}，应为 'html' 或 'mirror'")
+            raise ValueError(f"无效的 Cloudflare bypass 类型: {bypass_mode}, 应为 'html' 或 'mirror'")
     else:
         session = requests.Session()
 

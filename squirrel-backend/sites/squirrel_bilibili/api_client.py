@@ -79,7 +79,7 @@ def _raise_api_code_error(code: int, message: str, url: str) -> None:
     if code in (-101, -403):
         raise AuthError(f"需要登录或访问权限: {url}", context=context)
     if code == -412:
-        raise RateLimitError(f"请求被拦截，请稍后重试: {url}", context=context)
+        raise RateLimitError(f"请求被拦截,请稍后重试: {url}", context=context)
     raise ParseError(f"Bilibili API 返回错误: {message} (code={code})", context=context)
 
 

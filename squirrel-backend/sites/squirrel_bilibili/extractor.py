@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, ClassVar
 
 from sites.crawl import (
     SiteError,
@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 class BilibiliExtractor(VideoExtractorBase):
     """Bilibili video extractor."""
 
-    site_name = "bilibili"
-    supported_domains = ["bilibili.com", "b23.tv"]
-    url_patterns = [
-        "/video/bv",
-        "/video/av",
-        "bilibili.com/video/",
-        "b23.tv"
+    site_name: ClassVar[str] = 'bilibili'
+    supported_domains: ClassVar[list[str]] = ['bilibili.com', 'b23.tv']
+    url_patterns: ClassVar[list[str]] = [
+        '/video/bv',
+        '/video/av',
+        'bilibili.com/video/',
+        'b23.tv',
     ]
 
     def __init__(self):

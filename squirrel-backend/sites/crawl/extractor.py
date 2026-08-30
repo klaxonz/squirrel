@@ -7,7 +7,7 @@ convenience.
 """
 import logging
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, ClassVar
 
 from .core import ExtractionResult, ExtractionTask, VideoMeta
 from .exceptions import ErrorCategory, ParseError, SiteError
@@ -24,7 +24,7 @@ class VideoExtractorBase(ABC):
     The result data is always VideoMeta.
     """
 
-    url_patterns: list[str] = []
+    url_patterns: ClassVar[list[str]] = []
 
     def __init__(self, site_name: str, supported_domains: list[str]):
         self.site_name = site_name

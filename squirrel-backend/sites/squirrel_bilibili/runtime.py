@@ -92,10 +92,7 @@ def _build_import_batch(
     if normalized_limit is not None and normalized_limit <= 0:
         normalized_limit = None
 
-    if normalized_limit is None:
-        batch_items = list(items[offset:])
-    else:
-        batch_items = list(items[offset:offset + normalized_limit])
+    batch_items = list(items[offset:]) if normalized_limit is None else list(items[offset:offset + normalized_limit])
 
     next_offset = offset + len(batch_items)
     has_more = next_offset < len(items)

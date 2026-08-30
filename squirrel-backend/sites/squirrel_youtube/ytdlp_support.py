@@ -233,10 +233,7 @@ def _is_bgutil_script_timeout(exc: Exception, opts: dict[str, Any]) -> bool:
         return False
     if isinstance(exc, subprocess.TimeoutExpired):
         command = exc.cmd
-        if isinstance(command, (list, tuple)):
-            command_text = " ".join(str(part) for part in command)
-        else:
-            command_text = str(command)
+        command_text = " ".join(str(part) for part in command) if isinstance(command, (list, tuple)) else str(command)
         return "generate_once." in command_text
     message = str(exc).lower()
     return "generate_once." in message and "timed out" in message

@@ -17,7 +17,7 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Protocol, runtime_checkable
 
-# Public API of this module is stable – add to __all__ in parent __init__.
+# Public API of this module is stable - add to __all__ in parent __init__.
 
 
 @dataclass
@@ -115,7 +115,7 @@ class ExtractionResult:
 
 
 class TaskPriority(int, Enum):
-    """Priority of an extraction task – larger means more important."""
+    """Priority of an extraction task - larger means more important."""
 
     LOW = 1
     NORMAL = 2

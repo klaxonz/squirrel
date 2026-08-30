@@ -40,9 +40,8 @@ def enc_wbi(params: dict[str, str], img_key: str, sub_key: str) -> dict[str, str
 
 def get_wbi_keys() -> tuple[str, str]:
     global _WBI_KEY_CACHE, _WBI_KEY_CACHE_TS
-    if _WBI_KEY_CACHE and _WBI_KEY_CACHE_TS is not None:
-        if (time.time() - _WBI_KEY_CACHE_TS) < _WBI_KEY_CACHE_TTL_SECONDS:
-            return _WBI_KEY_CACHE
+    if _WBI_KEY_CACHE and _WBI_KEY_CACHE_TS is not None and (time.time() - _WBI_KEY_CACHE_TS) < _WBI_KEY_CACHE_TTL_SECONDS:
+        return _WBI_KEY_CACHE
 
     headers = get_http_headers(SITE_SLUG, {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",

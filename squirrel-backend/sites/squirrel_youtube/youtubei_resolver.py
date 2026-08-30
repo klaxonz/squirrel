@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import atexit
+import contextlib
 import hashlib
 import json
 import os
@@ -318,10 +319,8 @@ class _YoutubeiWorkerClient:
                 process.terminate()
                 process.wait(timeout=2)
         except Exception:  # cleanup during shutdown — must not propagate
-            try:
+            with contextlib.suppress(Exception):
                 process.kill()
-            except Exception:  # cleanup during shutdown — must not propagate
-                pass
 
     def _drain_stderr(self, process: subprocess.Popen[str]) -> None:
         stream = process.stderr

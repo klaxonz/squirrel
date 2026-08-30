@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Protocol, runtime_checkable
+from typing import ClassVar, Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -32,7 +32,7 @@ class RegexIdExtractor:
     implement `extract_id()` directly.
     """
 
-    domains: list[str] = []
+    domains: ClassVar[list[str]] = []
     domain: str | None = None
     pattern: str | None = None
     group_index: int = 1

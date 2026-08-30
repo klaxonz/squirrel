@@ -57,7 +57,7 @@ class YoutubeUserSubscriptionImporter:
             if yt_initial_data:
                 subscriptions = self._parse_subscriptions_from_yt_data(yt_initial_data)
 
-            # 如果 ytInitialData 解析失败，回退到正则表达式方法
+            # 如果 ytInitialData 解析失败,回退到正则表达式方法
             if not subscriptions:
                 logger.info("Falling back to regex parsing for YouTube subscriptions")
                 pattern = r'"channelId":"([^"]+)"'
@@ -75,7 +75,7 @@ class YoutubeUserSubscriptionImporter:
 
             logger.info("Found %s YouTube subscriptions", len(subscriptions))
 
-            # 如果没有找到任何频道，尝试使用 BeautifulSoup 解析
+            # 如果没有找到任何频道,尝试使用 BeautifulSoup 解析
             if len(subscriptions) == 0:
                 soup = BeautifulSoup(html_content, "html.parser")
                 links = soup.find_all("a", href=re.compile(r"/channel/"))
@@ -118,7 +118,7 @@ class YoutubeUserSubscriptionImporter:
         subscriptions = []
 
         try:
-            # YouTube 的订阅数据结构可能有多种形式，我们需要尝试不同的路径
+            # YouTube 的订阅数据结构可能有多种形式,我们需要尝试不同的路径
             contents = yt_data.get("contents", {})
 
             # 尝试多种可能的路径来找到频道数据
@@ -137,7 +137,7 @@ class YoutubeUserSubscriptionImporter:
 
             # 路径2: 直接在 contents 中查找 gridRenderer 或其他容器
             if not channel_renderers:
-                for key, value in contents.items():
+                for _key, value in contents.items():
                     if isinstance(value, dict):
                         # 查找所有可能的频道渲染器
                         if "gridRenderer" in value:

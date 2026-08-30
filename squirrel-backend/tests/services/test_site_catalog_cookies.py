@@ -146,9 +146,6 @@ def test_resolve_cookie_file_for_url_uses_effective_site_catalog_defaults(tmp_pa
             'youtube': {
                 'domains': ['youtube.com'],
             },
-            'youtube': {
-                'domains': ['youtube.com'],
-            },
         },
         raising=False,
     )

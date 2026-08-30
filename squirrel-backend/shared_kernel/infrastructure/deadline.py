@@ -91,13 +91,13 @@ def run_with_deadline(target, args=(), kwargs=None, *, timeout_seconds: float) -
             message = queue.get(timeout=timeout_seconds)
         except Empty:
             if not process.is_alive():
-                raise _ChildProcessExited('Child process exited without returning a result')
+                raise _ChildProcessExited('Child process exited without returning a result') from None
             process.terminate()
             process.join(timeout=5.0)
             if process.is_alive():
                 process.kill()
                 process.join(timeout=2.0)
-            raise DeadlineExceeded(timeout_seconds)
+            raise DeadlineExceeded(timeout_seconds) from None
         if isinstance(message, _ChildFailure):
             raise message.exception
         return message.value

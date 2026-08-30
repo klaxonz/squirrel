@@ -62,10 +62,8 @@ class SubscriptionImportService:
         self,
         url: str,
     ) -> SubscriptionMeta:
-        from urllib.parse import urlparse
 
         domain = extract_top_level_domain(url)
-        parsed_url = urlparse(url)
         slug = self._registry.find_site_by_domain(domain or None)
         if not slug:
             raise ValidationError(f'No subscription route found for url: {url}')

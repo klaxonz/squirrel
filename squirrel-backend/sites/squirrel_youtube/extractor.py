@@ -3,7 +3,7 @@ YouTube video extractor.
 """
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from sites.crawl import (
     SiteError,
@@ -21,13 +21,13 @@ YOUTUBE_COOKIE_PLAYER_CLIENTS = youtube_ytdlp_support.YOUTUBE_COOKIE_PLAYER_CLIE
 class YoutubeExtractor(YoutubeDLExtractorBase):
     """YouTube video extractor."""
 
-    site_name = "youtube"
-    supported_domains = ["youtube.com", "youtu.be"]
-    url_patterns = [
-        "youtube.com/watch",
-        "youtube.com/shorts",
-        "youtu.be/",
-        "m.youtube.com"
+    site_name: ClassVar[str] = 'youtube'
+    supported_domains: ClassVar[list[str]] = ['youtube.com', 'youtu.be']
+    url_patterns: ClassVar[list[str]] = [
+        'youtube.com/watch',
+        'youtube.com/shorts',
+        'youtu.be/',
+        'm.youtube.com',
     ]
 
     def __init__(self):

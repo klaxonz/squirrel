@@ -1,21 +1,21 @@
 from __future__ import annotations
 
 import re
-from enum import Enum
+from enum import StrEnum
 from urllib.parse import parse_qs, urlparse
 
 from .api_client import _get_json
 from .sign import sign_params
 
 
-class ResourceType(str, Enum):
+class ResourceType(StrEnum):
     VIDEO = "video"
     USER = "user"
     FAVORITE_LIST = "favorite_list"
     CHANNEL_SERIES = "channel_series"
 
 
-class ChannelSeriesType(str, Enum):
+class ChannelSeriesType(StrEnum):
     SERIES = "series"
     SEASON = "season"
 
