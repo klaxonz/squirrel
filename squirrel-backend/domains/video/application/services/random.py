@@ -133,7 +133,3 @@ class VideoRandomService:
 
             random_row = session.execute(base_query.order_by(func.random()).limit(1)).first()
             return random_row[0] if random_row else None
-
-
-video_random_service = VideoRandomService()
-get_random_video = video_random_service.get_random_video

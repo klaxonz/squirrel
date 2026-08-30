@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
+from domains.video.application.services.extraction.thumbnail_downloader import ThumbnailDownloaderService
 from domains.video.application.services.listing.page_loader import VideoListPageLoader
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
@@ -39,17 +40,13 @@ class VideoFeaturedService:
         self,
         session_factory: SessionFactory | None = None,
         page_loader: VideoListPageLoader | None = None,
+        thumbnail_downloader: ThumbnailDownloaderService | None = None,
     ):
         self._session_factory = session_factory or _default_get_session
-        self._page_loader = page_loader or VideoListPageLoader(
-            thumbnail_downloader=None,  # replaced below
-        )
-        # Late-import to avoid circular dependency at module level
-        from domains.video.application.services.extraction.thumbnail_downloader import (
-            thumbnail_downloader_service,
-        )
-        if page_loader is None:
-            self._page_loader = VideoListPageLoader(thumbnail_downloader_service)
+        if page_loader is not None:
+            self._page_loader = page_loader
+        else:
+            self._page_loader = VideoListPageLoader(thumbnail_downloader)
 
     def get_featured_videos(self, user_id: int, count: int = 5, *, stable: bool = False) -> list[dict]:
         """Return up to *count* videos for the home hero.

@@ -56,6 +56,7 @@ class VideoService:
         self.featured = VideoFeaturedService(
             session_factory=session_factory,
             page_loader=page_loader,
+            thumbnail_downloader=self.thumbnail_downloader,
         )
 
     def close(self) -> None:
