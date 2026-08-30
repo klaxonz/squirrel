@@ -31,10 +31,15 @@ class SubscriptionOrchestrator:
     4. Return update results
     """
 
-    def __init__(self, session_factory=None):
-        self.default_strategy = DefaultUpdateStrategy()
+    def __init__(
+        self,
+        session_factory=None,
+        lifecycle: SubscriptionSyncLifecycle | None = None,
+        strategy: DefaultUpdateStrategy | None = None,
+    ):
         self.session_factory = session_factory or get_session
-        self.lifecycle = SubscriptionSyncLifecycle(session_factory=session_factory)
+        self.default_strategy = strategy or DefaultUpdateStrategy()
+        self.lifecycle = lifecycle or SubscriptionSyncLifecycle(session_factory=self.session_factory)
 
     def update(self, request: SubscriptionUpdateRequest) -> SubscriptionUpdateResult:
         """Execute subscription update

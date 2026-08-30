@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from domains.subscription.application.services.core.crud import subscription_crud_service
-from domains.subscription.application.services.core.sync.lifecycle import subscription_sync_lifecycle
+from domains.subscription.application.services.core.crud import SubscriptionCrudService, subscription_crud_service
+from domains.subscription.application.services.core.sync.lifecycle import (
+    SubscriptionSyncLifecycle,
+    subscription_sync_lifecycle,
+)
 from domains.subscription.application.services.core.update.models import (
     SubscriptionUpdateRequest,
     UpdateMode,
     parse_trigger,
 )
-from domains.subscription.application.services.core.update.orchestrator import orchestrator
+from domains.subscription.application.services.core.update.orchestrator import SubscriptionOrchestrator, orchestrator
 from domains.subscription.application.services.crawl.tasks.errors import (
     CrawlExecutionError,
     CrawlTaskNotFoundError,
@@ -19,9 +22,9 @@ from domains.subscription.domain.models.crawl_task import CrawlTask
 class CrawlExecutorService:
     def __init__(
         self,
-        lifecycle=None,
-        orchestrator_service=None,
-        subscription_svc=None,
+        lifecycle: SubscriptionSyncLifecycle | None = None,
+        orchestrator_service: SubscriptionOrchestrator | None = None,
+        subscription_svc: SubscriptionCrudService | None = None,
     ):
         self._lifecycle = lifecycle or subscription_sync_lifecycle
         self._orchestrator = orchestrator_service or orchestrator

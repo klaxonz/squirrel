@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from domains.subscription.application.services.core.crud import SubscriptionCrudService
 from domains.subscription.application.services.core.sync.lifecycle import (
     SubscriptionSyncLifecycle,
     should_schedule_total_video_backfill,
@@ -113,8 +114,9 @@ def test_should_schedule_total_video_backfill_when_full_is_stale_even_without_ob
 
 
 def test_inline_video_extraction_does_not_schedule_total_video_backfill():
-    with patch(
-        'domains.subscription.application.services.core.sync.lifecycle.get_subscription_by_id',
+    with patch.object(
+        SubscriptionCrudService,
+        'get_subscription_by_id',
         side_effect=lambda subscription_id: (_ for _ in ()).throw(
             AssertionError('inline extraction should not schedule backfill')
         ),
@@ -400,10 +402,7 @@ def test_execute_incremental_schedules_full_backfill_when_observed_total_grows()
             'domains.subscription.application.services.core.update.orchestrator.SiteCatalog.is_site_enabled',
             return_value=True,
         ),
-        patch(
-            'domains.subscription.application.services.core.sync.lifecycle.get_subscription_by_id',
-            return_value=SimpleNamespace(total_videos=10),
-        ),
+        patch.object(SubscriptionCrudService, 'get_subscription_by_id', return_value=SimpleNamespace(total_videos=10)),
         patch(
             'domains.subscription.application.services.core.sync.lifecycle.subscription_sync_state_service.get_sync_state',
             return_value=SimpleNamespace(
@@ -465,10 +464,7 @@ def test_execute_incremental_does_not_schedule_full_backfill_when_full_already_r
             'domains.subscription.application.services.core.update.orchestrator.SiteCatalog.is_site_enabled',
             return_value=True,
         ),
-        patch(
-            'domains.subscription.application.services.core.sync.lifecycle.get_subscription_by_id',
-            return_value=SimpleNamespace(total_videos=10),
-        ),
+        patch.object(SubscriptionCrudService, 'get_subscription_by_id', return_value=SimpleNamespace(total_videos=10)),
         patch(
             'domains.subscription.application.services.core.sync.lifecycle.subscription_sync_state_service.get_sync_state',
             return_value=SimpleNamespace(

@@ -5,6 +5,7 @@ from domains.subscription.application.services.core.import_service import Subscr
 from domains.subscription.application.services.core.listing.service import SubscriptionListService
 from domains.subscription.application.services.core.manage import SubscriptionManageService
 from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
+from domains.subscription.application.services.core.update.orchestrator import SubscriptionOrchestrator
 from domains.subscription.application.services.core.update.scheduler import SubscriptionScheduler
 from infrastructure.database.session import get_session
 
@@ -13,15 +14,21 @@ class SubscriptionService:
     """Composition root for subscription application services."""
 
     def __init__(self, session_factory=get_session):
-        self.session_factory = session_factory
         self.crud = SubscriptionCrudService(session_factory=session_factory)
-        self.lifecycle = SubscriptionSyncLifecycle(session_factory=session_factory)
+        self.lifecycle = SubscriptionSyncLifecycle(
+            session_factory=session_factory,
+            crud_service=self.crud,
+        )
         self.manage = SubscriptionManageService(
             session_factory=session_factory,
             crud_service=self.crud,
             lifecycle=self.lifecycle,
         )
         self.list = SubscriptionListService(session_factory=session_factory)
+        self.orchestrator = SubscriptionOrchestrator(
+            session_factory=session_factory,
+            lifecycle=self.lifecycle,
+        )
         self.imports = SubscriptionImportService(
             session_factory=session_factory,
             crud_service=self.crud,
@@ -52,3 +59,7 @@ class SubscriptionService:
     @property
     def scheduler_service(self) -> SubscriptionScheduler:
         return self.scheduler
+
+    @property
+    def orchestrator_service(self) -> SubscriptionOrchestrator:
+        return self.orchestrator
