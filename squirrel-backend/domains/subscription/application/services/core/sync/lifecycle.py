@@ -6,10 +6,10 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
 
-import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
 from domains.subscription.application.services.core.crud import SubscriptionCrudService
 from domains.subscription.application.services.core.sync.run_service import SubscriptionSyncRunService
 from domains.subscription.application.services.core.sync.state._ownership import has_live_execution_token
+from domains.subscription.application.services.core.sync.state.service import SubscriptionSyncStateService
 from domains.subscription.application.services.core.update.command_events import SubscriptionSyncCommandEventPublisher
 from domains.subscription.application.services.core.update.command_payloads import (
     build_command,
@@ -103,7 +103,9 @@ class SubscriptionSyncLifecycle:
         run_service: SubscriptionSyncRunService | None = None,
     ):
         self.session_factory = session_factory or get_session
-        self._sync_state_service = sync_state_service or subscription_sync_state_service
+        self._sync_state_service = sync_state_service or SubscriptionSyncStateService(
+            session_factory=self.session_factory,
+        )
         self._crawl_tasks = crawl_tasks or crawl_task_service
         self._crud_service = crud_service or SubscriptionCrudService(session_factory=self.session_factory)
         self._run_service = run_service or SubscriptionSyncRunService(self.session_factory)

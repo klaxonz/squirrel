@@ -252,13 +252,13 @@ def test_execute_full_sync_with_more_batches_continues_without_marking_success()
             return_value=True,
         ),
         patch(
-            'domains.subscription.application.services.core.sync.lifecycle.subscription_sync_state_service.mark_sync_success',
+            'domains.subscription.application.services.core.sync.state.service.SubscriptionSyncStateService.mark_sync_success',
             side_effect=lambda sync_state_id, **kwargs: (
                 success_calls.append((sync_state_id, kwargs)) or SimpleNamespace(id=sync_state_id)
             ),
         ),
         patch(
-            'domains.subscription.application.services.core.sync.lifecycle.subscription_sync_state_service.continue_full_sync_batch',
+            'domains.subscription.application.services.core.sync.state.service.SubscriptionSyncStateService.continue_full_sync_batch',
             side_effect=lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs)),
         ),
         patch.object(
@@ -322,13 +322,13 @@ def test_execute_final_full_sync_batch_marks_success():
             return_value=True,
         ),
         patch(
-            'domains.subscription.application.services.core.sync.lifecycle.subscription_sync_state_service.mark_sync_success',
+            'domains.subscription.application.services.core.sync.state.service.SubscriptionSyncStateService.mark_sync_success',
             side_effect=lambda sync_state_id, **kwargs: (
                 success_calls.append((sync_state_id, kwargs)) or SimpleNamespace(id=sync_state_id)
             ),
         ),
         patch(
-            'domains.subscription.application.services.core.sync.lifecycle.subscription_sync_state_service.continue_full_sync_batch',
+            'domains.subscription.application.services.core.sync.state.service.SubscriptionSyncStateService.continue_full_sync_batch',
             side_effect=lambda sync_state_id, **kwargs: continuation_calls.append((sync_state_id, kwargs)),
         ),
         patch.object(
@@ -402,7 +402,7 @@ def test_execute_incremental_schedules_full_backfill_when_observed_total_grows()
         ),
         patch.object(SubscriptionCrudService, 'get_subscription_by_id', return_value=SimpleNamespace(total_videos=10)),
         patch(
-            'domains.subscription.application.services.core.sync.lifecycle.subscription_sync_state_service.get_sync_state',
+            'domains.subscription.application.services.core.sync.state.service.SubscriptionSyncStateService.get_sync_state',
             return_value=SimpleNamespace(
                 sync_status='success',
                 last_success_at=datetime(2026, 4, 8, 10, 0, 0),
@@ -464,7 +464,7 @@ def test_execute_incremental_does_not_schedule_full_backfill_when_full_already_r
         ),
         patch.object(SubscriptionCrudService, 'get_subscription_by_id', return_value=SimpleNamespace(total_videos=10)),
         patch(
-            'domains.subscription.application.services.core.sync.lifecycle.subscription_sync_state_service.get_sync_state',
+            'domains.subscription.application.services.core.sync.state.service.SubscriptionSyncStateService.get_sync_state',
             return_value=SimpleNamespace(
                 sync_status='running',
                 last_success_at=datetime(2026, 4, 8, 10, 0, 0),

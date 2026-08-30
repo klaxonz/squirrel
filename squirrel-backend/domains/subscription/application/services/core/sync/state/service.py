@@ -1,75 +1,59 @@
-from domains.subscription.application.services.core.sync.state._completion import (
-    continue_full_sync_batch,
-    decrement_pending_video_count,
-    defer_sync_state,
-    mark_sync_failed,
-    mark_sync_skipped,
-    mark_sync_success,
-)
-from domains.subscription.application.services.core.sync.state._crud import (
-    ensure_incremental_sync_state,
-    ensure_sync_states,
-    get_sync_state,
-    get_sync_state_by_id,
-    increment_pending_video_count,
-    list_due_sync_states,
-)
-from domains.subscription.application.services.core.sync.state._gap import (
-    mark_full_sync_requested,
-    record_gap_observation,
+from domains.subscription.application.services.core.sync.state import (
+    _completion,
+    _crud,
+    _gap,
+    _queue,
+    _recovery,
+    _utils,
 )
 from domains.subscription.application.services.core.sync.state._intervals import SYNC_BATCH_SIZE
-from domains.subscription.application.services.core.sync.state._queue import (
-    claim_sync_state,
-    deactivate_sync_states,
-    deactivate_sync_states_in_session,
-    has_incremental_backpressure,
-    prepare_sync_state_for_enqueue,
-    prepare_sync_state_for_enqueue_in_session,
-    queue_sync_state,
-    queue_sync_state_in_session,
-    reconcile_task_retry_state,
-)
-from domains.subscription.application.services.core.sync.state._recovery import (
-    reconcile_pending_video_counts,
-    reconcile_terminal_drained_sync_states,
-    recover_stale_queued_sync_states,
-    recover_stale_running_sync_states,
-    recover_stale_sync_state,
-    recover_stale_sync_states_on_startup,
-)
-from domains.subscription.application.services.core.sync.state._utils import build_queue_token
+from domains.subscription.application.services.core.sync.state.session import use_session_factory
 
-__all__ = [
-    'SYNC_BATCH_SIZE',
-    'build_queue_token',
-    'claim_sync_state',
-    'continue_full_sync_batch',
-    'deactivate_sync_states',
-    'deactivate_sync_states_in_session',
-    'decrement_pending_video_count',
-    'defer_sync_state',
-    'ensure_incremental_sync_state',
-    'ensure_sync_states',
-    'get_sync_state',
-    'get_sync_state_by_id',
-    'has_incremental_backpressure',
-    'increment_pending_video_count',
-    'list_due_sync_states',
-    'mark_sync_failed',
-    'mark_sync_skipped',
-    'mark_sync_success',
-    'mark_full_sync_requested',
-    'prepare_sync_state_for_enqueue',
-    'prepare_sync_state_for_enqueue_in_session',
-    'queue_sync_state',
-    'queue_sync_state_in_session',
-    'reconcile_pending_video_counts',
-    'reconcile_task_retry_state',
-    'reconcile_terminal_drained_sync_states',
-    'record_gap_observation',
-    'recover_stale_queued_sync_states',
-    'recover_stale_running_sync_states',
-    'recover_stale_sync_state',
-    'recover_stale_sync_states_on_startup',
-]
+
+class SubscriptionSyncStateService:
+    """Application boundary for subscription synchronization state transitions."""
+
+    SYNC_BATCH_SIZE = SYNC_BATCH_SIZE
+
+    def __init__(self, session_factory=None):
+        self.session_factory = session_factory
+
+    def build_queue_token(self):
+        return _utils.build_queue_token()
+
+    def _call(self, name, *args, **kwargs):
+        operation = self._operation(name)
+        with use_session_factory(self.session_factory):
+            return operation(*args, **kwargs)
+
+    def _operation(self, name):
+        modules = (_completion, _crud, _gap, _queue, _recovery, _utils)
+        for module in modules:
+            operation = getattr(module, name, None)
+            if operation is not None:
+                return operation
+        raise AttributeError(name)
+
+    def mark_sync_success(self, *args, **kwargs):
+        return self._call('mark_sync_success', *args, **kwargs)
+
+    def continue_full_sync_batch(self, *args, **kwargs):
+        return self._call('continue_full_sync_batch', *args, **kwargs)
+
+    def get_sync_state(self, *args, **kwargs):
+        return self._call('get_sync_state', *args, **kwargs)
+
+    def __getattr__(self, name):
+        self._operation(name)
+        return lambda *args, **kwargs: self._call(name, *args, **kwargs)
+
+
+_default_service = SubscriptionSyncStateService()
+subscription_sync_state_service = _default_service
+
+
+def __getattr__(name):
+    return getattr(_default_service, name)
+
+
+__all__ = ['SYNC_BATCH_SIZE', 'SubscriptionSyncStateService']
