@@ -41,8 +41,3 @@ class VideoCreatorService:
                 )
             session.commit()
             return video_creator
-
-
-video_creator_service = VideoCreatorService()
-get_video_creator = video_creator_service.get_video_creator
-create_video_creator = video_creator_service.create_video_creator

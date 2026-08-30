@@ -209,13 +209,3 @@ class VideoClipMarkerService:
             session.delete(marker)
             session.commit()
             return 1
-
-
-video_clip_marker_service = VideoClipMarkerService()
-
-list_markers = video_clip_marker_service.list_markers
-create_marker = video_clip_marker_service.create_marker
-update_marker = video_clip_marker_service.update_marker
-save_preview = video_clip_marker_service.save_preview
-delete_marker = video_clip_marker_service.delete_marker
-serialize_marker = video_clip_marker_service.serialize_marker

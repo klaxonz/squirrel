@@ -52,10 +52,3 @@ class VideoInteractionService:
             if video_interaction:
                 session.delete(video_interaction)
                 session.commit()
-
-
-video_interaction_service = VideoInteractionService()
-
-save_or_update_video_interaction = video_interaction_service.save_or_update_video_interaction
-get_video_interaction = video_interaction_service.get_video_interaction
-delete_video_interaction = video_interaction_service.delete_video_interaction

@@ -62,10 +62,3 @@ class CreatorService:
             session.add(creator)
             session.commit()
             return creator
-
-
-creator_service = CreatorService()
-get_creator_by_url = creator_service.get_creator_by_url
-create_creator = creator_service.create_creator
-get_creator_by_id = creator_service.get_creator_by_id
-get_creator_detail = creator_service.get_creator_detail
