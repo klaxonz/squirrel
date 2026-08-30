@@ -113,6 +113,3 @@ class RssRemoteStatusSyncer:
                     key[0],
                     key[1],
                 )
-
-
-rss_remote_status_syncer = RssRemoteStatusSyncer()

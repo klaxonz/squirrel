@@ -13,7 +13,7 @@ from domains.rss.application.services.account.service import RssAccountService
 from domains.rss.application.services.client._base import RssServiceError
 from domains.rss.application.services.client._factory import create_client
 from domains.rss.application.services.client._greader import GReaderClient
-from domains.rss.application.services.sync.entry_store import rss_entry_store
+from domains.rss.application.services.sync.entry_store import RssEntryStore
 from domains.rss.application.services.sync.greader import GReaderSync
 from domains.rss.domain.models.rss import RssEntry, RssEntryView, RssFeed
 from infrastructure.database.session import get_session
@@ -27,14 +27,16 @@ class RssSyncService:
         session_factory=None,
         account_service: RssAccountService | None = None,
         greader_sync: GReaderSync | None = None,
+        entry_store: RssEntryStore | None = None,
     ):
         self.session_factory = session_factory or get_session
         self.account_service = account_service or RssAccountService(session_factory=self.session_factory)
+        self.entry_store = entry_store or RssEntryStore()
         self.greader_sync = greader_sync or GReaderSync(
             session_factory=self.session_factory,
             account_service=self.account_service,
+            entry_store=self.entry_store,
         )
-
     def sync_account(
         self, user_id: int, account_id: int, *, entry_limit: int | None = None, force_full_sync: bool = False
     ) -> dict[str, Any] | None:
@@ -200,7 +202,7 @@ class RssSyncService:
             if not account:
                 return 0, feed_refs
             account.last_error = None
-            feeds = rss_entry_store.upsert_feeds(session, account, remote_feeds)
+            feeds = self.entry_store.upsert_feeds(session, account, remote_feeds)
             for index, feed in enumerate(feeds, start=1):
                 feed_refs.append((feed.id, feed.external_feed_id, feed.enabled))
                 if index % 50 == 0 or index == len(feeds):
@@ -260,7 +262,7 @@ class RssSyncService:
                     remote_entries = [
                         replace(re, external_feed_id=re.external_feed_id or external_feed_id) for re in remote_entries
                     ]
-                batch_entries = rss_entry_store.upsert_remote_entries_batch(
+                batch_entries = self.entry_store.upsert_remote_entries_batch(
                     session, feeds_by_external_id, remote_entries
                 )
                 synced_entries += batch_entries
@@ -438,7 +440,7 @@ class RssSyncService:
                     raise RssServiceError('RSS 订阅源或账号不可用')
 
                 feeds_by_external_id = {external_feed_id: feed}
-                synced = rss_entry_store.upsert_remote_entries_batch(session, feeds_by_external_id, remote_entries)
+                synced = self.entry_store.upsert_remote_entries_batch(session, feeds_by_external_id, remote_entries)
                 feed.last_entry_sync_at = datetime.now()
                 feed.enabled = True
                 account.last_error = None

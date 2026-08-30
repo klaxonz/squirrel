@@ -11,8 +11,8 @@ import domains.rss.application.services.account.accounts as accounts
 from domains.rss.application.services.account.accounts import UNSET
 from domains.rss.application.services.account.entry_status import RssEntryStatusService
 from domains.rss.application.services.account.library import RssLibraryService
-from domains.rss.application.services.account.progress import RssSyncProgressStore, rss_sync_progress_store
-from domains.rss.application.services.account.remote_status import RssRemoteStatusSyncer, rss_remote_status_syncer
+from domains.rss.application.services.account.progress import RssSyncProgressStore
+from domains.rss.application.services.account.remote_status import RssRemoteStatusSyncer
 from domains.rss.application.services.client._base import RssServiceError
 from domains.rss.domain.models.rss import RssAccount, RssEntry
 from infrastructure.database.session import get_session
@@ -27,8 +27,8 @@ class RssAccountService:
         library_service: RssLibraryService | None = None,
     ):
         self.session_factory = session_factory or get_session
-        self.progress_store = progress_store or rss_sync_progress_store
-        self.remote_status_syncer = remote_status_syncer or rss_remote_status_syncer
+        self.progress_store = progress_store or RssSyncProgressStore()
+        self.remote_status_syncer = remote_status_syncer or RssRemoteStatusSyncer()
         self.library_service = library_service or RssLibraryService(self.session_factory)
         self.entry_status_service = RssEntryStatusService(
             self.session_factory,

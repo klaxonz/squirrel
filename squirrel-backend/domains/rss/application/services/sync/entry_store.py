@@ -161,6 +161,3 @@ class RssEntryStore:
             ),
         ).all()
         return {feed.external_feed_id: feed for feed in feeds if feed.enabled}
-
-
-rss_entry_store = RssEntryStore()

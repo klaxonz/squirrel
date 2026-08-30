@@ -13,7 +13,7 @@ from domains.rss.application.services.client._greader import (
     G_READER_READING_LIST_STATE,
     GReaderClient,
 )
-from domains.rss.application.services.sync.entry_store import RssEntryStore, rss_entry_store
+from domains.rss.application.services.sync.entry_store import RssEntryStore
 from domains.rss.domain.models.rss import RssEntry, RssEntryView, RssFeed
 
 
@@ -23,11 +23,11 @@ class GReaderSync:
         *,
         session_factory,
         account_service: RssAccountService,
-        entry_store: RssEntryStore = rss_entry_store,
+        entry_store: RssEntryStore | None = None,
     ):
         self.session_factory = session_factory
         self.account_service = account_service
-        self.entry_store = entry_store
+        self.entry_store = entry_store or RssEntryStore()
 
     def sync_entries(
         self,

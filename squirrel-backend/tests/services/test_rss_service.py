@@ -33,6 +33,16 @@ def account_svc(session_factory):
 def sync_svc(session_factory, account_svc):
     return RssSyncService(session_factory=session_factory, account_service=account_svc)
 
+def test_rss_service_composes_isolated_runtime_dependencies(session_factory):
+    first = RssService(session_factory=session_factory)
+    second = RssService(session_factory=session_factory)
+
+    assert first.account_service.progress_store is not second.account_service.progress_store
+    assert first.account_service.remote_status_syncer is not second.account_service.remote_status_syncer
+    assert first.entry_store is first.sync_service.entry_store
+    assert first.entry_store is first.sync_service.greader_sync.entry_store
+    assert first.entry_store is not second.entry_store
+
 
 def _create_tables(engine):
     Base.metadata.create_all(

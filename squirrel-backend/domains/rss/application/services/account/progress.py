@@ -39,6 +39,3 @@ class RssSyncProgressStore:
     def clear_progress(self, account_id: int) -> None:
         with self._progress_lock:
             self._progress.pop(account_id, None)
-
-
-rss_sync_progress_store = RssSyncProgressStore()

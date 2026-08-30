@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from domains.rss.application.services.account.progress import RssSyncProgressStore
+from domains.rss.application.services.account.remote_status import RssRemoteStatusSyncer
 from domains.rss.application.services.account.serialization import serialize_account, serialize_entry, serialize_feed
 from domains.rss.application.services.account.service import RssAccountService
+from domains.rss.application.services.sync.entry_store import RssEntryStore
 from domains.rss.application.services.sync.service import RssSyncService
 
 
@@ -16,11 +19,20 @@ class RssService:
         *,
         account_service: RssAccountService | None = None,
         sync_service: RssSyncService | None = None,
+        progress_store: RssSyncProgressStore | None = None,
+        remote_status_syncer: RssRemoteStatusSyncer | None = None,
+        entry_store: RssEntryStore | None = None,
     ):
-        self.account_service = account_service or RssAccountService(session_factory=session_factory)
+        self.entry_store = entry_store or RssEntryStore()
+        self.account_service = account_service or RssAccountService(
+            session_factory=session_factory,
+            progress_store=progress_store,
+            remote_status_syncer=remote_status_syncer,
+        )
         self.sync_service = sync_service or RssSyncService(
             session_factory=session_factory,
             account_service=self.account_service,
+            entry_store=self.entry_store,
         )
 
     def create_account(self, user_id: int, **kwargs: Any) -> dict[str, Any]:
