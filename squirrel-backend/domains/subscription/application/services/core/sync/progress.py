@@ -69,9 +69,3 @@ class SubscriptionSyncProgress:
             'progress_percent': percent,
             'progress_label': label,
         }
-
-
-subscription_sync_progress = SubscriptionSyncProgress()
-
-is_feed_completed = subscription_sync_progress.is_feed_completed
-build_progress_snapshot = subscription_sync_progress.build_progress_snapshot

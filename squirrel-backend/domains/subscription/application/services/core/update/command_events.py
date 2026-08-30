@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-from domains.subscription.application.services.core.sync.run_service import (
-    SubscriptionSyncRunService,
-    SyncRunContext,
-    subscription_sync_run_service,
-)
+from domains.subscription.application.services.core.sync.run_service import SubscriptionSyncRunService, SyncRunContext
 from domains.subscription.application.services.core.update.models import SyncCommand
 from domains.subscription.domain.models.subscription_sync_run import SyncRunStatus
+from infrastructure.database.session import get_session
 
 
 class SubscriptionSyncCommandEventPublisher:
     """Creates durable run-ledger entries for sync commands."""
 
     def __init__(self, run_service: SubscriptionSyncRunService | None = None):
-        self._run_service = run_service or subscription_sync_run_service
+        self._run_service = run_service or SubscriptionSyncRunService(session_factory=get_session)
 
     def build_run_context(
         self,
@@ -70,6 +67,3 @@ class SubscriptionSyncCommandEventPublisher:
             error_message=reason,
         )
         return context
-
-
-subscription_sync_command_event_publisher = SubscriptionSyncCommandEventPublisher()

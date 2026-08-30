@@ -197,10 +197,4 @@ class SubscriptionSyncRunService:
             trace_id=run.trace_id,
             created_at=run.created_at,
         )
-
-
-subscription_sync_run_service = SubscriptionSyncRunService()
-build_run_id = subscription_sync_run_service.build_run_id
-create_run = subscription_sync_run_service.create_run
-create_run_in_session = subscription_sync_run_service.create_run_in_session
-mark_run_status_in_session = subscription_sync_run_service.mark_status_in_session
+mark_run_status_in_session = SubscriptionSyncRunService.mark_status_in_session
