@@ -2,10 +2,9 @@
 
 import pytest
 
-from sites.crawl import AuthError, ExtractionResult, VideoMeta
-
 from infrastructure.extraction.contracts import site_result_to_extraction_result
 from infrastructure.extraction.runtime_payloads import RuntimeVideoData
+from sites.crawl import AuthError, ExtractionResult, VideoMeta
 
 
 def _video_meta():

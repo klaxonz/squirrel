@@ -3,11 +3,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from sites.crawl import ExtractionResult, VideoMeta
-
 import infrastructure.extraction.factory as factory_module
 from infrastructure.extraction.contracts import ExtractionTask
 from infrastructure.extraction.factory import ExtractorFactory
+from sites.crawl import ExtractionResult, VideoMeta
 
 
 def test_site_extractor_adapter_extracts_via_site(monkeypatch):

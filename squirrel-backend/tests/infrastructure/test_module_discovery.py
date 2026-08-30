@@ -11,9 +11,9 @@ import and discovered nothing at all.
 
 import sys
 
-from infrastructure.database.base import Base
 from domains.subscription.domain.models.crawl_job import CrawlJob
 from domains.subscription.domain.models.subscription_sync_state import SubscriptionSyncState
+from infrastructure.database.base import Base
 from shared_kernel.infrastructure.module_discovery import import_classes_from_package
 
 

@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-from sites.crawl import AuthError
 from infrastructure.site_catalog.login_status import SiteLoginStatusService
+from sites.crawl import AuthError
 
 
 def test_get_supported_sites_reads_login_status_registrations():

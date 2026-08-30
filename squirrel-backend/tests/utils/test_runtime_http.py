@@ -3,9 +3,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from sites.crawl import filter_cookies_to_query_string
-
 from infrastructure.site_catalog import runtime_http
+from sites.crawl import filter_cookies_to_query_string
 
 
 class DummyClient:

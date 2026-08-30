@@ -1,8 +1,8 @@
 import pytest
 
-from sites.crawl import AuthError, RateLimitError
 from domains.subscription.application.services.core.import_errors import SubscriptionImportError
 from domains.subscription.application.services.core.import_service import SubscriptionImportService
+from sites.crawl import AuthError, RateLimitError
 
 
 class _FailingSite:

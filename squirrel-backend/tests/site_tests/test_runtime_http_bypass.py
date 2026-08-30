@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import sys
 import unittest
 from dataclasses import dataclass
-from pathlib import Path
 
 from sites.crawl import http
 
