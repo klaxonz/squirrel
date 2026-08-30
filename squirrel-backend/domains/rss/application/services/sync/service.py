@@ -9,7 +9,7 @@ from typing import Any
 
 from sqlalchemy import delete, select
 
-from domains.rss.application.services.account.service import RssAccountService, rss_account_service
+from domains.rss.application.services.account.service import RssAccountService
 from domains.rss.application.services.client._base import RssServiceError
 from domains.rss.application.services.client._factory import create_client
 from domains.rss.application.services.client._greader import GReaderClient
@@ -29,7 +29,7 @@ class RssSyncService:
         greader_sync: GReaderSync | None = None,
     ):
         self.session_factory = session_factory or get_session
-        self.account_service = account_service or rss_account_service
+        self.account_service = account_service or RssAccountService(session_factory=self.session_factory)
         self.greader_sync = greader_sync or GReaderSync(
             session_factory=self.session_factory,
             account_service=self.account_service,
@@ -517,11 +517,3 @@ class RssSyncService:
                 session.commit()
 
         return True
-
-
-rss_sync_service = RssSyncService()
-sync_account = rss_sync_service.sync_account
-start_account_sync = rss_sync_service.start_account_sync
-subscribe_feed = rss_sync_service.subscribe_feed
-sync_feed = rss_sync_service.sync_feed
-unsubscribe_feed = rss_sync_service.unsubscribe_feed

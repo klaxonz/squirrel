@@ -13,7 +13,6 @@ from domains.rss.application.services.account.entry_status import RssEntryStatus
 from domains.rss.application.services.account.library import RssLibraryService
 from domains.rss.application.services.account.progress import RssSyncProgressStore, rss_sync_progress_store
 from domains.rss.application.services.account.remote_status import RssRemoteStatusSyncer, rss_remote_status_syncer
-from domains.rss.application.services.account.serialization import serialize_feed as _serialize_feed
 from domains.rss.application.services.client._base import RssServiceError
 from domains.rss.domain.models.rss import RssAccount, RssEntry
 from infrastructure.database.session import get_session
@@ -282,29 +281,3 @@ class RssAccountService:
         account_id: int | None = None,
     ) -> list[dict[str, Any]]:
         return self.library_service.list_recently_viewed(user_id, limit, account_id)
-
-
-rss_account_service = RssAccountService()
-
-serialize_feed = _serialize_feed
-mutation_lock_for_account = rss_account_service.mutation_lock_for_account
-sync_lock_for_account = rss_account_service.sync_lock_for_account
-set_sync_progress = rss_account_service.set_sync_progress
-get_sync_progress = rss_account_service.get_sync_progress
-get_account = rss_account_service.get_account
-config_from_account = rss_account_service.config_from_account
-list_accounts = rss_account_service.list_accounts
-create_account = rss_account_service.create_account
-update_account = rss_account_service.update_account
-delete_account = rss_account_service.delete_account
-test_account_config = rss_account_service.test_account_config
-test_account = rss_account_service.test_account
-list_feeds = rss_account_service.list_feeds
-update_feed = rss_account_service.update_feed
-list_entries = rss_account_service.list_entries
-get_entry = rss_account_service.get_entry
-update_entry = rss_account_service.update_entry
-update_entries_read_status = rss_account_service.update_entries_read_status
-mark_feed_as_read = rss_account_service.mark_feed_as_read
-record_entry_view = rss_account_service.record_entry_view
-list_recently_viewed = rss_account_service.list_recently_viewed
