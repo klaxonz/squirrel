@@ -13,14 +13,13 @@ from domains.video.application.services.listing.page_loader import VideoListPage
 from domains.video.application.services.listing.profiles import merge_profiles as _merge_profiles
 from domains.video.application.services.listing.profiles import video_extra_profiles as _video_extra_profiles
 from domains.video.application.services.listing.query import (
+    VideoListQueryService,
     fetch_creator_video_ids,
     fetch_special_follow_id_set,
     fetch_special_follow_video_ids,
     fetch_subscription_video_ids,
     fetch_user_state_id_set,
     fetch_user_state_video_ids,
-    filter_recalled_ids,
-    filter_user_state_ids,
     recall_offset_ids,
 )
 from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
@@ -71,6 +70,7 @@ class VideoListService:
         thumbnail_downloader,
         page_loader=None,
         detail_loader=None,
+        query_service: VideoListQueryService | None = None,
     ):
         self._session_factory = session_factory or _default_get_session
         self._get_user_config = get_user_config or user_config_service.get_config
@@ -81,8 +81,7 @@ class VideoListService:
             thumbnail_downloader=self._thumbnail_downloader,
             serialize_marker=self._serialize_marker,
         )
-
-    @staticmethod
+        self._query_service = query_service or VideoListQueryService()
     def _elapsed_ms(start_time: float) -> float:
         return round((perf_counter() - start_time) * 1000, 3)
 
@@ -191,7 +190,7 @@ class VideoListService:
         以及普通搜索 OFFSET)。返回 ``(items, cursor, timings)``。
         """
         filter_started = perf_counter()
-        filtered_ids = filter_recalled_ids(
+        filtered_ids = self._query_service.filter_recalled_ids(
             session,
             recalled_ids=recalled_ids,
             user_id=user_id,
@@ -231,7 +230,7 @@ class VideoListService:
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """搜索 OFFSET 场景的「PG 权限过滤 → OFFSET 切页 → hydration」尾部。"""
         filter_started = perf_counter()
-        filtered_ids = filter_recalled_ids(
+        filtered_ids = self._query_service.filter_recalled_ids(
             session,
             recalled_ids=recalled_ids,
             user_id=user_id,
@@ -275,7 +274,7 @@ class VideoListService:
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """PG filter + hydration tail for read/liked/later browse paths."""
         filter_started = perf_counter()
-        filtered_ids = filter_user_state_ids(
+        filtered_ids = self._query_service.filter_user_state_ids(
             session,
             recalled_ids=recalled_ids,
             user_id=user_id,
@@ -315,7 +314,7 @@ class VideoListService:
     ) -> tuple[list[dict], str | None, dict[str, float]]:
         """PG filter + offset hydration tail for read/liked/later search paths."""
         filter_started = perf_counter()
-        filtered_ids = filter_user_state_ids(
+        filtered_ids = self._query_service.filter_user_state_ids(
             session,
             recalled_ids=recalled_ids,
             user_id=user_id,
@@ -485,7 +484,7 @@ class VideoListService:
 
             # PG 过滤本轮召回(权限 + category)
             filter_started = perf_counter()
-            filtered_ids = filter_recalled_ids(
+            filtered_ids = self._query_service.filter_recalled_ids(
                 session,
                 recalled_ids=recalled_ids,
                 user_id=user_id,

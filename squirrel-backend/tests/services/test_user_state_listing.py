@@ -10,11 +10,13 @@ from sqlalchemy.orm import Session
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
 from domains.user.domain.models.user import User
-from domains.video.application.services.listing.query import fetch_user_state_id_set, filter_user_state_ids
+from domains.video.application.services.listing.query import VideoListQueryService, fetch_user_state_id_set
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
 from domains.video.domain.models.video_interaction import VideoInteraction
 from infrastructure.database.base import Base
+
+query_service = VideoListQueryService()
 
 
 @pytest.fixture
@@ -113,7 +115,7 @@ def test_filter_user_state_ids_honors_sensitive_toggle_without_feed_visibility(s
         )
 
     with session_factory() as session:
-        ids = filter_user_state_ids(
+        ids = query_service.filter_user_state_ids(
             session,
             recalled_ids=[1, 2, 3, 4, 5, 6, 7, 999],
             user_id=1,
@@ -172,7 +174,7 @@ def test_filter_user_state_ids_keeps_sensitive_likes_when_toggle_enabled(session
         )
 
     with session_factory() as session:
-        ids = filter_user_state_ids(
+        ids = query_service.filter_user_state_ids(
             session,
             recalled_ids=[1, 2, 3, 4, 5, 6, 7, 999],
             user_id=1,
@@ -224,7 +226,7 @@ def test_filter_user_state_ids_applies_explicit_nsfw_filter_without_feed_visibil
         )
 
     with session_factory() as session:
-        ids = filter_user_state_ids(
+        ids = query_service.filter_user_state_ids(
             session,
             recalled_ids=[1, 2, 3],
             user_id=1,
@@ -252,7 +254,7 @@ def test_filter_user_state_ids_applies_site_domains_without_subscription_visibil
         )
 
     with session_factory() as session:
-        ids = filter_user_state_ids(
+        ids = query_service.filter_user_state_ids(
             session,
             recalled_ids=[1, 2, 3, 4],
             user_id=1,

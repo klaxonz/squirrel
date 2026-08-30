@@ -211,11 +211,6 @@ def _nsfw_site_domains() -> list[str]:
     return list(dict.fromkeys(domains))
 
 
-video_list_query_service = VideoListQueryService()
-
-# 模块级便捷函数
-filter_recalled_ids = video_list_query_service.filter_recalled_ids
-filter_user_state_ids = video_list_query_service.filter_user_state_ids
 
 
 def fetch_special_follow_video_ids(
