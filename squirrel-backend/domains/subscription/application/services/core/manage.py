@@ -343,13 +343,3 @@ class SubscriptionManageService:
         with self.session_factory() as session:
             rows = session.execute(select(User.id).order_by(User.id.asc())).all()
             return [user_id for (user_id,) in rows]
-
-
-subscription_manage_service = SubscriptionManageService()
-create_subscription = subscription_manage_service.create_subscription
-restore_subscription = subscription_manage_service.restore_subscription
-unsubscribe_by_id = subscription_manage_service.unsubscribe_by_id
-toggle_nsfw_status = subscription_manage_service.toggle_nsfw_status
-toggle_special_follow_status = subscription_manage_service.toggle_special_follow_status
-create_subscribe_message = subscription_manage_service.create_subscribe_message
-list_user_ids = subscription_manage_service.list_user_ids

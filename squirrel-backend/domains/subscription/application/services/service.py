@@ -42,7 +42,11 @@ class SubscriptionService:
         self.orchestrator = SubscriptionOrchestrator(
             session_factory=session_factory,
             lifecycle=self.lifecycle,
-            strategy=DefaultUpdateStrategy(video_coordinator=video_coordinator),
+            strategy=DefaultUpdateStrategy(
+                video_coordinator=video_coordinator,
+                session_factory=session_factory,
+                listing_service=self.list,
+            ),
         )
         self.imports = SubscriptionImportService(
             session_factory=session_factory,

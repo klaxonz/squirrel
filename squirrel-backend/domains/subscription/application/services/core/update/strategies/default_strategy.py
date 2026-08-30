@@ -11,9 +11,10 @@ tests and read cleanly as the update flow's phases.
 import logging
 from urllib.parse import urlparse
 
-from domains.subscription.application.services.core.listing.service import get_subscription_detail
+from domains.subscription.application.services.core.listing.service import SubscriptionListService
 from domains.subscription.application.services.core.runtime_models import SubscriptionSyncResult
 from infrastructure.config.settings import settings
+from infrastructure.database.session import get_session
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_registry.registry import SiteRegistry, get_site_registry
 from shared_kernel.infrastructure.deadline import DeadlineExceeded, run_with_deadline
@@ -84,10 +85,14 @@ class DefaultUpdateStrategy:
         self,
         registry: SiteRegistry | None = None,
         video_coordinator: VideoExtractionCoordinator | None = None,
+        session_factory=None,
+        listing_service: SubscriptionListService | None = None,
     ) -> None:
         self._registry = registry or get_site_registry()
         self._video_coordinator = video_coordinator or VideoExtractionCoordinator()
-
+        self._listing_service = listing_service or SubscriptionListService(
+            session_factory=session_factory or get_session,
+        )
     @property
     def site_name(self) -> str:
         return 'default'
@@ -126,8 +131,8 @@ class DefaultUpdateStrategy:
         )
 
     def should_update(self, request: SubscriptionUpdateRequest) -> tuple[bool, str | None]:
-        """Check whether an update is needed"""
-        sub = get_subscription_detail(request.subscription_id)
+        """Check whether an update is needed."""
+        sub = self._listing_service.get_subscription_detail(request.subscription_id)
         if not sub or sub.is_deleted:
             return False, 'subscription_not_found'
         return True, None

@@ -233,8 +233,4 @@ class SubscriptionListService:
         ]
 
 
-subscription_list_service = SubscriptionListService()
-list_subscriptions = subscription_list_service.list_subscriptions
-get_subscription_detail = subscription_list_service.get_subscription_detail
-list_subscription_options = subscription_list_service.list_subscription_options
 resolve_subscription_nsfw = resolve_subscription_nsfw_by_url
