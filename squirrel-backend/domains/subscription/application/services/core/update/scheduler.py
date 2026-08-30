@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 class SubscriptionScheduler:
     """Subscription update scheduler."""
 
-    def __init__(self, session_factory=None):
+    def __init__(self, session_factory=None, lifecycle: SubscriptionSyncLifecycle | None = None):
         self.session_factory = session_factory or get_session
-        self.lifecycle = SubscriptionSyncLifecycle(session_factory=session_factory)
+        self.lifecycle = lifecycle or SubscriptionSyncLifecycle(session_factory=self.session_factory)
 
     def schedule_one(
         self,

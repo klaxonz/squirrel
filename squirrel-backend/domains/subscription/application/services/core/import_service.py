@@ -32,15 +32,17 @@ class SubscriptionImportService:
         session_factory=get_session,
         crud_service=None,
         manage_service=None,
+        lifecycle: SubscriptionSyncLifecycle | None = None,
         crawl_tasks=None,
     ):
         self._registry = registry or get_site_registry()
         self.session_factory = session_factory
         self.crud_service = crud_service or SubscriptionCrudService(session_factory)
+        sync_lifecycle = lifecycle or SubscriptionSyncLifecycle(session_factory=session_factory)
         self.manage_service = manage_service or SubscriptionManageService(
             session_factory=session_factory,
             crud_service=self.crud_service,
-            lifecycle=SubscriptionSyncLifecycle(session_factory=session_factory),
+            lifecycle=sync_lifecycle,
         )
         self._crawl_tasks = crawl_tasks or crawl_task_service
 

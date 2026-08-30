@@ -7,15 +7,10 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, select
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
-from domains.subscription.application.services.core.crud import get_subscription_by_id
-from domains.subscription.application.services.core.sync.run_service import (
-    SubscriptionSyncRunService,
-    mark_run_status_in_session,
-)
+from domains.subscription.application.services.core.crud import SubscriptionCrudService
+from domains.subscription.application.services.core.sync.run_service import SubscriptionSyncRunService
 from domains.subscription.application.services.core.sync.state._ownership import has_live_execution_token
-from domains.subscription.application.services.core.update.command_events import (
-    SubscriptionSyncCommandEventPublisher,
-)
+from domains.subscription.application.services.core.update.command_events import SubscriptionSyncCommandEventPublisher
 from domains.subscription.application.services.core.update.command_payloads import (
     build_command,
     build_task_payload,
@@ -104,13 +99,15 @@ class SubscriptionSyncLifecycle:
         sync_state_service=None,
         crawl_tasks=None,
         event_publisher: SubscriptionSyncCommandEventPublisher | None = None,
+        crud_service: SubscriptionCrudService | None = None,
+        run_service: SubscriptionSyncRunService | None = None,
     ):
         self.session_factory = session_factory or get_session
         self._sync_state_service = sync_state_service or subscription_sync_state_service
         self._crawl_tasks = crawl_tasks or crawl_task_service
-        self._event_publisher = event_publisher or SubscriptionSyncCommandEventPublisher(
-            SubscriptionSyncRunService(self.session_factory),
-        )
+        self._crud_service = crud_service or SubscriptionCrudService(session_factory=self.session_factory)
+        self._run_service = run_service or SubscriptionSyncRunService(self.session_factory)
+        self._event_publisher = event_publisher or SubscriptionSyncCommandEventPublisher(self._run_service)
         self._queue_planner = SubscriptionSyncQueuePlanner(self._sync_state_service, self._event_publisher)
 
     def request_sync(
@@ -443,7 +440,7 @@ class SubscriptionSyncLifecycle:
         if request.mode != UpdateMode.INCREMENTAL or not request.sync_state_id:
             return
 
-        subscription = get_subscription_by_id(request.subscription_id)
+        subscription = self._crud_service.get_subscription_by_id(request.subscription_id)
         local_total = getattr(subscription, 'total_videos', None) if subscription else None
         summary = self._sync_state_service.record_gap_observation(
             sync_state_id=request.sync_state_id,
@@ -504,7 +501,7 @@ class SubscriptionSyncLifecycle:
                 f'Stale total-video backfill request: sync_state_id={request.sync_state_id}, run_id={request.run_id}',
             )
 
-        subscription = get_subscription_by_id(request.subscription_id)
+        subscription = self._crud_service.get_subscription_by_id(request.subscription_id)
         if not subscription:
             return
 
@@ -692,7 +689,7 @@ class SubscriptionSyncLifecycle:
                 if subscription is not None:
                     subscription.total_videos = max(0, int(result.total_available))
             state.version += 1
-            mark_run_status_in_session(
+            self._run_service.mark_status_in_session(
                 session,
                 request.run_id,
                 SyncRunStatus.QUEUED.value,
