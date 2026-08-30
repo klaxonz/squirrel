@@ -19,19 +19,25 @@
 - 兼容性不作为约束。迁移时直接删除旧入口、旧别名和已无调用方的转发层，但只删除有证据确认无引用的代码。
 - 不新增生产依赖，除非现有依赖和标准库无法满足明确需求。
 
+## 实施结果
+
+- RSS 业务由 `RssAccountService`、`RssSyncService` 和 `RssService` 显式组合；HTTP 依赖从 `app.state` 获取应用级实例。
+- RSS 旧模块级 service singleton 与转发入口已删除，测试通过 dependency override 注入替身。
+- 音乐主页专辑查询共用一个 loader，避免重复请求状态和错误处理实现。
+
 ## Task List
 
 ### Phase 1: 后端装配边界
 
-- [ ] 将异常处理协议移出 application/app.py
-- [ ] 将路由与静态资源注册移出 application/app.py
-- [ ] 简化 FastAPI app factory 并保持启动行为
+- [x] 将异常处理协议移出 application/app.py
+- [x] 将路由与静态资源注册移出 application/app.py
+- [x] 简化 FastAPI app factory 并保持启动行为
 
 ### Checkpoint: 后端装配
 
-- [ ] 后端应用测试通过
-- [ ] 后端静态检查通过
-- [ ] `/health` 和异常响应行为保持可验证
+- [x] 后端应用测试通过
+- [x] 后端静态检查通过
+- [x] `/health` 和异常响应行为保持可验证
 
 ### Phase 2: Electron 主进程边界
 
@@ -42,15 +48,15 @@
 
 ### Checkpoint: 桌面主进程
 
-- [ ] Electron 单元测试通过
-- [ ] renderer 构建和类型检查通过
-- [ ] Electron 启动 smoke test 通过
+- [x] Electron 单元测试通过
+- [x] renderer 构建和类型检查通过
+- [x] Electron 启动 smoke test 通过
 
 ### Phase 3: 渲染器数据边界
 
 - [x] 盘点 API client、query composable 和 Pinia 重复职责
-- [x] 选择一个主链路完成 query/mutation 边界收敛（审计后确认无需迁移）
-- [x] 清理对应旧请求状态和无调用方 helper（无安全可删项）
+- [x] 选择一个主链路完成 query/mutation 边界收敛（音乐主页专辑查询）
+- [x] 清理对应旧请求状态和无调用方 helper（专辑 loader 重复实现）
 
 ### Checkpoint: 渲染器
 
