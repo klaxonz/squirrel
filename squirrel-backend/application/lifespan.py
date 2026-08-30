@@ -113,7 +113,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info('Shutdown: begin')
     try:
-        get_site_registry().stop_all()
-    except Exception as exc:  # cleanup during shutdown -- must not propagate
-        logger.warning('Shutdown: error stopping site integrations (ignored): %s', exc)
+        video_service = getattr(app.state, 'video_service', None)
+        if video_service is not None:
+            video_service.close()
+    except Exception as exc:
+        logger.warning('Shutdown: error closing video services (ignored): %s', exc)
     logger.info('Shutdown: complete')

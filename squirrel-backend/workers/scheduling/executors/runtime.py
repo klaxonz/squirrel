@@ -13,6 +13,9 @@ from domains.subscription.application.services.crawl.dispatcher.service import C
 from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
     CrawlExecutorService as SubscriptionSyncExecutor,
 )
+from domains.subscription.application.services.crawl.executors.video_extract_executor import (
+    CrawlExecutorService as VideoExtractExecutor,
+)
 from domains.subscription.application.services.service import SubscriptionService
 from domains.video.application.services.extraction.progress_service import VideoExtractionProgressService
 from infrastructure.config.settings import settings
@@ -35,10 +38,16 @@ class CrawlWorkerRuntime:
         subscription_task_progress: SubscriptionSyncTaskProgressService | None = None,
         video_extraction_progress: VideoExtractionProgressService | None = None,
         subscription_sync_executor: SubscriptionSyncExecutor | None = None,
+        video_extract_executor: VideoExtractExecutor | None = None,
     ):
         services = SubscriptionService() if any(
             dependency is None
-            for dependency in (subscription_task_progress, video_extraction_progress, subscription_sync_executor)
+            for dependency in (
+                subscription_task_progress,
+                video_extraction_progress,
+                subscription_sync_executor,
+                video_extract_executor,
+            )
         ) else None
         if services is not None:
             subscription_task_progress = subscription_task_progress or SubscriptionSyncTaskProgressService(services.lifecycle)
@@ -48,6 +57,7 @@ class CrawlWorkerRuntime:
                 orchestrator_service=services.orchestrator,
                 subscription_svc=services.crud,
             )
+            video_extract_executor = video_extract_executor or VideoExtractExecutor(services.video_service.extraction)
         self.dispatcher = dispatcher or CrawlDispatcherService()
         self.worker_id = worker_id
         self.lease_seconds = lease_seconds or settings.crawl.worker_lease_seconds
@@ -60,6 +70,7 @@ class CrawlWorkerRuntime:
             subscription_task_progress=subscription_task_progress,
             video_extraction_progress=video_extraction_progress,
             subscription_sync_executor=subscription_sync_executor,
+            video_extract_executor=video_extract_executor,
         )
         self._lease_tracker = CrawlWorkerLeaseTracker(worker_id=self.worker_id, lease_seconds=self.lease_seconds)
 

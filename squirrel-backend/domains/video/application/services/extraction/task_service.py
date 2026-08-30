@@ -126,7 +126,3 @@ class VideoExtractionTaskService:
                 raise
             logger.debug('Video extraction task already exists in task store, skipping: %s', params.url)
             return False
-
-
-video_extraction_task_service = VideoExtractionTaskService()
-enqueue_video_extraction = video_extraction_task_service.enqueue

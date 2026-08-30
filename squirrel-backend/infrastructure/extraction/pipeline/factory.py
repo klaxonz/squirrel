@@ -8,8 +8,8 @@ one caller, one pipeline, no disabled/parametrized stages ever existed).
 
 import logging
 
-from domains.video.application.services.extraction.thumbnail_downloader import thumbnail_downloader_service
-from domains.video.application.services.extraction.video_persistence import video_persistence_service
+from domains.video.application.services.extraction.thumbnail_downloader import ThumbnailDownloaderService
+from domains.video.application.services.extraction.video_persistence import VideoPersistenceService
 
 from ..adapters.runtime_adapter import RuntimeDataAdapter
 from .base import ExtractionPipeline
@@ -21,7 +21,12 @@ from .stages.validation import ValidationStage
 logger = logging.getLogger(__name__)
 
 
-def create_video_extraction_pipeline(extractor_factory) -> ExtractionPipeline:
+def create_video_extraction_pipeline(
+    extractor_factory,
+    *,
+    persistence_service: VideoPersistenceService | None = None,
+    thumbnail_service: ThumbnailDownloaderService | None = None,
+) -> ExtractionPipeline:
     """Build the video-extraction pipeline with its default stages in order.
 
     Args:
@@ -31,12 +36,14 @@ def create_video_extraction_pipeline(extractor_factory) -> ExtractionPipeline:
         ExtractionPipeline ready to ``execute(context)``.
 
     """
+    persistence_service = persistence_service or VideoPersistenceService()
+    thumbnail_service = thumbnail_service or ThumbnailDownloaderService()
     pipeline = ExtractionPipeline(
         [
             ExtractionStage(extractor_factory),
             ValidationStage(RuntimeDataAdapter()),
-            PersistenceStage(video_persistence_service),
-            PostProcessStage(thumbnail_downloader_service),
+            PersistenceStage(persistence_service),
+            PostProcessStage(thumbnail_service),
         ]
     )
     logger.debug('Created pipeline with stages: %s', pipeline.get_stage_names())

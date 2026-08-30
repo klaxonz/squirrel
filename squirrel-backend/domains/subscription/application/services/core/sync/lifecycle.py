@@ -109,6 +109,15 @@ class SubscriptionSyncLifecycle:
         self._run_service = run_service or SubscriptionSyncRunService(self.session_factory)
         self._event_publisher = event_publisher or SubscriptionSyncCommandEventPublisher(self._run_service)
         self._queue_planner = SubscriptionSyncQueuePlanner(self._sync_state_service, self._event_publisher)
+        self._orchestrator = None
+
+    def bind_orchestrator(self, orchestrator) -> None:
+        self._orchestrator = orchestrator
+
+    def _require_orchestrator(self):
+        if self._orchestrator is None:
+            raise RuntimeError('SubscriptionSyncLifecycle requires a bound SubscriptionOrchestrator')
+        return self._orchestrator
 
     def request_sync(
         self,
@@ -257,7 +266,6 @@ class SubscriptionSyncLifecycle:
             if run is not None:
                 run.request_id = request_id
 
-        from domains.subscription.application.services.core.update.orchestrator import SubscriptionOrchestrator
         from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
             CrawlExecutorService,
         )
@@ -265,10 +273,7 @@ class SubscriptionSyncLifecycle:
         try:
             sync_result = CrawlExecutorService(
                 lifecycle=self,
-                orchestrator_service=SubscriptionOrchestrator(
-                    session_factory=self.session_factory,
-                    lifecycle=self,
-                ),
+                orchestrator_service=self._require_orchestrator(),
                 subscription_svc=self._crud_service,
             ).execute_subscription_sync_payload(
                 {
@@ -742,17 +747,13 @@ class SubscriptionSyncLifecycle:
             return task.payload
 
     def _run_inline_continuation(self, payload: dict) -> None:
-        from domains.subscription.application.services.core.update.orchestrator import SubscriptionOrchestrator
         from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
             CrawlExecutorService,
         )
 
         CrawlExecutorService(
             lifecycle=self,
-            orchestrator_service=SubscriptionOrchestrator(
-                session_factory=self.session_factory,
-                lifecycle=self,
-            ),
+            orchestrator_service=self._require_orchestrator(),
             subscription_svc=self._crud_service,
         ).execute_subscription_sync_payload(payload)
 

@@ -7,17 +7,31 @@ from domains.subscription.application.services.core.manage import SubscriptionMa
 from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
 from domains.subscription.application.services.core.update.orchestrator import SubscriptionOrchestrator
 from domains.subscription.application.services.core.update.scheduler import SubscriptionScheduler
+from domains.subscription.application.services.core.update.strategies.default_strategy import DefaultUpdateStrategy
+from domains.subscription.application.services.core.update.video_extraction_coordinator import (
+    VideoExtractionCoordinator,
+)
+from domains.video.application.services.service import VideoService
 from infrastructure.database.session import get_session
 
 
 class SubscriptionService:
     """Composition root for subscription application services."""
 
-    def __init__(self, session_factory=get_session):
+    def __init__(self, session_factory=get_session, video_service: VideoService | None = None):
+        video_service = video_service or VideoService(session_factory=session_factory)
         self.crud = SubscriptionCrudService(session_factory=session_factory)
         self.lifecycle = SubscriptionSyncLifecycle(
             session_factory=session_factory,
             crud_service=self.crud,
+        )
+        video_coordinator = VideoExtractionCoordinator(
+            lifecycle=self.lifecycle,
+            crud_service=video_service.crud,
+            persistence_service=video_service.persistence,
+            extraction_service=video_service.extraction,
+            extraction_task_service=video_service.extraction_tasks,
+            session_factory=session_factory,
         )
         self.manage = SubscriptionManageService(
             session_factory=session_factory,
@@ -28,6 +42,7 @@ class SubscriptionService:
         self.orchestrator = SubscriptionOrchestrator(
             session_factory=session_factory,
             lifecycle=self.lifecycle,
+            strategy=DefaultUpdateStrategy(video_coordinator=video_coordinator),
         )
         self.imports = SubscriptionImportService(
             session_factory=session_factory,
@@ -38,7 +53,9 @@ class SubscriptionService:
         self.scheduler = SubscriptionScheduler(
             session_factory=session_factory,
             lifecycle=self.lifecycle,
+            orchestrator=self.orchestrator,
         )
+        self.video_service = video_service
 
     @property
     def crud_service(self) -> SubscriptionCrudService:
@@ -63,3 +80,5 @@ class SubscriptionService:
     @property
     def orchestrator_service(self) -> SubscriptionOrchestrator:
         return self.orchestrator
+    def close(self) -> None:
+        self.video_service.close()

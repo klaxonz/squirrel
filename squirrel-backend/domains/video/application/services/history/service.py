@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import domains.user.application.services.config as user_config_service
+from domains.video.application.services.extraction.thumbnail_downloader import ThumbnailDownloaderService
 from domains.video.application.services.history.query import list_history_page
 from domains.video.application.services.history.serialization import serialize_history_items
 from domains.video.application.services.history.updates import apply_history_updates
@@ -18,9 +19,15 @@ SessionFactory = Callable[[], Generator[Session, None, None]]
 
 
 class VideoHistoryService:
-    def __init__(self, session_factory: SessionFactory | None = None, get_user_config=None):
+    def __init__(
+        self,
+        session_factory: SessionFactory | None = None,
+        get_user_config=None,
+        thumbnail_downloader: ThumbnailDownloaderService | None = None,
+    ):
         self._session_factory = session_factory or _default_get_session
         self._get_user_config = get_user_config or user_config_service.get_config
+        self._thumbnail_downloader = thumbnail_downloader or ThumbnailDownloaderService()
 
     def update_history(self, user_id: int, data: HistoryCreate):
         with self._session_factory() as session:
@@ -89,7 +96,12 @@ class VideoHistoryService:
                 }
 
             return {
-                'items': serialize_history_items(session, user_id, histories),
+                'items': serialize_history_items(
+                    session,
+                    user_id,
+                    histories,
+                    self._thumbnail_downloader,
+                ),
                 'total': total,
                 'page': page,
                 'page_size': page_size,

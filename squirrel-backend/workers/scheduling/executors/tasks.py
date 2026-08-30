@@ -12,7 +12,9 @@ from domains.subscription.application.services.crawl.executors.subscription_impo
 from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
     CrawlExecutorService as SubscriptionSyncExecutor,
 )
-from domains.subscription.application.services.crawl.executors.video_extract_executor import execute_video_extract_task
+from domains.subscription.application.services.crawl.executors.video_extract_executor import (
+    CrawlExecutorService as VideoExtractExecutor,
+)
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskNotFoundError, CrawlTaskOwnershipError
 from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
@@ -33,12 +35,14 @@ class CrawlWorkerTaskRunner:
         subscription_task_progress: SubscriptionSyncTaskProgressService,
         video_extraction_progress: VideoExtractionProgressService,
         subscription_sync_executor: SubscriptionSyncExecutor,
+        video_extract_executor: VideoExtractExecutor,
     ) -> None:
         self.worker_id = worker_id
         self.retry_delay_seconds = retry_delay_seconds
         self.subscription_task_progress = subscription_task_progress
         self.video_extraction_progress = video_extraction_progress
         self.subscription_sync_executor = subscription_sync_executor
+        self.video_extract_executor = video_extract_executor
 
     def run_task(self, task, claimed_at: datetime) -> None:
         try:
@@ -86,7 +90,7 @@ class CrawlWorkerTaskRunner:
 
     def execute_task(self, task) -> None:
         if task.task_type == 'video_extract':
-            execute_video_extract_task(task)
+            self.video_extract_executor.execute_video_extract_task(task)
             return
         if is_subscription_sync_task_type(task.task_type):
             self.subscription_sync_executor.execute_subscription_sync_task(task)

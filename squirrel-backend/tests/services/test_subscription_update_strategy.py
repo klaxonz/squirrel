@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from domains.subscription.application.services.core.crud import SubscriptionCrudService
 from domains.subscription.application.services.core.sync.lifecycle import (
@@ -211,14 +211,12 @@ def test_enqueue_extraction_delegates_to_video_extraction_coordinator():
     )
     fetch_result = SimpleNamespace(video_urls=['https://www.youtube.com/watch?v=demo'])
 
-    with patch(
-        'domains.subscription.application.services.core.update.strategies.default_strategy.enqueue_discovered_videos',
-        return_value=1,
-    ) as enqueue_discovered_videos:
-        enqueued = DefaultUpdateStrategy().enqueue_extraction(fetch_result, request)
+    video_coordinator = MagicMock()
+    video_coordinator.enqueue_discovered_videos.return_value = 1
+    enqueued = DefaultUpdateStrategy(video_coordinator=video_coordinator).enqueue_extraction(fetch_result, request)
 
     assert enqueued == 1
-    enqueue_discovered_videos.assert_called_once_with(fetch_result, request)
+    video_coordinator.enqueue_discovered_videos.assert_called_once_with(fetch_result, request)
 
 
 def test_execute_full_sync_with_more_batches_continues_without_marking_success():

@@ -56,10 +56,7 @@ def test_run_once_executes_video_extract_task(monkeypatch):
         'workers.scheduling.executors.tasks.crawl_task_service.start_task',
         lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)) or task,
     )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.execute_video_extract_task',
-        lambda current_task: calls.append(('video', current_task.id)),
-    )
+    monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', lambda current_task: calls.append(('video', current_task.id)))
     monkeypatch.setattr(
         'workers.scheduling.executors.tasks.crawl_task_service.complete_task',
         lambda task_id, worker_id, now=None: calls.append(('complete', task_id, worker_id)) or task,
@@ -103,7 +100,7 @@ def test_video_extract_success_records_terminal_progress(monkeypatch):
         'workers.scheduling.executors.tasks.crawl_task_service.start_task',
         lambda task_id, worker_id, now=None: task,
     )
-    monkeypatch.setattr('workers.scheduling.executors.tasks.execute_video_extract_task', lambda current_task: None)
+    monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', lambda current_task: None)
     monkeypatch.setattr(
         'workers.scheduling.executors.tasks.crawl_task_service.complete_task',
         lambda task_id, worker_id, now=None: completed_task,
@@ -221,7 +218,7 @@ def test_run_once_retries_task_on_failure(monkeypatch):
     def _raise(_task):
         raise RuntimeError('boom')
 
-    monkeypatch.setattr('workers.scheduling.executors.tasks.execute_video_extract_task', _raise)
+    monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', _raise)
     monkeypatch.setattr(
         'workers.scheduling.executors.tasks.crawl_task_service.retry_task',
         lambda task_id, worker_id, error_message, error_type, now=None, delay_seconds=30: (
@@ -267,10 +264,7 @@ def test_run_once_marks_validation_failures_non_retryable(monkeypatch):
         'workers.scheduling.executors.tasks.crawl_task_service.start_task',
         lambda task_id, worker_id, now=None: task,
     )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.execute_video_extract_task',
-        lambda current_task: (_ for _ in ()).throw(ValueError('invalid payload')),
-    )
+    monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', lambda current_task: (_ for _ in ()).throw(ValueError('invalid payload')))
 
     def _retry_task(**kwargs):
         captured.update(kwargs)
@@ -310,10 +304,7 @@ def test_video_extract_retry_wait_does_not_record_terminal_progress(monkeypatch)
         'workers.scheduling.executors.tasks.crawl_task_service.start_task',
         lambda task_id, worker_id, now=None: task,
     )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.execute_video_extract_task',
-        lambda current_task: (_ for _ in ()).throw(RuntimeError('boom')),
-    )
+    monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', lambda current_task: (_ for _ in ()).throw(RuntimeError('boom')))
     monkeypatch.setattr(
         'workers.scheduling.executors.tasks.crawl_task_service.retry_task',
         lambda **kwargs: retry_task,
@@ -351,10 +342,7 @@ def test_video_extract_dead_records_terminal_progress(monkeypatch):
         'workers.scheduling.executors.tasks.crawl_task_service.start_task',
         lambda task_id, worker_id, now=None: task,
     )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.execute_video_extract_task',
-        lambda current_task: (_ for _ in ()).throw(RuntimeError('boom')),
-    )
+    monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', lambda current_task: (_ for _ in ()).throw(RuntimeError('boom')))
     monkeypatch.setattr(
         'workers.scheduling.executors.tasks.crawl_task_service.retry_task',
         lambda **kwargs: dead_task,
@@ -506,7 +494,7 @@ def test_run_loop_fills_multiple_slots_with_concurrent_tasks(monkeypatch):
         execute_gate.wait(timeout=1)
         release_event.wait(timeout=1)
 
-    monkeypatch.setattr('workers.scheduling.executors.tasks.execute_video_extract_task', _execute)
+    monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', _execute)
 
     stop_event = threading.Event()
     thread = threading.Thread(target=runtime.run_loop, args=(stop_event,))
@@ -584,7 +572,7 @@ def test_run_loop_renews_lease_for_running_tasks(monkeypatch):
     def _execute(_task):
         release_event.wait(timeout=1)
 
-    monkeypatch.setattr('workers.scheduling.executors.tasks.execute_video_extract_task', _execute)
+    monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', _execute)
 
     stop_event = threading.Event()
     thread = threading.Thread(target=runtime.run_loop, args=(stop_event,))
@@ -668,10 +656,7 @@ def test_run_task_does_not_retry_when_task_ownership_is_lost_on_complete(monkeyp
         'workers.scheduling.executors.tasks.crawl_task_service.start_task',
         lambda task_id, worker_id, now=None: task,
     )
-    monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.execute_video_extract_task',
-        lambda current_task: None,
-    )
+    monkeypatch.setattr(runtime.task_runner.video_extract_executor, 'execute_video_extract_task', lambda current_task: None)
     monkeypatch.setattr(
         'workers.scheduling.executors.tasks.crawl_task_service.complete_task',
         lambda task_id, worker_id, now=None: (_ for _ in ()).throw(CrawlTaskOwnershipError('lost ownership')),

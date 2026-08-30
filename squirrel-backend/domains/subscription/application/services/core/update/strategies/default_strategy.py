@@ -20,7 +20,7 @@ from shared_kernel.infrastructure.deadline import DeadlineExceeded, run_with_dea
 
 from ..errors import SubscriptionUpdateError
 from ..models import SubscriptionUpdateRequest, SubscriptionUpdateResult, UpdateMode
-from ..video_extraction_coordinator import enqueue_discovered_videos
+from ..video_extraction_coordinator import VideoExtractionCoordinator
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +80,13 @@ def _invoke_site_sync(
 class DefaultUpdateStrategy:
     """Default update strategy (applicable to all sites)"""
 
-    def __init__(self, registry: SiteRegistry | None = None) -> None:
+    def __init__(
+        self,
+        registry: SiteRegistry | None = None,
+        video_coordinator: VideoExtractionCoordinator | None = None,
+    ) -> None:
         self._registry = registry or get_site_registry()
+        self._video_coordinator = video_coordinator or VideoExtractionCoordinator()
 
     @property
     def site_name(self) -> str:
@@ -172,4 +177,4 @@ class DefaultUpdateStrategy:
 
     def enqueue_extraction(self, fetch_result: SubscriptionSyncResult, request: SubscriptionUpdateRequest) -> int:
         """Enqueue videos for extraction"""
-        return enqueue_discovered_videos(fetch_result, request)
+        return self._video_coordinator.enqueue_discovered_videos(fetch_result, request)

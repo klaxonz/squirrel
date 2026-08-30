@@ -4,16 +4,13 @@ from domains.user.application.services.auth import get_current_user
 from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from domains.video.application.services.engagement.interaction import VideoInteractionService
 from domains.video.interfaces.dto.video_interaction import VideoInteractionDelete, VideoInteractionUpdate
+from domains.video.interfaces.http.dependencies import get_video_interaction_service
 from infrastructure.http import response
 
 router = APIRouter(
     prefix='/api/video-interaction',
     tags=['视频交互'],
 )
-
-
-def get_video_interaction_service() -> VideoInteractionService:
-    return VideoInteractionService()
 
 
 @router.post('/toggle-like')

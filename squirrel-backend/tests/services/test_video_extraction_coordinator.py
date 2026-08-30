@@ -13,6 +13,10 @@ from domains.subscription.application.services.core.update.video_extraction_coor
     VideoExtractionCoordinator,
 )
 from domains.subscription.application.services.crawl.tasks.errors import CrawlExecutionError
+from domains.video.application.services.crud import VideoCrudService
+from domains.video.application.services.extraction.extractor import VideoExtractionService
+from domains.video.application.services.extraction.task_service import VideoExtractionTaskService
+from domains.video.application.services.extraction.video_persistence import VideoPersistenceService
 
 
 class _DummySessionContext:
@@ -27,10 +31,7 @@ def test_enqueue_discovered_videos_skips_blocked_video_urls():
     enqueue_calls = []
 
     with (
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls',
-            return_value={},
-        ),
+        patch.object(VideoCrudService, 'get_videos_by_urls', return_value={}),
         patch(
             'domains.subscription.application.services.core.update.video_extraction_coordinator.get_session',
             return_value=_DummySessionContext(),
@@ -39,8 +40,9 @@ def test_enqueue_discovered_videos_skips_blocked_video_urls():
             'domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video',
             side_effect=lambda url, session: url.endswith('blocked'),
         ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction',
+        patch.object(
+            VideoExtractionTaskService,
+            'enqueue',
             side_effect=lambda params: enqueue_calls.append(params.url) or True,
         ),
         patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_enqueued'),
@@ -70,8 +72,9 @@ def test_existing_blocked_video_is_not_linked_to_subscription():
     allowed_url = 'https://www.youtube.com/watch?v=allowed'
     link_calls = []
     with (
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls',
+        patch.object(
+            VideoCrudService,
+            'get_videos_by_urls',
             return_value={
                 blocked_url: SimpleNamespace(id=10),
                 allowed_url: SimpleNamespace(id=11),
@@ -85,8 +88,9 @@ def test_existing_blocked_video_is_not_linked_to_subscription():
             'domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video',
             side_effect=lambda url, session: url == blocked_url,
         ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.video_persistence_service.link_existing_videos',
+        patch.object(
+            VideoPersistenceService,
+            'link_existing_videos',
             side_effect=lambda subscription_id, video_ids: link_calls.append((subscription_id, video_ids)),
         ),
     ):
@@ -119,10 +123,7 @@ def test_enqueue_discovered_videos_delegates_atomic_pending_reservation_to_task_
         return True
 
     with (
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls',
-            return_value={},
-        ),
+        patch.object(VideoCrudService, 'get_videos_by_urls', return_value={}),
         patch(
             'domains.subscription.application.services.core.update.video_extraction_coordinator.get_session',
             return_value=_DummySessionContext(),
@@ -133,10 +134,7 @@ def test_enqueue_discovered_videos_delegates_atomic_pending_reservation_to_task_
         ),
         patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_enqueued', side_effect=_record_enqueued),
         patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_dispatch_failed', side_effect=_decrement_pending),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction',
-            side_effect=_enqueue_video,
-        ),
+        patch.object(VideoExtractionTaskService, 'enqueue', side_effect=_enqueue_video),
     ):
         request = SubscriptionUpdateRequest(
             subscription_id=1,
@@ -162,10 +160,7 @@ def test_enqueue_discovered_videos_extracts_inline_without_creating_video_task()
     terminal_calls = []
 
     with (
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls',
-            return_value={},
-        ),
+        patch.object(VideoCrudService, 'get_videos_by_urls', return_value={}),
         patch(
             'domains.subscription.application.services.core.update.video_extraction_coordinator.get_session',
             return_value=_DummySessionContext(),
@@ -175,14 +170,16 @@ def test_enqueue_discovered_videos_extracts_inline_without_creating_video_task()
             return_value=False,
         ),
         patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_enqueued'),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction',
+        patch.object(
+            VideoExtractionTaskService,
+            'enqueue',
             side_effect=lambda params: (_ for _ in ()).throw(
                 AssertionError('inline extraction should not enqueue video task')
             ),
         ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.extract_video',
+        patch.object(
+            VideoExtractionService,
+            'extract_video',
             side_effect=lambda params: extract_calls.append(params) or SimpleNamespace(success=True),
         ),
         patch.object(
@@ -212,10 +209,7 @@ def test_enqueue_discovered_videos_extracts_inline_without_creating_video_task()
 
 def test_enqueue_discovered_videos_surfaces_inline_extraction_failure():
     with (
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls',
-            return_value={},
-        ),
+        patch.object(VideoCrudService, 'get_videos_by_urls', return_value={}),
         patch(
             'domains.subscription.application.services.core.update.video_extraction_coordinator.get_session',
             return_value=_DummySessionContext(),
@@ -226,8 +220,9 @@ def test_enqueue_discovered_videos_surfaces_inline_extraction_failure():
         ),
         patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_enqueued'),
         patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_terminal'),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.extract_video',
+        patch.object(
+            VideoExtractionService,
+            'extract_video',
             return_value=SimpleNamespace(
                 success=False,
                 error='upstream timeout',
@@ -257,10 +252,7 @@ def test_enqueue_discovered_videos_surfaces_inline_extraction_failure():
 def test_inline_extraction_releases_pending_reservation_on_unexpected_exception():
     cleanup_calls = []
     with (
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.get_videos_by_urls',
-            return_value={},
-        ),
+        patch.object(VideoCrudService, 'get_videos_by_urls', return_value={}),
         patch(
             'domains.subscription.application.services.core.update.video_extraction_coordinator.get_session',
             return_value=_DummySessionContext(),
@@ -275,10 +267,7 @@ def test_inline_extraction_releases_pending_reservation_on_unexpected_exception(
             'record_video_extraction_dispatch_failed',
             side_effect=lambda *args, **kwargs: cleanup_calls.append((args, kwargs)),
         ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.extract_video',
-            side_effect=RuntimeError('unexpected'),
-        ),
+        patch.object(VideoExtractionService, 'extract_video', side_effect=RuntimeError('unexpected')),
     ):
         request = SubscriptionUpdateRequest(
             subscription_id=1,

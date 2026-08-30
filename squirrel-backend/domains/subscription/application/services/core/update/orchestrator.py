@@ -40,6 +40,7 @@ class SubscriptionOrchestrator:
         self.session_factory = session_factory or get_session
         self.default_strategy = strategy or DefaultUpdateStrategy()
         self.lifecycle = lifecycle or SubscriptionSyncLifecycle(session_factory=self.session_factory)
+        self.lifecycle.bind_orchestrator(self)
 
     def update(self, request: SubscriptionUpdateRequest) -> SubscriptionUpdateResult:
         """Execute subscription update

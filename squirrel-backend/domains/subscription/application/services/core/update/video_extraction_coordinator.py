@@ -1,12 +1,12 @@
 import logging
 
-import domains.video.application.services.extraction.task_service as video_extraction_task_service
 from domains.subscription.application.services.core.runtime_models import SubscriptionSyncResult
 from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
 from domains.subscription.application.services.crawl.tasks.errors import CrawlExecutionError
-from domains.video.application.services.crud import get_videos_by_urls
-from domains.video.application.services.extraction.extractor import extract_video
-from domains.video.application.services.extraction.video_persistence import video_persistence_service
+from domains.video.application.services.crud import VideoCrudService
+from domains.video.application.services.extraction.extractor import VideoExtractionService
+from domains.video.application.services.extraction.task_service import VideoExtractionTaskService
+from domains.video.application.services.extraction.video_persistence import VideoPersistenceService
 from domains.video.application.services.moderation.blocked import is_blocked_video
 from domains.video.interfaces.dto.video_dto import VideoExtractDto
 from infrastructure.database.session import get_session
@@ -18,9 +18,24 @@ logger = logging.getLogger(__name__)
 
 
 class VideoExtractionCoordinator:
-    def __init__(self, lifecycle: SubscriptionSyncLifecycle | None = None) -> None:
+    def __init__(
+        self,
+        lifecycle: SubscriptionSyncLifecycle | None = None,
+        *,
+        crud_service: VideoCrudService | None = None,
+        persistence_service: VideoPersistenceService | None = None,
+        extraction_service: VideoExtractionService | None = None,
+        extraction_task_service: VideoExtractionTaskService | None = None,
+        session_factory=None,
+    ) -> None:
         self._lifecycle = lifecycle or SubscriptionSyncLifecycle()
-
+        self._crud = crud_service or VideoCrudService(session_factory=session_factory)
+        self._persistence = persistence_service or VideoPersistenceService(session_factory=session_factory)
+        self._extraction = extraction_service or VideoExtractionService()
+        self._extraction_tasks = extraction_task_service or VideoExtractionTaskService(
+            get_video_by_url=self._crud.get_video_by_url,
+        )
+        self._session_factory = session_factory or get_session
     def enqueue_discovered_videos(
         self,
         fetch_result: SubscriptionSyncResult,
@@ -35,11 +50,11 @@ class VideoExtractionCoordinator:
         is_full_update = request.mode == UpdateMode.FULL
         video_urls = fetch_result.video_urls
         total = len(video_urls)
-        existing_videos = get_videos_by_urls(video_urls)
+        existing_videos = self._crud.get_videos_by_urls(video_urls)
         domain = resolve_site(request.url) or 'unknown'
 
         blocked_video_urls = set()
-        with get_session() as session:
+        with self._session_factory() as session:
             for video_url in video_urls:
                 if is_blocked_video(video_url, session):
                     blocked_video_urls.add(video_url)
@@ -51,7 +66,7 @@ class VideoExtractionCoordinator:
                 'run_id': request.run_id,
                 'execution_token': request.execution_token,
             }
-        video_persistence_service.link_existing_videos(
+        self._persistence.link_existing_videos(
             request.subscription_id,
             [video.id for video_url, video in existing_videos.items() if video_url not in blocked_video_urls],
             **link_kwargs,
@@ -90,7 +105,7 @@ class VideoExtractionCoordinator:
                         **progress_kwargs,
                     )
                     reserved_pending = True
-                    extracted = extract_video(params)
+                    extracted = self._extraction.extract_video(params)
                     if extracted.success:
                         enqueued += 1
                     else:
@@ -108,7 +123,7 @@ class VideoExtractionCoordinator:
                         **terminal_kwargs,
                     )
                     reserved_pending = False
-                elif video_extraction_task_service.enqueue_video_extraction(params):
+                elif self._extraction_tasks.enqueue(params):
                     enqueued += 1
             except (ValueError, TypeError, AttributeError, KeyError) as exc:
                 failed_count += 1
@@ -154,7 +169,3 @@ class VideoExtractionCoordinator:
                 error_type=str(getattr(first_failure, 'error_type', None) or type(first_failure).__name__),
             )
         return enqueued
-
-
-video_extraction_coordinator = VideoExtractionCoordinator()
-enqueue_discovered_videos = video_extraction_coordinator.enqueue_discovered_videos

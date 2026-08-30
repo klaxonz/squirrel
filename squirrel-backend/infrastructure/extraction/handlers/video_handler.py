@@ -27,18 +27,19 @@ class VideoExtractionHandler:
     Note: Actual business logic lives in the Pipeline Stages.
     """
 
-    def __init__(self, pipeline=None):
-        """Initialize the handler
-
-        Args:
-            pipeline: Pipeline instance (optional, for test injection)
-
-        """
+    def __init__(
+        self,
+        pipeline=None,
+        *,
+        persistence_service=None,
+        thumbnail_service=None,
+    ):
         if pipeline is None:
-            # Create default Pipeline
             extractor_factory = get_extractor_factory()
             pipeline = create_video_extraction_pipeline(
                 extractor_factory,
+                persistence_service=persistence_service,
+                thumbnail_service=thumbnail_service,
             )
 
         self.pipeline = pipeline

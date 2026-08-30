@@ -315,8 +315,6 @@ class VideoPersistenceService:
         return video, is_new
 
 
-# Singleton instance
-video_persistence_service = VideoPersistenceService()
 
 
 def _index_video_id_after_commit(session: Session, video_id: int) -> None:

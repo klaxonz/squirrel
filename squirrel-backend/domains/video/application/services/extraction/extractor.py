@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 class VideoExtractionService:
-    def __init__(self):
-        self.handler = VideoExtractionHandler()
-        self.task_manager = TaskManager()
+    def __init__(self, handler=None, task_manager=None):
+        self.handler = handler or VideoExtractionHandler()
+        self.task_manager = task_manager or TaskManager()
 
     def extract_video(self, params: VideoExtractDto) -> ExtractionResult:
         domain = url_helper.extract_top_level_domain(params.url)
@@ -70,7 +70,3 @@ class VideoExtractionService:
             priority=priority,
             metadata=metadata,
         )
-
-
-video_extraction_service = VideoExtractionService()
-extract_video = video_extraction_service.extract_video

@@ -25,9 +25,20 @@ logger = logging.getLogger(__name__)
 class SubscriptionScheduler:
     """Subscription update scheduler."""
 
-    def __init__(self, session_factory=None, lifecycle: SubscriptionSyncLifecycle | None = None):
+    def __init__(
+        self,
+        session_factory=None,
+        lifecycle: SubscriptionSyncLifecycle | None = None,
+        orchestrator=None,
+    ):
         self.session_factory = session_factory or get_session
         self.lifecycle = lifecycle or SubscriptionSyncLifecycle(session_factory=self.session_factory)
+        if orchestrator is not None:
+            self.lifecycle.bind_orchestrator(orchestrator)
+        elif self.lifecycle._orchestrator is None:
+            from .orchestrator import SubscriptionOrchestrator
+
+            SubscriptionOrchestrator(session_factory=self.session_factory, lifecycle=self.lifecycle)
 
     def schedule_one(
         self,

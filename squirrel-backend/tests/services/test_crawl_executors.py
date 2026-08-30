@@ -17,9 +17,8 @@ from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
 def _make_video_extract_svc(extract_video_func=None):
-    return VideoExtractExecutor(
-        extract_video_func=extract_video_func,
-    )
+    extraction_service = SimpleNamespace(extract_video=extract_video_func)
+    return VideoExtractExecutor(extraction_service=extraction_service)
 
 
 def _make_sync_svc(lifecycle=None, orchestrator_service=None, subscription_svc=None):

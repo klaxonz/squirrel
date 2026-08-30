@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.subscription import Subscription
-from domains.video.application.services.extraction.thumbnail_downloader import thumbnail_downloader_service
+from domains.video.application.services.extraction.thumbnail_downloader import ThumbnailDownloaderService
 from domains.video.application.services.listing.profiles import merge_profiles, video_extra_profiles
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
@@ -13,7 +13,12 @@ from domains.video.domain.models.video_history import VideoHistory
 from infrastructure.site_catalog.url import get_site_from_url
 
 
-def serialize_history_items(session: Session, user_id: int, histories: list[VideoHistory]) -> list[dict[str, Any]]:
+def serialize_history_items(
+    session: Session,
+    user_id: int,
+    histories: list[VideoHistory],
+    thumbnail_downloader: ThumbnailDownloaderService,
+) -> list[dict[str, Any]]:
     if not histories:
         return []
 
@@ -83,7 +88,7 @@ def serialize_history_items(session: Session, user_id: int, histories: list[Vide
                 'history_id': history.id,
                 'title': video.title,
                 'url': video.url,
-                'thumbnail': thumbnail_downloader_service.get_thumbnail_url(video.id, video.thumbnail, video.url),
+                'thumbnail': thumbnail_downloader.get_thumbnail_url(video.id, video.thumbnail, video.url),
                 'duration': video.duration,
                 'last_position': history.last_position or 0,
                 'played_at': history.end_time.strftime('%Y-%m-%d %H:%M:%S') if history.end_time else None,

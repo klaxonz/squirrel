@@ -3,14 +3,10 @@ from fastapi import APIRouter, Depends
 from domains.user.application.services.auth import get_current_user
 from domains.user.interfaces.dto.user_dto import CurrentUserDto
 from domains.video.application.services.creators.service import CreatorService
-from infrastructure.database.session import get_session
+from domains.video.interfaces.http.dependencies import get_creator_service
 from infrastructure.http import response
 
 router = APIRouter(prefix='/api/creator', tags=['Creator API'])
-
-
-def get_creator_service() -> CreatorService:
-    return CreatorService(session_factory=get_session)
 
 
 @router.get('/detail/{creator_id}')

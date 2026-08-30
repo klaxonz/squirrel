@@ -8,6 +8,7 @@ from domains.video.interfaces.dto.video_history import (
     HistoryCreate,
     VideoReadStateUpdate,
 )
+from domains.video.interfaces.http.dependencies import get_video_history_service
 from domains.video.interfaces.http.query_params import VideoHistoryListQuery
 from infrastructure.http import response
 
@@ -15,10 +16,6 @@ router = APIRouter(
     prefix='/api/video-history',
     tags=['视频历史记录'],
 )
-
-
-def get_video_history_service():
-    return VideoHistoryService()
 
 
 @router.post('/update')
