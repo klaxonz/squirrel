@@ -541,9 +541,7 @@ def test_non_greader_account_defaults_sync_limit_and_name_only_update_preserves_
     customized = account_svc.update_account(1, account['id'], sync_entry_limit=321)
     assert customized['sync_entry_limit'] == 321
 
-    with patch('domains.rss.application.services.service.update_account', account_svc.update_account):
-        renamed = RssService().update_account(1, account['id'], name='Renamed Reader')
-
+    renamed = RssService(account_service=account_svc).update_account(1, account['id'], name='Renamed Reader')
     assert renamed['name'] == 'Renamed Reader'
     assert renamed['sync_entry_limit'] == 321
 
