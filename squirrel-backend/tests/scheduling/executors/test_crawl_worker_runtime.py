@@ -138,7 +138,8 @@ def test_run_once_executes_legacy_subscription_sync_task_type(monkeypatch):
         lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)) or task,
     )
     monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.execute_subscription_sync_task',
+        runtime.task_runner.subscription_sync_executor,
+        'execute_subscription_sync_task',
         lambda current_task: calls.append(('sync', current_task.id, current_task.task_type)),
     )
     monkeypatch.setattr(
@@ -175,7 +176,8 @@ def test_run_once_executes_full_subscription_sync_task(monkeypatch):
         lambda task_id, worker_id, now=None: calls.append(('start', task_id, worker_id)) or task,
     )
     monkeypatch.setattr(
-        'workers.scheduling.executors.tasks.execute_subscription_sync_task',
+        runtime.task_runner.subscription_sync_executor,
+        'execute_subscription_sync_task',
         lambda current_task: calls.append(('sync', current_task.id, current_task.task_type)),
     )
     monkeypatch.setattr(

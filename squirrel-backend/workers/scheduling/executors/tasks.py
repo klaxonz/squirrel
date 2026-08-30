@@ -10,7 +10,7 @@ from domains.subscription.application.services.crawl.executors.subscription_impo
     execute_subscription_import_task,
 )
 from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
-    execute_subscription_sync_task,
+    CrawlExecutorService as SubscriptionSyncExecutor,
 )
 from domains.subscription.application.services.crawl.executors.video_extract_executor import execute_video_extract_task
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
@@ -30,13 +30,15 @@ class CrawlWorkerTaskRunner:
         *,
         worker_id: str,
         retry_delay_seconds: int,
-        subscription_task_progress: SubscriptionSyncTaskProgressService | None = None,
-        video_extraction_progress: VideoExtractionProgressService | None = None,
+        subscription_task_progress: SubscriptionSyncTaskProgressService,
+        video_extraction_progress: VideoExtractionProgressService,
+        subscription_sync_executor: SubscriptionSyncExecutor,
     ) -> None:
         self.worker_id = worker_id
         self.retry_delay_seconds = retry_delay_seconds
-        self.subscription_task_progress = subscription_task_progress or SubscriptionSyncTaskProgressService()
-        self.video_extraction_progress = video_extraction_progress or VideoExtractionProgressService()
+        self.subscription_task_progress = subscription_task_progress
+        self.video_extraction_progress = video_extraction_progress
+        self.subscription_sync_executor = subscription_sync_executor
 
     def run_task(self, task, claimed_at: datetime) -> None:
         try:
@@ -87,7 +89,7 @@ class CrawlWorkerTaskRunner:
             execute_video_extract_task(task)
             return
         if is_subscription_sync_task_type(task.task_type):
-            execute_subscription_sync_task(task)
+            self.subscription_sync_executor.execute_subscription_sync_task(task)
             return
         if task.task_type == 'subscription_import':
             execute_subscription_import_task(task)

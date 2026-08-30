@@ -16,15 +16,15 @@ def _params():
     )
 
 
-def test_record_terminal_completes_pending_on_success(monkeypatch):
+def test_record_terminal_completes_pending_on_success():
     decrement_calls = []
+    lifecycle = type(
+        'Lifecycle',
+        (),
+        {'record_video_extraction_terminal': lambda self, *args, **kwargs: decrement_calls.append((args, kwargs))},
+    )()
 
-    monkeypatch.setattr(
-        'domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_terminal',
-        lambda *args, **kwargs: decrement_calls.append((args, kwargs)),
-    )
-
-    VideoExtractionProgressService().record_terminal(_params(), succeeded=True)
+    VideoExtractionProgressService(lifecycle).record_terminal(_params(), succeeded=True)
 
     assert decrement_calls == [
         (
@@ -37,15 +37,15 @@ def test_record_terminal_completes_pending_on_success(monkeypatch):
     ]
 
 
-def test_record_terminal_updates_pending_on_failure(monkeypatch):
+def test_record_terminal_updates_pending_on_failure():
     decrement_calls = []
+    lifecycle = type(
+        'Lifecycle',
+        (),
+        {'record_video_extraction_terminal': lambda self, *args, **kwargs: decrement_calls.append((args, kwargs))},
+    )()
 
-    monkeypatch.setattr(
-        'domains.video.application.services.extraction.progress_service.subscription_sync_lifecycle.record_video_extraction_terminal',
-        lambda *args, **kwargs: decrement_calls.append((args, kwargs)),
-    )
-
-    VideoExtractionProgressService().record_terminal(_params(), succeeded=False)
+    VideoExtractionProgressService(lifecycle).record_terminal(_params(), succeeded=False)
 
     assert decrement_calls == [
         (

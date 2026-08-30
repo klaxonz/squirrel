@@ -1,14 +1,14 @@
 from datetime import datetime
 
-from domains.subscription.application.services.core.sync.lifecycle import subscription_sync_lifecycle
+from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
 from domains.subscription.application.services.crawl.tasks.models import CrawlTaskStatus
 from domains.subscription.application.services.crawl.tasks.task_types import is_subscription_sync_task_type
 from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
 class SubscriptionSyncTaskProgressService:
-    def __init__(self, lifecycle=None):
-        self._lifecycle = lifecycle or subscription_sync_lifecycle
+    def __init__(self, lifecycle: SubscriptionSyncLifecycle):
+        self._lifecycle = lifecycle
 
     def record_retry_transition(
         self,
@@ -48,7 +48,3 @@ class SubscriptionSyncTaskProgressService:
             payload.get('queue_token'),
             **transition_kwargs,
         )
-
-
-subscription_sync_task_progress_service = SubscriptionSyncTaskProgressService()
-record_retry_transition = subscription_sync_task_progress_service.record_retry_transition
