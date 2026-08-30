@@ -5,7 +5,7 @@
   "description": "Squirrel monorepo",
   "workspaces": [
     "squirrel-desktop",
-    "squirrel-site-runtimes/youtube/src/squirrel_youtube/node"
+    "squirrel-backend/sites/squirrel_youtube/node"
   ],
   "scripts": {
     "dev:desktop": "npm -w squirrel-desktop run dev",

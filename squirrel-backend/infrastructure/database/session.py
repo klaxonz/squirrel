@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Generator
 from contextlib import contextmanager
 
@@ -6,12 +5,8 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
 from infrastructure.config.settings import settings
-from shared_kernel.infrastructure.log import init_logging
 
-init_logging()
-logger = logging.getLogger(__name__)
 AFTER_COMMIT_CALLBACKS_KEY = 'after_commit_callbacks'
-
 db_config = {
     'host': settings.postgres.host,
     'port': settings.postgres.port,

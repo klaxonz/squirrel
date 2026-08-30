@@ -239,7 +239,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   max-width: 11rem;
   gap: 0.5rem;
   height: 2rem;
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   padding: 0 0.625rem 0 0.25rem;
   color: hsl(var(--foreground));
   transition: background-color var(--duration-fast) var(--ease-default);
@@ -329,11 +329,4 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
     transition: none;
   }
 }
-.app-header { border-bottom-color: hsl(var(--border)); background: hsl(var(--background)); padding-inline: clamp(0.75rem, 2vw, 1.5rem); }
-.app-header--desktop { background: transparent; padding-inline: 0.75rem; }
-.app-header__search-wrap { max-width: 42rem; }
-.app-header__search-slot :deep(.global-search__box) { border-color: hsl(var(--border)); border-radius: var(--radius-md); background: hsl(var(--secondary)); }
-.app-header__search-slot :deep(.global-search__box:focus-within) { border-color: hsl(var(--ring)); background: hsl(var(--background)); box-shadow: 0 0 0 3px hsl(var(--ring) / 0.14); }
-.app-header__user { border-radius: var(--radius-md); }
-.app-header__avatar { border-radius: var(--radius-md); background: hsl(var(--primary)); }
  </style>

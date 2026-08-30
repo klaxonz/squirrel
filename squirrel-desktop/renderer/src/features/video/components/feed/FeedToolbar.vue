@@ -129,10 +129,7 @@
         </PopoverRoot>
       </template>
 
-      <!--
-        Consume toolbar stays light — sort + presentation live in the
-        filter popover / a single overflow group, not a second Operate strip.
-      -->
+      <!-- A single sort mode is a label, not an interactive control. -->
       <div
         v-if="showSort"
         class="feed-toolbar__divider"
@@ -140,8 +137,9 @@
       />
 
       <div class="feed-toolbar__group" role="group" aria-label="列表工具">
+        <span v-if="showSort && !hasMultipleSortOptions" class="feed-toolbar__sort-label">最新</span>
         <Select
-          v-if="showSort"
+          v-else-if="showSort"
           v-model="localSortBy"
           :options="sortOptions"
           option-label="label"
@@ -365,11 +363,11 @@ watch(
 )
 
 const sortOptions = SORT_OPTIONS
+const hasMultipleSortOptions = sortOptions.length > 1
 const timeRangeOptions = TIME_RANGE_OPTIONS
 const durationOptions = DURATION_OPTIONS
 const contentTypeOptions = CONTENT_TYPE_OPTIONS
 const nsfwOptions = NSFW_OPTIONS
-
 const viewModeOptions = [
   { value: 'grid', label: '网格视图', icon: 'layoutGrid' },
   { value: 'list', label: '列表视图', icon: 'list' },
@@ -479,4 +477,10 @@ const densityOptions = [
   }
 }
 
+.feed-toolbar__sort-label {
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-base);
+  font-weight: 600;
+  white-space: nowrap;
+}
 </style>

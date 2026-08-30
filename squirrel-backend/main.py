@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Application main entry point."""
-    upgrade_database()
     init_logging()
+    upgrade_database()
 
     from application.app import create_app
 

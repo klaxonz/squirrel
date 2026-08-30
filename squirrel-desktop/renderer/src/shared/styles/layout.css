@@ -46,7 +46,7 @@
   --app-page-gutter: 1rem;
   --app-page-gutter-sm: 1.25rem;
   --app-page-gutter-lg: 1.5rem;
-  /* Reddit content geometry: 1248px column + optional right rail. */
+  /* Content geometry for the reading column and optional wide-screen rail. */
   --app-content-media-max: 78rem;
   --app-content-media-gutter: clamp(1rem, 2vw, 1.5rem);
   --app-content-feed-max: 44rem;
@@ -99,11 +99,9 @@
 
   --container-max-width: 2560px;
 
-  /* Desktop shell geometry (title bar, global header, nav rail).
-     Values are implementation defaults — redesign may change them with tests. */
-  --app-titlebar-height: 3rem;
-  --app-header-height: 3rem;
-  /* Reddit community rail under continuous brand cell. */
+  /* Compact command row and persistent navigation rail. */
+  --app-titlebar-height: 2.75rem;
+  --app-header-height: 2.75rem;
   --sidebar-expanded-width: 15rem;
   --sidebar-collapsed-width: 3.5rem;
   --sidebar-icon-size: 1.25rem;
@@ -118,19 +116,9 @@
   --app-control-border: hsl(var(--border) / 0.62);
   --app-control-active-bg: var(--app-selection-bg);
   --app-control-shadow: 0 0 0 1px var(--app-selection-border);
-
-  /* Hover wash spec — single declarative hover system (Reddit hairline
-     language: restrained ink/muted washes, NO filters, NO solid accent
-     blocks). Every hover in the app takes its background from exactly one
-     of these tokens:
-       --app-row-hover-bg     rows / list items / menu & popover options
-       --app-control-hover-bg icon buttons / small controls / chips
-       --app-selection-bg     selected state
-       --app-selection-bg-hover selected + hover
-     Buttons are solid controls and keep solid hovers (primary→primary/0.9,
-     secondary→accent, ghost/outline→foreground/0.06) — see components.css
-     .sq-button. All interactive elements transition background-color via
-     --duration-fast / --ease-default. */
+  /* Hover wash spec: restrained ink/muted washes, never solid accent blocks. */
+  /* Row, control, selected, and selected-hover surfaces share these tokens. */
+  /* Buttons keep their own solid hover treatment in components.css. */
   --app-row-hover-bg: hsl(var(--foreground) / 0.04);
   --app-control-hover-bg: hsl(var(--muted) / 0.5);
 
@@ -149,7 +137,7 @@
   --app-selection-count-bg: hsl(var(--foreground) / 0.14);
   --app-selection-count-fg: hsl(var(--foreground));
 
-  /* Segmented controls — Reddit chip track */
+  /* Segmented control track */
   --app-filter-track-bg: hsl(var(--secondary));
   /* Dark raised segment must sit clearly ABOVE the track: card (#1A1A1B)
      is darker than the secondary track (#222223), which inverted the
@@ -196,21 +184,19 @@
   --app-heading-color-muted: hsl(var(--foreground) / 0.82);
 
   --app-h1-size: 1.125rem;
-  /* Lighter heading weights (sspai-style): h1/h2 600, h3/h4 550 — airy but
-     heavier than sspai's 500 so UI titles keep presence. */
   --app-h1-weight: 600;
   --app-h1-leading: 1.2;
-  --app-h1-tracking: -0.01em;
+  --app-h1-tracking: 0;
 
   --app-h2-size: 1rem;
   --app-h2-weight: 600;
   --app-h2-leading: 1.25;
-  --app-h2-tracking: -0.01em;
+  --app-h2-tracking: 0;
 
   --app-h3-size: 0.9375rem;
   --app-h3-weight: 550;
   --app-h3-leading: 1.3;
-  --app-h3-tracking: -0.005em;
+  --app-h3-tracking: 0;
 
   --app-h4-size: 0.875rem;
   --app-h4-weight: 550;
@@ -1261,7 +1247,7 @@ button.app-selection-active:hover {
   font-family: var(--app-heading-font);
   font-size: var(--app-text-lg);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .app-settings-section-title p {
@@ -1451,7 +1437,7 @@ button.app-selection-active:hover {
 .app-mono {
   font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .app-section-title {
@@ -1464,7 +1450,7 @@ button.app-selection-active:hover {
   font-family: var(--font-sans);
   font-size: var(--app-h2-size);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   line-height: 1.2;
   color: hsl(var(--foreground));
 }

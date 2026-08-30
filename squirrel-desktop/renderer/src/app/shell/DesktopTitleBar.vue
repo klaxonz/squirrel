@@ -141,10 +141,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/*
-  [ ≡ ‹ › ] [ ===== search ===== ] [ user ] [ window ]
-  Brand mark lives only in the sidebar active language — not here.
-*/
+/* Compact command row: navigation, search, account, and window actions share one baseline. */
 .titlebar {
   height: var(--app-titlebar-height);
   display: flex;
@@ -170,7 +167,7 @@ onUnmounted(() => {
 .titlebar__icon-btn {
   width: 1.8rem;
   height: 1.8rem;
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   color: hsl(var(--muted-foreground));
   transition:
     background-color var(--duration-fast) var(--ease-default),

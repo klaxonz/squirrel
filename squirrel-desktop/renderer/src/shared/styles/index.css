@@ -1,10 +1,4 @@
-/* UI: Instrument Sans (SF Pro-style humanist sans — body AND display headings
-   are the same family, Apple-like; headings differentiate by weight/tracking),
-   JetBrains Mono (mono), Outfit (geometric, data digits via --font-numeric),
-   Noto Sans SC Variable (CJK) from @fontsource (imported in main.ts). Noto Sans
-   SC sits after the Latin faces and before the system fonts so Chinese renders
-   in it instead of Microsoft YaHei; anything it lacks still falls back to
-   PingFang SC / Microsoft YaHei. */
+/* Instrument Sans is used for all UI copy; JetBrains Mono is reserved for code/data. */
 @import './reader.css';
 
 @tailwind base;

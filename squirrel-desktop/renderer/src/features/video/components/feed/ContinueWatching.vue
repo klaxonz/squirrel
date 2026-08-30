@@ -138,7 +138,7 @@ defineExpose({ refresh: load })
 </script>
 
 <style scoped>
-/* Resume shelf: denser media strip above the feed, not a nested card box. */
+/* Resume shelf stays open to the page canvas while its media remains primary. */
 .continue-rail {
   min-width: 0;
   overflow: hidden;
@@ -169,7 +169,7 @@ defineExpose({ refresh: load })
   font-family: var(--font-sans);
   font-size: var(--app-text-base);
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
 }
 
 .continue-rail__count {
@@ -374,11 +374,4 @@ defineExpose({ refresh: load })
     transform: none;
   }
 }
-.continue-rail { border: 0; border-top: 1px solid hsl(var(--border)); border-radius: 0; background: transparent; padding: var(--space-4) 0 0; }
-.continue-rail__header { margin-bottom: var(--space-4); }
-.continue-rail__header h2 { font-size: var(--app-text-lg); }
-.continue-rail__track { gap: var(--space-4); grid-auto-columns: minmax(12rem, 1fr); }
-.continue-rail__visual { border-radius: var(--radius-md); }
-.continue-rail__title { font-size: var(--app-text-base); }
-.continue-rail__progress > span { background: hsl(var(--primary)); }
  </style>

@@ -142,7 +142,7 @@ const showSidebarMusicPlayer = computed(() =>
   font-family: var(--font-sans);
   font-size: var(--app-text-xl);
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   line-height: 1;
   color: hsl(var(--primary));
   text-overflow: ellipsis;

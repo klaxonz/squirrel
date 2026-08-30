@@ -324,16 +324,17 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   flex-direction: column;
   gap: 0;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.9);
-  border-radius: var(--radius-lg);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
   background: hsl(var(--card));
+  box-shadow: none;
   transition:
     border-color var(--duration-fast) var(--ease-default),
     background-color var(--duration-fast) var(--ease-default);
 }
 
 .video-item--card:hover {
-  border-color: hsl(var(--foreground) / 0.16);
+  border-color: hsl(var(--foreground) / 0.28);
   background: hsl(var(--card));
 }
 
@@ -367,8 +368,8 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   align-items: stretch;
   gap: 0.9rem;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.9);
-  border-radius: var(--radius-lg);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
   background: hsl(var(--card));
   padding: 0.7rem;
   transition:
@@ -377,7 +378,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 }
 
 .video-item--row:hover {
-  border-color: hsl(var(--foreground) / 0.16);
+  border-color: hsl(var(--foreground) / 0.28);
   background: hsl(var(--card));
 }
 
@@ -409,7 +410,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   padding: 0;
   font-size: var(--app-h3-size);
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   -webkit-line-clamp: 2;
 }
 
@@ -488,8 +489,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
 
 .video-item__title--card {
   padding: 0.2rem 0.95rem 0.7rem;
-  font-size: var(--app-text-xl);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   line-height: 1.28;
   text-wrap: pretty;
   -webkit-line-clamp: 3;
@@ -500,8 +500,7 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
   padding-inline: 0;
   font-size: var(--app-text-base);
   font-weight: 700;
-  line-height: 1.32;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .video-item__thumb--grid {
@@ -732,9 +731,4 @@ onUnmounted(() => document.removeEventListener('closeAllContextMenus', closeMenu
     transform: none;
   }
 }
-.video-item--card { border-color: hsl(var(--border)); border-radius: var(--radius-md); background: hsl(var(--card)); box-shadow: none; }
-.video-item--card:hover { border-color: hsl(var(--foreground) / 0.28); background: hsl(var(--card)); }
-.video-item--row { border-color: hsl(var(--border)); border-radius: var(--radius-md); background: hsl(var(--card)); }
-.video-item--row:hover { border-color: hsl(var(--foreground) / 0.28); }
-.video-item--grid { border-radius: var(--radius-md); }
  </style>

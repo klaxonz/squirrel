@@ -12,9 +12,6 @@ import os
 import signal
 import threading
 from contextlib import contextmanager
-import logging
-import os
-
 # Runtime package roots must be installed before these imports resolve.
 from infrastructure.config.settings import settings  # noqa: E402
 from infrastructure.database.migrations import upgrade_database  # noqa: E402
