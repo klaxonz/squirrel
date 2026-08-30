@@ -43,20 +43,18 @@ def test_thumbnail_refresh_task_includes_sites_with_offline_download_enabled(mon
     ]
 
 
-def test_thumbnail_refresh_task_uses_stored_thumbnail_without_page_fetch(monkeypatch):
+def test_thumbnail_refresh_task_uses_stored_thumbnail_without_page_fetch():
     download_calls = []
 
-    monkeypatch.setattr(
-        ThumbnailRefreshTask,
-        '_fetch_thumbnail_url_from_page',
-        lambda video, site_name: (_ for _ in ()).throw(AssertionError('page fetch should not run')),
-    )
-    monkeypatch.setattr(
-        thumbnail_refresh_task.thumbnail_downloader_service,
-        'download_thumbnail',
-        lambda video_id, thumbnail_url, site_name, source_url=None: download_calls.append(
+    downloader = SimpleNamespace(
+        download_thumbnail=lambda video_id, thumbnail_url, site_name, source_url=None: download_calls.append(
             (video_id, thumbnail_url, site_name, source_url),
         ),
+        close=lambda: None,
+    )
+    task = ThumbnailRefreshTask(downloader)
+    task._fetch_thumbnail_url_from_page = lambda video, site_name: (_ for _ in ()).throw(
+        AssertionError('page fetch should not run'),
     )
 
     video = SimpleNamespace(
@@ -65,34 +63,25 @@ def test_thumbnail_refresh_task_uses_stored_thumbnail_without_page_fetch(monkeyp
         thumbnail='https://i.ytimg.com/vi/demo42/hqdefault.jpg',
     )
 
-    ThumbnailRefreshTask._process_single_video(video, 'youtube')
+    task._process_single_video(video, 'youtube')
 
     assert download_calls == [
-        (
-            42,
-            'https://i.ytimg.com/vi/demo42/hqdefault.jpg',
-            'youtube',
-            'https://www.youtube.com/watch?v=demo42',
-        ),
+        (42, 'https://i.ytimg.com/vi/demo42/hqdefault.jpg', 'youtube', 'https://www.youtube.com/watch?v=demo42'),
     ]
 
 
-def test_thumbnail_refresh_task_falls_back_to_page_thumbnail_when_stored_url_fails(monkeypatch):
+def test_thumbnail_refresh_task_falls_back_to_page_thumbnail_when_stored_url_fails():
     download_calls = []
 
-    monkeypatch.setattr(
-        ThumbnailRefreshTask,
-        '_fetch_thumbnail_url_from_page',
-        lambda video, site_name: 'https://i.ytimg.com/vi/demo42/maxresdefault.jpg',
-    )
-    monkeypatch.setattr(
-        thumbnail_refresh_task.thumbnail_downloader_service,
-        'download_thumbnail',
-        lambda video_id, thumbnail_url, site_name, source_url=None: (
+    downloader = SimpleNamespace(
+        download_thumbnail=lambda video_id, thumbnail_url, site_name, source_url=None: (
             download_calls.append((video_id, thumbnail_url, site_name, source_url)),
             None if len(download_calls) == 1 else '/tmp/fresh-42.jpg',
         )[1],
+        close=lambda: None,
+        fetch_thumbnail_url_from_page=lambda video_id, source_url, site_name: 'https://i.ytimg.com/vi/demo42/maxresdefault.jpg',
     )
+    task = ThumbnailRefreshTask(downloader)
 
     video = SimpleNamespace(
         id=42,
@@ -100,22 +89,13 @@ def test_thumbnail_refresh_task_falls_back_to_page_thumbnail_when_stored_url_fai
         thumbnail='https://i.ytimg.com/vi/demo42/hqdefault.jpg',
     )
 
-    ThumbnailRefreshTask._process_single_video(video, 'youtube')
+    task._process_single_video(video, 'youtube')
 
     assert download_calls == [
-        (
-            42,
-            'https://i.ytimg.com/vi/demo42/hqdefault.jpg',
-            'youtube',
-            'https://www.youtube.com/watch?v=demo42',
-        ),
-        (
-            42,
-            'https://i.ytimg.com/vi/demo42/maxresdefault.jpg',
-            'youtube',
-            'https://www.youtube.com/watch?v=demo42',
-        ),
+        (42, 'https://i.ytimg.com/vi/demo42/hqdefault.jpg', 'youtube', 'https://www.youtube.com/watch?v=demo42'),
+        (42, 'https://i.ytimg.com/vi/demo42/maxresdefault.jpg', 'youtube', 'https://www.youtube.com/watch?v=demo42'),
     ]
+
 
 
 def test_thumbnail_refresh_task_extracts_html_escaped_og_image():

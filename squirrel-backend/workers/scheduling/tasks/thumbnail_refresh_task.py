@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from sqlalchemy import func, select
 
-from domains.video.application.services.extraction.thumbnail_downloader import thumbnail_downloader_service
+from domains.video.application.services.extraction.thumbnail_downloader import ThumbnailDownloaderService
 from domains.video.domain.models.video import Video
 from infrastructure.database.session import get_session
 from infrastructure.runtime.site_config_manager import get_effective_site_catalog
@@ -18,100 +18,78 @@ _DEFAULT_MAX_WORKERS = 8
 class ThumbnailRefreshTask(BaseTask):
     """Periodically backfill thumbnail cache for sites supporting offline thumbnails."""
 
-    @classmethod
-    def _batch_check_thumbnails(cls, video_ids: list[int]) -> set[int]:
-        """Batch check whether thumbnails exist for multiple videos
-        Returns the set of video_ids that already have thumbnails
-        """
-        existing_ids = set()
+    def __init__(self, thumbnail_downloader: ThumbnailDownloaderService | None = None):
+        self._thumbnail_downloader = thumbnail_downloader or ThumbnailDownloaderService()
 
-        # Group by batch to avoid re-scanning the same directory
+    def _batch_check_thumbnails(self, video_ids: list[int]) -> set[int]:
+        """Return video IDs already present in the local thumbnail index."""
+        existing_ids = set()
         batch_groups: dict[str, list[int]] = {}
         for video_id in video_ids:
-            batch_dir = thumbnail_downloader_service._get_batch_dir(video_id)
-            if batch_dir not in batch_groups:
-                batch_groups[batch_dir] = []
-            batch_groups[batch_dir].append(video_id)
+            batch_dir = self._thumbnail_downloader._get_batch_dir(video_id)
+            batch_groups.setdefault(batch_dir, []).append(video_id)
 
-        # Fetch index once per batch, then check all video_ids
         for batch_dir, ids_in_batch in batch_groups.items():
-            batch_index = thumbnail_downloader_service._get_batch_index(batch_dir)
-            for video_id in ids_in_batch:
-                if video_id in batch_index:
-                    existing_ids.add(video_id)
-
+            batch_index = self._thumbnail_downloader._get_batch_index(batch_dir)
+            existing_ids.update(video_id for video_id in ids_in_batch if video_id in batch_index)
         return existing_ids
 
-    @classmethod
-    def _get_refresh_targets(cls) -> list[tuple[str, str]]:
-        """Build (site_name, url_like_pattern) targets from the effective catalog.
-
-        A site is eligible when it is enabled and opts into offline thumbnail
-        download. URL patterns come from the site's configured domains so the
-        task stays free of hard-coded site lists.
-        """
+    @staticmethod
+    def _get_refresh_targets() -> list[tuple[str, str]]:
+        """Build refresh targets from the effective site catalog."""
         catalog = get_effective_site_catalog()
         targets: list[tuple[str, str]] = []
-
         for site_name, site_info in catalog.items():
             if not isinstance(site_info, dict):
                 continue
             metadata = site_info.get('metadata') or {}
-            if not site_info.get('enabled', True):
+            if not site_info.get('enabled', True) or not metadata.get('offline_thumbnails_download', False):
                 continue
-            if not metadata.get('offline_thumbnails_download', False):
-                continue
-
             domains = site_info.get('domains') or []
             primary_domain = next(
                 (str(domain).strip().lower() for domain in domains if str(domain or '').strip()),
                 None,
             )
-            if not primary_domain:
-                continue
-            targets.append((str(site_name).strip().lower(), f'%{primary_domain}%'))
-
+            if primary_domain:
+                targets.append((str(site_name).strip().lower(), f'%{primary_domain}%'))
         return targets
 
     @staticmethod
     def _get_site_max_workers(site_name: str) -> int:
-        del site_name  # reserved for future per-site tuning
+        del site_name
         return _DEFAULT_MAX_WORKERS
 
-    @classmethod
-    def _get_stored_thumbnail_url(cls, video: Video) -> str | None:
+    @staticmethod
+    def _get_stored_thumbnail_url(video: Video) -> str | None:
         stored_thumbnail = str(video.thumbnail or '').strip()
         return stored_thumbnail or None
 
-    @classmethod
-    def _resolve_thumbnail_url(cls, video: Video, site_name: str) -> str | None:
-        return cls._get_stored_thumbnail_url(video) or cls._fetch_thumbnail_url_from_page(video, site_name)
+    def _fetch_thumbnail_url_from_page(self, video: Video, site_name: str) -> str | None:
+        return self._thumbnail_downloader.fetch_thumbnail_url_from_page(video.id, video.url, site_name)
 
-    @classmethod
-    def _fetch_thumbnail_url_from_page(cls, video: Video, site_name: str) -> str | None:
-        # ponytail: delegates to thumbnail_downloader_service (shared httpx client +
-        # JSON-LD/meta parsing) instead of re-implementing page fetch + retry here.
-        return thumbnail_downloader_service.fetch_thumbnail_url_from_page(
-            video.id,
-            video.url,
-            site_name,
-        )
+    def _resolve_thumbnail_url(self, video: Video, site_name: str) -> str | None:
+        return self._get_stored_thumbnail_url(video) or self._fetch_thumbnail_url_from_page(video, site_name)
 
-    @classmethod
-    def run(cls):
+    def run(self):
+        try:
+            return self._run()
+        finally:
+            self._thumbnail_downloader.close()
+
+    def _run(self):
         logger.info('[ThumbnailRefreshTask] Start refreshing video thumbnails')
 
         batch_size = 100
         processed_count = 0
         total_checked = 0
-        refresh_targets = cls._get_refresh_targets()
+        refresh_targets = self._get_refresh_targets()
 
         if not refresh_targets:
             logger.info('[ThumbnailRefreshTask] No enabled sites require thumbnail refresh')
             return
 
         for site_name, url_pattern in refresh_targets:
-            max_workers = cls._get_site_max_workers(site_name)
+            max_workers = self._get_site_max_workers(site_name)
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 last_id: int | None = None
                 site_checked = 0
@@ -138,7 +116,7 @@ class ThumbnailRefreshTask(BaseTask):
                         break
 
                     video_ids = [video.id for video in rows]
-                    existing_thumbnails = cls._batch_check_thumbnails(video_ids)
+                    existing_thumbnails = self._batch_check_thumbnails(video_ids)
 
                     videos_to_process = []
                     for video in rows:
@@ -149,7 +127,7 @@ class ThumbnailRefreshTask(BaseTask):
 
                     if videos_to_process:
                         futures = [
-                            executor.submit(cls._process_single_video, video, site_name) for video in videos_to_process
+                            executor.submit(self._process_single_video, video, site_name) for video in videos_to_process
                         ]
 
                         for future in as_completed(futures):
@@ -181,11 +159,10 @@ class ThumbnailRefreshTask(BaseTask):
             processed_count,
         )
 
-    @classmethod
-    def _process_single_video(cls, video: Video, site_name: str) -> None:
+    def _process_single_video(self, video: Video, site_name: str) -> None:
         try:
-            stored_thumbnail_url = cls._get_stored_thumbnail_url(video)
-            thumbnail_url = stored_thumbnail_url or cls._fetch_thumbnail_url_from_page(video, site_name)
+            stored_thumbnail_url = self._get_stored_thumbnail_url(video)
+            thumbnail_url = stored_thumbnail_url or self._fetch_thumbnail_url_from_page(video, site_name)
             if not thumbnail_url:
                 logger.warning(
                     '[ThumbnailRefreshTask] No thumbnail found for site=%s video id=%s',
@@ -194,7 +171,7 @@ class ThumbnailRefreshTask(BaseTask):
                 )
                 return
 
-            downloaded_path = thumbnail_downloader_service.download_thumbnail(
+            downloaded_path = self._thumbnail_downloader.download_thumbnail(
                 video.id,
                 thumbnail_url,
                 site_name,
@@ -209,9 +186,9 @@ class ThumbnailRefreshTask(BaseTask):
                 return
 
             if stored_thumbnail_url:
-                page_thumbnail_url = cls._fetch_thumbnail_url_from_page(video, site_name)
+                page_thumbnail_url = self._fetch_thumbnail_url_from_page(video, site_name)
                 if page_thumbnail_url and page_thumbnail_url != stored_thumbnail_url:
-                    downloaded_path = thumbnail_downloader_service.download_thumbnail(
+                    downloaded_path = self._thumbnail_downloader.download_thumbnail(
                         video.id,
                         page_thumbnail_url,
                         site_name,

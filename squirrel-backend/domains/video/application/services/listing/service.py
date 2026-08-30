@@ -8,9 +8,6 @@ from sqlalchemy.orm import Session
 
 import domains.user.application.services.config as user_config_service
 from domains.video.application.services.engagement.clip_marker import VideoClipMarkerService
-from domains.video.application.services.extraction.thumbnail_downloader import (
-    thumbnail_downloader_service as _default_thumbnail_downloader,
-)
 from domains.video.application.services.listing.detail_loader import VideoDetailLoader
 from domains.video.application.services.listing.page_loader import VideoListPageLoader
 from domains.video.application.services.listing.profiles import merge_profiles as _merge_profiles
@@ -70,14 +67,15 @@ class VideoListService:
         session_factory: SessionFactory | None = None,
         get_user_config=None,
         serialize_marker=None,
-        thumbnail_downloader=None,
+        *,
+        thumbnail_downloader,
         page_loader=None,
         detail_loader=None,
     ):
         self._session_factory = session_factory or _default_get_session
         self._get_user_config = get_user_config or user_config_service.get_config
         self._serialize_marker = serialize_marker or VideoClipMarkerService.serialize_marker
-        self._thumbnail_downloader = thumbnail_downloader or _default_thumbnail_downloader
+        self._thumbnail_downloader = thumbnail_downloader
         self._page_loader = page_loader or VideoListPageLoader(self._thumbnail_downloader)
         self._detail_loader = detail_loader or VideoDetailLoader(
             thumbnail_downloader=self._thumbnail_downloader,
@@ -1143,10 +1141,3 @@ class VideoListService:
     @staticmethod
     def merge_profiles(primary: list[dict], extra: list[dict]) -> list[dict]:
         return _merge_profiles(primary, extra)
-
-
-video_list_service = VideoListService()
-list_videos = video_list_service.list_videos
-get_video = video_list_service.get_video
-merge_profiles = video_list_service.merge_profiles
-video_extra_profiles = video_list_service.video_extra_profiles

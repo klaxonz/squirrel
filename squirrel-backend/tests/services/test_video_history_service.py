@@ -53,7 +53,16 @@ def session_factory(engine):
 
 @pytest.fixture
 def svc(session_factory):
-    return VideoHistoryService(session_factory=session_factory, get_user_config=lambda _user_id: {'showNsfw': True})
+    thumbnail_downloader = type(
+        'ThumbnailDownloader',
+        (),
+        {'get_thumbnail_url': staticmethod(lambda _video_id, thumbnail, _source_url: thumbnail)},
+    )()
+    return VideoHistoryService(
+        session_factory=session_factory,
+        get_user_config=lambda _user_id: {'showNsfw': True},
+        thumbnail_downloader=thumbnail_downloader,
+    )
 
 
 def _seed_history(engine, histories):
@@ -176,7 +185,16 @@ def test_list_histories_applies_site_filter_before_pagination(engine, svc):
 
 
 def test_list_histories_hides_nsfw_results_when_show_nsfw_disabled(engine, session_factory):
-    svc = VideoHistoryService(session_factory=session_factory, get_user_config=lambda _user_id: {'showNsfw': False})
+    thumbnail_downloader = type(
+        'ThumbnailDownloader',
+        (),
+        {'get_thumbnail_url': staticmethod(lambda _video_id, thumbnail, _source_url: thumbnail)},
+    )()
+    svc = VideoHistoryService(
+        session_factory=session_factory,
+        get_user_config=lambda _user_id: {'showNsfw': False},
+        thumbnail_downloader=thumbnail_downloader,
+    )
     _seed_history(
         engine,
         [

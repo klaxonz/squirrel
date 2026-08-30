@@ -23,11 +23,12 @@ class VideoHistoryService:
         self,
         session_factory: SessionFactory | None = None,
         get_user_config=None,
-        thumbnail_downloader: ThumbnailDownloaderService | None = None,
+        *,
+        thumbnail_downloader: ThumbnailDownloaderService,
     ):
         self._session_factory = session_factory or _default_get_session
         self._get_user_config = get_user_config or user_config_service.get_config
-        self._thumbnail_downloader = thumbnail_downloader or ThumbnailDownloaderService()
+        self._thumbnail_downloader = thumbnail_downloader
 
     def update_history(self, user_id: int, data: HistoryCreate):
         with self._session_factory() as session:

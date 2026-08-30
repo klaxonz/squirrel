@@ -208,6 +208,3 @@ class ThumbnailDownloaderService:
         if not looks_like_expiring_preview_thumbnail(current_thumbnail_url):
             return None
         return self.fetch_thumbnail_url_from_page(video_id, source_url, site_name)
-
-
-thumbnail_downloader_service = ThumbnailDownloaderService()
