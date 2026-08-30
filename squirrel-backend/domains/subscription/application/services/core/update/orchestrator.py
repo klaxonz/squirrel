@@ -130,6 +130,3 @@ class SubscriptionOrchestrator:
                 .limit(1),
             ).first()
             return row is not None
-
-
-orchestrator = SubscriptionOrchestrator()

@@ -314,6 +314,3 @@ class SubscriptionScheduler:
                 select(Subscription.id, Subscription.url).where(Subscription.id.in_(subscription_ids)),
             ).all()
             return [(row[0], row[1] or '') for row in rows]
-
-
-scheduler = SubscriptionScheduler()
