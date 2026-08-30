@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
+from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
 from domains.subscription.application.services.core.update.models import (
     SubscriptionUpdateRequest,
     UpdateMode,
@@ -42,9 +43,7 @@ def test_enqueue_discovered_videos_skips_blocked_video_urls():
             'domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction',
             side_effect=lambda params: enqueue_calls.append(params.url) or True,
         ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued'
-        ),
+        patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_enqueued'),
     ):
         request = SubscriptionUpdateRequest(
             subscription_id=1,
@@ -132,14 +131,8 @@ def test_enqueue_discovered_videos_delegates_atomic_pending_reservation_to_task_
             'domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video',
             return_value=False,
         ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued',
-            side_effect=_record_enqueued,
-        ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_dispatch_failed',
-            side_effect=_decrement_pending,
-        ),
+        patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_enqueued', side_effect=_record_enqueued),
+        patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_dispatch_failed', side_effect=_decrement_pending),
         patch(
             'domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction',
             side_effect=_enqueue_video,
@@ -181,9 +174,7 @@ def test_enqueue_discovered_videos_extracts_inline_without_creating_video_task()
             'domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video',
             return_value=False,
         ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued'
-        ),
+        patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_enqueued'),
         patch(
             'domains.subscription.application.services.core.update.video_extraction_coordinator.video_extraction_task_service.enqueue_video_extraction',
             side_effect=lambda params: (_ for _ in ()).throw(
@@ -194,8 +185,9 @@ def test_enqueue_discovered_videos_extracts_inline_without_creating_video_task()
             'domains.subscription.application.services.core.update.video_extraction_coordinator.extract_video',
             side_effect=lambda params: extract_calls.append(params) or SimpleNamespace(success=True),
         ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_terminal',
+        patch.object(
+            SubscriptionSyncLifecycle,
+            'record_video_extraction_terminal',
             side_effect=lambda *args, **kwargs: terminal_calls.append((args, kwargs)),
         ),
     ):
@@ -232,12 +224,8 @@ def test_enqueue_discovered_videos_surfaces_inline_extraction_failure():
             'domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video',
             return_value=False,
         ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued',
-        ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_terminal',
-        ),
+        patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_enqueued'),
+        patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_terminal'),
         patch(
             'domains.subscription.application.services.core.update.video_extraction_coordinator.extract_video',
             return_value=SimpleNamespace(
@@ -281,11 +269,10 @@ def test_inline_extraction_releases_pending_reservation_on_unexpected_exception(
             'domains.subscription.application.services.core.update.video_extraction_coordinator.is_blocked_video',
             return_value=False,
         ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_enqueued',
-        ),
-        patch(
-            'domains.subscription.application.services.core.update.video_extraction_coordinator.subscription_sync_lifecycle.record_video_extraction_dispatch_failed',
+        patch.object(SubscriptionSyncLifecycle, 'record_video_extraction_enqueued'),
+        patch.object(
+            SubscriptionSyncLifecycle,
+            'record_video_extraction_dispatch_failed',
             side_effect=lambda *args, **kwargs: cleanup_calls.append((args, kwargs)),
         ),
         patch(

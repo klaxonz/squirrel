@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 import domains.subscription.application.services.core.sync.state.service as subscription_sync_state_service
+from domains.subscription.application.services.core.crud import SubscriptionCrudService
 from domains.subscription.application.services.core.sync.run_service import SubscriptionSyncRunService
 from domains.subscription.application.services.crawl.tasks.errors import CrawlTaskStateError
 from domains.subscription.application.services.crawl.tasks.service import CrawlTaskService
@@ -487,10 +488,7 @@ def test_lifecycle_record_gap_observation_enqueues_full_backfill_when_score_cros
 
     lifecycle = SubscriptionSyncLifecycle(session_factory=session_factory)
     with (
-        patch(
-            'domains.subscription.application.services.core.sync.lifecycle.get_subscription_by_id',
-            return_value=SimpleNamespace(total_videos=80),
-        ),
+        patch.object(SubscriptionCrudService, 'get_subscription_by_id', return_value=SimpleNamespace(total_videos=80)),
         patch.object(
             SubscriptionSyncLifecycle,
             'request_sync',
@@ -570,10 +568,7 @@ def test_lifecycle_record_gap_observation_skips_full_backfill_when_inflight_budg
 
     lifecycle = SubscriptionSyncLifecycle(session_factory=session_factory)
     with (
-        patch(
-            'domains.subscription.application.services.core.sync.lifecycle.get_subscription_by_id',
-            return_value=SimpleNamespace(total_videos=80),
-        ),
+        patch.object(SubscriptionCrudService, 'get_subscription_by_id', return_value=SimpleNamespace(total_videos=80)),
         patch.object(SubscriptionSyncLifecycle, '_can_request_full_sync', return_value=False),
         patch.object(
             SubscriptionSyncLifecycle,

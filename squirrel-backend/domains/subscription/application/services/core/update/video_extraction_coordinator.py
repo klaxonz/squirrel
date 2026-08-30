@@ -2,7 +2,7 @@ import logging
 
 import domains.video.application.services.extraction.task_service as video_extraction_task_service
 from domains.subscription.application.services.core.runtime_models import SubscriptionSyncResult
-from domains.subscription.application.services.core.sync.lifecycle import subscription_sync_lifecycle
+from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
 from domains.subscription.application.services.crawl.tasks.errors import CrawlExecutionError
 from domains.video.application.services.crud import get_videos_by_urls
 from domains.video.application.services.extraction.extractor import extract_video
@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 
 class VideoExtractionCoordinator:
+    def __init__(self, lifecycle: SubscriptionSyncLifecycle | None = None) -> None:
+        self._lifecycle = lifecycle or SubscriptionSyncLifecycle()
+
     def enqueue_discovered_videos(
         self,
         fetch_result: SubscriptionSyncResult,
@@ -82,7 +85,7 @@ class VideoExtractionCoordinator:
                     progress_kwargs = {'run_id': request.run_id}
                     if request.execution_token is not None:
                         progress_kwargs['execution_token'] = request.execution_token
-                    subscription_sync_lifecycle.record_video_extraction_enqueued(
+                    self._lifecycle.record_video_extraction_enqueued(
                         request.sync_state_id,
                         **progress_kwargs,
                     )
@@ -100,7 +103,7 @@ class VideoExtractionCoordinator:
                     }
                     if request.execution_token is not None:
                         terminal_kwargs['execution_token'] = request.execution_token
-                    subscription_sync_lifecycle.record_video_extraction_terminal(
+                    self._lifecycle.record_video_extraction_terminal(
                         request.sync_state_id,
                         **terminal_kwargs,
                     )
@@ -116,7 +119,7 @@ class VideoExtractionCoordinator:
                     cleanup_kwargs = {'run_id': request.run_id}
                     if request.execution_token is not None:
                         cleanup_kwargs['execution_token'] = request.execution_token
-                    subscription_sync_lifecycle.record_video_extraction_dispatch_failed(
+                    self._lifecycle.record_video_extraction_dispatch_failed(
                         request.sync_state_id,
                         **cleanup_kwargs,
                     )
