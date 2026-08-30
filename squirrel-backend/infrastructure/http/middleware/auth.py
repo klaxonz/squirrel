@@ -79,7 +79,7 @@ class AuthenticationMiddleware:
             return
 
         try:
-            validate_auth_token(token)
+            validate_auth_token(token, request.app.state.user_service)
         except Exception:
             # API boundary -- convert to HTTP error response
             logger.error('Invalid token', exc_info=True)

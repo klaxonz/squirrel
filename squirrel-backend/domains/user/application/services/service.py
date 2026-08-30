@@ -151,15 +151,3 @@ class UserService:
             session.commit()
 
         return user
-
-
-user_service = UserService()
-hash_password = user_service.hash_password
-verify_password = user_service.verify_password
-create_user = user_service.create_user
-get_email_account_by_user_id = user_service.get_email_account_by_user_id
-authenticate = user_service.authenticate
-get_user_by_id = user_service.get_user_by_id
-update_password = user_service.update_password
-rotate_token_version = user_service.rotate_token_version
-update_user = user_service.update_user

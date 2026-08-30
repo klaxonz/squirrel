@@ -13,14 +13,15 @@ from infrastructure.http.middleware.auth import AuthenticationMiddleware
 
 def _build_app(monkeypatch):
     app = FastAPI()
+    app.state.user_service = object()
     app.add_middleware(AuthenticationMiddleware)
-
     @app.get('/api/private')
     async def private_api():
         return JSONResponse({'ok': True})
 
     monkeypatch.setattr(
-        'infrastructure.http.middleware.auth.validate_auth_token', lambda token: ({'sub': '7', 'tv': 0}, object())
+        'infrastructure.http.middleware.auth.validate_auth_token',
+        lambda token, user_service: ({'sub': '7', 'tv': 0}, object()),
     )
     return app
 

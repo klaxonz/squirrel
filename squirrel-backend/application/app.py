@@ -7,6 +7,8 @@ from application.http.static_assets import mount_static_assets
 from application.lifespan import lifespan
 from domains.rss.application.services.service import RssService
 from domains.subscription.application.services.service import SubscriptionService
+from domains.user.application.services.config import UserConfigService
+from domains.user.application.services.service import UserService
 from domains.video.application.services.service import VideoService
 
 
@@ -14,6 +16,8 @@ def create_app() -> FastAPI:
     app = FastAPI(exception_handlers=EXCEPTION_HANDLERS, lifespan=lifespan)
     app.state.video_service = VideoService()
     app.state.subscription_service = SubscriptionService(video_service=app.state.video_service)
+    app.state.user_service = UserService()
+    app.state.user_config_service = UserConfigService()
     app.state.rss_service = RssService()
     register_middleware(app)
     register_routers(app)

@@ -56,12 +56,13 @@ def _build_app(
     rotate_token_version_impl=None,
 ):
     app = FastAPI()
-    app.include_router(user_routes)
-    app.dependency_overrides[get_user_service] = lambda: FakeUserService(
+    app.state.user_service = FakeUserService(
         authenticate_impl=authenticate_impl,
         update_password_impl=update_password_impl,
         rotate_token_version_impl=rotate_token_version_impl,
     )
+    app.include_router(user_routes)
+    app.dependency_overrides[get_user_service] = lambda: app.state.user_service
     monkeypatch.setattr(
         'domains.user.interfaces.http.auth_cookie.create_access_token',
         create_access_token_impl or (lambda data, expires_delta=None: 'cookie-token'),
@@ -70,6 +71,15 @@ def _build_app(
     if current_user is not None:
         app.dependency_overrides[get_current_user] = lambda: current_user
     return app
+
+def test_user_service_dependency_returns_application_instance():
+    from domains.user.interfaces.http.dependencies import get_user_service as dependency
+
+    app = FastAPI()
+    app.state.user_service = object()
+    request = type('RequestStub', (), {'app': app})()
+
+    assert dependency(request) is app.state.user_service
 
 
 def test_login_sets_session_auth_cookie_without_remember_me(monkeypatch):
