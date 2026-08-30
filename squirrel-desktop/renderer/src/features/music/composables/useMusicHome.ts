@@ -61,7 +61,7 @@ export function useMusicHome() {
     }
   }
 
-  async function loadPlaylists(_append = false) {
+  async function loadPlaylists() {
     playlistsLoading.value = true
     try {
       const data = await getMusicPlaylists({
@@ -103,18 +103,7 @@ export function useMusicHome() {
     }
   }
 
-  async function loadNewAlbumsForView() {
-    newAlbumsLoading.value = true
-    try {
-      const data = await getMusicNewAlbums({ page: 1, page_size: 30 })
-      newAlbums.value = data?.items || []
-    } catch (err) {
-      Logger.warn('loadNewAlbumsForView failed', err)
-      newAlbums.value = []
-    } finally {
-      newAlbumsLoading.value = false
-    }
-  }
+  const loadNewAlbumsForView = loadNewAlbums
 
   async function loadNewSongs() {
     newSongsLoading.value = true
