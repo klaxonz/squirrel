@@ -4,27 +4,19 @@ LEGACY_SUBSCRIPTION_SYNC_TASK_TYPE = 'subscription_sync'
 SUBSCRIPTION_IMPORT_TASK_TYPE = 'subscription_import'
 
 
-class TaskTypes:
-    @staticmethod
-    def resolve_subscription_sync_task_type(mode: str | None) -> str:
-        if str(mode or '').lower() == 'full':
-            return FULL_SUBSCRIPTION_SYNC_TASK_TYPE
-        return INCREMENTAL_SUBSCRIPTION_SYNC_TASK_TYPE
-
-    @staticmethod
-    def subscription_sync_task_types() -> tuple[str, ...]:
-        return (
-            LEGACY_SUBSCRIPTION_SYNC_TASK_TYPE,
-            INCREMENTAL_SUBSCRIPTION_SYNC_TASK_TYPE,
-            FULL_SUBSCRIPTION_SYNC_TASK_TYPE,
-        )
-
-    @staticmethod
-    def is_subscription_sync_task_type(task_type: str | None) -> bool:
-        return str(task_type or '') in TaskTypes.subscription_sync_task_types()
+def resolve_subscription_sync_task_type(mode: str | None) -> str:
+    if str(mode or '').lower() == 'full':
+        return FULL_SUBSCRIPTION_SYNC_TASK_TYPE
+    return INCREMENTAL_SUBSCRIPTION_SYNC_TASK_TYPE
 
 
-task_types = TaskTypes()
-resolve_subscription_sync_task_type = task_types.resolve_subscription_sync_task_type
-subscription_sync_task_types = task_types.subscription_sync_task_types
-is_subscription_sync_task_type = task_types.is_subscription_sync_task_type
+def subscription_sync_task_types() -> tuple[str, ...]:
+    return (
+        LEGACY_SUBSCRIPTION_SYNC_TASK_TYPE,
+        INCREMENTAL_SUBSCRIPTION_SYNC_TASK_TYPE,
+        FULL_SUBSCRIPTION_SYNC_TASK_TYPE,
+    )
+
+
+def is_subscription_sync_task_type(task_type: str | None) -> bool:
+    return str(task_type or '') in subscription_sync_task_types()
