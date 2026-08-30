@@ -10,6 +10,9 @@ from domains.subscription.application.services.core.update.task_progress_service
     SubscriptionSyncTaskProgressService,
 )
 from domains.subscription.application.services.crawl.dispatcher.service import CrawlDispatcherService
+from domains.subscription.application.services.crawl.executors.subscription_import_executor import (
+    SubscriptionImportExecutor,
+)
 from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
     CrawlExecutorService as SubscriptionSyncExecutor,
 )
@@ -38,6 +41,7 @@ class CrawlWorkerRuntime:
         video_extraction_progress: VideoExtractionProgressService,
         subscription_sync_executor: SubscriptionSyncExecutor,
         video_extract_executor: VideoExtractExecutor,
+        subscription_import_executor: SubscriptionImportExecutor,
     ):
         self.dispatcher = dispatcher or CrawlDispatcherService()
         self.worker_id = worker_id
@@ -52,6 +56,7 @@ class CrawlWorkerRuntime:
             video_extraction_progress=video_extraction_progress,
             subscription_sync_executor=subscription_sync_executor,
             video_extract_executor=video_extract_executor,
+            subscription_import_executor=subscription_import_executor,
         )
         self._lease_tracker = CrawlWorkerLeaseTracker(worker_id=self.worker_id, lease_seconds=self.lease_seconds)
 

@@ -4,5 +4,9 @@ from domains.subscription.application.services.core.import_service import Subscr
 from domains.subscription.domain.models.crawl_task import CrawlTask
 
 
-def execute_subscription_import_task(task: CrawlTask):
-    return SubscriptionImportService().process_import_payload(task.payload or {})
+class SubscriptionImportExecutor:
+    def __init__(self, import_service: SubscriptionImportService):
+        self._import_service = import_service
+
+    def execute_subscription_import_task(self, task: CrawlTask):
+        return self._import_service.process_import_payload(task.payload or {})

@@ -56,6 +56,33 @@ def test_crawl_worker_start_uses_configured_worker_count(monkeypatch):
     assert crawl_worker_manager.crawl_worker_status() == {'running': True, 'count': 1}
 
 
+def test_create_runtime_injects_import_executor_from_composition_root(monkeypatch):
+    captured = {}
+
+    class _Services:
+        lifecycle = object()
+        orchestrator = object()
+        crud = object()
+        import_service = object()
+        video_service = type('VideoService', (), {'extraction': object()})()
+
+        def close(self):
+            pass
+
+    class _Runtime:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(crawl_worker_manager, 'SubscriptionService', _Services)
+    monkeypatch.setattr(crawl_worker_manager, 'CrawlWorkerRuntime', _Runtime)
+
+    runtime, services = crawl_worker_manager._create_runtime(worker_id='worker-1')
+
+    assert runtime is not None
+    assert services is not None
+    assert captured['subscription_import_executor']._import_service is services.import_service
+
+
 def test_run_runtime_closes_composed_services_after_runtime_exit():
     calls = []
 

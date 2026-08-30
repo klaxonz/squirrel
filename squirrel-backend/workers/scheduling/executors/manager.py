@@ -8,6 +8,9 @@ from uuid import uuid4
 from domains.subscription.application.services.core.update.task_progress_service import (
     SubscriptionSyncTaskProgressService,
 )
+from domains.subscription.application.services.crawl.executors.subscription_import_executor import (
+    SubscriptionImportExecutor,
+)
 from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
     CrawlExecutorService as SubscriptionSyncExecutor,
 )
@@ -40,6 +43,7 @@ def _create_runtime(*, worker_id: str) -> tuple[CrawlWorkerRuntime, Subscription
             orchestrator_service=services.orchestrator,
             subscription_svc=services.crud,
         ),
+        subscription_import_executor=SubscriptionImportExecutor(services.import_service),
         video_extract_executor=VideoExtractExecutor(services.video_service.extraction),
     )
     return runtime, services

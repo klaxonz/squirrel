@@ -7,7 +7,7 @@ from domains.subscription.application.services.core.update.task_progress_service
     SubscriptionSyncTaskProgressService,
 )
 from domains.subscription.application.services.crawl.executors.subscription_import_executor import (
-    execute_subscription_import_task,
+    SubscriptionImportExecutor,
 )
 from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
     CrawlExecutorService as SubscriptionSyncExecutor,
@@ -36,6 +36,7 @@ class CrawlWorkerTaskRunner:
         video_extraction_progress: VideoExtractionProgressService,
         subscription_sync_executor: SubscriptionSyncExecutor,
         video_extract_executor: VideoExtractExecutor,
+        subscription_import_executor: SubscriptionImportExecutor,
     ) -> None:
         self.worker_id = worker_id
         self.retry_delay_seconds = retry_delay_seconds
@@ -43,6 +44,7 @@ class CrawlWorkerTaskRunner:
         self.video_extraction_progress = video_extraction_progress
         self.subscription_sync_executor = subscription_sync_executor
         self.video_extract_executor = video_extract_executor
+        self.subscription_import_executor = subscription_import_executor
 
     def run_task(self, task, claimed_at: datetime) -> None:
         try:
@@ -96,7 +98,7 @@ class CrawlWorkerTaskRunner:
             self.subscription_sync_executor.execute_subscription_sync_task(task)
             return
         if task.task_type == 'subscription_import':
-            execute_subscription_import_task(task)
+            self.subscription_import_executor.execute_subscription_import_task(task)
             return
         raise ValueError(f'Unsupported crawl task type: {task.task_type}')
 

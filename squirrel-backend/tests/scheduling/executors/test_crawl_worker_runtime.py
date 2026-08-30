@@ -31,6 +31,10 @@ def _noop_runtime(**kwargs):
         'video_extract_executor',
         SimpleNamespace(execute_video_extract_task=lambda task: None),
     )
+    kwargs.setdefault(
+        'subscription_import_executor',
+        SimpleNamespace(execute_subscription_import_task=lambda task: None),
+    )
     return CrawlWorkerRuntime(**kwargs)
 
 
@@ -119,6 +123,18 @@ def test_video_extract_success_records_terminal_progress(monkeypatch):
     assert runtime.run_once() is True
     assert terminal_calls == [(2, {'succeeded': True})]
 
+
+def test_execute_task_uses_injected_subscription_import_executor():
+    calls = []
+    runtime = _noop_runtime()
+    runtime.task_runner.subscription_import_executor = SimpleNamespace(
+        execute_subscription_import_task=lambda task: calls.append(task.id),
+    )
+    task = CrawlTask(id=77, job_id=1, task_type='subscription_import', site='youtube.com', payload={})
+
+    runtime.task_runner.execute_task(task)
+
+    assert calls == [77]
 
 def test_run_once_executes_legacy_subscription_sync_task_type(monkeypatch):
     calls = []
