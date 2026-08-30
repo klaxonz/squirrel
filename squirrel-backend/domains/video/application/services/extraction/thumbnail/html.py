@@ -15,11 +15,15 @@ META_THUMBNAIL_PATTERNS = (
 
 
 def looks_like_expiring_preview_thumbnail(url: str | None) -> bool:
-    """Detect CDN thumbnails that embed short-lived signed query tokens."""
+    """Detect CDN thumbnails that embed short-lived signed tokens."""
     normalized = str(url or '').strip().lower()
     if not normalized:
         return False
-    return any(token in normalized for token in ('validto=', 'hdnea=', 'hmac='))
+    if any(token in normalized for token in ('validto=', 'hdnea=', 'hmac=')):
+        return True
+    # YouTube's legacy ``youtube-ei`` image URLs carry the signature in the
+    # path as ``(m=...)(mh=...)`` instead of a query parameter.
+    return bool(re.search(r'/\(m=[^)]+\)\(mh=[^)]+\)', normalized))
 
 
 def thumbnail_expiry_score(url: str) -> float:
