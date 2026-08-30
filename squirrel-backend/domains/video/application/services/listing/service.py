@@ -22,7 +22,7 @@ from domains.video.application.services.listing.query import (
     fetch_user_state_video_ids,
     recall_offset_ids,
 )
-from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
+from domains.video.application.services.search.meili_indexer import MeiliVideoIndexer
 from domains.video.domain.models.video import Video
 from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session as _default_get_session
@@ -71,6 +71,7 @@ class VideoListService:
         page_loader=None,
         detail_loader=None,
         query_service: VideoListQueryService | None = None,
+        meili_indexer: MeiliVideoIndexer | None = None,
     ):
         self._session_factory = session_factory or _default_get_session
         self._get_user_config = get_user_config or user_config_service.get_config
@@ -82,6 +83,7 @@ class VideoListService:
             serialize_marker=self._serialize_marker,
         )
         self._query_service = query_service or VideoListQueryService()
+        self._meili_indexer = meili_indexer
     def _elapsed_ms(start_time: float) -> float:
         return round((perf_counter() - start_time) * 1000, 3)
 
@@ -441,11 +443,11 @@ class VideoListService:
                 sort_by=sort_by,
             )
 
-        if not settings.meili.url:
+        indexer = self._meili_indexer
+        if indexer is None:
             logger.warning('browse requested but MEILISEARCH_URL not set -- returning empty')
             return [], None, _EMPTY_TIMINGS
 
-        indexer = get_meili_video_indexer()
         collected_video_ids: list[int] = []
         last_cursor = cursor
         exhausted = False

@@ -13,6 +13,8 @@ from domains.video.application.services.history.service import VideoHistoryServi
 from domains.video.application.services.listing.page_loader import VideoListPageLoader
 from domains.video.application.services.listing.service import VideoListService
 from domains.video.application.services.random import VideoRandomService
+from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
+from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session
 from infrastructure.extraction.handlers.video_handler import VideoExtractionHandler
 from infrastructure.extraction.task_manager import TaskManager
@@ -24,6 +26,7 @@ class VideoService:
     def __init__(self, session_factory=None) -> None:
         session_factory = session_factory or get_session
         self.thumbnail_downloader = ThumbnailDownloaderService()
+        meili_indexer = get_meili_video_indexer() if settings.meili.url else None
         self.clip_marker = VideoClipMarkerService(session_factory=session_factory)
         self.persistence = VideoPersistenceService(session_factory=session_factory)
         self.crud = VideoCrudService(session_factory=session_factory)
@@ -38,7 +41,7 @@ class VideoService:
             ),
             task_manager=TaskManager(),
         )
-        self.random = VideoRandomService(session_factory=session_factory)
+        self.random = VideoRandomService(session_factory=session_factory, meili_indexer=meili_indexer)
         self.history = VideoHistoryService(
             session_factory=session_factory,
             thumbnail_downloader=self.thumbnail_downloader,
@@ -52,6 +55,8 @@ class VideoService:
             serialize_marker=self.clip_marker.serialize_marker,
             thumbnail_downloader=self.thumbnail_downloader,
             page_loader=page_loader,
+            query_service=None,
+            meili_indexer=meili_indexer,
         )
         self.featured = VideoFeaturedService(
             session_factory=session_factory,

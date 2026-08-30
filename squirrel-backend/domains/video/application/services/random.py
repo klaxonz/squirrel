@@ -11,10 +11,8 @@ from domains.video.application.services.listing.query_filters import (
     feed_category_predicate as _default_category_predicate,
 )
 from domains.video.application.services.moderation.nsfw_policy import resolve_effective_nsfw_filter
-from domains.video.application.services.search.meili_indexer import get_meili_video_indexer
 from domains.video.domain.junctions.subscription_video import SubscriptionVideo
 from domains.video.domain.models.video import Video
-from infrastructure.config.settings import settings
 from infrastructure.database.session import get_session as _default_get_session
 
 SessionFactory = Callable[[], Generator[Session, None, None]]
@@ -26,10 +24,12 @@ class VideoRandomService:
         session_factory: SessionFactory | None = None,
         get_user_config=None,
         category_predicate=None,
+        meili_indexer=None,
     ):
         self._session_factory = session_factory or _default_get_session
         self._get_user_config = get_user_config or user_config_service.get_config
         self._category_predicate = category_predicate or _default_category_predicate
+        self._meili_indexer = meili_indexer
 
     @staticmethod
     def _has_structural_filter(
@@ -41,22 +41,21 @@ class VideoRandomService:
             return True
         return bool(domains)
 
-    @classmethod
     def _recall_video_ids(
-        cls,
+        self,
         query: str | None,
         domains: list[str] | None,
         time_range: str,
         duration: str,
     ) -> list[int] | None:
-        """有搜索词或结构化过滤时用 Meili 召回;否则返回 None 走全量随机。"""
+        """Recall through Meili when query or structural filters require it."""
         has_query = bool(query and query.strip())
-        if not has_query and not cls._has_structural_filter(domains, time_range, duration):
+        if not has_query and not self._has_structural_filter(domains, time_range, duration):
             return None
-        if not settings.meili.url:
+        if self._meili_indexer is None:
             return [] if has_query else None
         try:
-            return get_meili_video_indexer().recall(
+            return self._meili_indexer.recall(
                 query or '',
                 domains=domains,
                 time_range=time_range,
