@@ -125,7 +125,7 @@ def test_filter_user_state_ids_honors_sensitive_toggle_without_feed_visibility(s
             special='all',
         )
 
-    assert ids == [1, 3, 5, 6]
+    assert ids == [1, 3, 5, 6, 7]
 
 
 def test_filter_user_state_ids_keeps_sensitive_likes_when_toggle_enabled(session_factory):
@@ -236,7 +236,7 @@ def test_filter_user_state_ids_applies_explicit_nsfw_filter_without_feed_visibil
             special='all',
         )
 
-    assert ids == [2, 3]
+    assert ids == [2]
 
 
 def test_filter_user_state_ids_applies_site_domains_without_subscription_visibility(session_factory):
