@@ -2,10 +2,10 @@
 
 Route tests construct minimal ``FastAPI`` apps that mount a single router and
 override dependencies. Those raw apps miss the production exception handlers
-registered in ``application.app._EXCEPTION_HANDLERS`` -- so a ``DomainError``
-raised inside a route would surface as an unhandled 500 instead of its real
-status. ``create_test_app`` wires those handlers up so tests exercise the same
-error-translation path as production.
+registered in ``application.http.errors.EXCEPTION_HANDLERS`` -- so a
+``DomainError`` raised inside a route would surface as an unhandled 500 instead
+of its real status. ``create_test_app`` wires those handlers up so tests
+exercise the same error-translation path as production.
 """
 
 from __future__ import annotations
@@ -21,15 +21,12 @@ if str(_BACKEND_ROOT) not in sys.path:
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from application.app import _EXCEPTION_HANDLERS
+from application.http.errors import EXCEPTION_HANDLERS
 
 
 def create_test_app(**kwargs) -> FastAPI:
-    """Build a ``FastAPI`` app preconfigured with the production exception handlers.
-
-    Extra keyword arguments are forwarded to ``FastAPI()``.
-    """
-    return FastAPI(exception_handlers=_EXCEPTION_HANDLERS, **kwargs)
+    """Build a ``FastAPI`` app preconfigured with production handlers."""
+    return FastAPI(exception_handlers=EXCEPTION_HANDLERS, **kwargs)
 
 
 def create_test_client(**kwargs) -> TestClient:

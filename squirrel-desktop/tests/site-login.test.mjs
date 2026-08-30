@@ -86,7 +86,6 @@ test('main.mjs is slim composition root', async () => {
 test('youtube media headers stay FreeTube-aligned (official toDash path)', async () => {
   const source = await readFile(mediaHeadersPath, 'utf8')
   const constants = await readFile(new URL('../src/constants.mjs', import.meta.url), 'utf8')
-  const mainSource = await readFile(new URL('../src/main.mjs', import.meta.url), 'utf8')
 
   // FreeTube: Referer + Origin + strip Content-Type on videoplayback; no cookies.
   assert.match(source, /YOUTUBE_MEDIA_HEADERS/)
@@ -102,7 +101,6 @@ test('youtube media headers stay FreeTube-aligned (official toDash path)', async
   // FreeTube Origin — that combo is a common googlevideo 403 cause.
   assert.match(source, /deleteHeaderCaseInsensitive/)
   assert.match(constants, /export const stripElectronFromUserAgent/)
-  assert.match(mainSource, /installDesktopSessionUserAgent/)
   assert.doesNotMatch(source, /com\.google\.ios\.youtube/)
   assert.doesNotMatch(source, /onBeforeRedirect/)
   assert.doesNotMatch(source, /restoreRange/)

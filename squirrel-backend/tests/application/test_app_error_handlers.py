@@ -2,7 +2,7 @@ from fastapi import FastAPI, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
-from application.app import request_validation_error_handler
+from application.http.errors import request_validation_error_handler
 
 
 def test_request_validation_errors_use_response_envelope():

@@ -1,9 +1,8 @@
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { app, BrowserWindow, session } from 'electron'
-import { prewarmPlaybackProviders, PREWARM_KEEP_WARM_INTERVAL_MS } from './playback/providers/index.mjs'
+import { app, BrowserWindow } from 'electron'
 import { installDesktopBridgeHandlers } from './ipc-handlers.mjs'
-import { installDesktopMediaHeaders, installDesktopSessionUserAgent } from './media-headers.mjs'
+import { initializeDesktopRuntime } from './runtime.mjs'
 import { createMainWindow, ensureRendererLoaded, setRendererOrigin } from './window.mjs'
 import { setRendererUrl } from './shell-pages.mjs'
 import { APP_ICON_PATH, APP_ID, __dirname, youtubeOAuthStateFilePath } from './constants.mjs'
@@ -42,20 +41,6 @@ try {
 setRendererUrl(rendererUrl)
 setRendererOrigin(rendererUrl, rendererOrigin)
 
-const prewarmDesktopPlaybackProviders = () => {
-  // Start as soon as the main process is ready. The previous 1s delay left the
-  // first click cold for remote WEB session + BotGuard minter (~1–6s), which
-  // dominated YouTube start latency.
-  void prewarmPlaybackProviders()
-
-  // Keep the runtime warm for the whole session: sessions/poToken minters
-  // expire server-side, and a resolve that lands on a cold session costs
-  // 2–16s inside the click path. The refresh is a no-op when everything is
-  // still fresh (session cache hit + fresh minter short-circuit).
-  setInterval(() => {
-    void prewarmPlaybackProviders()
-  }, PREWARM_KEEP_WARM_INTERVAL_MS)
-}
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
 
@@ -88,20 +73,8 @@ if (!hasSingleInstanceLock) {
     }
 
     installDesktopBridgeHandlers()
-    // FreeTube: strip Electron from session UA before any googlevideo traffic.
-    installDesktopSessionUserAgent()
-    const cleanupMediaHeaders = installDesktopMediaHeaders()
-    app.on('will-quit', cleanupMediaHeaders)
-    // Purge heuristic-cached media ranges from previous sessions (CDN sends
-    // last-modified without cache-control, so Chromium cached signed segments;
-    // stale entries would keep zeroing player throughput measurements until
-    // their heuristic expiry).
-    session.defaultSession.clearCache().catch((error) => {
-      console.debug('[squirrel-desktop] clearCache failed', error)
-    })
-    // Prewarm before createMainWindow so BotGuard + WEB session start while
-    // the renderer boots — first click more often hits a warm minter.
-    prewarmDesktopPlaybackProviders()
+    const cleanupDesktopRuntime = initializeDesktopRuntime()
+    app.on('will-quit', cleanupDesktopRuntime)
     createMainWindow()
 
     app.on('activate', () => {
