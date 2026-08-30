@@ -54,3 +54,20 @@ def test_crawl_worker_start_uses_configured_worker_count(monkeypatch):
     assert [thread.name for thread in threads] == ['crawl-runtime-1']
     assert all(thread.started for thread in threads)
     assert crawl_worker_manager.crawl_worker_status() == {'running': True, 'count': 1}
+
+
+def test_run_runtime_closes_composed_services_after_runtime_exit():
+    calls = []
+
+    class _Runtime:
+        def run_loop(self, stop_event):
+            calls.append(('run', stop_event))
+
+    class _Services:
+        def close(self):
+            calls.append(('close',))
+
+    stop_event = object()
+    crawl_worker_manager._run_runtime(_Runtime(), _Services(), stop_event)
+
+    assert [call[0] for call in calls] == ['run', 'close']

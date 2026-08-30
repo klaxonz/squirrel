@@ -19,9 +19,19 @@ def _noop_runtime(**kwargs):
         'subscription_task_progress',
         SimpleNamespace(record_retry_transition=lambda *args, **kwargs: None),
     )
-    return CrawlWorkerRuntime(
-        **kwargs,
+    kwargs.setdefault(
+        'video_extraction_progress',
+        SimpleNamespace(record_terminal=lambda *args, **kwargs: None),
     )
+    kwargs.setdefault(
+        'subscription_sync_executor',
+        SimpleNamespace(execute_subscription_sync_task=lambda task: None),
+    )
+    kwargs.setdefault(
+        'video_extract_executor',
+        SimpleNamespace(execute_video_extract_task=lambda task: None),
+    )
+    return CrawlWorkerRuntime(**kwargs)
 
 
 def _video_payload(sync_state_id=2):

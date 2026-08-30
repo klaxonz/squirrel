@@ -16,7 +16,6 @@ from domains.subscription.application.services.crawl.executors.subscription_sync
 from domains.subscription.application.services.crawl.executors.video_extract_executor import (
     CrawlExecutorService as VideoExtractExecutor,
 )
-from domains.subscription.application.services.service import SubscriptionService
 from domains.video.application.services.extraction.progress_service import VideoExtractionProgressService
 from infrastructure.config.settings import settings
 from workers.scheduling.executors.leases import CrawlWorkerLeaseTracker
@@ -35,29 +34,11 @@ class CrawlWorkerRuntime:
         retry_delay_seconds: int = 30,
         poll_interval_seconds: float = 1.0,
         max_concurrency: int | None = None,
-        subscription_task_progress: SubscriptionSyncTaskProgressService | None = None,
-        video_extraction_progress: VideoExtractionProgressService | None = None,
-        subscription_sync_executor: SubscriptionSyncExecutor | None = None,
-        video_extract_executor: VideoExtractExecutor | None = None,
+        subscription_task_progress: SubscriptionSyncTaskProgressService,
+        video_extraction_progress: VideoExtractionProgressService,
+        subscription_sync_executor: SubscriptionSyncExecutor,
+        video_extract_executor: VideoExtractExecutor,
     ):
-        services = SubscriptionService() if any(
-            dependency is None
-            for dependency in (
-                subscription_task_progress,
-                video_extraction_progress,
-                subscription_sync_executor,
-                video_extract_executor,
-            )
-        ) else None
-        if services is not None:
-            subscription_task_progress = subscription_task_progress or SubscriptionSyncTaskProgressService(services.lifecycle)
-            video_extraction_progress = video_extraction_progress or VideoExtractionProgressService(services.lifecycle)
-            subscription_sync_executor = subscription_sync_executor or SubscriptionSyncExecutor(
-                lifecycle=services.lifecycle,
-                orchestrator_service=services.orchestrator,
-                subscription_svc=services.crud,
-            )
-            video_extract_executor = video_extract_executor or VideoExtractExecutor(services.video_service.extraction)
         self.dispatcher = dispatcher or CrawlDispatcherService()
         self.worker_id = worker_id
         self.lease_seconds = lease_seconds or settings.crawl.worker_lease_seconds

@@ -5,6 +5,17 @@ import threading
 from threading import Lock
 from uuid import uuid4
 
+from domains.subscription.application.services.core.update.task_progress_service import (
+    SubscriptionSyncTaskProgressService,
+)
+from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
+    CrawlExecutorService as SubscriptionSyncExecutor,
+)
+from domains.subscription.application.services.crawl.executors.video_extract_executor import (
+    CrawlExecutorService as VideoExtractExecutor,
+)
+from domains.subscription.application.services.service import SubscriptionService
+from domains.video.application.services.extraction.progress_service import VideoExtractionProgressService
 from infrastructure.concurrency.thread_manager import thread_manager
 from infrastructure.config.settings import settings
 from workers.scheduling.executors.runtime import CrawlWorkerRuntime
@@ -16,6 +27,30 @@ _workers_running: bool = False
 _workers_lock = Lock()
 _stop_event: threading.Event | None = None
 
+def _create_runtime(*, worker_id: str) -> tuple[CrawlWorkerRuntime, SubscriptionService]:
+    services = SubscriptionService()
+    runtime = CrawlWorkerRuntime(
+        worker_id=worker_id,
+        max_concurrency=max(1, int(settings.crawl.slots_per_process)),
+        poll_interval_seconds=settings.crawl.worker_poll_interval_ms / 1000.0,
+        subscription_task_progress=SubscriptionSyncTaskProgressService(services.lifecycle),
+        video_extraction_progress=VideoExtractionProgressService(services.lifecycle),
+        subscription_sync_executor=SubscriptionSyncExecutor(
+            lifecycle=services.lifecycle,
+            orchestrator_service=services.orchestrator,
+            subscription_svc=services.crud,
+        ),
+        video_extract_executor=VideoExtractExecutor(services.video_service.extraction),
+    )
+    return runtime, services
+
+
+def _run_runtime(runtime: CrawlWorkerRuntime, services: SubscriptionService, stop_event: threading.Event) -> None:
+    try:
+        runtime.run_loop(stop_event)
+    finally:
+        services.close()
+
 
 def crawl_worker_start() -> None:
     global _worker_threads, _workers_running, _stop_event
@@ -25,14 +60,12 @@ def crawl_worker_start() -> None:
             return
 
         _stop_event = threading.Event()
-        runtime = CrawlWorkerRuntime(
+        runtime, services = _create_runtime(
             worker_id=f'{socket.gethostname()}:{os.getpid()}:{uuid4().hex[:12]}',
-            max_concurrency=max(1, int(settings.crawl.slots_per_process)),
-            poll_interval_seconds=settings.crawl.worker_poll_interval_ms / 1000.0,
         )
         thread = threading.Thread(
-            target=runtime.run_loop,
-            args=(_stop_event,),
+            target=_run_runtime,
+            args=(runtime, services, _stop_event),
             daemon=True,
             name='crawl-runtime-1',
         )
