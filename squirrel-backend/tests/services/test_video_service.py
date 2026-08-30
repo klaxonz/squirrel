@@ -13,5 +13,6 @@ def test_video_service_composes_shared_listing_dependencies(session_factory):
     assert marker_serializer.__self__ is first.clip_marker
     assert marker_serializer.__func__ is first.clip_marker.serialize_marker.__func__
 
+    assert first.listing._meili_indexer is first.random._meili_indexer
     first.close()
     second.close()
