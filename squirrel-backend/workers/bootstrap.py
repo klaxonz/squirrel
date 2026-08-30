@@ -12,21 +12,22 @@ import os
 import signal
 import threading
 from contextlib import contextmanager
+
 # Runtime package roots must be installed before these imports resolve.
-from infrastructure.config.settings import settings  # noqa: E402
-from infrastructure.database.migrations import upgrade_database  # noqa: E402
-from infrastructure.runtime.site_config_manager import apply_site_config_overrides  # noqa: E402
-from infrastructure.site_catalog.cookies import (  # noqa: E402
+from infrastructure.config.settings import settings
+from infrastructure.database.migrations import upgrade_database
+from infrastructure.runtime.site_config_manager import apply_site_config_overrides
+from infrastructure.site_catalog.cookies import (
     resolve_cookie_file_for_url,
     resolve_cookie_match_domain_for_url,
 )
-from infrastructure.site_catalog.runtime_http import (  # noqa: E402
+from infrastructure.site_catalog.runtime_http import (
     set_cloudflare_bypass_client,
     set_cookie_domain_resolver,
     set_cookie_file_resolver,
 )
-from infrastructure.site_registry.registry import get_site_registry  # noqa: E402
-from shared_kernel.infrastructure.log import init_logging  # noqa: E402
+from infrastructure.site_registry.registry import get_site_registry
+from shared_kernel.infrastructure.log import init_logging
 
 logger = logging.getLogger(__name__)
 

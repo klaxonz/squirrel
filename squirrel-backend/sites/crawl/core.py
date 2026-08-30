@@ -114,7 +114,7 @@ class ExtractionResult:
         return cls(success=True, data=data)
 
 
-class TaskPriority(int, Enum):  # noqa: UP042
+class TaskPriority(int, Enum):
     """Priority of an extraction task – larger means more important."""
 
     LOW = 1
@@ -135,7 +135,7 @@ class ExtractionTask:
     max_retries: int = 3
     metadata: dict[str, Any] | None = None
 
-    def __post_init__(self) -> None:  # noqa: D401 – not a docstring for public API
+    def __post_init__(self) -> None:
         # Generate deterministic id from url + site for idempotency within a process
         self.task_id = uuid.uuid5(uuid.NAMESPACE_URL, f"{self.site_name}:{self.url}").hex
 

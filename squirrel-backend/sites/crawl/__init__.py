@@ -32,7 +32,6 @@ from .config import (
 from .core import (
     ExtractionResult,
     ExtractionTask,
-    TaskPriority,
     Extractor,
     LoginStatusResult,
     SubscriptionImportBatchResult,
@@ -40,6 +39,7 @@ from .core import (
     SubscriptionMeta,
     SubscriptionSyncContext,
     SubscriptionSyncResult,
+    TaskPriority,
     VideoMeta,
 )
 
@@ -50,8 +50,8 @@ from .exceptions import (
     NetworkError,
     NotFoundError,
     ParseError,
-    SiteError,
     RateLimitError,
+    SiteError,
     VipError,
 )
 from .extractor import (

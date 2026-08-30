@@ -286,7 +286,7 @@ class _YoutubeiWorkerClient:
         oauth_file = _get_oauth_state_file()
         if oauth_file:
             env["YOUTUBE_OAUTH_STATE_FILE"] = oauth_file
-        process = subprocess.Popen(  # noqa: S603
+        process = subprocess.Popen(
             ["node", str(DAEMON_PATH)],
             cwd=str(WORKER_DIR),
             stdin=subprocess.PIPE,

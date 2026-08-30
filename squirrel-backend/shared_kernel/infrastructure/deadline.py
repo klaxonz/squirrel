@@ -52,7 +52,7 @@ class _ChildFailure:
 def _child_runner(target, args, kwargs, queue) -> None:  # pragma: no cover - runs in child
     try:
         value = target(*args, **kwargs)
-    except BaseException as exc:  # noqa: BLE001 - surfaced across the process boundary
+    except BaseException as exc:
         try:
             queue.put(_ChildFailure(exc))
         except Exception:  # exception not picklable: degrade to a plain RuntimeError

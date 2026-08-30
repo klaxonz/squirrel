@@ -3,10 +3,10 @@
 import logging
 from urllib.parse import urlparse
 
-from sites.crawl import SiteError
 from infrastructure.runtime.site_config_manager import get_effective_site_catalog
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_registry.registry import SiteRegistry, get_site_registry
+from sites.crawl import SiteError
 
 from .contracts import ExtractionResult, ExtractionTask, site_result_to_extraction_result
 

@@ -20,7 +20,7 @@ class IdExtractor(Protocol):
 
 
 class RegexIdExtractor:
-    """Base class for regex-based ID extractors.
+    r"""Base class for regex-based ID extractors.
 
     Subclasses only need to define `domains` (or `domain`) and `pattern`:
 

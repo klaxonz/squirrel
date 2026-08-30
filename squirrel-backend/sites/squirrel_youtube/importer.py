@@ -5,6 +5,7 @@ import logging
 import re
 
 from bs4 import BeautifulSoup
+
 from sites.crawl import (
     SubscriptionImportItem,
     filter_cookies_to_query_string,

@@ -2,7 +2,7 @@ import logging
 
 import uvicorn
 
-from infrastructure.config.settings import settings  # noqa: E402
+from infrastructure.config.settings import settings
 from infrastructure.database.migrations import upgrade_database
 from shared_kernel.infrastructure.log import init_logging
 

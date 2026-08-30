@@ -9,12 +9,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-from sites.crawl import configure_rate_limit as configure_crawl_rate_limit  # noqa: E402
-from sites.crawl import configure_rate_limit_enabled as configure_crawl_rate_limit_enabled  # noqa: E402
-
 from infrastructure.site_catalog.catalog import SiteCatalog  # noqa: E402
 from infrastructure.site_catalog.runtime_config import set_site_configs  # noqa: E402
 from shared_kernel.infrastructure.rate_limiter import rate_limiter as backend_rate_limiter  # noqa: E402
+from sites.crawl import configure_rate_limit as configure_crawl_rate_limit  # noqa: E402
+from sites.crawl import configure_rate_limit_enabled as configure_crawl_rate_limit_enabled  # noqa: E402
 
 
 def _deep_merge(base: dict, overrides: dict) -> dict:

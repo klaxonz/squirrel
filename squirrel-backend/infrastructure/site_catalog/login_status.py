@@ -2,8 +2,8 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from sites.crawl import SiteError
 from infrastructure.site_registry.registry import SiteRegistry, get_site_registry
+from sites.crawl import SiteError
 
 logger = logging.getLogger(__name__)
 

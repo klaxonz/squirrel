@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import copy
 import importlib.util
-import json
 import logging
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 import threading
 from contextlib import contextmanager
@@ -218,9 +216,8 @@ def _sanitize_player_response_value(value: Any):
 def _extract_info_once(url: str, opts: dict[str, Any], *, process: bool = True) -> dict | None:
     from yt_dlp import YoutubeDL
 
-    with prepared_ytdlp_opts(opts) as prepared_opts:
-        with YoutubeDL(prepared_opts) as ydl:
-            return ydl.extract_info(url, download=False, process=process)
+    with prepared_ytdlp_opts(opts) as prepared_opts, YoutubeDL(prepared_opts) as ydl:
+        return ydl.extract_info(url, download=False, process=process)
 
 
 

@@ -11,7 +11,6 @@ tests and read cleanly as the update flow's phases.
 import logging
 from urllib.parse import urlparse
 
-from sites.crawl import SiteError
 from domains.subscription.application.services.core.listing.service import get_subscription_detail
 from domains.subscription.application.services.core.runtime_models import SubscriptionSyncResult
 from infrastructure.config.settings import settings

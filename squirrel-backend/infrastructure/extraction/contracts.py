@@ -13,10 +13,8 @@ step — no dict round-trips.
 
 from __future__ import annotations
 
-import uuid
-from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from sites.crawl import ExtractionResult, ExtractionTask, TaskPriority, VideoMeta
 

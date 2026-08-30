@@ -14,7 +14,6 @@ from sites.crawl import (
 )
 
 from .auth import check_bilibili_login_status
-from .extractor import BilibiliExtractor
 from .importer import BilibiliUserSubscriptionImporter
 from .subscription import BilibiliSubscription
 

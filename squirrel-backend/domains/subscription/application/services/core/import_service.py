@@ -14,12 +14,12 @@ from domains.subscription.application.services.core.runtime_models import (
 from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
 from domains.subscription.application.services.crawl.tasks import service as crawl_task_service
 from domains.subscription.domain.models.subscription import Subscription, build_subscription_canonical_key
-from sites.crawl import SiteError
 from infrastructure.database.session import get_session
 from infrastructure.site_catalog.catalog import SiteCatalog
 from infrastructure.site_catalog.url import extract_top_level_domain
 from infrastructure.site_registry.registry import SiteRegistry, get_site_registry
 from shared_kernel.domain.exceptions import ValidationError
+from sites.crawl import SiteError
 
 logger = logging.getLogger(__name__)
 
