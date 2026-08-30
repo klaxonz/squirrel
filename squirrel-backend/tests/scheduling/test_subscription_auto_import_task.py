@@ -3,6 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from domains.subscription.application.services.core.import_service import SubscriptionImportService
 from infrastructure.scheduling.base import TaskRegistry
 from workers.scheduling.tasks.subscription_auto_import_task import SubscriptionAutoImportTask
 
@@ -18,8 +19,9 @@ def test_subscription_auto_import_task_runs_auto_import_service(monkeypatch):
     calls = []
 
     monkeypatch.setattr(
-        'workers.scheduling.tasks.subscription_auto_import_task.auto_import_missing_subscriptions',
-        lambda: (
+        SubscriptionImportService,
+        'auto_import_missing_subscriptions',
+        lambda self: (
             calls.append('run')
             or {
                 'users': 2,

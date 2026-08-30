@@ -257,12 +257,20 @@ class SubscriptionSyncLifecycle:
             if run is not None:
                 run.request_id = request_id
 
+        from domains.subscription.application.services.core.update.orchestrator import SubscriptionOrchestrator
         from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
-            execute_subscription_sync_payload,
+            CrawlExecutorService,
         )
 
         try:
-            sync_result = execute_subscription_sync_payload(
+            sync_result = CrawlExecutorService(
+                lifecycle=self,
+                orchestrator_service=SubscriptionOrchestrator(
+                    session_factory=self.session_factory,
+                    lifecycle=self,
+                ),
+                subscription_svc=self._crud_service,
+            ).execute_subscription_sync_payload(
                 {
                     **build_task_payload(
                         command,
@@ -274,7 +282,7 @@ class SubscriptionSyncLifecycle:
                     ),
                     'inline_video_extraction': True,
                     'execution_token': request_id,
-                }
+                },
             )
         except (CrawlExecutionError, ValueError, TypeError, AttributeError, KeyError) as exc:
             self._sync_state_service.mark_sync_failed(
@@ -733,13 +741,20 @@ class SubscriptionSyncLifecycle:
             session.flush()
             return task.payload
 
-    @staticmethod
-    def _run_inline_continuation(payload: dict) -> None:
+    def _run_inline_continuation(self, payload: dict) -> None:
+        from domains.subscription.application.services.core.update.orchestrator import SubscriptionOrchestrator
         from domains.subscription.application.services.crawl.executors.subscription_sync_executor import (
-            execute_subscription_sync_payload,
+            CrawlExecutorService,
         )
 
-        execute_subscription_sync_payload(payload)
+        CrawlExecutorService(
+            lifecycle=self,
+            orchestrator_service=SubscriptionOrchestrator(
+                session_factory=self.session_factory,
+                lifecycle=self,
+            ),
+            subscription_svc=self._crud_service,
+        ).execute_subscription_sync_payload(payload)
 
     def _can_request_full_sync(self, site: str) -> bool:
         global_limit = max(1, int(settings.FULL_SYNC_MAX_INFLIGHT))
@@ -826,6 +841,3 @@ class SubscriptionSyncLifecycle:
                 .limit(1),
             ).first()
             return row is not None
-
-
-subscription_sync_lifecycle = SubscriptionSyncLifecycle()

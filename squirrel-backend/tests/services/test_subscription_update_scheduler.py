@@ -13,6 +13,7 @@ from domains.subscription.application.services.core.update.models import (
     UpdateTrigger,
 )
 from domains.subscription.application.services.core.update.scheduler import SubscriptionScheduler
+from domains.subscription.application.services.crawl.executors.subscription_sync_executor import CrawlExecutorService
 from domains.subscription.domain.junctions.user_subscription import UserSubscription
 from domains.subscription.domain.models.crawl_dispatch_scope import CrawlDispatchScope
 from domains.subscription.domain.models.crawl_job import CrawlJob
@@ -250,9 +251,10 @@ def test_run_one_inline_executes_sync_and_video_extraction_without_crawl_task(en
                     current_run_id='run-3',
             ),
         ),
-        patch(
-            'domains.subscription.application.services.crawl.executors.subscription_sync_executor.execute_subscription_sync_payload',
-            lambda payload: (
+        patch.object(
+            CrawlExecutorService,
+            'execute_subscription_sync_payload',
+            lambda self, payload: (
                 payloads.append(payload)
                 or SubscriptionUpdateResult(
                     subscription_id=payload['subscription_id'],

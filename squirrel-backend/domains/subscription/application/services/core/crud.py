@@ -196,19 +196,3 @@ class SubscriptionCrudService:
                 return True
             except ValueError:
                 return False
-
-
-subscription_crud_service = SubscriptionCrudService()
-get_subscription_by_id = subscription_crud_service.get_subscription_by_id
-get_subscription_by_url_and_name = subscription_crud_service.get_subscription_by_url_and_name
-get_subscription_by_url = subscription_crud_service.get_subscription_by_url
-get_active_user_subscription_by_url = subscription_crud_service.get_active_user_subscription_by_url
-get_active_user_subscription_url_map = subscription_crud_service.get_active_user_subscription_url_map
-get_deleted_user_subscription_urls = subscription_crud_service.get_deleted_user_subscription_urls
-get_user_subscription_intent_versions = subscription_crud_service.get_user_subscription_intent_versions
-check_subscription_status = subscription_crud_service.check_subscription_status
-get_user_subscription_nsfw = subscription_crud_service.get_user_subscription_nsfw
-get_user_subscription_special_followed = subscription_crud_service.get_user_subscription_special_followed
-verify_subscription_access = subscription_crud_service.verify_subscription_access
-update_subscription = subscription_crud_service.update_subscription
-toggle_status = subscription_crud_service.toggle_status

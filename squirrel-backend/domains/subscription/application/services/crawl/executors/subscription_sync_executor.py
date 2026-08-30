@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-from domains.subscription.application.services.core.crud import SubscriptionCrudService, subscription_crud_service
-from domains.subscription.application.services.core.sync.lifecycle import (
-    SubscriptionSyncLifecycle,
-    subscription_sync_lifecycle,
-)
+from domains.subscription.application.services.core.crud import SubscriptionCrudService
+from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
 from domains.subscription.application.services.core.update.models import (
     SubscriptionUpdateRequest,
     UpdateMode,
     parse_trigger,
 )
-from domains.subscription.application.services.core.update.orchestrator import SubscriptionOrchestrator, orchestrator
+from domains.subscription.application.services.core.update.orchestrator import SubscriptionOrchestrator
 from domains.subscription.application.services.crawl.tasks.errors import (
     CrawlExecutionError,
     CrawlTaskNotFoundError,
@@ -22,13 +19,13 @@ from domains.subscription.domain.models.crawl_task import CrawlTask
 class CrawlExecutorService:
     def __init__(
         self,
-        lifecycle: SubscriptionSyncLifecycle | None = None,
-        orchestrator_service: SubscriptionOrchestrator | None = None,
-        subscription_svc: SubscriptionCrudService | None = None,
+        lifecycle: SubscriptionSyncLifecycle,
+        orchestrator_service: SubscriptionOrchestrator,
+        subscription_svc: SubscriptionCrudService,
     ):
-        self._lifecycle = lifecycle or subscription_sync_lifecycle
-        self._orchestrator = orchestrator_service or orchestrator
-        self._subscription_service = subscription_svc or subscription_crud_service
+        self._lifecycle = lifecycle
+        self._orchestrator = orchestrator_service
+        self._subscription_service = subscription_svc
 
     def execute_subscription_sync_payload(self, payload: dict):
         subscription_id = int(payload['subscription_id'])
@@ -114,9 +111,3 @@ class CrawlExecutorService:
             return UpdateMode.FULL
         if str(raw).lower() == UpdateMode.INCREMENTAL.value:
             return UpdateMode.INCREMENTAL
-        return UpdateMode.SMART
-
-
-subscription_sync_executor = CrawlExecutorService()
-execute_subscription_sync_payload = subscription_sync_executor.execute_subscription_sync_payload
-execute_subscription_sync_task = subscription_sync_executor.execute_subscription_sync_task

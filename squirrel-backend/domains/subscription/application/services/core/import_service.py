@@ -414,13 +414,3 @@ class SubscriptionImportService:
             summary['failed'],
         )
         return summary
-
-
-subscription_import_service = SubscriptionImportService()
-get_supported_import_sites = subscription_import_service.get_supported_import_sites
-get_enabled_import_sites = subscription_import_service.get_enabled_import_sites
-handle_subscribe_request = subscription_import_service.handle_subscribe_request
-preview_user_subscriptions = subscription_import_service.preview_user_subscriptions
-import_user_subscriptions = subscription_import_service.import_user_subscriptions
-auto_import_missing_subscriptions = subscription_import_service.auto_import_missing_subscriptions
-process_import_payload = subscription_import_service.process_import_payload

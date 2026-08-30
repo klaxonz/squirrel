@@ -1,6 +1,6 @@
 import logging
 
-from domains.subscription.application.services.core.sync.lifecycle import subscription_sync_lifecycle
+from domains.subscription.application.services.core.sync.lifecycle import SubscriptionSyncLifecycle
 from infrastructure.scheduling.base import BaseTask, TaskRegistry
 
 logger = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ class SubscriptionPendingReconcileTask(BaseTask):
 
     @classmethod
     def run(cls):
-        result = subscription_sync_lifecycle.recover()
+        result = SubscriptionSyncLifecycle().recover()
         logger.info(
             'Subscription pending reconcile completed: video_states=%s videos=%s drained_completed=%s drained_failed=%s queued_recovered=%s running_recovered=%s',
             result.video_states,
