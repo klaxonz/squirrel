@@ -83,6 +83,8 @@ class VideoListService:
         )
         self._query_service = query_service or VideoListQueryService()
         self._meili_indexer = meili_indexer
+
+    @staticmethod
     def _elapsed_ms(start_time: float) -> float:
         return round((perf_counter() - start_time) * 1000, 3)
 
