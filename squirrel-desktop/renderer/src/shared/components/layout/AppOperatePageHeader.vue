@@ -1,12 +1,11 @@
 <template>
   <header class="app-operate-page-header">
     <div class="app-operate-page-header__copy">
-      <p v-if="eyebrow" class="app-operate-page-header__eyebrow">{{ eyebrow }}</p>
       <div class="app-operate-page-header__title">
         <h1>{{ title }}</h1>
         <span v-if="summary">{{ summary }}</span>
       </div>
-      <p v-if="description" class="app-operate-page-header__description">{{ description }}</p>
+      <p v-if="description">{{ description }}</p>
     </div>
 
     <div v-if="$slots.actions" class="app-operate-page-header__actions">
@@ -18,7 +17,6 @@
 <script setup lang="ts">
 defineProps<{
   title: string
-  eyebrow?: string
   summary?: string
   description?: string
 }>()
@@ -51,10 +49,9 @@ defineProps<{
   margin: 0;
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
-  font-size: var(--app-text-3xl);
+  font-size: var(--app-text-xl);
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 .app-operate-page-header__title span {
@@ -63,26 +60,17 @@ defineProps<{
   font-weight: 550;
 }
 
-.app-operate-page-header__eyebrow {
+.app-operate-page-header__copy p {
   margin: 0;
   color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-sm);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.app-operate-page-header__description {
-  margin: 0;
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-base);
-  line-height: 1.55;
+  font-size: var(--app-text-md);
+  line-height: 1.5;
 }
 
 .app-operate-page-header__actions {
   display: flex;
   min-width: 0;
   flex: none;
-  align-self: center;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);

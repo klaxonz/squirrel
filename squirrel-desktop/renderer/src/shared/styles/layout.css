@@ -10,11 +10,11 @@
   --space-8: 3rem;
   --space-9: 4rem;
 
-  --radius: 8px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
+  --radius: 4px;
+  --radius-sm: 4px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
 
   /* Z-index scale — single source of truth for stacking order across the app.
      Replaces scattered magic stacking values with named overlay layers aligned
@@ -43,9 +43,9 @@
   --ease-out: cubic-bezier(0, 0, 0.2, 1);          /* entering elements */
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* press/active bounce */
 
-  --app-page-gutter: 1.25rem;
-  --app-page-gutter-sm: 1.5rem;
-  --app-page-gutter-lg: 2rem;
+  --app-page-gutter: 1rem;
+  --app-page-gutter-sm: 1.25rem;
+  --app-page-gutter-lg: 1.5rem;
   /* Content geometry for the reading column and optional wide-screen rail. */
   --app-content-media-max: 78rem;
   --app-content-media-gutter: clamp(1rem, 2vw, 1.5rem);
@@ -157,8 +157,8 @@
   --app-empty-gap: 1rem;
   --app-empty-padding: 2rem;
   --app-empty-border-alpha: 0.55;
-  --app-surface-radius: var(--radius-lg);
-  --app-card-radius: var(--radius-lg);
+  --app-surface-radius: var(--radius-md);
+  --app-card-radius: var(--radius-md);
   --app-empty-copy-width: 22rem;
 
   --app-surface-border: hsl(var(--border));

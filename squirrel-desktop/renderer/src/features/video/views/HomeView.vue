@@ -1,96 +1,85 @@
 <template>
-  <AppPageShell class="home-feed" variant="compact" surface="consume" width="media">
-    <div class="app-page-content home-feed__page">
-      <AppOperatePageHeader
-        class="home-feed__header"
-        eyebrow="首页"
-        title="推荐"
-        description="继续观看与订阅更新，按时间整理在一处。"
-      >
-        <template #actions>
-          <Button variant="secondary" size="sm" @click="refreshHome">
-            <AppIcon name="refresh" class="size-3.5" />
-            刷新
-          </Button>
-        </template>
-      </AppOperatePageHeader>
+  <AppPageShell class="home-feed" variant="compact" surface="consume" width="fluid">
+    <div class="home-feed__page">
+      <main class="home-feed__main" aria-label="首页信息流">
+        <div class="home-feed__sort" aria-label="排序">
+          <span class="home-feed__sort-label">最新</span>
+        </div>
 
-      <div class="home-feed__columns">
-        <main class="home-feed__main" aria-label="首页信息流">
-          <NewContentBar
-            class="home-feed__new-content"
-            :visible="newContentVisible"
-            :count="newContentCount"
-            @apply="applyNewContent"
-          />
+        <NewContentBar
+          class="home-feed__new-content"
+          :visible="newContentVisible"
+          :count="newContentCount"
+          @apply="applyNewContent"
+        />
 
-          <ContinueWatching
-            ref="continueWatchingRef"
-            @openModal="openVideo"
-            @viewMore="goToContinueWatching"
-            @goToProfile="openProfile"
-            @goToSubscription="openSubscription"
-          />
+        <ContinueWatching
+          ref="continueWatchingRef"
+          @openModal="openVideo"
+          @viewMore="goToContinueWatching"
+          @goToProfile="openProfile"
+          @goToSubscription="openSubscription"
+        />
 
-          <HomeInbox
-            ref="homeInboxRef"
-            @openModal="openVideo"
-            @goToProfile="openProfile"
-            @goToSubscription="openSubscription"
-            @viewMore="goToAllVideos"
-          />
-        </main>
+        <HomeInbox
+          ref="homeInboxRef"
+          @openModal="openVideo"
+          @goToProfile="openProfile"
+          @goToSubscription="openSubscription"
+          @viewMore="goToAllVideos"
+        />
+      </main>
 
-        <aside class="home-feed__rail" aria-label="辅助信息">
-          <section class="home-feed__widget">
-            <header class="home-feed__widget-head">
-              <h2>快捷入口</h2>
-            </header>
-            <div class="home-feed__widget-links">
-              <button type="button" class="home-feed__widget-link" @click="goToAllVideos">
-                <span class="home-feed__widget-icon" aria-hidden="true">
-                  <AppIcon name="film" class="size-4" />
-                </span>
-                <span class="home-feed__widget-copy">
-                  <strong>视频库</strong>
-                  <small>全部 / 未读 / 稍后看</small>
-                </span>
-                <AppIcon name="chevronRight" class="home-feed__widget-chevron size-3.5" />
-              </button>
-              <button type="button" class="home-feed__widget-link" @click="goToContinueWatching">
-                <span class="home-feed__widget-icon" aria-hidden="true">
-                  <AppIcon name="history" class="size-4" />
-                </span>
-                <span class="home-feed__widget-copy">
-                  <strong>继续观看</strong>
-                  <small>未看完的播放进度</small>
-                </span>
-                <AppIcon name="chevronRight" class="home-feed__widget-chevron size-3.5" />
-              </button>
-              <button type="button" class="home-feed__widget-link" @click="goToSubscribed">
-                <span class="home-feed__widget-icon" aria-hidden="true">
-                  <AppIcon name="subscriptions" class="size-4" />
-                </span>
-                <span class="home-feed__widget-copy">
-                  <strong>订阅中心</strong>
-                  <small>管理多站频道</small>
-                </span>
-                <AppIcon name="chevronRight" class="home-feed__widget-chevron size-3.5" />
-              </button>
-              <button type="button" class="home-feed__widget-link" @click="goToPlaylists">
-                <span class="home-feed__widget-icon" aria-hidden="true">
-                  <AppIcon name="playlists" class="size-4" />
-                </span>
-                <span class="home-feed__widget-copy">
-                  <strong>播放列表</strong>
-                  <small>整理合集与队列</small>
-                </span>
-                <AppIcon name="chevronRight" class="home-feed__widget-chevron size-3.5" />
-              </button>
-            </div>
-          </section>
-        </aside>
-      </div>
+      <aside class="home-feed__rail" aria-label="辅助信息">
+        <section class="home-feed__widget home-feed__widget--nav">
+          <header class="home-feed__widget-head">
+            <h2>快捷入口</h2>
+          </header>
+          <div class="home-feed__widget-links">
+            <button type="button" class="home-feed__widget-link" @click="goToAllVideos">
+              <span class="home-feed__widget-icon" aria-hidden="true">
+                <AppIcon name="film" class="size-4" />
+              </span>
+              <span class="home-feed__widget-copy">
+                <strong>视频库</strong>
+                <small>全部 / 未读 / 稍后看</small>
+              </span>
+              <AppIcon name="chevronRight" class="home-feed__widget-chevron size-3.5" />
+            </button>
+            <button type="button" class="home-feed__widget-link" @click="goToContinueWatching">
+              <span class="home-feed__widget-icon" aria-hidden="true">
+                <AppIcon name="history" class="size-4" />
+              </span>
+              <span class="home-feed__widget-copy">
+                <strong>继续观看</strong>
+                <small>未看完的播放进度</small>
+              </span>
+              <AppIcon name="chevronRight" class="home-feed__widget-chevron size-3.5" />
+            </button>
+            <button type="button" class="home-feed__widget-link" @click="goToSubscribed">
+              <span class="home-feed__widget-icon" aria-hidden="true">
+                <AppIcon name="subscriptions" class="size-4" />
+              </span>
+              <span class="home-feed__widget-copy">
+                <strong>订阅中心</strong>
+                <small>管理多站频道</small>
+              </span>
+              <AppIcon name="chevronRight" class="home-feed__widget-chevron size-3.5" />
+            </button>
+            <button type="button" class="home-feed__widget-link" @click="goToPlaylists">
+              <span class="home-feed__widget-icon" aria-hidden="true">
+                <AppIcon name="playlists" class="size-4" />
+              </span>
+              <span class="home-feed__widget-copy">
+                <strong>播放列表</strong>
+                <small>整理合集与队列</small>
+              </span>
+              <AppIcon name="chevronRight" class="home-feed__widget-chevron size-3.5" />
+            </button>
+          </div>
+        </section>
+
+      </aside>
     </div>
   </AppPageShell>
 </template>
@@ -101,12 +90,10 @@ import { useRouter } from 'vue-router'
 import ContinueWatching from '@/features/video/components/feed/ContinueWatching.vue'
 import HomeInbox from '@/features/video/components/feed/HomeInbox.vue'
 import NewContentBar from '@/shared/components/layout/NewContentBar.vue'
-import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
 import { useNewContentDetector, prependPreservingScroll } from '@/shared/composables/useNewContentDetector'
 import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import { Button } from '@/shared/ui/button'
 import { useVideoCardNavigation } from '@/features/video/composables/useVideoCardNavigation'
 import type { VideoListItem } from '@/features/video/types/video'
 
@@ -151,13 +138,6 @@ const {
   },
 })
 
-const refreshHome = () => {
-  void continueWatchingRef.value?.refresh?.()
-  void homeInboxRef.value?.refresh?.()
-  resetNewContent()
-  lastRefreshedAt = Date.now()
-}
-
 onActivated(() => {
   const now = Date.now()
   if (now - lastRefreshedAt < 30_000) return
@@ -174,155 +154,57 @@ watch(() => homeInboxRef.value?.activeFilter, () => resetNewContent())
 </script>
 
 <style scoped>
-.home-feed {
-  background: transparent;
-}
-
+.home-feed { background: hsl(var(--background)); }
 .home-feed__page {
-  padding-top: var(--space-6);
-  padding-bottom: var(--space-9);
-  padding-inline: var(--app-page-gutter);
-}
-
-@media (min-width: 1024px) {
-  .home-feed__page {
-    padding-inline: var(--app-page-gutter-lg);
-  }
-}
-
-.home-feed__header {
-  margin-bottom: var(--space-6);
-}
-
-.home-feed__columns {
   display: grid;
-  align-items: start;
-  gap: var(--space-6);
-  grid-template-columns: minmax(0, 1fr);
+  width: min(100%, 76rem);
+  margin-inline: auto;
+  grid-template-columns: minmax(0, 44rem);
+  justify-content: center;
+  gap: var(--space-7);
+  padding: var(--space-6) var(--app-content-media-gutter) var(--space-9);
 }
-
-.home-feed__main {
+.home-feed__main { display: flex; min-width: 0; flex-direction: column; gap: var(--space-6); }
+.home-feed__sort {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
   display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: var(--space-6);
+  min-height: 2.75rem;
+  align-items: center;
+  border-bottom: 1px solid var(--app-hairline);
+  background: hsl(var(--background) / 0.96);
 }
-
-.home-feed__new-content {
-  margin-bottom: calc(var(--space-2) * -1);
+.home-feed__sort-label {
+  color: hsl(var(--foreground));
+  font-size: var(--app-text-base);
+  font-weight: 650;
 }
-
+.home-feed__new-content { margin-bottom: calc(var(--space-3) * -1); }
 .home-feed__rail {
   display: none;
   min-width: 0;
   flex-direction: column;
   gap: var(--space-5);
 }
-
-.home-feed__widget {
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--radius-lg);
-  background: hsl(var(--card));
-  padding: var(--space-4);
+.home-feed__widget { border-top: 1px solid var(--app-hairline); padding-top: var(--space-4); }
+.home-feed__widget-head h2 { margin: 0 0 var(--space-3); color: hsl(var(--foreground)); font-size: var(--app-text-md); font-weight: 700; }
+.home-feed__widget-links { display: flex; flex-direction: column; gap: var(--space-1); }
+.home-feed__widget-link { display: grid; min-height: 3rem; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); border: 0; border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); background: transparent; color: hsl(var(--foreground)); text-align: left; cursor: pointer; }
+.home-feed__widget-link:hover { background: var(--app-row-hover-bg); }
+.home-feed__widget-icon { display: inline-flex; width: 2rem; height: 2rem; align-items: center; justify-content: center; border-radius: var(--radius-md); background: hsl(var(--secondary)); color: hsl(var(--primary)); }
+.home-feed__widget-copy { display: grid; min-width: 0; gap: var(--space-1); }
+.home-feed__widget-copy strong { font-size: var(--app-text-base); font-weight: 700; }
+.home-feed__widget-copy small { color: hsl(var(--muted-foreground)); font-size: var(--app-text-sm); }
+.home-feed__widget-chevron { color: hsl(var(--muted-foreground)); }
+@media (min-width: 1200px) {
+  .home-feed__page { grid-template-columns: minmax(0, 44rem) 16rem; justify-content: center; }
+  .home-feed__rail { display: flex; position: sticky; top: var(--space-6); align-self: start; }
 }
-
-.home-feed__widget-head h2 {
-  margin: 0 0 var(--space-2);
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-sm);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.home-feed__widget-links {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.home-feed__widget-link {
-  display: grid;
-  min-height: 3rem;
-  align-items: center;
-  gap: var(--space-3);
-  border: 0;
-  border-radius: var(--radius-md);
-  padding: var(--space-2);
-  background: transparent;
-  color: hsl(var(--foreground));
-  cursor: pointer;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  text-align: left;
-  transition: background-color var(--duration-fast) var(--ease-default);
-}
-
-.home-feed__widget-link:hover {
-  background: var(--app-row-hover-bg);
-}
-
-.home-feed__widget-icon {
-  display: inline-flex;
-  width: 2.25rem;
-  height: 2.25rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-md);
-  background: hsl(var(--secondary));
-  color: hsl(var(--muted-foreground));
-}
-
-.home-feed__widget-copy {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.home-feed__widget-copy strong {
-  font-size: var(--app-text-base);
-  font-weight: 600;
-}
-
-.home-feed__widget-copy small {
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-sm);
-}
-
-.home-feed__widget-chevron {
-  color: hsl(var(--muted-foreground));
-}
-
-@media (min-width: 1360px) {
-  .home-feed__columns {
-    gap: var(--space-7);
-    grid-template-columns: minmax(0, 1fr) 17rem;
-  }
-
-  .home-feed__rail {
-    display: flex;
-    position: sticky;
-    top: var(--space-6);
-    align-self: start;
-  }
-}
-
 @media (max-width: 640px) {
-  .home-feed__page {
-    padding-top: var(--space-5);
-    padding-bottom: var(--space-8);
-  }
-
-  .home-feed__header {
-    margin-bottom: var(--space-5);
-  }
-
-  .home-feed__main {
-    gap: var(--space-5);
-  }
+  .home-feed__page { gap: var(--space-5); padding: var(--space-3) var(--space-3) var(--space-8); }
+  .home-feed__main { gap: var(--space-5); }
+  .home-feed__sort { min-height: 2.5rem; }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .home-feed__widget-link {
-    transition: none;
-  }
-}
-</style>
+@media (prefers-reduced-motion: reduce) { .home-feed__widget-link { transition: none; } }
+ </style>
