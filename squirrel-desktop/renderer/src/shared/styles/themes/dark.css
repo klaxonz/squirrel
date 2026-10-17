@@ -65,27 +65,27 @@
 }
 
 .light {
-  /* Light theme: cool canvas, paper cards, and hairline borders. */
-  --background: 210 14% 88%;           /* #DAE0E6 */
-  --foreground: 240 2% 10%;            /* #1A1A1B */
+  /* Light theme: warm paper canvas, white cards, and hairline borders. */
+  --background: 40 24% 97%;            /* #F9F8F4 warm paper canvas */
+  --foreground: 30 8% 12%;             /* #211E1A warm ink */
 
   --card: 0 0% 100%;
-  --card-foreground: 240 2% 10%;
+  --card-foreground: 30 8% 12%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 240 2% 10%;
+  --popover-foreground: 30 8% 12%;
 
   --primary: 16 100% 50%;              /* #FF4500 */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 210 12% 95%;            /* #F1F3F5 */
-  --secondary-foreground: 240 2% 10%;
+  --secondary: 40 14% 94%;             /* #F2EFE9 */
+  --secondary-foreground: 30 8% 12%;
 
-  --muted: 210 12% 95%;
-  --muted-foreground: 0 0% 47%;        /* readable muted gray */
+  --muted: 40 14% 95%;                 /* #F4F2ED */
+  --muted-foreground: 35 6% 42%;       /* #726F68 readable warm gray */
 
-  --accent: 210 12% 93%;               /* #EDEFF1 */
-  --accent-foreground: 240 2% 10%;
+  --accent: 40 12% 92%;                /* #EDEAE3 */
+  --accent-foreground: 30 8% 12%;
 
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
@@ -97,34 +97,34 @@
   --info: 206 100% 41%;                /* link blue */
   --info-foreground: 0 0% 100%;
 
-  --border: 210 12% 94%;               /* #EDEFF1 */
-  --input: 210 12% 89%;                /* #D8DEE3 */
+  --border: 38 14% 89%;                /* #E6E1D9 warm hairline */
+  --input: 38 12% 85%;                 /* #DDD7CC */
   --control: 0 0% 100%;
   --ring: 16 100% 50%;
 
   --overlay: 0 0% 0%;
 
   --sidebar: 0 0% 100%;
-  --sidebar-foreground: 240 2% 10%;
-  --sidebar-border: 210 12% 92%;       /* #E9ECEF */
+  --sidebar-foreground: 30 8% 12%;
+  --sidebar-border: 38 14% 91%;        /* #EAE6DF */
 
-  --shadow-xs: 0 1px 2px hsl(210 14% 12% / 0.05);
-  --shadow-sm: 0 1px 3px hsl(210 14% 12% / 0.08), 0 1px 2px hsl(210 14% 12% / 0.05);
-  --shadow-md: 0 4px 12px hsl(210 14% 12% / 0.1);
-  --shadow-lg: 0 12px 28px hsl(210 14% 12% / 0.14);
-  --shadow-premium: 0 1px 2px hsl(210 14% 12% / 0.08), 0 12px 28px hsl(210 14% 12% / 0.12);
+  --shadow-xs: 0 1px 2px hsl(30 12% 12% / 0.05);
+  --shadow-sm: 0 1px 3px hsl(30 12% 12% / 0.07), 0 1px 2px hsl(30 12% 12% / 0.05);
+  --shadow-md: 0 4px 14px hsl(30 12% 12% / 0.09);
+  --shadow-lg: 0 12px 30px hsl(30 12% 12% / 0.13);
+  --shadow-premium: 0 1px 2px hsl(30 12% 12% / 0.07), 0 12px 30px hsl(30 12% 12% / 0.11);
 
-  --gray-50:  210 20% 98%;
-  --gray-100: 210 16% 95%;
-  --gray-200: 210 14% 90%;
-  --gray-300: 210 10% 80%;
-  --gray-400: 210 6% 60%;
-  --gray-500: 210 4% 42%;
-  --gray-600: 220 6% 30%;
-  --gray-700: 220 8% 22%;
-  --gray-800: 220 9% 14%;
-  --gray-900: 220 10% 10%;
-  --gray-950: 220 12% 6%;
+  --gray-50:  40 20% 98%;
+  --gray-100: 40 16% 95%;
+  --gray-200: 40 14% 90%;
+  --gray-300: 40 10% 80%;
+  --gray-400: 40 6% 60%;
+  --gray-500: 40 4% 42%;
+  --gray-600: 35 6% 30%;
+  --gray-700: 35 8% 22%;
+  --gray-800: 30 9% 14%;
+  --gray-900: 30 10% 10%;
+  --gray-950: 30 12% 6%;
 
   /* Selection on paper: quiet ink wash, not brand fill */
   --app-selection-bg: hsl(var(--foreground) / 0.06);

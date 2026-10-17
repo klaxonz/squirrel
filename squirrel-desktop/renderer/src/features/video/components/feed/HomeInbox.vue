@@ -15,7 +15,7 @@
           @update:model-value="setFilter"
         />
         <Button variant="secondary" size="sm" @click="emit('viewMore')">
-          全部
+          查看全部
           <AppIcon name="chevronRight" class="size-3.5" />
         </Button>
       </div>
@@ -53,7 +53,7 @@
             layout="list"
             show-avatar
             show-duration
-            appearance="default"
+            appearance="workbench"
             @openModal="emit('openModal', video)"
             @goToProfile="(profile) => emit('goToProfile', profile)"
             @goToSubscription="(id) => emit('goToSubscription', id)"
@@ -180,7 +180,7 @@ defineExpose({
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: var(--space-4);
   background: transparent;
 }
 
@@ -192,10 +192,10 @@ defineExpose({
 }
 
 .home-inbox__header {
-  min-height: 2.35rem;
+  min-height: 2rem;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.15rem 0.1rem;
+  gap: var(--space-4);
+  padding: 0;
   background: transparent;
 }
 
@@ -212,59 +212,137 @@ defineExpose({
   font-family: var(--font-sans);
   font-size: var(--app-text-lg);
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
 }
 
 .home-inbox__tools {
-  gap: 0.4rem;
+  gap: var(--space-2);
   flex: 0 0 auto;
 }
 
 .home-inbox__timeline {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-5);
 }
 
 .home-inbox__group {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-1);
+}
+
+.home-inbox__group + .home-inbox__group {
+  margin-top: var(--space-2);
 }
 
 .home-inbox__group-header {
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0 0.2rem;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--app-hairline);
+  padding: 0 0 var(--space-2);
 }
 
 .home-inbox__group-header h3 {
   color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-xs);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: var(--app-text-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .home-inbox__group-header span {
   display: inline-flex;
-  min-width: 1.25rem;
-  height: 1.15rem;
+  min-width: 1.5rem;
+  height: 1.25rem;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: hsl(var(--foreground) / 0.06);
+  background: hsl(var(--foreground) / 0.05);
   color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-xs);
+  font-size: var(--app-text-sm);
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  padding-inline: 0.35rem;
+  font-weight: 600;
+  padding-inline: 0.4rem;
 }
 
 .home-inbox__posts {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 0;
+}
+
+/* Home stream rows read as one editorial list: no per-item card chrome,
+   one hairline between entries, and a quiet hover wash. */
+.home-inbox__posts :deep(.video-item--row) {
+  gap: var(--space-4);
+  border: 0;
+  border-bottom: 1px solid var(--app-hairline);
+  border-radius: var(--radius-md);
+  background: transparent;
+  padding: var(--space-3);
+  margin-inline: calc(var(--space-3) * -1);
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+}
+
+.home-inbox__posts :deep(.video-item--row:hover) {
+  border-bottom-color: transparent;
+  background: var(--app-row-hover-bg);
+}
+
+.home-inbox__posts :deep(.video-item--row:last-child) {
+  border-bottom-color: transparent;
+}
+
+.home-inbox__posts :deep(.video-item__title--row) {
+  font-size: var(--app-text-lg);
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.home-inbox__posts :deep(.video-item__row-body) {
+  gap: var(--space-2);
+}
+
+/* The compact "加入" shortcut duplicates the row's later action — keep one. */
+.home-inbox__posts :deep(.video-item__top-actions) {
+  display: none;
+}
+
+/* Row actions are secondary: icon-only and revealed on hover/focus. */
+.home-inbox__posts :deep(.video-item__bar--row) {
+  gap: 2px;
+  border-top: 0;
+  padding: 0;
+  background: transparent;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
+}
+
+.home-inbox__posts :deep(.video-item--row:hover .video-item__bar--row),
+.home-inbox__posts :deep(.video-item--row:focus-within .video-item__bar--row) {
+  opacity: 1;
+  transform: none;
+}
+
+.home-inbox__posts :deep(.video-item__bar--row .video-item__bar-btn .sq-button__content > span) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (hover: none) {
+  .home-inbox__posts :deep(.video-item__bar--row) {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .home-inbox__state {

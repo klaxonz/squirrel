@@ -6,7 +6,7 @@
         <span v-if="historyItems.length" class="continue-rail__count">{{ historyItems.length }}</span>
       </div>
       <Button variant="secondary" size="sm" class="continue-rail__more" @click="$emit('viewMore')">
-        全部
+        查看全部
         <AppIcon name="chevronRight" class="size-3.5" />
       </Button>
     </header>
@@ -142,10 +142,10 @@ defineExpose({ refresh: load })
 .continue-rail {
   min-width: 0;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.85);
+  border: 1px solid var(--app-surface-border-subtle);
   border-radius: var(--radius-lg);
   background: hsl(var(--card));
-  padding: 0.7rem 0.75rem 0.8rem;
+  padding: var(--space-4);
 }
 
 .continue-rail__header {
@@ -153,8 +153,8 @@ defineExpose({ refresh: load })
   min-height: 1.75rem;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.55rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 .continue-rail__heading {
@@ -167,9 +167,9 @@ defineExpose({ refresh: load })
 .continue-rail__header h2 {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: var(--app-text-base);
+  font-size: var(--app-text-lg);
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
 }
 
 .continue-rail__count {
@@ -194,8 +194,8 @@ defineExpose({ refresh: load })
 .continue-rail__track {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(11rem, 1fr);
-  gap: 0.7rem;
+  grid-auto-columns: minmax(10rem, 1fr);
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
   overflow-x: auto;
@@ -299,9 +299,9 @@ defineExpose({ refresh: load })
   display: -webkit-box;
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: var(--app-text-sm);
+  font-size: var(--app-text-md);
   font-weight: 650;
-  line-height: 1.3;
+  line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -313,7 +313,7 @@ defineExpose({ refresh: load })
   gap: 0.35rem;
   overflow: hidden;
   color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-xs);
+  font-size: var(--app-text-sm);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
