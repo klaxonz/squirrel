@@ -112,6 +112,14 @@
   background: hsl(var(--card));
 }
 
+.video-item--row.is-read .video-item__row-thumbnail {
+  opacity: 0.78;
+}
+
+.video-item--row.is-read .video-item__title--row {
+  color: hsl(var(--muted-foreground));
+}
+
 .video-item__thumb--row {
   position: relative;
   width: clamp(11rem, 16vw, 16rem);

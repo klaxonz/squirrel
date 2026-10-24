@@ -8,6 +8,7 @@
           ? (appearance === 'workbench' ? 'video-item--row' : 'video-item--card')
           : 'video-item--grid',
       `video-item--appearance-${appearance}`,
+      { 'is-read': isRead },
     ]"
     @contextmenu.prevent="showContextMenu"
     @pointerenter="prefetchPlayback"
@@ -121,6 +122,7 @@ const emit = defineEmits<{
   /** @deprecated prefer goToProfile */
   goToSubscription: [id: number | string]
   openModal: [video: VideoListItem]
+  readChange: [payload: { videoId: number; isRead: boolean }]
 }>()
 
 const { config: systemConfig } = useSystemConfig()
@@ -228,6 +230,7 @@ const toggleReadStatus = async (markRead: boolean) => {
   isRead.value = markRead
   try {
     await updateVideoReadState(props.video.id, markRead)
+    emit('readChange', { videoId: props.video.id, isRead: markRead })
   } catch (err) {
     isRead.value = previous
     toast.error(errorMessage(err, markRead ? '标记已读失败' : '标记未读失败'))

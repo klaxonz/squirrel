@@ -84,6 +84,7 @@ function mountVideoItem(options: MountOptions = {}) {
     open: vi.fn(),
     profile: vi.fn(),
     subscription: vi.fn(),
+    read: vi.fn(),
   }
   const host = document.createElement('div')
   document.body.append(host)
@@ -97,6 +98,7 @@ function mountVideoItem(options: MountOptions = {}) {
       onOpenModal: handlers.open,
       onGoToProfile: handlers.profile,
       onGoToSubscription: handlers.subscription,
+      onReadChange: handlers.read,
     }),
   })
   mountedApps.push(app)
@@ -187,7 +189,9 @@ describe('VideoItem playback activation', () => {
     expect(like.getAttribute('aria-pressed')).toBe('true')
     read.click()
     await nextTick()
+    await nextTick()
     expect(read.getAttribute('aria-pressed')).toBe('true')
+    expect(handlers.read).toHaveBeenCalledWith({ videoId: 42, isRead: true })
     later.click()
     await nextTick()
 

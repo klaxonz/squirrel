@@ -190,15 +190,15 @@
                 </header>
 
                 <div class="subscription-feed-day__items">
-                  <SubscriptionInboxItem
-                    v-for="item in day.items"
-                    :key="item.video.id"
-                    :video="item.video"
-                    :channel-name="item.channelName"
-                    :channel-avatar="item.channelAvatar"
-                    :subscription-id="item.subscriptionId"
-                    @open="openVideo"
-                    @open-channel="inspectChannelById"
+                  <VideoItem
+                    v-for="video in day.items"
+                    :key="video.id"
+                    :video="video"
+                    layout="list"
+                    appearance="workbench"
+                    show-avatar
+                    @open-modal="openVideo"
+                    @go-to-profile="handleFeedProfile"
                     @read-change="handleReadChange"
                   />
                 </div>
@@ -332,7 +332,7 @@ import { useUIStore } from '@/shared/stores/ui'
 import { useUserSettings } from '@/shared/composables/useUserSettings'
 import SubscriptionCard from '@/features/video/components/feed/SubscriptionCard.vue'
 import SubscriptionCardSkeleton from '@/features/video/components/feed/SubscriptionCardSkeleton.vue'
-import SubscriptionInboxItem from '@/features/video/components/subscription/SubscriptionInboxItem.vue'
+import VideoItem from '@/features/video/components/feed/VideoItem.vue'
 import SubscriptionChannelInspector from '@/features/video/components/subscription/SubscriptionChannelInspector.vue'
 import AddChannelDialog from '@/features/video/components/dialogs/AddChannelDialog.vue'
 import ImportSubscriptionDialog from '@/features/video/components/dialogs/ImportSubscriptionDialog.vue'
@@ -365,25 +365,18 @@ type SubscriptionWorkspace = 'activity' | 'channels'
 type ActivityScope = 'unread' | 'all' | 'special'
 type ChannelScope = 'all' | 'issues' | 'special'
 
-type FeedDayItem = {
-  video: VideoListItem
-  channelName: string
-  channelAvatar: string | null
-  subscriptionId: string | number | null
-}
-
 type FeedDayGroup = {
   key: string
   label: string
   count: number
-  items: FeedDayItem[]
+  items: VideoListItem[]
 }
 
 const router = useRouter()
 const uiStore = useUIStore()
 const toast = useToast()
 const desktopBridge = useDesktopBridge()
-const { openVideo, openSubscription } = useVideoCardNavigation(router)
+const { openVideo, openSubscription, openProfile } = useVideoCardNavigation(router)
 const { options: siteOptions, fetchSites } = useSites()
 const { settings, loadUserSettings } = useUserSettings()
 
@@ -521,7 +514,7 @@ const feedEmptyCopy = computed(() => {
 const feedDayGroups = computed<FeedDayGroup[]>(() => {
   const dayMap = new Map<string, {
     label: string
-    items: FeedDayItem[]
+    items: VideoListItem[]
   }>()
 
   for (const video of feedItems.value) {
@@ -532,14 +525,8 @@ const feedDayGroups = computed<FeedDayGroup[]>(() => {
       label: feedDayLabel(date),
       items: [],
     }
-    const profile = primaryVideoProfile(video)
 
-    day.items.push({
-      video,
-      channelName: profile?.name || '未知频道',
-      channelAvatar: profile?.avatar || null,
-      subscriptionId: profile?.id ?? null,
-    })
+    day.items.push(video)
     dayMap.set(dayKey, day)
   }
 
@@ -761,6 +748,14 @@ const inspectChannelById = async (id: string | number | null) => {
   } catch (error) {
     toast.error(errorMessage(error, '频道详情加载失败'))
   }
+}
+
+const handleFeedProfile = (profile: VideoProfile) => {
+  if (profile.profile_source === 'subscription' && profile.id != null) {
+    void inspectChannelById(profile.id)
+    return
+  }
+  void openProfile(profile)
 }
 
 const applySpecialFollowState = (subscriptionId: string | number, enabled: boolean) => {
@@ -1250,6 +1245,13 @@ onUnmounted(() => {
 
 .subscription-feed-day__items > * + * {
   border-top: 1px solid var(--app-hairline);
+}
+
+.subscription-feed-day__items :deep(.video-item--row) {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.875rem 0.9rem;
 }
 
 .subscription-channel-table {
