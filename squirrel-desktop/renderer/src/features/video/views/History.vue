@@ -59,7 +59,7 @@
         </AppEmptyState>
       </div>
 
-      <div v-else-if="groupedVideos.length === 0" class="app-page-empty app-page-empty--compact">
+      <div v-else-if="displayVideos.length === 0" class="app-page-empty app-page-empty--compact">
         <AppEmptyState variant="plain" icon="history" :title="emptyTitle" :copy="emptyDescription" />
       </div>
 
@@ -71,6 +71,18 @@
         :data-history-mode="historyMode"
         :data-history-count="String(displayVideos.length)"
       >
+        <HistoryResume
+          v-if="resumeVideo"
+          :video="resumeVideo"
+          :progress="resumeProgress"
+          :progress-percent="resumePercent"
+          :played-label="resumePlayedLabel"
+          :source="resumeSource"
+          :channel-name="resumeChannelName"
+          @open="handleOpenVideo"
+          @open-profile="handleOpenProfile"
+        />
+
         <section v-for="group in groupedVideos" :key="group.key" class="history-day" data-history-day>
           <header class="history-day__header">
             <div class="history-day__heading">
@@ -131,6 +143,7 @@ import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import HistoryItem from '@/features/video/components/history/HistoryItem.vue'
 import HistoryItemSkeleton from '@/features/video/components/history/HistoryItemSkeleton.vue'
+import HistoryResume from '@/features/video/components/history/HistoryResume.vue'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
 import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import { useProfileNavigation } from '@/features/video/composables/useProfileNavigation'
@@ -200,12 +213,14 @@ const getProgress = (video: VideoHistoryEntry) => {
   return duration > 0 ? Math.max(0, Math.min(1, Number(video.last_position) / duration)) : 0
 }
 
+const isUnfinishedVideo = (video: VideoHistoryEntry) => {
+  const progress = getProgress(video)
+  return progress > 0.01 && progress < 0.95
+}
+
 const displayVideos = computed(() => {
   if (!isContinueMode.value) return videos.value
-  return videos.value.filter((video) => {
-    const progress = getProgress(video)
-    return progress > 0.01 && progress < 0.95
-  })
+  return videos.value.filter(isUnfinishedVideo)
 })
 
 const historySummary = computed(() => (
@@ -262,9 +277,67 @@ const getPlayedAtTimestamp = (playedAt: string | null) => {
   return Number.isNaN(timestamp) ? 0 : timestamp
 }
 
+const resumeVideo = computed(() => (
+  [...displayVideos.value]
+    .filter(isUnfinishedVideo)
+    .sort((left, right) => getPlayedAtTimestamp(right.played_at) - getPlayedAtTimestamp(left.played_at))[0]
+  ?? null
+))
+
+const timelineVideos = computed(() => {
+  const resumeId = resumeVideo.value?.history_id
+  if (resumeId == null) return displayVideos.value
+  return displayVideos.value.filter((video) => video.history_id !== resumeId)
+})
+
+const resumeProgress = computed(() => (
+  resumeVideo.value ? getProgress(resumeVideo.value) : 0
+))
+
+const resumePercent = computed(() => (
+  resumeVideo.value
+    ? Math.max(1, Math.min(99, Math.round(resumeProgress.value * 100)))
+    : 0
+))
+
+const playedTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+})
+
+const resumePlayedLabel = computed(() => {
+  const video = resumeVideo.value
+  if (!video?.played_at) return ''
+  const date = new Date(video.played_at)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${getDayDescriptor(video.played_at).label} ${playedTimeFormatter.format(date)}`
+})
+
+const resumeSource = computed<VideoProfile | null>(() => {
+  const video = resumeVideo.value
+  if (!video) return null
+  const raw = video.subscriptions?.[0] ?? video.actors?.[0] ?? null
+  if (!raw) return null
+  if (raw.profile_source) return raw
+  return {
+    ...raw,
+    profile_source: (video.subscriptions?.length ? 'subscription' : 'creator') as VideoProfile['profile_source'],
+  }
+})
+
+const resumeChannelName = computed(() => {
+  const video = resumeVideo.value
+  if (!video) return ''
+  const names = [...(video.subscriptions || []), ...(video.actors || [])]
+    .map((source) => source.name)
+    .filter(Boolean)
+  return names.join(' / ') || '未知作者'
+})
+
 const groupedVideos = computed<HistoryDayGroup[]>(() => {
   const groups = new Map<string, HistoryDayGroup>()
-  const sortedVideos = [...displayVideos.value].sort(
+  const sortedVideos = [...timelineVideos.value].sort(
     (left, right) => getPlayedAtTimestamp(right.played_at) - getPlayedAtTimestamp(left.played_at),
   )
 
