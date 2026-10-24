@@ -43,6 +43,13 @@
         @keydown.esc.prevent="handleEscape"
       />
 
+      <span
+        v-if="!inputValue && !isFocused"
+        class="global-search__shortcut"
+        aria-hidden="true"
+        @click="focusInput"
+      >{{ shortcutLabel }}</span>
+
       <div class="global-search__actions">
         <div
           v-if="isTyping || isLoadingSuggestions"
@@ -224,6 +231,11 @@ let suggestionTimeout: ReturnType<typeof setTimeout> | undefined
 let suggestionRequestId = 0
 
 const trimmedInputValue = computed(() => inputValue.value.trim())
+const shortcutLabel = computed(() => (
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform)
+    ? '⌘K'
+    : 'Ctrl K'
+))
 const showSuggestions = computed(() => props.suggestionsEnabled && isPanelOpen.value && isFocused.value)
 const searchModesList = computed(() => props.searchModes ?? [])
 const activeSearchModeLabel = computed(() => {
@@ -447,6 +459,10 @@ function handleFocusOut(e: FocusEvent) {
   }
 }
 
+function focusInput() {
+  inputRef.value?.focus()
+}
+
 function moveActiveSuggestion(dir: number) {
   isPanelOpen.value = true
   const len = selectableItems.value.length
@@ -594,6 +610,42 @@ onUnmounted(() => {
      read as invisible against the input surface. */
   color: hsl(var(--muted-foreground));
   font-weight: 400;
+}
+
+.global-search__shortcut {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  background: hsl(var(--muted) / 0.55);
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+}
+
+.global-search__shortcut:hover {
+  border-color: hsl(var(--foreground) / 0.2);
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+@media (max-width: 760px) {
+  .global-search__shortcut {
+    display: none;
+  }
 }
 
 .global-search__actions {

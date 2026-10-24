@@ -59,7 +59,7 @@
             <h1 class="app-h2">
               {{ video.title }}
             </h1>
-            <div v-if="videoPublishedText || video.site" class="video-detail__meta">
+            <div v-if="videoPublishedText || video.site || video.duration" class="video-detail__meta">
               <span v-if="videoPublishedText">{{ videoPublishedText }}</span>
               <span
                 v-if="videoPublishedText && video.site"
@@ -67,6 +67,12 @@
                 aria-hidden="true"
               >·</span>
               <span v-if="video.site" class="video-detail__site">{{ video.site }}</span>
+              <span
+                v-if="(videoPublishedText || video.site) && video.duration"
+                class="video-detail__dot"
+                aria-hidden="true"
+              >·</span>
+              <span v-if="video.duration">{{ formatDuration(video.duration as number) }}</span>
             </div>
           </div>
 
@@ -828,23 +834,27 @@ const {
 .video-detail__actions {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   padding-block: var(--space-1);
 }
 
 .video-detail__action-group {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: 0.125rem;
+  padding: 0.2rem;
+  border: 1px solid var(--app-hairline);
+  border-radius: 999px;
+  background: hsl(var(--muted) / 0.35);
 }
 
 .video-detail__action-button {
   display: inline-flex;
-  height: 2rem;
+  height: 2.25rem;
   flex: 0 0 auto;
   align-items: center;
   gap: var(--space-2);
-  padding-inline: 0.625rem;
+  padding-inline: 0.75rem;
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
@@ -858,17 +868,28 @@ const {
     color var(--duration-fast) var(--ease-default),
     background-color var(--duration-fast) var(--ease-default),
     border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default),
     opacity var(--duration-fast) var(--ease-default);
 }
 
 .video-detail__action-button:hover {
-  background: hsl(var(--muted) / 0.62);
+  background: hsl(var(--foreground) / 0.06);
   color: hsl(var(--foreground));
 }
 
 .video-detail__action-button.is-active {
-  background: hsl(var(--primary) / 0.12);
-  color: hsl(var(--primary));
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.08);
+}
+
+.video-detail__action-button--more {
+  border-color: var(--app-hairline);
+  background: hsl(var(--card));
+}
+
+.video-detail__action-button--more:hover {
+  background: hsl(var(--muted) / 0.55);
 }
 
 .video-detail__action-button:focus-visible {
@@ -943,9 +964,11 @@ const {
   max-width: 64rem;
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: clamp(1.125rem, 1.4vw, 1.375rem);
-  line-height: 1.35;
-  letter-spacing: -0.01em;
+  font-size: clamp(1.5rem, 1.9vw, 2rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
 }
 
 .video-detail__meta {
@@ -1037,7 +1060,7 @@ const {
 
 .video-detail__subscribe-button {
   min-width: 4.25rem;
-  height: 2rem;
+  height: 2.25rem;
   padding-inline: var(--space-3);
   border: 1px solid transparent;
   border-radius: 999px;
