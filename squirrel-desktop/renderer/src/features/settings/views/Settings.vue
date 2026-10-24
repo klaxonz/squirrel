@@ -56,24 +56,47 @@
             <p>控制桌面端配色与对比；改动立即生效，无需保存。</p>
           </div>
 
-          <div class="app-settings-panel">
-            <div class="app-settings-row settings-theme-row">
-              <div class="app-settings-row__copy">
-                <div class="app-settings-row__title">颜色模式</div>
-                <div class="app-settings-row__desc">浅色、深色或跟随操作系统主题。</div>
-              </div>
-              <AppSegmentedControl
-                :model-value="themeMode"
-                :options="themeOptions"
-                aria-label="界面主题"
-                class="settings-theme-control"
-                @update:model-value="handleThemeModeChange"
+          <div class="app-settings-panel settings-theme-panel">
+            <div class="settings-theme-copy">
+              <div class="app-settings-row__title">颜色模式</div>
+              <div class="app-settings-row__desc">选择浅色、深色，或让界面跟随系统。</div>
+            </div>
+
+            <div class="settings-theme-grid" role="group" aria-label="界面主题">
+              <button
+                v-for="option in themeOptions"
+                :key="option.value"
+                type="button"
+                class="settings-theme-card"
+                :class="{ 'is-active': themeMode === option.value }"
+                :aria-pressed="themeMode === option.value"
+                @click="handleThemeModeChange(option.value)"
               >
-                <template #option="{ option }">
-                  <AppIcon v-if="option.icon" :name="option.icon" class="h-4 w-4" />
+                <span
+                  class="settings-theme-card__preview"
+                  :class="`is-${option.value}`"
+                  aria-hidden="true"
+                >
+                  <span class="settings-theme-card__chrome" />
+                  <span class="settings-theme-card__body">
+                    <span class="settings-theme-card__rail" />
+                    <span class="settings-theme-card__page">
+                      <span class="settings-theme-card__line settings-theme-card__line--title" />
+                      <span class="settings-theme-card__line" />
+                      <span class="settings-theme-card__line settings-theme-card__line--short" />
+                    </span>
+                  </span>
+                </span>
+                <span class="settings-theme-card__label">
+                  <AppIcon :name="option.icon" class="h-4 w-4" />
                   <span>{{ option.label }}</span>
-                </template>
-              </AppSegmentedControl>
+                  <AppIcon
+                    v-if="themeMode === option.value"
+                    name="check"
+                    class="settings-theme-card__check h-3.5 w-3.5"
+                  />
+                </span>
+              </button>
             </div>
           </div>
         </section>
@@ -255,7 +278,6 @@ import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
-import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Switch } from '@/shared/ui/switch'
@@ -566,7 +588,6 @@ const onSystemToggle = async (key: string, value: boolean) => {
 }
 
 /* Multi-line settings rows stay scannable (title + description + control). */
-.settings-theme-row,
 .settings-sections :deep(.app-settings-row) {
   min-height: 3.5rem;
   align-items: flex-start;
@@ -584,15 +605,157 @@ const onSystemToggle = async (key: string, value: boolean) => {
   margin-top: 0.125rem;
 }
 
-.settings-theme-control {
-  width: min(100%, 22rem);
+.settings-theme-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
 }
 
-.settings-theme-control :deep(.app-segmented-control__item) {
+.settings-theme-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.settings-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.settings-theme-card {
+  display: flex;
   min-width: 0;
-  flex: 1 1 0;
-  gap: var(--space-2);
-  justify-content: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--app-surface-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 0.45rem;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
+}
+
+.settings-theme-card:hover {
+  border-color: hsl(var(--foreground) / 0.22);
+}
+
+.settings-theme-card.is-active {
+  border-color: hsl(var(--foreground) / 0.52);
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.1);
+}
+
+.settings-theme-card:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.58);
+  outline-offset: 2px;
+}
+
+.settings-theme-card__preview {
+  --pv-bg: #f7f1e7;
+  --pv-chrome: #eee5d8;
+  --pv-rail: #e9dfd1;
+  --pv-title: #453c31;
+  --pv-line: #cfc4b3;
+  display: flex;
+  height: 5.5rem;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: var(--radius-md);
+  background: var(--pv-bg);
+}
+
+.settings-theme-card__preview.is-dark {
+  --pv-bg: #171412;
+  --pv-chrome: #211d19;
+  --pv-rail: #1d1916;
+  --pv-title: #ece3d7;
+  --pv-line: #5c544a;
+}
+
+.settings-theme-card__preview.is-system {
+  background: linear-gradient(90deg, #f7f1e7 50%, #171412 50%);
+}
+
+.settings-theme-card__chrome {
+  height: 0.5rem;
+  flex: 0 0 auto;
+  border-bottom: 1px solid hsl(var(--border) / 0.45);
+  background: var(--pv-chrome);
+}
+
+.settings-theme-card__body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.settings-theme-card__rail {
+  width: 27%;
+  flex: 0 0 auto;
+  background: var(--pv-rail);
+}
+
+.settings-theme-card__page {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.55rem;
+}
+
+.settings-theme-card__line {
+  width: 100%;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--pv-line);
+}
+
+.settings-theme-card__line--title {
+  width: 55%;
+  height: 0.35rem;
+  background: var(--pv-title);
+}
+
+.settings-theme-card__line--short {
+  width: 68%;
+}
+
+.settings-theme-card__preview.is-system .settings-theme-card__chrome {
+  background: linear-gradient(90deg, #eee5d8 50%, #211d19 50%);
+}
+
+.settings-theme-card__preview.is-system .settings-theme-card__rail {
+  background: linear-gradient(90deg, #e9dfd1 50%, #1d1916 50%);
+}
+
+.settings-theme-card__preview.is-system .settings-theme-card__line {
+  background: linear-gradient(90deg, #cfc4b3 50%, #5c544a 50%);
+}
+
+.settings-theme-card__preview.is-system .settings-theme-card__line--title {
+  background: linear-gradient(90deg, #453c31 50%, #ece3d7 50%);
+}
+
+.settings-theme-card__label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.4rem;
+  padding-inline: 0.1rem;
+  font-size: var(--app-text-sm);
+  font-weight: 600;
+}
+
+.settings-theme-card__check {
+  margin-left: auto;
+  color: hsl(var(--foreground));
 }
 
 .settings-server-summary {
@@ -670,15 +833,6 @@ const onSystemToggle = async (key: string, value: boolean) => {
 }
 
 @media (max-width: 900px) {
-  .settings-theme-row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .settings-theme-control {
-    width: 100%;
-  }
-
   .settings-server-form__controls {
     grid-template-columns: 1fr auto;
   }
@@ -690,6 +844,12 @@ const onSystemToggle = async (key: string, value: boolean) => {
   .settings-server-form__meta {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 720px) {
+  .settings-theme-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>
