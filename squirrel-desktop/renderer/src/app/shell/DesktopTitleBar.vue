@@ -250,17 +250,18 @@ onUnmounted(() => {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0;
+  gap: 0.125rem;
   margin-left: 0.25rem;
+  padding-right: 0.5rem;
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
 
 .titlebar__control {
-  width: 2.75rem;
-  height: var(--app-titlebar-height);
+  width: 2.5rem;
+  height: 2rem;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   color: hsl(var(--muted-foreground));
   transition:
     background-color var(--duration-fast) var(--ease-default),
@@ -268,12 +269,26 @@ onUnmounted(() => {
 }
 
 .titlebar__control:hover {
-  background: var(--app-control-hover-bg);
+  background: hsl(var(--foreground) / 0.045);
   color: hsl(var(--foreground));
+}
+
+.titlebar__control:active {
+  background: hsl(var(--foreground) / 0.09);
+}
+
+.titlebar__control:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.6);
+  outline-offset: -2px;
 }
 
 .titlebar__control--close:hover {
   background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+
+.titlebar__control--close:active {
+  background: hsl(var(--destructive) / 0.9);
   color: hsl(var(--destructive-foreground));
 }
 

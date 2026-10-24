@@ -119,7 +119,7 @@
   --container-max-width: 2560px;
 
   /* Compact command row and persistent navigation rail. */
-  --app-titlebar-height: 3.5rem;
+  --app-titlebar-height: 3rem;
   --app-header-height: 2.75rem;
   --sidebar-expanded-width: 14.5rem;
   --sidebar-collapsed-width: 3.5rem;
