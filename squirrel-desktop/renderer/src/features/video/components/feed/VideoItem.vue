@@ -4,9 +4,7 @@
     :class="[
       layout === 'lead'
         ? 'video-item--lead'
-        : layout === 'list'
-          ? (appearance === 'workbench' ? 'video-item--row' : 'video-item--card')
-          : 'video-item--grid',
+        : (layout === 'list' && appearance === 'workbench' ? 'video-item--row' : 'video-item--card'),
       `video-item--appearance-${appearance}`,
       { 'is-read': isRead },
     ]"
@@ -27,7 +25,7 @@
       @toggle-later="toggleLater"
       @image-error="emit('leadImageError', video.id)"
     />
-    <VideoItemWorkbenchLayout
+    <VideoItemRowLayout
       v-else-if="layout === 'list' && appearance === 'workbench'"
       :video="video"
       :thumbnail="thumbnailPresentation"
@@ -39,19 +37,7 @@
       @toggle-read="toggleReadStatus"
       @toggle-later="toggleLater"
     />
-    <VideoItemFeedLayout
-      v-else-if="layout === 'list'"
-      :video="video"
-      :thumbnail="thumbnailPresentation"
-      :profile="profilePresentation"
-      :actions="actionPresentation"
-      @activate="handleOpen"
-      @open-profile="goToProfile"
-      @toggle-like="toggleLikeVideo"
-      @toggle-read="toggleReadStatus"
-      @toggle-later="toggleLater"
-    />
-    <VideoItemGridLayout
+    <VideoItemCardLayout
       v-else
       :video="video"
       :thumbnail="thumbnailPresentation"
@@ -85,10 +71,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import ContextMenu from './ContextMenu.vue'
-import VideoItemFeedLayout from './VideoItemFeedLayout.vue'
-import VideoItemGridLayout from './VideoItemGridLayout.vue'
+import VideoItemCardLayout from './VideoItemCardLayout.vue'
 import VideoItemLeadLayout from './VideoItemLeadLayout.vue'
-import VideoItemWorkbenchLayout from './VideoItemWorkbenchLayout.vue'
+import VideoItemRowLayout from './VideoItemRowLayout.vue'
 import useVideoInteraction from '@/features/video/composables/useVideoInteraction'
 import { updateVideoReadState } from '@/shared/api'
 import { useSystemConfig } from '@/shared/composables/useSystemConfig'

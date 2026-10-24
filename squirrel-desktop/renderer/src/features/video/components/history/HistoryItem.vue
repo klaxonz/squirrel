@@ -222,10 +222,11 @@ const prefetchPlayback = () => {
   overflow: hidden;
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: var(--app-text-lg);
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.35;
+  letter-spacing: -0.015em;
+  line-height: 1.4;
   text-wrap: pretty;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;

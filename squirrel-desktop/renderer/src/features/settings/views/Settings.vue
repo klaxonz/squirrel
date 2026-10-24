@@ -504,10 +504,10 @@ const onSystemToggle = async (key: string, value: boolean) => {
 .settings-nav__title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--font-sans);
-  font-size: var(--app-text-xl);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-size: var(--app-text-2xl);
+  font-weight: 650;
+  letter-spacing: -0.02em;
 }
 
 .settings-nav__list {

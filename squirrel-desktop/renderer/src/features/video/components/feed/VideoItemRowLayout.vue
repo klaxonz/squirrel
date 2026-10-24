@@ -1,28 +1,27 @@
 <template>
   <VideoItemPlaybackControl :title="video.title" @activate="emit('activate')" />
-  <div class="video-item__presentation">
-    <VideoItemThumbnail v-bind="thumbnail" variant="grid" />
-    <div class="video-item__headline video-item__headline--grid">
-      <span
-        v-if="!video.is_read"
-        class="video-item__unread-dot"
-        role="img"
-        aria-label="未读"
-      />
-      <h3 class="video-item__title video-item__title--grid">{{ video.title }}</h3>
-    </div>
+
+  <div class="video-item__row-media">
+    <VideoItemThumbnail v-bind="thumbnail" variant="row" />
+    <VideoItemActions
+      v-bind="actions"
+      overlay
+      class="video-item__controls"
+      @toggle-like="emit('toggleLike')"
+      @toggle-read="emit('toggleRead', $event)"
+      @toggle-later="emit('toggleLater')"
+    />
   </div>
-  <div class="video-item__body video-item__controls">
-    <VideoItemProfileMetadata v-bind="profile" grid @open-profile="emit('openProfile', $event)" />
+
+  <div class="video-item__row-content">
+    <h3 class="video-item__title video-item__title--card">{{ video.title }}</h3>
+    <VideoItemProfileMetadata
+      v-bind="profile"
+      grid
+      class="video-item__controls"
+      @open-profile="emit('openProfile', $event)"
+    />
   </div>
-  <VideoItemActions
-    v-bind="actions"
-    overlay
-    class="video-item__controls"
-    @toggle-like="emit('toggleLike')"
-    @toggle-read="emit('toggleRead', $event)"
-    @toggle-later="emit('toggleLater')"
-  />
 </template>
 
 <script setup lang="ts">
@@ -38,6 +37,7 @@ defineProps<{
   profile: InstanceType<typeof VideoItemProfileMetadata>['$props']
   actions: InstanceType<typeof VideoItemActions>['$props']
 }>()
+
 const emit = defineEmits<{
   activate: []
   openProfile: [profile: VideoProfile]

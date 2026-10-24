@@ -4,7 +4,7 @@
       <AppOperatePageHeader title="历史" :summary="historySummary" size="lg" />
     </header>
 
-    <AppToolbarFrame bordered sticky boundary="browse" divider="content">
+    <AppToolbarFrame bordered compact sticky boundary="browse" divider="content">
       <div class="history-toolbar">
         <AppSectionNav
           class="app-section-nav--optical"
@@ -527,10 +527,10 @@ onMounted(() => {
   margin: 0;
   color: hsl(var(--foreground));
   font-family: var(--font-display);
-  font-size: var(--app-text-lg);
+  font-size: var(--app-text-base);
   font-weight: 600;
   line-height: 1.25;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
 }
 
 .history-day__detail {

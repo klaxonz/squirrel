@@ -69,7 +69,9 @@ withDefaults(defineProps<{
 }
 
 .app-operate-page-header--lg .app-operate-page-header__title h1 {
-  font-size: var(--app-text-4xl);
+  font-size: clamp(1.875rem, 2vw, 2rem);
+  font-weight: 650;
+  letter-spacing: -0.025em;
 }
 
 .app-operate-page-header__copy p {

@@ -203,7 +203,7 @@ describe('VideoItem playback activation', () => {
 
 describe('VideoItem presentation and supporting behavior', () => {
   it.each([
-    { layout: 'grid' as const, appearance: 'default' as const, className: 'video-item--grid' },
+    { layout: 'grid' as const, appearance: 'default' as const, className: 'video-item--card' },
     { layout: 'list' as const, appearance: 'default' as const, className: 'video-item--card' },
     { layout: 'list' as const, appearance: 'workbench' as const, className: 'video-item--row' },
   ])('renders $className with one playback control', ({ layout, appearance, className }) => {

@@ -4,7 +4,7 @@
       <AppOperatePageHeader title="视频库" :summary="videosSummary" size="lg" />
     </header>
 
-    <AppToolbarFrame bordered sticky boundary="browse" divider="content">
+    <AppToolbarFrame bordered compact sticky boundary="browse" divider="content">
         <FeedToolbar
           v-if="searchMode !== 'remote'"
           variant="workbench"
@@ -347,7 +347,7 @@ watch(() => route.query.special, (value) => {
 <style scoped>
 .videos-workbench {
   min-height: 100%;
-  background: hsl(var(--card));
+  background: hsl(var(--background));
 }
 
 /* Toolbar chrome (sticky band, divider, reading boundary) is shared with the
@@ -435,9 +435,10 @@ watch(() => route.query.special, (value) => {
    pills, filter chips and cards keep one horizontal edge. */
 .videos-workbench__canvas {
   min-width: 0;
-  width: min(100%, var(--app-page-max-width));
+  width: 100%;
+  max-width: var(--app-content-browse-max);
   margin-inline: auto;
-  padding-inline: var(--app-content-media-gutter);
+  padding-inline: var(--app-page-gutter);
   padding-block: 1.05rem 3rem;
 }
 

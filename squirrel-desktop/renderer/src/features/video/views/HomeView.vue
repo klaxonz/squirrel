@@ -1,53 +1,49 @@
 <template>
   <AppPageShell class="home-feed" variant="compact" surface="consume" width="browse">
-    <div class="home-feed__page">
-      <header class="home-feed__header">
-        <AppOperatePageHeader
-          title="首页"
-          summary="订阅收件箱"
-          size="lg"
-        >
-          <template #actions>
-            <AppSectionNav
-              :model-value="activeFilter"
-              :options="HOME_INBOX_FILTER_OPTIONS"
-              aria-label="首页内容范围"
-              @change="setFilter"
-            />
-            <Button variant="ghost" size="sm" class="home-feed__view-all" @click="goToAllVideos">
-              全部视频
-              <AppIcon name="chevronRight" class="size-3.5" />
-            </Button>
-          </template>
-        </AppOperatePageHeader>
-      </header>
+    <header class="app-page-heading">
+      <AppOperatePageHeader title="首页" summary="订阅收件箱" size="lg" />
+    </header>
 
-      <main class="home-feed__main" aria-label="首页信息流">
-
-        <NewContentBar
-          class="home-feed__new-content"
-          :visible="newContentVisible"
-          :count="newContentCount"
-          @apply="applyNewContent"
+    <AppToolbarFrame bordered compact boundary="browse" divider="content" sticky>
+      <div class="home-feed__toolbar">
+        <AppSectionNav
+          :model-value="activeFilter"
+          :options="HOME_INBOX_FILTER_OPTIONS"
+          aria-label="首页内容范围"
+          @change="setFilter"
         />
+        <Button variant="ghost" size="sm" class="home-feed__view-all" @click="goToAllVideos">
+          全部视频
+          <AppIcon name="chevronRight" class="size-3.5" />
+        </Button>
+      </div>
+    </AppToolbarFrame>
 
-        <ContinueWatching
-          ref="continueWatchingRef"
-          @openModal="openVideo"
-          @viewMore="goToContinueWatching"
-          @goToProfile="openProfile"
-          @goToSubscription="openSubscription"
-        />
+    <main class="home-feed__main" aria-label="首页信息流">
+      <NewContentBar
+        class="home-feed__new-content"
+        :visible="newContentVisible"
+        :count="newContentCount"
+        @apply="applyNewContent"
+      />
 
-        <HomeInbox
-          ref="homeInboxRef"
-          :filter="activeFilter"
-          @openModal="openVideo"
-          @goToProfile="openProfile"
-          @goToSubscription="openSubscription"
-        />
-      </main>
-    </div>
+      <ContinueWatching
+        ref="continueWatchingRef"
+        compact
+        @openModal="openVideo"
+        @viewMore="goToContinueWatching"
+        @goToProfile="openProfile"
+        @goToSubscription="openSubscription"
+      />
+
+      <HomeInbox
+        ref="homeInboxRef"
+        :filter="activeFilter"
+        @openModal="openVideo"
+        @goToProfile="openProfile"
+        @goToSubscription="openSubscription"
+      />
+    </main>
   </AppPageShell>
 </template>
 
@@ -60,6 +56,7 @@ import NewContentBar from '@/shared/components/layout/NewContentBar.vue'
 import { useNewContentDetector, prependPreservingScroll } from '@/shared/composables/useNewContentDetector'
 import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
 import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
@@ -128,15 +125,18 @@ watch(activeFilter, () => resetNewContent())
 
 <style scoped>
 .home-feed { background: hsl(var(--background)); }
-.home-feed__page {
+
+.home-feed__toolbar {
   display: flex;
-  width: min(100%, var(--app-page-max-width));
-  margin-inline: auto;
-  flex-direction: column;
-  gap: var(--app-section-gap);
-  padding: var(--app-page-pad-top) var(--app-page-gutter) var(--space-9);
+  min-width: 0;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
 }
+
 .home-feed__view-all {
+  flex: 0 0 auto;
   gap: 0.2rem;
   padding-inline: 0.25rem;
   color: hsl(var(--muted-foreground));
@@ -149,21 +149,23 @@ watch(activeFilter, () => resetNewContent())
   color: hsl(var(--foreground));
 }
 
-.home-feed__header {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-sticky);
+.home-feed__main {
+  display: flex;
+  width: 100%;
+  max-width: var(--app-content-browse-max);
   min-width: 0;
-  margin-inline: calc(var(--app-page-gutter) * -1);
-  padding: 0 var(--app-page-gutter);
-  border-bottom: 1px solid var(--app-hairline);
-  background: hsl(var(--background) / 0.96);
-  backdrop-filter: blur(8px);
+  margin-inline: auto;
+  flex-direction: column;
+  gap: var(--app-section-gap);
+  padding: var(--space-5) var(--app-page-gutter) var(--space-9);
 }
-.home-feed__main { display: flex; min-width: 0; flex-direction: column; gap: var(--space-6); }
+
 .home-feed__new-content { margin-bottom: calc(var(--space-3) * -1); }
+
 @media (max-width: 640px) {
-  .home-feed__page { gap: var(--space-5); padding: var(--space-3) var(--space-3) var(--space-8); }
-  .home-feed__main { gap: var(--space-5); }
+  .home-feed__main {
+    gap: var(--space-5);
+    padding: var(--space-3) var(--space-3) var(--space-8);
+  }
 }
- </style>
+</style>

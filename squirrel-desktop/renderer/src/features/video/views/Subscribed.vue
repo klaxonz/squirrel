@@ -5,7 +5,7 @@
         <AppOperatePageHeader title="订阅" :summary="subscriptionSummary" size="lg" />
       </header>
 
-      <AppToolbarFrame bordered compact boundary="browse" divider="content">
+      <AppToolbarFrame bordered compact sticky boundary="browse" divider="content">
         <div class="subscription-toolbar">
           <div class="subscription-toolbar__navigation">
             <AppSectionNav

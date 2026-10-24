@@ -1,5 +1,9 @@
 <template>
-  <section v-if="historyItems.length > 0 || loading || loadError" class="continue-rail">
+  <section
+    v-if="historyItems.length > 0 || loading || loadError"
+    class="continue-rail"
+    :class="{ 'continue-rail--compact': compact }"
+  >
     <header class="continue-rail__header">
       <div class="continue-rail__heading">
         <h2>继续观看</h2>
@@ -82,6 +86,10 @@ import { errorMessage } from '@/shared/lib/errorMessage'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { Logger } from '@/shared/lib/logger'
 import type { VideoHistoryEntry, VideoProfile } from '@/features/video/types/video'
+
+const props = withDefaults(defineProps<{
+  compact?: boolean
+}>(), { compact: false })
 
 defineEmits<{
   openModal: [video: VideoHistoryEntry]
@@ -242,7 +250,7 @@ defineExpose({ refresh: load })
   display: block;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: var(--app-media-thumb-placeholder);
   isolation: isolate;
 }
@@ -296,7 +304,8 @@ defineExpose({ refresh: load })
   display: -webkit-box;
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: var(--app-text-md);
+  font-family: var(--font-display);
+  font-size: var(--app-text-base);
   font-weight: 600;
   line-height: 1.35;
   -webkit-box-orient: vertical;
@@ -310,7 +319,7 @@ defineExpose({ refresh: load })
   gap: 0.35rem;
   overflow: hidden;
   color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-xs);
+  font-size: var(--app-text-sm);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -371,4 +380,68 @@ defineExpose({ refresh: load })
     transform: none;
   }
 }
- </style>
+
+/* Compact Home strip: the lead remains the only hero. */
+.continue-rail--compact .continue-rail__track {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-columns: auto;
+  gap: var(--space-3);
+  overflow: visible;
+}
+
+.continue-rail--compact .continue-rail__track > li {
+  min-width: 0;
+}
+
+.continue-rail--compact .continue-rail__card {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 4.25rem;
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: var(--radius-md);
+  padding: 0.45rem;
+  background: hsl(var(--card));
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
+}
+
+.continue-rail--compact .continue-rail__card:hover,
+.continue-rail--compact .continue-rail__card:focus-visible {
+  border-color: hsl(var(--foreground) / 0.18);
+  background: hsl(var(--card));
+}
+
+.continue-rail--compact .continue-rail__visual {
+  width: 100%;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+.continue-rail--compact .continue-rail__resume {
+  display: none;
+}
+
+.continue-rail--compact .continue-rail__copy {
+  gap: 0.2rem;
+}
+
+.continue-rail--compact .continue-rail__title {
+  font-size: var(--app-text-md);
+}
+
+@media (max-width: 1180px) {
+  .continue-rail--compact .continue-rail__track {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .continue-rail--compact .continue-rail__track {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+</style>

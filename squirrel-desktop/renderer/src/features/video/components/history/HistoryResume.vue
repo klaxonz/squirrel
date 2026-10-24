@@ -131,9 +131,10 @@ const emit = defineEmits<{
 
 .history-resume__eyebrow {
   color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-badge-size);
+  font-family: var(--font-mono);
+  font-size: var(--app-text-sm);
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   line-height: 1.2;
   text-transform: uppercase;
 }

@@ -93,19 +93,19 @@ const imageClasses = computed(() => [
 
 .video-thumbnail__fallback {
   background: var(--app-media-thumb-placeholder);
-  color: hsl(var(--app-media-on-image-muted) / 0.75);
+  color: var(--app-media-placeholder-fg);
 }
 
 .video-thumbnail__fallback-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid hsl(var(--app-media-on-image) / 0.12);
-  background: hsl(var(--overlay) / 0.35);
-  color: hsl(var(--app-media-on-image) / 0.55);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  color: var(--app-media-placeholder-fg);
 }
 
 .video-thumbnail__fallback-label {
-  color: hsl(var(--app-media-on-image-muted) / 0.7);
+  color: var(--app-media-placeholder-fg);
 }
 </style>

@@ -51,11 +51,11 @@ defineEmits<{
 .music-section-title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: var(--app-h3-size);
-  font-weight: var(--app-h3-weight);
-  letter-spacing: 0;
-  line-height: var(--app-h3-leading);
+  font-family: var(--font-display);
+  font-size: var(--app-text-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 .music-section-description {

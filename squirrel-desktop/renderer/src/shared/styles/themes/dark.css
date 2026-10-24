@@ -49,7 +49,7 @@
   --overlay: 0 0% 0%;
 
   /* Brand punctuation (wordmark mark only) and reader links. */
-  --brand: 16 100% 50%;                 /* #FF4500 */
+  --brand: 16 58% 55%;
   --reader-link: 142 69% 45%;           /* #22C55E */
 
   /* Navigation rail is the canvas; the hairline does the separating. */
@@ -80,28 +80,28 @@
 
 .light {
   /* Warm paper: #F6F1E8 canvas, #FDFAF4 surfaces, #E7DFD2 hairlines. */
-  --background: 36 30% 96%;
-  --foreground: 30 10% 15%;             /* #2A2622 */
+  --background: 36 24% 94%;
+  --foreground: 30 12% 13%;
 
   --card: 36 40% 98%;
-  --card-foreground: 30 10% 15%;
+  --card-foreground: 30 12% 13%;
 
   --popover: 36 40% 98%;
-  --popover-foreground: 30 10% 15%;
+  --popover-foreground: 30 12% 13%;
 
-  --primary: 30 10% 15%;
+  --primary: 30 10% 13%;
   --primary-foreground: 36 40% 98%;
-  --primary-hover: 30 10% 20%;
-  --primary-active: 30 10% 26%;
+  --primary-hover: 30 10% 18%;
+  --primary-active: 30 10% 24%;
 
-  --secondary: 36 25% 93%;              /* #F2ECE1 */
-  --secondary-foreground: 30 10% 15%;
+  --secondary: 36 22% 92%;
+  --secondary-foreground: 30 12% 13%;
 
-  --muted: 36 25% 93%;
-  --muted-foreground: 30 8% 43%;        /* #756C62 — 4.6:1 on paper */
+  --muted: 36 22% 92%;
+  --muted-foreground: 30 8% 38%;
 
-  --accent: 36 25% 91%;
-  --accent-foreground: 30 10% 15%;
+  --accent: 36 22% 90%;
+  --accent-foreground: 30 12% 13%;
 
   --destructive: 0 60% 45%;
   --destructive-foreground: 0 0% 100%;
@@ -112,19 +112,23 @@
   --info: 205 80% 36%;
   --info-foreground: 0 0% 100%;
 
-  --border: 32 15% 88%;                 /* #E7DFD2 */
-  --input: 32 15% 82%;
+  --border: 32 14% 85%;
+  --input: 32 14% 79%;
   --control: 36 40% 98%;
-  --ring: 30 10% 15%;
+  --ring: 30 10% 13%;
 
   --overlay: 0 0% 0%;
 
-  --brand: 16 100% 50%;
+  --brand: 16 58% 44%;
   --reader-link: 142 72% 29%;           /* #15803D — 4.8:1 on paper */
 
-  --sidebar: 36 35% 97%;                /* #FBF7F0 */
-  --sidebar-foreground: 30 10% 15%;
+  --sidebar: 36 28% 96%;
+  --sidebar-foreground: 30 12% 13%;
   --sidebar-border: 32 15% 88%;
+
+  /* Media placeholders are paper, not black holes, in the light canvas. */
+  --app-media-thumb-placeholder: hsl(var(--muted));
+  --app-media-placeholder-fg: hsl(var(--muted-foreground));
 
   --shadow-xs: 0 1px 2px hsl(30 15% 10% / 0.04);
   --shadow-sm: 0 1px 3px hsl(30 15% 10% / 0.06), 0 1px 2px hsl(30 15% 10% / 0.04);

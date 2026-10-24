@@ -37,7 +37,7 @@
       <AppIcon :name="isLater ? 'watchLaterActive' : 'watchLater'" class="size-4" />
     </Button>
   </div>
-  <footer v-else class="video-item__bar" :class="{ 'video-item__bar--row': row }">
+  <footer v-else class="video-item__bar">
     <Button variant="ghost" size="sm" class="video-item__bar-btn" :class="{ 'is-on': isLiked }"
       :title="isLiked ? '取消喜欢' : '喜欢'" :aria-pressed="isLiked" data-action="like"
       @click="emit('toggleLike')">
@@ -68,8 +68,7 @@ withDefaults(defineProps<{
   isRead: boolean
   isLater: boolean
   overlay?: boolean
-  row?: boolean
-}>(), { overlay: false, row: false })
+}>(), { overlay: false })
 
 const emit = defineEmits<{
   toggleLike: []

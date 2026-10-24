@@ -1,22 +1,47 @@
 <template>
   <div ref="root" class="video-list" :class="`video-list--${presentation}`">
-    <div
-      v-if="videos.length > 0"
-      :class="contentLayoutClass"
-    >
-      <VideoItem
-        v-for="video in videos"
-        :key="video.id"
-        :video="video"
-        :show-avatar="showAvatar"
-        :sort-by="sortBy"
-        :layout="uiStore.viewMode"
-        :appearance="presentation === 'workbench' ? 'workbench' : 'default'"
-        @goToProfile="emit('goToProfile', $event)"
-        @goToSubscription="emit('goToSubscription', $event)"
-        @openModal="emit('openModal', video)"
-      />
-    </div>
+    <template v-if="videos.length > 0">
+      <template v-if="grouped">
+        <section
+          v-for="group in videoGroups"
+          :key="group.title"
+          class="video-list__group"
+        >
+          <header class="video-list__group-header">
+            <h3>{{ group.title }}</h3>
+            <span>{{ group.videos.length }}</span>
+          </header>
+          <div :class="contentLayoutClass">
+            <VideoItem
+              v-for="video in group.videos"
+              :key="video.id"
+              :video="video"
+              :show-avatar="showAvatar"
+              :sort-by="sortBy"
+              :layout="uiStore.viewMode"
+              :appearance="presentation === 'workbench' ? 'workbench' : 'default'"
+              @goToProfile="emit('goToProfile', $event)"
+              @goToSubscription="emit('goToSubscription', $event)"
+              @openModal="emit('openModal', video)"
+            />
+          </div>
+        </section>
+      </template>
+      <div v-else :class="contentLayoutClass">
+        <VideoItem
+          v-for="video in videos"
+          :key="video.id"
+          :video="video"
+          :show-avatar="showAvatar"
+          :sort-by="sortBy"
+          :layout="uiStore.viewMode"
+          :appearance="presentation === 'workbench' ? 'workbench' : 'default'"
+          @goToProfile="emit('goToProfile', $event)"
+          @goToSubscription="emit('goToSubscription', $event)"
+          @openModal="emit('openModal', video)"
+        />
+      </div>
+    </template>
 
     <div v-if="loading && !refreshing" :class="loadingLayoutClass">
       <VideoSkeleton
@@ -42,6 +67,7 @@ import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import VideoItem from './VideoItem.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
 import { useUIStore } from '@/shared/stores/ui'
+import { useFeedGrouping } from '@/features/video/composables/useFeedGrouping'
 import { useInfiniteScrollSentinel } from '@/shared/composables/useInfiniteScrollSentinel'
 import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
 import type { VideoListItem, VideoProfile } from '@/features/video/types/video'
@@ -78,6 +104,10 @@ const workbenchGridClass = computed(() => [
   'video-list__workbench-grid',
   `is-${uiStore.videoDensity}`,
 ])
+
+const grouped = computed(() => props.presentation === 'workbench')
+const feedItems = computed(() => props.videos)
+const { videoGroups } = useFeedGrouping({ feedItems })
 
 const contentLayoutClass = computed(() => {
   if (props.presentation === 'workbench') {
@@ -149,5 +179,34 @@ useInfiniteScrollSentinel({
   margin-inline: 0;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.video-list__group + .video-list__group {
+  margin-top: var(--space-7);
+}
+
+.video-list__group-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--app-hairline);
+  margin-bottom: var(--space-3);
+  padding-bottom: 0.45rem;
+}
+
+.video-list__group-header h3 {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-family: var(--font-display);
+  font-size: var(--app-text-base);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.video-list__group-header span {
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-2xs);
+  font-variant-numeric: tabular-nums;
 }
 </style>

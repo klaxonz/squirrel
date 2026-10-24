@@ -841,22 +841,18 @@ const {
 .video-detail__action-group {
   display: flex;
   align-items: center;
-  gap: 0.125rem;
-  padding: 0.2rem;
-  border: 1px solid var(--app-hairline);
-  border-radius: 999px;
-  background: hsl(var(--muted) / 0.35);
+  gap: 0.25rem;
 }
 
 .video-detail__action-button {
   display: inline-flex;
-  height: 2.25rem;
+  height: 2rem;
   flex: 0 0 auto;
   align-items: center;
-  gap: var(--space-2);
-  padding-inline: 0.75rem;
+  gap: 0.35rem;
+  padding-inline: 0.6rem;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-sm);
@@ -878,14 +874,14 @@ const {
 }
 
 .video-detail__action-button.is-active {
-  background: hsl(var(--card));
+  background: var(--app-selection-bg);
   color: hsl(var(--foreground));
-  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.08);
+  box-shadow: none;
 }
 
 .video-detail__action-button--more {
-  border-color: var(--app-hairline);
-  background: hsl(var(--card));
+  border-color: transparent;
+  background: transparent;
 }
 
 .video-detail__action-button--more:hover {
@@ -963,10 +959,11 @@ const {
   max-width: 64rem;
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: clamp(1.5rem, 1.9vw, 2rem);
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.015em;
+  font-family: var(--font-display);
+  font-size: clamp(1.875rem, 2vw, 2rem);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
   text-wrap: balance;
 }
 
@@ -1182,6 +1179,13 @@ const {
   min-width: 0;
   flex-direction: column;
   gap: var(--space-3);
+  align-self: start;
+  position: sticky;
+  top: 0;
+  max-height: calc(100dvh - var(--app-titlebar-height) - var(--app-header-height) - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.25rem;
 }
 
 .video-play-queue {
@@ -1273,10 +1277,11 @@ const {
 .video-play-aside__header h2 {
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: var(--app-text-base);
+  font-family: var(--font-display);
+  font-size: var(--app-text-lg);
   font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .video-play-aside__count {
@@ -1342,7 +1347,8 @@ const {
   margin: 0;
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: var(--app-text-md);
+  font-family: var(--font-display);
+  font-size: var(--app-text-base);
   font-weight: 600;
   line-height: 1.35;
   -webkit-box-orient: vertical;
@@ -1360,7 +1366,7 @@ const {
   align-items: center;
   gap: var(--space-1);
   color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-xs);
+  font-size: var(--app-text-sm);
 }
 
 .video-related-item__meta p,
