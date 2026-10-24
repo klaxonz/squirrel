@@ -1,5 +1,9 @@
 <template>
   <AppPageShell class="videos-workbench" variant="compact" surface="consume" width="browse">
+    <header class="app-page-heading">
+      <AppOperatePageHeader title="视频库" :summary="videosSummary" size="lg" />
+    </header>
+
     <AppToolbarFrame bordered sticky boundary="media" divider="content">
         <FeedToolbar
           v-if="searchMode !== 'remote'"
@@ -136,6 +140,7 @@ import NewContentBar from '@/shared/components/layout/NewContentBar.vue'
 import { useNewContentDetector, prependPreservingScroll } from '@/shared/composables/useNewContentDetector'
 import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
+import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
@@ -170,6 +175,10 @@ const { settings } = useUserSettings()
 const tabs = [...VIDEO_TABS, ...VIDEO_LIBRARY_TABS]
 const isRefreshing = ref(false)
 const loadError = ref<string | null>(null)
+const loadedVideoCount = ref<number | null>(null)
+const videosSummary = computed(() => (
+  loadedVideoCount.value == null ? '本地视频与稍后看' : `${loadedVideoCount.value} 项可视`
+))
 const videoChildRef = ref<{
   refresh?: () => void
   fetchTop?: (pageSize?: number) => Promise<VideoListItem[]>
@@ -212,8 +221,9 @@ const activeFilterTokens = computed(() => {
   return tokens
 })
 
-const handleLoaded = () => {
+const handleLoaded = (items?: VideoListItem[]) => {
   loadError.value = null
+  if (Array.isArray(items)) loadedVideoCount.value = items.length
 }
 
 const clearFilter = (key: FilterTokenKey) => {
