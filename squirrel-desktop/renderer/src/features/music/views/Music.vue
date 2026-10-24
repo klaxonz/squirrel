@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell variant="compact" surface="consume" width="browse" fill>
+  <AppPageShell class="music-page" variant="compact" surface="consume" width="browse" fill>
     <AppTwoColumnLayout preset="music">
       <template #header>
         <div class="music-nav-header">
@@ -757,6 +757,11 @@ async function handleLogout() {
 </script>
 
 <style scoped>
+.music-page {
+  --app-workbench-content-width: var(--app-content-browse-max);
+  --app-workbench-content-gutter: var(--app-page-gutter);
+}
+
 .music-nav-header {
   display: flex;
   width: 100%;
@@ -774,15 +779,15 @@ async function handleLogout() {
   gap: 0.1rem;
 }
 
-/* The library is a full workspace, not a pane subtitle. */
 .music-nav-header__title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--app-heading-font);
-  font-size: var(--app-h1-size);
-  font-weight: var(--app-h1-weight);
-  line-height: var(--app-h1-leading);
-  letter-spacing: var(--app-h1-tracking);
+  font-family: var(--font-display);
+  font-size: var(--app-text-4xl);
+  font-weight: 600;
+  line-height: var(--app-leading-title);
+  letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
 .music-nav-header__subtitle {

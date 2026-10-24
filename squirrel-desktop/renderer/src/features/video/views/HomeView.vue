@@ -155,7 +155,7 @@ watch(activeFilter, () => resetNewContent())
   z-index: var(--z-sticky);
   min-width: 0;
   margin-inline: calc(var(--app-page-gutter) * -1);
-  padding: var(--space-3) var(--app-page-gutter);
+  padding: 0 var(--app-page-gutter);
   border-bottom: 1px solid var(--app-hairline);
   background: hsl(var(--background) / 0.96);
   backdrop-filter: blur(8px);

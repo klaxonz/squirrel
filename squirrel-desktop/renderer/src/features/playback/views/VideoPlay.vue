@@ -909,7 +909,6 @@ const {
 
 .video-detail__more {
   position: relative;
-  margin-left: auto;
 }
 
 .video-detail__menu {

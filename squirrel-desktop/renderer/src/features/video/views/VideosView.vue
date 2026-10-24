@@ -4,7 +4,7 @@
       <AppOperatePageHeader title="视频库" :summary="videosSummary" size="lg" />
     </header>
 
-    <AppToolbarFrame bordered sticky boundary="media" divider="content">
+    <AppToolbarFrame bordered sticky boundary="browse" divider="content">
         <FeedToolbar
           v-if="searchMode !== 'remote'"
           variant="workbench"
