@@ -30,6 +30,7 @@
         @openModal="emit('openModal', $event)"
         @goToProfile="(profile) => emit('goToProfile', profile)"
         @goToSubscription="(id) => emit('goToSubscription', id)"
+        @lead-image-error="handleLeadImageError"
       />
 
       <section v-for="group in timelineGroups" :key="group.title" class="home-inbox__group">
@@ -88,13 +89,25 @@ const emit = defineEmits<{
 const items = ref<VideoListItem[]>([])
 const loading = ref(false)
 const loadError = ref('')
+const failedLeadIds = ref<Set<number>>(new Set())
 const { videoGroups } = useFeedGrouping({ feedItems: items })
 
-// The lead must earn its size: unread and carrying a real cover.
+const handleLeadImageError = (videoId: number) => {
+  if (failedLeadIds.value.has(videoId)) return
+  const next = new Set(failedLeadIds.value)
+  next.add(videoId)
+  failedLeadIds.value = next
+}
+
+// The lead must earn its size: unread, carrying a real cover, and not one
+// whose image already failed to load at runtime.
 const leadVideo = computed<VideoListItem | null>(() => {
+  const failed = failedLeadIds.value
   for (const group of videoGroups.value) {
     const candidate = group.videos.find((video) => (
-      !video.is_read && String(video.thumbnail || '').trim()
+      !video.is_read
+      && !failed.has(video.id)
+      && String(video.thumbnail || '').trim()
     ))
     if (candidate) return candidate
   }

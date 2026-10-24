@@ -25,6 +25,7 @@
       @toggle-like="toggleLikeVideo"
       @toggle-read="toggleReadStatus"
       @toggle-later="toggleLater"
+      @image-error="emit('leadImageError', video.id)"
     />
     <VideoItemWorkbenchLayout
       v-else-if="layout === 'list' && appearance === 'workbench'"
@@ -123,6 +124,7 @@ const emit = defineEmits<{
   goToSubscription: [id: number | string]
   openModal: [video: VideoListItem]
   readChange: [payload: { videoId: number; isRead: boolean }]
+  leadImageError: [videoId: number]
 }>()
 
 const { config: systemConfig } = useSystemConfig()

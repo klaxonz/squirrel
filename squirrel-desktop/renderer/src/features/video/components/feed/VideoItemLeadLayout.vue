@@ -1,7 +1,7 @@
 <template>
   <VideoItemPlaybackControl :title="video.title" @activate="emit('activate')" />
   <div class="video-item__lead-media">
-    <VideoItemThumbnail v-bind="thumbnail" variant="card" />
+    <VideoItemThumbnail v-bind="thumbnail" variant="card" @error="emit('imageError')" />
     <span v-if="!actions.isRead" class="video-item__lead-stamp">未读</span>
   </div>
   <div class="video-item__lead-body">
@@ -41,5 +41,6 @@ const emit = defineEmits<{
   toggleLike: []
   toggleRead: [markRead: boolean]
   toggleLater: []
+  imageError: []
 }>()
 </script>

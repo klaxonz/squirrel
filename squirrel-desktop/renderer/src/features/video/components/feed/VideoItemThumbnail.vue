@@ -1,6 +1,6 @@
 <template>
   <MediaFrame class="video-item__thumb" :class="`video-item__thumb--${variant}`">
-    <VideoThumbnail :src="src" :alt="title" fit="cover" interactive :blur="blur" />
+    <VideoThumbnail :src="src" :alt="title" fit="cover" interactive :blur="blur" @error="emit('error')" />
     <span
       v-if="duration"
       class="video-item__duration app-mono"
@@ -38,6 +38,10 @@ const props = withDefaults(defineProps<{
   blur: boolean
   variant?: 'grid' | 'card' | 'row'
 }>(), { variant: 'grid' })
+
+const emit = defineEmits<{
+  error: []
+}>()
 
 const progressPercent = computed(() => Math.round(props.progressRatio * 100))
 </script>

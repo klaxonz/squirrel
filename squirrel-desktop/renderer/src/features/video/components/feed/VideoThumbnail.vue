@@ -48,8 +48,17 @@ const props = withDefaults(defineProps<{
   imgClass: '',
 })
 
+const emit = defineEmits<{
+  error: []
+}>()
+
 const thumbnailSrc = computed(() => String(props.src || '').trim())
-const { imageLoaded, showFallback, handleLoad, handleError } = useThumbnailRegistry(thumbnailSrc)
+const { imageLoaded, showFallback, handleLoad, handleError: markImageFailed } = useThumbnailRegistry(thumbnailSrc)
+
+const handleError = () => {
+  markImageFailed()
+  emit('error')
+}
 
 const fitClass = computed(() => {
   // responsive used to letterbox on desktop (contain), which left light
