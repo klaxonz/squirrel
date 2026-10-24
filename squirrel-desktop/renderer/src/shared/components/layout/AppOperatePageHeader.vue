@@ -1,5 +1,8 @@
 <template>
-  <header class="app-operate-page-header">
+  <header
+    class="app-operate-page-header"
+    :class="`app-operate-page-header--${size}`"
+  >
     <div class="app-operate-page-header__copy">
       <div class="app-operate-page-header__title">
         <h1>{{ title }}</h1>
@@ -15,11 +18,14 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   title: string
   summary?: string
   description?: string
-}>()
+  size?: 'md' | 'lg'
+}>(), {
+  size: 'md',
+})
 </script>
 
 <style scoped>
@@ -59,6 +65,10 @@ defineProps<{
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-sm);
   font-weight: 600;
+}
+
+.app-operate-page-header--lg .app-operate-page-header__title h1 {
+  font-size: var(--app-text-3xl);
 }
 
 .app-operate-page-header__copy p {

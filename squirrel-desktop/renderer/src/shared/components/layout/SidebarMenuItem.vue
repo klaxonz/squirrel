@@ -97,14 +97,14 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
   min-height: var(--sidebar-item-height);
   height: var(--sidebar-item-height);
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
   overflow: hidden;
   border: 0;
   border-radius: var(--radius-md);
-  padding: 0 0.9rem 0 0.65rem;
+  padding: 0 0.75rem 0 0.6rem;
   background: transparent;
   color: hsl(var(--foreground) / 0.86);
-  font-size: var(--app-text-base);
+  font-size: var(--app-text-md);
   font-weight: 500;
   line-height: 1;
   text-decoration: none;
@@ -133,9 +133,9 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
 .sidebar-item.is-collapsed {
   justify-content: center;
   gap: 0;
-  width: 2.5rem;
-  height: 2.5rem;
-  min-height: 2.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
   margin-inline: auto;
   padding: 0;
   border-radius: var(--radius-md);

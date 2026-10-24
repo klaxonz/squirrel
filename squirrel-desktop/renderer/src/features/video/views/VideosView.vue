@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell class="videos-workbench" variant="compact" surface="consume" width="fluid">
+  <AppPageShell class="videos-workbench" variant="compact" surface="consume" width="browse">
     <AppToolbarFrame bordered sticky boundary="media" divider="content">
         <FeedToolbar
           v-if="searchMode !== 'remote'"
@@ -421,11 +421,11 @@ watch(() => route.query.special, (value) => {
   align-items: start;
 }
 
-/* Same centered reading boundary as subscribed/history (.app-media-content-frame):
-   toolbar pills, filter chips and cards share one horizontal edge. */
+/* The library canvas shares the browse width with the home feed; toolbar
+   pills, filter chips and cards keep one horizontal edge. */
 .videos-workbench__canvas {
   min-width: 0;
-  width: min(100%, var(--app-content-media-max));
+  width: min(100%, var(--app-page-max-width));
   margin-inline: auto;
   padding-inline: var(--app-content-media-gutter);
   padding-block: 1.05rem 3rem;

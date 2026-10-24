@@ -50,6 +50,7 @@
 
   /* One content-width contract. */
   --app-content-max: 75rem;            /* 1200px — media, lists, tables */
+  --app-content-browse-max: 100rem;    /* 1600px — home feed, video library */
   --app-content-wide-max: 96rem;       /* 1536px — VideoPlay widescreen only */
   --app-page-gutter: clamp(1.5rem, 3.5vw, 3.5rem);
   --app-page-gutter-sm: var(--app-page-gutter);
@@ -116,12 +117,12 @@
   --container-max-width: 2560px;
 
   /* Compact command row and persistent navigation rail. */
-  --app-titlebar-height: 2.75rem;
+  --app-titlebar-height: 3.5rem;
   --app-header-height: 2.75rem;
-  --sidebar-expanded-width: 15rem;
+  --sidebar-expanded-width: 14.5rem;
   --sidebar-collapsed-width: 3.5rem;
-  --sidebar-icon-size: 1.25rem;
-  --sidebar-item-height: 2.25rem;
+  --sidebar-icon-size: 1.125rem;
+  --sidebar-item-height: 2rem;
   --sidebar-item-gap: 0.125rem;
   --sidebar-footer-height: calc(var(--sidebar-item-height) + 1.125rem + 1px);
   --sidebar-player-height: 4.5rem;

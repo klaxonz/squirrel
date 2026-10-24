@@ -6,7 +6,6 @@
   <div class="video-item__row-body">
     <header class="video-item__top video-item__top--row video-item__controls">
       <VideoItemProfileMetadata v-bind="profile" @open-profile="emit('openProfile', $event)" />
-      <VideoItemActions v-bind="actions" compact @toggle-later="emit('toggleLater')" />
     </header>
     <h3 class="video-item__title video-item__title--row video-item__presentation">{{ video.title }}</h3>
     <VideoItemActions

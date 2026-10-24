@@ -50,9 +50,19 @@ describe('Sidebar navigation structure', () => {
     const categories = Array.from(mainNav?.querySelectorAll('.sidebar-group__label') ?? [])
       .map((label) => label.textContent?.trim())
 
-    expect(labels).toEqual(['视频', '订阅', 'RSS', '音乐', '历史', '播放列表', '站点', '定时', '日志'])
-    expect(categories).toEqual(['信息流', '我的', '运维'])
+    expect(labels).toEqual(['视频', '订阅', 'RSS', '音乐', '历史', '播放列表'])
+    expect(categories).toEqual(['信息流', '我的'])
     expect(mainNav?.querySelectorAll('.sidebar-group')).toHaveLength(categories.length)
+
+    // Ops and settings live in the pinned footer, not in the scrolling nav.
+    const footer = host.querySelector<HTMLElement>('.sidebar-footer')
+    const footerLabels = Array.from(footer?.querySelectorAll('.sidebar-item__label') ?? [])
+      .map((label) => label.textContent)
+    const footerCategories = Array.from(footer?.querySelectorAll('.sidebar-group__label') ?? [])
+      .map((label) => label.textContent?.trim())
+
+    expect(footerLabels).toEqual(['站点', '定时', '日志', '设置'])
+    expect(footerCategories).toEqual(['运维'])
   })
 
   it('returns to the existing video list entry instead of reopening it at the top', async () => {

@@ -1,9 +1,14 @@
 <template>
-  <Sidebar class="h-full" :collapsed="collapsed" />
+  <Sidebar class="h-full" :collapsed="collapsed" :show-brand="showBrand" />
 </template>
 
 <script setup lang="ts">
 import Sidebar from '@/shared/components/layout/Sidebar.vue'
 
-defineProps<{ collapsed?: boolean }>()
+withDefaults(defineProps<{
+  collapsed?: boolean
+  showBrand?: boolean
+}>(), {
+  showBrand: true,
+})
 </script>

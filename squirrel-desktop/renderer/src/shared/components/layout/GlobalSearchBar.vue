@@ -6,7 +6,7 @@
       <div v-if="searchModesList.length > 0" class="global-search__mode-wrap">
         <Button
           type="button"
-          variant="secondary"
+          variant="ghost"
           size="sm"
           class="global-search__mode"
           :class="{ 'is-remote': activeSearchMode === 'remote' }"
@@ -15,7 +15,6 @@
           :title="`搜索范围：${activeSearchModeLabel}`"
           @click="toggleMode"
         >
-          <AppIcon :name="activeSearchMode === 'local' ? 'library' : 'siteFallback'" class="global-search__mode-icon" />
           <span class="global-search__mode-label">{{ activeSearchModeLabel }}</span>
         </Button>
       </div>
@@ -563,12 +562,6 @@ onUnmounted(() => {
 
 .global-search__mode:active {
   transform: none;
-}
-
-.global-search__mode-icon {
-  width: 0.8125rem;
-  height: 0.8125rem;
-  opacity: 0.85;
 }
 
 .global-search__mode-label {

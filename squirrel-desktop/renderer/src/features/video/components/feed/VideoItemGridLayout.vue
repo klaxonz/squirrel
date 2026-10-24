@@ -2,7 +2,15 @@
   <VideoItemPlaybackControl :title="video.title" @activate="emit('activate')" />
   <div class="video-item__presentation">
     <VideoItemThumbnail v-bind="thumbnail" variant="grid" />
-    <h3 class="video-item__title video-item__title--grid">{{ video.title }}</h3>
+    <div class="video-item__headline video-item__headline--grid">
+      <span
+        v-if="!video.is_read"
+        class="video-item__unread-dot"
+        role="img"
+        aria-label="未读"
+      />
+      <h3 class="video-item__title video-item__title--grid">{{ video.title }}</h3>
+    </div>
   </div>
   <div class="video-item__body video-item__controls">
     <VideoItemProfileMetadata v-bind="profile" grid @open-profile="emit('openProfile', $event)" />

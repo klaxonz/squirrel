@@ -161,7 +161,6 @@ describe('VideoItem playback activation', () => {
     nativeKeyboardActivate(getButton(host, '[data-action="like"]'), 'Enter')
     nativeKeyboardActivate(getButton(host, '[data-action="read"]'), ' ')
     nativeKeyboardActivate(getButton(host, '[data-action="later"]'), 'Enter')
-    nativeKeyboardActivate(getButton(host, '[data-action="join"]'), ' ')
     await nextTick()
 
     expect(handlers.open).not.toHaveBeenCalled()
@@ -169,8 +168,12 @@ describe('VideoItem playback activation', () => {
     expect(handlers.subscription).toHaveBeenCalledWith(profile.id)
     expect(mocks.toggleLike).toHaveBeenNthCalledWith(1, 42, 1)
     expect(mocks.toggleLike).toHaveBeenNthCalledWith(2, 42, 3)
-    expect(mocks.deleteInteraction).toHaveBeenCalledWith(42)
     expect(mocks.updateRead).toHaveBeenCalledWith(42, true)
+
+    // One later control: activating it again clears the interaction.
+    nativeKeyboardActivate(getButton(host, '[data-action="later"]'), ' ')
+    await nextTick()
+    expect(mocks.deleteInteraction).toHaveBeenCalledWith(42)
   })
 
   it('updates interaction controls optimistically without opening playback', async () => {

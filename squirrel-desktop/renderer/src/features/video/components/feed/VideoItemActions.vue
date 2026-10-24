@@ -1,18 +1,5 @@
 <template>
-  <div v-if="compact" class="video-item__top-actions">
-    <Button
-      size="sm"
-      class="video-item__join"
-      :class="{ 'is-on': isLater }"
-      :title="isLater ? '取消稍后看' : '稍后看'"
-      :aria-pressed="isLater"
-      data-action="join"
-      @click="emit('toggleLater')"
-    >
-      {{ isLater ? '已加' : '加入' }}
-    </Button>
-  </div>
-  <footer v-else class="video-item__bar" :class="{ 'video-item__bar--row': row }">
+  <footer class="video-item__bar" :class="{ 'video-item__bar--row': row }">
     <Button variant="ghost" size="sm" class="video-item__bar-btn" :class="{ 'is-on': isLiked }"
       :title="isLiked ? '取消喜欢' : '喜欢'" :aria-pressed="isLiked" data-action="like"
       @click="emit('toggleLike')">
@@ -42,9 +29,8 @@ withDefaults(defineProps<{
   isLiked: boolean
   isRead: boolean
   isLater: boolean
-  compact?: boolean
   row?: boolean
-}>(), { compact: false, row: false })
+}>(), { row: false })
 
 const emit = defineEmits<{
   toggleLike: []

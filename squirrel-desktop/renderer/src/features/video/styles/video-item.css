@@ -55,28 +55,21 @@
   flex: 0 0 clamp(11rem, 16vw, 16rem);
 }
 
-/* Feed list card: media leads, metadata remains readable at a glance. */
+/* Feed list card: media leads; the page canvas is the surface. */
 .video-item--card {
   position: relative;
   flex-direction: column;
   gap: 0;
   overflow: hidden;
-  border: 1px solid var(--app-surface-border);
-  border-radius: var(--radius-2xl);
-  background: hsl(var(--card));
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
   box-shadow: none;
-  transition:
-    border-color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default);
-}
-
-.video-item--card:hover {
-  border-color: hsl(var(--foreground) / 0.18);
-  background: hsl(var(--card));
 }
 
 .video-item--card:focus-visible {
-  border-color: hsl(var(--ring) / 0.55);
+  outline: 2px solid hsl(var(--ring) / 0.55);
+  outline-offset: 2px;
 }
 
 .video-item--grid {
@@ -178,42 +171,6 @@
   font-weight: 500;
 }
 
-.video-item__top-actions {
-  flex: 0 0 auto;
-}
-
-.video-item__join {
-  --sq-button-height: 1.75rem;
-  height: 1.75rem;
-  border: 1px solid var(--app-control-border);
-  border-radius: var(--radius-sm);
-  padding: 0 0.75rem;
-  background: var(--app-control-bg);
-  color: hsl(var(--foreground));
-  font-size: var(--app-text-sm);
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
-}
-
-.video-item__join.is-on {
-  border-color: hsl(var(--foreground) / 0.18);
-  background: hsl(var(--foreground) / 0.08);
-  color: hsl(var(--foreground));
-}
-
-.video-item__join:hover {
-  border-color: hsl(var(--foreground) / 0.24);
-  background: hsl(var(--foreground) / 0.06);
-}
-
-.video-item__join.is-on:hover {
-  background: hsl(var(--foreground) / 0.12);
-}
-
 .video-item__title {
   display: -webkit-box;
   margin: 0;
@@ -227,11 +184,43 @@
 }
 
 .video-item__title--card {
-  padding: 0.2rem 0.95rem 0.7rem;
+  min-height: calc(2 * 1.35em);
+  padding: 0;
+  font-size: var(--app-text-lg);
   letter-spacing: -0.01em;
-  line-height: 1.32;
+  line-height: 1.35;
   text-wrap: pretty;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
+}
+
+.video-item__headline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.7rem 0.95rem 0.15rem;
+}
+
+.video-item__headline--grid {
+  padding: 0;
+  gap: 0.4rem;
+}
+
+.video-item__headline .video-item__title--card {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.video-item__unread-dot {
+  flex: 0 0 auto;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: 0.4rem;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+}
+
+.video-item__meta-row {
+  padding: 0 0.95rem 0.75rem;
 }
 
 .video-item__title--grid {
@@ -259,7 +248,7 @@
 .video-item__thumb--card {
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 0;
+  border-radius: var(--radius-md);
 }
 
 .video-item--card .video-item__thumb--card img {
@@ -416,6 +405,34 @@
   padding: 0.35rem 0.45rem 0.55rem;
   border-top: 1px solid var(--app-hairline);
   background: hsl(var(--card));
+}
+
+/* Feed cards keep the grid quiet at rest: the action bar overlays the
+   metadata row instead of reserving a permanent empty footer. */
+.video-item--card .video-item__bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  background: hsl(var(--background) / 0.97);
+  backdrop-filter: blur(4px);
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+
+.video-item--card:hover .video-item__bar,
+.video-item--card:focus-within .video-item__bar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .video-item--card .video-item__bar {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .video-item__bar-btn {

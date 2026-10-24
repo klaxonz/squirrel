@@ -19,7 +19,7 @@
 withDefaults(defineProps<{
   variant?: 'default' | 'compact'
   surface?: 'consume' | 'organize' | 'operate' | 'immersive'
-  width?: 'media' | 'table' | 'form' | 'reading' | 'fluid'
+  width?: 'media' | 'table' | 'form' | 'reading' | 'fluid' | 'browse'
   fill?: boolean
   scrollable?: boolean
 }>(), {
@@ -92,5 +92,9 @@ withDefaults(defineProps<{
 
 .app-page-shell--width-fluid {
   --app-page-max-width: none;
+}
+
+.app-page-shell--width-browse {
+  --app-page-max-width: var(--app-content-browse-max);
 }
 </style>

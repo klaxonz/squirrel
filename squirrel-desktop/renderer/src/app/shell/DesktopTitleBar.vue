@@ -1,14 +1,21 @@
 <template>
   <header class="titlebar">
     <!--
-      Full-bleed top chrome. Brand lives in the sidebar active state only —
-      no second logo here (avoids dual brand anchors in the top-left).
+      Full-bleed top chrome. The brand lives here in desktop; the sidebar
+      starts below with navigation only (no duplicate brand row).
     -->
+    <div class="titlebar__brand no-drag">
+      <RouterLink to="/home" class="titlebar__brand-link" aria-label="归仓">
+        <BrandMark class="titlebar__brand-mark" />
+        <span class="titlebar__brand-name">归仓</span>
+      </RouterLink>
+    </div>
+
     <div class="titlebar__nav no-drag">
       <Button
         type="button"
        
-        variant="secondary"
+        variant="ghost"
         size="sm"
         icon-only
         class="titlebar__icon-btn"
@@ -23,7 +30,7 @@
       <Button
         type="button"
        
-        variant="secondary"
+        variant="ghost"
         size="sm"
         icon-only
         class="titlebar__icon-btn"
@@ -38,7 +45,7 @@
       <Button
         type="button"
        
-        variant="secondary"
+        variant="ghost"
         size="sm"
         icon-only
         class="titlebar__icon-btn"
@@ -62,7 +69,7 @@
         :key="btn.label"
         type="button"
        
-        variant="secondary"
+        variant="ghost"
         size="sm"
         icon-only
         class="titlebar__control"
@@ -79,8 +86,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppHeader from '@/app/shell/AppHeader.vue'
+import BrandMark from '@/shared/components/BrandMark.vue'
 import { Button } from '@/shared/ui/button'
 import type { AppIconName } from '@/shared/icons/app-icons'
 import { useNavigationHistory } from '@/shared/composables/useNavigationHistory'
@@ -141,18 +150,60 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Compact command row: navigation, search, account, and window actions share one baseline. */
+/* Compact command row: brand, navigation, search, account, and window actions. */
 .titlebar {
   height: var(--app-titlebar-height);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding-left: 0.5rem;
+  gap: 0.35rem;
+  padding-left: 0;
   border-bottom: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
+  background: hsl(var(--background));
   user-select: none;
   -webkit-app-region: drag;
   app-region: drag;
+}
+
+.titlebar__brand {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 100%;
+  padding: 0 0.5rem 0 0.75rem;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.titlebar__brand-link {
+  display: inline-flex;
+  height: 2rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-sm);
+  color: hsl(var(--foreground));
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.titlebar__brand-link:hover {
+  background: var(--app-control-hover-bg);
+}
+
+.titlebar__brand-mark {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  color: hsl(var(--brand));
+}
+
+.titlebar__brand-name {
+  font-family: var(--font-display);
+  font-size: var(--app-text-xl);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .titlebar__nav {
@@ -165,8 +216,8 @@ onUnmounted(() => {
 }
 
 .titlebar__icon-btn {
-  width: 1.8rem;
-  height: 1.8rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: var(--app-control-item-radius);
   color: hsl(var(--muted-foreground));
   transition:
@@ -199,6 +250,8 @@ onUnmounted(() => {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
+  gap: 0;
+  margin-left: 0.25rem;
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
@@ -206,6 +259,7 @@ onUnmounted(() => {
 .titlebar__control {
   width: 2.75rem;
   height: var(--app-titlebar-height);
+  border: 0;
   border-radius: 0;
   color: hsl(var(--muted-foreground));
   transition:
@@ -228,9 +282,20 @@ onUnmounted(() => {
   height: 0.875rem;
 }
 
+@media (max-width: 1180px) {
+  .titlebar__brand {
+    padding: 0 0.35rem 0 0.5rem;
+  }
+
+  .titlebar__brand-name {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .titlebar__icon-btn,
-  .titlebar__control {
+  .titlebar__control,
+  .titlebar__brand-link {
     transition: none;
   }
 }

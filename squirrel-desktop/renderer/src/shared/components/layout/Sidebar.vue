@@ -4,7 +4,7 @@
     :class="{ 'has-player': showSidebarMusicPlayer, 'is-collapsed': collapsed }"
     aria-label="应用侧边栏"
   >
-    <div class="sidebar-brand" :class="{ 'is-collapsed': collapsed }">
+    <div v-if="showBrand" class="sidebar-brand" :class="{ 'is-collapsed': collapsed }">
       <RouterLink
         to="/home"
         class="sidebar-brand__link"
@@ -53,14 +53,40 @@
       </section>
     </nav>
 
-    <footer v-hover-fill class="sidebar-footer">
-      <SidebarMenuItem
-        v-for="item in SIDEBAR_FOOTER_ITEMS"
-        :key="item.path"
-        :item="item"
-        :is-active="isNavigationItemActive(item, $route)"
-        :collapsed="collapsed"
-      />
+    <footer class="sidebar-footer">
+      <section
+        v-for="group in systemNavGroups"
+        :key="group.key"
+        class="sidebar-group sidebar-group--footer"
+        :aria-labelledby="`sidebar-group-${group.key}`"
+      >
+        <h2
+          :id="`sidebar-group-${group.key}`"
+          class="sidebar-group__label"
+          :class="{ 'sidebar-group__label--collapsed': collapsed }"
+          :title="collapsed ? group.label : undefined"
+        >
+          {{ group.label }}
+        </h2>
+        <div v-hover-fill class="sidebar-group__items">
+          <SidebarMenuItem
+            v-for="item in group.items"
+            :key="item.path"
+            :item="item"
+            :is-active="isNavigationItemActive(item, $route)"
+            :collapsed="collapsed"
+          />
+        </div>
+      </section>
+      <div v-hover-fill class="sidebar-footer__items">
+        <SidebarMenuItem
+          v-for="item in SIDEBAR_FOOTER_ITEMS"
+          :key="item.path"
+          :item="item"
+          :is-active="isNavigationItemActive(item, $route)"
+          :collapsed="collapsed"
+        />
+      </div>
     </footer>
   </aside>
 </template>
@@ -79,12 +105,18 @@ import {
 } from '@/shared/constants/sidebar'
 import { useMusicPlayerStore } from '@/features/music/stores/musicPlayer'
 
-defineProps<{ collapsed?: boolean }>()
+withDefaults(defineProps<{
+  collapsed?: boolean
+  showBrand?: boolean
+}>(), {
+  showBrand: true,
+})
 
 const NAV_ID = 'app-sidebar-nav'
 const route = useRoute()
 const musicPlayerStore = useMusicPlayerStore()
-const primaryNavGroups = NAV_GROUPS
+const primaryNavGroups = NAV_GROUPS.filter((group) => group.key !== 'system')
+const systemNavGroups = NAV_GROUPS.filter((group) => group.key === 'system')
 
 const showSidebarMusicPlayer = computed(() =>
   route.name !== 'Music' && Boolean(
@@ -170,6 +202,18 @@ const showSidebarMusicPlayer = computed(() =>
   padding-bottom: 0.75rem;
 }
 
+.sidebar-group--footer + .sidebar-footer__items {
+  margin-top: 0.35rem;
+  border-top: 1px solid hsl(var(--sidebar-border));
+  padding-top: 0.5rem;
+}
+
+.sidebar-footer__items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
 .sidebar-nav {
   min-height: 0;
   flex: 1 1 auto;
@@ -193,9 +237,8 @@ const showSidebarMusicPlayer = computed(() =>
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   line-height: 1.4;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 

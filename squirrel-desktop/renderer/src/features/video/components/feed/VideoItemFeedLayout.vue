@@ -1,13 +1,22 @@
 <template>
   <VideoItemPlaybackControl :title="video.title" @activate="emit('activate')" />
-  <header class="video-item__top video-item__controls">
-    <VideoItemProfileMetadata v-bind="profile" @open-profile="emit('openProfile', $event)" />
-    <VideoItemActions v-bind="actions" compact @toggle-later="emit('toggleLater')" />
-  </header>
   <div class="video-item__presentation">
-    <h3 class="video-item__title video-item__title--card">{{ video.title }}</h3>
     <VideoItemThumbnail v-bind="thumbnail" variant="card" />
+    <div class="video-item__headline">
+      <span
+        v-if="!actions.isRead"
+        class="video-item__unread-dot"
+        role="img"
+        aria-label="未读"
+      />
+      <h3 class="video-item__title video-item__title--card">{{ video.title }}</h3>
+    </div>
   </div>
+  <VideoItemProfileMetadata
+    v-bind="profile"
+    class="video-item__controls video-item__meta-row"
+    @open-profile="emit('openProfile', $event)"
+  />
   <VideoItemActions
     v-bind="actions"
     class="video-item__controls"

@@ -13,19 +13,20 @@
     @touchstart.capture="cancelScrollRestoration"
     @pointerdown.capture="cancelScrollRestoration"
   >
+    <DesktopTitleBar
+      v-if="isDesktop"
+      class="app-layout__titlebar"
+      :persist-sidebar-toggle="persistSidebarToggle"
+    />
+
     <div class="app-layout__frame">
       <AppSidebar
         class="app-layout__sidebar"
         :collapsed="!isSidebarOpen"
+        :show-brand="!isDesktop"
       />
 
       <main class="app-layout__workspace">
-        <DesktopTitleBar
-          v-if="isDesktop"
-          class="app-layout__titlebar"
-          :persist-sidebar-toggle="persistSidebarToggle"
-        />
-
         <AppHeader
           v-if="showAppHeader"
           class="app-layout__header"
@@ -270,42 +271,42 @@ onUnmounted(() => {
 .app-layout__frame {
   flex: 1 1 auto;
   min-height: 0;
-  position: relative;
+  display: flex;
   overflow: hidden;
 }
 
 .app-layout__sidebar {
-  position: absolute;
-  inset: 0 auto 0 0;
+  flex: 0 0 var(--workspace-offset);
   width: var(--workspace-offset);
+  min-width: 0;
   overflow: hidden;
   z-index: var(--z-sidebar);
-  transition: width var(--duration-base) var(--ease-out);
+  transition:
+    flex-basis var(--duration-base) var(--ease-out),
+    width var(--duration-base) var(--ease-out);
 }
+
 .app-layout__workspace {
-  position: absolute;
-  inset: 0 0 0 var(--workspace-offset);
+  position: relative;
   z-index: 1;
   min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   /* The workspace is a quiet canvas; content surfaces establish hierarchy. */
   background: hsl(var(--background));
-  transition: left var(--duration-base) var(--ease-out);
-  will-change: left;
-}
-
-/* 退出沉浸式路由时跳过侧边栏宽度过渡（见 suppressSidebarTransition）。 */
-.app-layout--no-sidebar-anim .app-layout__sidebar,
-.app-layout--no-sidebar-anim .app-layout__workspace {
-  transition: none;
 }
 
 .app-layout__titlebar {
   flex: 0 0 auto;
   position: relative;
   z-index: var(--z-header);
+}
+
+/* 退出沉浸式路由时跳过侧边栏宽度过渡（见 suppressSidebarTransition）。 */
+.app-layout--no-sidebar-anim .app-layout__sidebar {
+  transition: none;
 }
 
 .app-layout__header {
@@ -370,7 +371,7 @@ onUnmounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-layout__workspace {
+  .app-layout__sidebar {
     transition: none;
   }
 }

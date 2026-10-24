@@ -10,7 +10,7 @@
       <Button
         type="button"
        
-        variant="secondary"
+        variant="ghost"
         size="sm"
         icon-only
         class="app-header__sidebar-toggle"
@@ -47,7 +47,7 @@
       <Button
         type="button"
        
-        variant="secondary"
+        variant="ghost"
         size="sm"
         class="app-header__user"
         :title="`${userDisplayName} - 个人资料`"
@@ -241,7 +241,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   gap: 0.5rem;
   height: 2rem;
   border-radius: var(--radius-md);
-  padding: 0 0.625rem 0 0.25rem;
+  padding: 0 0.5rem 0 0.25rem;
   color: hsl(var(--foreground));
   transition: background-color var(--duration-fast) var(--ease-default);
 }
@@ -263,7 +263,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--app-text-xs);
+  font-size: 10px;
   font-weight: 600;
   color: hsl(var(--foreground));
   flex: 0 0 auto;
@@ -279,7 +279,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   height: 2.25rem;
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius-lg);
-  background: hsl(var(--muted) / 0.5);
+  background: hsl(var(--card));
   box-shadow: none;
 }
 
@@ -302,8 +302,8 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 
 .app-header__user-name {
   overflow: hidden;
-  font-size: var(--app-text-md);
-  font-weight: 600;
+  font-size: var(--app-text-sm);
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

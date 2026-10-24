@@ -1,25 +1,5 @@
 <template>
-  <section class="home-inbox" aria-labelledby="home-inbox-title">
-    <!-- Flat filter row on canvas — not a second card chrome -->
-    <header class="home-inbox__header">
-      <div class="home-inbox__heading">
-        <h2 id="home-inbox-title">最新入库</h2>
-      </div>
-
-      <div class="home-inbox__tools">
-        <AppSegmentedControl
-          :model-value="activeFilter"
-          :options="filterOptions"
-          size="sm"
-          aria-label="首页内容范围"
-          @update:model-value="setFilter"
-        />
-        <Button variant="secondary" size="sm" @click="emit('viewMore')">
-          全部
-          <AppIcon name="chevronRight" class="size-3.5" />
-        </Button>
-      </div>
-    </header>
+  <section class="home-inbox" aria-label="最新入库">
 
     <div v-if="loadError && !loading && items.length === 0" class="home-inbox__state">
       <AppEmptyState variant="error" title="内容同步失败" :copy="loadError">
@@ -31,7 +11,7 @@
 
     <div v-else-if="loading && items.length === 0" class="home-inbox__posts" aria-label="正在加载最新内容">
       <VideoSkeleton
-        v-for="index in 4"
+        v-for="index in 8"
         :key="index"
         :delay="(index - 1) * 35"
         layout="list"
@@ -76,38 +56,29 @@ import { useFeedGrouping } from '@/features/video/composables/useFeedGrouping'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import { Logger } from '@/shared/lib/logger'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
-import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
-import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import VideoItem from './VideoItem.vue'
 import VideoSkeleton from './VideoSkeleton.vue'
+import type { HomeInboxFilter } from '@/features/video/constants/homeInbox'
 
-type InboxFilter = 'all' | 'unread' | 'special'
+const props = withDefaults(defineProps<{
+  filter?: HomeInboxFilter
+}>(), {
+  filter: 'all',
+})
 
 const emit = defineEmits<{
   openModal: [video: VideoListItem]
   goToProfile: [profile: VideoProfile]
   goToSubscription: [id: number | string | null | undefined]
-  viewMore: []
 }>()
 
-const filterOptions = [
-  { value: 'all', label: '全部' },
-  { value: 'unread', label: '未看' },
-  { value: 'special', label: '特别关注' },
-] as const
-
 const items = ref<VideoListItem[]>([])
-const activeFilter = ref<InboxFilter>('all')
 const loading = ref(false)
 const loadError = ref('')
 const { videoGroups } = useFeedGrouping({ feedItems: items })
 let requestToken = 0
 let abortController: AbortController | null = null
-
-const setFilter = (value: string | number) => {
-  if (value === 'all' || value === 'unread' || value === 'special') activeFilter.value = value
-}
 
 const load = async () => {
   const currentToken = ++requestToken
@@ -120,10 +91,10 @@ const load = async () => {
     const data = await getVideoList({
       pageSize: 24,
       page_size: 24,
-      category: activeFilter.value === 'unread' ? 'unread' : 'all',
+      category: props.filter === 'unread' ? 'unread' : 'all',
       sort_by: 'publish_date',
       nsfw: 'all',
-      special: activeFilter.value === 'special' ? 'yes' : 'all',
+      special: props.filter === 'special' ? 'yes' : 'all',
     }, { signal: abortController.signal })
     if (currentToken !== requestToken) return
     items.value = Array.isArray(data?.data) ? data.data : []
@@ -144,10 +115,10 @@ const loadTop = async (): Promise<VideoListItem[]> => {
     const data = await getVideoList({
       pageSize: 24,
       page_size: 24,
-      category: activeFilter.value === 'unread' ? 'unread' : 'all',
+      category: props.filter === 'unread' ? 'unread' : 'all',
       sort_by: 'publish_date',
       nsfw: 'all',
-      special: activeFilter.value === 'special' ? 'yes' : 'all',
+      special: props.filter === 'special' ? 'yes' : 'all',
     })
     return Array.isArray(data?.data) ? data.data : []
   } catch {
@@ -164,12 +135,11 @@ const prepend = (newItems: VideoListItem[]) => {
   if (fresh.length) items.value = [...fresh, ...items.value]
 }
 
-watch(activeFilter, load, { immediate: true })
+watch(() => props.filter, load, { immediate: true })
 defineExpose({
   refresh: load,
   loadTop,
   prepend,
-  activeFilter,
   getFirstId: () => items.value[0]?.id ?? null,
 })
 </script>
@@ -184,40 +154,20 @@ defineExpose({
   background: transparent;
 }
 
-.home-inbox__header,
-.home-inbox__tools,
 .home-inbox__group-header {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding: 0;
 }
 
-.home-inbox__header {
-  min-height: 2.35rem;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.15rem 0.1rem;
-  background: transparent;
-}
-
-.home-inbox__heading {
-  min-width: 0;
-}
-
-.home-inbox__header h2,
 .home-inbox__group-header h3 {
   margin: 0;
-}
-
-.home-inbox__header h2 {
-  font-family: var(--font-sans);
-  font-size: var(--app-text-lg);
-  font-weight: 700;
-  letter-spacing: 0;
-}
-
-.home-inbox__tools {
-  gap: 0.4rem;
-  flex: 0 0 auto;
+  color: hsl(var(--foreground));
+  font-size: var(--app-text-base);
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 
 .home-inbox__timeline {
@@ -230,20 +180,6 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-}
-
-.home-inbox__group-header {
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0 0.2rem;
-}
-
-.home-inbox__group-header h3 {
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-xs);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .home-inbox__group-header span {
@@ -263,9 +199,9 @@ defineExpose({
 
 .home-inbox__posts {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.5rem), 1fr));
   align-items: start;
-  gap: var(--space-5) var(--space-4);
+  gap: var(--space-6) var(--space-5);
 }
 
 .home-inbox__state {
@@ -274,18 +210,5 @@ defineExpose({
   border-radius: var(--radius-lg);
   background: hsl(var(--card));
   padding: 1rem;
-}
-
-@media (max-width: 760px) {
-  .home-inbox__header {
-    align-items: flex-start;
-    flex-direction: column;
-    padding-block: 0.75rem;
-  }
-
-  .home-inbox__tools {
-    width: 100%;
-    justify-content: space-between;
-  }
 }
  </style>

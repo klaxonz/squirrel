@@ -6,7 +6,7 @@
         <span v-if="historyItems.length" class="continue-rail__count">{{ historyItems.length }}</span>
       </div>
       <Button variant="secondary" size="sm" class="continue-rail__more" @click="$emit('viewMore')">
-        全部
+        查看全部
         <AppIcon name="chevronRight" class="size-3.5" />
       </Button>
     </header>
@@ -141,11 +141,6 @@ defineExpose({ refresh: load })
 /* Resume shelf stays open to the page canvas while its media remains primary. */
 .continue-rail {
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--app-surface-border);
-  border-radius: var(--radius-xl);
-  background: hsl(var(--card));
-  padding: 0.75rem 0.75rem 0.85rem;
 }
 
 .continue-rail__header {
@@ -154,7 +149,7 @@ defineExpose({ refresh: load })
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.75rem;
 }
 
 .continue-rail__heading {
