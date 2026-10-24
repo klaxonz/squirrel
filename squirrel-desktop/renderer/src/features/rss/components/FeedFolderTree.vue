@@ -172,7 +172,7 @@ defineEmits<{
 .feed-folder-tree__all.is-selected,
 .feed-folder-tree__feed.is-selected {
   color: hsl(var(--foreground));
-  font-weight: 650;
+  font-weight: 600;
   background: var(--app-selection-bg);
 }
 

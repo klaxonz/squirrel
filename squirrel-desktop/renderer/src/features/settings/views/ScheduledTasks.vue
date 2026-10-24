@@ -1,10 +1,11 @@
 <template>
-  <AppPageShell class="scheduled-tasks-page" variant="compact" surface="operate" width="table">
+  <AppPageShell class="scheduled-tasks-page" variant="compact" surface="operate" width="browse">
     <main class="app-page-content scheduled-tasks-content">
       <AppOperatePageHeader
         title="定时任务"
         :summary="taskSummary"
         description="安排订阅同步、索引维护与后台作业。"
+          size="lg"
       >
         <template #actions>
           <Button
@@ -429,7 +430,7 @@ watch(searchQueryDebounced, () => {
 
 <style scoped>
 .scheduled-tasks-page {
-  --app-page-max-width: var(--app-content-table-max);
+  --app-page-max-width: var(--app-content-browse-max);
 }
 
 .scheduled-tasks-content {

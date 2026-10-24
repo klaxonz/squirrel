@@ -152,7 +152,7 @@ function isPlaying(track: MusicTrack): boolean {
 
 .music-recent-name {
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .music-recent-item--playing .music-recent-name {

@@ -400,7 +400,7 @@ const handleConnect = async () => {
   flex: none;
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .server-target__message {

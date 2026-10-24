@@ -56,9 +56,10 @@ withDefaults(defineProps<{
   color: hsl(var(--foreground));
   font-family: var(--font-display);
   font-size: var(--app-text-2xl);
-  font-weight: 650;
+  font-weight: 600;
   line-height: var(--app-leading-title);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
 .app-operate-page-header__title span {
@@ -68,7 +69,7 @@ withDefaults(defineProps<{
 }
 
 .app-operate-page-header--lg .app-operate-page-header__title h1 {
-  font-size: var(--app-text-3xl);
+  font-size: var(--app-text-4xl);
 }
 
 .app-operate-page-header__copy p {

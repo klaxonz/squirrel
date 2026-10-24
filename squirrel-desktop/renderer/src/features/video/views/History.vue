@@ -1,6 +1,10 @@
 <template>
-  <AppPageShell class="history-page" variant="compact" surface="organize" width="media">
-    <AppToolbarFrame bordered sticky boundary="media" divider="content">
+  <AppPageShell class="history-page" variant="compact" surface="organize" width="browse">
+    <header class="app-page-heading">
+      <AppOperatePageHeader title="历史" :summary="historySummary" size="lg" />
+    </header>
+
+    <AppToolbarFrame bordered sticky boundary="browse" divider="content">
       <div class="history-toolbar">
         <AppSectionNav
           class="app-section-nav--optical"
@@ -120,6 +124,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
+import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
@@ -202,6 +207,10 @@ const displayVideos = computed(() => {
     return progress > 0.01 && progress < 0.95
   })
 })
+
+const historySummary = computed(() => (
+  displayVideos.value.length ? `${displayVideos.value.length} 条记录` : ''
+))
 
 const emptyTitle = computed(() => {
   if (query.value) return '没有匹配的历史记录'
@@ -376,8 +385,9 @@ onMounted(() => {
 <style scoped>
 .history-content {
   width: 100%;
+  max-width: var(--app-content-browse-max);
   padding-block: var(--space-4) var(--app-content-padding-bottom);
-  padding-inline: var(--app-content-media-gutter);
+  padding-inline: var(--app-page-gutter);
 }
 
 .history-content__new-content {
@@ -445,7 +455,7 @@ onMounted(() => {
   color: hsl(var(--foreground));
   font-family: var(--font-display);
   font-size: var(--app-text-lg);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.015em;
 }

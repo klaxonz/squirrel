@@ -306,7 +306,7 @@ const runtimeActionItems = runtime => {
   margin: 0;
   color: hsl(var(--foreground));
   font-size: var(--app-text-base);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .site-runtime-list__heading p {

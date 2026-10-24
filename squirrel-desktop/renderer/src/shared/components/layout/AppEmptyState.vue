@@ -111,7 +111,7 @@ const variantClass = computed(() =>
   color: hsl(var(--foreground));
   font-family: var(--font-display);
   font-size: var(--app-text-xl);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.3;
   letter-spacing: -0.01em;
 }

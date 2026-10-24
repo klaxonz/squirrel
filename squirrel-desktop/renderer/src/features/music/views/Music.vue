@@ -1,5 +1,5 @@
 <template>
-  <AppPageShell variant="compact" surface="consume" width="media" fill>
+  <AppPageShell variant="compact" surface="consume" width="browse" fill>
     <AppTwoColumnLayout preset="music">
       <template #header>
         <div class="music-nav-header">
@@ -770,7 +770,7 @@ async function handleLogout() {
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
   font-size: var(--app-text-lg);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -790,7 +790,7 @@ async function handleLogout() {
 
 .music-content {
   min-height: 100%;
-  max-width: var(--app-content-media-max);
+  max-width: var(--app-content-browse-max);
   margin-inline: auto;
   padding-block: var(--space-4) var(--space-7);
 }

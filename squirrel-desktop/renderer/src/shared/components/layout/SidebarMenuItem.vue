@@ -17,7 +17,7 @@
         <AppIcon
           :name="item.icon"
           class="sidebar-item__icon"
-          :stroke-width="isActive ? 2.25 : 1.75"
+          :stroke-width="isActive ? 2 : 1.75"
         />
       </span>
       <span class="sidebar-item__label">{{ item.name }}</span>
@@ -103,7 +103,7 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
   border-radius: var(--radius-md);
   padding: 0 0.75rem 0 0.6rem;
   background: transparent;
-  color: hsl(var(--foreground) / 0.86);
+  color: hsl(var(--foreground) / 0.72);
   font-size: var(--app-text-md);
   font-weight: 500;
   line-height: 1;
@@ -164,7 +164,7 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
   height: var(--sidebar-icon-size);
   flex: 0 0 auto;
   color: currentColor;
-  opacity: 0.92;
+  opacity: 0.85;
 }
 
 .sidebar-item.is-active .sidebar-item__icon {

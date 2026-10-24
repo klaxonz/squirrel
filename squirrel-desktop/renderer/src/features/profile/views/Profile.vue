@@ -362,7 +362,7 @@ const handleLogout = async () => {
   margin-bottom: 0.25rem;
   color: hsl(var(--foreground));
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .profile-status {

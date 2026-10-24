@@ -333,7 +333,7 @@ function handlePlaySong(track: MusicTrack) {
 .music-search-summary-title {
   margin-top: 0.25rem;
   font-size: var(--app-text-xl);
-  font-weight: 650;
+  font-weight: 600;
   color: hsl(var(--foreground));
 }
 

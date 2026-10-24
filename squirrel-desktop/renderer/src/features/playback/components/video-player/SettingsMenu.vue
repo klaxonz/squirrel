@@ -448,7 +448,7 @@ function onOpacityPointerDown(e: PointerEvent) {
   border-bottom: 1px solid var(--sp-menu-border);
   border-radius: var(--sp-radius-md);
   color: var(--sp-text-strong);
-  font-weight: 650;
+  font-weight: 600;
   opacity: 1 !important;
 }
 

@@ -1535,7 +1535,7 @@ onUnmounted(() => {
   margin: 0;
   color: hsl(var(--foreground));
   font-size: var(--app-h3-size);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.4;
   transition: color var(--duration-fast) var(--ease-default);
   overflow: hidden;
@@ -1768,7 +1768,7 @@ onUnmounted(() => {
   margin-bottom: 0.625rem;
   color: hsl(var(--muted-foreground) / 0.82);
   font-size: var(--app-text-badge-size);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .rss-reader-title {
@@ -1777,7 +1777,7 @@ onUnmounted(() => {
   cursor: pointer;
   font-family: var(--app-heading-font);
   font-size: clamp(1.25rem, 1.6vw, 1.375rem);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.3;
   transition: color var(--duration-fast) var(--ease-default);
@@ -1823,7 +1823,7 @@ onUnmounted(() => {
   padding: 0 0.625rem;
   color: hsl(var(--foreground) / 0.82);
   font-size: var(--app-text-secondary-size);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .rss-subscribe-dialog__new-category:hover {

@@ -1,7 +1,11 @@
 <template>
-  <AppPageShell variant="compact" surface="organize" width="media" fill>
+  <AppPageShell variant="compact" surface="organize" width="browse" fill>
     <div class="subscription-page">
-      <AppToolbarFrame bordered compact boundary="media" divider="content">
+      <header class="app-page-heading">
+        <AppOperatePageHeader title="订阅" :summary="subscriptionSummary" size="lg" />
+      </header>
+
+      <AppToolbarFrame bordered compact boundary="browse" divider="content">
         <div class="subscription-toolbar">
           <div class="subscription-toolbar__navigation">
             <AppSectionNav
@@ -308,6 +312,7 @@ import {
 } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
 import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
 import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
@@ -402,6 +407,9 @@ let channelObserver: IntersectionObserver | null = null
 const channels = ref<SubscriptionListItem[]>([])
 const channelsTotal = ref(0)
 const subscriptionCount = ref<number | null>(null)
+const subscriptionSummary = computed(() => (
+  subscriptionCount.value == null ? '' : `${subscriptionCount.value} 个频道`
+))
 const issueCount = ref(0)
 const channelsPage = ref(1)
 const channelsFinished = ref(false)
@@ -1167,17 +1175,19 @@ onUnmounted(() => {
 
 .subscription-feed,
 .subscription-feed-skeletons {
-  width: min(100%, var(--app-content-media-max));
+  width: min(100%, var(--app-content-browse-max));
+  max-width: var(--app-content-browse-max);
   margin-inline: auto;
   padding-block: var(--space-4) var(--app-content-padding-bottom);
-  padding-inline: var(--app-content-media-gutter);
+  padding-inline: var(--app-page-gutter);
 }
 
 .subscription-list-view {
-  width: min(100%, var(--app-content-media-max));
+  width: min(100%, var(--app-content-browse-max));
+  max-width: var(--app-content-browse-max);
   margin-inline: auto;
   padding-block: var(--space-4) var(--app-content-padding-bottom);
-  padding-inline: var(--app-content-media-gutter);
+  padding-inline: var(--app-page-gutter);
 }
 
 .subscription-feed-skeletons {

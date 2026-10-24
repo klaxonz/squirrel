@@ -1,11 +1,12 @@
 <template>
-  <AppPageShell class="log-viewer" variant="compact" surface="operate" width="table" fill>
+  <AppPageShell class="log-viewer" variant="compact" surface="operate" width="browse" fill>
     <div class="log-page">
       <main class="app-page-content log-content">
         <AppOperatePageHeader
           title="日志"
           :summary="logSummary"
           description="检查服务运行记录、请求追踪与异常上下文。"
+          size="lg"
         >
           <template #actions>
             <Button
@@ -389,7 +390,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
 
 <style scoped>
 .log-viewer {
-  --app-page-max-width: var(--app-content-table-max);
+  --app-page-max-width: var(--app-content-browse-max);
   min-height: 0;
 }
 
@@ -527,7 +528,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   padding: 0.4375rem 0.75rem;
   color: hsl(var(--muted-foreground) / 0.7);
   font-size: var(--app-text-xs);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .log-stream {
@@ -580,7 +581,7 @@ const { autoRefresh, toggleAutoRefresh } = useLogAutoRefresh({ refresh: loadLogs
   padding: 0 0.375rem;
   color: hsl(var(--muted-foreground) / 0.78);
   font-size: var(--app-text-xs);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1;
 }
 

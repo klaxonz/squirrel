@@ -74,7 +74,7 @@ defineEmits<{
   color: hsl(var(--muted-foreground) / 0.62);
   font-family: var(--font-mono);
   font-size: var(--app-text-xs);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .music-rank-cover {
@@ -110,7 +110,7 @@ defineEmits<{
 
 .music-rank-name {
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .music-rank-meta {

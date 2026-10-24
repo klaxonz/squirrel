@@ -293,7 +293,7 @@ function handleCoverError() {
   background: var(--app-media-badge-bg);
   color: hsl(var(--app-media-on-image) / 0.92);
   font-size: var(--app-text-badge-size);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .music-card-info {
@@ -326,7 +326,7 @@ function handleCoverError() {
 
 .music-card-title {
   font-size: var(--app-text-md);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.3;
 }
 

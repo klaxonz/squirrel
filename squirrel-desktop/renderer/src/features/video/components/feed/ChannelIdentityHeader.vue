@@ -170,7 +170,7 @@ const hasIdentity = computed(() => Boolean(props.name?.trim()))
   color: hsl(var(--foreground));
   font-family: var(--font-display);
   font-size: var(--app-text-2xl);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
   text-overflow: ellipsis;

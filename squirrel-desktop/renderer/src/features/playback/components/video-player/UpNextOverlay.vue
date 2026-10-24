@@ -52,7 +52,7 @@ defineEmits<{
   margin-bottom: 8px;
   color: var(--sp-text-strong);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.3;
 }
 

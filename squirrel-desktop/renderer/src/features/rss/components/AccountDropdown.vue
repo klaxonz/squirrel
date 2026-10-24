@@ -151,7 +151,7 @@ defineEmits<{
   overflow: hidden;
   color: hsl(var(--foreground) / 0.82);
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

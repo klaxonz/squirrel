@@ -265,7 +265,7 @@ defineEmits<{
   min-height: 2rem;
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
   user-select: none;
 }
 
@@ -298,7 +298,7 @@ defineEmits<{
 .account-dialog__sync-title {
   color: hsl(var(--foreground) / 0.86);
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .account-dialog__sync-description {

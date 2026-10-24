@@ -212,7 +212,7 @@ const statusClass = computed(() => ({
   overflow: hidden;
   color: hsl(var(--foreground));
   font-size: var(--app-text-base);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -279,7 +279,7 @@ const statusClass = computed(() => ({
   margin-top: 0.25rem;
   color: hsl(var(--foreground));
   font-size: var(--app-text-base);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .subscription-inspector__section {
@@ -291,7 +291,7 @@ const statusClass = computed(() => ({
 .subscription-inspector__section-heading h3 {
   color: hsl(var(--foreground));
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .subscription-inspector__section-heading {

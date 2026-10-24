@@ -119,7 +119,7 @@ const onErrorAction = () => {
 .music-bar-title {
   display: block;
   font-size: var(--app-text-md);
-  font-weight: 650;
+  font-weight: 600;
   color: hsl(var(--foreground));
   overflow: hidden;
   text-overflow: ellipsis;

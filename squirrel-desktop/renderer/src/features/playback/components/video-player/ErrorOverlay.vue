@@ -93,7 +93,7 @@ defineEmits<{ retry: []; auth: [] }>()
   color: var(--sp-text-strong);
   font-family: var(--sp-font-family);
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0;
 }
 

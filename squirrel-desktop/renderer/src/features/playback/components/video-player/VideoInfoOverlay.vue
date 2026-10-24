@@ -31,7 +31,7 @@ defineProps<{
   color: #fff;
   font-family: var(--sp-font-family);
   font-size: clamp(16px, 1.6vw, 20px);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.3;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }

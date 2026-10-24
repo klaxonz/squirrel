@@ -7,10 +7,9 @@ import { queryClient } from '@/shared/lib/queryClient'
 import { useThemeStore } from '@/shared/stores/theme'
 import { Logger } from '@/shared/lib/logger'
 import { hoverFill } from '@/shared/directives/hoverFill'
-// UI copy uses the platform system font stack (see --font-sans in index.css).
-// Outfit (geometric, Gilroy-adjacent) carries display headings and numerals;
-// JetBrains Mono is reserved for code/timestamps. Noto Sans SC is the Linux
-// CJK fallback; Windows/macOS resolve to YaHei/PingFang first.
+// UI copy uses platform Latin + bundled Noto Sans SC for CJK (see --font-sans).
+// Outfit (geometric, Gilroy-adjacent) carries display Latin and numerals;
+// JetBrains Mono is reserved for code/timestamps.
 import '@fontsource-variable/outfit/wght.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/600.css'

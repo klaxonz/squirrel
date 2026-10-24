@@ -70,7 +70,7 @@ defineEmits<{
 .app-filter-panel__title {
   color: hsl(var(--foreground));
   font-size: var(--app-text-md);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.25;
 }

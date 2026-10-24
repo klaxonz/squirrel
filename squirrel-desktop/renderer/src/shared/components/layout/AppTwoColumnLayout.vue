@@ -196,8 +196,8 @@ defineExpose({ scrollEl, sidebarEl, isSidebarOpen, toggleSidebar, openSidebar, c
 
 .app-two-column--preset-music {
   --app-workbench-sidebar-width: 12rem;
-  --app-workbench-content-width: var(--app-content-media-max);
-  --app-workbench-content-gutter: var(--app-content-media-gutter);
+  --app-workbench-content-width: var(--app-page-max-width);
+  --app-workbench-content-gutter: var(--app-page-gutter);
   --app-divider-inline-gutter: var(--app-workbench-content-gutter);
 }
 

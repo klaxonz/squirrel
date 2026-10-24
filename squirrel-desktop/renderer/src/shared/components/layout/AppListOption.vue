@@ -90,7 +90,7 @@ const onKeydown = (event: KeyboardEvent) => {
   border-color: var(--app-selection-border);
   background: var(--app-selection-bg);
   color: var(--app-selection-fg);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .app-list-option--danger:hover,

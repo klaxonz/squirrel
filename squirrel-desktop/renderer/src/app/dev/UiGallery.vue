@@ -356,7 +356,7 @@ const hoverItems = ['全部', '未读', '已收藏', '稍后观看']
   margin: 0 0 var(--space-2);
   font-family: var(--font-display);
   font-size: var(--app-text-2xl);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
@@ -387,7 +387,7 @@ const hoverItems = ['全部', '未读', '已收藏', '稍后观看']
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--app-text-lg);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -406,14 +406,14 @@ const hoverItems = ['全部', '未读', '已收藏', '稍后观看']
 .ui-gallery__type--3xl {
   font-family: var(--font-display);
   font-size: var(--app-text-3xl);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
 .ui-gallery__type--2xl {
   font-family: var(--font-display);
   font-size: var(--app-text-2xl);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 

@@ -163,7 +163,7 @@ defineExpose({ refresh: load })
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--app-text-base);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 

@@ -662,7 +662,7 @@ onUnmounted(() => {
   height: auto;
   padding: 0;
   font-size: var(--app-text-xs);
-  font-weight: 650;
+  font-weight: 600;
   color: hsl(var(--destructive));
 }
 

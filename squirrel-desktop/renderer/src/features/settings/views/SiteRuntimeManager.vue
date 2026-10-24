@@ -1,10 +1,11 @@
 <template>
-  <AppPageShell class="site-runtime-page" variant="compact" surface="operate" width="table">
+  <AppPageShell class="site-runtime-page" variant="compact" surface="operate" width="browse">
     <main class="app-page-content site-runtime-page__content">
       <AppOperatePageHeader
         title="站点"
         :summary="runtimeSummary"
         description="管理内容来源的启用状态、网络连接与账户授权。"
+          size="lg"
       >
         <template #actions>
           <input
@@ -545,7 +546,7 @@ onMounted(() => {
 
 <style scoped>
 .site-runtime-page {
-  --app-page-max-width: var(--app-content-table-max);
+  --app-page-max-width: var(--app-content-browse-max);
 }
 
 .site-runtime-page__content {

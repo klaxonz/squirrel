@@ -159,7 +159,7 @@ const fmButtonTitle = computed(() => {
 .music-home-controls__copy strong {
   font-family: var(--app-heading-font);
   font-size: var(--app-text-base);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .music-home-controls__copy span,

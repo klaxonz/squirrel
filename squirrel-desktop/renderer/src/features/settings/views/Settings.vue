@@ -1,6 +1,6 @@
 <template>
   <!-- Desktop settings workbench — left nav + dense content, not top tabs. -->
-  <AppPageShell class="settings-page" variant="compact" surface="operate" width="form" fill>
+  <AppPageShell class="settings-page" variant="compact" surface="operate" width="browse" fill>
     <AppTwoColumnLayout preset="settings" sidebar-always>
       <template #sidebar>
       <div class="settings-nav" aria-label="设置分区">
@@ -457,7 +457,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
 <style scoped>
 .settings-page {
   --settings-nav-width: 12rem;
-  --settings-content-width: var(--app-content-form-max);
+  --settings-content-width: 48rem;
 }
 
 .settings-nav {
@@ -484,7 +484,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
   font-size: var(--app-text-xl);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -525,7 +525,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
 .settings-nav__item.is-active {
   background: hsl(var(--foreground) / 0.08);
   color: hsl(var(--foreground));
-  font-weight: 650;
+  font-weight: 600;
   box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.04);
 }
 
@@ -551,6 +551,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   flex-direction: column;
   overflow: auto;
   padding: var(--space-6) var(--space-6) var(--space-8);
+  padding-inline: clamp(1.5rem, 4vw, 4rem);
   background: hsl(var(--card));
 }
 
@@ -560,7 +561,7 @@ const onSystemToggle = async (key: string, value: boolean) => {
   width: min(100%, var(--settings-content-width));
   flex: 0 0 auto;
   flex-direction: column;
-  align-self: center;
+  align-self: flex-start;
   gap: var(--space-6);
 }
 

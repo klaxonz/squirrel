@@ -51,7 +51,8 @@
   /* One content-width contract. */
   --app-content-max: 75rem;            /* 1200px — media, lists, tables */
   --app-content-browse-max: 100rem;    /* 1600px — home feed, video library */
-  --app-content-wide-max: 96rem;       /* 1536px — VideoPlay widescreen only */
+  --app-content-wide-max: 96rem;       /* 1536px — legacy widescreen token */
+  --app-content-cinema-max: 120rem;    /* 1920px — VideoPlay widescreen */
   --app-page-gutter: clamp(1.5rem, 3.5vw, 3.5rem);
   --app-page-gutter-sm: var(--app-page-gutter);
   --app-page-gutter-lg: var(--app-page-gutter);
@@ -84,6 +85,7 @@
   --app-text-xl: 1.125rem;    /* 18px — section titles */
   --app-text-2xl: 1.375rem;   /* 22px — page titles */
   --app-text-3xl: 1.5rem;     /* 24px — hero / display text (e.g. lyrics) */
+  --app-text-4xl: 1.75rem;    /* 28px — page titles */
   --app-leading-body: 1.55;
   --app-leading-title: 1.2;
 
@@ -280,6 +282,14 @@
   max-width: var(--app-content-media-max);
   margin-inline: auto;
   padding-inline: var(--app-content-media-gutter);
+}
+
+/* Shared browse-width page heading: aligns with AppToolbarFrame boundary="browse". */
+.app-page-heading {
+  width: 100%;
+  max-width: var(--app-content-browse-max);
+  margin-inline: auto;
+  padding: var(--app-page-pad-top) var(--app-page-gutter) 1.25rem;
 }
 
 .app-content-aligned-divider,
@@ -904,7 +914,7 @@
   padding: 0 var(--space-3) !important;
   box-shadow: none !important;
   font-size: var(--app-text-sm) !important;
-  font-weight: 650;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -947,7 +957,7 @@ button.app-selection-active:hover {
   border-color: var(--app-selection-border);
   background: var(--app-selection-bg);
   color: var(--app-selection-fg);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .app-filter-toolbar-button.is-active:hover {
@@ -1106,7 +1116,7 @@ button.app-selection-active:hover {
 .app-dialog-form-label {
   color: hsl(var(--foreground) / 0.86);
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .app-icon-field {

@@ -15,6 +15,6 @@ defineProps<{
   padding: 0.25rem 0.625rem;
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
-  font-weight: 650;
+  font-weight: 600;
 }
 </style>

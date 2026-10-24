@@ -81,7 +81,7 @@ defineEmits<{
   color: var(--sp-text-strong);
   font-family: var(--sp-font-family);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .sp-chapter-overlay-item {

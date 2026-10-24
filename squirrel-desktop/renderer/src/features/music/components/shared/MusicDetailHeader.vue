@@ -97,7 +97,7 @@ withDefaults(defineProps<{
 .music-detail-kicker {
   color: var(--app-heading-color-muted);
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.25;
   letter-spacing: 0;
 }

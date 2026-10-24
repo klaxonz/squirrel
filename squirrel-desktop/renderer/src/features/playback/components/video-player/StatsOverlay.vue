@@ -112,7 +112,7 @@ onUnmounted(() => {
   color: var(--sp-text-strong);
   font-family: var(--sp-font-family);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   margin-bottom: 8px;
   letter-spacing: 0;
 }

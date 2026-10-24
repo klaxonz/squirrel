@@ -740,7 +740,7 @@ const {
   align-items: start;
   gap: var(--space-5) var(--space-6);
   width: 100%;
-  max-width: min(100%, var(--app-content-max));
+  max-width: min(100%, var(--app-content-browse-max));
   margin-inline: auto;
   padding: var(--space-5) var(--app-content-media-gutter) var(--space-8);
   transition:
@@ -750,7 +750,7 @@ const {
 
 /* 宽屏语义：放宽到宽画布上限后再由播放器自身比例约束高度 */
 .video-play-layout.is-widescreen {
-  max-width: min(100%, var(--app-content-wide-max));
+  max-width: min(100%, var(--app-content-cinema-max));
   padding-top: var(--space-4);
 }
 
@@ -850,7 +850,7 @@ const {
   background: transparent;
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
   outline: none;
   white-space: nowrap;
@@ -1017,7 +1017,7 @@ const {
   color: hsl(var(--foreground));
   overflow: hidden;
   font-size: var(--app-text-body-size);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.01em;
   text-overflow: ellipsis;
@@ -1044,7 +1044,7 @@ const {
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
   outline: none;
   transition:
     color var(--duration-fast) var(--ease-default),
@@ -1109,7 +1109,7 @@ const {
   background: hsl(var(--muted) / 0.32);
   color: hsl(var(--foreground) / 0.86);
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
   outline: none;
   transition:
     color var(--duration-fast) var(--ease-default),
@@ -1145,7 +1145,7 @@ const {
   border-radius: var(--radius-sm);
   color: hsl(var(--foreground) / 0.72);
   font-size: var(--app-text-base);
-  font-weight: 650;
+  font-weight: 600;
   outline: none;
   transition: color 0.16s ease;
 }

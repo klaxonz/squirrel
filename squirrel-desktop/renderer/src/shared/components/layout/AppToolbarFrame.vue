@@ -25,7 +25,7 @@
 withDefaults(defineProps<{
   variant?: 'default' | 'compact'
   /** Horizontal reading boundary shared with the page content below. */
-  boundary?: 'page' | 'media'
+  boundary?: 'page' | 'media' | 'browse'
   /** A full-width shell rule or a rule aligned to the inner content edge. */
   divider?: 'full' | 'content'
   bordered?: boolean
@@ -74,6 +74,11 @@ withDefaults(defineProps<{
 .app-toolbar-frame--boundary-media {
   --app-toolbar-content-max: var(--app-content-media-max);
   --app-toolbar-inline-gutter: var(--app-content-media-gutter);
+}
+
+.app-toolbar-frame--boundary-browse {
+  --app-toolbar-content-max: var(--app-content-browse-max);
+  --app-toolbar-inline-gutter: var(--app-page-gutter);
 }
 
 .app-toolbar-frame--compact .app-toolbar-frame__inner {

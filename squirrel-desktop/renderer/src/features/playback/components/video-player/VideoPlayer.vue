@@ -1541,7 +1541,7 @@ defineExpose({ play, pause, seek, toggleFullscreen, togglePictureInPicture })
   color: rgb(255 255 255 / 0.72);
   background: transparent;
   font-size: var(--app-text-badge-size);
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
   transition:
     color var(--duration-normal) var(--ease-default),
