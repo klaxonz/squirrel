@@ -15,10 +15,19 @@
   <div class="video-item__body video-item__controls">
     <VideoItemProfileMetadata v-bind="profile" grid @open-profile="emit('openProfile', $event)" />
   </div>
+  <VideoItemActions
+    v-bind="actions"
+    overlay
+    class="video-item__controls"
+    @toggle-like="emit('toggleLike')"
+    @toggle-read="emit('toggleRead', $event)"
+    @toggle-later="emit('toggleLater')"
+  />
 </template>
 
 <script setup lang="ts">
 import type { VideoListItem, VideoProfile } from '@/features/video/types/video'
+import VideoItemActions from './VideoItemActions.vue'
 import VideoItemPlaybackControl from './VideoItemPlaybackControl.vue'
 import VideoItemProfileMetadata from './VideoItemProfileMetadata.vue'
 import VideoItemThumbnail from './VideoItemThumbnail.vue'
@@ -27,6 +36,13 @@ defineProps<{
   video: VideoListItem
   thumbnail: InstanceType<typeof VideoItemThumbnail>['$props']
   profile: InstanceType<typeof VideoItemProfileMetadata>['$props']
+  actions: InstanceType<typeof VideoItemActions>['$props']
 }>()
-const emit = defineEmits<{ activate: []; openProfile: [profile: VideoProfile] }>()
+const emit = defineEmits<{
+  activate: []
+  openProfile: [profile: VideoProfile]
+  toggleLike: []
+  toggleRead: [markRead: boolean]
+  toggleLater: []
+}>()
 </script>

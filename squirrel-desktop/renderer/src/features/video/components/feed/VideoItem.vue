@@ -2,17 +2,31 @@
   <article
     class="video-item group"
     :class="[
-      layout === 'list'
-        ? (appearance === 'workbench' ? 'video-item--row' : 'video-item--card')
-        : 'video-item--grid',
+      layout === 'lead'
+        ? 'video-item--lead'
+        : layout === 'list'
+          ? (appearance === 'workbench' ? 'video-item--row' : 'video-item--card')
+          : 'video-item--grid',
       `video-item--appearance-${appearance}`,
     ]"
     @contextmenu.prevent="showContextMenu"
     @pointerenter="prefetchPlayback"
     @pointerdown.left="prefetchPlayback"
   >
+    <VideoItemLeadLayout
+      v-if="layout === 'lead'"
+      :video="video"
+      :thumbnail="thumbnailPresentation"
+      :profile="profilePresentation"
+      :actions="actionPresentation"
+      @activate="handleOpen"
+      @open-profile="goToProfile"
+      @toggle-like="toggleLikeVideo"
+      @toggle-read="toggleReadStatus"
+      @toggle-later="toggleLater"
+    />
     <VideoItemWorkbenchLayout
-      v-if="layout === 'list' && appearance === 'workbench'"
+      v-else-if="layout === 'list' && appearance === 'workbench'"
       :video="video"
       :thumbnail="thumbnailPresentation"
       :profile="profilePresentation"
@@ -40,8 +54,12 @@
       :video="video"
       :thumbnail="thumbnailPresentation"
       :profile="profilePresentation"
+      :actions="actionPresentation"
       @activate="handleOpen"
       @open-profile="goToProfile"
+      @toggle-like="toggleLikeVideo"
+      @toggle-read="toggleReadStatus"
+      @toggle-later="toggleLater"
     />
 
     <Teleport to="body">
@@ -67,6 +85,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import ContextMenu from './ContextMenu.vue'
 import VideoItemFeedLayout from './VideoItemFeedLayout.vue'
 import VideoItemGridLayout from './VideoItemGridLayout.vue'
+import VideoItemLeadLayout from './VideoItemLeadLayout.vue'
 import VideoItemWorkbenchLayout from './VideoItemWorkbenchLayout.vue'
 import useVideoInteraction from '@/features/video/composables/useVideoInteraction'
 import { updateVideoReadState } from '@/shared/api'
@@ -85,7 +104,7 @@ const props = withDefaults(defineProps<{
   video: VideoListItem
   showAvatar?: boolean
   sortBy?: string
-  layout?: 'grid' | 'list'
+  layout?: 'grid' | 'list' | 'lead'
   showDuration?: boolean
   thumbnailProgress?: boolean
   appearance?: 'default' | 'workbench'

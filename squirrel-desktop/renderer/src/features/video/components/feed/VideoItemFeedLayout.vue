@@ -1,5 +1,13 @@
 <template>
   <VideoItemPlaybackControl :title="video.title" @activate="emit('activate')" />
+  <VideoItemActions
+    v-bind="actions"
+    overlay
+    class="video-item__controls"
+    @toggle-like="emit('toggleLike')"
+    @toggle-read="emit('toggleRead', $event)"
+    @toggle-later="emit('toggleLater')"
+  />
   <div class="video-item__presentation">
     <VideoItemThumbnail v-bind="thumbnail" variant="card" />
     <div class="video-item__headline">
@@ -16,13 +24,6 @@
     v-bind="profile"
     class="video-item__controls video-item__meta-row"
     @open-profile="emit('openProfile', $event)"
-  />
-  <VideoItemActions
-    v-bind="actions"
-    class="video-item__controls"
-    @toggle-like="emit('toggleLike')"
-    @toggle-read="emit('toggleRead', $event)"
-    @toggle-later="emit('toggleLater')"
   />
 </template>
 

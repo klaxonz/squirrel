@@ -20,7 +20,19 @@
     </div>
 
     <div v-else-if="videoGroups.length" class="home-inbox__timeline">
-      <section v-for="group in videoGroups" :key="group.title" class="home-inbox__group">
+      <VideoItem
+        v-if="leadVideo"
+        :video="leadVideo"
+        layout="lead"
+        show-avatar
+        show-duration
+        class="home-inbox__lead"
+        @openModal="emit('openModal', $event)"
+        @goToProfile="(profile) => emit('goToProfile', profile)"
+        @goToSubscription="(id) => emit('goToSubscription', id)"
+      />
+
+      <section v-for="group in timelineGroups" :key="group.title" class="home-inbox__group">
         <header class="home-inbox__group-header">
           <h3>{{ group.title }}</h3>
           <span>{{ group.videos.length }}</span>
@@ -49,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { getVideoList } from '@/shared/api'
 import type { VideoListItem, VideoProfile } from '@/features/video/types/video'
 import { useFeedGrouping } from '@/features/video/composables/useFeedGrouping'
@@ -77,6 +89,28 @@ const items = ref<VideoListItem[]>([])
 const loading = ref(false)
 const loadError = ref('')
 const { videoGroups } = useFeedGrouping({ feedItems: items })
+
+// The lead must earn its size: unread and carrying a real cover.
+const leadVideo = computed<VideoListItem | null>(() => {
+  for (const group of videoGroups.value) {
+    const candidate = group.videos.find((video) => (
+      !video.is_read && String(video.thumbnail || '').trim()
+    ))
+    if (candidate) return candidate
+  }
+  return null
+})
+
+const timelineGroups = computed(() => {
+  const lead = leadVideo.value
+  if (!lead) return videoGroups.value
+  return videoGroups.value
+    .map((group) => ({
+      ...group,
+      videos: group.videos.filter((video) => video.id !== lead.id),
+    }))
+    .filter((group) => group.videos.length > 0)
+})
 let requestToken = 0
 let abortController: AbortController | null = null
 
@@ -174,6 +208,10 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.home-inbox__lead {
+  margin-bottom: 0.25rem;
 }
 
 .home-inbox__group {
