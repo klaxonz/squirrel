@@ -34,6 +34,7 @@
           variant="plain"
           icon="playlistMusic"
           title="暂无推荐歌单"
+          copy="登录音乐账号后可同步收藏与每日推荐。"
         />
         <div v-else class="music-home-recommendation-layout">
           <MusicCard
@@ -82,6 +83,7 @@
           variant="plain"
           icon="list"
           title="暂无榜单"
+          copy="稍后刷新，或登录后查看实时榜单。"
         />
         <MusicRankRow v-else :ranks="ranks.slice(0, 6)" @select="$emit('select-rank', $event)" />
       </MusicSection>
@@ -99,6 +101,7 @@
         variant="plain"
         icon="disc"
         title="暂无新专辑"
+        copy="新碟上架后会自动出现在这里。"
       />
       <div v-else class="music-home-album-list">
         <MusicCard

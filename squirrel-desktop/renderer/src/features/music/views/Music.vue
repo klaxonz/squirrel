@@ -3,8 +3,10 @@
     <AppTwoColumnLayout preset="music">
       <template #header>
         <div class="music-nav-header">
-          <h1 class="music-nav-header__title">音乐库</h1>
-          <span class="music-nav-header__divider" aria-hidden="true" />
+          <div class="music-nav-header__identity">
+            <h1 class="music-nav-header__title">音乐库</h1>
+            <p class="music-nav-header__subtitle">私人 FM、歌单与每日推荐</p>
+          </div>
           <AppSectionNav
             class="app-section-nav--optical"
             :model-value="musicActiveMode"
@@ -760,25 +762,35 @@ async function handleLogout() {
   width: 100%;
   min-width: 0;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--space-3);
 }
 
-/* Page identity beside the mode tabs, mirroring the 订阅库 pane header. */
+.music-nav-header__identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+/* The library is a full workspace, not a pane subtitle. */
 .music-nav-header__title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--font-sans);
-  font-size: var(--app-text-lg);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--app-heading-font);
+  font-size: var(--app-h1-size);
+  font-weight: var(--app-h1-weight);
+  line-height: var(--app-h1-leading);
+  letter-spacing: var(--app-h1-tracking);
 }
 
-.music-nav-header__divider {
-  width: 1px;
-  height: 1rem;
-  flex: none;
-  background: var(--app-hairline);
+.music-nav-header__subtitle {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-secondary-size);
+  font-weight: 500;
+  line-height: 1.3;
 }
 
 .music-detail-navigation {
