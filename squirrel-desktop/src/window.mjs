@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { app, BrowserWindow, clipboard, Menu, shell } from 'electron'
+import { app, BrowserWindow, clipboard, Menu, screen, shell } from 'electron'
 import {
   DEFAULT_WINDOW_STATE,
   bindWindowStatePersistence,
@@ -324,6 +324,44 @@ export const createMainWindow = () => {
   const userDataPath = app.getPath('userData')
   const windowState = loadWindowState(userDataPath)
   const isMac = process.platform === 'darwin'
+
+  // A window saved at the full work area with isMaximized=false looks
+  // maximized but has no reachable resize edge. Pull it back to a real
+  // window size so it can be moved and resized.
+  const { workArea } = screen.getPrimaryDisplay()
+  const fillsWorkArea = (
+    windowState.width >= workArea.width - 8
+    && windowState.height >= workArea.height - 8
+  )
+  if (fillsWorkArea) {
+    const width = Math.max(
+      DEFAULT_WINDOW_STATE.minWidth,
+      Math.min(DEFAULT_WINDOW_STATE.width, Math.round(workArea.width * 0.86)),
+    )
+    const height = Math.max(
+      DEFAULT_WINDOW_STATE.minHeight,
+      Math.min(DEFAULT_WINDOW_STATE.height, Math.round(workArea.height * 0.86)),
+    )
+    windowState.width = width
+    windowState.height = height
+    windowState.x = Math.round(workArea.x + (workArea.width - width) / 2)
+    windowState.y = Math.round(workArea.y + (workArea.height - height) / 2)
+  }
+
+  let topmostClearedLogged = false
+  const clearAlwaysOnTop = () => {
+    if (mainWindow.isDestroyed()) {
+      return
+    }
+    // Call unconditionally: a third-party window tool can set WS_EX_TOPMOST
+    // without Electron's isAlwaysOnTop() flag reflecting it.
+    mainWindow.setAlwaysOnTop(false)
+    if (!topmostClearedLogged) {
+      topmostClearedLogged = true
+      console.info('[squirrel-desktop] window: always-on-top disabled')
+    }
+  }
+
   const mainWindow = new BrowserWindow({
     x: windowState.x,
     y: windowState.y,
@@ -336,6 +374,11 @@ export const createMainWindow = () => {
     icon: APP_ICON_PATH,
     autoHideMenuBar: true,
     backgroundColor: '#141110',
+    resizable: true,
+    movable: true,
+    minimizable: true,
+    maximizable: true,
+    fullscreenable: true,
     ...(isMac
       ? {
           titleBarStyle: 'hiddenInset',
@@ -343,6 +386,7 @@ export const createMainWindow = () => {
       : {
           frame: false,
           titleBarStyle: 'hidden',
+          thickFrame: true,
         }),
     webPreferences: {
       sandbox: false,
@@ -360,6 +404,12 @@ export const createMainWindow = () => {
   bindWindowStatePersistence(userDataPath, mainWindow)
   installMainWindowBehaviors(mainWindow)
 
+  clearAlwaysOnTop()
+  mainWindow.on('focus', clearAlwaysOnTop)
+  mainWindow.on('blur', clearAlwaysOnTop)
+  mainWindow.on('restore', clearAlwaysOnTop)
+  mainWindow.on('show', clearAlwaysOnTop)
+
   // FreeTube: Chrome UA without Electron token on the main webContents.
   // Session-level setUserAgent alone is not always inherited by every request.
   try {
@@ -373,6 +423,7 @@ export const createMainWindow = () => {
   }
 
   mainWindow.once('ready-to-show', () => {
+    clearAlwaysOnTop()
     mainWindow.show()
   })
   if (windowState.isMaximized) {

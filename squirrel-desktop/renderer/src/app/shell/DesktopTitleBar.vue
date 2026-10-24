@@ -242,8 +242,8 @@ onUnmounted(() => {
 .titlebar__command {
   flex: 1 1 auto;
   min-width: 0;
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 
 .titlebar__window {

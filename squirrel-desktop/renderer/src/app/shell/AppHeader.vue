@@ -179,6 +179,24 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   z-index: auto;
 }
 
+/* The command row is a window drag region; only its controls opt out. */
+.app-header--desktop .app-header__search-slot {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.app-header--desktop .app-header__search-wrap,
+.app-header--desktop .app-header__actions,
+.app-header--desktop .app-header__user {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.app-header--desktop .app-header__search-slot :deep(.global-search) {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
 .app-header__leading {
   display: flex;
   flex: 0 0 auto;
