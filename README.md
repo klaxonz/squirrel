@@ -130,23 +130,6 @@ npm run build         # UI + unpacked
 npm run dist          # 安装包
 ```
 
-### 质量门
-
-根目录脚本聚合桌面端的日常检查：
-
-```bash
-npm install
-npm run lint
-npm run typecheck
-npm test
-npm run build
-npm run check
-```
-
-后端检查在 `squirrel-backend/` 中执行：`pipenv sync --dev`、`pipenv run pytest`、`pipenv run ruff check .` 与 `pipenv run python -m compileall -q .`。CI 会在干净环境中运行这些检查。
-
-Electron smoke 测试需要本地 ChromeDriver 与 Electron 二进制可用，命令为 `cd squirrel-desktop && npm run test:electron`；环境不具备时该可选 CI job 会保留失败产物并标记为允许失败。
-
 环境变量见 `squirrel-desktop/README.md`（`DESKTOP_RENDERER_URL`、`VITE_BACKEND_URL` 等）。
 
 ## 浏览器扩展

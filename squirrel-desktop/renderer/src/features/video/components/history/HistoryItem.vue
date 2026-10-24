@@ -23,25 +23,14 @@
         @click="emit('open', video)"
       />
 
-      <div class="history-item__thumb">
+      <MediaFrame
+        class="history-item__thumb"
+        :duration="video.duration ? formatDuration(video.duration) : ''"
+        :progress="progress"
+        :progress-label="`已观看 ${progressPercent}%`"
+      >
         <VideoThumbnail :src="video.thumbnail" :alt="video.title" fit="cover" interactive />
-
-        <span v-if="video.duration" class="history-item__duration">
-          {{ formatDuration(video.duration) }}
-        </span>
-
-        <div
-          v-if="progress > 0"
-          class="history-item__progress"
-          role="progressbar"
-          :aria-valuenow="progressPercent"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          :aria-label="`已观看 ${progressPercent}%`"
-        >
-          <div class="history-item__progress-fill" :style="{ width: `${progressPercent}%` }" />
-        </div>
-      </div>
+      </MediaFrame>
 
       <div class="history-item__main">
         <h3 class="history-item__title">{{ video.title }}</h3>
@@ -96,6 +85,7 @@
 import { computed } from 'vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
+import MediaFrame from '@/shared/components/layout/MediaFrame.vue'
 import type { VideoHistoryEntry, VideoProfile } from '@/features/video/types/video'
 import { prefetchDesktopPlaybackSource } from '@/features/video/composables/useVideoOperations'
 import AppIcon from '@/shared/icons/AppIcon.vue'
@@ -169,19 +159,17 @@ const prefetchPlayback = () => {
   align-items: center;
   column-gap: 0.35rem;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.88);
-  border-radius: var(--radius-lg);
-  background: hsl(var(--card));
-  padding-inline: 0.7rem;
-  transition:
-    border-color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default);
+  padding-inline: 0.9rem;
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.history-item + .history-item {
+  border-top: 1px solid var(--app-hairline);
 }
 
 .history-item:hover,
 .history-item:focus-within {
-  border-color: hsl(var(--foreground) / 0.16);
-  background: hsl(var(--card));
+  background: hsl(var(--foreground) / 0.03);
 }
 
 /* Always three columns on desktop workbench widths. */
@@ -218,47 +206,7 @@ const prefetchPlayback = () => {
 }
 
 .history-item__thumb {
-  position: relative;
-  aspect-ratio: 16 / 9;
   min-width: 0;
-  overflow: hidden;
-  border-radius: var(--radius-md);
-  background: var(--app-media-thumb-placeholder);
-  isolation: isolate;
-  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.04);
-}
-
-.history-item__duration {
-  position: absolute;
-  right: 0.375rem;
-  bottom: 0.55rem;
-  z-index: 10;
-  display: inline-flex;
-  align-items: center;
-  height: 1.25rem;
-  padding: 0 0.375rem;
-  border-radius: var(--radius-sm);
-  background: var(--app-media-badge-bg);
-  color: hsl(var(--app-media-on-image));
-  font-size: var(--app-text-xs);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-
-.history-item__progress {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 20;
-  height: 3px;
-  overflow: hidden;
-  background: var(--app-media-progress-track);
-}
-
-.history-item__progress-fill {
-  height: 100%;
-  background: hsl(var(--primary));
 }
 
 .history-item__main {
@@ -275,7 +223,7 @@ const prefetchPlayback = () => {
   margin: 0;
   color: hsl(var(--foreground));
   font-size: var(--app-text-lg);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.35;
   text-wrap: pretty;
@@ -360,17 +308,27 @@ const prefetchPlayback = () => {
 .history-item__status {
   display: inline-flex;
   align-items: center;
-  min-height: 1.35rem;
+  gap: 0.375rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.history-item__status::before {
+  content: '';
+  width: 0.375rem;
+  height: 0.375rem;
+  flex: 0 0 auto;
   border-radius: 999px;
-  padding: 0 0.5rem;
-  color: hsl(var(--muted-foreground) / 0.92);
-  background: hsl(var(--foreground) / 0.04);
+  background: currentColor;
+  opacity: 0.55;
 }
 
 .history-item__status--active {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.08);
-  font-weight: 700;
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+.history-item__status--active::before {
+  opacity: 1;
 }
 
 .history-item__delete {

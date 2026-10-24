@@ -374,7 +374,7 @@ watch(() => route.query.special, (value) => {
   align-items: center;
   gap: 0.3rem;
   border: 1px solid hsl(var(--border));
-  border-radius: 999px;
+  border-radius: var(--app-control-item-radius);
   padding: 0 0.6rem;
   background: hsl(var(--card));
   color: hsl(var(--foreground));

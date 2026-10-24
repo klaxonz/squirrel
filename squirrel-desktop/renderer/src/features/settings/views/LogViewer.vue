@@ -305,7 +305,7 @@ watch(searchTrigger, () => {
 async function loadLogFiles() {
   try {
     const data = await getLogFiles()
-    logFiles.value = data || []
+    logFiles.value = Array.isArray(data) ? data : []
     if (logFiles.value.length > 0 && !filters.value.filename) {
       filters.value.filename = logFiles.value[0].name
     }
@@ -328,7 +328,8 @@ async function loadLogs() {
     }
     const data = await queryLogs(params)
     if (data && requestId === latestRequestId) {
-      logs.value = data.logs.map((log, index) => ({
+      const rows = Array.isArray(data.logs) ? data.logs : []
+      logs.value = rows.map((log, index) => ({
         ...log,
         id: `${Date.now()}-${index}-${log.line_num}`,
       }))

@@ -315,10 +315,13 @@
               :aria-label="`播放 ${related.title}`"
               @click="related.id != null && goToVideo(related.id, related)"
             >
-              <div class="video-related-item__thumb">
+              <MediaFrame
+                class="video-related-item__thumb"
+                :duration="related.duration ? formatDuration(related.duration as number) : ''"
+                compact
+              >
                 <VideoThumbnail v-if="related.thumbnail" :src="(related.thumbnail as string)" fit="cover" />
-                <span v-if="related.duration" class="video-related-item__duration">{{ formatDuration(related.duration as number) }}</span>
-              </div>
+              </MediaFrame>
               <div class="video-related-item__copy">
                 <h4>{{ related.title }}</h4>
                 <div class="video-related-item__meta">
@@ -344,6 +347,7 @@ import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppFloatingList from '@/shared/components/layout/AppFloatingList.vue'
 import AppListOption from '@/shared/components/layout/AppListOption.vue'
+import MediaFrame from '@/shared/components/layout/MediaFrame.vue'
 import usePlaybackOrchestrator from '../composables/usePlaybackOrchestrator'
 import usePlaybackReporting from '../composables/usePlaybackReporting'
 import useVideoActionBar from '@/features/video/composables/useVideoActionBar'
@@ -729,14 +733,14 @@ const {
 /* ===== 布局 =====
    默认（<1080px）单列堆叠；桌面 ≥1080px 两栏：
    播放器全宽 + [详情 | 右侧栏]。
-   本页独有放宽：96rem（家页/列表仍用 --app-content-media-max）。 */
+   默认与列表页共用媒体画布；宽屏模式放宽到 --app-content-wide-max。 */
 .video-play-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: var(--space-5) var(--space-6);
   width: 100%;
-  max-width: min(100%, 96rem);
+  max-width: min(100%, var(--app-content-max));
   margin-inline: auto;
   padding: var(--space-5) var(--app-content-media-gutter) var(--space-8);
   transition:
@@ -744,9 +748,9 @@ const {
     padding var(--duration-base) var(--ease-out);
 }
 
-/* 宽屏语义：去掉 max-width，播放器与页面内容贴边（edge-to-edge） */
+/* 宽屏语义：放宽到宽画布上限后再由播放器自身比例约束高度 */
 .video-play-layout.is-widescreen {
-  max-width: none;
+  max-width: min(100%, var(--app-content-wide-max));
   padding-top: var(--space-4);
 }
 
@@ -1160,9 +1164,9 @@ const {
 
 .video-play-queue {
   overflow: hidden;
-  border: 1px solid var(--app-hairline);
-  border-radius: var(--radius-md);
-  background: hsl(var(--muted) / 0.14);
+  border: 1px solid var(--app-surface-border);
+  border-radius: var(--radius-lg);
+  background: hsl(var(--card));
 }
 
 .video-play-queue .video-play-aside__header {
@@ -1173,8 +1177,10 @@ const {
   display: block;
   margin-bottom: 0.125rem;
   color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-badge-size);
+  font-size: var(--app-text-xs);
   font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .video-play-queue__items {
@@ -1191,7 +1197,6 @@ const {
   min-height: 2.5rem;
   padding: var(--space-2) var(--space-3);
   border: 0;
-  border-top: 1px solid var(--app-hairline);
   background: transparent;
   color: hsl(var(--muted-foreground));
   font: inherit;
@@ -1199,16 +1204,20 @@ const {
   cursor: pointer;
 }
 
+.video-play-queue__item + .video-play-queue__item {
+  border-top: 1px solid var(--app-hairline);
+}
+
 .video-play-queue__item:hover,
 .video-play-queue__item:focus-visible {
-  background: hsl(var(--muted) / 0.4);
+  background: hsl(var(--foreground) / 0.03);
   color: hsl(var(--foreground));
   outline: none;
 }
 
 .video-play-queue__item.is-current {
-  background: hsl(var(--primary) / 0.09);
-  color: hsl(var(--primary));
+  background: var(--app-selection-bg);
+  color: hsl(var(--foreground));
 }
 
 /* Reddit queue: the row gets a quiet primary tint; the title stays
@@ -1242,15 +1251,15 @@ const {
 .video-play-aside__header h2 {
   margin: 0;
   color: hsl(var(--foreground));
-  font-size: var(--app-text-body-size);
-  font-weight: 700;
+  font-size: var(--app-text-base);
+  font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
 }
 
 .video-play-aside__count {
-  color: hsl(var(--muted-foreground) / 0.66);
-  font-size: var(--app-text-badge-size);
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-sm);
 }
 
 .video-play-aside__content {
@@ -1290,35 +1299,12 @@ const {
 
 .video-related-item:hover,
 .video-related-item:focus-visible {
-  background: hsl(var(--muted) / 0.34);
+  background: hsl(var(--foreground) / 0.03);
 }
 
 .video-related-item__thumb {
-  position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
   flex: 0 0 auto;
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--app-media-thumb-placeholder);
-  isolation: isolate;
-}
-
-.video-related-item__duration {
-  position: absolute;
-  right: 0.25rem;
-  bottom: 0.25rem;
-  display: inline-flex;
-  align-items: center;
-  height: 1.25rem;
-  padding: 0 0.375rem;
-  border-radius: var(--radius-sm);
-  background: var(--app-media-badge-bg);
-  color: hsl(var(--app-media-on-image));
-  font-size: var(--app-text-xs);
-  font-variant-numeric: tabular-nums;
-  font-weight: 650;
 }
 
 .video-related-item__copy {
@@ -1333,9 +1319,9 @@ const {
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
-  color: hsl(var(--foreground) / 0.9);
+  color: hsl(var(--foreground));
   font-size: var(--app-text-md);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -1351,7 +1337,7 @@ const {
   min-width: 0;
   align-items: center;
   gap: var(--space-1);
-  color: hsl(var(--muted-foreground) / 0.62);
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
 }
 
@@ -1364,7 +1350,7 @@ const {
 }
 
 .video-related-item__meta p {
-  color: hsl(var(--muted-foreground) / 0.76);
+  color: inherit;
   font-size: inherit;
   font-weight: 500;
 }

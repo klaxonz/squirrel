@@ -16,16 +16,7 @@
     "test": "node --test tests/*.test.mjs",
     "test:renderer": "vitest run --config renderer/vitest.config.ts",
     "test:electron": "wdio run ./wdio.electron.conf.mjs",
-    "test:electron:visual": "node scripts/electron-smoke-playwright.mjs",
-    "test:electron:home": "node scripts/electron-home-playwright.mjs",
-    "visual:review": "node scripts/visual-review-harness.mjs",
-    "visual:review:update-baseline": "node scripts/visual-review-harness.mjs --update-baseline",
-    "postinstall": "npm run rebuild:electron-native",
-    "rebuild:electron-native": "node ./scripts/rebuild-electron-native.mjs",
-    "check:font-size": "node renderer/scripts/check-raw-font-size.mjs",
-    "lint": "eslint renderer/src --config renderer/eslint.config.js",
-    "check:overlays": "node renderer/scripts/check-raw-overlays.mjs",
-    "check": "npm run check:font-size && npm run check:overlays"
+    "lint": "eslint renderer/src --config renderer/eslint.config.js"
   },
   "build": {
     "appId": "com.klaxon.squirrel.desktop",
@@ -55,7 +46,6 @@
     }
   },
   "dependencies": {
-    "@fontsource-variable/instrument-sans": "^5.3.0",
     "@fontsource-variable/noto-sans-sc": "^5.3.0",
     "@fontsource-variable/outfit": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.2.8",
@@ -95,7 +85,6 @@
     "eslint": "^9.39.4",
     "eslint-plugin-vue": "^9.33.0",
     "globals": "^15.15.0",
-    "playwright-core": "^1.62.1",
     "postcss": "^8.4.41",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",

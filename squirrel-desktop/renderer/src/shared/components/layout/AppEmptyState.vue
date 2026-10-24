@@ -64,13 +64,13 @@ const variantClass = computed(() =>
   flex-direction: column;
   text-align: center;
   gap: var(--space-3);
-  padding: var(--space-7) var(--space-5);
-  min-height: max(var(--app-empty-min-height), 16rem);
+  padding: var(--space-8) var(--space-5);
+  min-height: max(var(--app-empty-min-height), 14rem);
 }
 
 .app-empty-state--bordered {
   border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-2xl);
   background: hsl(var(--card));
 }
 
@@ -78,19 +78,19 @@ const variantClass = computed(() =>
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3.25rem;
-  height: 3.25rem;
-  border-radius: 999px;
-  background: hsl(var(--secondary));
-  border: 1px solid hsl(var(--border));
-  margin-bottom: var(--space-1);
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 0;
 }
 
 .app-empty-state--icon-circle .app-empty-state__icon-wrap {
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 999px;
   background: hsl(var(--secondary));
+  border: 0;
   box-shadow: none;
 }
 
@@ -109,18 +109,18 @@ const variantClass = computed(() =>
 .app-empty-state__title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-size: var(--app-text-xl);
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.3;
   letter-spacing: -0.01em;
 }
 
 .app-empty-state__copy {
   margin: 0;
-  max-width: var(--app-empty-copy-width);
+  max-width: 26rem;
   color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-base);
+  font-size: var(--app-text-md);
   line-height: 1.6;
   text-wrap: pretty;
 }

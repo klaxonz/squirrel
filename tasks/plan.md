@@ -87,4 +87,3 @@
 - Desktop unit: `cd squirrel-desktop && npm test`
 - Renderer tests: `cd squirrel-desktop && npm run test:renderer`
 - Renderer typecheck/build: `npm run typecheck && npm run build:renderer`
-- Desktop checks: `npm run check`

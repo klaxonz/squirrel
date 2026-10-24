@@ -11,12 +11,13 @@
 
 /**
  * Extract the `HH:mm:ss` clock portion from a backend log-line timestamp
- * (`YYYY-MM-DD HH:mm:ss`). Falls back to the raw string when there's no space.
+ * (`YYYY-MM-DD HH:mm:ss`, or ISO `YYYY-MM-DDTHH:mm:ss.fffZ`). Falls back to the
+ * raw string when no clock portion is present.
  */
 export const formatLogTimestamp = (timestamp: string | null | undefined): string => {
   if (!timestamp) return ''
-  const parts = timestamp.split(' ')
-  return parts.length > 1 ? parts[1] : timestamp
+  const match = timestamp.match(/(?:^|[ T])(\d{2}:\d{2}:\d{2})/)
+  return match ? match[1] : timestamp
 }
 
 const LEVEL_COLOR_CLASSES: Record<string, string> = {

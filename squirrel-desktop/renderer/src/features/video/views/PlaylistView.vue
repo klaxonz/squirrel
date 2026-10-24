@@ -157,15 +157,16 @@
                   </div>
 
                   <div class="playlist-item-media">
-                    <div class="playlist-row-thumb">
+                    <MediaFrame
+                      class="playlist-row-thumb"
+                      :duration="item.video?.duration ? formatDuration(item.video.duration) : ''"
+                      compact
+                    >
                       <VideoThumbnail v-if="item.video?.thumbnail" :src="item.video.thumbnail" fit="cover" />
                       <div v-else class="app-media-thumb-fallback">
                         <AppIcon name="film" class="h-5 w-5" />
                       </div>
-                      <span v-if="item.video?.duration" class="app-media-duration-badge app-media-duration-badge--compact app-mono">
-                        {{ formatDuration(item.video.duration) }}
-                      </span>
-                    </div>
+                    </MediaFrame>
                     <div class="playlist-item-copy">
                       <div class="playlist-item-title">{{ item.video?.title }}</div>
                       <div class="playlist-item-meta">
@@ -260,6 +261,7 @@ import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppPaneHeader from '@/shared/components/layout/AppPaneHeader.vue'
 import AppSidebarHeader from '@/shared/components/layout/AppSidebarHeader.vue'
 import AppTwoColumnLayout from '@/shared/components/layout/AppTwoColumnLayout.vue'
+import MediaFrame from '@/shared/components/layout/MediaFrame.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import { Button } from '@/shared/ui/button'
@@ -575,7 +577,7 @@ onMounted(async () => {
   overflow: hidden;
   color: hsl(var(--foreground));
   font-size: var(--app-text-md);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -585,12 +587,12 @@ onMounted(async () => {
   display: inline-flex;
   flex: none;
   align-items: center;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--app-selection-count-bg);
   padding: 0.125rem 0.35rem;
   color: var(--app-selection-count-fg);
   font-size: var(--app-text-badge-size);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -606,8 +608,8 @@ onMounted(async () => {
   flex-direction: column;
   gap: var(--space-4);
   width: 100%;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-md);
+  border: 1px solid var(--app-surface-border);
+  border-radius: var(--radius-xl);
   background: hsl(var(--card));
   padding: var(--space-4);
 }
@@ -635,25 +637,24 @@ onMounted(async () => {
 
 .playlist-table-head {
   min-height: 2rem;
-  border-bottom: 1px solid hsl(var(--border));
+  border-bottom: 1px solid var(--app-hairline);
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .playlist-item {
   min-height: 4.5rem;
-  border: 1px solid transparent;
-  border-bottom-color: hsl(var(--border));
+  border: 0;
+  border-bottom: 1px solid var(--app-hairline);
   border-radius: 0;
   padding: 0.5rem 0;
   cursor: pointer;
   outline: none;
   transition:
     background-color var(--duration-fast) var(--ease-default),
-    border-color var(--duration-fast) var(--ease-default),
     color var(--duration-fast) var(--ease-default);
 }
 
@@ -671,9 +672,7 @@ onMounted(async () => {
 
 .playlist-item:hover,
 .playlist-item:has(.app-content-row__primary:focus-visible) {
-  border-color: transparent;
-  border-bottom-color: hsl(var(--border));
-  background: var(--app-row-hover-bg);
+  background: hsl(var(--foreground) / 0.03);
 }
 
 .playlist-item:has(.app-content-row__primary:focus-visible) {
@@ -691,7 +690,7 @@ onMounted(async () => {
   justify-content: center;
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-md);
-  font-weight: 650;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -720,15 +719,8 @@ onMounted(async () => {
 }
 
 .playlist-row-thumb {
-  position: relative;
   width: 6.25rem;
-  aspect-ratio: 16 / 9;
   flex: none;
-  overflow: hidden;
-  border-radius: var(--radius-md);
-  border: 0;
-  background: var(--app-media-thumb-placeholder);
-  isolation: isolate;
 }
 
 .playlist-item-copy {
@@ -739,7 +731,7 @@ onMounted(async () => {
   overflow: hidden;
   color: hsl(var(--foreground));
   font-size: var(--app-text-base);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;

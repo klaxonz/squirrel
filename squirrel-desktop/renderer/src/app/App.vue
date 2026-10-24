@@ -51,21 +51,13 @@ const layout = computed(() => {
 })
 
 /**
- * 选择进入动画名（'page-forward' / 'page-back' / 'page-fade'），
- * 参考 Safari/Finder 的"我刚刚回退/前进"的方向感：
- *   - 前进：旧页向左推出，新页从右滑入；
- *   - 后退：旧页向右推回，新页从左滑入；
- *   - 同级替换（如设置 tab 切换）：仅淡入淡出。
+ * One settle transition for every navigation. Directional slides made the
+ * workspace read as "the page moved"; a short 6px rise plus a crossfade
+ * explains that new content arrived without claiming a spatial direction.
  */
 // Skip first paint transition to avoid a launch flash on the initial route.
 const isInitialMount = ref(true)
-const transitionName = computed(() => {
-  if (isInitialMount.value) return ''
-  const direction = nav.direction.value
-  if (direction === 'back') return 'page-back'
-  if (direction === 'forward') return 'page-forward'
-  return 'page-fade'
-})
+const transitionName = computed(() => (isInitialMount.value ? '' : 'page-settle'))
 
 /**
  * keep-alive 的缓存 key：用稳定的 transitionKey（路由自己定义），
@@ -115,59 +107,34 @@ html, body {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Page-level transitions (crossfade, no out-in).
+   Page-level transition (crossfade, no out-in).
    Leaving page is taken out of flow and sunk under the entering
    page so the workspace never flashes empty mid-navigation.
-     - .page-fade      — same-level swap (Settings tab, music view)
-     - .page-forward   — entering a detail page (push)
-     - .page-back      — popping back (replace into parent)
+     enter: 240ms, opacity 0→1 with a 6px rise
+     leave: 160ms, opacity only — the old page never moves
    ───────────────────────────────────────────────────────────── */
-.page-fade-enter-active,
-.page-fade-leave-active,
-.page-forward-enter-active,
-.page-forward-leave-active,
-.page-back-enter-active,
-.page-back-leave-active {
+.page-settle-enter-active {
+  position: relative;
+  z-index: 1;
   transition:
-    opacity var(--duration-base, 180ms) var(--ease-default, cubic-bezier(0.4, 0, 0.2, 1)),
-    transform var(--duration-base, 180ms) var(--ease-default, cubic-bezier(0.4, 0, 0.2, 1));
+    opacity 240ms var(--ease-out),
+    transform 240ms var(--ease-out);
   will-change: opacity, transform;
 }
 
-.page-fade-enter-active,
-.page-forward-enter-active,
-.page-back-enter-active {
-  position: relative;
-  z-index: 1;
-}
-
-.page-fade-leave-active,
-.page-forward-leave-active,
-.page-back-leave-active {
+.page-settle-leave-active {
   position: absolute;
   inset: 0;
   z-index: 0;
+  transition: opacity 160ms var(--ease-out);
 }
 
-/* Forward / Back: keep only the crossfade — no horizontal slide, so a
-   library → play → library round trip never reads as "the page moved". */
-.page-forward-leave-to {
+.page-settle-enter-from {
   opacity: 0;
-}
-.page-forward-enter-from {
-  opacity: 0;
+  transform: translateY(6px);
 }
 
-.page-back-leave-to {
-  opacity: 0;
-}
-.page-back-enter-from {
-  opacity: 0;
-}
-
-/* Same-level: pure fade. */
-.page-fade-enter-from,
-.page-fade-leave-to {
+.page-settle-leave-to {
   opacity: 0;
 }
 </style>

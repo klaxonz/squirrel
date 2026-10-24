@@ -103,12 +103,10 @@ squirrel-backend/scratch/
 .zcode/
 squirrel-desktop/renderer/dist/
 squirrel-desktop/test-results/
-squirrel-desktop/visual-review-results/
 squirrel-desktop/release/
 squirrel-desktop/runtime-logs/
 squirrel-desktop/runtime-audit/
 test-results/
-visual-review-results/
 /%USERPROFILE%/.config/starship.toml
 /.reasonix/attachments/clipboard-20260731-223156.018935-000001.png
 /.reasonix/attachments/clipboard-20260731-223211.633647-000002.png

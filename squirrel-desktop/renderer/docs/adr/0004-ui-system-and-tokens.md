@@ -21,25 +21,64 @@ The renderer has one UI system, layered top-down:
 4. **Features** (`features/**`). Consume layers 1–3; never re-implement
    them.
 
-## Hard rules
+## Visual language (2026-10 redesign)
+
+The renderer follows the design philosophy of wxad.design: near-monochrome,
+editorial spacing, functional motion, and one implementation per semantic.
+
+- **Palette**: neutral paper. Light is `#FAFAFA` canvas / `#FFFFFF` surface /
+  `#171717` ink / `#E5E5E5` hairline; dark is graphite (`#0F0F0F` / `#1A1A1A` /
+  `#E8E8E8` / `#292929`). `--primary` is ink in both themes. `--brand`
+  (#FF4500) is punctuation for the wordmark mark only. `--reader-link` is the
+  only green, scoped to `.reader-content`.
+- **Type**: body/UI uses the platform system stack (`--font-sans`); display
+  headings and numerals use Outfit (`--font-display` / `--font-numeric`).
+  CJK resolves to PingFang / YaHei before bundled Noto.
+- **Geometry**: radii are 6/8/10/12/16 (`--radius-sm … --radius-2xl`), never
+  pills for controls. One width contract: `--app-content-max` (1200px),
+  `--app-content-wide-max` (VideoPlay widescreen only), `--app-content-form-max`
+  (640px), `--app-content-reading-max` (704px). Gutters and section gaps are
+  continuous `clamp()` ranges.
+- **Motion**: `--ease-out` is the fluid curve `cubic-bezier(.16,1,.3,1)`;
+  springs are reserved for real momentum. Page changes use one `page-settle`
+  transition (enter 240ms with a 6px rise, leave 160ms opacity-only) instead
+  of directional slides. Insert/remove transitions desync opacity from
+  position. Shared hover fills (“跳跃”) are one moving layer per group, with a
+  200ms leave grace and a reduced-motion fallback.
+- **Surfaces**: `.app-card`, `.app-list-row`, `.app-table-row`,
+  `.app-media-frame` are the only shells; features compose them instead of
+  re-declaring borders, radii, and backgrounds.
+
+## Conventions
 
 - **Typography**: `font-size` outside shared/ui and the video-player
-  sub-theme must use a `--app-text-*` token. Enforced by
-  `renderer/scripts/check-raw-font-size.mjs` (`npm run check:font-size`).
+  sub-theme should use a `--app-text-*` token. Prefer the semantic Tailwind
+  aliases (`text-body`, `text-meta`, `text-secondary`, `text-eyebrow`,
+  `text-section`, `text-page-title`) over the numeric `text-*` scale, which is
+  offset from `--app-text-*`.
 - **Overlays**: floating surfaces use the shared primitives (Dialog modal,
-  Popover / DropdownMenu anchored, Tooltip annotation). Raw `Teleport` /
-  `position: fixed` in feature code is forbidden; declared exceptions live
-  in `renderer/scripts/check-raw-overlays.mjs` (`npm run check:overlays`).
-  Both gates run via `npm run check`.
+  Popover / DropdownMenu anchored, Tooltip annotation); avoid raw
+  `Teleport` / `position: fixed` in feature code.
 - **Colors**: semantic tokens only — raw Tailwind palette classes and raw
   hex values are lint errors (design-token ESLint rule) outside token
   definitions.
 
+> 2026-10-23: the static `check:font-size` / `check:overlays` gates and the
+> fixture-based `visual:review` harness were removed. They enforced token
+> *usage*, not visual quality — the font-size codemod renamed existing values
+> without changing rendered pixels, and the visual harness only compared a
+> synthetic SVG against itself. `check:theme` was removed the next day for the
+> same reason: it policed declaration shape, not rendered output. Treat the
+> rules above as review conventions. Judge visual quality with real screenshots
+> at 1280/1440/2560 in both themes.
+
 ## Component gallery
 
 `/dev/ui` (dev builds only, `src/app/dev/UiGallery.vue`) renders every
-primitive in its variants. New components get verified there before
-entering product pages.
+primitive in its variants, plus the app type scale, radii, the four surface
+recipes (`app-card`, `app-list-row`, `app-table-row`, `app-media-frame`) and a
+live HoverFill scope. New components get verified there before entering
+product pages; review it in both themes.
 
 ## Extension rules
 
@@ -52,4 +91,4 @@ entering product pages.
   `video-player/themes/`): it reads app semantic tokens only through the
   `--sp-theme-*` bridge block in `variables.css` and may otherwise stay
   opaque and dark. Its `font-size` and fixed-overlay usage is exempt from
-  the gates above.
+  the conventions above.

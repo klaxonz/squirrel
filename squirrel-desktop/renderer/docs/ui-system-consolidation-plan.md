@@ -2,6 +2,11 @@
 
 > 状态：已执行完毕（2026-08-29，commit 6f0a397a…9cdd614a）　|　分支基线：`redesign/impeccable-layout-overhaul`
 >
+> 后续（2026-10-23）：Phase 1/2 引入的静态门禁（`check:font-size` / `check:overlays`）与 fixture 版
+> `visual:review` 已移除；次日 `check:theme` 一并移除。它们校验的是 token 的使用形式而不是渲染结果——
+> 字号 codemod 只是给旧值改名，视觉 baseline 只是自造 SVG 自比。视觉质量改用真实页面截图
+> （1280/1440/2560 × 明暗）人工验收。
+>
 > 背景：renderer 已有 shadcn-vue + reka-ui 路线的 `shared/ui` 组件库和三层设计 token
 > （语义色 / 间距·层级·动效 / app chrome）。本计划的目标不是重建体系，而是收口最后 20%
 > 的漂移：文字 scale、组件覆盖缺口、Button 双轨 API、播放器子主题声明、成文约定与画廊。
@@ -60,7 +65,7 @@ token 使用基线：`var(--…)` 共约 2950 处（--app-*×611、语义色 --m
    - `YouTubeOAuthPrompt` → 核实后**维持非模态浮层**：它是有意放在 z-toast 层的非模态横幅，迁入模态 Dialog 会改变交互；列入白名单
    - `RssImageLightbox` / `MusicImmersivePlayer` / `GlobalVideoPlayerHost` / `ChapterOverlay` / `VideoItem` 预览 → 全屏媒体表面，非 Dialog 语义；列入白名单
    - `ToastProvider` / `AppContextMenu` → 体系内基础设施本体；白名单
-   - 防回潮 gate：`scripts/check-raw-overlays.mjs`，feature 代码出现裸 `Teleport` / `position:fixed` 即失败，白名单逐条带理由固化在脚本内（`npm run check:overlays`，与 `npm run check` 聚合）
+   - ~~防回潮 gate：`scripts/check-raw-overlays.mjs`~~（2026-10-23 已移除；保留上面的迁移结论作为评审约定）
 
 **验收**：白名单外 grep 为 0；抽查各弹层层级符合 `--z-*` 表（dialog 1300 / toast 1400 / player-overlay 1500）。
 
@@ -104,3 +109,31 @@ token 使用基线：`var(--…)` 共约 2950 处（--app-*×611、语义色 --m
 | 5 文档 + 画廊 | 依赖 1–4 定型 | ~1 天 | 最后写，避免返工 |
 
 每个 Phase 独立成 commit/PR；每步验收跑 `npm run typecheck` + 目标页面截图对比（e2e-shots/ 流程）。
+
+---
+
+## 2026-10 UI/UX 重设计执行记录（`redesign/impeccable-layout-overhaul`）
+
+以 wxad.design 的「体验 + 打磨 + 完整化 / Functional Motion / 状态共享 / 流动界面」
+为准绳的一次全应用视觉重做。不是新增一套体系，而是把上面 Phase 1–5 的 token 与
+`shared/ui` 真正落到每一个内容面。
+
+### 已完成
+
+| 层 | 结果 |
+|---|---|
+| 令牌 | 中性纸面双主题（暗色为 `:root` 基底，`.light` 纯覆盖）；墨色 primary；品牌橙仅字标；阅读链接单独绿色 |
+| 字体 | 正文回到平台系统栈；Outfit 只做标题与数字；移除 Instrument Sans 依赖 |
+| 几何 | 圆角 6/8/10/12/16；一套宽度契约（1200 / 1536 / 704 / 640）与 `clamp()` 间距 |
+| 表面 | `.app-card` / `.app-list-row` / `.app-table-row` / `.app-media-frame` 四种配方成为唯一外壳 |
+| 媒体 | `MediaFrame.vue`（插槽式，不依赖 video feature）接管历史、播放列表、相关视频、继续观看、订阅收件箱、远端频道卡片的缩略图 |
+| 频道头 | `ChannelIdentityHeader.vue` 统一创作者 / 订阅频道 / 远端频道三种头部，各自保留类名与操作插槽 |
+| 列表 | 历史、播放列表、订阅收件箱、相关/队列改为 hairline 分隔行；面板用统一 surface token |
+| 导航 | Sidebar / AppSectionNav / 播放列表等接入 `v-hover-fill`；减少动效模式自动降级 |
+| 动效 | 页面切换统一 `page-settle`（进入 240ms + 6px 上浮，离开 160ms 纯淡出） |
+
+### 尚未收口（明确遗留）
+
+- RSS、音乐、设置/日志/定时任务/站点运行时只做了 token 与外壳替换，信息层级仍沿用旧结构。
+- 虚拟列表（历史长列表）暂不接入 HoverFill，避免回收行留下 hover 残影。
+- 播放器内核与 `--sp-*` 子主题不在本次范围。

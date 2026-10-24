@@ -32,21 +32,22 @@ import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
   display: grid;
   min-width: 0;
   grid-template-columns: minmax(0, 1fr) 2rem;
-  column-gap: var(--space-2);
+  column-gap: 0.35rem;
   overflow: hidden;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-md);
-  background: hsl(var(--card));
-  padding-inline: 0.75rem;
+  padding-inline: 0.9rem;
+}
+
+.history-item-skeleton + .history-item-skeleton {
+  border-top: 1px solid var(--app-hairline);
 }
 
 .history-item-skeleton__inner {
   display: grid;
   width: 100%;
   min-width: 0;
-  grid-template-columns: 11.5rem minmax(0, 1fr);
-  gap: var(--space-3);
-  padding: 0.75rem 0;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0.7rem 0;
 }
 
 .history-item-skeleton__thumb {

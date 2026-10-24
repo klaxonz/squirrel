@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   mintYouTubePoToken: (videoId, options) => ipcRenderer.invoke('desktop:mint-youtube-po-token', videoId, options),
   resolveYouTubeSubtitles: (targetUrl, options) => ipcRenderer.invoke('desktop:resolve-youtube-subtitles', targetUrl, options),
   searchRemoteVideos: (options) => ipcRenderer.invoke('desktop:search-remote-videos', options),
+  getRemoteChannel: (options) => ipcRenderer.invoke('desktop:get-remote-channel', options),
   callMusic,
   getSiteLoginStatus: (siteName) => ipcRenderer.invoke('desktop:get-site-login-status', siteName),
   openSiteLogin: (siteName) => ipcRenderer.invoke('desktop:open-site-login', siteName),

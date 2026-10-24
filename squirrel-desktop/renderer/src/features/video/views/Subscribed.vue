@@ -1193,10 +1193,10 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 0.5rem;
+  gap: 0;
   overflow: hidden;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-md);
+  border: 1px solid var(--app-surface-border);
+  border-radius: var(--radius-xl);
   background: hsl(var(--card));
 }
 
@@ -1209,8 +1209,8 @@ onUnmounted(() => {
   justify-content: space-between;
   flex-direction: row;
   gap: 0.75rem;
-  padding: 0.625rem 0.875rem;
-  border-bottom: 1px solid hsl(var(--border));
+  padding: 0.625rem 0.9rem;
+  border-bottom: 1px solid var(--app-hairline);
   background: hsl(var(--card));
 }
 
@@ -1219,8 +1219,8 @@ onUnmounted(() => {
   color: hsl(var(--muted-foreground));
   font-family: var(--font-sans);
   font-size: var(--app-text-xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   line-height: 1.35;
   text-transform: uppercase;
 }
@@ -1239,7 +1239,7 @@ onUnmounted(() => {
 }
 
 .subscription-feed-day__items > * + * {
-  border-top: 1px solid hsl(var(--border));
+  border-top: 1px solid var(--app-hairline);
 }
 
 .subscription-channel-table {

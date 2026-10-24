@@ -9,85 +9,57 @@
     </div>
 
     <template v-else>
-      <section class="app-media-header remote-channel-header">
-        <div class="app-media-header__inner remote-channel-header__inner">
-          <div class="remote-channel-header__identity">
-            <a
-              v-if="channelUrl"
-              :href="channelUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="remote-channel-header__avatar-link"
-            >
-            <SubscriptionAvatar :src="profile.avatar" :name="profile.name || siteLabel" size="full" class="remote-channel-header__avatar" />
-            </a>
-            <SubscriptionAvatar
-              v-else
-              :src="profile.avatar"
-              :name="profile.name || siteLabel"
-              size="full"
-              class="remote-channel-header__avatar"
-            />
-            <div class="remote-channel-header__copy">
-              <div class="remote-channel-header__title-row">
-                <a
-                  v-if="channelUrl"
-                  :href="channelUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="remote-channel-header__name-link"
-                >
-                  <h1 class="app-h2 truncate">{{ profile.name || siteLabel }}</h1>
-                </a>
-                <h1 v-else class="app-h2 truncate">{{ profile.name || siteLabel }}</h1>
-                <span class="remote-channel-site-badge">{{ siteLabel }}</span>
-                <span v-if="profile.is_nsfw" class="remote-channel-nsfw-badge">敏感</span>
-              </div>
-              <p v-if="profile.description" class="remote-channel-header__desc">
-                {{ profile.description }}
-              </p>
-              <div v-if="profileStats.length" class="remote-channel-header__stats">
-                <span v-for="stat in profileStats" :key="stat.label" class="remote-channel-header__stat">
-                  <span class="remote-channel-header__stat-label">{{ stat.label }}</span>
-                  <span class="remote-channel-header__stat-value">{{ stat.value }}</span>
-                </span>
-              </div>
-            </div>
-          </div>
+      <ChannelIdentityHeader
+        :name="profile.name || siteLabel"
+        :avatar="profile.avatar"
+        :url="channelUrl"
+        :description="profile.description"
+        loading-label="频道信息加载中"
+        name-fallback="未知频道"
+        root-class="remote-channel-header"
+      >
+        <template #badges>
+          <span class="remote-channel-site-badge">{{ siteLabel }}</span>
+          <span v-if="profile.is_nsfw" class="remote-channel-nsfw-badge">敏感</span>
+        </template>
 
-          <div class="remote-channel-header__actions">
-            <div v-if="localSubscriptionRoute" class="remote-channel-switch">
-              <Button type="button" variant="secondary" size="sm" @click="openLocalChannel">
-                <AppIcon name="library" class="h-3.5 w-3.5" />
-                本地
-              </Button>
-              <Button type="button" variant="secondary" size="sm" disabled>
-                <AppIcon name="siteFallback" class="h-3.5 w-3.5" />
-                远端
-              </Button>
-            </div>
-            <Button
-              v-if="channelUrl"
-              type="button"
-              :variant="isSubscriptionChecked && isSubscribed ? 'outline' : 'default'"
-              size="sm"
-              :disabled="isCheckingSubscription || isSubscribing"
-              @click="handleSubscribe"
-            >
-              {{ subscriptionButtonText }}
+        <template #stats>
+          <span v-for="stat in profileStats" :key="stat.label" class="remote-channel-header__stat">
+            <span class="remote-channel-header__stat-label">{{ stat.label }}</span>
+            <span class="remote-channel-header__stat-value">{{ stat.value }}</span>
+          </span>
+        </template>
+
+        <template #actions>
+          <div v-if="localSubscriptionRoute" class="remote-channel-switch">
+            <Button type="button" variant="secondary" size="sm" @click="openLocalChannel">
+              <AppIcon name="library" class="h-3.5 w-3.5" />
+              本地
+            </Button>
+            <Button type="button" variant="secondary" size="sm" disabled>
+              <AppIcon name="siteFallback" class="h-3.5 w-3.5" />
+              远端
             </Button>
           </div>
-          <div class="remote-channel-subscription-feedback">
-            <p v-if="subscriptionError" role="alert" class="remote-channel-subscription-error">
-              {{ subscriptionError }}
-              <button type="button" class="remote-channel-inline-action" @click="retrySubscriptionAction">重试</button>
-            </p>
-            <p v-else role="status" aria-live="polite" class="remote-channel-subscription-status">
-              {{ subscriptionStatusText }}
-            </p>
-          </div>
-        </div>
-      </section>
+          <p v-if="subscriptionError" role="alert" class="remote-channel-subscription-error">
+            {{ subscriptionError }}
+            <button type="button" class="remote-channel-inline-action" @click="retrySubscriptionAction">重试</button>
+          </p>
+          <p v-else role="status" aria-live="polite" class="remote-channel-subscription-status">
+            {{ subscriptionStatusText }}
+          </p>
+          <Button
+            v-if="channelUrl"
+            type="button"
+            :variant="isSubscriptionChecked && isSubscribed ? 'outline' : 'default'"
+            size="sm"
+            :disabled="isCheckingSubscription || isSubscribing"
+            @click="handleSubscribe"
+          >
+            {{ subscriptionButtonText }}
+          </Button>
+        </template>
+      </ChannelIdentityHeader>
 
       <div ref="root" class="app-page-content app-page-content--media">
 
@@ -98,12 +70,9 @@
           class="remote-channel-card group"
           :class="{ 'remote-channel-card--disabled': !canPlayRemoteResult(item) }"
         >
-          <div class="remote-channel-thumb">
+          <MediaFrame class="remote-channel-thumb" :duration="item.duration ? formatDuration(item.duration) : ''" compact>
             <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" />
-            <span v-if="item.duration" class="app-media-duration-badge app-media-duration-badge--compact app-mono">
-              {{ formatDuration(item.duration) }}
-            </span>
-          </div>
+          </MediaFrame>
 
           <div class="remote-channel-card__body">
             <h3 class="remote-channel-title">
@@ -174,9 +143,10 @@ import { errorMessage as resolveError } from '@/shared/lib/errorMessage'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
-import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
+import ChannelIdentityHeader from '@/features/video/components/feed/ChannelIdentityHeader.vue'
 import VideoSkeleton from '@/features/video/components/feed/VideoSkeleton.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
+import MediaFrame from '@/shared/components/layout/MediaFrame.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import { Button } from '@/shared/ui/button'
 import { rememberVideoPlaybackSeed } from '@/features/video/composables/videoPlaybackSeed'
@@ -598,81 +568,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.remote-channel-header__inner {
-  --app-page-max-width: var(--app-content-media-max);
-  align-items: flex-start;
-}
-
-.remote-channel-header__identity {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  align-items: flex-start;
-  gap: var(--space-4);
-}
-
-.remote-channel-header__avatar-link {
-  display: block;
-  flex: none;
-  text-decoration: none;
-}
-
-.remote-channel-header__avatar {
-  width: 3.5rem;
-  height: 3.5rem;
-  flex: none;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--app-surface-radius);
-}
-
-.remote-channel-header__copy {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.remote-channel-header__title-row {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.remote-channel-header__name-link {
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-}
-
-.remote-channel-header__name-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-}
-
-.remote-channel-header__desc {
-  margin: 0;
-  max-width: 42rem;
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-md);
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.remote-channel-header__stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
-}
-
 .remote-channel-header__stat {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 .remote-channel-header__stat-label {
@@ -682,43 +581,33 @@ onUnmounted(() => {
 
 .remote-channel-header__stat-value {
   color: hsl(var(--foreground));
-  font-size: var(--app-text-base);
+  font-size: var(--app-text-sm);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
 
+.remote-channel-site-badge,
 .remote-channel-nsfw-badge {
+  display: inline-flex;
+  height: 1.25rem;
   flex: none;
-  border: 1px solid var(--app-surface-border-subtle);
+  align-items: center;
+  border: 1px solid var(--app-surface-border);
   border-radius: var(--radius-sm);
-  background: hsl(var(--muted) / 0.4);
-  padding: 0.125rem 0.375rem;
+  padding: 0 0.375rem;
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
-  font-weight: 650;
-}
-
-.remote-channel-header__actions {
-  display: flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-
-.remote-channel-subscription-feedback {
-  flex-basis: 100%;
-  min-height: 1.25rem;
-  text-align: right;
+  font-weight: 600;
 }
 
 .remote-channel-subscription-status,
 .remote-channel-subscription-error {
+  max-width: 12rem;
   margin: 0;
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-sm);
   line-height: 1.4;
+  text-align: right;
 }
 
 .remote-channel-subscription-error {
@@ -731,21 +620,10 @@ onUnmounted(() => {
   background: transparent;
   color: inherit;
   font: inherit;
-  font-weight: 650;
+  font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 0.15em;
   cursor: pointer;
-}
-
-.remote-channel-site-badge {
-  flex: none;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--radius-sm);
-  background: hsl(var(--muted) / 0.4);
-  padding: 0.125rem 0.375rem;
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-xs);
-  font-weight: 650;
 }
 
 .remote-channel-switch {
@@ -778,13 +656,7 @@ onUnmounted(() => {
 }
 
 .remote-channel-thumb {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--app-card-radius);
-  background: var(--app-media-thumb-placeholder);
-  isolation: isolate;
+  width: 100%;
   transition: box-shadow var(--duration-base) var(--ease-default);
 }
 
@@ -795,7 +667,7 @@ onUnmounted(() => {
 .remote-channel-card:has(:focus-visible) .remote-channel-thumb {
   box-shadow:
     0 0 0 2px hsl(var(--background)),
-    0 0 0 4px hsl(var(--ring) / 0.45),
+    0 0 0 4px hsl(var(--ring) / 0.8),
     inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 
@@ -811,11 +683,12 @@ onUnmounted(() => {
 .remote-channel-title {
   display: -webkit-box;
   overflow: hidden;
-  color: hsl(var(--foreground) / 0.92);
+  color: hsl(var(--foreground));
   font-size: var(--app-text-base);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.35;
-  transition: color 0.15s ease;
+  letter-spacing: -0.01em;
+  transition: color var(--duration-fast) var(--ease-default);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -841,16 +714,25 @@ onUnmounted(() => {
   justify-content: center;
   gap: 0.35rem;
   margin-top: 0.2rem;
-  border: 1px solid hsl(var(--primary));
+  border: 1px solid var(--app-control-border);
   border-radius: var(--app-control-radius);
   padding: 0.35rem 0.65rem;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
+  background: var(--app-control-bg);
+  color: hsl(var(--foreground));
   font-size: var(--app-text-sm);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1;
   text-decoration: none;
   cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+}
+
+.remote-channel-primary-action:hover,
+.remote-channel-external-action:hover {
+  border-color: hsl(var(--foreground) / 0.24);
+  background: hsl(var(--foreground) / 0.06);
 }
 
 .remote-channel-primary-action:focus-visible,
@@ -858,12 +740,6 @@ onUnmounted(() => {
 .remote-channel-inline-action:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
-}
-
-.remote-channel-external-action {
-  border-color: var(--app-control-border);
-  background: var(--app-control-bg);
-  color: hsl(var(--foreground));
 }
 
 .remote-channel-unavailable {
@@ -897,13 +773,9 @@ onUnmounted(() => {
 }
 
 @media (max-width: 640px) {
-  .remote-channel-header__inner {
-    flex-wrap: wrap;
-  }
-
-  .remote-channel-header__actions,
-  .remote-channel-subscription-feedback {
-    justify-content: flex-start;
+  .remote-channel-subscription-status,
+  .remote-channel-subscription-error {
+    max-width: none;
     text-align: left;
   }
 }

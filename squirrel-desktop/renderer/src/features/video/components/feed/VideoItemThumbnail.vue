@@ -1,5 +1,5 @@
 <template>
-  <div class="video-item__thumb" :class="`video-item__thumb--${variant}`">
+  <MediaFrame class="video-item__thumb" :class="`video-item__thumb--${variant}`">
     <VideoThumbnail :src="src" :alt="title" fit="cover" interactive :blur="blur" />
     <span
       v-if="duration"
@@ -20,12 +20,13 @@
     >
       <div class="video-item__progress-fill" :style="{ width: `${progressRatio * 100}%` }" />
     </div>
-  </div>
+  </MediaFrame>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { formatDuration } from '@/shared/lib/dateFormat'
+import MediaFrame from '@/shared/components/layout/MediaFrame.vue'
 import VideoThumbnail from './VideoThumbnail.vue'
 
 const props = withDefaults(defineProps<{

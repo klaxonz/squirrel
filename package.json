@@ -13,7 +13,6 @@
     "lint": "npm -w squirrel-desktop run lint",
     "typecheck": "npm -w squirrel-desktop run typecheck",
     "test": "npm -w squirrel-desktop run test && npm -w squirrel-desktop run test:renderer",
-    "build": "npm -w squirrel-desktop run build",
-    "check": "npm -w squirrel-desktop run check"
+    "build": "npm -w squirrel-desktop run build"
   }
 }

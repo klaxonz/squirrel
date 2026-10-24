@@ -1,10 +1,11 @@
 <template>
-  <nav class="app-section-nav" :aria-label="ariaLabel">
+  <nav v-hover-fill class="app-section-nav" :aria-label="ariaLabel">
     <button
       v-for="option in options"
       :key="option.value"
       type="button"
       class="app-section-nav__item"
+      data-hover-fill-item
       :class="{ 'is-active': modelValue === option.value }"
       :aria-current="modelValue === option.value ? 'page' : undefined"
       @click="selectOption(option.value)"
@@ -21,6 +22,8 @@
 </template>
 
 <script setup lang="ts">
+import { hoverFill as vHoverFill } from '@/shared/directives/hoverFill'
+
 export interface AppSectionNavOption {
   value: string | number
   label: string
@@ -53,7 +56,7 @@ const selectOption = (value: string | number) => {
   min-width: 0;
   flex: none;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.125rem;
 }
 
 .app-section-nav--optical {
@@ -64,8 +67,8 @@ const selectOption = (value: string | number) => {
   display: inline-flex;
   height: 2rem;
   align-items: center;
-  gap: 0.325rem;
-  border-radius: 999px;
+  gap: 0.375rem;
+  border-radius: var(--app-control-radius);
   padding: 0 0.75rem;
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-md);
@@ -90,8 +93,7 @@ const selectOption = (value: string | number) => {
 
 .app-section-nav__item.is-active {
   color: hsl(var(--foreground));
-  background: hsl(var(--foreground) / 0.1);
-  font-weight: 700;
+  background: var(--app-selection-bg);
 }
 
 .app-section-nav__badge {

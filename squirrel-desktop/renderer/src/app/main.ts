@@ -6,13 +6,11 @@ import router from './router'
 import { queryClient } from '@/shared/lib/queryClient'
 import { useThemeStore } from '@/shared/stores/theme'
 import { Logger } from '@/shared/lib/logger'
-// Fontsource webfonts: Instrument Sans (SF Pro-style humanist sans) for both
-// UI/body and display headings — same family, Apple-like, differentiated by
-// weight/tracking. Outfit (geometric) for data digits via --font-numeric.
-// JetBrains Mono for timestamps/code, Noto Sans SC Variable for CJK. The
-// Latin faces carry no CJK glyphs — Chinese falls through the --font-* stacks
-// to Noto Sans SC Variable, then system PingFang SC / Microsoft YaHei.
-import '@fontsource-variable/instrument-sans/wght.css'
+import { hoverFill } from '@/shared/directives/hoverFill'
+// UI copy uses the platform system font stack (see --font-sans in index.css).
+// Outfit (geometric, Gilroy-adjacent) carries display headings and numerals;
+// JetBrains Mono is reserved for code/timestamps. Noto Sans SC is the Linux
+// CJK fallback; Windows/macOS resolve to YaHei/PingFang first.
 import '@fontsource-variable/outfit/wght.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/600.css'
@@ -38,6 +36,7 @@ const bootstrap = async () => {
   app.use(pinia)
   app.use(router)
   app.use(VueQueryPlugin, { queryClient })
+  app.directive('hover-fill', hoverFill)
 
   // ponytail: global last-resort sinks. Per-request API errors surface as
   // thrown ApiError (caught by vue-query's MutationCache → toast, or by each

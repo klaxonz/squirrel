@@ -10,11 +10,14 @@
   --space-8: 3rem;
   --space-9: 4rem;
 
-  --radius: 4px;
-  --radius-sm: 4px;
-  --radius-md: 4px;
-  --radius-lg: 4px;
-  --radius-xl: 4px;
+  /* Soft-rectangle geometry, not pills. Cards use 16px; controls 8–10px. */
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-pill: 9999px;
 
   /* Z-index scale — single source of truth for stacking order across the app.
      Replaces scattered magic stacking values with named overlay layers aligned
@@ -37,29 +40,40 @@
      fell back to the literal in the shorthand. Defining them here makes the
      whole chrome share one motion curve. */
   --duration-fast: 120ms;     /* hover/focus feedback, tab switches */
-  --duration-base: 180ms;     /* page transitions, panel reveals */
-  --duration-slow: 240ms;     /* large surface transitions */
-  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);   /* standard material ease */
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);          /* entering elements */
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* press/active bounce */
+  --duration-base: 220ms;     /* page transitions, panel reveals */
+  --duration-slow: 320ms;     /* large surface transitions */
+  /* Fluid interface curve: fast start, long settle. Used for nearly every
+     transition; springs are reserved for motion with real momentum. */
+  --ease-default: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  --app-page-gutter: 1rem;
-  --app-page-gutter-sm: 1.25rem;
-  --app-page-gutter-lg: 1.5rem;
-  /* Content geometry for the reading column and optional wide-screen rail. */
-  --app-content-media-max: 78rem;
-  --app-content-media-gutter: clamp(1rem, 2vw, 1.5rem);
+  /* One content-width contract. */
+  --app-content-max: 75rem;            /* 1200px — media, lists, tables */
+  --app-content-wide-max: 96rem;       /* 1536px — VideoPlay widescreen only */
+  --app-page-gutter: clamp(1.5rem, 3.5vw, 3.5rem);
+  --app-page-gutter-sm: var(--app-page-gutter);
+  --app-page-gutter-lg: var(--app-page-gutter);
+  --app-page-pad-top: clamp(2.5rem, 4vh, 3rem);
+  --app-section-gap: clamp(3rem, 4.5vw, 4rem);
+  /* Legacy aliases — kept so existing call sites keep working. */
+  --app-content-media-max: var(--app-content-max);
+  --app-content-media-gutter: var(--app-page-gutter);
   --app-content-feed-max: 44rem;
-  --app-content-table-max: 78rem;
+  --app-content-table-max: var(--app-content-max);
   --app-content-form-max: 40rem;
   --app-content-reading-max: 44rem;
   --app-page-max-width: var(--app-content-table-max);
   --app-page-readable-width: var(--app-content-reading-max);
 
+  /* Shared hover fill ("跳跃"): one moving wash behind grouped items. */
+  --app-hover-fill-bg: hsl(var(--foreground) / 0.05);
+  --app-hover-fill-duration: var(--duration-base);
+  --app-hover-fill-grace: 200ms;
+
   /* Desktop typography scale — the only source for `font-size` outside
-     shared/ui and the video-player sub-theme. Feature/app CSS must use one
-     of these tokens; raw font-size values fail the lint gate
-     (scripts/check-raw-font-size.mjs). */
+     shared/ui and the video-player sub-theme. Feature/app CSS should use one
+     of these tokens; raw font-size values are a review smell. */
   --app-text-2xs: 0.625rem;   /* 10px — micro labels, timestamps on dense rows */
   --app-text-xs: 0.6875rem;   /* 11px — badges, eyebrow labels */
   --app-text-sm: 0.75rem;     /* 12px — secondary text, captions */
@@ -67,8 +81,10 @@
   --app-text-base: 0.875rem;  /* 14px — default body text */
   --app-text-lg: 1rem;        /* 16px — emphasized body, input text */
   --app-text-xl: 1.125rem;    /* 18px — section titles */
-  --app-text-2xl: 1.25rem;    /* 20px — page titles */
+  --app-text-2xl: 1.375rem;   /* 22px — page titles */
   --app-text-3xl: 1.5rem;     /* 24px — hero / display text (e.g. lyrics) */
+  --app-leading-body: 1.55;
+  --app-leading-title: 1.2;
 
   /* Legacy aliases — kept so existing call sites keep working; prefer the
      scale tokens above in new code. */
@@ -84,9 +100,9 @@
      screens; e.g. a 4K viewport with --app-grid-min:320px yields ~8 columns
      instead of the old 6-column cap). */
   --app-video-grid-min: 20rem;
-  --app-video-grid-gap: 1.25rem;
-  --app-video-grid-gap-x: 1.25rem;
-  --app-video-grid-gap-y: 1.75rem;
+  --app-video-grid-gap: 1.5rem;
+  --app-video-grid-gap-x: 1.5rem;
+  --app-video-grid-gap-y: 2rem;
   --app-video-rail-card-width: 16.75rem;
   --app-video-rail-gap: 0.75rem;
   --app-music-grid-min: 180px;
@@ -157,8 +173,8 @@
   --app-empty-gap: 1rem;
   --app-empty-padding: 2rem;
   --app-empty-border-alpha: 0.55;
-  --app-surface-radius: var(--radius-md);
-  --app-card-radius: var(--radius-md);
+  --app-surface-radius: var(--radius-xl);
+  --app-card-radius: var(--radius-2xl);
   --app-empty-copy-width: 22rem;
 
   --app-surface-border: hsl(var(--border));
@@ -169,37 +185,39 @@
   --app-overlay-shadow: 0 12px 40px hsl(0 0% 0% / 0.55);
   --app-muted-surface: hsl(var(--muted) / 0.6);
 
-  /* On-image overlays: darken with --overlay alpha; ink stays H28 warm. */
-  --app-media-on-image: 28 12% 97%;
-  --app-media-on-image-muted: 28 8% 86%;
+  /* On-image overlays: darken with --overlay alpha; ink stays neutral. */
+  --app-media-on-image: 0 0% 97%;
+  --app-media-on-image-muted: 0 0% 86%;
   --app-media-thumb-placeholder: hsl(var(--overlay) / 0.45);
   --app-media-badge-bg: hsl(var(--overlay) / 0.72);
   --app-media-scrim-soft: hsl(var(--overlay) / 0.42);
   --app-media-scrim-mid: hsl(var(--overlay) / 0.55);
   --app-media-scrim-strong: hsl(var(--overlay) / 0.72);
-  --app-media-progress-track: hsl(var(--overlay) / 0.48);
+  /* Progress stays legible over any thumbnail: white fill on a darkened track. */
+  --app-media-progress-track: hsl(0 0% 0% / 0.42);
+  --app-media-progress-fill: hsl(var(--app-media-on-image));
 
   --app-heading-font: var(--font-display);
   --app-heading-color: hsl(var(--foreground));
   --app-heading-color-muted: hsl(var(--foreground) / 0.82);
 
-  --app-h1-size: 1.125rem;
-  --app-h1-weight: 600;
-  --app-h1-leading: 1.2;
-  --app-h1-tracking: 0;
+  --app-h1-size: var(--app-text-2xl);
+  --app-h1-weight: 650;
+  --app-h1-leading: var(--app-leading-title);
+  --app-h1-tracking: -0.02em;
 
-  --app-h2-size: 1rem;
+  --app-h2-size: var(--app-text-lg);
   --app-h2-weight: 600;
   --app-h2-leading: 1.25;
-  --app-h2-tracking: 0;
+  --app-h2-tracking: -0.01em;
 
   --app-h3-size: 0.9375rem;
-  --app-h3-weight: 550;
+  --app-h3-weight: 600;
   --app-h3-leading: 1.3;
   --app-h3-tracking: 0;
 
   --app-h4-size: 0.875rem;
-  --app-h4-weight: 550;
+  --app-h4-weight: 600;
   --app-h4-leading: 1.4;
   --app-h4-tracking: 0;
 
@@ -250,7 +268,7 @@
   width: 100%;
   max-width: var(--app-page-max-width);
   margin: 0 auto;
-  padding: 1.5rem var(--app-page-gutter) var(--app-content-padding-bottom);
+  padding: var(--app-page-pad-top) var(--app-page-gutter) var(--app-content-padding-bottom);
 }
 
 /* Shared centered boundary for media workbenches whose toolbar bands remain
@@ -720,6 +738,64 @@
   color: hsl(var(--app-media-on-image-muted) / 0.75);
 }
 
+/* Canonical media frame: 16:9 by default, duration badge and progress live
+   inside the frame so every thumbnail agrees on geometry. */
+.app-media-frame {
+  position: relative;
+  display: block;
+  aspect-ratio: var(--app-media-ratio, 16 / 9);
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--app-media-thumb-placeholder);
+  isolation: isolate;
+}
+
+.app-media-frame--ratio-4-3 { --app-media-ratio: 4 / 3; }
+.app-media-frame--ratio-1-1 { --app-media-ratio: 1 / 1; }
+.app-media-frame--ratio-3-2 { --app-media-ratio: 3 / 2; }
+.app-media-frame--square { border-radius: var(--radius-sm); }
+
+.app-media-frame :is(img, video) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.app-media-frame--blur :is(img, video) {
+  filter: blur(16px);
+  transform: scale(1.06);
+}
+
+.app-media-frame__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, hsl(var(--overlay) / 0.5), transparent 55%);
+  pointer-events: none;
+}
+
+.app-media-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--app-media-progress-track);
+}
+
+.app-media-progress__fill {
+  display: block;
+  height: 100%;
+  background: var(--app-media-progress-fill);
+  transition: width var(--duration-base) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-media-progress__fill {
+    transition: none;
+  }
+}
+
 .app-media-on-image {
   color: hsl(var(--app-media-on-image));
 }
@@ -738,6 +814,56 @@
 .app-surface--subtle {
   background: hsl(var(--card));
   border-color: var(--app-surface-border-subtle);
+}
+
+/* ─── Canonical surfaces ────────────────────────────────────────────────────
+   Four recipes replace the hand-rolled shells across the app:
+   card (16px), list row (hairline-divided), table row (layout.css), and
+   media frame (below). Features compose these instead of re-declaring
+   borders, radii and backgrounds. */
+.app-card {
+  border: 1px solid var(--app-surface-border);
+  border-radius: var(--app-card-radius);
+  background: hsl(var(--card));
+  box-shadow: var(--app-surface-shadow);
+}
+
+.app-card--interactive {
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
+}
+
+.app-card--interactive:hover {
+  border-color: hsl(var(--foreground) / 0.18);
+}
+
+.app-card--interactive:focus-within {
+  border-color: hsl(var(--foreground) / 0.26);
+}
+
+.app-list-row {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  color: hsl(var(--foreground));
+}
+
+.app-list-row + .app-list-row {
+  border-top: 1px solid var(--app-hairline);
+}
+
+.app-list-row__thumb {
+  width: clamp(7.5rem, 12vw, 10rem);
+  flex: 0 0 auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-card--interactive {
+    transition: none;
+  }
 }
 
 .app-divider-bottom {
@@ -1367,8 +1493,8 @@ button.app-selection-active:hover {
 /* Heading scale — see the --app-h* tokens above. Replaces the ad-hoc
    `font-bold|font-semibold text-xl|text-lg|text-2xl` combos that were invented
    per-page (19 files, 22 headings, 7 different size/weight pairs). Every heading
-   now inherits the display font (same Instrument Sans family as body, per the
-   Apple-style direction) — headings stand out via the --app-h* weight/tracking. */
+   inherits the display face while body copy stays on the platform system stack;
+   headings stand out via the --app-h* weight/tracking, not a second family. */
 .app-h1,
 .app-h2,
 .app-h3,
@@ -1412,20 +1538,7 @@ button.app-selection-active:hover {
   color: var(--app-heading-color-muted);
 }
 
-@media (min-width: 640px) {
-  .app-page-content {
-    padding-left: var(--app-page-gutter-sm);
-    padding-right: var(--app-page-gutter-sm);
-  }
-}
-
-@media (min-width: 1440px) {
-  .app-page-content {
-    padding-left: var(--app-page-gutter-lg);
-    padding-right: var(--app-page-gutter-lg);
-  }
-
-}
+/* --app-page-gutter is already a clamp(); no breakpoint-specific overrides. */
 
 /* No <768px / mobile breakpoints: this is a desktop-only product (Electron +
    large-screen web). The old `@media (max-width: 767px)` toolbar stack branch
@@ -1444,23 +1557,25 @@ button.app-selection-active:hover {
   display: flex;
   align-items: baseline;
   gap: 0.75rem;
-  margin: 0 0 1.125rem;
+  margin: 0 0 1.25rem;
 }
 .app-section-title__text {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-size: var(--app-h2-size);
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
   color: hsl(var(--foreground));
 }
-.app-section-title__eyebrow {
+.app-section-title__eyebrow,
+.app-eyebrow {
   font-family: var(--font-sans);
   font-size: var(--app-text-xs);
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
   text-transform: uppercase;
-  color: hsl(var(--muted-foreground) / 0.8);
+  color: hsl(var(--muted-foreground));
 }
 
 :where(.app-section-title__text a):focus-visible {

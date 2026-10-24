@@ -142,10 +142,10 @@ defineExpose({ refresh: load })
 .continue-rail {
   min-width: 0;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.85);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--app-surface-border);
+  border-radius: var(--radius-xl);
   background: hsl(var(--card));
-  padding: 0.7rem 0.75rem 0.8rem;
+  padding: 0.75rem 0.75rem 0.85rem;
 }
 
 .continue-rail__header {
@@ -166,10 +166,10 @@ defineExpose({ refresh: load })
 
 .continue-rail__header h2 {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-size: var(--app-text-base);
-  font-weight: 700;
-  letter-spacing: 0;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 
 .continue-rail__count {
@@ -178,12 +178,12 @@ defineExpose({ refresh: load })
   height: 1.25rem;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  background: hsl(var(--foreground) / 0.07);
+  border-radius: var(--radius-sm);
+  background: hsl(var(--foreground) / 0.06);
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-weight: 600;
   padding-inline: 0.35rem;
 }
 
@@ -194,13 +194,15 @@ defineExpose({ refresh: load })
 .continue-rail__track {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(11rem, 1fr);
+  /* Four-up shelf: percentage columns keep all four visible instead of letting
+     1fr collapse to max-content inside the horizontal scroll container. */
+  grid-auto-columns: calc((100% - 2.1rem) / 4);
   gap: 0.7rem;
   margin: 0;
   padding: 0;
   overflow-x: auto;
   list-style: none;
-  scrollbar-width: thin;
+  scrollbar-width: none;
 }
 
 .continue-rail__track > li {
@@ -237,7 +239,7 @@ defineExpose({ refresh: load })
 .continue-rail__card:focus-visible .continue-rail__visual {
   box-shadow:
     0 0 0 2px hsl(var(--background)),
-    0 0 0 4px hsl(var(--ring) / 0.45);
+    0 0 0 4px hsl(var(--ring) / 0.8);
 }
 
 .continue-rail__visual {
@@ -259,12 +261,12 @@ defineExpose({ refresh: load })
   height: 1.35rem;
   align-items: center;
   gap: 0.2rem;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0 0.45rem 0 0.35rem;
   background: hsl(var(--overlay) / 0.72);
   color: hsl(var(--app-media-on-image));
   font-size: var(--app-text-xs);
-  font-weight: 700;
+  font-weight: 600;
   opacity: 0;
   transform: translateY(0.15rem);
   transition:
@@ -286,7 +288,7 @@ defineExpose({ refresh: load })
 .continue-rail__progress > span {
   display: block;
   height: 100%;
-  background: hsl(var(--primary));
+  background: var(--app-media-progress-fill);
 }
 
 .continue-rail__copy {
@@ -299,9 +301,9 @@ defineExpose({ refresh: load })
   display: -webkit-box;
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: var(--app-text-sm);
-  font-weight: 650;
-  line-height: 1.3;
+  font-size: var(--app-text-md);
+  font-weight: 600;
+  line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -319,8 +321,8 @@ defineExpose({ refresh: load })
 }
 
 .continue-rail__percent {
-  color: hsl(var(--primary));
-  font-weight: 700;
+  color: hsl(var(--foreground));
+  font-weight: 600;
 }
 
 .continue-rail__state {
@@ -347,7 +349,7 @@ defineExpose({ refresh: load })
 .continue-rail__skeleton-copy > span {
   display: block;
   height: 0.625rem;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--muted) / 0.55);
 }
 

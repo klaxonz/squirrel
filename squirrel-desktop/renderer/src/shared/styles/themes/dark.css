@@ -1,48 +1,62 @@
 :root {
-  /* Product palette: near-black canvas, restrained surfaces, warm action accent. */
+  /* Dark is the base declaration set. Every token must be declared here first;
+     `.light` below is a pure override layer. This prevents the "token only
+     exists in one theme" class of bug (previously `--sidebar` was light-only).
+
+     Palette: neutral graphite, no hue. Brand orange is punctuation, never a
+     primary action color. Ink (foreground) drives buttons, selection, progress
+     and focus in both themes. */
 
   /* Semantic surfaces */
-  --background: 204 15% 6%;            /* #0E1113 */
-  --foreground: 210 6% 85%;            /* #D7DADC */
+  --background: 0 0% 6%;               /* #0F0F0F */
+  --foreground: 0 0% 91%;              /* #E8E8E8 */
 
-  --card: 240 2% 10%;                  /* #1A1A1B */
-  --card-foreground: 210 6% 85%;
+  --card: 0 0% 10%;                    /* #1A1A1A */
+  --card-foreground: 0 0% 91%;
 
-  --popover: 240 2% 12%;               /* #1F1F20 */
-  --popover-foreground: 210 6% 85%;
+  --popover: 0 0% 12%;                 /* #1F1F1F */
+  --popover-foreground: 0 0% 91%;
 
-  --primary: 16 100% 50%;              /* #FF4500 orangered */
-  --primary-foreground: 0 0% 100%;
+  /* Ink primary: near-white on dark, near-black on light. */
+  --primary: 0 0% 91%;
+  --primary-foreground: 0 0% 6%;
+  --primary-hover: 0 0% 85%;
+  --primary-active: 0 0% 78%;
 
-  --secondary: 240 2% 14%;             /* #222223 */
-  --secondary-foreground: 210 6% 85%;
+  --secondary: 0 0% 13%;               /* #212121 */
+  --secondary-foreground: 0 0% 91%;
 
-  --muted: 240 2% 13%;
-  --muted-foreground: 210 3% 58%;      /* #96989A — readable muted text */
+  --muted: 0 0% 13%;
+  --muted-foreground: 0 0% 64%;        /* #A3A3A3 — 7.4:1 on canvas */
 
-  --accent: 240 2% 16%;
-  --accent-foreground: 210 6% 90%;
+  --accent: 0 0% 16%;
+  --accent-foreground: 0 0% 93%;
 
-  --destructive: 0 72% 55%;
+  /* Status colors are status-only: dots, labels, destructive actions. */
+  --destructive: 0 62% 58%;
   --destructive-foreground: 0 0% 98%;
+  --success: 145 50% 52%;
+  --success-foreground: 0 0% 6%;
+  --warning: 38 85% 58%;
+  --warning-foreground: 0 0% 6%;
+  --info: 205 80% 62%;
+  --info-foreground: 0 0% 6%;
 
-  --success: 145 63% 42%;
-  --success-foreground: 0 0% 100%;
-  --warning: 38 92% 50%;
-  --warning-foreground: 0 0% 8%;
-  --info: 204 100% 66%;                /* cool link blue */
-  --info-foreground: 0 0% 8%;
-
-  --border: 210 2% 21%;                /* #343536 */
-  --input: 210 2% 21%;
-  --control: 240 2% 12%;
-  --ring: 16 100% 50%;
+  --border: 0 0% 16%;                  /* #292929 */
+  --input: 0 0% 20%;
+  --control: 0 0% 12%;
+  --ring: 0 0% 91%;
 
   --overlay: 0 0% 0%;
 
-  /* Community rail sits just above the canvas. */
-  --sidebar-foreground: 210 6% 85%;
-  --sidebar-border: 210 2% 19%;
+  /* Brand punctuation (wordmark mark only) and reader links. */
+  --brand: 16 100% 50%;                /* #FF4500 */
+  --reader-link: 142 69% 45%;          /* #22C55E */
+
+  /* Navigation rail is the canvas; the hairline does the separating. */
+  --sidebar: 0 0% 6%;
+  --sidebar-foreground: 0 0% 91%;
+  --sidebar-border: 0 0% 16%;
 
   /* Hairlines carry hierarchy with minimal shadow. */
   --shadow-xs: 0 1px 0 hsl(0 0% 0% / 0.35);
@@ -51,80 +65,85 @@
   --shadow-lg: 0 12px 28px hsl(0 0% 0% / 0.55);
   --shadow-premium: 0 2px 8px hsl(0 0% 0% / 0.45), 0 16px 40px hsl(0 0% 0% / 0.55);
 
-  --gray-50:  210 9% 96%;
-  --gray-100: 210 6% 90%;
-  --gray-200: 210 5% 78%;
-  --gray-300: 210 4% 64%;
-  --gray-400: 210 3% 51%;
-  --gray-500: 210 3% 40%;
-  --gray-600: 240 2% 30%;
-  --gray-700: 240 2% 22%;
-  --gray-800: 240 2% 14%;
+  /* Neutral gray ramp — no blue cast. */
+  --gray-50:  0 0% 96%;
+  --gray-100: 0 0% 90%;
+  --gray-200: 0 0% 78%;
+  --gray-300: 0 0% 64%;
+  --gray-400: 0 0% 51%;
+  --gray-500: 0 0% 40%;
+  --gray-600: 0 0% 30%;
+  --gray-700: 0 0% 22%;
+  --gray-800: 0 0% 14%;
   --gray-900: 0 0% 7%;
   --gray-950: 0 0% 3%;
 }
 
 .light {
-  /* Light theme: cool canvas, paper cards, and hairline borders. */
-  --background: 210 14% 88%;           /* #DAE0E6 */
-  --foreground: 240 2% 10%;            /* #1A1A1B */
+  /* Neutral paper: #FAFAFA canvas, white surfaces, #E5E5E5 hairlines. */
+  --background: 0 0% 98%;
+  --foreground: 0 0% 9%;               /* #171717 */
 
   --card: 0 0% 100%;
-  --card-foreground: 240 2% 10%;
+  --card-foreground: 0 0% 9%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 240 2% 10%;
+  --popover-foreground: 0 0% 9%;
 
-  --primary: 16 100% 50%;              /* #FF4500 */
+  --primary: 0 0% 9%;
   --primary-foreground: 0 0% 100%;
+  --primary-hover: 0 0% 15%;
+  --primary-active: 0 0% 23%;
 
-  --secondary: 210 12% 95%;            /* #F1F3F5 */
-  --secondary-foreground: 240 2% 10%;
+  --secondary: 0 0% 96%;               /* #F5F5F5 */
+  --secondary-foreground: 0 0% 9%;
 
-  --muted: 210 12% 95%;
-  --muted-foreground: 0 0% 47%;        /* readable muted gray */
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 42%;        /* #6B6B6B — 5.1:1 on #FAFAFA, 4.9:1 on #F5F5F5 */
 
-  --accent: 210 12% 93%;               /* #EDEFF1 */
-  --accent-foreground: 240 2% 10%;
+  --accent: 0 0% 94%;
+  --accent-foreground: 0 0% 9%;
 
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 0 0% 98%;
-
-  --success: 145 63% 36%;
+  --destructive: 0 65% 47%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 145 55% 33%;
   --success-foreground: 0 0% 100%;
-  --warning: 32 95% 44%;
+  --warning: 32 90% 40%;
   --warning-foreground: 0 0% 100%;
-  --info: 206 100% 41%;                /* link blue */
+  --info: 205 85% 38%;
   --info-foreground: 0 0% 100%;
 
-  --border: 210 12% 94%;               /* #EDEFF1 */
-  --input: 210 12% 89%;                /* #D8DEE3 */
+  --border: 0 0% 90%;                  /* #E5E5E5 */
+  --input: 0 0% 84%;
   --control: 0 0% 100%;
-  --ring: 16 100% 50%;
+  --ring: 0 0% 9%;
 
   --overlay: 0 0% 0%;
 
+  --brand: 16 100% 50%;
+  --reader-link: 142 72% 29%;          /* #15803D — 4.8:1 on paper */
+
   --sidebar: 0 0% 100%;
-  --sidebar-foreground: 240 2% 10%;
-  --sidebar-border: 210 12% 92%;       /* #E9ECEF */
+  --sidebar-foreground: 0 0% 9%;
+  --sidebar-border: 0 0% 90%;
 
-  --shadow-xs: 0 1px 2px hsl(210 14% 12% / 0.05);
-  --shadow-sm: 0 1px 3px hsl(210 14% 12% / 0.08), 0 1px 2px hsl(210 14% 12% / 0.05);
-  --shadow-md: 0 4px 12px hsl(210 14% 12% / 0.1);
-  --shadow-lg: 0 12px 28px hsl(210 14% 12% / 0.14);
-  --shadow-premium: 0 1px 2px hsl(210 14% 12% / 0.08), 0 12px 28px hsl(210 14% 12% / 0.12);
+  --shadow-xs: 0 1px 2px hsl(0 0% 0% / 0.04);
+  --shadow-sm: 0 1px 3px hsl(0 0% 0% / 0.06), 0 1px 2px hsl(0 0% 0% / 0.04);
+  --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.08);
+  --shadow-lg: 0 12px 28px hsl(0 0% 0% / 0.1);
+  --shadow-premium: 0 1px 2px hsl(0 0% 0% / 0.06), 0 12px 28px hsl(0 0% 0% / 0.1);
 
-  --gray-50:  210 20% 98%;
-  --gray-100: 210 16% 95%;
-  --gray-200: 210 14% 90%;
-  --gray-300: 210 10% 80%;
-  --gray-400: 210 6% 60%;
-  --gray-500: 210 4% 42%;
-  --gray-600: 220 6% 30%;
-  --gray-700: 220 8% 22%;
-  --gray-800: 220 9% 14%;
-  --gray-900: 220 10% 10%;
-  --gray-950: 220 12% 6%;
+  --gray-50:  0 0% 98%;
+  --gray-100: 0 0% 95%;
+  --gray-200: 0 0% 90%;
+  --gray-300: 0 0% 80%;
+  --gray-400: 0 0% 60%;
+  --gray-500: 0 0% 42%;
+  --gray-600: 0 0% 30%;
+  --gray-700: 0 0% 22%;
+  --gray-800: 0 0% 14%;
+  --gray-900: 0 0% 10%;
+  --gray-950: 0 0% 6%;
 
   /* Selection on paper: quiet ink wash, not brand fill */
   --app-selection-bg: hsl(var(--foreground) / 0.06);
@@ -138,11 +157,14 @@
   --app-filter-track-bg: hsl(var(--secondary));
   --app-filter-raised-bg: hsl(var(--card));
   --app-filter-raised-fg: hsl(var(--foreground));
-  --app-filter-raised-shadow: none;
+  --app-filter-raised-shadow: 0 0 0 1px hsl(var(--border));
 
   --app-hairline-alpha: 1;
   --app-surface-shadow: none;
-  --app-panel-shadow: 0 1px 2px hsl(210 14% 12% / 0.06);
-  --app-floating-shadow: 0 4px 18px hsl(210 14% 12% / 0.12);
-  --app-overlay-shadow: 0 10px 32px hsl(210 14% 12% / 0.16);
+  --app-panel-shadow: 0 1px 2px hsl(0 0% 0% / 0.04);
+  --app-floating-shadow: 0 4px 18px hsl(0 0% 0% / 0.1);
+  --app-overlay-shadow: 0 10px 32px hsl(0 0% 0% / 0.14);
+
+  --app-media-on-image: 0 0% 97%;
+  --app-media-on-image-muted: 0 0% 86%;
 }

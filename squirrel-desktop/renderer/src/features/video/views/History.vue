@@ -376,8 +376,6 @@ onMounted(() => {
 <style scoped>
 .history-content {
   width: 100%;
-  max-width: none;
-  margin-inline: 0;
   padding-block: var(--space-4) var(--app-content-padding-bottom);
   padding-inline: var(--app-content-media-gutter);
 }
@@ -423,7 +421,7 @@ onMounted(() => {
 
 .history-day {
   display: grid;
-  gap: 0.7rem;
+  gap: 0.55rem;
   min-width: 0;
 }
 
@@ -445,9 +443,9 @@ onMounted(() => {
 .history-day__title {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--font-sans);
-  font-size: var(--app-text-base);
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: var(--app-text-lg);
+  font-weight: 650;
   line-height: 1.25;
   letter-spacing: -0.015em;
 }
@@ -464,6 +462,9 @@ onMounted(() => {
 .history-day__items {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 0.55rem;
+  overflow: hidden;
+  border: 1px solid var(--app-surface-border);
+  border-radius: var(--radius-xl);
+  background: hsl(var(--card));
 }
 </style>

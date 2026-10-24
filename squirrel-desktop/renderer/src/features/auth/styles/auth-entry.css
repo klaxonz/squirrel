@@ -27,7 +27,7 @@
   width: 1.5rem;
   height: 1.5rem;
   flex: none;
-  color: hsl(var(--primary));
+  color: hsl(var(--brand));
 }
 
 .auth-entry__product {

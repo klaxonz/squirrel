@@ -165,6 +165,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
   padding: 0 0.75rem;
   border-bottom: 1px solid hsl(var(--border));
   background: hsl(var(--card));
+  /* Chrome stays on the surface, canvas content sits below the hairline. */
   position: relative;
   z-index: var(--z-header);
   user-select: none;
@@ -186,7 +187,7 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 }
 
 .app-header__sidebar-toggle {
-  border-radius: 999px;
+  border-radius: var(--app-control-item-radius);
   color: hsl(var(--muted-foreground));
   transition:
     background-color var(--duration-fast) var(--ease-default),
@@ -256,15 +257,15 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 .app-header__avatar {
   width: 1.5rem;
   height: 1.5rem;
-  border: 0;
+  border: 1px solid hsl(var(--border));
   border-radius: 999px;
-  background: hsl(var(--primary));
+  background: hsl(var(--card));
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: var(--app-text-xs);
-  font-weight: 700;
-  color: hsl(var(--primary-foreground));
+  font-weight: 600;
+  color: hsl(var(--foreground));
   flex: 0 0 auto;
   letter-spacing: 0;
 }
@@ -275,28 +276,28 @@ function setVideoSearchMode(mode: 'local' | 'remote') {
 }
 
 .app-header__search-slot :deep(.global-search__box) {
-  height: 2.3rem;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: hsl(var(--muted) / 0.78);
+  height: 2.25rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  background: hsl(var(--muted) / 0.5);
   box-shadow: none;
 }
 
 .app-header__search-slot :deep(.global-search__box:focus-within) {
-  border-color: hsl(var(--foreground) / 0.12);
+  border-color: hsl(var(--foreground) / 0.25);
   background: hsl(var(--card));
-  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.04), var(--shadow-xs);
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.08);
 }
 
 .app-header__search-slot :deep(.global-search__box.is-open:not(:focus-within)) {
-  border-color: hsl(var(--border) / 0.45);
-  background: hsl(var(--muted) / 0.62);
+  border-color: hsl(var(--border));
+  background: hsl(var(--muted) / 0.5);
 }
 
 .app-header__search-slot :deep(.global-search__suggestions) {
   border-color: hsl(var(--border));
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-popover);
+  box-shadow: var(--app-floating-shadow);
 }
 
 .app-header__user-name {

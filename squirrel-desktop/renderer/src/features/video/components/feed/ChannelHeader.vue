@@ -1,119 +1,92 @@
 <template>
   <transition name="channel-dismiss">
-    <div v-if="isVisible" class="app-media-header">
-      <div class="app-media-header__inner channel-header__inner">
-        <div v-if="loading && !detail" class="channel-header__identity channel-header__skeleton" aria-label="频道信息加载中" role="status">
-          <AppSkeleton width="3.5rem" height="3.5rem" radius="var(--app-surface-radius)" />
-          <div class="channel-header__skeleton-copy">
-            <AppSkeleton width="12rem" height="1.5rem" />
-            <AppSkeleton width="20rem" height="0.875rem" />
-            <AppSkeleton width="9rem" height="0.75rem" />
-          </div>
-        </div>
+    <ChannelIdentityHeader
+      v-if="isVisible"
+      :loading="loading"
+      :name="detail?.name"
+      :avatar="detail?.avatar"
+      :url="detail?.url"
+      :description="detail?.description"
+      :badge="detail?.is_nsfw ? '敏感' : null"
+      :error="detailError"
+      error-title="频道信息加载失败"
+      loading-label="频道信息加载中"
+      name-fallback="未知频道"
+      root-class="channel-header"
+      @retry="fetchDetail"
+    >
+      <template #stats>
+        <span class="channel-header__stat">
+          <span class="channel-header__stat-label">总数</span>
+          <span class="channel-header__stat-value">{{ detail?.total_videos || 0 }}</span>
+        </span>
+        <span class="channel-header__stat">
+          <span class="channel-header__stat-label">解析</span>
+          <span class="channel-header__stat-value">{{ detail?.total_extract || 0 }}</span>
+        </span>
 
-        <div v-else-if="detail" class="channel-header__identity">
-          <a v-if="detail.url" :href="detail.url" target="_blank" rel="noopener noreferrer" class="channel-header__avatar">
-            <SubscriptionAvatar :src="detail.avatar || null" :name="detail.name || '未知频道'" size="full" />
-          </a>
-          <div v-else class="channel-header__avatar">
-            <SubscriptionAvatar :src="detail.avatar || null" :name="detail.name || '未知频道'" size="full" />
-          </div>
+        <span
+          v-for="item in syncContext"
+          :key="item.label"
+          class="channel-header__sync-status"
+          :class="{ 'is-error': item.error }"
+          :title="item.title"
+        >
+          <span class="channel-header__sync-label">{{ item.label }}</span>{{ item.value }}
+        </span>
+      </template>
 
-          <div class="channel-header__copy">
-            <div class="channel-header__title-row">
-              <a v-if="detail.url" :href="detail.url" target="_blank" rel="noopener noreferrer" class="channel-header__name-link">
-                <h1 class="app-h2 truncate">{{ detail.name || '未知频道' }}</h1>
-              </a>
-              <h1 v-else class="app-h2 truncate">{{ detail.name || '未知频道' }}</h1>
-              <span v-if="detail.is_nsfw" class="channel-header__badge">敏感</span>
-            </div>
+      <template #actions>
+        <AppSegmentedControl
+          v-if="canOpenRemote"
+          :model-value="mode || 'local'"
+          :options="channelModeOptions"
+          aria-label="频道内容来源"
+          size="sm"
+          @update:model-value="(value) => emit('update:mode', value)"
+        />
 
-            <p v-if="detail.description" class="channel-header__desc">{{ detail.description }}</p>
+        <span v-if="loading && detail" class="channel-header__refreshing" role="status">正在更新频道信息</span>
 
-            <div class="channel-header__stats">
-              <span class="channel-header__stat">
-                <span class="channel-header__stat-label">总数</span>
-                <span class="channel-header__stat-value">{{ detail.total_videos || 0 }}</span>
-              </span>
-              <span class="channel-header__stat">
-                <span class="channel-header__stat-label">解析</span>
-                <span class="channel-header__stat-value">{{ detail.total_extract || 0 }}</span>
-              </span>
-            </div>
-
-            <div v-if="syncContext.length" class="channel-header__sync-context" aria-label="同步状态">
-              <span
-                v-for="item in syncContext"
-                :key="item.label"
-                class="channel-header__sync-status"
-                :class="{ 'is-error': item.error }"
-                :title="item.title"
-              >
-                <span class="channel-header__sync-label">{{ item.label }}</span>{{ item.value }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="channel-header__identity channel-header__identity--error" role="alert">
-          <AppIcon name="warning" class="h-5 w-5" />
-          <div>
-            <strong>频道信息加载失败</strong>
-            <p>{{ detailError }}</p>
-          </div>
-          <Button type="button" variant="outline" size="sm" :disabled="loading" @click="fetchDetail">重试</Button>
-        </div>
-
-        <div class="channel-header__actions">
-          <AppSegmentedControl
-            v-if="canOpenRemote"
-            :model-value="mode || 'local'"
-            :options="channelModeOptions"
-            aria-label="频道内容来源"
-            size="sm"
-            @update:model-value="(value) => emit('update:mode', value)"
-          />
-
-          <span v-if="loading && detail" class="channel-header__refreshing" role="status">正在更新频道信息</span>
-
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm" icon-only
-            :class="detail?.is_special_followed ? 'text-warning' : ''"
-            :disabled="!detail || isTogglingSpecial"
-            aria-label="切换特别关注"
-            :aria-pressed="!!detail?.is_special_followed"
-            @click="handleToggleSpecialFollow"
-          >
-            <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': detail?.is_special_followed }" />
-          </Button>
-
-          <div v-if="syncMessage" class="channel-header__sync-msg" :class="syncError ? 'is-error' : ''">{{ syncMessage }}</div>
-
-          <div class="channel-sync-group">
-            <Button type="button" variant="secondary" size="sm" :disabled="isSyncing" @click="handleDirectSync('incremental')">
-              <AppSpinner v-if="isSyncing" size="sm" />
-              <AppIcon v-else name="refresh" class="h-3.5 w-3.5" />
-              {{ isSyncing ? '同步中' : '同步' }}
-            </Button>
-            <AppActionMenu :items="syncMenuItems" :disabled="isSyncing" trigger-label="选择同步模式" icon="chevronDown" />
-          </div>
-
-          <Button type="button" variant="destructive" size="sm" :disabled="isUnsubscribing" @click="confirmUnsubscribeOpen = true">
-            {{ isUnsubscribing ? '取消中' : '取消订阅' }}
-          </Button>
-        </div>
-      </div>
-
-      <div v-if="actionError" class="channel-header__action-error" role="alert">
-        <AppIcon name="warning" class="h-4 w-4" />
-        <span>{{ actionError }}</span>
-        <Button type="button" variant="secondary" size="sm" aria-label="关闭操作错误" @click="actionError = ''">
-          <AppIcon name="close" class="h-3.5 w-3.5" />
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm" icon-only
+          :class="detail?.is_special_followed ? 'text-warning' : ''"
+          :disabled="!detail || isTogglingSpecial"
+          aria-label="切换特别关注"
+          :aria-pressed="!!detail?.is_special_followed"
+          @click="handleToggleSpecialFollow"
+        >
+          <AppIcon name="star" class="h-3.5 w-3.5" :class="{ 'fill-current': detail?.is_special_followed }" />
         </Button>
-      </div>
-    </div>
+
+        <div v-if="syncMessage" class="channel-header__sync-msg" :class="syncError ? 'is-error' : ''">{{ syncMessage }}</div>
+
+        <div class="channel-sync-group">
+          <Button type="button" variant="secondary" size="sm" :disabled="isSyncing" @click="handleDirectSync('incremental')">
+            <AppSpinner v-if="isSyncing" size="sm" />
+            <AppIcon v-else name="refresh" class="h-3.5 w-3.5" />
+            {{ isSyncing ? '同步中' : '同步' }}
+          </Button>
+          <AppActionMenu :items="syncMenuItems" :disabled="isSyncing" trigger-label="选择同步模式" icon="chevronDown" />
+        </div>
+
+        <Button type="button" variant="destructive" size="sm" :disabled="isUnsubscribing" @click="confirmUnsubscribeOpen = true">
+          {{ isUnsubscribing ? '取消中' : '取消订阅' }}
+        </Button>
+      </template>
+
+      <template #footer>
+        <div v-if="actionError" class="channel-header__action-error" role="alert">
+          <AppIcon name="warning" class="h-4 w-4" />
+          <span>{{ actionError }}</span>
+          <Button type="button" variant="secondary" size="sm" aria-label="关闭操作错误" @click="actionError = ''">
+            <AppIcon name="close" class="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </template>
+    </ChannelIdentityHeader>
   </transition>
 
   <ConfirmDialog
@@ -136,10 +109,9 @@ import { computed, ref, watch } from 'vue'
 import { errorMessage } from '@/shared/lib/errorMessage'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Spinner as AppSpinner } from '@/shared/ui/skeleton'
-import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 import AppActionMenu from '@/shared/components/AppActionMenu.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
-import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
+import ChannelIdentityHeader from '@/features/video/components/feed/ChannelIdentityHeader.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
 import { Button } from '@/shared/ui/button'
 import { getSubscriptionDetail, triggerDirectRefresh, unsubscribe as apiUnsubscribe, updateSpecialFollowStatus } from '@/shared/api'
@@ -326,106 +298,6 @@ defineExpose({ refresh: fetchDetail })
 </script>
 
 <style scoped>
-.channel-header__inner {
-  --app-page-max-width: var(--app-content-media-max);
-  align-items: flex-start;
-  gap: var(--space-5);
-}
-
-.channel-header__identity {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  align-items: flex-start;
-  gap: var(--space-4);
-}
-
-.channel-header__skeleton-copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding-top: 0.125rem;
-}
-
-.channel-header__identity--error {
-  align-items: center;
-  color: hsl(var(--destructive));
-}
-
-.channel-header__identity--error p {
-  margin: 0.125rem 0 0;
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-md);
-}
-
-.channel-header__avatar {
-  display: block;
-  width: 3.5rem;
-  height: 3.5rem;
-  flex: none;
-  overflow: hidden;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--app-surface-radius);
-  background: hsl(var(--muted));
-}
-
-.channel-header__copy {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.channel-header__title-row {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.channel-header__name-link {
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-  transition: color var(--duration-fast) var(--ease-default);
-}
-
-.channel-header__name-link:hover {
-  color: hsl(var(--foreground));
-}
-
-.channel-header__badge {
-  flex: none;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--radius-sm);
-  background: hsl(var(--muted) / 0.4);
-  padding: 0.125rem 0.375rem;
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-xs);
-  font-weight: 650;
-}
-
-.channel-header__desc {
-  margin: 0;
-  max-width: 42rem;
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-md);
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.channel-header__sync-context {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1rem;
-  margin-top: 0.125rem;
-}
-
 .channel-header__sync-status {
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-sm);
@@ -441,17 +313,10 @@ defineExpose({ refresh: fetchDetail })
   color: hsl(var(--destructive));
 }
 
-.channel-header__stats {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-4);
-}
-
 .channel-header__stat {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.375rem;
+  gap: 0.3rem;
 }
 
 .channel-header__stat-label {
@@ -462,19 +327,10 @@ defineExpose({ refresh: fetchDetail })
 
 .channel-header__stat-value {
   color: hsl(var(--foreground));
-  font-family: var(--font-mono);
-  font-size: var(--app-text-md);
+  font-family: var(--font-numeric);
+  font-size: var(--app-text-sm);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-}
-
-.channel-header__actions {
-  display: flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
 }
 
 .channel-header__refreshing {
@@ -486,9 +342,10 @@ defineExpose({ refresh: fetchDetail })
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  width: min(var(--app-content-media-max), 100%);
+  width: 100%;
+  max-width: var(--app-content-media-max);
   margin: 0 auto;
-  padding: 0.5rem var(--app-page-gutter);
+  padding: 0.5rem var(--app-content-media-gutter);
   border-top: 1px solid hsl(var(--destructive) / 0.2);
   color: hsl(var(--destructive));
   font-size: var(--app-text-md);

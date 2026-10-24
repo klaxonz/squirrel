@@ -67,21 +67,7 @@ withDefaults(defineProps<{
 }
 
 .app-page-shell--default {
-  padding: var(--space-5) var(--app-page-gutter) var(--app-content-padding-bottom);
-}
-
-@media (min-width: 640px) {
-  .app-page-shell--default {
-    padding-left: var(--app-page-gutter-sm);
-    padding-right: var(--app-page-gutter-sm);
-  }
-}
-
-@media (min-width: 1440px) {
-  .app-page-shell--default {
-    padding-left: var(--app-page-gutter-lg);
-    padding-right: var(--app-page-gutter-lg);
-  }
+  padding: var(--app-page-pad-top) var(--app-page-gutter) var(--app-content-padding-bottom);
 }
 
 .app-page-shell--compact {

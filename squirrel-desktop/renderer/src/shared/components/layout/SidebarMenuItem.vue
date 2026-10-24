@@ -7,6 +7,7 @@
     <a
       :href="href"
       class="sidebar-item"
+      data-hover-fill-item
       :class="{ 'is-active': isActive, 'is-collapsed': collapsed }"
       :aria-current="isActive ? 'page' : undefined"
       :title="collapsed ? item.name : undefined"
@@ -85,9 +86,9 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
 
 <style scoped>
 /*
-  Current Reddit nav row:
-  - soft gray pill active (not brand orange)
-  - icon inherits ink; brand color is reserved for the wordmark only
+  Nav row:
+  - shared hover fill travels between siblings; the row itself paints no hover
+  - active is a quiet ink wash, never brand color
 */
 .sidebar-item {
   position: relative;
@@ -120,14 +121,13 @@ const handleClick = (event: MouseEvent, navigate: RouterNavigate) => {
 }
 
 .sidebar-item:focus-visible {
-  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.55);
+  box-shadow: inset 0 0 0 2px hsl(var(--ring) / 0.8);
 }
 
 .sidebar-item.is-active {
   background: var(--app-selection-bg);
   color: hsl(var(--foreground));
-  font-weight: 650;
-  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.04);
+  font-weight: 600;
 }
 
 .sidebar-item.is-collapsed {

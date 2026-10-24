@@ -77,13 +77,13 @@ const selectOption = (value: string | number) => {
   flex: 0 0 auto;
   background: var(--app-filter-track-bg);
   border: 1px solid hsl(var(--border));
-  border-radius: 999px;
+  border-radius: var(--radius-lg);
   padding: 2px;
 }
 
 .app-segmented-control__item {
   padding: 0.25rem 0.75rem;
-  border-radius: 999px;
+  border-radius: var(--app-control-item-radius);
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-md);
   font-weight: 600;
@@ -102,7 +102,7 @@ const selectOption = (value: string | number) => {
   color: var(--app-filter-raised-fg);
   background: var(--app-filter-raised-bg);
   box-shadow: var(--app-filter-raised-shadow);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 @media (prefers-reduced-motion: reduce) {

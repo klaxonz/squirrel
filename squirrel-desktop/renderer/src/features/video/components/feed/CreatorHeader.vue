@@ -1,75 +1,58 @@
 <template>
-  <div class="app-media-header">
-    <div class="app-media-header__inner creator-header__inner">
-      <div v-if="loading && !detail" class="creator-header__identity creator-header__skeleton" aria-label="创作者信息加载中" role="status">
-        <AppSkeleton width="3.5rem" height="3.5rem" radius="var(--app-surface-radius)" />
-        <div class="creator-header__skeleton-copy">
-          <AppSkeleton width="12rem" height="1.5rem" />
-          <AppSkeleton width="20rem" height="0.875rem" />
-          <AppSkeleton width="8rem" height="0.75rem" />
-        </div>
-      </div>
+  <ChannelIdentityHeader
+    :loading="loading"
+    :name="detail?.name"
+    :avatar="detail?.avatar"
+    :url="detail?.url"
+    :description="detail?.description"
+    :badge="detail?.is_deleted ? '已停用' : null"
+    :error="detailError"
+    error-title="创作者信息加载失败"
+    loading-label="创作者信息加载中"
+    name-fallback="未知创作者"
+    root-class="creator-header"
+    @retry="fetchDetail"
+  >
+    <template #stats>
+      <span class="creator-header__stat">
+        <span class="creator-header__stat-label">视频</span>
+        <span class="creator-header__stat-value">{{ detail?.total_videos ?? 0 }}</span>
+      </span>
+      <span v-if="sourceLabel" class="creator-header__stat">
+        <span class="creator-header__stat-label">来源</span>
+        <span class="creator-header__stat-value creator-header__stat-value--text">{{ sourceLabel }}</span>
+      </span>
+      <a
+        v-if="detail?.url"
+        :href="detail.url"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="creator-header__site-link"
+      >
+        访问主页 <AppIcon name="externalLink" class="h-3.5 w-3.5" />
+      </a>
+    </template>
 
-      <div v-else-if="detail" class="creator-header__identity">
-        <a v-if="detail.url" :href="detail.url" target="_blank" rel="noopener noreferrer" class="creator-header__avatar">
-          <SubscriptionAvatar :src="detail.avatar || null" :name="detail.name || '未知创作者'" size="full" />
-        </a>
-        <div v-else class="creator-header__avatar">
-          <SubscriptionAvatar :src="detail.avatar || null" :name="detail.name || '未知创作者'" size="full" />
-        </div>
-
-        <div class="creator-header__copy">
-          <div class="creator-header__title-row">
-            <a v-if="detail.url" :href="detail.url" target="_blank" rel="noopener noreferrer" class="creator-header__name-link">
-              <h1 class="app-h2 truncate">{{ detail.name || '未知创作者' }}</h1>
-            </a>
-            <h1 v-else class="app-h2 truncate">{{ detail.name || '未知创作者' }}</h1>
-            <span v-if="detail.is_deleted" class="creator-header__badge">已停用</span>
-          </div>
-
-          <p v-if="detail.description" class="creator-header__desc">{{ detail.description }}</p>
-
-          <div class="creator-header__stats">
-            <span class="creator-header__stat">
-              <span class="creator-header__stat-label">视频</span>
-              <span class="creator-header__stat-value">{{ detail.total_videos ?? 0 }}</span>
-            </span>
-            <span v-if="sourceLabel" class="creator-header__stat">
-              <span class="creator-header__stat-label">来源</span>
-              <span class="creator-header__stat-value creator-header__stat-value--text">{{ sourceLabel }}</span>
-            </span>
-            <a v-if="detail.url" :href="detail.url" target="_blank" rel="noopener noreferrer" class="creator-header__site-link">
-              访问主页 <AppIcon name="externalLink" class="h-3.5 w-3.5" />
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div v-else class="creator-header__identity creator-header__identity--error" role="alert">
-        <AppIcon name="warning" class="h-5 w-5" />
-        <div>
-          <strong>创作者信息加载失败</strong>
-          <p>{{ detailError }}</p>
-        </div>
-        <Button type="button" variant="outline" size="sm" :disabled="loading" @click="fetchDetail">重试</Button>
-      </div>
-
+    <template #actions>
       <span v-if="loading && detail" class="creator-header__refreshing" role="status">正在更新创作者信息</span>
-      <Button v-if="detail && detailError" type="button" variant="outline" size="sm" @click="fetchDetail">重试信息加载</Button>
-    </div>
+      <Button v-if="detail && detailError" type="button" variant="outline" size="sm" @click="fetchDetail">
+        重试信息加载
+      </Button>
+    </template>
 
-    <div v-if="detail && detailError" class="creator-header__refresh-error" role="alert">
-      <AppIcon name="warning" class="h-4 w-4" />
-      <span>{{ detailError }}</span>
-    </div>
-  </div>
+    <template #footer>
+      <div v-if="detail && detailError" class="creator-header__refresh-error" role="alert">
+        <AppIcon name="warning" class="h-4 w-4" />
+        <span>{{ detailError }}</span>
+      </div>
+    </template>
+  </ChannelIdentityHeader>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
-import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
-import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
+import ChannelIdentityHeader from '@/features/video/components/feed/ChannelIdentityHeader.vue'
 import { Button } from '@/shared/ui/button'
 import { getCreatorDetail } from '@/shared/api'
 import { errorMessage } from '@/shared/lib/errorMessage'
@@ -147,109 +130,10 @@ defineExpose({ refresh: fetchDetail })
 </script>
 
 <style scoped>
-.creator-header__inner {
-  --app-page-max-width: var(--app-content-media-max);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.creator-header__identity {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  align-items: flex-start;
-  gap: var(--space-4);
-}
-
-.creator-header__skeleton-copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding-top: 0.125rem;
-}
-
-.creator-header__identity--error {
-  align-items: center;
-  color: hsl(var(--destructive));
-}
-
-.creator-header__identity--error p {
-  margin: 0.125rem 0 0;
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-md);
-}
-
-.creator-header__avatar {
-  flex: 0 0 auto;
-  width: 3.5rem;
-  height: 3.5rem;
-  overflow: hidden;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--app-surface-radius);
-  background: hsl(var(--muted));
-}
-
-.creator-header__copy {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.creator-header__title-row {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.creator-header__name-link {
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-  transition: color var(--duration-fast) var(--ease-default);
-}
-
-.creator-header__name-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-}
-
-.creator-header__badge {
-  flex: none;
-  border: 1px solid var(--app-surface-border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 0.125rem 0.375rem;
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-xs);
-  font-weight: 650;
-}
-
-.creator-header__desc {
-  display: -webkit-box;
-  overflow: hidden;
-  margin: 0;
-  color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-base);
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.creator-header__stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
-}
-
 .creator-header__stat {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 .creator-header__stat-label {
@@ -259,19 +143,19 @@ defineExpose({ refresh: fetchDetail })
 
 .creator-header__stat-value {
   color: hsl(var(--foreground));
-  font-size: var(--app-text-base);
+  font-size: var(--app-text-sm);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
+
 .creator-header__stat-value--text {
-  font-family: inherit;
-  font-size: var(--app-text-md);
+  font-weight: 500;
 }
 
 .creator-header__site-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.3rem;
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-sm);
   text-decoration: none;
@@ -292,9 +176,10 @@ defineExpose({ refresh: fetchDetail })
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  width: min(var(--app-content-media-max), 100%);
+  width: 100%;
+  max-width: var(--app-content-media-max);
   margin: 0 auto;
-  padding: 0.5rem var(--app-page-gutter);
+  padding: 0.5rem var(--app-content-media-gutter);
   border-top: 1px solid hsl(var(--destructive) / 0.2);
   color: hsl(var(--destructive));
   font-size: var(--app-text-md);

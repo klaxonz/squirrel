@@ -492,9 +492,9 @@ onUnmounted(() => {
   gap: 0.25rem;
   height: 2.25rem;
   padding: 0 0.5rem 0 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: hsl(var(--muted) / 0.72);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  background: hsl(var(--muted) / 0.5);
   transition:
     background-color var(--duration-fast) var(--ease-default),
     border-color var(--duration-fast) var(--ease-default),
@@ -505,27 +505,27 @@ onUnmounted(() => {
    Nested input/button focus rings are suppressed below so they do not
    stack with this ring (global :focus-visible + Button ring utilities). */
 .global-search__box:focus-within {
-  border-color: hsl(var(--foreground) / 0.1);
+  border-color: hsl(var(--foreground) / 0.25);
   background: hsl(var(--card));
-  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.04);
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.08);
 }
 
 /* is-open only while the panel is visible; never override focus chrome. */
 .global-search__box.is-open:not(:focus-within) {
-  border-color: hsl(var(--border) / 0.35);
-  background: hsl(var(--muted) / 0.55);
+  border-color: hsl(var(--border));
+  background: hsl(var(--muted) / 0.5);
 }
 
 .global-search__leading-icon {
   flex: 0 0 auto;
   width: 0.875rem;
   height: 0.875rem;
-  color: hsl(var(--muted-foreground) / 0.55);
+  color: hsl(var(--muted-foreground));
   transition: color var(--duration-fast) var(--ease-default);
 }
 
 .global-search__box:focus-within .global-search__leading-icon {
-  color: hsl(var(--muted-foreground) / 0.78);
+  color: hsl(var(--foreground));
 }
 
 .global-search__mode-wrap {
@@ -539,10 +539,10 @@ onUnmounted(() => {
   height: 1.375rem;
   min-width: 0;
   padding: 0 0.375rem 0 0.25rem;
-  border-radius: 999px;
+  border-radius: var(--app-control-item-radius);
   border-color: transparent;
   background: transparent;
-  color: hsl(var(--muted-foreground) / 0.72);
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
   font-weight: 500;
   letter-spacing: 0.01em;
@@ -619,8 +619,8 @@ onUnmounted(() => {
 .global-search__clear {
   width: 1.5rem;
   height: 1.5rem;
-  border-radius: 999px;
-  color: hsl(var(--muted-foreground) / 0.62);
+  border-radius: var(--app-control-item-radius);
+  color: hsl(var(--muted-foreground));
 }
 
 .global-search__clear:hover:not(:disabled) {
@@ -660,9 +660,9 @@ onUnmounted(() => {
   justify-content: space-between;
   margin-bottom: 0.25rem;
   padding: 0.375rem 0.5rem;
-  color: hsl(var(--muted-foreground) / 0.68);
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .global-search__clear-recent {
@@ -723,7 +723,7 @@ onUnmounted(() => {
 }
 
 .global-search__suggestion-meta {
-  color: hsl(var(--muted-foreground) / 0.6);
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
 }
 
@@ -731,8 +731,8 @@ onUnmounted(() => {
   flex: 0 0 auto;
   width: 2rem;
   height: auto;
-  border-radius: var(--radius-md);
-  color: hsl(var(--muted-foreground) / 0.48);
+  border-radius: var(--app-control-item-radius);
+  color: hsl(var(--muted-foreground));
 }
 
 .global-search__remove:hover {
@@ -742,7 +742,7 @@ onUnmounted(() => {
 
 .global-search__empty {
   padding: 2rem;
-  color: hsl(var(--muted-foreground) / 0.52);
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-sm);
   font-weight: 500;
   text-align: center;

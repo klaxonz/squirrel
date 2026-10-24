@@ -252,7 +252,7 @@ defineExpose({
   height: 1.15rem;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: hsl(var(--foreground) / 0.06);
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
@@ -262,9 +262,10 @@ defineExpose({
 }
 
 .home-inbox__posts {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  align-items: start;
+  gap: var(--space-5) var(--space-4);
 }
 
 .home-inbox__state {

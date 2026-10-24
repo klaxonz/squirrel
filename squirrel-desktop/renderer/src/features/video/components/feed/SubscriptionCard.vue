@@ -156,7 +156,7 @@ const cardTitle = computed(() => {
 
 .subscription-row:hover,
 .subscription-row:focus-within {
-  background: hsl(var(--foreground) / 0.025);
+  background: hsl(var(--foreground) / 0.03);
 }
 
 .subscription-row--error {
@@ -186,7 +186,7 @@ const cardTitle = computed(() => {
 .subscription-row__identity:focus-visible {
   border-radius: var(--radius-sm);
   outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.45);
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.8);
 }
 
 .subscription-row__identity:active {
@@ -227,13 +227,13 @@ const cardTitle = computed(() => {
   flex: none;
   color: hsl(var(--destructive));
   font-size: var(--app-text-badge-size);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
 }
 
 .subscription-row__site {
   overflow: hidden;
-  color: hsl(var(--muted-foreground) / 0.78);
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
   font-weight: 500;
   line-height: 1.25;
@@ -243,18 +243,19 @@ const cardTitle = computed(() => {
 
 .subscription-row__metric {
   justify-self: end;
-  color: hsl(var(--muted-foreground) / 0.88);
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-sm);
-  font-weight: 550;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .subscription-row__metric--active {
-  color: hsl(var(--foreground) / 0.82);
+  color: hsl(var(--foreground));
+  font-weight: 600;
 }
 
 .subscription-row__updated {
-  color: hsl(var(--muted-foreground) / 0.78);
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
   font-weight: 500;
   white-space: nowrap;
@@ -265,9 +266,9 @@ const cardTitle = computed(() => {
   min-width: 0;
   align-items: center;
   gap: 0.3rem;
-  color: hsl(var(--muted-foreground) / 0.72);
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
-  font-weight: 550;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -280,7 +281,7 @@ const cardTitle = computed(() => {
 }
 
 .subscription-row__state--healthy {
-  color: hsl(var(--muted-foreground) / 0.72);
+  color: hsl(var(--muted-foreground));
 }
 
 .subscription-row__state-dot {
@@ -293,12 +294,12 @@ const cardTitle = computed(() => {
 
 .subscription-row__star {
   opacity: 0;
-  color: hsl(var(--muted-foreground) / 0.55);
+  color: hsl(var(--muted-foreground));
 }
 
 .subscription-row__star.is-active {
   opacity: 0.56;
-  color: hsl(var(--muted-foreground) / 0.78);
+  color: hsl(var(--foreground));
 }
 
 .subscription-row:hover .subscription-row__star,

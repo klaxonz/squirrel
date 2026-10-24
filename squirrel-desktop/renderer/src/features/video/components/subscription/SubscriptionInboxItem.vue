@@ -9,15 +9,18 @@
       :aria-label="`播放 ${video.title}`"
       @click="openVideo"
     >
-      <VideoThumbnail
-        :src="video.thumbnail"
-        :alt="video.title"
-        fit="cover"
-        interactive
-      />
-      <span v-if="video.duration" class="subscription-inbox-item__duration">
-        {{ formatDuration(video.duration) }}
-      </span>
+      <MediaFrame
+        class="subscription-inbox-item__frame"
+        :duration="video.duration ? formatDuration(video.duration) : ''"
+        compact
+      >
+        <VideoThumbnail
+          :src="video.thumbnail"
+          :alt="video.title"
+          fit="cover"
+          interactive
+        />
+      </MediaFrame>
     </button>
 
     <div class="subscription-inbox-item__copy">
@@ -91,6 +94,7 @@ import { errorMessage } from '@/shared/lib/errorMessage'
 import { formatDate, formatDuration } from '@/shared/lib/dateFormat'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
 import SubscriptionAvatar from '@/features/video/components/SubscriptionAvatar.vue'
+import MediaFrame from '@/shared/components/layout/MediaFrame.vue'
 import { updateVideoReadState } from '@/shared/api'
 import type { VideoListItem } from '@/features/video/types/video'
 
@@ -160,42 +164,31 @@ const openVideo = () => {
   grid-template-columns: 11rem minmax(0, 1fr) 2rem;
   align-items: center;
   gap: var(--space-5);
-  padding: 0.875rem var(--space-2);
+  padding: 0.875rem 0.9rem;
   transition: background-color var(--duration-fast) var(--ease-default);
 }
 
 .subscription-inbox-item:hover,
 .subscription-inbox-item:focus-within {
-  background: hsl(var(--muted) / 0.24);
+  background: hsl(var(--foreground) / 0.03);
 }
 
 .subscription-inbox-item__thumbnail {
   position: relative;
-  overflow: hidden;
+  display: block;
   width: 11rem;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius-lg);
-  background: var(--app-media-thumb-placeholder);
+  border-radius: var(--radius-md);
   cursor: pointer;
+}
+
+.subscription-inbox-item__frame {
+  width: 100%;
 }
 
 .subscription-inbox-item__thumbnail:focus-visible,
 .subscription-inbox-item__title:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.42);
-}
-
-.subscription-inbox-item__duration {
-  position: absolute;
-  right: 0.375rem;
-  bottom: 0.375rem;
-  border-radius: var(--radius-sm);
-  background: var(--app-media-badge-bg);
-  padding: 0.125rem 0.3rem;
-  color: hsl(var(--app-media-on-image) / 0.94);
-  font-family: var(--font-mono);
-  font-size: var(--app-text-badge-size);
-  line-height: 1;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.8);
 }
 
 .subscription-inbox-item__copy {
@@ -209,9 +202,10 @@ const openVideo = () => {
   display: -webkit-box;
   overflow: hidden;
   color: hsl(var(--foreground));
-  font-size: var(--app-h3-size);
+  font-size: var(--app-text-lg);
   font-weight: 600;
-  line-height: 1.45;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
   text-align: left;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -219,11 +213,11 @@ const openVideo = () => {
 }
 
 .subscription-inbox-item--read .subscription-inbox-item__thumbnail {
-  opacity: 0.78;
+  opacity: 0.82;
 }
 
 .subscription-inbox-item--read .subscription-inbox-item__title {
-  color: hsl(var(--muted-foreground) / 0.9);
+  color: hsl(var(--muted-foreground));
   font-weight: 500;
 }
 
@@ -241,7 +235,7 @@ const openVideo = () => {
   min-width: 0;
   align-items: center;
   gap: 0.375rem;
-  color: hsl(var(--muted-foreground) / 0.74);
+  color: hsl(var(--muted-foreground));
   font-size: var(--app-text-xs);
   font-weight: 500;
 }
@@ -252,7 +246,7 @@ const openVideo = () => {
   align-items: center;
   gap: 0.375rem;
   border-radius: var(--radius-sm);
-  color: hsl(var(--muted-foreground) / 0.88);
+  color: hsl(var(--muted-foreground));
 }
 
 .subscription-inbox-item__channel > span {

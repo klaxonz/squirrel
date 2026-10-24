@@ -148,7 +148,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding-left: 0.5rem;
-  border-bottom: 1px solid hsl(var(--border) / 0.9);
+  border-bottom: 1px solid hsl(var(--border));
   background: hsl(var(--card));
   user-select: none;
   -webkit-app-region: drag;
@@ -167,7 +167,7 @@ onUnmounted(() => {
 .titlebar__icon-btn {
   width: 1.8rem;
   height: 1.8rem;
-  border-radius: var(--radius-md);
+  border-radius: var(--app-control-item-radius);
   color: hsl(var(--muted-foreground));
   transition:
     background-color var(--duration-fast) var(--ease-default),

@@ -173,6 +173,116 @@
         <SkeletonText :lines="3" />
       </div>
     </section>
+
+    <section class="ui-gallery__section">
+      <h2>Type scale</h2>
+      <p class="ui-gallery__note">
+        正文走平台系统字体，标题与数字走展示字体；11px eyebrow 用于区块眉题。
+        切换浅色/暗色后逐项对照，两套主题都应完整可读。
+      </p>
+      <div class="ui-gallery__stack">
+        <span class="app-eyebrow">Eyebrow · 区块标签</span>
+        <p class="ui-gallery__type ui-gallery__type--3xl">页面标题 24 / 650</p>
+        <p class="ui-gallery__type ui-gallery__type--2xl">区块标题 22 / 650</p>
+        <p class="ui-gallery__type ui-gallery__type--lg">列表标题 16 / 600</p>
+        <p class="ui-gallery__type ui-gallery__type--base">正文 14 / 400 · 中文与 English 混排的阅读密度</p>
+        <p class="ui-gallery__type ui-gallery__type--meta">元信息 12 / 500 · 频道 · 2 小时前</p>
+        <p class="ui-gallery__type ui-gallery__type--numeric">128,904 · 04:32 · 2026-10-23</p>
+      </div>
+    </section>
+
+    <section class="ui-gallery__section">
+      <h2>Radii</h2>
+      <div class="ui-gallery__row">
+        <div v-for="radius in radii" :key="radius.label" class="ui-gallery__radius">
+          <span class="ui-gallery__radius-chip" :style="{ borderRadius: radius.value }" />
+          <span>{{ radius.label }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="ui-gallery__section">
+      <h2>Cards & lists</h2>
+      <div class="ui-gallery__recipe-grid">
+        <article class="app-card ui-gallery__card">
+          <span class="app-eyebrow">app-card</span>
+          <strong>静态面板</strong>
+          <p>白底、1px hairline、16px 圆角，无阴影。用于设置分组与内容容器。</p>
+        </article>
+        <article class="app-card app-card--interactive ui-gallery__card">
+          <span class="app-eyebrow">app-card--interactive</span>
+          <strong>可点击卡片</strong>
+          <p>hover / focus-within 时边框加深，不位移、不投影。</p>
+        </article>
+      </div>
+
+      <div class="app-card ui-gallery__list" v-hover-fill>
+        <div
+          v-for="row in listRows"
+          :key="row.title"
+          class="app-list-row"
+          data-hover-fill-item
+        >
+          <span class="ui-gallery__row-dot" />
+          <div class="ui-gallery__row-copy">
+            <strong>{{ row.title }}</strong>
+            <span>{{ row.meta }}</span>
+          </div>
+          <span class="ui-gallery__row-value">{{ row.value }}</span>
+        </div>
+      </div>
+      <p class="ui-gallery__note">app-list-row · 相邻行 hairline 分隔，行高 56px。</p>
+
+      <div class="app-card ui-gallery__table">
+        <div class="app-table-row ui-gallery__table-head">
+          <span>名称</span><span>站点</span><span>状态</span><span>更新时间</span>
+        </div>
+        <div v-for="row in tableRows" :key="row.name" class="app-table-row">
+          <strong>{{ row.name }}</strong>
+          <span>{{ row.site }}</span>
+          <span class="ui-gallery__status"><i />{{ row.status }}</span>
+          <span>{{ row.updated }}</span>
+        </div>
+      </div>
+      <p class="ui-gallery__note">app-table-row · 44px 行高，用于设置、日志与定时任务。</p>
+    </section>
+
+    <section class="ui-gallery__section">
+      <h2>Media frame</h2>
+      <div class="ui-gallery__recipe-grid">
+        <div class="ui-gallery__stack">
+          <MediaFrame class="ui-gallery__media" duration="12:34">
+            <div class="ui-gallery__media-fill" />
+          </MediaFrame>
+          <span class="ui-gallery__note">时长徽标 · 16:9 · 10px 圆角</span>
+        </div>
+        <div class="ui-gallery__stack">
+          <MediaFrame class="ui-gallery__media" duration="04:32" :progress="0.42" progress-label="示例播放进度">
+            <div class="ui-gallery__media-fill ui-gallery__media-fill--alt" />
+          </MediaFrame>
+          <span class="ui-gallery__note">播放进度 · 已观看 42%</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="ui-gallery__section">
+      <h2>Shared hover fill</h2>
+      <p class="ui-gallery__note">
+        一个可移动的背景层在相邻项之间跳转。仅鼠标生效；键盘聚焦保留各自的
+        focus ring；减少动效模式下退化为普通 hover。
+      </p>
+      <nav class="ui-gallery__hover-scope" aria-label="HoverFill 示例" v-hover-fill>
+        <button
+          v-for="item in hoverItems"
+          :key="item"
+          type="button"
+          class="ui-gallery__hover-item"
+          data-hover-fill-item
+        >
+          {{ item }}
+        </button>
+      </nav>
+    </section>
   </div>
 </template>
 
@@ -180,6 +290,7 @@
 import { ref } from 'vue'
 import { DialogClose, DialogRoot, DialogTrigger, DropdownMenuRoot, DropdownMenuTrigger, PopoverRoot, PopoverTrigger, TooltipRoot, TooltipTrigger } from 'reka-ui'
 import AppIcon from '@/shared/icons/AppIcon.vue'
+import MediaFrame from '@/shared/components/layout/MediaFrame.vue'
 import { Button, IconButton } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Textarea } from '@/shared/ui/textarea'
@@ -206,6 +317,28 @@ const switchValue = ref(true)
 const selectValue = ref('')
 const dialogOpen = ref(false)
 const popoverOpen = ref(false)
+
+const radii = [
+  { label: 'sm · 6', value: 'var(--radius-sm)' },
+  { label: 'md · 8', value: 'var(--radius-md)' },
+  { label: 'lg · 10', value: 'var(--radius-lg)' },
+  { label: 'xl · 12', value: 'var(--radius-xl)' },
+  { label: '2xl · 16', value: 'var(--radius-2xl)' },
+  { label: 'pill', value: 'var(--radius-pill)' },
+]
+
+const listRows = [
+  { title: '设计系统的单一来源', meta: '示例频道 · 今天 09:12', value: '12:04' },
+  { title: '动效不是装饰，而是解释结构', meta: '示例频道 · 昨天', value: '08:37' },
+  { title: '空状态、错误与键盘路径都属于设计', meta: '示例频道 · 2 天前', value: '21:56' },
+]
+
+const tableRows = [
+  { name: '示例站点', site: 'bilibili', status: '运行中', updated: '10 分钟前' },
+  { name: '备用站点', site: 'youtube', status: '待同步', updated: '2 小时前' },
+]
+
+const hoverItems = ['全部', '未读', '已收藏', '稍后观看']
 </script>
 
 <style scoped>
@@ -220,9 +353,11 @@ const popoverOpen = ref(false)
 }
 
 .ui-gallery__header h1 {
-  font-size: var(--app-text-2xl);
-  font-weight: 700;
   margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--app-text-2xl);
+  font-weight: 650;
+  letter-spacing: -0.02em;
 }
 
 .ui-gallery__header p {
@@ -250,8 +385,227 @@ const popoverOpen = ref(false)
 
 .ui-gallery__section h2 {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--app-text-lg);
-  font-weight: 700;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.ui-gallery__note {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-sm);
+  line-height: 1.6;
+}
+
+.ui-gallery__type {
+  margin: 0;
+  color: hsl(var(--foreground));
+}
+
+.ui-gallery__type--3xl {
+  font-family: var(--font-display);
+  font-size: var(--app-text-3xl);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.ui-gallery__type--2xl {
+  font-family: var(--font-display);
+  font-size: var(--app-text-2xl);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.ui-gallery__type--lg {
+  font-size: var(--app-text-lg);
+  font-weight: 600;
+}
+
+.ui-gallery__type--base {
+  font-size: var(--app-text-base);
+  line-height: var(--app-leading-body);
+}
+
+.ui-gallery__type--meta {
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-sm);
+  font-weight: 500;
+}
+
+.ui-gallery__type--numeric {
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-numeric);
+  font-size: var(--app-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-gallery__radius {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-sm);
+}
+
+.ui-gallery__radius-chip {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--app-surface-border);
+  background: hsl(var(--card));
+}
+
+.ui-gallery__recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-4);
+}
+
+.ui-gallery__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: var(--space-4);
+}
+
+.ui-gallery__card strong {
+  font-size: var(--app-text-base);
+  font-weight: 600;
+}
+
+.ui-gallery__card p {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-md);
+  line-height: 1.55;
+}
+
+.ui-gallery__list,
+.ui-gallery__table {
+  overflow: hidden;
+  padding: 0;
+}
+
+.ui-gallery__list .app-list-row {
+  padding-inline: var(--space-4);
+}
+
+.ui-gallery__row-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: hsl(var(--muted-foreground) / 0.45);
+}
+
+.ui-gallery__row-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ui-gallery__row-copy strong {
+  overflow: hidden;
+  font-size: var(--app-text-base);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-gallery__row-copy span {
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-sm);
+}
+
+.ui-gallery__row-value {
+  flex: none;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-numeric);
+  font-size: var(--app-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-gallery__table .app-table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) 0.8fr 0.8fr 0.9fr;
+  align-items: center;
+  gap: var(--space-3);
+  padding-inline: var(--space-4);
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-md);
+}
+
+.ui-gallery__table .app-table-row strong {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+.ui-gallery__table-head {
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ui-gallery__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ui-gallery__status i {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: var(--radius-pill);
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+.ui-gallery__media {
+  width: 100%;
+}
+
+.ui-gallery__media-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, hsl(0 0% 72%), hsl(0 0% 46%));
+}
+
+.ui-gallery__media-fill--alt {
+  background: linear-gradient(135deg, hsl(0 0% 58%), hsl(0 0% 32%));
+}
+
+.ui-gallery__hover-scope {
+  display: flex;
+  max-width: 24rem;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.25rem;
+  border: 1px solid var(--app-surface-border);
+  border-radius: var(--radius-xl);
+  background: hsl(var(--card));
+}
+
+.ui-gallery__hover-item {
+  display: flex;
+  min-height: 2.25rem;
+  align-items: center;
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-3);
+  background: transparent;
+  color: hsl(var(--foreground));
+  font: inherit;
+  font-size: var(--app-text-base);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ui-gallery__hover-item:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.8);
+  outline-offset: -2px;
 }
 
 .ui-gallery__row {

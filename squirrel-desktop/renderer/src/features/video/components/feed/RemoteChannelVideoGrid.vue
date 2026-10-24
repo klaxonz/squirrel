@@ -20,12 +20,13 @@
         class="remote-channel-video-card group"
         @click="$emit('open', item)"
       >
-        <div class="remote-channel-video-thumb">
+        <MediaFrame
+          class="remote-channel-video-thumb"
+          :duration="item.duration ? formatDuration(item.duration) : ''"
+          compact
+        >
           <VideoThumbnail :src="item.thumbnail" :alt="item.title" fit="cover" />
-          <span v-if="item.duration" class="app-media-duration-badge app-mono">
-            {{ formatDuration(item.duration) }}
-          </span>
-        </div>
+        </MediaFrame>
 
         <div class="flex min-w-0 flex-col gap-1 px-0.5">
           <h3 class="remote-channel-video-title">
@@ -58,6 +59,7 @@ import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import { Button } from '@/shared/ui/button'
 import VideoSkeleton from '@/features/video/components/feed/VideoSkeleton.vue'
 import VideoThumbnail from '@/features/video/components/feed/VideoThumbnail.vue'
+import MediaFrame from '@/shared/components/layout/MediaFrame.vue'
 import { useSkeletonCount } from '@/features/video/composables/useSkeletonCount'
 import { formatDuration } from '@/shared/lib/dateFormat'
 import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
@@ -180,14 +182,8 @@ onUnmounted(() => {
 }
 
 .remote-channel-video-thumb {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--app-card-radius);
-  background: var(--app-media-thumb-placeholder);
-  isolation: isolate;
-  transition: box-shadow var(--duration-base) var(--ease-default), filter var(--duration-fast) var(--ease-default);
+  width: 100%;
+  transition: box-shadow var(--duration-base) var(--ease-default);
 }
 
 .remote-channel-video-card:hover .remote-channel-video-thumb,
@@ -198,7 +194,7 @@ onUnmounted(() => {
 .remote-channel-video-card:focus-visible .remote-channel-video-thumb {
   box-shadow:
     0 0 0 2px hsl(var(--background)),
-    0 0 0 4px hsl(var(--ring) / 0.45),
+    0 0 0 4px hsl(var(--ring) / 0.8),
     inset 0 0 0 1px hsl(var(--foreground) / 0.16);
 }
 

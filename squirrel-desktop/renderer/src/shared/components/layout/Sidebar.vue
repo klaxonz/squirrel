@@ -16,7 +16,7 @@
       </RouterLink>
     </div>
 
-    <nav class="sidebar-top-nav" aria-label="主要入口">
+    <nav v-hover-fill class="sidebar-top-nav" aria-label="主要入口">
       <SidebarMenuItem
         v-for="item in SIDEBAR_TOP_ITEMS"
         :key="item.path"
@@ -41,7 +41,7 @@
         >
           {{ group.label }}
         </h2>
-        <div class="sidebar-group__items">
+        <div v-hover-fill class="sidebar-group__items">
           <SidebarMenuItem
             v-for="item in group.items"
             :key="item.path"
@@ -53,7 +53,7 @@
       </section>
     </nav>
 
-    <footer class="sidebar-footer">
+    <footer v-hover-fill class="sidebar-footer">
       <SidebarMenuItem
         v-for="item in SIDEBAR_FOOTER_ITEMS"
         :key="item.path"
@@ -69,6 +69,7 @@
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import BrandMark from '@/shared/components/BrandMark.vue'
+import { hoverFill as vHoverFill } from '@/shared/directives/hoverFill'
 import SidebarMenuItem from './SidebarMenuItem.vue'
 import {
   NAV_GROUPS,
@@ -111,9 +112,9 @@ const showSidebarMusicPlayer = computed(() =>
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  min-height: var(--app-titlebar-height);
-  padding: 0 0.85rem;
-  border-bottom: 1px solid hsl(var(--sidebar-border) / 0.9);
+  min-height: 3.5rem;
+  padding: 0 1.125rem;
+  border-bottom: 1px solid hsl(var(--sidebar-border));
 }
 
 .sidebar-brand.is-collapsed {
@@ -134,17 +135,17 @@ const showSidebarMusicPlayer = computed(() =>
   width: 1.5rem;
   height: 1.5rem;
   flex: 0 0 auto;
-  color: hsl(var(--primary));
+  color: hsl(var(--brand));
 }
 
 .sidebar-brand__name {
   overflow: hidden;
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-size: var(--app-text-xl);
-  font-weight: 700;
-  letter-spacing: 0;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   line-height: 1;
-  color: hsl(var(--primary));
+  color: hsl(var(--foreground));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -154,19 +155,19 @@ const showSidebarMusicPlayer = computed(() =>
   display: flex;
   flex: 0 0 auto;
   flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.55rem 0.75rem;
+  gap: 0.125rem;
+  padding: 0.5rem 0.75rem;
 }
 
 .sidebar-top-nav {
-  padding-top: 0.7rem;
-  padding-bottom: 0.3rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.25rem;
 }
 
 .sidebar-footer {
-  border-top: 1px solid hsl(var(--sidebar-border) / 0.9);
-  padding-top: 0.55rem;
-  padding-bottom: 0.7rem;
+  border-top: 1px solid hsl(var(--sidebar-border));
+  padding-top: 0.5rem;
+  padding-bottom: 0.75rem;
 }
 
 .sidebar-nav {
@@ -174,7 +175,7 @@ const showSidebarMusicPlayer = computed(() =>
   flex: 1 1 auto;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 0.3rem 0.75rem 0.8rem;
+  padding: 0.375rem 0.75rem 1rem;
   transition: padding-bottom var(--duration-base) var(--ease-out);
 }
 
@@ -183,19 +184,18 @@ const showSidebarMusicPlayer = computed(() =>
 }
 
 .sidebar-group + .sidebar-group {
-  margin-top: 0.85rem;
-  padding-top: 0.7rem;
-  border-top: 1px solid hsl(var(--sidebar-border) / 0.7);
+  margin-top: 1.35rem;
 }
 
 .sidebar-group__label {
-  margin: 0 0 0.3rem;
-  padding: 0.125rem 0.8rem;
+  margin: 0 0 0.375rem;
+  padding: 0.125rem 0.75rem;
   color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-sm);
-  font-weight: 650;
-  letter-spacing: 0.01em;
+  font-size: var(--app-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
   line-height: 1.4;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -206,7 +206,7 @@ const showSidebarMusicPlayer = computed(() =>
 .sidebar-group__items {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.125rem;
 }
 
 .sidebar-rail.is-collapsed :is(.sidebar-top-nav, .sidebar-nav, .sidebar-footer) {
@@ -214,24 +214,16 @@ const showSidebarMusicPlayer = computed(() =>
 }
 
 .sidebar-rail.is-collapsed .sidebar-group + .sidebar-group {
-  margin-top: 0.5rem;
-  padding-top: 0.375rem;
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .sidebar-brand { padding-inline: 0.75rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .sidebar-nav {
     transition: none;
   }
-}
-.sidebar-rail { border-right-color: hsl(var(--border)); background: hsl(var(--sidebar)); }
-.sidebar-brand { min-height: 3.5rem; border-bottom-color: hsl(var(--border)); padding-inline: 1.125rem; }
-.sidebar-brand__mark { color: hsl(var(--primary)); }
-.sidebar-brand__name { color: hsl(var(--foreground)); letter-spacing: 0; }
-.sidebar-top-nav, .sidebar-footer { padding-inline: 0.75rem; }
-.sidebar-group + .sidebar-group { border-top-color: hsl(var(--border) / 0.7); }
-.sidebar-group__label { color: hsl(var(--muted-foreground)); font-size: var(--app-text-xs); letter-spacing: 0.08em; text-transform: uppercase; }
-.sidebar-footer { border-top-color: hsl(var(--border)); }
-@media (max-width: 640px) {
-  .sidebar-brand { padding-inline: 0.75rem; }
 }
  </style>

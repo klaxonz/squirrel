@@ -75,13 +75,15 @@ export function useScheduledTaskQueries(
       }) as Promise<ScheduledTaskListResponse>,
   })
 
-  const statistics = computed<SchedulerStatistics>(() => statsQuery.data.value ?? {
+  // A partial or empty payload must still render zeros, never `undefined`.
+  const statistics = computed<SchedulerStatistics>(() => ({
     total_tasks: 0,
     active_tasks: 0,
     running_tasks: 0,
     error_tasks: 0,
     today_executions: 0,
-  })
+    ...(statsQuery.data.value ?? {}),
+  }))
   const taskClasses = computed(() => classesQuery.data.value ?? {})
   const tasks = computed<ScheduledTask[]>(() => tasksQuery.data.value?.data ?? [])
   const totalPages = computed(() => {

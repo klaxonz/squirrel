@@ -16,7 +16,8 @@ export default {
     extend: {
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
-        display: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'var(--font-sans)', 'system-ui', 'sans-serif'],
+        numeric: ['var(--font-numeric)', 'var(--font-sans)', 'sans-serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
       // Type scale — adds two sub-xs sizes for the deliberate compact-UI
@@ -35,6 +36,15 @@ export default {
         '4xs': ['8px', { lineHeight: '1.15' }],
         '3xs': ['9px', { lineHeight: '1.2' }],
         '2xs': ['10px', { lineHeight: '1.25' }],
+        /* Semantic aliases bound to the app tokens. Prefer these over the
+           numeric Tailwind scale, which is offset by 1–2px from --app-text-*:
+           text-xs=12, text-sm=14, text-base=16, text-lg=18, text-xl=20. */
+        meta: ['var(--app-text-sm)', { lineHeight: '1.4' }],
+        secondary: ['var(--app-text-md)', { lineHeight: '1.5' }],
+        body: ['var(--app-text-base)', { lineHeight: 'var(--app-leading-body)' }],
+        eyebrow: ['var(--app-text-xs)', { lineHeight: '1.4', letterSpacing: '0.08em' }],
+        section: ['var(--app-text-lg)', { lineHeight: '1.3' }],
+        'page-title': ['var(--app-text-2xl)', { lineHeight: 'var(--app-leading-title)', letterSpacing: '-0.02em' }],
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -51,6 +61,7 @@ export default {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
+        brand: { DEFAULT: 'hsl(var(--brand))', foreground: 'hsl(var(--primary-foreground))' },
         overlay: {
           DEFAULT: 'hsl(var(--overlay) / 0.45)',
           strong: 'hsl(var(--overlay) / 0.62)',
@@ -63,6 +74,8 @@ export default {
         'md': 'var(--radius-md)',
         'lg': 'var(--radius-lg)',
         'xl': 'var(--radius-xl)',
+        '2xl': 'var(--radius-2xl)',
+        'pill': 'var(--radius-pill)',
       },
       boxShadow: {
         'xs': 'var(--shadow-xs)',
@@ -70,15 +83,11 @@ export default {
         'md': 'var(--shadow-md)',
         'lg': 'var(--shadow-lg)',
         'premium': 'var(--shadow-premium)',
-        'card-hover': 'var(--shadow-card-hover)',
         'surface': 'var(--app-surface-shadow)',
         'primary': '0 1px 2px hsl(var(--primary) / 0.3), 0 0 0 1px hsl(var(--primary) / 0.5) inset',
         'primary-hover': '0 2px 8px hsl(var(--primary) / 0.35)',
         'popover': 'var(--app-floating-shadow)',
         'dialog': 'var(--app-overlay-shadow)',
-      },
-      backgroundImage: {
-        'brand-gradient': 'var(--brand-gradient)',
       },
       // Z-index scale — maps the --z-* tokens to utilities so `z-dialog` /
       // `z-toast` etc. replace the scattered `z-[1300]` magic values.
@@ -86,6 +95,7 @@ export default {
       zIndex: {
         'base': 'var(--z-base)',
         'content': 'var(--z-content)',
+        'sticky': 'var(--z-sticky)',
         'header': 'var(--z-header)',
         'sidebar': 'var(--z-sidebar)',
         'dropdown': 'var(--z-dropdown)',
@@ -104,6 +114,7 @@ export default {
       transitionTimingFunction: {
         'default': 'var(--ease-default)',
         'out': 'var(--ease-out)',
+        'fluid': 'var(--ease-out)',
         'spring': 'var(--ease-spring)',
       },
     },

@@ -35,7 +35,7 @@ defineProps<{
 .app-operate-page-header__copy {
   display: grid;
   min-width: 0;
-  gap: var(--space-2);
+  gap: 0.375rem;
 }
 
 .app-operate-page-header__title {
@@ -48,23 +48,24 @@ defineProps<{
 .app-operate-page-header__title h1 {
   margin: 0;
   color: hsl(var(--foreground));
-  font-family: var(--font-sans);
-  font-size: var(--app-text-xl);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-size: var(--app-text-2xl);
+  font-weight: 650;
+  line-height: var(--app-leading-title);
+  letter-spacing: -0.02em;
 }
 
 .app-operate-page-header__title span {
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-sm);
-  font-weight: 550;
+  font-weight: 600;
 }
 
 .app-operate-page-header__copy p {
   margin: 0;
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-md);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .app-operate-page-header__actions {
