@@ -1,11 +1,10 @@
 <template>
-  <nav v-hover-fill class="app-section-nav" :aria-label="ariaLabel">
+  <nav class="app-section-nav" :aria-label="ariaLabel">
     <button
       v-for="option in options"
       :key="option.value"
       type="button"
       class="app-section-nav__item"
-      data-hover-fill-item
       :class="{ 'is-active': modelValue === option.value }"
       :aria-current="modelValue === option.value ? 'page' : undefined"
       @click="selectOption(option.value)"
@@ -22,8 +21,6 @@
 </template>
 
 <script setup lang="ts">
-import { hoverFill as vHoverFill } from '@/shared/directives/hoverFill'
-
 export interface AppSectionNavOption {
   value: string | number
   label: string
@@ -56,7 +53,7 @@ const selectOption = (value: string | number) => {
   min-width: 0;
   flex: none;
   align-items: center;
-  gap: 0.125rem;
+  gap: 1.5rem;
 }
 
 .app-section-nav--optical {
@@ -64,25 +61,28 @@ const selectOption = (value: string | number) => {
 }
 
 .app-section-nav__item {
+  position: relative;
   display: inline-flex;
-  height: 2rem;
+  height: 2.25rem;
   align-items: center;
   gap: 0.375rem;
-  border-radius: var(--app-control-radius);
-  padding: 0 0.75rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 0 0.125rem;
   color: hsl(var(--muted-foreground));
+  background: transparent;
   font-size: var(--app-text-md);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
   transition:
     color var(--duration-fast) var(--ease-default),
-    background-color var(--duration-fast) var(--ease-default);
+    border-color var(--duration-fast) var(--ease-default);
 }
 
 .app-section-nav__item:hover {
   color: hsl(var(--foreground));
-  background: hsl(var(--foreground) / 0.06);
+  background: transparent;
 }
 
 .app-section-nav__item:focus-visible {
@@ -93,7 +93,8 @@ const selectOption = (value: string | number) => {
 
 .app-section-nav__item.is-active {
   color: hsl(var(--foreground));
-  background: var(--app-selection-bg);
+  border-bottom-color: hsl(var(--foreground));
+  font-weight: 600;
 }
 
 .app-section-nav__badge {

@@ -8,14 +8,13 @@
           size="lg"
         >
           <template #actions>
-            <AppSegmentedControl
+            <AppSectionNav
               :model-value="activeFilter"
               :options="HOME_INBOX_FILTER_OPTIONS"
-              size="sm"
               aria-label="首页内容范围"
-              @update:model-value="setFilter"
+              @change="setFilter"
             />
-            <Button variant="secondary" size="sm" @click="goToAllVideos">
+            <Button variant="ghost" size="sm" class="home-feed__view-all" @click="goToAllVideos">
               全部视频
               <AppIcon name="chevronRight" class="size-3.5" />
             </Button>
@@ -62,7 +61,7 @@ import { useNewContentDetector, prependPreservingScroll } from '@/shared/composa
 import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
-import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
+import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { HOME_INBOX_FILTER_OPTIONS, type HomeInboxFilter } from '@/features/video/constants/homeInbox'
@@ -137,7 +136,30 @@ watch(activeFilter, () => resetNewContent())
   gap: var(--app-section-gap);
   padding: var(--app-page-pad-top) var(--app-page-gutter) var(--space-9);
 }
-.home-feed__header { min-width: 0; }
+.home-feed__view-all {
+  gap: 0.2rem;
+  padding-inline: 0.25rem;
+  color: hsl(var(--muted-foreground));
+  font-size: var(--app-text-sm);
+  font-weight: 500;
+}
+
+.home-feed__view-all:hover {
+  background: transparent;
+  color: hsl(var(--foreground));
+}
+
+.home-feed__header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  min-width: 0;
+  margin-inline: calc(var(--app-page-gutter) * -1);
+  padding: var(--space-3) var(--app-page-gutter);
+  border-bottom: 1px solid var(--app-hairline);
+  background: hsl(var(--background) / 0.96);
+  backdrop-filter: blur(8px);
+}
 .home-feed__main { display: flex; min-width: 0; flex-direction: column; gap: var(--space-6); }
 .home-feed__new-content { margin-bottom: calc(var(--space-3) * -1); }
 @media (max-width: 640px) {

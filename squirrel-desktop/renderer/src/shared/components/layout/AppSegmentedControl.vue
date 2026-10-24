@@ -75,18 +75,21 @@ const selectOption = (value: string | number) => {
   align-items: center;
   gap: 2px;
   flex: 0 0 auto;
-  background: var(--app-filter-track-bg);
-  border: 1px solid hsl(var(--border));
+  border: 0;
   border-radius: var(--radius-lg);
+  background: var(--app-filter-track-bg);
   padding: 2px;
 }
 
 .app-segmented-control__item {
-  padding: 0.25rem 0.75rem;
+  border-color: transparent;
   border-radius: var(--app-control-item-radius);
+  padding: 0.25rem 0.75rem;
+  background: transparent;
+  box-shadow: none;
   color: hsl(var(--muted-foreground));
   font-size: var(--app-text-md);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   transition:
     color var(--duration-fast) var(--ease-default),
@@ -95,6 +98,7 @@ const selectOption = (value: string | number) => {
 }
 
 .app-segmented-control__item:hover {
+  background: hsl(var(--foreground) / 0.05);
   color: hsl(var(--foreground));
 }
 
@@ -103,6 +107,10 @@ const selectOption = (value: string | number) => {
   background: var(--app-filter-raised-bg);
   box-shadow: var(--app-filter-raised-shadow);
   font-weight: 600;
+}
+
+.app-segmented-control__item.is-active:hover {
+  background: var(--app-filter-raised-bg);
 }
 
 @media (prefers-reduced-motion: reduce) {
