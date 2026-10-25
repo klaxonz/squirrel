@@ -2,38 +2,46 @@
   <AppPageShell variant="compact" surface="organize" width="browse" fill>
     <div class="subscription-page">
       <header class="app-page-heading">
-        <AppOperatePageHeader title="订阅" :summary="subscriptionSummary" size="lg" />
+        <AppOperatePageHeader title="订阅" :summary="subscriptionSummary" size="lg">
+          <template #actions>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="subscription-toolbar__add"
+              @click="showAddDialog = true"
+            >
+              添加订阅
+            </Button>
+          </template>
+        </AppOperatePageHeader>
       </header>
 
-      <AppToolbarFrame bordered compact sticky boundary="browse" divider="content">
+      <AppToolbarFrame compact sticky boundary="browse">
         <div class="subscription-toolbar">
           <div class="subscription-toolbar__navigation">
-            <AppSectionNav
-              v-model="workspaceMode"
+            <AppTextTabs
+              :model-value="workspaceMode"
               :options="workspaceOptions"
               aria-label="订阅工作区"
+              @change="handleWorkspaceChange"
             />
-            <span class="subscription-toolbar__divider" aria-hidden="true" />
-            <AppSectionNav
+            <AppTextTabs
               :model-value="activeScope"
               :options="scopeOptions"
               aria-label="订阅范围"
               @change="handleScopeChange"
             />
-          </div>
-
-          <section class="subscription-toolbar__actions" aria-label="订阅筛选和操作">
             <PopoverRoot>
               <PopoverTrigger as-child>
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant="ghost"
                   size="sm"
                   class="app-filter-toolbar-button"
                   :class="{ 'is-active': activeFilterCount > 0 }"
                   :aria-label="activeFilterCount > 0 ? `筛选，已启用 ${activeFilterCount} 项` : '筛选'"
                 >
-                  <AppIcon name="filter" class="h-3.5 w-3.5" />
                   <span>筛选</span>
                   <span
                     v-if="activeFilterCount > 0"
@@ -89,7 +97,9 @@
                 </AppFilterPanel>
               </PopoverContent>
             </PopoverRoot>
+          </div>
 
+          <section class="subscription-toolbar__actions" aria-label="订阅筛选和操作">
             <Button
               v-if="!isFeedView"
               type="button"
@@ -114,16 +124,6 @@
               @click="showImportDialog = true"
             >
               <AppIcon name="download" class="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              class="subscription-toolbar__add"
-              @click="showAddDialog = true"
-            >
-              <AppIcon name="plus" class="h-4 w-4" />
-              添加订阅
             </Button>
           </section>
         </div>
@@ -185,8 +185,10 @@
                 class="subscription-feed-day"
               >
                 <header class="subscription-feed-day__header">
-                  <h2>{{ day.label }}</h2>
-                  <span>{{ day.count }} 条更新</span>
+                  <div class="subscription-feed-day__heading">
+                    <h2>{{ day.label }}</h2>
+                    <span>{{ day.count }} 条更新</span>
+                  </div>
                 </header>
 
                 <div class="subscription-feed-day__items">
@@ -321,7 +323,7 @@ import AppFilterOptionList from '@/shared/components/layout/AppFilterOptionList.
 import AppFilterPanel from '@/shared/components/layout/AppFilterPanel.vue'
 import AppFilterSection from '@/shared/components/layout/AppFilterSection.vue'
 import AppSegmentedControl from '@/shared/components/layout/AppSegmentedControl.vue'
-import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
+import AppTextTabs from '@/shared/components/layout/AppTextTabs.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import SiteIcon from '@/shared/components/SiteIcon.vue'
 import { PopoverContent, PopoverRoot, PopoverTrigger } from '@/shared/ui/popover'
@@ -381,6 +383,10 @@ const { options: siteOptions, fetchSites } = useSites()
 const { settings, loadUserSettings } = useUserSettings()
 
 const workspaceMode = ref<SubscriptionWorkspace>('activity')
+
+const handleWorkspaceChange = (value: string | number) => {
+  if (value === 'activity' || value === 'channels') workspaceMode.value = value
+}
 const activityScope = ref<ActivityScope>('unread')
 const channelScope = ref<ChannelScope>('all')
 const feedSearch = ref(uiStore.getSearchQuery('subscribed').trim())
@@ -413,6 +419,7 @@ const CHANNEL_PAGE_SIZE = 100
 let channelsRequestToken = 0
 
 const feedItems = ref<VideoListItem[]>([])
+
 const feedCursor = ref<string | null>(null)
 const feedFinished = ref(false)
 const loadingFeed = ref(false)
@@ -1073,6 +1080,17 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.subscription-page > .app-page-heading {
+  padding-top: 1.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.subscription-page :deep(.app-operate-page-header--lg .app-operate-page-header__title h1) {
+  color: hsl(var(--foreground) / 0.82);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
 .subscription-toolbar {
   display: flex;
   width: 100%;
@@ -1102,34 +1120,12 @@ onUnmounted(() => {
   display: none;
 }
 
-.subscription-toolbar__divider {
-  width: 1px;
-  height: 1.25rem;
-  flex: none;
-  margin-inline: var(--space-1);
-  background: var(--app-hairline);
-}
-
 .subscription-toolbar__icon-action {
   color: hsl(var(--muted-foreground));
 }
 
 .subscription-toolbar__add {
   margin-left: var(--space-1);
-  border-color: transparent;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  font-weight: 700;
-  box-shadow: none;
-  transition:
-    background-color var(--duration-fast) var(--ease-default),
-    border-color var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
-}
-
-.subscription-toolbar__add:hover {
-  border-color: transparent;
-  background: hsl(var(--primary) / 0.9);
 }
 
 .subscription-content__new-content {
@@ -1191,18 +1187,12 @@ onUnmounted(() => {
 }
 
 .subscription-feed-day + .subscription-feed-day {
-  margin-top: var(--space-3);
+  margin-top: var(--space-7);
 }
 
 .subscription-feed-day {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--app-surface-border);
-  border-radius: var(--radius-xl);
-  background: hsl(var(--card));
+  display: block;
+  min-width: 0;
 }
 
 .subscription-feed-day__header {
@@ -1211,29 +1201,34 @@ onUnmounted(() => {
   z-index: var(--z-content);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-direction: row;
+  justify-content: flex-start;
   gap: 0.75rem;
-  padding: 0.625rem 0.9rem;
+  padding: 0.25rem 0 0.5rem;
   border-bottom: 1px solid var(--app-hairline);
-  background: hsl(var(--card));
+  background: hsl(var(--background));
+}
+
+.subscription-feed-day__heading {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.5rem;
 }
 
 .subscription-feed-day__header h2 {
   margin: 0;
-  color: hsl(var(--muted-foreground));
-  font-family: var(--font-sans);
-  font-size: var(--app-text-xs);
+  color: hsl(var(--foreground));
+  font-family: var(--font-display);
+  font-size: var(--app-text-base);
   font-weight: 600;
-  letter-spacing: 0.08em;
-  line-height: 1.35;
-  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
 }
 
 .subscription-feed-day__header span {
   color: hsl(var(--muted-foreground));
-  font-size: var(--app-text-xs);
-  font-weight: 600;
+  font-size: var(--app-text-sm);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1247,11 +1242,28 @@ onUnmounted(() => {
   border-top: 1px solid var(--app-hairline);
 }
 
+/* One surface per list: date section + flat rows, no card-in-card. */
 .subscription-feed-day__items :deep(.video-item--row) {
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: transparent;
-  padding: 0.875rem 0.9rem;
+  padding: 0.75rem;
+  box-shadow: none;
+}
+
+.subscription-feed-day__items :deep(.video-item--row:hover) {
+  background: transparent;
+  box-shadow: inset 2px 0 0 hsl(var(--foreground) / 0.16);
+}
+
+.subscription-feed-day__items :deep(.video-item__row-actions) {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+
+.subscription-feed-day__items :deep(.video-item--row:hover .video-item__row-actions),
+.subscription-feed-day__items :deep(.video-item--row:focus-within .video-item__row-actions) {
+  opacity: 1;
 }
 
 .subscription-channel-table {

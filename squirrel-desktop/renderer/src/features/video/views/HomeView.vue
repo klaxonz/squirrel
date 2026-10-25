@@ -1,12 +1,12 @@
 <template>
   <AppPageShell class="home-feed" variant="compact" surface="consume" width="browse">
     <header class="app-page-heading">
-      <AppOperatePageHeader title="首页" summary="订阅收件箱" size="lg" />
+      <AppOperatePageHeader title="首页" summary="订阅收件箱" size="md" />
     </header>
 
-    <AppToolbarFrame bordered compact boundary="browse" divider="content" sticky>
+    <AppToolbarFrame compact boundary="browse" sticky>
       <div class="home-feed__toolbar">
-        <AppSectionNav
+        <AppTextTabs
           :model-value="activeFilter"
           :options="HOME_INBOX_FILTER_OPTIONS"
           aria-label="首页内容范围"
@@ -58,7 +58,7 @@ import { getMainScrollRoot } from '@/shared/composables/useMainScrollRoot'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
-import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
+import AppTextTabs from '@/shared/components/layout/AppTextTabs.vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { Button } from '@/shared/ui/button'
 import { HOME_INBOX_FILTER_OPTIONS, type HomeInboxFilter } from '@/features/video/constants/homeInbox'

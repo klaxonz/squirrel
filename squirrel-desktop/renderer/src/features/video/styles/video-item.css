@@ -95,8 +95,8 @@
 /* Workbench list: thumb left + body right. Compact enough for delivery density. */
 .video-item--row {
   flex-direction: row;
-  align-items: stretch;
-  gap: 0.9rem;
+  align-items: center;
+  gap: 1rem;
   overflow: hidden;
   border: 1px solid var(--app-surface-border);
   border-radius: var(--radius-xl);
@@ -677,7 +677,7 @@
   position: relative;
   display: flex;
   min-width: 0;
-  flex: 0 0 clamp(11rem, 16vw, 16rem);
+  flex: 0 0 clamp(10rem, 12vw, 11rem);
 }
 
 .video-item__row-content {
@@ -699,10 +699,50 @@
   gap: 0.4rem;
 }
 
+.video-item__row-actions {
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.video-item__inline-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.video-item__inline-actions .video-item__inline-btn {
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
+}
+
+.video-item__inline-actions .video-item__inline-btn:hover {
+  background: var(--app-control-hover-bg);
+  color: hsl(var(--foreground));
+}
+
+.video-item__inline-actions .video-item__inline-btn.is-on {
+  background: var(--app-selection-bg);
+  color: hsl(var(--foreground));
+}
+
 .video-item--row.is-read .video-item__row-media {
   opacity: 0.84;
 }
 
 .video-item--row.is-read .video-item__row-content .video-item__title {
   color: hsl(var(--muted-foreground));
+}
+
+/* Row cells own the width: the thumbnail must not retain the old 16vw size. */
+.video-item__row-media .video-item__thumb--row {
+  width: 100%;
+  flex: 0 0 auto;
 }

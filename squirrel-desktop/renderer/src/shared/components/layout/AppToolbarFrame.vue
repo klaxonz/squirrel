@@ -48,8 +48,8 @@ withDefaults(defineProps<{
   --app-divider-inline-gutter: var(--app-toolbar-inline-gutter);
   width: 100%;
   margin: 0 auto;
-  /* Opaque Reddit chrome so sticky toolbars cover scroll content cleanly. */
-  background: hsl(var(--card));
+  /* Opaque page surface so sticky toolbars cover scroll content cleanly. */
+  background: hsl(var(--background));
 }
 
 .app-toolbar-frame--sticky {

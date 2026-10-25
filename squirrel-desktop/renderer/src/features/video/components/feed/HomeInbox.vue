@@ -252,7 +252,7 @@ defineExpose({
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.5rem), 1fr));
   align-items: start;
-  gap: var(--space-6) var(--space-5);
+  gap: 1rem var(--space-5);
 }
 
 .home-inbox__state {

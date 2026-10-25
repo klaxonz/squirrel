@@ -1,13 +1,12 @@
 <template>
   <AppPageShell class="history-page" variant="compact" surface="organize" width="browse">
     <header class="app-page-heading">
-      <AppOperatePageHeader title="历史" :summary="historySummary" size="lg" />
+      <AppOperatePageHeader title="历史" :summary="historySummary" size="md" />
     </header>
 
-    <AppToolbarFrame bordered compact sticky boundary="browse" divider="content">
+    <AppToolbarFrame compact sticky boundary="browse">
       <div class="history-toolbar">
-        <AppSectionNav
-          class="app-section-nav--optical"
+        <AppTextTabs
           :model-value="historyMode"
           :options="modeOptions"
           aria-label="历史记录范围"
@@ -16,7 +15,7 @@
         <div class="history-toolbar__actions">
           <Button
             v-if="videos.length && !isContinueMode"
-            variant="secondary"
+            variant="ghost"
             size="sm" icon-only
             class="history-toolbar__clear"
             title="清空历史"
@@ -135,8 +134,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppEmptyState from '@/shared/components/layout/AppEmptyState.vue'
 import AppPageShell from '@/shared/components/layout/AppPageShell.vue'
-import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
 import AppOperatePageHeader from '@/shared/components/layout/AppOperatePageHeader.vue'
+import AppTextTabs from '@/shared/components/layout/AppTextTabs.vue'
 import AppToolbarFrame from '@/shared/components/layout/AppToolbarFrame.vue'
 import { Skeleton as AppSkeleton } from '@/shared/ui/skeleton'
 import { Spinner as AppSpinner } from '@/shared/ui/skeleton'

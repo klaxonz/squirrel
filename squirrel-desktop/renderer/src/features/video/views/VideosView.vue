@@ -1,11 +1,11 @@
 <template>
   <AppPageShell class="videos-workbench" variant="compact" surface="consume" width="browse">
     <header class="app-page-heading">
-      <AppOperatePageHeader title="视频库" :summary="videosSummary" size="lg" />
+      <AppOperatePageHeader title="视频库" :summary="videosSummary" size="md" />
     </header>
 
-    <AppToolbarFrame bordered compact sticky boundary="browse" divider="content">
-        <FeedToolbar
+    <AppToolbarFrame compact sticky boundary="browse">
+      <FeedToolbar
           v-if="searchMode !== 'remote'"
           variant="workbench"
           :active-tab="activeTab"

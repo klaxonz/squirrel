@@ -293,6 +293,10 @@
   padding: var(--app-page-pad-top) var(--app-page-gutter) 1.25rem;
 }
 
+.app-page-heading .app-operate-page-header__title h1 {
+  color: hsl(var(--foreground) / 0.82);
+}
+
 .app-content-aligned-divider,
 .app-media-content-frame--divider {
   position: relative;

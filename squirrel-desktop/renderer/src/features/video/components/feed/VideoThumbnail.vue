@@ -1,7 +1,7 @@
 <template>
   <img
-    v-if="thumbnailSrc && !showFallback"
-    :src="thumbnailSrc"
+    v-if="displaySrc && !showFallback && !placeholderImage"
+    :src="displaySrc"
     :alt="alt"
     loading="lazy"
     decoding="async"
@@ -17,13 +17,13 @@
       <AppIcon name="imageOff" class="size-5" :stroke-width="1.75" />
     </span>
     <span class="video-thumbnail__fallback-label mt-2 max-w-[80%] truncate text-xs font-medium">
-      {{ thumbnailSrc ? '封面加载失败' : '暂无封面' }}
+      {{ placeholderImage || !thumbnailSrc ? '暂无封面' : '封面加载失败' }}
     </span>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AppIcon from '@/shared/icons/AppIcon.vue'
 import { useThumbnailRegistry } from './useThumbnailRegistry'
 
@@ -53,7 +53,30 @@ const emit = defineEmits<{
 }>()
 
 const thumbnailSrc = computed(() => String(props.src || '').trim())
-const { imageLoaded, showFallback, handleLoad, handleError: markImageFailed } = useThumbnailRegistry(thumbnailSrc)
+const displaySrc = ref(thumbnailSrc.value)
+const placeholderImage = ref(false)
+watch(thumbnailSrc, (src) => {
+  displaySrc.value = src
+  placeholderImage.value = false
+}, { immediate: true })
+
+const {
+  imageLoaded,
+  showFallback,
+  handleLoad: markLoaded,
+  handleError: markImageFailed,
+} = useThumbnailRegistry(displaySrc)
+
+const handleLoad = (event: Event) => {
+  const img = event.currentTarget as HTMLImageElement
+  // YouTube returns a 120x90 grey default for videos with no real cover.
+  if (img.naturalWidth > 0 && img.naturalWidth <= 160 && img.naturalHeight <= 120) {
+    placeholderImage.value = true
+    emit('error')
+    return
+  }
+  markLoaded()
+}
 
 const handleError = () => {
   markImageFailed()

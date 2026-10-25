@@ -3,14 +3,6 @@
 
   <div class="video-item__row-media">
     <VideoItemThumbnail v-bind="thumbnail" variant="row" />
-    <VideoItemActions
-      v-bind="actions"
-      overlay
-      class="video-item__controls"
-      @toggle-like="emit('toggleLike')"
-      @toggle-read="emit('toggleRead', $event)"
-      @toggle-later="emit('toggleLater')"
-    />
   </div>
 
   <div class="video-item__row-content">
@@ -22,6 +14,15 @@
       @open-profile="emit('openProfile', $event)"
     />
   </div>
+
+  <VideoItemActions
+    v-bind="actions"
+    inline
+    class="video-item__row-actions video-item__controls"
+    @toggle-like="emit('toggleLike')"
+    @toggle-read="emit('toggleRead', $event)"
+    @toggle-later="emit('toggleLater')"
+  />
 </template>
 
 <script setup lang="ts">

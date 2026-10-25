@@ -37,6 +37,7 @@ export interface AppSegmentedControlOption {
   value: string | number
   label: string
   icon?: AppIconName
+  badge?: string | number | null
 }
 
 const props = withDefaults(defineProps<{

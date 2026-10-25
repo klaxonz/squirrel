@@ -1,12 +1,13 @@
 <template>
   <section class="feed-toolbar" :class="`feed-toolbar--${variant}`">
     <div class="feed-toolbar__primary">
-      <AppSectionNav
+      <AppTextTabs
         v-if="showTabs"
-        v-model="localActiveTab"
+        :model-value="localActiveTab"
         class="feed-toolbar__tabs no-scrollbar"
         :options="tabs"
         aria-label="视频分类"
+        @update:model-value="setActiveTab"
       />
       <slot name="after-tabs" />
     </div>
@@ -17,13 +18,12 @@
           <PopoverTrigger as-child>
           <Button
             type="button"
-            variant="secondary"
+            variant="ghost"
             size="sm"
             class="app-filter-toolbar-button"
             :class="{ 'is-active': activeFilterCount > 0 }"
             :aria-label="filterButtonLabel"
           >
-            <AppIcon name="filter" class="h-3.5 w-3.5" />
             <span>筛选</span>
             <span
               v-if="activeFilterCount > 0"
@@ -130,11 +130,6 @@
       </template>
 
       <!-- A single sort mode is a label, not an interactive control. -->
-      <div
-        v-if="showSort"
-        class="feed-toolbar__divider"
-        aria-hidden="true"
-      />
 
       <div class="feed-toolbar__group" role="group" aria-label="列表工具">
         <span v-if="showSort && !hasMultipleSortOptions" class="feed-toolbar__sort-label">最新</span>
@@ -188,7 +183,7 @@ import SiteIcon from '@/shared/components/SiteIcon.vue'
 import AppFilterOptionList from '@/shared/components/layout/AppFilterOptionList.vue'
 import AppFilterPanel from '@/shared/components/layout/AppFilterPanel.vue'
 import AppFilterSection from '@/shared/components/layout/AppFilterSection.vue'
-import AppSectionNav from '@/shared/components/layout/AppSectionNav.vue'
+import AppTextTabs from '@/shared/components/layout/AppTextTabs.vue'
 import type { TimeRange, Duration, ContentType } from '@/features/video/composables/useFeedFilters'
 import { useSites } from '@/features/video/composables/useSites'
 import { useUserSettings } from '@/shared/composables/useUserSettings'
@@ -258,6 +253,9 @@ onMounted(async () => {
 })
 
 const localActiveTab = ref(props.activeTab)
+const setActiveTab = (value: string | number) => {
+  localActiveTab.value = String(value)
+}
 const localSortBy = ref(props.sortBy)
 
 const handleSiteChange = (value: string) => {
@@ -405,6 +403,24 @@ const densityOptions = [
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
+}
+
+.feed-toolbar :deep(.app-segmented-control) {
+  gap: 0.25rem;
+  background: transparent;
+  padding: 0;
+}
+
+.feed-toolbar :deep(.app-segmented-control__item) {
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  box-shadow: none;
+}
+
+.feed-toolbar :deep(.app-segmented-control__item.is-active) {
+  color: hsl(var(--foreground) / 0.82);
+  background: transparent;
+  box-shadow: none;
 }
 
 .feed-toolbar__actions {
